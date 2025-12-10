@@ -57,6 +57,10 @@ import 'package:ndu_project/screens/project_framework_screen.dart';
 import 'package:ndu_project/screens/punchlist_actions_screen.dart';
 import 'package:ndu_project/screens/tools_integration_screen.dart';
 import 'package:ndu_project/screens/salvage_disposal_team_screen.dart';
+import 'package:ndu_project/screens/deliver_project_closure_screen.dart';
+import 'package:ndu_project/screens/transition_to_prod_team_screen.dart';
+import 'package:ndu_project/screens/contract_close_out_screen.dart';
+import 'package:ndu_project/screens/vendor_account_close_out_screen.dart';
 
  /// Sidebar styled to match InitiationPhaseScreen's sidebar.
  class InitiationLikeSidebar extends StatefulWidget {
@@ -385,6 +389,22 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
 
   void _openSalvageDisposalTeam() {
     _navigateWithCheckpoint('salvage_disposal_team', const SalvageDisposalTeamScreen());
+  }
+
+  void _openDeliverProjectClosure() {
+    _navigateWithCheckpoint('deliver_project_closure', const DeliverProjectClosureScreen());
+  }
+
+  void _openTransitionToProdTeam() {
+    _navigateWithCheckpoint('transition_to_prod_team', const TransitionToProdTeamScreen());
+  }
+
+  void _openContractCloseOut() {
+    _navigateWithCheckpoint('contract_close_out', const ContractCloseOutScreen());
+  }
+
+  void _openVendorAccountCloseOut() {
+    _navigateWithCheckpoint('vendor_account_close_out', const VendorAccountCloseOutScreen());
   }
 
   void _openDeliverableRoadmap() {
@@ -989,10 +1009,10 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
                   isActive: widget.activeItemLabel == 'Launch Phase',
                 ),
                 if (_launchPhaseExpanded) ...[
-                  _buildSubMenuItem('Deliver Project', isActive: widget.activeItemLabel == 'Deliver Project'),
-                  _buildSubMenuItem('Transition To Production Team', isActive: widget.activeItemLabel == 'Transition To Production Team'),
-                  _buildSubMenuItem('Contract Close Out', isActive: widget.activeItemLabel == 'Contract Close Out'),
-                  _buildSubMenuItem('Vendor Account Close Out', isActive: widget.activeItemLabel == 'Vendor Account Close Out'),
+                  _buildSubMenuItem('Deliver Project', onTap: _openDeliverProjectClosure, isActive: widget.activeItemLabel == 'Deliver Project'),
+                  _buildSubMenuItem('Transition To Production Team', onTap: _openTransitionToProdTeam, isActive: widget.activeItemLabel == 'Transition To Production Team'),
+                  _buildSubMenuItem('Contract Close Out', onTap: _openContractCloseOut, isActive: widget.activeItemLabel == 'Contract Close Out'),
+                  _buildSubMenuItem('Vendor Account Close Out', onTap: _openVendorAccountCloseOut, isActive: widget.activeItemLabel == 'Vendor Account Close Out'),
                   _buildSubMenuItem('Summarize Account Of All Section Including Risks', isActive: widget.activeItemLabel == 'Summarize Account Of All Section Including Risks'),
                   _buildSubMenuItem('Commerce Warranty', isActive: widget.activeItemLabel == 'Commerce Warranty'),
                   _buildSubMenuItem('Actual vs Planned Gap Analysis', isActive: widget.activeItemLabel == 'Actual vs Planned Gap Analysis'),
@@ -1153,6 +1173,18 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     }
     if ('salvage disposal team'.contains(query) || 'salvage'.contains(query) || 'disposal'.contains(query)) {
       results.add(_buildMenuItem(Icons.recycling_outlined, 'Salvage Disposal Team', onTap: _openSalvageDisposalTeam, isActive: widget.activeItemLabel == 'Salvage Disposal Team'));
+    }
+    if ('deliver project'.contains(query) || 'closure'.contains(query) || 'close out'.contains(query)) {
+      results.add(_buildMenuItem(Icons.delivery_dining_outlined, 'Deliver Project', onTap: _openDeliverProjectClosure, isActive: widget.activeItemLabel == 'Deliver Project'));
+    }
+    if ('contract close out'.contains(query) || 'contract closure'.contains(query) || 'contracts'.contains(query)) {
+      results.add(_buildMenuItem(Icons.description_outlined, 'Contract Close Out', onTap: _openContractCloseOut, isActive: widget.activeItemLabel == 'Contract Close Out'));
+    }
+    if ('vendor account close out'.contains(query) || 'vendor close'.contains(query) || 'vendor account'.contains(query)) {
+      results.add(_buildMenuItem(Icons.business_outlined, 'Vendor Account Close Out', onTap: _openVendorAccountCloseOut, isActive: widget.activeItemLabel == 'Vendor Account Close Out'));
+    }
+    if ('transition'.contains(query) || 'production team'.contains(query) || 'prod team'.contains(query) || 'handover'.contains(query)) {
+      results.add(_buildMenuItem(Icons.swap_horiz_outlined, 'Transition To Production Team', onTap: _openTransitionToProdTeam, isActive: widget.activeItemLabel == 'Transition To Production Team'));
     }
     if ('settings'.contains(query)) {
       results.add(_buildMenuItem(Icons.settings_outlined, 'Settings', onTap: () => SettingsScreen.open(context), isActive: widget.activeItemLabel == 'Settings'));

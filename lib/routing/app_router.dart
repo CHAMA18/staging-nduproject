@@ -79,6 +79,10 @@ import 'package:ndu_project/screens/program_basics_screen.dart';
 import 'package:ndu_project/screens/initiation_phase_screen.dart';
 import 'package:ndu_project/screens/design_phase_screen.dart';
 import 'package:ndu_project/screens/deliverables_roadmap_screen.dart';
+import 'package:ndu_project/screens/deliver_project_closure_screen.dart';
+import 'package:ndu_project/screens/transition_to_prod_team_screen.dart';
+import 'package:ndu_project/screens/contract_close_out_screen.dart';
+import 'package:ndu_project/screens/vendor_account_close_out_screen.dart';
 
 // SSHER suite
 import 'package:ndu_project/screens/ssher_stacked_screen.dart';
@@ -172,6 +176,10 @@ class AppRoutes {
   static const stakeholderManagement = 'stakeholder-management';
   static const coreStakeholders = 'core-stakeholders';
   static const fepSecurity = 'fep-security';
+  static const deliverProjectClosure = 'deliver-project-closure';
+  static const transitionToProdTeam = 'transition-to-prod-team';
+  static const contractCloseOut = 'contract-close-out';
+  static const vendorAccountCloseOut = 'vendor-account-close-out';
 
   // SSHER suite
   static const ssherStacked = 'ssher-stacked';
@@ -364,6 +372,10 @@ class AppRouter {
       GoRoute(name: AppRoutes.initiationPhase, path: '/${AppRoutes.initiationPhase}', builder: (c, s) => const InitiationPhaseScreen()),
       GoRoute(name: AppRoutes.designPhase, path: '/${AppRoutes.designPhase}', builder: (c, s) => const DesignPhaseScreen()),
       GoRoute(name: AppRoutes.deliverablesRoadmap, path: '/${AppRoutes.deliverablesRoadmap}', builder: (c, s) => const DeliverablesRoadmapScreen()),
+      GoRoute(name: AppRoutes.deliverProjectClosure, path: '/${AppRoutes.deliverProjectClosure}', builder: (c, s) => const DeliverProjectClosureScreen()),
+      GoRoute(name: AppRoutes.transitionToProdTeam, path: '/${AppRoutes.transitionToProdTeam}', builder: (c, s) => const TransitionToProdTeamScreen()),
+      GoRoute(name: AppRoutes.contractCloseOut, path: '/${AppRoutes.contractCloseOut}', builder: (c, s) => const ContractCloseOutScreen()),
+      GoRoute(name: AppRoutes.vendorAccountCloseOut, path: '/${AppRoutes.vendorAccountCloseOut}', builder: (c, s) => const VendorAccountCloseOutScreen()),
 
       // SSHER suite
       GoRoute(name: AppRoutes.ssherStacked, path: '/${AppRoutes.ssherStacked}', builder: (c, s) => const SsherStackedScreen()),

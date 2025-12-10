@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/openai/openai_config.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
+import 'package:ndu_project/services/subscription_service.dart';
 import 'package:ndu_project/widgets/api_key_input_dialog.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -13,6 +14,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ndu_project/routing/app_router.dart';
+import 'package:intl/intl.dart';
 import 'dart:html' as html;
 
 class SettingsScreen extends StatefulWidget {
@@ -200,41 +202,55 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
 
   Widget _billingSubscriptionPanel() {
     const accent = Color(0xFFFFC107);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isDesktop = constraints.maxWidth >= 1180;
-        final isTablet = constraints.maxWidth >= 860;
+    return FutureBuilder<Subscription?>(
+      future: SubscriptionService.getCurrentSubscription(),
+      builder: (context, subscriptionSnapshot) {
+        return FutureBuilder<List<Invoice>>(
+          future: SubscriptionService.getInvoiceHistory(),
+          builder: (context, invoicesSnapshot) {
+            final subscription = subscriptionSnapshot.data;
+            final invoices = invoicesSnapshot.data ?? [];
+            final isLoading = subscriptionSnapshot.connectionState == ConnectionState.waiting;
+            
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final isDesktop = constraints.maxWidth >= 1180;
+                final isTablet = constraints.maxWidth >= 860;
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 48),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _BillingHeroBanner(accent: accent),
-              const SizedBox(height: 28),
-              if (isTablet)
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: _CurrentSubscriptionCard(accent: accent)),
-                    const SizedBox(width: 20),
-                    SizedBox(
-                      width: isDesktop ? 380 : 340,
-                      child: _PaymentMethodsCard(accent: accent),
-                    ),
-                  ],
-                )
-              else ...[
-                _CurrentSubscriptionCard(accent: accent),
-                const SizedBox(height: 20),
-                _PaymentMethodsCard(accent: accent),
-              ],
-              const SizedBox(height: 28),
-              _InvoicesCard(accent: accent),
-              const SizedBox(height: 28),
-              _UpgradePlanCard(accent: accent),
-            ],
-          ),
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.only(bottom: 48),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _BillingHeroBanner(accent: accent, subscription: subscription, isLoading: isLoading),
+                      const SizedBox(height: 28),
+                      if (isTablet)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: _CurrentSubscriptionCard(accent: accent, subscription: subscription, isLoading: isLoading)),
+                            const SizedBox(width: 20),
+                            SizedBox(
+                              width: isDesktop ? 380 : 340,
+                              child: _PaymentMethodsCard(accent: accent, subscription: subscription),
+                            ),
+                          ],
+                        )
+                      else ...[
+                        _CurrentSubscriptionCard(accent: accent, subscription: subscription, isLoading: isLoading),
+                        const SizedBox(height: 20),
+                        _PaymentMethodsCard(accent: accent, subscription: subscription),
+                      ],
+                      const SizedBox(height: 28),
+                      _InvoicesCard(accent: accent, invoices: invoices, isLoading: invoicesSnapshot.connectionState == ConnectionState.waiting),
+                      const SizedBox(height: 28),
+                      _UpgradePlanCard(accent: accent, currentTier: subscription?.tier),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
         );
       },
     );
@@ -1524,13 +1540,43 @@ class _ActionItemRow extends StatelessWidget {
 // Billing & Subscription Widgets
 
 class _BillingHeroBanner extends StatelessWidget {
-  const _BillingHeroBanner({required this.accent});
+  const _BillingHeroBanner({required this.accent, this.subscription, this.isLoading = false});
 
   final Color accent;
+  final Subscription? subscription;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final hasSubscription = subscription != null;
+    final planName = hasSubscription ? SubscriptionService.getTierName(subscription!.tier) : 'No Plan';
+    final status = hasSubscription ? (subscription!.isActive ? 'Active' : subscription!.status.name) : 'Inactive';
+    final nextBilling = hasSubscription && subscription!.nextBillingDate != null
+        ? DateFormat('MMM d, yyyy').format(subscription!.nextBillingDate!)
+        : hasSubscription && subscription!.endDate != null
+            ? DateFormat('MMM d, yyyy').format(subscription!.endDate!)
+            : 'N/A';
+    final priceInfo = hasSubscription
+        ? SubscriptionService.getPriceForTier(subscription!.tier, annual: subscription!.isAnnual)
+        : {'price': '\$0', 'period': 'per month'};
+    final price = priceInfo['price'] ?? '\$0';
+    final period = subscription?.isAnnual == true ? '/year' : '/month';
+    
+    // Calculate billing cycle progress
+    double billingProgress = 0.0;
+    String progressLabel = 'No active billing cycle';
+    if (hasSubscription) {
+      final now = DateTime.now();
+      final end = subscription!.nextBillingDate ?? subscription!.endDate;
+      if (end != null && end.isAfter(subscription!.startDate)) {
+        final totalDays = end.difference(subscription!.startDate).inDays;
+        final elapsedDays = now.difference(subscription!.startDate).inDays;
+        billingProgress = (elapsedDays / totalDays).clamp(0.0, 1.0);
+        progressLabel = '${(billingProgress * 100).round()}% of billing cycle completed';
+      }
+    }
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
       decoration: BoxDecoration(
@@ -1573,15 +1619,18 @@ class _BillingHeroBanner extends StatelessWidget {
                 style: theme.textTheme.bodyLarge?.copyWith(color: Colors.white.withValues(alpha: 0.78), height: 1.45),
               ),
               const SizedBox(height: 18),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  _BillingStatBadge(label: 'Current Plan', value: 'Professional', accent: accent),
-                  _BillingStatBadge(label: 'Status', value: 'Active', accent: accent),
-                  _BillingStatBadge(label: 'Next Billing', value: 'Dec 15, 2024', accent: accent),
-                ],
-              ),
+              if (isLoading)
+                const CircularProgressIndicator(color: Colors.white54)
+              else
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _BillingStatBadge(label: 'Current Plan', value: planName.replaceAll(' Plan', ''), accent: accent),
+                    _BillingStatBadge(label: 'Status', value: status, accent: accent),
+                    _BillingStatBadge(label: 'Next Billing', value: nextBilling, accent: accent),
+                  ],
+                ),
             ],
           );
 
@@ -1597,30 +1646,30 @@ class _BillingHeroBanner extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Monthly Spend', style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500)),
+                  Text(subscription?.isAnnual == true ? 'Annual Spend' : 'Monthly Spend', style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 8),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('\$99', style: theme.textTheme.displaySmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
+                      Text(price, style: theme.textTheme.displaySmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
                       const SizedBox(width: 4),
-                      Text('/month', style: theme.textTheme.bodyLarge?.copyWith(color: Colors.white70)),
+                      Text(period, style: theme.textTheme.bodyLarge?.copyWith(color: Colors.white70)),
                       const Spacer(),
-                      Icon(Icons.verified, color: accent, size: 28),
+                      Icon(hasSubscription && subscription!.isActive ? Icons.verified : Icons.info_outline, color: accent, size: 28),
                     ],
                   ),
                   const SizedBox(height: 12),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(999),
                     child: LinearProgressIndicator(
-                      value: 0.75,
+                      value: billingProgress,
                       minHeight: 10,
                       backgroundColor: Colors.white.withValues(alpha: 0.2),
                       valueColor: AlwaysStoppedAnimation(accent),
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const Text('75% of billing cycle completed', style: TextStyle(color: Colors.white70, height: 1.4)),
+                  Text(progressLabel, style: const TextStyle(color: Colors.white70, height: 1.4)),
                 ],
               ),
             ),
@@ -1681,13 +1730,34 @@ class _BillingStatBadge extends StatelessWidget {
 }
 
 class _CurrentSubscriptionCard extends StatelessWidget {
-  const _CurrentSubscriptionCard({required this.accent});
+  const _CurrentSubscriptionCard({required this.accent, this.subscription, this.isLoading = false});
 
   final Color accent;
+  final Subscription? subscription;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final hasSubscription = subscription != null;
+    final planName = hasSubscription ? SubscriptionService.getTierName(subscription!.tier) : 'No Active Plan';
+    final isActive = hasSubscription && subscription!.isActive;
+    final statusText = hasSubscription
+        ? (subscription!.isTrial ? 'Trial' : (isActive ? 'Active' : subscription!.status.name))
+        : 'Inactive';
+    final statusColor = isActive ? Colors.green : (hasSubscription && subscription!.isTrial ? Colors.blue : Colors.grey);
+    final billingCycle = hasSubscription ? (subscription!.isAnnual ? 'Annual' : 'Monthly') : 'N/A';
+    final startDate = hasSubscription ? DateFormat('MMM d, yyyy').format(subscription!.startDate) : 'N/A';
+    final renewalDate = hasSubscription && subscription!.nextBillingDate != null
+        ? DateFormat('MMM d, yyyy').format(subscription!.nextBillingDate!)
+        : hasSubscription && subscription!.endDate != null
+            ? DateFormat('MMM d, yyyy').format(subscription!.endDate!)
+            : 'N/A';
+    final priceInfo = hasSubscription
+        ? SubscriptionService.getPriceForTier(subscription!.tier, annual: subscription!.isAnnual)
+        : {'price': '\$0', 'period': 'per month'};
+    final amount = '${priceInfo['price']}/${subscription?.isAnnual == true ? 'year' : 'month'}';
+    
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -1696,7 +1766,9 @@ class _CurrentSubscriptionCard extends StatelessWidget {
         border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
         boxShadow: const [BoxShadow(blurRadius: 18, offset: Offset(0, 14), color: Color(0x0F000000))],
       ),
-      child: Column(
+      child: isLoading
+          ? const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()))
+          : Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -1717,22 +1789,22 @@ class _CurrentSubscriptionCard extends StatelessWidget {
                   children: [
                     Text('Current Subscription', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                     const SizedBox(height: 4),
-                    Text('Professional Plan', style: TextStyle(color: accent, fontWeight: FontWeight.w600)),
+                    Text(planName, style: TextStyle(color: accent, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.12),
+                  color: statusColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.check_circle, size: 16, color: Colors.green.shade700),
+                    Icon(isActive ? Icons.check_circle : Icons.info_outline, size: 16, color: statusColor),
                     const SizedBox(width: 6),
-                    Text('Active', style: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.w600, fontSize: 13)),
+                    Text(statusText, style: TextStyle(color: statusColor, fontWeight: FontWeight.w600, fontSize: 13)),
                   ],
                 ),
               ),
@@ -1748,13 +1820,13 @@ class _CurrentSubscriptionCard extends StatelessWidget {
             ),
             child: Column(
               children: [
-                _SubscriptionDetailRow(label: 'Billing Cycle', value: 'Monthly'),
+                _SubscriptionDetailRow(label: 'Billing Cycle', value: billingCycle),
                 const Divider(height: 24),
-                _SubscriptionDetailRow(label: 'Start Date', value: 'Nov 15, 2024'),
+                _SubscriptionDetailRow(label: 'Start Date', value: startDate),
                 const Divider(height: 24),
-                _SubscriptionDetailRow(label: 'Renewal Date', value: 'Dec 15, 2024'),
+                _SubscriptionDetailRow(label: 'Renewal Date', value: renewalDate),
                 const Divider(height: 24),
-                _SubscriptionDetailRow(label: 'Amount', value: '\$99.00/month'),
+                _SubscriptionDetailRow(label: 'Amount', value: amount),
               ],
             ),
           ),
@@ -1763,7 +1835,26 @@ class _CurrentSubscriptionCard extends StatelessWidget {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {},
+                  onPressed: hasSubscription && isActive ? () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Cancel Subscription'),
+                        content: const Text('Are you sure you want to cancel your subscription? You will lose access at the end of your billing period.'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep Subscription')),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                            child: const Text('Cancel'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed == true) {
+                      await SubscriptionService.cancelSubscription();
+                    }
+                  } : null,
                   icon: const Icon(Icons.cancel_outlined, size: 18),
                   label: const Text('Cancel Subscription'),
                   style: OutlinedButton.styleFrom(
@@ -1816,9 +1907,10 @@ class _SubscriptionDetailRow extends StatelessWidget {
 }
 
 class _PaymentMethodsCard extends StatelessWidget {
-  const _PaymentMethodsCard({required this.accent});
+  const _PaymentMethodsCard({required this.accent, this.subscription});
 
   final Color accent;
+  final Subscription? subscription;
 
   @override
   Widget build(BuildContext context) {
@@ -1843,7 +1935,7 @@ class _PaymentMethodsCard extends StatelessWidget {
             description: 'Credit/Debit Card payments',
             iconColor: const Color(0xFF635BFF),
             icon: Icons.credit_card,
-            isConnected: true,
+            isConnected: subscription?.provider == PaymentProvider.stripe,
             accent: accent,
           ),
           const SizedBox(height: 12),
@@ -1852,7 +1944,7 @@ class _PaymentMethodsCard extends StatelessWidget {
             description: 'PayPal account payments',
             iconColor: const Color(0xFF003087),
             icon: Icons.account_balance_wallet,
-            isConnected: false,
+            isConnected: subscription?.provider == PaymentProvider.paypal,
             accent: accent,
           ),
           const SizedBox(height: 12),
@@ -1861,7 +1953,7 @@ class _PaymentMethodsCard extends StatelessWidget {
             description: 'African payment gateway',
             iconColor: const Color(0xFF00C3F7),
             icon: Icons.payments_outlined,
-            isConnected: false,
+            isConnected: subscription?.provider == PaymentProvider.paystack,
             accent: accent,
           ),
           const SizedBox(height: 20),
@@ -1960,17 +2052,11 @@ class _PaymentProviderTile extends StatelessWidget {
 }
 
 class _InvoicesCard extends StatelessWidget {
-  const _InvoicesCard({required this.accent});
+  const _InvoicesCard({required this.accent, required this.invoices, this.isLoading = false});
 
   final Color accent;
-
-  static const _invoices = <_InvoiceData>[
-    _InvoiceData(id: 'INV-2024-0012', date: 'Nov 15, 2024', amount: '\$99.00', status: 'Paid'),
-    _InvoiceData(id: 'INV-2024-0011', date: 'Oct 15, 2024', amount: '\$99.00', status: 'Paid'),
-    _InvoiceData(id: 'INV-2024-0010', date: 'Sep 15, 2024', amount: '\$99.00', status: 'Paid'),
-    _InvoiceData(id: 'INV-2024-0009', date: 'Aug 15, 2024', amount: '\$99.00', status: 'Paid'),
-    _InvoiceData(id: 'INV-2024-0008', date: 'Jul 15, 2024', amount: '\$79.00', status: 'Paid'),
-  ];
+  final List<Invoice> invoices;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -2010,7 +2096,7 @@ class _InvoicesCard extends StatelessWidget {
                   ),
                 ),
                 OutlinedButton.icon(
-                  onPressed: () {},
+                  onPressed: invoices.isEmpty ? null : () {},
                   icon: const Icon(Icons.download_outlined, size: 18),
                   label: const Text('Export All'),
                   style: OutlinedButton.styleFrom(
@@ -2024,73 +2110,88 @@ class _InvoicesCard extends StatelessWidget {
             ),
           ),
           const Divider(height: 1),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final mediaWidth = MediaQuery.of(context).size.width;
-              final bool hasBoundedWidth = constraints.hasBoundedWidth && constraints.maxWidth.isFinite;
-              final double tableWidth = hasBoundedWidth ? constraints.maxWidth : mediaWidth;
-
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: tableWidth,
-                  child: DataTable(
-                    headingRowColor: WidgetStateProperty.all(const Color(0xFFF9FAFB)),
-                    headingTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
-                    dataTextStyle: const TextStyle(fontSize: 13, color: Color(0xFF374151)),
-                    horizontalMargin: 24,
-                    columnSpacing: 48,
-                    columns: const [
-                      DataColumn(label: Text('Invoice ID')),
-                      DataColumn(label: Text('Date')),
-                      DataColumn(label: Text('Amount')),
-                      DataColumn(label: Text('Status')),
-                      DataColumn(label: Text('Action')),
-                    ],
-                    rows: _invoices.map((invoice) => DataRow(
-                      cells: [
-                        DataCell(Text(invoice.id, style: const TextStyle(fontWeight: FontWeight.w600))),
-                        DataCell(Text(invoice.date)),
-                        DataCell(Text(invoice.amount, style: const TextStyle(fontWeight: FontWeight.w600))),
-                        DataCell(_InvoiceStatusBadge(status: invoice.status)),
-                        DataCell(
-                          IconButton(
-                            onPressed: () {},
-                            icon: Icon(Icons.download_outlined, color: accent, size: 20),
-                            tooltip: 'Download',
-                          ),
-                        ),
-                      ],
-                    )).toList(),
-                  ),
+          if (isLoading)
+            const Padding(
+              padding: EdgeInsets.all(40),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (invoices.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(40),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.receipt_long_outlined, size: 48, color: Colors.grey.shade300),
+                    const SizedBox(height: 16),
+                    Text('No invoices yet', style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 8),
+                    Text('Your payment history will appear here', style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+                  ],
                 ),
-              );
-            },
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Center(
-              child: TextButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.history, size: 18),
-                label: const Text('View All Invoices'),
-                style: TextButton.styleFrom(foregroundColor: accent),
+              ),
+            )
+          else
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final mediaWidth = MediaQuery.of(context).size.width;
+                final bool hasBoundedWidth = constraints.hasBoundedWidth && constraints.maxWidth.isFinite;
+                final double tableWidth = hasBoundedWidth ? constraints.maxWidth : mediaWidth;
+
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: tableWidth,
+                    child: DataTable(
+                      headingRowColor: WidgetStateProperty.all(const Color(0xFFF9FAFB)),
+                      headingTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
+                      dataTextStyle: const TextStyle(fontSize: 13, color: Color(0xFF374151)),
+                      horizontalMargin: 24,
+                      columnSpacing: 48,
+                      columns: const [
+                        DataColumn(label: Text('Invoice ID')),
+                        DataColumn(label: Text('Date')),
+                        DataColumn(label: Text('Amount')),
+                        DataColumn(label: Text('Status')),
+                        DataColumn(label: Text('Action')),
+                      ],
+                      rows: invoices.take(5).map((invoice) => DataRow(
+                        cells: [
+                          DataCell(Text(invoice.id.length > 15 ? '${invoice.id.substring(0, 15)}...' : invoice.id, style: const TextStyle(fontWeight: FontWeight.w600))),
+                          DataCell(Text(DateFormat('MMM d, yyyy').format(invoice.createdAt))),
+                          DataCell(Text(invoice.formattedAmount, style: const TextStyle(fontWeight: FontWeight.w600))),
+                          DataCell(_InvoiceStatusBadge(status: invoice.isPaid ? 'Paid' : invoice.status)),
+                          DataCell(
+                            IconButton(
+                              onPressed: invoice.receiptUrl != null ? () {
+                                html.window.open(invoice.receiptUrl!, '_blank');
+                              } : null,
+                              icon: Icon(Icons.download_outlined, color: invoice.receiptUrl != null ? accent : Colors.grey, size: 20),
+                              tooltip: 'Download',
+                            ),
+                          ),
+                        ],
+                      )).toList(),
+                    ),
+                  ),
+                );
+              },
+            ),
+          if (invoices.length > 5)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: TextButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.history, size: 18),
+                  label: Text('View All ${invoices.length} Invoices'),
+                  style: TextButton.styleFrom(foregroundColor: accent),
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
   }
-}
-
-class _InvoiceData {
-  const _InvoiceData({required this.id, required this.date, required this.amount, required this.status});
-
-  final String id;
-  final String date;
-  final String amount;
-  final String status;
 }
 
 class _InvoiceStatusBadge extends StatelessWidget {
@@ -2132,13 +2233,22 @@ class _InvoiceStatusBadge extends StatelessWidget {
 }
 
 class _UpgradePlanCard extends StatelessWidget {
-  const _UpgradePlanCard({required this.accent});
+  const _UpgradePlanCard({required this.accent, this.currentTier});
 
   final Color accent;
+  final SubscriptionTier? currentTier;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isMaxTier = currentTier == SubscriptionTier.portfolio;
+    final upgradeTitle = isMaxTier
+        ? 'You have the highest plan'
+        : currentTier == SubscriptionTier.program
+            ? 'Upgrade to Portfolio'
+            : 'Upgrade to Program or Portfolio';
+    final upgradePrice = currentTier == SubscriptionTier.program ? '\$449' : '\$189';
+    
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -2160,12 +2270,16 @@ class _UpgradePlanCard extends StatelessWidget {
                 children: [
                   Icon(Icons.rocket_launch, color: accent, size: 28),
                   const SizedBox(width: 12),
-                  Text('Upgrade to Enterprise', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+                  Expanded(
+                    child: Text(upgradeTitle, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
               Text(
-                'Unlock advanced features, priority support, and unlimited team members with our Enterprise plan.',
+                isMaxTier
+                    ? 'You have access to all features including unlimited projects, priority support, and advanced analytics.'
+                    : 'Unlock advanced features, priority support, and unlimited team members with a higher tier plan.',
                 style: const TextStyle(color: Colors.black87, height: 1.5),
               ),
               const SizedBox(height: 16),
@@ -2185,31 +2299,34 @@ class _UpgradePlanCard extends StatelessWidget {
           final actionSection = Column(
             crossAxisAlignment: isWide ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('\$299', style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
-                  const SizedBox(width: 4),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text('/month', style: const TextStyle(color: Colors.black54)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.upgrade, size: 18),
-                label: const Text('Upgrade Now'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: accent,
-                  foregroundColor: Colors.black,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              if (!isMaxTier) ...[
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(upgradePrice, style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
+                    const SizedBox(width: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text('/month', style: const TextStyle(color: Colors.black54)),
+                    ),
+                  ],
                 ),
-              ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.upgrade, size: 18),
+                  label: const Text('Upgrade Now'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: accent,
+                    foregroundColor: Colors.black,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ] else
+                Icon(Icons.check_circle, color: Colors.green, size: 48),
             ],
           );
 

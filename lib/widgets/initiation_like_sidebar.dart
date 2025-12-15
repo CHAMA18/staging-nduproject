@@ -36,8 +36,10 @@ import 'package:ndu_project/screens/stakeholder_management_screen.dart';
 import 'package:ndu_project/screens/lessons_learned_screen.dart';
 import 'package:ndu_project/screens/team_training_building_screen.dart';
 import 'package:ndu_project/screens/design_phase_screen.dart';
+import 'package:ndu_project/screens/engineering_design_screen.dart';
 import 'package:ndu_project/screens/schedule_screen.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/widgets/header_banner_image.dart';
 import 'package:ndu_project/screens/issue_management_screen.dart';
 import 'package:ndu_project/screens/risk_assessment_screen.dart';
 import 'package:ndu_project/screens/staff_team_screen.dart';
@@ -61,6 +63,18 @@ import 'package:ndu_project/screens/deliver_project_closure_screen.dart';
 import 'package:ndu_project/screens/transition_to_prod_team_screen.dart';
 import 'package:ndu_project/screens/contract_close_out_screen.dart';
 import 'package:ndu_project/screens/vendor_account_close_out_screen.dart';
+import 'package:ndu_project/screens/ui_ux_design_screen.dart';
+import 'package:ndu_project/screens/project_close_out_screen.dart';
+import 'package:ndu_project/screens/demobilize_team_screen.dart';
+import 'package:ndu_project/screens/actual_vs_planned_gap_analysis_screen.dart';
+import 'package:ndu_project/screens/commerce_viability_screen.dart';
+import 'package:ndu_project/screens/technical_alignment_screen.dart';
+import 'package:ndu_project/screens/long_lead_equipment_ordering_screen.dart';
+import 'package:ndu_project/screens/specialized_design_screen.dart';
+import 'package:ndu_project/screens/technical_development_screen.dart';
+import 'package:ndu_project/screens/summarize_account_risks_screen.dart';
+import 'package:ndu_project/screens/agile_development_iterations_screen.dart';
+import 'package:ndu_project/screens/scope_completion_screen.dart';
 
  /// Sidebar styled to match InitiationPhaseScreen's sidebar.
  class InitiationLikeSidebar extends StatefulWidget {
@@ -407,6 +421,58 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     _navigateWithCheckpoint('vendor_account_close_out', const VendorAccountCloseOutScreen());
   }
 
+  void _openUiUxDesign() {
+    _navigateWithCheckpoint('ui_ux_design', const UiUxDesignScreen());
+  }
+
+  void _openTechnicalAlignment() {
+    _navigateWithCheckpoint('technical_alignment', const TechnicalAlignmentScreen());
+  }
+
+  void _openLongLeadEquipmentOrdering() {
+    _navigateWithCheckpoint('long_lead_equipment_ordering', const LongLeadEquipmentOrderingScreen());
+  }
+
+  void _openSpecializedDesign() {
+    _navigateWithCheckpoint('specialized_design', const SpecializedDesignScreen());
+  }
+
+  void _openTechnicalDevelopment() {
+    _navigateWithCheckpoint('technical_development', const TechnicalDevelopmentScreen());
+  }
+
+  void _openEngineeringDesign() {
+    _navigateWithCheckpoint('engineering_design', const EngineeringDesignScreen());
+  }
+
+  void _openProjectCloseOut() {
+    _navigateWithCheckpoint('project_close_out', const ProjectCloseOutScreen());
+  }
+
+  void _openDemobilizeTeam() {
+    _navigateWithCheckpoint('demobilize_team', const DemobilizeTeamScreen());
+  }
+
+  void _openActualVsPlannedGapAnalysis() {
+    _navigateWithCheckpoint('actual_vs_planned_gap_analysis', const ActualVsPlannedGapAnalysisScreen());
+  }
+
+  void _openCommerceViability() {
+    _navigateWithCheckpoint('commerce_viability', const CommerceViabilityScreen());
+  }
+
+  void _openSummarizeAccountRisks() {
+    _navigateWithCheckpoint('summarize_account_risks', const SummarizeAccountRisksScreen());
+  }
+
+  void _openAgileDevelopmentIterations() {
+    _navigateWithCheckpoint('agile_development_iterations', const AgileDevelopmentIterationsScreen());
+  }
+
+  void _openScopeCompletion() {
+    _navigateWithCheckpoint('scope_completion', const ScopeCompletionScreen());
+  }
+
   void _openDeliverableRoadmap() {
     _navigateWithCheckpoint('deliverable_roadmap', const DeliverablesRoadmapScreen());
   }
@@ -704,10 +770,8 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
             SizedBox(
               width: double.infinity,
               height: bannerHeight,
-              child: Image.asset(
-                // Ensure correct case-sensitive asset path
-                'assets/images/NDU_items.png',
-                fit: BoxFit.cover,
+              child: const HeaderBannerImage(
+                height: null, // SizedBox will constrain height
               ),
             ),
             Container(
@@ -929,15 +993,15 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
                 if (_designPhaseExpanded) ...[
                   _buildSubMenuItem('Design Management', onTap: _openDesignManagement, isActive: widget.activeItemLabel == 'Design Management'),
                   _buildSubMenuItem('Requirements Implementation', isActive: widget.activeItemLabel == 'Requirements Implementation'),
-                  _buildSubMenuItem('Technical Alignment', isActive: widget.activeItemLabel == 'Technical Alignment'),
+                  _buildSubMenuItem('Technical Alignment', onTap: _openTechnicalAlignment, isActive: widget.activeItemLabel == 'Technical Alignment'),
                   _buildSubMenuItem('Development Set Up', isActive: widget.activeItemLabel == 'Development Set Up'),
-                  _buildSubMenuItem('UI/UX Design', isActive: widget.activeItemLabel == 'UI/UX Design'),
+                  _buildSubMenuItem('UI/UX Design', onTap: _openUiUxDesign, isActive: widget.activeItemLabel == 'UI/UX Design'),
                   _buildSubMenuItem('Backend Design', isActive: widget.activeItemLabel == 'Backend Design'),
-                  _buildSubMenuItem('Engineering', isActive: widget.activeItemLabel == 'Engineering'),
-                  _buildSubMenuItem('Technical Development', isActive: widget.activeItemLabel == 'Technical Development'),
+                  _buildSubMenuItem('Engineering', onTap: _openEngineeringDesign, isActive: widget.activeItemLabel == 'Engineering'),
+                  _buildSubMenuItem('Technical Development', onTap: _openTechnicalDevelopment, isActive: widget.activeItemLabel == 'Technical Development'),
                   _buildSubMenuItem('Tools Integration', onTap: _openToolsIntegration, isActive: widget.activeItemLabel == 'Tools Integration'),
-                  _buildSubMenuItem('Long Lead Equipment Ordering', isActive: widget.activeItemLabel == 'Long Lead Equipment Ordering'),
-                  _buildSubMenuItem('Specialized Design', isActive: widget.activeItemLabel == 'Specialized Design'),
+                  _buildSubMenuItem('Long Lead Equipment Ordering', onTap: _openLongLeadEquipmentOrdering, isActive: widget.activeItemLabel == 'Long Lead Equipment Ordering'),
+                  _buildSubMenuItem('Specialized Design', onTap: _openSpecializedDesign, isActive: widget.activeItemLabel == 'Specialized Design'),
                   _buildSubMenuItem('Design Deliverables', isActive: widget.activeItemLabel == 'Design Deliverables'),
                 ],
                 _buildExpandableHeader(
@@ -984,14 +1048,14 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
                   _buildSubMenuItem('Contracts Tracking', isActive: widget.activeItemLabel == 'Contracts Tracking'),
                   _buildSubMenuItem('Vendor Tracking', isActive: widget.activeItemLabel == 'Vendor Tracking'),
                   _buildSubMenuItem('Detailed Design', isActive: widget.activeItemLabel == 'Detailed Design'),
-                  _buildSubMenuItem('Agile Development Iterations', isActive: widget.activeItemLabel == 'Agile Development Iterations'),
+                  _buildSubMenuItem('Agile Development Iterations', onTap: _openAgileDevelopmentIterations, isActive: widget.activeItemLabel == 'Agile Development Iterations'),
                   _buildSubMenuItem('Scope Tracking Implementation', isActive: widget.activeItemLabel == 'Scope Tracking Implementation'),
                   _buildSubMenuItem('Stakeholder Alignment', isActive: widget.activeItemLabel == 'Stakeholder Alignment'),
                   _buildSubMenuItem('Update Ops and Maintenance Plans', isActive: widget.activeItemLabel == 'Update Ops and Maintenance Plans'),
                   _buildSubMenuItem('Technical Debt Management', isActive: widget.activeItemLabel == 'Technical Debt Management'),
                   _buildSubMenuItem('Start-up or Launch Checklist', onTap: _openLaunchChecklist, isActive: widget.activeItemLabel == 'Start-up or Launch Checklist'),
                   _buildSubMenuItem('Risk Tracking', isActive: widget.activeItemLabel == 'Risk Tracking'),
-                  _buildSubMenuItem('Scope Completion', isActive: widget.activeItemLabel == 'Scope Completion'),
+                  _buildSubMenuItem('Scope Completion', onTap: _openScopeCompletion, isActive: widget.activeItemLabel == 'Scope Completion'),
                   _buildSubMenuItem('Gap Analysis and Scope Reconciliation', onTap: _openGapAnalysisAndScopeReconcillation, isActive: widget.activeItemLabel == 'Gap Analysis and Scope Reconciliation'),
                   _buildSubMenuItem('Punchlist Actions', onTap: _openPunchlistActions, isActive: widget.activeItemLabel == 'Punchlist Actions'),
                   _buildSubMenuItem('Identify and Staff Ops Team', isActive: widget.activeItemLabel == 'Identify and Staff Ops Team'),
@@ -1013,11 +1077,11 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
                   _buildSubMenuItem('Transition To Production Team', onTap: _openTransitionToProdTeam, isActive: widget.activeItemLabel == 'Transition To Production Team'),
                   _buildSubMenuItem('Contract Close Out', onTap: _openContractCloseOut, isActive: widget.activeItemLabel == 'Contract Close Out'),
                   _buildSubMenuItem('Vendor Account Close Out', onTap: _openVendorAccountCloseOut, isActive: widget.activeItemLabel == 'Vendor Account Close Out'),
-                  _buildSubMenuItem('Summarize Account Of All Section Including Risks', isActive: widget.activeItemLabel == 'Summarize Account Of All Section Including Risks'),
-                  _buildSubMenuItem('Commerce Warranty', isActive: widget.activeItemLabel == 'Commerce Warranty'),
-                  _buildSubMenuItem('Actual vs Planned Gap Analysis', isActive: widget.activeItemLabel == 'Actual vs Planned Gap Analysis'),
-                  _buildSubMenuItem('Demobilize Team', isActive: widget.activeItemLabel == 'Demobilize Team'),
-                  _buildSubMenuItem('Project Close Out', isActive: widget.activeItemLabel == 'Project Close Out'),
+                  _buildSubMenuItem('Summarize Account Of All Section Including Risks', onTap: _openSummarizeAccountRisks, isActive: widget.activeItemLabel == 'Summarize Account Of All Section Including Risks'),
+                  _buildSubMenuItem('Commerce Warranty', onTap: _openCommerceViability, isActive: widget.activeItemLabel == 'Commerce Warranty'),
+                  _buildSubMenuItem('Actual vs Planned Gap Analysis', onTap: _openActualVsPlannedGapAnalysis, isActive: widget.activeItemLabel == 'Actual vs Planned Gap Analysis'),
+                  _buildSubMenuItem('Demobilize Team', onTap: _openDemobilizeTeam, isActive: widget.activeItemLabel == 'Demobilize Team'),
+                  _buildSubMenuItem('Project Close Out', onTap: _openProjectCloseOut, isActive: widget.activeItemLabel == 'Project Close Out'),
                 ],
                 const SizedBox(height: 20),
                 _buildMenuItem(Icons.settings_outlined, 'Settings', onTap: () => SettingsScreen.open(context), isActive: widget.activeItemLabel == 'Settings'),
@@ -1147,8 +1211,14 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     if ('design management'.contains(query)) {
       results.add(_buildMenuItem(Icons.design_services_outlined, 'Design Management', onTap: _openDesignManagement, isActive: widget.activeItemLabel == 'Design Management'));
     }
+    if ('ui/ux design'.contains(query) || 'ui ux'.contains(query) || 'ux design'.contains(query) || 'user interface'.contains(query) || 'user experience'.contains(query)) {
+      results.add(_buildMenuItem(Icons.palette_outlined, 'UI/UX Design', onTap: _openUiUxDesign, isActive: widget.activeItemLabel == 'UI/UX Design'));
+    }
     if ('staff team'.contains(query)) {
       results.add(_buildMenuItem(Icons.badge_outlined, 'Staff Team', onTap: _openStaffTeam, isActive: widget.activeItemLabel == 'Staff Team'));
+    }
+    if ('engineering'.contains(query) || 'engineering design'.contains(query) || 'system architecture'.contains(query) || 'technical blueprint'.contains(query)) {
+      results.add(_buildMenuItem(Icons.architecture_outlined, 'Engineering Design', onTap: _openEngineeringDesign, isActive: widget.activeItemLabel == 'Engineering'));
     }
     if ('team meetings'.contains(query) || 'meetings'.contains(query)) {
       results.add(_buildMenuItem(Icons.meeting_room_outlined, 'Team Meetings', onTap: _openTeamMeetings, isActive: widget.activeItemLabel == 'Team Meetings'));
@@ -1185,6 +1255,21 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     }
     if ('transition'.contains(query) || 'production team'.contains(query) || 'prod team'.contains(query) || 'handover'.contains(query)) {
       results.add(_buildMenuItem(Icons.swap_horiz_outlined, 'Transition To Production Team', onTap: _openTransitionToProdTeam, isActive: widget.activeItemLabel == 'Transition To Production Team'));
+    }
+    if ('project close out'.contains(query) || 'project closure'.contains(query) || 'close out'.contains(query) || 'closeout'.contains(query)) {
+      results.add(_buildMenuItem(Icons.task_alt_outlined, 'Project Close Out', onTap: _openProjectCloseOut, isActive: widget.activeItemLabel == 'Project Close Out'));
+    }
+    if ('demobilize team'.contains(query) || 'demobilize'.contains(query) || 'team ramp down'.contains(query) || 'wind down'.contains(query)) {
+      results.add(_buildMenuItem(Icons.groups_outlined, 'Demobilize Team', onTap: _openDemobilizeTeam, isActive: widget.activeItemLabel == 'Demobilize Team'));
+    }
+    if ('actual vs planned'.contains(query) || 'gap analysis'.contains(query)) {
+      results.add(_buildMenuItem(Icons.compare_arrows_outlined, 'Actual vs Planned Gap Analysis', onTap: _openActualVsPlannedGapAnalysis, isActive: widget.activeItemLabel == 'Actual vs Planned Gap Analysis'));
+    }
+    if ('commerce warranty'.contains(query) || 'commerce viability'.contains(query) || 'commercial'.contains(query) || 'viability'.contains(query)) {
+      results.add(_buildMenuItem(Icons.monetization_on_outlined, 'Commerce Warranty', onTap: _openCommerceViability, isActive: widget.activeItemLabel == 'Commerce Warranty'));
+    }
+    if ('summarize account'.contains(query) || 'account risks'.contains(query) || 'summarize'.contains(query) || 'account summary'.contains(query)) {
+      results.add(_buildMenuItem(Icons.summarize_outlined, 'Summarize Account Of All Section Including Risks', onTap: _openSummarizeAccountRisks, isActive: widget.activeItemLabel == 'Summarize Account Of All Section Including Risks'));
     }
     if ('settings'.contains(query)) {
       results.add(_buildMenuItem(Icons.settings_outlined, 'Settings', onTap: () => SettingsScreen.open(context), isActive: widget.activeItemLabel == 'Settings'));

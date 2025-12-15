@@ -22,14 +22,10 @@ class KazAiChatBubble extends StatelessWidget {
             height: 64,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [scheme.primary, scheme.secondary],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: const Color(0xFFFFC812),
               boxShadow: [
                 BoxShadow(
-                  color: scheme.primary.withValues(alpha: 0.4),
+                  color: const Color(0xFFFFC812).withValues(alpha: 0.4),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -37,7 +33,7 @@ class KazAiChatBubble extends StatelessWidget {
             ),
             child: Icon(
               Icons.chat_bubble_rounded,
-              color: scheme.onPrimary,
+              color: Colors.white,
               size: 28,
             ),
           ),
@@ -238,13 +234,9 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup> {
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [scheme.primary, scheme.secondary],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: const BorderRadius.only(
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFC812),
+                borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(20),
                   topRight: Radius.circular(20),
                 ),
@@ -387,15 +379,13 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup> {
                       child: Container(
                         width: 44,
                         height: 44,
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [scheme.primary, scheme.secondary],
-                          ),
+                          color: Color(0xFFFFC812),
                         ),
-                        child: Icon(
+                        child: const Icon(
                           Icons.send_rounded,
-                          color: scheme.onPrimary,
+                          color: Colors.white,
                           size: 20,
                         ),
                       ),
@@ -436,13 +426,11 @@ class _ChatBubble extends StatelessWidget {
             Container(
               width: 36,
               height: 36,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [scheme.primary, scheme.secondary],
-                ),
+                color: Color(0xFFFFC812),
               ),
-              child: Icon(Icons.psychology_rounded, color: scheme.onPrimary, size: 18),
+              child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 18),
             ),
             const SizedBox(width: 12),
           ],

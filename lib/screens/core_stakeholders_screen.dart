@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ndu_project/widgets/header_banner_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/widgets/app_logo.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
@@ -168,10 +169,7 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
         SizedBox(
           width: double.infinity,
           height: bannerHeight,
-          child: Image.asset(
-            'assets/images/NDU_items.png',
-            fit: BoxFit.cover,
-          ),
+          child: const HeaderBannerImage(),
         ),
         Container(
           padding: const EdgeInsets.all(24),

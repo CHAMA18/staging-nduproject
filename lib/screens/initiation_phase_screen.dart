@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as Math;
 
 import 'package:flutter/material.dart';
+import 'package:ndu_project/widgets/header_banner_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
@@ -616,10 +617,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
           SizedBox(
             width: double.infinity,
             height: bannerHeight,
-            child: Image.asset(
-              'assets/images/NDU_items.png',
-              fit: BoxFit.cover,
-            ),
+            child: const HeaderBannerImage(),
           ),
           Container(
             padding: const EdgeInsets.all(24),

@@ -83,6 +83,19 @@ import 'package:ndu_project/screens/deliver_project_closure_screen.dart';
 import 'package:ndu_project/screens/transition_to_prod_team_screen.dart';
 import 'package:ndu_project/screens/contract_close_out_screen.dart';
 import 'package:ndu_project/screens/vendor_account_close_out_screen.dart';
+import 'package:ndu_project/screens/ui_ux_design_screen.dart';
+import 'package:ndu_project/screens/technical_alignment_screen.dart';
+import 'package:ndu_project/screens/long_lead_equipment_ordering_screen.dart';
+import 'package:ndu_project/screens/technical_development_screen.dart';
+import 'package:ndu_project/screens/tools_integration_screen.dart';
+import 'package:ndu_project/screens/project_close_out_screen.dart';
+import 'package:ndu_project/screens/demobilize_team_screen.dart';
+import 'package:ndu_project/screens/summarize_account_risks_screen.dart';
+import 'package:ndu_project/screens/agile_development_iterations_screen.dart';
+import 'package:ndu_project/screens/engineering_design_screen.dart';
+import 'package:ndu_project/screens/scope_completion_screen.dart';
+import 'package:ndu_project/screens/privacy_policy_screen.dart';
+import 'package:ndu_project/screens/terms_conditions_screen.dart';
 
 // SSHER suite
 import 'package:ndu_project/screens/ssher_stacked_screen.dart';
@@ -180,6 +193,19 @@ class AppRoutes {
   static const transitionToProdTeam = 'transition-to-prod-team';
   static const contractCloseOut = 'contract-close-out';
   static const vendorAccountCloseOut = 'vendor-account-close-out';
+  static const uiUxDesign = 'ui-ux-design';
+  static const technicalAlignment = 'technical-alignment';
+  static const longLeadEquipmentOrdering = 'long-lead-equipment-ordering';
+  static const projectCloseOut = 'project-close-out';
+  static const demobilizeTeam = 'demobilize-team';
+  static const technicalDevelopment = 'technical-development';
+  static const toolsIntegration = 'tools-integration';
+  static const summarizeAccountRisks = 'summarize-account-risks';
+  static const agileDevelopmentIterations = 'agile-development-iterations';
+  static const engineeringDesign = 'engineering-design';
+  static const scopeCompletion = 'scope-completion';
+  static const privacyPolicy = 'privacy-policy';
+  static const termsConditions = 'terms-conditions';
 
   // SSHER suite
   static const ssherStacked = 'ssher-stacked';
@@ -376,6 +402,19 @@ class AppRouter {
       GoRoute(name: AppRoutes.transitionToProdTeam, path: '/${AppRoutes.transitionToProdTeam}', builder: (c, s) => const TransitionToProdTeamScreen()),
       GoRoute(name: AppRoutes.contractCloseOut, path: '/${AppRoutes.contractCloseOut}', builder: (c, s) => const ContractCloseOutScreen()),
       GoRoute(name: AppRoutes.vendorAccountCloseOut, path: '/${AppRoutes.vendorAccountCloseOut}', builder: (c, s) => const VendorAccountCloseOutScreen()),
+      GoRoute(name: AppRoutes.uiUxDesign, path: '/${AppRoutes.uiUxDesign}', builder: (c, s) => const UiUxDesignScreen()),
+      GoRoute(name: AppRoutes.technicalAlignment, path: '/${AppRoutes.technicalAlignment}', builder: (c, s) => const TechnicalAlignmentScreen()),
+      GoRoute(name: AppRoutes.longLeadEquipmentOrdering, path: '/${AppRoutes.longLeadEquipmentOrdering}', builder: (c, s) => const LongLeadEquipmentOrderingScreen()),
+      GoRoute(name: AppRoutes.projectCloseOut, path: '/${AppRoutes.projectCloseOut}', builder: (c, s) => const ProjectCloseOutScreen()),
+      GoRoute(name: AppRoutes.demobilizeTeam, path: '/${AppRoutes.demobilizeTeam}', builder: (c, s) => const DemobilizeTeamScreen()),
+      GoRoute(name: AppRoutes.technicalDevelopment, path: '/${AppRoutes.technicalDevelopment}', builder: (c, s) => const TechnicalDevelopmentScreen()),
+      GoRoute(name: AppRoutes.toolsIntegration, path: '/${AppRoutes.toolsIntegration}', builder: (c, s) => const ToolsIntegrationScreen()),
+      GoRoute(name: AppRoutes.summarizeAccountRisks, path: '/${AppRoutes.summarizeAccountRisks}', builder: (c, s) => const SummarizeAccountRisksScreen()),
+      GoRoute(name: AppRoutes.agileDevelopmentIterations, path: '/${AppRoutes.agileDevelopmentIterations}', builder: (c, s) => const AgileDevelopmentIterationsScreen()),
+      GoRoute(name: AppRoutes.engineeringDesign, path: '/${AppRoutes.engineeringDesign}', builder: (c, s) => const EngineeringDesignScreen()),
+      GoRoute(name: AppRoutes.scopeCompletion, path: '/${AppRoutes.scopeCompletion}', builder: (c, s) => const ScopeCompletionScreen()),
+      GoRoute(name: AppRoutes.privacyPolicy, path: '/${AppRoutes.privacyPolicy}', builder: (c, s) => const PrivacyPolicyScreen()),
+      GoRoute(name: AppRoutes.termsConditions, path: '/${AppRoutes.termsConditions}', builder: (c, s) => const TermsConditionsScreen()),
 
       // SSHER suite
       GoRoute(name: AppRoutes.ssherStacked, path: '/${AppRoutes.ssherStacked}', builder: (c, s) => const SsherStackedScreen()),

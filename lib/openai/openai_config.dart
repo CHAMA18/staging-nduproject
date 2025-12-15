@@ -282,13 +282,22 @@ class OpenAiDiagramService {
     final prompt = _diagramPrompt(section: section, context: contextText);
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-      'temperature': 0.4,
+      'temperature': 0.5,
       'max_tokens': maxTokens,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
           'role': 'system',
-          'content': 'You are a delivery architect. Build a concise diagram model (nodes and edges) for the requested execution plan section. Always return ONLY a JSON object.'
+          'content': '''You are an expert strategic planning architect specializing in executive-level project visualization. Your diagrams are exceptional because they:
+1. Show REASONING and LOGIC, not just process steps
+2. Illustrate strategic thinking with decision criteria and branching paths
+3. Highlight dependencies, risks, and validation checkpoints
+4. Connect objectives to outcomes through clear cause-effect chains
+5. Use specific, contextual labels derived from the actual project content
+
+You create diagrams that executives and stakeholders can use to understand the "WHY" behind each step, not just the "WHAT". Every node and edge must serve a strategic purpose. Generic placeholders are never acceptable.
+
+Always return ONLY a valid JSON object with nodes and edges arrays.'''
         },
         {
           'role': 'user',
@@ -307,18 +316,9 @@ class OpenAiDiagramService {
       final parsed = jsonDecode(content) as Map<String, dynamic>;
       return _parseDiagram(parsed);
     } catch (e) {
-      // Fallback minimal diagram: section-centered
-      return DiagramModel(
-        nodes: const [
-          DiagramNode(id: 'start', label: 'Start'),
-          DiagramNode(id: 'section', label: 'Section'),
-          DiagramNode(id: 'end', label: 'End'),
-        ],
-        edges: const [
-          DiagramEdge(from: 'start', to: 'section', label: ''),
-          DiagramEdge(from: 'section', to: 'end', label: ''),
-        ],
-      );
+      debugPrint('OpenAI diagram generation failed: $e');
+      // Fallback contextual diagram based on section
+      return _createFallbackDiagram(section);
     }
   }
 
@@ -326,27 +326,49 @@ class OpenAiDiagramService {
     final s = _sanitize(section);
     final c = _sanitize(context);
     return '''
-Build a small, practical node-link diagram for the section "$s" of an Execution Plan, based on this context. The diagram should emphasize actionable planning flows (inputs -> activities -> outputs) and relevant systems/roles.
+You are generating a REASONING DIAGRAM for the "$s" section. This must be an exceptional, thought-provoking visual that demonstrates strategic thinking—NOT a generic flowchart.
+
+DIAGRAM REQUIREMENTS:
+1. Show REASONING CHAINS: Each node should represent a logical step in strategic thinking (e.g., "Assess Current State" → "Identify Gaps" → "Evaluate Options" → "Select Approach")
+2. Include DECISION POINTS with clear criteria (e.g., "Risk Threshold?" with branches showing "High" or "Acceptable")
+3. Show DEPENDENCIES and PREREQUISITES: What must happen before each phase can begin
+4. Include KEY CONSIDERATIONS at critical junctures (e.g., "Budget Constraints", "Timeline Pressures", "Stakeholder Alignment")
+5. Represent CAUSE-EFFECT relationships: Show how one decision impacts subsequent phases
+6. Include VALIDATION checkpoints: Points where progress is verified before proceeding
+
+For "$s" specifically, the diagram should illustrate:
+- Strategic objectives driving the execution plan
+- Critical success factors and how they're addressed
+- Risk mitigation decision points
+- Resource allocation reasoning
+- Phase dependencies and sequencing rationale
+- Go/No-Go decision criteria
 
 Return ONLY valid JSON with this exact structure:
 {
   "nodes": [
-    {"id": "start", "label": "...", "type": "start|process|decision|system|output|end"}
+    {"id": "unique_id", "label": "Descriptive Label (max 5 words)", "type": "start|objective|analysis|decision|action|validation|milestone|risk|output|end"}
   ],
   "edges": [
-    {"from": "start", "to": "next", "label": ""}
+    {"from": "source_id", "to": "target_id", "label": "relationship or condition"}
   ]
 }
 
 Guidelines:
-- 5–12 nodes. Keep labels concise (<= 5 words) and non-generic.
-- Use types to hint at shapes; we will render simply.
-- Avoid placeholders. Only include nodes relevant to "$s".
+- 8–15 nodes for comprehensive reasoning flow
+- Labels must be SPECIFIC to the content, never generic (e.g., "Validate Resource Capacity" not "Check Resources")
+- Edge labels should describe WHY the connection exists (e.g., "if approved", "enables", "requires", "triggers")
+- Include at least 2 decision nodes with branching paths
+- Include at least 1 validation/checkpoint node
+- Show parallel tracks where activities can occur simultaneously
+- End with measurable outcomes, not just "End"
 
-Context:
+User Context for "$s":
 """
 $c
 """
+
+Generate a diagram that demonstrates STRATEGIC REASONING for executing this plan, not just process steps.
 ''';
   }
 
@@ -379,5 +401,75 @@ $c
   }
 
   String _sanitize(String v) => v.replaceAll('"', '\\"');
+
+  /// Creates a contextual fallback diagram when API fails
+  DiagramModel _createFallbackDiagram(String section) {
+    final sectionLower = section.toLowerCase();
+    
+    // Executive Plan Outline specific fallback
+    if (sectionLower.contains('executive') || sectionLower.contains('outline')) {
+      return const DiagramModel(
+        nodes: [
+          DiagramNode(id: 'objectives', label: 'Define Strategic Objectives', type: 'objective'),
+          DiagramNode(id: 'assess', label: 'Assess Current State', type: 'analysis'),
+          DiagramNode(id: 'gaps', label: 'Identify Capability Gaps', type: 'analysis'),
+          DiagramNode(id: 'decision', label: 'Feasibility Check', type: 'decision'),
+          DiagramNode(id: 'approach', label: 'Select Execution Approach', type: 'action'),
+          DiagramNode(id: 'resources', label: 'Allocate Resources', type: 'action'),
+          DiagramNode(id: 'validate', label: 'Stakeholder Validation', type: 'validation'),
+          DiagramNode(id: 'plan', label: 'Finalize Execution Plan', type: 'milestone'),
+          DiagramNode(id: 'outcomes', label: 'Defined Success Metrics', type: 'output'),
+        ],
+        edges: [
+          DiagramEdge(from: 'objectives', to: 'assess', label: 'drives'),
+          DiagramEdge(from: 'assess', to: 'gaps', label: 'reveals'),
+          DiagramEdge(from: 'gaps', to: 'decision', label: 'informs'),
+          DiagramEdge(from: 'decision', to: 'approach', label: 'if viable'),
+          DiagramEdge(from: 'approach', to: 'resources', label: 'requires'),
+          DiagramEdge(from: 'resources', to: 'validate', label: 'enables'),
+          DiagramEdge(from: 'validate', to: 'plan', label: 'if approved'),
+          DiagramEdge(from: 'plan', to: 'outcomes', label: 'produces'),
+        ],
+      );
+    }
+    
+    // Strategy related sections
+    if (sectionLower.contains('strategy')) {
+      return const DiagramModel(
+        nodes: [
+          DiagramNode(id: 'vision', label: 'Strategic Vision', type: 'objective'),
+          DiagramNode(id: 'analyze', label: 'Market Analysis', type: 'analysis'),
+          DiagramNode(id: 'options', label: 'Evaluate Options', type: 'decision'),
+          DiagramNode(id: 'select', label: 'Strategy Selection', type: 'action'),
+          DiagramNode(id: 'implement', label: 'Implementation Roadmap', type: 'milestone'),
+        ],
+        edges: [
+          DiagramEdge(from: 'vision', to: 'analyze', label: 'guides'),
+          DiagramEdge(from: 'analyze', to: 'options', label: 'enables'),
+          DiagramEdge(from: 'options', to: 'select', label: 'informs'),
+          DiagramEdge(from: 'select', to: 'implement', label: 'produces'),
+        ],
+      );
+    }
+    
+    // Default reasoning-based fallback
+    return DiagramModel(
+      nodes: [
+        DiagramNode(id: 'start', label: 'Define $section Goals', type: 'objective'),
+        const DiagramNode(id: 'analyze', label: 'Analyze Requirements', type: 'analysis'),
+        const DiagramNode(id: 'evaluate', label: 'Evaluate Approaches', type: 'decision'),
+        const DiagramNode(id: 'plan', label: 'Develop Action Plan', type: 'action'),
+        const DiagramNode(id: 'validate', label: 'Validation Checkpoint', type: 'validation'),
+        DiagramNode(id: 'outcome', label: '$section Complete', type: 'output'),
+      ],
+      edges: const [
+        DiagramEdge(from: 'start', to: 'analyze', label: 'requires'),
+        DiagramEdge(from: 'analyze', to: 'evaluate', label: 'enables'),
+        DiagramEdge(from: 'evaluate', to: 'plan', label: 'informs'),
+        DiagramEdge(from: 'plan', to: 'validate', label: 'requires'),
+        DiagramEdge(from: 'validate', to: 'outcome', label: 'confirms'),
+      ],
+    );
+  }
 }
 

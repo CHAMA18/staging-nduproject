@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
+import 'package:go_router/go_router.dart';
 import 'package:ndu_project/theme.dart';
 import 'package:ndu_project/widgets/app_logo.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -8,6 +10,7 @@ import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/screens/sign_in_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/screens/home_screen.dart';
+import 'package:ndu_project/routing/app_router.dart';
 
 class CreateAccountScreen extends StatefulWidget {
   const CreateAccountScreen({super.key});
@@ -104,7 +107,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     }
 
     if (!_agreeToPrivacyPolicy) {
-      _showErrorSnackBar('Please agree to the privacy policy');
+      _showErrorSnackBar('Please agree to the Privacy Policy and Terms & Conditions');
       return;
     }
 
@@ -649,23 +652,29 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
                           Expanded(
-                            child: InkWell(
-                              onTap: () => setState(() => _agreeToPrivacyPolicy = !_agreeToPrivacyPolicy),
-                              child: Text.rich(
-                                TextSpan(
-                                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                                  children: [
-                                    const TextSpan(text: 'You agree to our '),
-                                    TextSpan(
-                                      text: 'privacy policy',
-                                      style: TextStyle(color: Colors.grey[800], decoration: TextDecoration.underline),
-                                    ),
-                                  ],
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                softWrap: false,
+                            child: Text.rich(
+                              TextSpan(
+                                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                                children: [
+                                  const TextSpan(text: 'You agree to our '),
+                                  TextSpan(
+                                    text: 'Privacy Policy',
+                                    style: TextStyle(color: Colors.grey[800], decoration: TextDecoration.underline),
+                                    recognizer: TapGestureRecognizer()
+                                      ..onTap = () => context.push('/${AppRoutes.privacyPolicy}'),
+                                  ),
+                                  const TextSpan(text: ' and '),
+                                  TextSpan(
+                                    text: 'Terms & Conditions',
+                                    style: TextStyle(color: Colors.grey[800], decoration: TextDecoration.underline),
+                                    recognizer: TapGestureRecognizer()
+                                      ..onTap = () => context.push('/${AppRoutes.termsConditions}'),
+                                  ),
+                                ],
                               ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              softWrap: true,
                             ),
                           ),
                         ],

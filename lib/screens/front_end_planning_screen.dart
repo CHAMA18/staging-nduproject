@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/screens/front_end_planning_workspace_screen.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
-import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
-import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/content_text.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
@@ -38,58 +37,49 @@ class _FrontEndPlanningScreenState extends State<FrontEndPlanningScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final isMobile = AppBreakpoints.isMobile(context);
+    final padding = isMobile ? 16.0 : 24.0;
+
+    return ResponsiveScaffold(
+      activeItemLabel: 'Project Summary',
       backgroundColor: const Color(0xFFF9FAFC),
-      body: SafeArea(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            DraggableSidebar(
-              openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(activeItemLabel: 'Project Summary'),
-            ),
-            Expanded(
-              child: Stack(
+      floatingActionButton: const KazAiChatBubble(),
+      body: Stack(
+        children: [
+          const Positioned.fill(child: _StripedBackdrop()),
+          const AdminEditToggle(),
+          Center(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(vertical: isMobile ? 32 : 64, horizontal: padding),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Positioned.fill(child: _StripedBackdrop()),
-                  const AdminEditToggle(),
-                  Center(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(vertical: 64, horizontal: 24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _TitleBlock(),
-                          SizedBox(height: 32),
-                          _ProjectCharterTable(),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    right: 24,
-                    bottom: 24,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        // Navigate to the workspace page shown in the mock
-                        FrontEndPlanningWorkspaceScreen.open(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFD700),
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-                        elevation: 0,
-                      ),
-                      child: const Text('Next', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                    ),
-                  ),
-                  const KazAiChatBubble(),
+                  _TitleBlock(),
+                  SizedBox(height: 32),
+                  _ProjectCharterTable(),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+          Positioned(
+            right: padding,
+            bottom: padding,
+            child: ElevatedButton(
+              onPressed: () {
+                // Navigate to the workspace page shown in the mock
+                FrontEndPlanningWorkspaceScreen.open(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFD700),
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                elevation: 0,
+              ),
+              child: const Text('Next', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ],
       ),
     );
   }

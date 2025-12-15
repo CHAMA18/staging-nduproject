@@ -1,125 +1,176 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
-import '../models/program_model.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../routing/app_router.dart';
+import '../models/program_model.dart';
 import '../services/navigation_context_service.dart';
 import '../services/program_service.dart';
 import '../services/project_service.dart';
-import '../widgets/app_logo.dart';
 import '../widgets/kaz_ai_chat_bubble.dart';
 
-class ProgramDashboardScreen extends StatelessWidget {
+class ProgramDashboardScreen extends StatefulWidget {
   const ProgramDashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Record this dashboard so the logo knows where to return on tap
-    NavigationContextService.instance.setLastClientDashboard(AppRoutes.programDashboard);
-    final theme = Theme.of(context);
-    const background = Color(0xFFF7F8FC);
+  State<ProgramDashboardScreen> createState() => _ProgramDashboardScreenState();
+}
+
+class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
+  ProgramModel? _currentProgram;
+  List<ProjectRecord> _projects = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProgramData();
+  }
+
+  Future<void> _loadProgramData() async {
     final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      setState(() {
+        _isLoading = false;
+        _error = 'Please sign in to view program data';
+      });
+      return;
+    }
+
+    try {
+      // Listen to user's programs and get the first one
+      ProgramService.streamPrograms(ownerId: user.uid).listen((programs) {
+        if (!mounted) return;
+        
+        if (programs.isEmpty) {
+          setState(() {
+            _isLoading = false;
+            _currentProgram = null;
+            _projects = [];
+          });
+          return;
+        }
+
+        final program = programs.first;
+        setState(() {
+          _currentProgram = program;
+        });
+
+        // Now stream projects for this program
+        if (program.projectIds.isNotEmpty) {
+          ProjectService.streamProjectsByIds(program.projectIds).listen((projects) {
+            if (!mounted) return;
+            setState(() {
+              _projects = projects;
+              _isLoading = false;
+            });
+          }, onError: (e) {
+            debugPrint('Error streaming projects: $e');
+            if (!mounted) return;
+            setState(() {
+              _isLoading = false;
+              _error = 'Failed to load projects';
+            });
+          });
+        } else {
+          setState(() {
+            _projects = [];
+            _isLoading = false;
+          });
+        }
+      }, onError: (e) {
+        debugPrint('Error streaming programs: $e');
+        if (!mounted) return;
+        setState(() {
+          _isLoading = false;
+          _error = 'Failed to load program data';
+        });
+      });
+    } catch (e) {
+      debugPrint('Error loading program data: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _error = 'An error occurred while loading data';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    NavigationContextService.instance.setLastClientDashboard(AppRoutes.programDashboard);
+    const background = Color(0xFFF7F8FC);
 
     return Scaffold(
       backgroundColor: background,
       body: Stack(
         children: [
-          const _ProgramBackdrop(),
           SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final isCompact = constraints.maxWidth < 1180;
-                final horizontalPadding = constraints.maxWidth < 600 ? 20.0 : 40.0;
+                final isWide = constraints.maxWidth >= 1180;
+                final horizontalPadding = constraints.maxWidth < 900 ? 20.0 : 32.0;
 
                 return SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 36),
+                  padding: EdgeInsets.fromLTRB(horizontalPadding, 28, horizontalPadding, 36),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _ProgramHeader(theme: theme, isCompact: isCompact),
-                      const SizedBox(height: 28),
-                      if (user == null)
-                        Container(
-                          padding: const EdgeInsets.all(60),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: Colors.grey.shade200),
-                          ),
-                          child: Center(
-                            child: Column(
-                              children: [
-                                Icon(Icons.person_off_outlined, size: 64, color: Colors.grey.shade400),
-                                const SizedBox(height: 20),
-                                Text(
-                                  'Please sign in to view your programs',
-                                  style: theme.textTheme.headlineSmall?.copyWith(
-                                    color: Colors.grey.shade700,
-                                    fontWeight: FontWeight.w600,
+                      _Header(isWide: isWide),
+                      const SizedBox(height: 24),
+                      _SummaryChips(isWide: isWide, projectCount: _projects.length),
+                      const SizedBox(height: 24),
+                      if (isWide)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: Column(
+                                children: [
+                                  _ProjectsCard(
+                                    projects: _projects,
+                                    isLoading: _isLoading,
+                                    error: _error,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(height: 18),
+                                  const _ProgramActionsCard(),
+                                ],
+                              ),
                             ),
-                          ),
+                            const SizedBox(width: 18),
+                            const Expanded(
+                              flex: 1,
+                              child: Column(
+                                children: [
+                                  _InterfaceCard(),
+                                  SizedBox(height: 18),
+                                  _RollupCard(),
+                                ],
+                              ),
+                            ),
+                          ],
                         )
                       else
-                        StreamBuilder<List<ProgramModel>>(
-                          stream: ProgramService.streamPrograms(ownerId: user.uid),
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
-                              return Container(
-                                padding: const EdgeInsets.all(80),
-                                child: const Center(child: CircularProgressIndicator()),
-                              );
-                            }
-
-                            if (snapshot.hasError) {
-                              return Container(
-                                padding: const EdgeInsets.all(60),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(24),
-                                  border: Border.all(color: Colors.grey.shade200),
-                                ),
-                                child: Center(
-                                  child: Column(
-                                    children: [
-                                      Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
-                                      const SizedBox(height: 20),
-                                      Text(
-                                        'Error loading programs',
-                                        style: theme.textTheme.headlineSmall?.copyWith(
-                                          color: Colors.red.shade700,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Text(
-                                        snapshot.error.toString(),
-                                        style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }
-
-                            final programs = snapshot.data ?? [];
-
-                            if (programs.isEmpty) {
-                              return _EmptyProgramsState(theme: theme);
-                            }
-
-                            return Column(
-                              children: [
-                                for (int i = 0; i < programs.length; i++) ...[
-                                  _ProgramCard(program: programs[i], isCompact: isCompact),
-                                  if (i < programs.length - 1) const SizedBox(height: 24),
-                                ],
-                              ],
-                            );
-                          },
+                        Column(
+                          children: [
+                            _ProjectsCard(
+                              projects: _projects,
+                              isLoading: _isLoading,
+                              error: _error,
+                            ),
+                            const SizedBox(height: 18),
+                            const _ProgramActionsCard(),
+                            const SizedBox(height: 18),
+                            const _InterfaceCard(),
+                            const SizedBox(height: 18),
+                            const _RollupCard(),
+                          ],
                         ),
                     ],
                   ),
@@ -134,203 +185,204 @@ class ProgramDashboardScreen extends StatelessWidget {
   }
 }
 
-class _ProgramHeader extends StatelessWidget {
-  const _ProgramHeader({required this.theme, required this.isCompact});
+class _Header extends StatelessWidget {
+  const _Header({required this.isWide});
 
-  final ThemeData theme;
-  final bool isCompact;
+  final bool isWide;
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = theme.textTheme;
+    final textTheme = Theme.of(context).textTheme;
 
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: EdgeInsets.only(bottom: isCompact ? 16 : 20),
-          child: Align(
-            alignment: isCompact ? Alignment.center : Alignment.centerLeft,
-            child: AppLogo(
-              height: isCompact ? 72 : 104,
-              semanticLabel: 'NDU Program Platform',
-            ),
-          ),
-        ),
-        if (!isCompact)
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => Navigator.pop(context),
-                color: const Color(0xFF2C3E50),
-                tooltip: 'Back',
-              ),
-              const SizedBox(width: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF3D6),
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: const Color(0xFFFFE4B3)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFFFCF6B).withValues(alpha: 0.35),
-                      blurRadius: 22,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.grid_view_rounded, size: 18, color: theme.colorScheme.primary),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Program workspace overview',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF8A5800),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          )
-        else
-          Column(
+        Expanded(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () => Navigator.pop(context),
-                    color: const Color(0xFF2C3E50),
-                    tooltip: 'Back',
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF3D6),
-                        borderRadius: BorderRadius.circular(28),
-                        border: Border.all(color: const Color(0xFFFFE4B3)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(Icons.grid_view_rounded, size: 18, color: Color(0xFF8A5800)),
-                          SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              'Program overview',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF8A5800),
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF5D7),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(color: const Color(0xFFFFE7A8)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.grid_view_rounded, size: 18, color: Color(0xFF8A5800)),
+                        SizedBox(width: 8),
+                        Text(
+                          'Program workspace overview',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF8A5800),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  TextButton.icon(
+                    onPressed: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/${AppRoutes.home}');
+                      }
+                    },
+                    icon: const Icon(Icons.arrow_back, color: Color(0xFF343741)),
+                    label: const Text(
+                      'Back',
+                      style: TextStyle(color: Color(0xFF343741), fontWeight: FontWeight.w700),
                     ),
                   ),
                 ],
               ),
+              const SizedBox(height: 16),
+              Text(
+                'Program dashboard',
+                style: textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF0E1017),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Coordinate up to three related projects with shared outcomes. Manage interfaces, prioritize delivery, and roll estimates and risk into a single program view before promoting to a portfolio.',
+                style: textTheme.bodyMedium?.copyWith(
+                  color: const Color(0xFF4D5060),
+                  height: 1.55,
+                ),
+              ),
             ],
           ),
-        const SizedBox(height: 26),
-        Text(
-          'Program dashboard',
-          style: textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF101012),
-              ),
         ),
-        const SizedBox(height: 12),
-        Text(
-          'Coordinate up to three related projects with shared outcomes. View all programs you have created from your projects.',
-          style: textTheme.bodyMedium?.copyWith(
-                color: Colors.grey.shade700,
-                height: 1.55,
-              ),
+        const SizedBox(width: 16),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: const [
+            _PrimaryButton(label: 'Add project to program'),
+            _GhostButton(label: 'Add another program'),
+            _GhostButton(label: 'Create portfolio'),
+          ],
         ),
       ],
     );
   }
 }
 
-class _EmptyProgramsState extends StatelessWidget {
-  const _EmptyProgramsState({required this.theme});
+class _SummaryChips extends StatelessWidget {
+  const _SummaryChips({required this.isWide, required this.projectCount});
 
-  final ThemeData theme;
+  final bool isWide;
+  final int projectCount;
 
   @override
   Widget build(BuildContext context) {
-    return _FrostedCard(
-      padding: const EdgeInsets.all(60),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(Icons.layers_outlined, size: 80, color: Colors.grey.shade300),
-            const SizedBox(height: 24),
-            Text(
-              'No programs yet',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                color: Colors.grey.shade700,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Programs are created from the Project Dashboard by selecting exactly three projects and grouping them together.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: Colors.grey.shade600,
-                height: 1.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () => Navigator.pushNamed(context, AppRoutes.dashboard),
-              icon: const Icon(Icons.arrow_back),
-              label: const Text('Go to Project Dashboard'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFB300),
-                foregroundColor: const Color(0xFF101012),
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                textStyle: const TextStyle(fontWeight: FontWeight.w700),
-                elevation: 8,
-                shadowColor: const Color(0xFFFFB300).withValues(alpha: 0.4),
-              ),
-            ),
+    final chips = [
+      _InfoChip(label: '$projectCount of 3 projects in this program'),
+      const _InfoChip(label: 'Interface manager assigned', color: Color(0xFFDFF2FF), foreground: Color(0xFF0C4DA2)),
+      const _InfoChip(label: 'Rolled up estimate: \$5.4M', color: Color(0xFFECF8F5), foreground: Color(0xFF0D8A5A)),
+    ];
+
+    if (isWide) {
+      return Row(
+        children: [
+          for (int i = 0; i < chips.length; i++) ...[
+            Expanded(child: chips[i]),
+            if (i != chips.length - 1) const SizedBox(width: 12),
           ],
-        ),
-      ),
+        ],
+      );
+    }
+
+    return Column(
+      children: [
+        for (int i = 0; i < chips.length; i++) ...[
+          chips[i],
+          if (i != chips.length - 1) const SizedBox(height: 12),
+        ],
+      ],
     );
   }
 }
 
-class _ProgramCard extends StatelessWidget {
-  const _ProgramCard({required this.program, required this.isCompact});
+class _ProjectsCard extends StatelessWidget {
+  const _ProjectsCard({
+    required this.projects,
+    required this.isLoading,
+    this.error,
+  });
 
-  final ProgramModel program;
-  final bool isCompact;
+  final List<ProjectRecord> projects;
+  final bool isLoading;
+  final String? error;
+
+  // Convert ProjectRecord to display info
+  _ProjectInfo _toProjectInfo(ProjectRecord record, int index) {
+    // Determine stage color based on status
+    Color stageColor;
+    switch (record.status.toLowerCase()) {
+      case 'initiation':
+        stageColor = const Color(0xFF9747FF);
+        break;
+      case 'front-end planning':
+      case 'planning':
+        stageColor = const Color(0xFF0B7AE4);
+        break;
+      case 'execution':
+      case 'in progress':
+        stageColor = const Color(0xFF17A673);
+        break;
+      case 'close-out':
+      case 'complete':
+        stageColor = const Color(0xFF565970);
+        break;
+      default:
+        stageColor = const Color(0xFF0B7AE4);
+    }
+
+    // Determine priority color based on index (P1, P2, P3)
+    final priorityColors = [
+      const Color(0xFFFFB02E), // P1 - Primary driver (yellow/orange)
+      const Color(0xFF4B61D1), // P2 - Dependent (blue)
+      const Color(0xFF17A673), // P3 - Support (green)
+    ];
+    final priorityLabels = ['P1 · Primary driver', 'P2 · Dependent', 'P3 · Support'];
+
+    // Extract category from tags or use default
+    String category = 'General';
+    if (record.tags.isNotEmpty) {
+      category = record.tags.first;
+    }
+
+    // Generate project code
+    final projectCode = 'PRJ-${(index + 1).toString().padLeft(3, '0')} · $category';
+
+    return _ProjectInfo(
+      title: record.name.isEmpty ? 'Untitled Project' : record.name,
+      code: projectCode,
+      stage: record.status.isEmpty ? 'Initiation' : record.status,
+      stageColor: stageColor,
+      priority: priorityLabels[index.clamp(0, 2)],
+      priorityColor: priorityColors[index.clamp(0, 2)],
+      owner: record.ownerName.isEmpty ? 'Unassigned' : record.ownerName,
+      status: 'Open',
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final projectCount = program.projectIds.length;
+    final remainingSlots = 3 - projects.length;
 
-    return _FrostedCard(
-      padding: const EdgeInsets.fromLTRB(28, 28, 28, 24),
+    return _Surface(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -341,506 +393,84 @@ class _ProgramCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Icon(Icons.layers, size: 28, color: Colors.purple.shade600),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            program.name,
-                            style: textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF101012),
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 8,
-                      children: [
-                        _StatusChip(
-                          icon: Icons.folder_copy_outlined,
-                          label: '$projectCount of 3 projects',
-                          background: const Color(0xFFE9F0FF),
-                          foreground: const Color(0xFF1A4DB3),
-                        ),
-                        _StatusChip(
-                          icon: Icons.check_circle_outline,
-                          label: program.status,
-                          background: const Color(0xFFEEF9F4),
-                          foreground: const Color(0xFF167A4A),
-                        ),
-                      ],
+                    Text('Projects in this program', style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Review selection, prioritize work, and manage shared outcomes before rolling up to portfolio.',
+                      style: textTheme.bodyMedium?.copyWith(color: const Color(0xFF565970), height: 1.45),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 16),
-              PopupMenuButton<String>(
-                onSelected: (value) async {
-                  if (value == 'delete') {
-                    _showDeleteDialog(context);
-                  }
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                        SizedBox(width: 12),
-                        Text('Delete Program', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.red)),
-                      ],
-                    ),
-                  ),
-                ],
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: Icon(Icons.more_vert, size: 20, color: Colors.grey.shade600),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          StreamBuilder<List<ProjectRecord>>(
-            stream: ProjectService.streamProjectsByIds(program.projectIds),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return Container(
-                  padding: const EdgeInsets.all(40),
-                  child: const Center(child: CircularProgressIndicator()),
-                );
-              }
-
-              if (snapshot.hasError) {
-                return Container(
-                  padding: const EdgeInsets.all(32),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.red.shade200),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.error_outline, color: Colors.red.shade700, size: 24),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Error loading project data. Please check your connection and try again.',
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: Colors.red.shade900,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              final projects = snapshot.data ?? [];
-
-              if (projects.isEmpty) {
-                return Container(
-                  padding: const EdgeInsets.all(32),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF7E8),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFFFE4B3)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline, color: const Color(0xFF8A5800), size: 24),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'No projects found. The projects in this program may have been deleted or you may not have access to them.',
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: const Color(0xFF8A5800),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              return DecoratedBox(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFDFDFE),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFE6E7EE)),
-                ),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 18, 24, 16),
-                      child: Row(
-                        children: [
-                          Expanded(flex: 3, child: _TableLabel('Project')),
-                          if (!isCompact) ...[
-                            Expanded(flex: 2, child: _TableLabel('Stage')),
-                            Expanded(flex: 2, child: _TableLabel('Owner')),
-                          ],
-                          SizedBox(width: 80, child: Center(child: _TableLabel('Actions'))),
-                        ],
-                      ),
-                    ),
-                    const Divider(height: 1, thickness: 1, color: Color(0xFFEAEAF2)),
-                    for (int i = 0; i < projects.length; i++) ...[
-                      _ProgramProjectRow(project: projects[i], isCompact: isCompact),
-                      if (i < projects.length - 1)
-                        const Divider(height: 1, thickness: 1, color: Color(0xFFEAEAF2)),
-                    ],
-                  ],
-                ),
-              );
-            },
-          ),
-          if (projectCount < 3) ...[
-            const SizedBox(height: 18),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF7E8),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, color: const Color(0xFF8A5800), size: 22),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'This program has ${3 - projectCount} available ${(3 - projectCount) == 1 ? "slot" : "slots"}. Programs work best with exactly 3 related projects.',
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: const Color(0xFF8A5800),
-                        height: 1.45,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteDialog(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(Icons.warning_amber_rounded, color: Colors.red.shade700, size: 24),
               ),
               const SizedBox(width: 12),
-              const Text('Delete Program?'),
+              const _SoftButton(label: 'Up to 3 related projects', icon: Icons.layers_outlined),
             ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Are you sure you want to delete "${program.name}"?',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'This will only delete the program grouping. Individual projects will remain intact.',
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true || !context.mounted) return;
-
-    // Show loading
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
-    );
-
-    try {
-      await ProgramService.deleteProgram(program.id);
-      if (!context.mounted) return;
-      Navigator.of(context).pop(); // Close loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Program deleted successfully'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
-    } catch (e) {
-      if (Navigator.canPop(context)) Navigator.of(context).pop();
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error deleting program: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    }
-  }
-}
-
-class _ProgramProjectRow extends StatelessWidget {
-  const _ProgramProjectRow({required this.project, required this.isCompact});
-
-  final ProjectRecord project;
-  final bool isCompact;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final displayName = project.name.isNotEmpty ? project.name : 'Untitled Project';
-    final statusLabel = project.status.isNotEmpty ? project.status : 'Initiation';
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  displayName,
-                  style: textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1A1B23),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (isCompact) ...[
-                  const SizedBox(height: 6),
-                  _Pill(
-                    label: statusLabel,
-                    background: Colors.blue.shade50,
-                    foreground: Colors.blue.shade700,
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (!isCompact) ...[
-            Expanded(
-              flex: 2,
-              child: _Pill(
-                label: statusLabel,
-                background: Colors.blue.shade50,
-                foreground: Colors.blue.shade700,
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Text(
-                project.ownerName.isNotEmpty ? project.ownerName : 'Unknown',
-                style: textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1A1B23),
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-          SizedBox(
-            width: 80,
-            child: Center(
-              child: IconButton(
-                onPressed: () {},
-                icon: const Icon(Icons.open_in_new),
-                tooltip: 'View project',
-                color: Colors.blue.shade600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TableLabel extends StatelessWidget {
-  const _TableLabel(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: const Color(0xFF6A6C7A),
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.4,
-          ),
-    );
-  }
-}
-
-class _ProjectsInProgramCard extends StatelessWidget {
-  const _ProjectsInProgramCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return _FrostedCard(
-      padding: const EdgeInsets.fromLTRB(26, 26, 26, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Projects in this program',
-                      style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Review selection, prioritize work, and manage shared outcomes before rolling up to the portfolio.',
-                      style: textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600, height: 1.5),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16),
-              FilledButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.list_alt_outlined),
-                label: const Text('Up to 3 related projects'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFF0F2FA),
-                  foregroundColor: const Color(0xFF1A1B23),
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                  textStyle: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: const Color(0xFFFDFDFE),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFFE6E7EE)),
-            ),
-            child: Column(
-              children: const [
-                _ProjectHeaderRow(),
-                Divider(height: 1, thickness: 1, color: Color(0xFFEAEAF2)),
-                _ProjectDataRow(
-                  projectName: 'Terminal upgrade - Phase 1',
-                  projectCode: 'PRJ-001 | Infrastructure',
-                  stageLabel: 'Front-end planning',
-                  stageColor: Color(0xFF0B7AE4),
-                  priorityLabel: 'P1 - Primary driver',
-                  priorityColor: Color(0xFFFFB02E),
-                  owner: 'Alex Rivera',
-                  statusLabel: 'Open',
-                ),
-                Divider(height: 1, thickness: 1, color: Color(0xFFEAEAF2)),
-                _ProjectDataRow(
-                  projectName: 'Control system upgrade',
-                  projectCode: 'PRJ-002 | Operations',
-                  stageLabel: 'Execution',
-                  stageColor: Color(0xFF17A673),
-                  priorityLabel: 'P2 - Dependent',
-                  priorityColor: Color(0xFF5455FF),
-                  owner: 'Morgan Lee',
-                  statusLabel: 'Open',
-                ),
-              ],
-            ),
           ),
           const SizedBox(height: 18),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF7E8),
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          _InsetCard(
+            child: Column(
               children: [
-                Expanded(
-                  child: Text(
-                    'There is room for one more project in this program. Keep all three aligned under a single interface plan.',
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: const Color(0xFF8A5800),
-                      height: 1.45,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 12),
+                  child: Row(
+                    children: [
+                      Expanded(flex: 4, child: _HeaderLabel('Project')),
+                      Expanded(flex: 2, child: _HeaderLabel('Stage')),
+                      Expanded(flex: 2, child: _HeaderLabel('Priority')),
+                      Expanded(flex: 2, child: _HeaderLabel('Owner')),
+                      SizedBox(width: 64, child: Center(child: _HeaderLabel('Actions'))),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1, color: Color(0xFFE6E7EE)),
+                if (isLoading)
+                  const Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (error != null)
+                  Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Center(
+                      child: Text(
+                        error!,
+                        style: textTheme.bodyMedium?.copyWith(color: Colors.red),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 18),
-                TextButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add another project'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF9B6500),
-                    textStyle: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
+                  )
+                else if (projects.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Center(
+                      child: Text(
+                        'No projects in this program yet. Add a project to get started.',
+                        style: textTheme.bodyMedium?.copyWith(color: const Color(0xFF565970)),
+                      ),
+                    ),
+                  )
+                else
+                  for (int i = 0; i < projects.length; i++) ...[
+                    _ProjectRow(info: _toProjectInfo(projects[i], i)),
+                    if (i != projects.length - 1) const Divider(height: 1, color: Color(0xFFE6E7EE)),
+                  ],
               ],
             ),
           ),
+          const SizedBox(height: 14),
+          if (remainingSlots > 0)
+            _Banner(
+              message: remainingSlots == 1
+                  ? 'There is room for one more project in this program. Keep all three aligned under a single interface plan.'
+                  : 'There is room for $remainingSlots more projects in this program. Keep all three aligned under a single interface plan.',
+              actionLabel: 'Add another project',
+              onTap: () {},
+            )
+          else
+            _Banner(
+              message: 'This program has reached the maximum of 3 projects.',
+              actionLabel: 'View all',
+              onTap: () {},
+            ),
         ],
       ),
     );
@@ -853,56 +483,60 @@ class _ProgramActionsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final actions = [
+      _ProgramAction(
+        title: 'Gate approvals',
+        description: 'Use the same approval path for all projects in this program.',
+        appliesTo: 'Applies to all',
+        isOn: true,
+      ),
+      _ProgramAction(
+        title: 'Shared risk register',
+        description: 'Surface program-level risks and mitigation once across all work.',
+        appliesTo: 'Applies to all',
+        isOn: true,
+      ),
+      _ProgramAction(
+        title: 'Common change control',
+        description: 'Route change requests through a single program board.',
+        appliesTo: 'Project-specific',
+        isOn: false,
+        badgeColor: const Color(0xFFF0F1FF),
+        badgeTextColor: const Color(0xFF3D3FA5),
+      ),
+    ];
 
-    return _FrostedCard(
-      padding: const EdgeInsets.fromLTRB(26, 26, 26, 18),
+    return _Surface(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Program-level actions',
-            style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
+          Text('Program-level actions', style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 6),
           Text(
             'Choose which governance, risks, and costs apply to the entire program.',
-            style: textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600, height: 1.5),
+            style: textTheme.bodyMedium?.copyWith(color: const Color(0xFF565970), height: 1.45),
           ),
-          const SizedBox(height: 24),
-          Column(
-            children: const [
-              _ActionRow(
-                title: 'Gate approvals',
-                description: 'Use the same approval path for all projects in this program.',
-                badgeLabel: 'Applies to all',
-                isHighlighted: true,
-              ),
-              Divider(height: 1, color: Color(0xFFEAEAF2)),
-              _ActionRow(
-                title: 'Shared risk register',
-                description: 'Surface program-level risks and mitigation once across all work.',
-                badgeLabel: 'Applies to all',
-              ),
-              Divider(height: 1, color: Color(0xFFEAEAF2)),
-              _ActionRow(
-                title: 'Common change control',
-                description: 'Route change requests through a single program board.',
-                badgeLabel: 'Project specific',
-                badgeColor: Color(0xFFECECF7),
-                badgeForeground: Color(0xFF3D3FA5),
-              ),
-            ],
+          const SizedBox(height: 18),
+          _InsetCard(
+            child: Column(
+              children: [
+                for (int i = 0; i < actions.length; i++) ...[
+                  _ProgramActionRow(action: actions[i]),
+                  if (i != actions.length - 1) const Divider(height: 1, color: Color(0xFFE6E7EE)),
+                ],
+              ],
+            ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 14),
           Align(
             alignment: Alignment.centerRight,
             child: ElevatedButton(
               onPressed: () {},
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF101012),
+                backgroundColor: const Color(0xFF0E1017),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
                 textStyle: const TextStyle(fontWeight: FontWeight.w700),
               ),
               child: const Text('Apply selections'),
@@ -914,98 +548,63 @@ class _ProgramActionsCard extends StatelessWidget {
   }
 }
 
-class _InterfaceManagementCard extends StatelessWidget {
-  const _InterfaceManagementCard();
+class _InterfaceCard extends StatelessWidget {
+  const _InterfaceCard();
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final items = _demoInterfaces;
 
-    return _FrostedCard(
-      padding: const EdgeInsets.fromLTRB(26, 26, 26, 22),
+    return _Surface(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Interface management',
-                      style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 8),
+                    Text('Interface management', style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 6),
                     Text(
                       'Track dependencies and shared interfaces across all projects in this program.',
-                      style: textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600, height: 1.45),
+                      style: textTheme.bodyMedium?.copyWith(color: const Color(0xFF565970), height: 1.45),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF0C2),
-                  borderRadius: BorderRadius.circular(22),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.person_outline, size: 18, color: Color(0xFF8A5800)),
-                    SizedBox(width: 6),
-                    Text(
-                      'Interface Manager: Taylor Brooks',
-                      style: TextStyle(
-                        color: Color(0xFF8A5800),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
+              const SizedBox(width: 10),
+              _BadgePill(
+                text: 'Interface Manager: Taylor Brooks',
+                color: const Color(0xFFFFF0C2),
+                textColor: const Color(0xFF8A5800),
+                icon: Icons.person_outline,
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          Column(
-            children: const [
-              _InterfaceRow(
-                title: 'Terminal access windows',
-                appliesLabel: 'Applies to all projects',
-                chips: ['Ops coordination', 'Customer impact'],
-                riskLabel: 'Risk: Medium',
-              ),
-              Divider(height: 1, color: Color(0xFFEAEAF2)),
-              _InterfaceRow(
-                title: 'Control room cutover',
-                appliesLabel: 'Applies to PRJ-001, PRJ-002',
-                chips: ['Safety and SHE/R'],
-                riskLabel: 'Risk: High',
-                riskColor: Color(0xFFE53935),
-              ),
-              Divider(height: 1, color: Color(0xFFEAEAF2)),
-              _InterfaceRow(
-                title: 'Training and readiness',
-                appliesLabel: 'Applies to PRJ-002',
-                chips: ['People readiness'],
-                riskLabel: 'Risk: Low',
-                riskColor: Color(0xFF1EB980),
-              ),
-            ],
+          const SizedBox(height: 16),
+          _InsetCard(
+            child: Column(
+              children: [
+                for (int i = 0; i < items.length; i++) ...[
+                  _InterfaceRow(item: items[i]),
+                  if (i != items.length - 1) const Divider(height: 1, color: Color(0xFFE6E7EE)),
+                ],
+              ],
+            ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 14),
           Align(
             alignment: Alignment.centerRight,
             child: ElevatedButton(
               onPressed: () {},
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF101012),
+                backgroundColor: const Color(0xFF0E1017),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
                 textStyle: const TextStyle(fontWeight: FontWeight.w700),
               ),
               child: const Text('Update interfaces for all'),
@@ -1017,121 +616,87 @@ class _InterfaceManagementCard extends StatelessWidget {
   }
 }
 
-class _RolledUpEstimatesCard extends StatelessWidget {
-  const _RolledUpEstimatesCard();
+class _RollupCard extends StatelessWidget {
+  const _RollupCard();
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final schedules = [
+      _ScheduleItem(label: 'Goal 1', startMonths: 0, endMonths: 11, color: const Color(0xFF00B69A)),
+      _ScheduleItem(label: 'Goal 2', startMonths: 3, endMonths: 18, color: const Color(0xFF3E8BFF)),
+      _ScheduleItem(label: 'Goal 3', startMonths: 6, endMonths: 12, color: const Color(0xFFF5A524)),
+    ];
 
-    return _FrostedCard(
-      padding: const EdgeInsets.fromLTRB(26, 26, 26, 24),
+    return _Surface(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Rolled up estimates',
-            style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 10),
+          Text('Rolled up estimates', style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
           Text(
             'See combined cost, schedule, and risk posture for the entire program.',
-            style: textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600, height: 1.5),
+            style: textTheme.bodyMedium?.copyWith(color: const Color(0xFF565970), height: 1.45),
           ),
-          const SizedBox(height: 28),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isStacked = constraints.maxWidth < 640;
-              final metrics = const [
-                _RollupMetric(
-                  label: 'Total cost estimate',
-                  value: r'$5.4M',
-                  footnote: 'PRJ-001 + PRJ-002',
-                ),
-                _RollupMetric(
-                  label: 'Schedule impact',
-                  value: '18 months',
-                  footnote: 'Critical path aligned',
-                ),
-                _RollupMetric(
-                  label: 'Risk posture',
-                  value: 'Medium',
-                  footnote: '3 open high risks',
-                ),
-              ];
-
-              return Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF101012),
-                  borderRadius: BorderRadius.circular(26),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF101012), Color(0xFF1F1F23)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
-                child: isStacked
+          const SizedBox(height: 18),
+          _InsetCard(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isStacked = constraints.maxWidth < 500;
+                return isStacked
                     ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          for (int i = 0; i < metrics.length; i++) ...[
-                            metrics[i],
-                            if (i != metrics.length - 1)
-                              Container(
-                                height: 1,
-                                color: Colors.white.withOpacity(0.12),
-                                margin: const EdgeInsets.symmetric(vertical: 18),
-                              ),
-                          ],
+                        _RollupSummary(slices: _demoSlices),
+                          const SizedBox(height: 16),
+                          _ScheduleList(items: schedules),
                         ],
                       )
                     : Row(
                         children: [
-                          Expanded(child: metrics[0]),
-                          const _RollupDivider(),
-                          Expanded(child: metrics[1]),
-                          const _RollupDivider(),
-                          Expanded(child: metrics[2]),
+                          Expanded(child: _RollupSummary(slices: _demoSlices)),
+                          const SizedBox(width: 16),
+                          Expanded(child: _ScheduleList(items: schedules)),
                         ],
-                      ),
-              );
-            },
+                      );
+              },
+            ),
           ),
-          const SizedBox(height: 22),
-          Text(
-            'Once all three projects are confirmed, you can promote this view to a dedicated program dashboard and roll it up into a portfolio.',
-            style: textTheme.bodySmall?.copyWith(color: Colors.grey.shade600, height: 1.5),
+          const SizedBox(height: 12),
+          _BadgePill(
+            text: 'Risk posture: Medium · 3 open high risks across all goals · Aligned to program critical path',
+            color: const Color(0xFFFFF0C2),
+            textColor: const Color(0xFF8A5800),
+            icon: Icons.shield_moon_outlined,
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton(
                   onPressed: () {},
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.black87,
-                    side: const BorderSide(color: Color(0xFFE6E7EE)),
                     backgroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                    foregroundColor: const Color(0xFF0E1017),
+                    side: const BorderSide(color: Color(0xFFE6E7EE)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     textStyle: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                   child: const Text('Export program dashboard'),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton(
                   onPressed: () {},
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFB300),
-                    foregroundColor: const Color(0xFF101012),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                    backgroundColor: const Color(0xFFFFC812),
+                    foregroundColor: const Color(0xFF0E1017),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
                     textStyle: const TextStyle(fontWeight: FontWeight.w700),
-                    elevation: 8,
-                    shadowColor: const Color(0xFFFFB300).withOpacity(0.4),
+                    elevation: 4,
+                    shadowColor: const Color(0xFFFFC812).withOpacity(0.45),
                   ),
                   child: const Text('Roll up to portfolio'),
                 ),
@@ -1144,59 +709,140 @@ class _RolledUpEstimatesCard extends StatelessWidget {
   }
 }
 
-class _ProjectHeaderRow extends StatelessWidget {
-  const _ProjectHeaderRow();
+class _RollupSummary extends StatelessWidget {
+  const _RollupSummary({required this.slices});
+
+  final List<_RollupSlice> slices;
 
   @override
   Widget build(BuildContext context) {
-    final textStyle = Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: const Color(0xFF6A6C7A),
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.4,
-        );
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 18),
-      child: Row(
-        children: [
-          Expanded(flex: 4, child: Text('Project', style: textStyle)),
-          Expanded(flex: 2, child: Text('Stage', style: textStyle)),
-          Expanded(flex: 2, child: Text('Priority', style: textStyle)),
-          Expanded(flex: 2, child: Text('Owner', style: textStyle)),
-          Expanded(flex: 2, child: Center(child: Text('Actions', style: textStyle))),
-        ],
-      ),
+    final total = slices.fold<double>(0, (sum, s) => sum + s.amount);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _PieChart(size: 140, slices: slices),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final slice in slices)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Row(
+                        children: [
+                          _Dot(color: slice.color),
+                          const SizedBox(width: 8),
+                          Text(slice.label, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+                          const Spacer(),
+                          Text('\$${slice.amount.toStringAsFixed(1)}M · ${(slice.percent * 100).round()}%',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF565970))),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  Text('Total cost by Program estimate: \$${total.toStringAsFixed(1)}M',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF565970))),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
 
-class _ProjectDataRow extends StatelessWidget {
-  const _ProjectDataRow({
-    required this.projectName,
-    required this.projectCode,
-    required this.stageLabel,
-    required this.stageColor,
-    required this.priorityLabel,
-    required this.priorityColor,
-    required this.owner,
-    required this.statusLabel,
-  });
+class _ScheduleList extends StatelessWidget {
+  const _ScheduleList({required this.items});
 
-  final String projectName;
-  final String projectCode;
-  final String stageLabel;
-  final Color stageColor;
-  final String priorityLabel;
-  final Color priorityColor;
-  final String owner;
-  final String statusLabel;
+  final List<_ScheduleItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Schedule by goal (Gantt)', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 10),
+        for (final item in items) ...[
+          _ScheduleRow(item: item),
+          const SizedBox(height: 10),
+        ],
+      ],
+    );
+  }
+}
+
+class _ScheduleRow extends StatelessWidget {
+  const _ScheduleRow({required this.item});
+
+  final _ScheduleItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    const double maxMonths = 18;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _Dot(color: item.color),
+            const SizedBox(width: 8),
+            Text(item.label, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+            const Spacer(),
+            Text('${item.startMonths.toInt()}–${item.endMonths.toInt()} months',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF565970))),
+          ],
+        ),
+        const SizedBox(height: 6),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final totalWidth = constraints.maxWidth;
+            final left = (item.startMonths / maxMonths) * totalWidth;
+            final width = ((item.endMonths - item.startMonths) / maxMonths) * totalWidth;
+            return Stack(
+              children: [
+                Container(
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF2F3F8),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                Positioned(
+                  left: left,
+                  child: Container(
+                    height: 12,
+                    width: width,
+                    decoration: BoxDecoration(
+                      color: item.color,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _ProjectRow extends StatelessWidget {
+  const _ProjectRow({required this.info});
+
+  final _ProjectInfo info;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 18),
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -1205,111 +851,23 @@ class _ProjectDataRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  projectName,
-                  style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: const Color(0xFF1A1B23)),
-                ),
+                Text(info.title, style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
-                Text(
-                  projectCode,
-                  style: textTheme.bodySmall?.copyWith(color: Colors.grey.shade600, letterSpacing: 0.2),
-                ),
+                Text(info.code, style: textTheme.bodySmall?.copyWith(color: const Color(0xFF6B6D80))),
               ],
             ),
           ),
+          Expanded(flex: 2, child: _Pill(label: info.stage, color: info.stageColor)),
+          Expanded(flex: 2, child: _Pill(label: info.priority, color: info.priorityColor, foreground: Colors.white)),
           Expanded(
             flex: 2,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: _Pill(label: stageLabel, background: stageColor.withOpacity(0.14), foreground: stageColor),
-            ),
+            child: Text(info.owner, style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
           ),
-          Expanded(
-            flex: 2,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: _Pill(label: priorityLabel, background: priorityColor.withOpacity(0.18), foreground: const Color(0xFF111111)),
+          SizedBox(
+            width: 64,
+            child: Center(
+              child: Text(info.status, style: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
             ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              owner,
-              style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, color: const Color(0xFF1A1B23)),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  statusLabel,
-                  style: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700, color: const Color(0xFF1A1B23)),
-                ),
-                const SizedBox(width: 10),
-                IconButton(
-                  onPressed: () {},
-                  icon: const Icon(Icons.more_horiz),
-                  tooltip: 'View project actions',
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionRow extends StatelessWidget {
-  const _ActionRow({
-    required this.title,
-    required this.description,
-    required this.badgeLabel,
-    this.badgeColor,
-    this.badgeForeground,
-    this.isHighlighted = false,
-  });
-
-  final String title;
-  final String description;
-  final String badgeLabel;
-  final Color? badgeColor;
-  final Color? badgeForeground;
-  final bool isHighlighted;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return Container(
-      color: isHighlighted ? const Color(0xFFFFF7E8) : null,
-      padding: const EdgeInsets.symmetric(vertical: 18),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: const Color(0xFF1A1B23)),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  description,
-                  style: textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600, height: 1.45),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 14),
-          _Pill(
-            label: badgeLabel,
-            background: badgeColor ?? const Color(0xFFFFF1DA),
-            foreground: badgeForeground ?? const Color(0xFF8A5800),
           ),
         ],
       ),
@@ -1318,26 +876,16 @@ class _ActionRow extends StatelessWidget {
 }
 
 class _InterfaceRow extends StatelessWidget {
-  const _InterfaceRow({
-    required this.title,
-    required this.appliesLabel,
-    required this.chips,
-    required this.riskLabel,
-    this.riskColor,
-  });
+  const _InterfaceRow({required this.item});
 
-  final String title;
-  final String appliesLabel;
-  final List<String> chips;
-  final String riskLabel;
-  final Color? riskColor;
+  final _InterfaceItem item;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 18),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1345,48 +893,27 @@ class _InterfaceRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: const Color(0xFF1A1B23)),
-                ),
+                Text(item.title, style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 6),
-                _Pill(
-                  label: appliesLabel,
-                  background: const Color(0xFFEFF3FF),
-                  foreground: const Color(0xFF1A4DB3),
-                ),
-                const SizedBox(height: 12),
+                _BadgePill(text: item.appliesTo, color: const Color(0xFFEFF3FF), textColor: const Color(0xFF0C4DA2)),
+                const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: chips
-                      .map(
-                        (chip) => _Pill(
-                          label: chip,
-                          background: const Color(0xFFF4F5FB),
-                          foreground: const Color(0xFF32334B),
-                        ),
-                      )
+                  children: item.tags
+                      .map((tag) => _BadgePill(text: tag, color: const Color(0xFFF3F4FA), textColor: const Color(0xFF2F3045)))
                       .toList(),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 10),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              _Pill(
-                label: riskLabel,
-                background: (riskColor ?? const Color(0xFFFFE7D2)).withOpacity(0.28),
-                foreground: riskColor ?? const Color(0xFF8A5800),
-              ),
+              _BadgePill(text: item.riskLabel, color: item.riskColor.withOpacity(0.18), textColor: item.riskColor),
               const SizedBox(height: 12),
-              IconButton(
-                onPressed: () {},
-                icon: const Icon(Icons.more_horiz),
-                tooltip: 'Interface actions',
-              ),
+              IconButton(onPressed: () {}, icon: const Icon(Icons.more_horiz)),
             ],
           ),
         ],
@@ -1395,102 +922,36 @@ class _InterfaceRow extends StatelessWidget {
   }
 }
 
-class _RollupMetric extends StatelessWidget {
-  const _RollupMetric({
-    required this.label,
-    required this.value,
-    required this.footnote,
-  });
+class _ProgramActionRow extends StatelessWidget {
+  const _ProgramActionRow({required this.action});
 
-  final String label;
-  final String value;
-  final String footnote;
+  final _ProgramAction action;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label.toUpperCase(),
-          style: textTheme.labelSmall?.copyWith(
-            color: Colors.white.withOpacity(0.7),
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.1,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          footnote,
-          style: textTheme.bodySmall?.copyWith(
-            color: Colors.white.withOpacity(0.7),
-            height: 1.45,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _RollupDivider extends StatelessWidget {
-  const _RollupDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 82,
-      margin: const EdgeInsets.symmetric(horizontal: 22),
-      color: Colors.white.withOpacity(0.2),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({
-    required this.icon,
-    required this.label,
-    required this.background,
-    required this.foreground,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color background;
-  final Color foreground;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: [
-          BoxShadow(color: background.withOpacity(0.35), blurRadius: 16, offset: const Offset(0, 10)),
-        ],
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 14, 4, 14),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: foreground),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: foreground,
-                ),
+          Switch.adaptive(value: action.isOn, onChanged: (_) {}),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(action.title, style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 6),
+                Text(action.description, style: textTheme.bodyMedium?.copyWith(color: const Color(0xFF565970), height: 1.4)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          _BadgePill(
+            text: action.appliesTo,
+            color: action.badgeColor ?? const Color(0xFFEFF4FF),
+            textColor: action.badgeTextColor ?? const Color(0xFF0C4DA2),
           ),
         ],
       ),
@@ -1498,126 +959,415 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-class _Pill extends StatelessWidget {
-  const _Pill({
-    required this.label,
-    required this.background,
-    required this.foreground,
-  });
+class _PieChart extends StatelessWidget {
+  const _PieChart({required this.size, required this.slices});
 
-  final String label;
-  final Color background;
-  final Color foreground;
+  final double size;
+  final List<_RollupSlice> slices;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: foreground,
-            ),
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(
+        painter: _PieChartPainter(slices: slices),
       ),
     );
   }
 }
 
-class _FrostedCard extends StatelessWidget {
-  const _FrostedCard({required this.child, this.padding});
+class _PieChartPainter extends CustomPainter {
+  _PieChartPainter({required this.slices});
+
+  final List<_RollupSlice> slices;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+    final paint = Paint()..style = PaintingStyle.stroke..strokeWidth = 18;
+    double start = -math.pi / 2;
+
+    for (final slice in slices) {
+      final sweep = slice.percent * 2 * math.pi;
+      paint.color = slice.color;
+      canvas.drawArc(Rect.fromCircle(center: center, radius: radius - 6), start, sweep, false, paint);
+      start += sweep;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PieChartPainter oldDelegate) => oldDelegate.slices != slices;
+}
+
+class _Surface extends StatelessWidget {
+  const _Surface({required this.child});
 
   final Widget child;
-  final EdgeInsetsGeometry? padding;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Colors.white, Color(0xFFFDFBFF)],
-        ),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Colors.white.withOpacity(0.75)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 28, offset: const Offset(0, 18)),
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 22, offset: const Offset(0, 12)),
         ],
       ),
-      padding: padding ?? const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(22),
       child: child,
     );
   }
 }
 
-class _ProgramBackdrop extends StatelessWidget {
-  const _ProgramBackdrop();
+class _InsetCard extends StatelessWidget {
+  const _InsetCard({required this.child});
 
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: SizedBox.expand(
-        child: DecoratedBox(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0xFFFFFCF4), Color(0xFFF4F6FB)],
-            ),
-          ),
-          child: Stack(
-            children: const [
-              Positioned(
-                top: -140,
-                right: -90,
-                child: _BlurCircle(color: Color(0xFFFFE9C7), size: 360, blur: 180),
-              ),
-              Positioned(
-                top: 240,
-                left: -80,
-                child: _BlurCircle(color: Color(0xFFE2EBFF), size: 280, blur: 150),
-              ),
-              Positioned(
-                bottom: -120,
-                right: -40,
-                child: _BlurCircle(color: Color(0xFFDDF7E8), size: 220, blur: 130),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BlurCircle extends StatelessWidget {
-  const _BlurCircle({required this.color, required this.size, required this.blur});
-
-  final Color color;
-  final double size;
-  final double blur;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: size,
-      height: size,
+      width: double.infinity,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.65),
-        borderRadius: BorderRadius.circular(size),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.55),
-            blurRadius: blur,
-            spreadRadius: -12,
+        color: const Color(0xFFFDFDFE),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE6E7EE)),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _Banner extends StatelessWidget {
+  const _Banner({required this.message, required this.actionLabel, required this.onTap});
+
+  final String message;
+  final String actionLabel;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF4DD),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF8A5800)),
+            ),
+          ),
+          const SizedBox(width: 10),
+          TextButton.icon(
+            onPressed: onTap,
+            icon: const Icon(Icons.add, color: Color(0xFF8A5800)),
+            label: Text(actionLabel, style: const TextStyle(color: Color(0xFF8A5800), fontWeight: FontWeight.w700)),
           ),
         ],
       ),
     );
   }
 }
+
+class _HeaderLabel extends StatelessWidget {
+  const _HeaderLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: const Color(0xFF6B6D80),
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.3,
+          ),
+    );
+  }
+}
+
+class _Pill extends StatelessWidget {
+  const _Pill({required this.label, required this.color, this.foreground});
+
+  final String label;
+  final Color color;
+  final Color? foreground;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.16),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: foreground ?? color,
+            ),
+      ),
+    );
+  }
+}
+
+class _BadgePill extends StatelessWidget {
+  const _BadgePill({required this.text, required this.color, required this.textColor, this.icon});
+
+  final String text;
+  final Color color;
+  final Color textColor;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(18)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 16, color: textColor),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            text,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700, color: textColor),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({required this.label, this.color = const Color(0xFFE7F0FF), this.foreground = const Color(0xFF0C4DA2)});
+
+  final String label;
+  final Color color;
+  final Color foreground;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.check_circle, size: 18, color: foreground),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700, color: foreground),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PrimaryButton extends StatelessWidget {
+  const _PrimaryButton({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: () {},
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFFFFC812),
+        foregroundColor: const Color(0xFF0E1017),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        textStyle: const TextStyle(fontWeight: FontWeight.w700),
+        elevation: 4,
+        shadowColor: const Color(0xFFFFC812).withOpacity(0.45),
+      ),
+      child: Text(label),
+    );
+  }
+}
+
+class _GhostButton extends StatelessWidget {
+  const _GhostButton({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: () {},
+      style: OutlinedButton.styleFrom(
+        side: const BorderSide(color: Color(0xFFD9DBE3)),
+        foregroundColor: const Color(0xFF0E1017),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        textStyle: const TextStyle(fontWeight: FontWeight.w700),
+      ),
+      child: Text(label),
+    );
+  }
+}
+
+class _SoftButton extends StatelessWidget {
+  const _SoftButton({required this.label, required this.icon});
+
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F2FA),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: const Color(0xFF0E1017)),
+          const SizedBox(width: 8),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF0E1017))),
+        ],
+      ),
+    );
+  }
+}
+
+class _Dot extends StatelessWidget {
+  const _Dot({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 12,
+      height: 12,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    );
+  }
+}
+
+class _ProjectInfo {
+  const _ProjectInfo({
+    required this.title,
+    required this.code,
+    required this.stage,
+    required this.stageColor,
+    required this.priority,
+    required this.priorityColor,
+    required this.owner,
+    required this.status,
+  });
+
+  final String title;
+  final String code;
+  final String stage;
+  final Color stageColor;
+  final String priority;
+  final Color priorityColor;
+  final String owner;
+  final String status;
+}
+
+class _InterfaceItem {
+  const _InterfaceItem({
+    required this.title,
+    required this.appliesTo,
+    required this.tags,
+    required this.riskLabel,
+    required this.riskColor,
+  });
+
+  final String title;
+  final String appliesTo;
+  final List<String> tags;
+  final String riskLabel;
+  final Color riskColor;
+}
+
+class _ProgramAction {
+  const _ProgramAction({
+    required this.title,
+    required this.description,
+    required this.appliesTo,
+    required this.isOn,
+    this.badgeColor,
+    this.badgeTextColor,
+  });
+
+  final String title;
+  final String description;
+  final String appliesTo;
+  final bool isOn;
+  final Color? badgeColor;
+  final Color? badgeTextColor;
+}
+
+class _RollupSlice {
+  const _RollupSlice({required this.label, required this.amount, required this.percent, required this.color});
+
+  final String label;
+  final double amount;
+  final double percent;
+  final Color color;
+}
+
+class _ScheduleItem {
+  const _ScheduleItem({required this.label, required this.startMonths, required this.endMonths, required this.color});
+
+  final String label;
+  final double startMonths;
+  final double endMonths;
+  final Color color;
+}
+
+const _demoInterfaces = [
+  _InterfaceItem(
+    title: 'Terminal access windows',
+    appliesTo: 'Applies to all projects',
+    tags: ['Ops coordination', 'Customer impact'],
+    riskLabel: 'Risk: Medium',
+    riskColor: Color(0xFFFFB02E),
+  ),
+  _InterfaceItem(
+    title: 'Control room cutover',
+    appliesTo: 'Applies to PRJ-001, PRJ-002',
+    tags: ['Safety & SHE/R'],
+    riskLabel: 'Risk: High',
+    riskColor: Color(0xFFE53935),
+  ),
+  _InterfaceItem(
+    title: 'Training & readiness',
+    appliesTo: 'Applies to PRJ-002',
+    tags: ['People readiness'],
+    riskLabel: 'Risk: Low',
+    riskColor: Color(0xFF16B673),
+  ),
+];
+
+const _demoSlices = [
+  _RollupSlice(label: 'Goal 1', amount: 2.1, percent: 0.40, color: Color(0xFF00B69A)),
+  _RollupSlice(label: 'Goal 2', amount: 1.9, percent: 0.35, color: Color(0xFF3E8BFF)),
+  _RollupSlice(label: 'Goal 3', amount: 1.4, percent: 0.25, color: Color(0xFFF5A524)),
+];

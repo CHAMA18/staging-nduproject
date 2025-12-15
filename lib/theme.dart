@@ -2,44 +2,46 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class LightModeColors {
-  static const lightPrimary = Color(0xFFFFC812);
-  static const lightOnPrimary = Color(0xFFFFFFFF);
-  static const lightPrimaryContainer = Color(0xFFEAE0FF);
-  static const lightOnPrimaryContainer = Color(0xFF23105F);
-  static const lightSecondary = Color(0xFFFFC812);
+  // Brand: yellow accent like the screenshot logo, neutral blue/green for UI
+  static const lightPrimary = Color(0xFFFFC812); // Brand yellow
+  static const lightOnPrimary = Color(0xFF1C1C1C);
+  static const lightPrimaryContainer = Color(0xFFFFF4CC); // Soft yellow container
+  static const lightOnPrimaryContainer = Color(0xFF3D2E00);
+  static const lightSecondary = Color(0xFF2563EB); // Info blue (links, highlights)
   static const lightOnSecondary = Color(0xFFFFFFFF);
-  static const lightTertiary = Color(0xFF7E525D);
+  static const lightTertiary = Color(0xFF16A34A); // Success green
   static const lightOnTertiary = Color(0xFFFFFFFF);
   static const lightError = Color(0xFFBA1A1A);
   static const lightOnError = Color(0xFFFFFFFF);
-  static const lightErrorContainer = Color(0xFFFFDAD6);
+  static const lightErrorContainer = Color(0xFFFFE3E0);
   static const lightOnErrorContainer = Color(0xFF410002);
-  static const lightInversePrimary = Color(0xFFC6B3F7);
+  static const lightInversePrimary = Color(0xFF0F172A);
   static const lightShadow = Color(0xFF000000);
-  static const lightSurface = Color(0xFFFAFAFA);
-  static const lightOnSurface = Color(0xFF1C1C1C);
-  static const lightAppBarBackground = Color(0xFFEAE0FF);
+  // Subtle bluish-white background like the screenshot (cards sit on it)
+  static const lightSurface = Color(0xFFF7FAFC);
+  static const lightOnSurface = Color(0xFF0F172A);
+  static const lightAppBarBackground = Color(0xFFF7FAFC);
   static const accent = Color(0xFFFFC107); // Yellow/Gold accent color
 }
 
 class DarkModeColors {
-  static const darkPrimary = Color(0xFFD4BCCF);
-  static const darkOnPrimary = Color(0xFF38265C);
-  static const darkPrimaryContainer = Color(0xFF4F3D74);
-  static const darkOnPrimaryContainer = Color(0xFFEAE0FF);
-  static const darkSecondary = Color(0xFFCDC3DC);
-  static const darkOnSecondary = Color(0xFF34313F);
-  static const darkTertiary = Color(0xFFF0B6C5);
-  static const darkOnTertiary = Color(0xFF4A2530);
+  static const darkPrimary = Color(0xFFFFC812);
+  static const darkOnPrimary = Color(0xFF141414);
+  static const darkPrimaryContainer = Color(0xFF3A3000);
+  static const darkOnPrimaryContainer = Color(0xFFFFF4CC);
+  static const darkSecondary = Color(0xFF93C5FD); // Softer blue for dark mode
+  static const darkOnSecondary = Color(0xFF0B1220);
+  static const darkTertiary = Color(0xFF34D399); // Emerald 400
+  static const darkOnTertiary = Color(0xFF0B1220);
   static const darkError = Color(0xFFFFB4AB);
   static const darkOnError = Color(0xFF690005);
   static const darkErrorContainer = Color(0xFF93000A);
   static const darkOnErrorContainer = Color(0xFFFFDAD6);
   static const darkInversePrimary = Color(0xFFFFC812);
   static const darkShadow = Color(0xFF000000);
-  static const darkSurface = Color(0xFF121212);
-  static const darkOnSurface = Color(0xFFE0E0E0);
-  static const darkAppBarBackground = Color(0xFF4F3D74);
+  static const darkSurface = Color(0xFF0F1115);
+  static const darkOnSurface = Color(0xFFE5E7EB);
+  static const darkAppBarBackground = Color(0xFF0F1115);
   static const accent = Color(0xFFFFC107); // Yellow/Gold accent color
 }
 
@@ -106,10 +108,93 @@ ThemeData get lightTheme => ThemeData(
     onSurface: LightModeColors.lightOnSurface,
   ),
   brightness: Brightness.light,
+  scaffoldBackgroundColor: LightModeColors.lightSurface,
+  visualDensity: VisualDensity.standard,
   appBarTheme: AppBarTheme(
     backgroundColor: LightModeColors.lightAppBarBackground,
     foregroundColor: LightModeColors.lightOnPrimaryContainer,
     elevation: 0,
+  ),
+  cardTheme: CardThemeData(
+    color: Colors.white,
+    surfaceTintColor: Colors.transparent,
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16),
+      side: const BorderSide(color: AppSemanticColors.border),
+    ),
+    margin: EdgeInsets.zero,
+  ),
+  dividerTheme: const DividerThemeData(
+    color: AppSemanticColors.border,
+    thickness: 1,
+    space: 0,
+  ),
+  chipTheme: ChipThemeData(
+    backgroundColor: AppSemanticColors.subtle,
+    selectedColor: LightModeColors.lightPrimaryContainer,
+    labelStyle: GoogleFonts.inter(
+      fontSize: FontSizes.labelMedium,
+      fontWeight: FontWeight.w600,
+      color: LightModeColors.lightOnSurface,
+    ),
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22), side: const BorderSide(color: AppSemanticColors.border)),
+    iconTheme: const IconThemeData(color: Colors.grey),
+  ),
+  inputDecorationTheme: InputDecorationTheme(
+    filled: true,
+    fillColor: const Color(0xFFF1F5F9),
+    hintStyle: GoogleFonts.inter(color: const Color(0xFF6B7280), fontSize: 14),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppSemanticColors.border),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: LightModeColors.lightSecondary, width: 1.5),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: LightModeColors.lightError),
+    ),
+    focusedErrorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: LightModeColors.lightError, width: 1.5),
+    ),
+    prefixIconColor: const Color(0xFF94A3B8),
+    suffixIconColor: const Color(0xFF94A3B8),
+  ),
+  filledButtonTheme: FilledButtonThemeData(
+    style: ButtonStyle(
+      shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
+    ),
+  ),
+  outlinedButtonTheme: OutlinedButtonThemeData(
+    style: ButtonStyle(
+      side: const WidgetStatePropertyAll(BorderSide(color: AppSemanticColors.border)),
+      shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
+      foregroundColor: const WidgetStatePropertyAll(Color(0xFF0F172A)),
+    ),
+  ),
+  textButtonTheme: TextButtonThemeData(
+    style: ButtonStyle(
+      foregroundColor: const WidgetStatePropertyAll(LightModeColors.lightSecondary),
+      textStyle: WidgetStatePropertyAll(GoogleFonts.inter(fontWeight: FontWeight.w600)),
+    ),
+  ),
+  listTileTheme: const ListTileThemeData(
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+    iconColor: Color(0xFF64748B),
+  ),
+  dataTableTheme: const DataTableThemeData(
+    headingRowColor: WidgetStatePropertyAll(Color(0xFFF8FAFC)),
+    dataRowColor: WidgetStatePropertyAll(Colors.white),
+    dividerThickness: 0.8,
+    columnSpacing: 18,
   ),
   textTheme: TextTheme(
     displayLarge: GoogleFonts.inter(
@@ -196,10 +281,93 @@ ThemeData get darkTheme => ThemeData(
     onSurface: DarkModeColors.darkOnSurface,
   ),
   brightness: Brightness.dark,
+  scaffoldBackgroundColor: DarkModeColors.darkSurface,
+  visualDensity: VisualDensity.standard,
   appBarTheme: AppBarTheme(
     backgroundColor: DarkModeColors.darkAppBarBackground,
     foregroundColor: DarkModeColors.darkOnPrimaryContainer,
     elevation: 0,
+  ),
+  cardTheme: CardThemeData(
+    color: const Color(0xFF111318),
+    surfaceTintColor: Colors.transparent,
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16),
+      side: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+    ),
+    margin: EdgeInsets.zero,
+  ),
+  dividerTheme: DividerThemeData(
+    color: Colors.white.withValues(alpha: 0.08),
+    thickness: 1,
+    space: 0,
+  ),
+  chipTheme: ChipThemeData(
+    backgroundColor: const Color(0xFF111318),
+    selectedColor: const Color(0xFF1B1E25),
+    labelStyle: GoogleFonts.inter(
+      fontSize: FontSizes.labelMedium,
+      fontWeight: FontWeight.w600,
+      color: DarkModeColors.darkOnSurface,
+    ),
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22), side: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
+    iconTheme: IconThemeData(color: Colors.white.withValues(alpha: 0.6)),
+  ),
+  inputDecorationTheme: InputDecorationTheme(
+    filled: true,
+    fillColor: const Color(0xFF0B0D11),
+    hintStyle: GoogleFonts.inter(color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: DarkModeColors.darkSecondary, width: 1.5),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: DarkModeColors.darkError),
+    ),
+    focusedErrorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: DarkModeColors.darkError, width: 1.5),
+    ),
+    prefixIconColor: Colors.white70,
+    suffixIconColor: Colors.white70,
+  ),
+  filledButtonTheme: FilledButtonThemeData(
+    style: ButtonStyle(
+      shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
+    ),
+  ),
+  outlinedButtonTheme: OutlinedButtonThemeData(
+    style: ButtonStyle(
+      side: WidgetStatePropertyAll(BorderSide(color: Colors.white.withValues(alpha: 0.12))),
+      shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+      padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 16, vertical: 14)),
+      foregroundColor: const WidgetStatePropertyAll(Colors.white),
+    ),
+  ),
+  textButtonTheme: TextButtonThemeData(
+    style: ButtonStyle(
+      foregroundColor: const WidgetStatePropertyAll(DarkModeColors.darkSecondary),
+      textStyle: WidgetStatePropertyAll(GoogleFonts.inter(fontWeight: FontWeight.w600)),
+    ),
+  ),
+  listTileTheme: ListTileThemeData(
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+    iconColor: Colors.white.withValues(alpha: 0.7),
+  ),
+  dataTableTheme: DataTableThemeData(
+    headingRowColor: WidgetStatePropertyAll(Colors.white.withValues(alpha: 0.04)),
+    dataRowColor: const WidgetStatePropertyAll(Color(0xFF111318)),
+    dividerThickness: 0.8,
+    columnSpacing: 18,
   ),
   textTheme: TextTheme(
     displayLarge: GoogleFonts.inter(

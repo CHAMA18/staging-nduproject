@@ -404,7 +404,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       text: TextSpan(
                         style: const TextStyle(color: secondaryText, fontSize: 13),
                         children: [
-                          const TextSpan(text: "Don't have an account?"),
+                          const TextSpan(text: "Don't have an account? "),
                           const TextSpan(
                             text: 'Create Account',
                             style: TextStyle(color: headlineAccent, decoration: TextDecoration.underline),

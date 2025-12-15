@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
-import 'package:ndu_project/screens/sign_in_screen.dart';
 
 /// Centralized auth navigation helper
 class AuthNav {
@@ -19,10 +19,8 @@ class AuthNav {
     }
 
     if (context.mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const SignInScreen()),
-        (route) => false,
-      );
+      // Use go_router's context.go() to replace the entire navigation stack
+      context.go('/sign-in');
     }
   }
 }

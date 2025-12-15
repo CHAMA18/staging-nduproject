@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
-import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/theme.dart';
 import 'package:ndu_project/widgets/architecture_canvas.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
@@ -211,101 +211,114 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
   }
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Row(
+    final isMobile = AppBreakpoints.isMobile(context);
+    final padding = isMobile ? 16.0 : 24.0;
+
+    return ResponsiveScaffold(
+      activeItemLabel: 'Design Management',
+      body: Column(
         children: [
-          const InitiationLikeSidebar(activeItemLabel: 'Design Management'),
+          const PlanningPhaseHeader(title: 'Design'),
           Expanded(
-            child: Column(
-              children: [
-                const PlanningPhaseHeader(title: 'Design'),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(padding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Notes Section
+                  Container(
+                    height: 120,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: const TextField(
+                      maxLines: null,
+                      decoration: InputDecoration(
+                        hintText: 'Input your notes here...',
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  Text(
+                    'Collaborative workspace for Waterfall design and documentation',
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Main Layout: Responsive - stacked on mobile, side-by-side on desktop
+                  if (isMobile)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          'Design Management',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        const Text(
+                          'Develop project design documentation',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildManagementCards(),
+                        const SizedBox(height: 24),
+                        _buildEditorSection(),
+                        const SizedBox(height: 24),
+                        _buildDocumentsSection(),
+                        const SizedBox(height: 24),
+                        _buildDesignToolsSidebarSection(),
+                        const SizedBox(height: 24),
+                        _buildCollaboratorsSection(),
+                      ],
+                    )
+                  else
+                    Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Notes Section
-                        Container(
-                          height: 120,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey.shade300),
-                          ),
-                          child: const TextField(
-                            maxLines: null,
-                            decoration: InputDecoration(
-                              hintText: 'Input your notes here...',
-                              border: InputBorder.none,
-                            ),
+                        // Internal Left Sidebar
+                        SizedBox(
+                          width: 260,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildDocumentsSection(),
+                              const SizedBox(height: 24),
+                              _buildDesignToolsSidebarSection(),
+                              const SizedBox(height: 24),
+                              _buildCollaboratorsSection(),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 24),
-                        
-                        Text(
-                          'Collaborative workspace for Waterfall design and documentation',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
+                        const SizedBox(width: 24),
+                        // Main Content Area
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                'Design Management',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                              const Text(
+                                'Develop project design documentation',
+                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                              const SizedBox(height: 16),
+                              _buildManagementCards(),
+                              const SizedBox(height: 24),
+                              _buildEditorSection(),
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Main Layout: Left Sidebar + Content
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Internal Left Sidebar
-                            SizedBox(
-                              width: 260,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  _buildDocumentsSection(),
-                                  const SizedBox(height: 24),
-                                  _buildDesignToolsSidebarSection(),
-                                  const SizedBox(height: 24),
-                                  _buildCollaboratorsSection(),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 24),
-                            // Main Content Area
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text(
-                                    'Design Management',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const Text(
-                                    'Develop project design documentation',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  _buildManagementCards(),
-                                  const SizedBox(height: 24),
-                                  _buildEditorSection(),
-                                ],
-                              ),
-                            ),
-                          ],
                         ),
                       ],
                     ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],

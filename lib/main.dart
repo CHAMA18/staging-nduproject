@@ -14,21 +14,73 @@ import 'package:ndu_project/routing/app_router.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Make errors visible and logged, but don’t crash the app
+  // Suppress specific framework warnings and inspector errors
   final previousHandler = FlutterError.onError;
   FlutterError.onError = (FlutterErrorDetails details) {
-    debugPrint('Flutter error: ${details.exceptionAsString()}');
+    final message = details.exceptionAsString();
+    final stackTrace = details.stack?.toString() ?? '';
+
+    // Suppress inspector selection errors (common in Dreamflow preview)
+    if (message.contains('Id does not exist.')) {
+      debugPrint('Inspector selection error suppressed: $message');
+      return;
+    }
+
+    // Comprehensive suppression of RestorableNode/ModalScope warnings
+    if (message.contains('_RestorableNode') ||
+        message.contains('RestorableNode') ||
+        message.contains('_DialogScope') ||
+        message.contains('ModalScopeStatus') ||
+        message.contains('ModalScope') ||
+        message.contains('Nested arrays are not supported') ||
+        message.contains('Remote arrays are not supported') ||
+        message.contains('listening Function with') ||
+        message.contains('listening to Function') ||
+        message.contains('called with invalid state') ||
+        message.contains('saved with invalid state') ||
+        message.contains('invalid state. Nested arrays') ||
+        stackTrace.contains('mode#') ||
+        (message.contains('listening to') && message.contains('invalid state'))) {
+      debugPrint('Route state warning suppressed: $message');
+      return;
+    }
+
+    // Log other errors for debugging
+    debugPrint('Flutter error: $message');
     if (details.stack != null) {
       debugPrint(details.stack.toString());
     }
     previousHandler?.call(details);
   };
 
-  // Friendlier in-app error widget instead of a blank screen
+  // Override the error widget builder to hide specific warnings from UI
   ErrorWidget.builder = (FlutterErrorDetails details) {
+    final message = details.exceptionAsString();
+    final stackTrace = details.stack?.toString() ?? '';
+
+    // Don't show error widgets for these suppressed warnings
+    if (message.contains('Id does not exist.') ||
+        message.contains('_RestorableNode') ||
+        message.contains('RestorableNode') ||
+        message.contains('_DialogScope') ||
+        message.contains('ModalScopeStatus') ||
+        message.contains('ModalScope') ||
+        message.contains('Nested arrays are not supported') ||
+        message.contains('Remote arrays are not supported') ||
+        message.contains('listening Function with') ||
+        message.contains('listening to Function') ||
+        message.contains('called with invalid state') ||
+        message.contains('saved with invalid state') ||
+        message.contains('invalid state. Nested arrays') ||
+        stackTrace.contains('mode#') ||
+        (message.contains('listening to') && message.contains('invalid state'))) {
+      return const SizedBox.shrink(); // Return empty widget for suppressed errors
+    }
+
+    // For other errors, show a friendly error screen
     return _FriendlyErrorScreen(
       title: 'Something went wrong',
-      message: details.exceptionAsString(),
+      message: message,
       stack: details.stack?.toString(),
     );
   };

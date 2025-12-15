@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:ndu_project/utils/finance.dart';
 import 'package:flutter/material.dart';
+import 'package:ndu_project/widgets/header_banner_image.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
@@ -477,10 +478,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen> with SingleTick
           SizedBox(
             width: double.infinity,
             height: bannerHeight,
-            child: Image.asset(
-              'assets/images/NDU_items.png',
-              fit: BoxFit.cover,
-            ),
+            child: const HeaderBannerImage(),
           ),
           Container(
             padding: const EdgeInsets.all(24),

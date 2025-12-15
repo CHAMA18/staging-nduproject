@@ -454,6 +454,15 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
     });
   }
 
+  void _navigateToBilling() {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.go('/${AppRoutes.settings}');
+      }
+    });
+  }
+
   Future<void> _handleLogout() async {
     if (!mounted) return;
     
@@ -586,19 +595,24 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
                         children: const [
                           Icon(Icons.add_circle_outline, size: 22),
                           SizedBox(width: 10),
-                          Text('Add project'),
+                          Text('Create Project'),
                           SizedBox(width: 6),
                           Icon(Icons.arrow_forward, size: 20),
                         ],
                       ),
                     ),
                     _secondaryCta(
-                      label: 'Add program',
+                      label: 'Create Program',
                       onPressed: _navigateToProgram,
                     ),
                     _secondaryCta(
-                      label: 'Add portfolio',
+                      label: 'Create Portfolio',
                       onPressed: _navigateToPortfolio,
+                    ),
+                    _secondaryCta(
+                      label: 'Billing',
+                      onPressed: _navigateToBilling,
+                      icon: Icons.account_balance_wallet_outlined,
                     ),
                     _secondaryCta(
                       label: 'Log Out',
@@ -1073,7 +1087,7 @@ class _SingleProjectsCardState extends State<_SingleProjectsCard> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Create your first project using the "Add project" button above',
+                            'Create your first project using the "Create Project" button above',
                             style: textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
                             textAlign: TextAlign.center,
                           ),
@@ -1616,6 +1630,7 @@ class _ProgramsSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final user = FirebaseAuth.instance.currentUser;
 
     return _FrostedSurface(
       padding: const EdgeInsets.fromLTRB(26, 26, 26, 22),
@@ -1639,65 +1654,103 @@ class _ProgramsSummaryCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              const stats = [
-                _SummaryStat(
-                  label: 'Programs',
-                  value: '0',
-                  caption: 'Add three projects to unlock a program dashboard.',
-                ),
-                _SummaryStat(
-                  label: 'Portfolios',
-                  value: '0',
-                  caption: 'Roll multiple programs into an executive view.',
-                ),
-                _SummaryStat(
-                  label: 'Projects per program',
-                  value: 'Max 3',
-                  caption: 'Keep scope focused and interfaces manageable.',
-                ),
-              ];
+          if (user == null)
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final stats = [
+                  const _SummaryStat(
+                    label: 'Programs',
+                    value: '—',
+                    caption: 'Sign in to view your programs.',
+                  ),
+                  const _SummaryStat(
+                    label: 'Portfolios',
+                    value: '—',
+                    caption: 'Sign in to view your portfolios.',
+                  ),
+                  const _SummaryStat(
+                    label: 'Projects per program',
+                    value: 'Max 3',
+                    caption: 'Keep scope focused and interfaces manageable.',
+                  ),
+                ];
 
-              if (constraints.maxWidth < 620) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (int i = 0; i < stats.length; i++) ...[
-                      stats[i],
-                      if (i < stats.length - 1) const SizedBox(height: 16),
-                    ],
-                  ],
+                return _buildStatsLayout(constraints, stats);
+              },
+            )
+          else
+            StreamBuilder<List<ProgramModel>>(
+              stream: ProgramService.streamPrograms(ownerId: user.uid),
+              builder: (context, programSnapshot) {
+                final programCount = programSnapshot.hasData ? programSnapshot.data!.length : 0;
+                // Portfolios are not yet implemented, so we show 0
+                const portfolioCount = 0;
+
+                final stats = [
+                  _SummaryStat(
+                    label: 'Programs',
+                    value: '$programCount',
+                    caption: programCount == 0
+                        ? 'Add three projects to unlock a program dashboard.'
+                        : 'Grouped projects',
+                  ),
+                  const _SummaryStat(
+                    label: 'Portfolios',
+                    value: '$portfolioCount',
+                    caption: 'Roll multiple programs into an executive view.',
+                  ),
+                  const _SummaryStat(
+                    label: 'Projects per program',
+                    value: 'Max 3',
+                    caption: 'Keep scope focused and interfaces manageable.',
+                  ),
+                ];
+
+                return LayoutBuilder(
+                  builder: (context, constraints) => _buildStatsLayout(constraints, stats),
                 );
-              }
-
-              if (constraints.maxWidth < 1024) {
-                final double cardWidth = ((constraints.maxWidth - 18) / 2).clamp(260.0, constraints.maxWidth);
-                return Wrap(
-                  spacing: 18,
-                  runSpacing: 18,
-                  children: [
-                    for (final stat in stats)
-                      SizedBox(
-                        width: cardWidth,
-                        child: stat,
-                      ),
-                  ],
-                );
-              }
-
-              return Row(
-                children: [
-                  for (int i = 0; i < stats.length; i++) ...[
-                    Expanded(child: stats[i]),
-                    if (i < stats.length - 1) const SizedBox(width: 18),
-                  ],
-                ],
-              );
-            },
-          ),
+              },
+            ),
         ],
       ),
+    );
+  }
+
+  Widget _buildStatsLayout(BoxConstraints constraints, List<_SummaryStat> stats) {
+    if (constraints.maxWidth < 620) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (int i = 0; i < stats.length; i++) ...[
+            stats[i],
+            if (i < stats.length - 1) const SizedBox(height: 16),
+          ],
+        ],
+      );
+    }
+
+    if (constraints.maxWidth < 1024) {
+      final double cardWidth = ((constraints.maxWidth - 18) / 2).clamp(260.0, constraints.maxWidth);
+      return Wrap(
+        spacing: 18,
+        runSpacing: 18,
+        children: [
+          for (final stat in stats)
+            SizedBox(
+              width: cardWidth,
+              child: stat,
+            ),
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        for (int i = 0; i < stats.length; i++) ...[
+          Expanded(child: stats[i]),
+          if (i < stats.length - 1) const SizedBox(width: 18),
+        ],
+      ],
     );
   }
 }
@@ -2257,63 +2310,48 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  Flexible(
-                    child: PopupMenuButton<String>(
-                      onSelected: (value) {
-                        if (value == 'rename') {
-                          _renameProject(context);
-                        } else if (value == 'delete') {
-                          _deleteProject(context);
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(
-                          value: 'rename',
-                          child: Row(
-                            children: [
-                              Icon(Icons.edit_outlined, size: 20, color: Color(0xFF1A4DB3)),
-                              SizedBox(width: 12),
-                              Text('Rename', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(Icons.delete_outline, size: 20, color: Colors.red),
-                              SizedBox(width: 12),
-                              Text('Delete', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.red, fontSize: 15)),
-                            ],
-                          ),
-                        ),
-                      ],
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.grey.shade300, width: 1.5),
-                        ),
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'rename') {
+                        _renameProject(context);
+                      } else if (value == 'delete') {
+                        _deleteProject(context);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'rename',
                         child: Row(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Flexible(
-                              child: Text(
-                                'Rename',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.grey.shade700,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Icon(Icons.arrow_drop_down, size: 20, color: Colors.grey.shade600),
+                            Icon(Icons.edit_outlined, size: 20, color: Color(0xFF1A4DB3)),
+                            SizedBox(width: 12),
+                            Text('Rename', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                           ],
                         ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                            SizedBox(width: 12),
+                            Text('Delete', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.red, fontSize: 15)),
+                          ],
+                        ),
+                      ),
+                    ],
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.grey.shade300, width: 1.5),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.more_horiz, size: 20, color: Colors.grey.shade700),
+                        ],
                       ),
                     ),
                   ),

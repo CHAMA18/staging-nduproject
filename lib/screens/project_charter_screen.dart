@@ -3,9 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ndu_project/theme.dart';
-import 'package:ndu_project/widgets/draggable_sidebar.dart';
-import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 
@@ -42,55 +41,42 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final pagePadding = EdgeInsets.all(AppBreakpoints.pagePadding(context));
+    final pagePadding = AppBreakpoints.pagePadding(context);
     final isMobile = AppBreakpoints.isMobile(context);
 
-    return Scaffold(
-      // Use the app's subtle background to match global theme
+    return ResponsiveScaffold(
+      activeItemLabel: 'Project Charter',
       backgroundColor: AppSemanticColors.subtle,
-      body: SafeArea(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(pagePadding).copyWith(top: pagePadding + (isMobile ? 16 : 32), bottom: 48),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            DraggableSidebar(
-              openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(activeItemLabel: 'Project Charter'),
+            Text(
+              'Project Charter',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                    fontSize: isMobile ? 24 : 32,
+                    letterSpacing: 1.2,
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
             ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: pagePadding.copyWith(top: pagePadding.top + 32, bottom: 48),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Project Charter',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                            fontSize: 32,
-                            letterSpacing: 1.2,
-                            fontWeight: FontWeight.w700,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                    ),
-                    const SizedBox(height: 32),
-                    Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.08),
-                            blurRadius: 24,
-                            offset: const Offset(0, 18),
-                          ),
-                        ],
-                      ),
-                      child: _CharterContent(isStacked: isMobile, projectData: _projectData),
-                    ),
-                  ],
-                ),
+            const SizedBox(height: 32),
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.08),
+                    blurRadius: 24,
+                    offset: const Offset(0, 18),
+                  ),
+                ],
               ),
+              child: _CharterContent(isStacked: isMobile, projectData: _projectData),
             ),
           ],
         ),

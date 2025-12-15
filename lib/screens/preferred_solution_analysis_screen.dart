@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:ndu_project/widgets/header_banner_image.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/auth_nav.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
@@ -283,10 +284,7 @@ class _PreferredSolutionAnalysisScreenState extends State<PreferredSolutionAnaly
           SizedBox(
             width: double.infinity,
             height: bannerHeight,
-            child: Image.asset(
-              'assets/images/NDU_items.png',
-              fit: BoxFit.cover,
-            ),
+            child: const HeaderBannerImage(),
           ),
           Builder(
             builder: (builderContext) {

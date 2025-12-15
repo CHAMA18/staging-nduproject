@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'package:ndu_project/widgets/draggable_sidebar.dart';
-import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
 class LaunchChecklistScreen extends StatefulWidget {
   const LaunchChecklistScreen({super.key});
@@ -39,54 +38,38 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
   @override
   Widget build(BuildContext context) {
     final bool isMobile = AppBreakpoints.isMobile(context);
-    final double horizontalPadding = isMobile ? 18 : 32;
+    final double horizontalPadding = isMobile ? 16 : 32;
 
-    return Scaffold(
+    return ResponsiveScaffold(
+      activeItemLabel: 'Launch Checklist',
       backgroundColor: const Color(0xFFF5F7FB),
-      body: SafeArea(
-        child: Row(
+      floatingActionButton: const KazAiChatBubble(),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: isMobile ? 16 : 28),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            DraggableSidebar(
-              openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(activeItemLabel: 'Launch Checklist'),
-            ),
-            Expanded(
-              child: Stack(
-                children: [
-                  SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 28),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildPageHeader(context),
-                        const SizedBox(height: 20),
-                        _buildContextChips(isMobile),
-                        const SizedBox(height: 24),
-                        _buildToolbar(context),
-                        const SizedBox(height: 24),
-                        _buildStatusOverview(context),
-                        const SizedBox(height: 24),
-                        _buildChecklistBoard(context),
-                        const SizedBox(height: 24),
-                        _buildTimelineAndHighlights(context),
-                        const SizedBox(height: 28),
-                        _buildInsightsGrid(context),
-                        const SizedBox(height: 48),
-                      ],
-                    ),
-                  ),
-                  const KazAiChatBubble(),
-                ],
-              ),
-            ),
+            _buildPageHeader(context, isMobile),
+            const SizedBox(height: 20),
+            _buildContextChips(isMobile),
+            const SizedBox(height: 24),
+            _buildToolbar(context),
+            const SizedBox(height: 24),
+            _buildStatusOverview(context),
+            const SizedBox(height: 24),
+            _buildChecklistBoard(context),
+            const SizedBox(height: 24),
+            _buildTimelineAndHighlights(context),
+            const SizedBox(height: 28),
+            _buildInsightsGrid(context),
+            const SizedBox(height: 48),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPageHeader(BuildContext context) {
+  Widget _buildPageHeader(BuildContext context, bool isMobile) {
     final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,7 +77,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
         Text(
           'Launch Checklist',
           style: theme.textTheme.headlineLarge?.copyWith(
-            fontSize: 30,
+            fontSize: isMobile ? 24 : 30,
             fontWeight: FontWeight.w700,
             color: const Color(0xFF111827),
           ),

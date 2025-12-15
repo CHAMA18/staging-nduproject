@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/widgets/app_logo.dart';
+import 'package:ndu_project/widgets/header_banner_image.dart';
 
 const Color kProgramSidebarAccentColor = Color(0xFFFFC812);
 const Color kProgramSidebarTextPrimary = Color(0xFF1A1D1F);
@@ -69,10 +70,7 @@ class ProgramWorkspaceSidebar extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             height: 96,
-            child: Image.asset(
-              'assets/images/NDU_items.png',
-              fit: BoxFit.cover,
-            ),
+            child: const HeaderBannerImage(),
           ),
           const SizedBox(height: 12),
           const Text(

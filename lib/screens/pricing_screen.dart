@@ -6,7 +6,12 @@ import 'package:ndu_project/widgets/payment_dialog.dart';
 const Color _pageBackground = Color(0xFFF5F6F8);
 const Color _primaryText = Color(0xFF0F0F0F);
 const Color _secondaryText = Color(0xFF5A5C60);
-const Color _accent = Color(0xFFFFC940);
+
+// Badge colors from screenshot
+const Color _basicProjectColor = Color(0xFF6B3A75); // Purple
+const Color _projectColor = Color(0xFF009688); // Teal
+const Color _programColor = Color(0xFF4CAF50); // Green
+const Color _portfolioColor = Color(0xFFFFC940); // Yellow/Gold
 
 class PricingScreen extends StatefulWidget {
   const PricingScreen({super.key});
@@ -16,32 +21,25 @@ class PricingScreen extends StatefulWidget {
 }
 
 class _PricingScreenState extends State<PricingScreen> {
-  bool _annualBilling = true;
   _PlanTier _selectedTier = _PlanTier.program;
   bool _isCheckingSubscription = false;
 
-  /// Handle plan selection - check subscription and show payment if needed
   Future<void> _handlePlanSelection(BuildContext context, _PricingPlan plan) async {
     setState(() => _isCheckingSubscription = true);
     
     try {
-      // Convert _PlanTier to SubscriptionTier
       final subscriptionTier = _convertToSubscriptionTier(plan.tier);
-      
-      // Check if user already has an active subscription for this tier
       final hasSubscription = await SubscriptionService.hasActiveSubscription(tier: subscriptionTier);
       
       if (!mounted) return;
       
       if (hasSubscription) {
-        // User has active subscription, proceed to next screen
         _navigateToManagementLevel(context);
       } else {
-        // Show payment dialog
         final paymentResult = await PaymentDialog.show(
           context: context,
           tier: subscriptionTier,
-          isAnnual: _annualBilling,
+          isAnnual: true,
           onPaymentComplete: () {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -61,20 +59,17 @@ class _PricingScreenState extends State<PricingScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error checking subscription: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Error checking subscription: $e'), backgroundColor: Colors.red),
       );
     } finally {
-      if (mounted) {
-        setState(() => _isCheckingSubscription = false);
-      }
+      if (mounted) setState(() => _isCheckingSubscription = false);
     }
   }
   
   SubscriptionTier _convertToSubscriptionTier(_PlanTier tier) {
     switch (tier) {
+      case _PlanTier.basicProject:
+        return SubscriptionTier.project;
       case _PlanTier.project:
         return SubscriptionTier.project;
       case _PlanTier.program:
@@ -85,116 +80,111 @@ class _PricingScreenState extends State<PricingScreen> {
   }
   
   void _navigateToManagementLevel(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const ManagementLevelScreen()),
-    );
+    Navigator.push(context, MaterialPageRoute(builder: (_) => const ManagementLevelScreen()));
   }
 
   static const List<_PricingPlan> _plans = [
     _PricingPlan(
+      tier: _PlanTier.basicProject,
+      label: 'Basic Project',
+      badgeColor: _basicProjectColor,
+      subtitle: 'No Fuss routine project delivered at a fraction of the cost',
+      features: [
+        'One time Freemium for the 1st month',
+        'Monthly payment with annual discount.',
+        '1 user',
+        'Limited AI features',
+        'Any email or School email only (special domain. No gmail, yahoo, outlook, etc.) No other free trial for that domain.',
+        'Limited AI incorporation (prompt to upgrade after 1st implementation)',
+        'Can be upgraded to others at any time and details get immediately carried forward to full project',
+      ],
+    ),
+    _PricingPlan(
       tier: _PlanTier.project,
-      label: 'Project Plan',
-      subtitle: 'Launch single projects with AI-guided planning, disciplined governance, and execution clarity.',
-      monthlyPrice: r'$79',
-      annualPrice: r'$790',
-      focusTags: [
-        'Launch-ready teams',
-        'Single project focus',
+      label: 'Project',
+      badgeColor: _projectColor,
+      subtitle: 'Robust project delivered at an affordable rate',
+      features: [
+        'Subscription Based.',
+        'Maximum 7 users',
+        'Monthly. Annual at a discount.',
+        'Access to completed project pdfs when done with each project.',
+        'Can upgrade anytime to other levels.',
+        'Can\'t downgrade any active project until that actual project is completed.',
+        'Can add new project, program and portfolio to the account',
+        'Once project is completed, new project could be at another level.',
+        'Business email or School email (special domain. No gmail, yahoo, outlook, etc.) No other free trial for that domain.',
+        'Promocode can be applied to payment.',
       ],
-      valueProps: [
-        'Structured playbooks covering requirements, design, procurement, and health risk.',
-        'KAZ AI summaries, approvals, and decision logs anchored into every workspace.',
-        'Risk, safety, health, environment (SSHER) dashboards with mitigation scoring.',
-        'Interactive work breakdown structure with dependencies, milestones, and exports.',
-        'Team onboarding, training, and change management workflows to keep velocity.',
-      ],
-      ctaLabel: 'Start with Project',
     ),
     _PricingPlan(
       tier: _PlanTier.program,
-      label: 'Program Plan',
-      subtitle: 'Coordinate multiple projects, align stakeholders, and measure benefits in real time.',
-      monthlyPrice: r'$189',
-      annualPrice: r'$1,890',
-      focusTags: [
-        'Up to 12 projects',
-        'Program playbooks',
+      label: 'Program',
+      badgeColor: _programColor,
+      subtitle: 'Up to 3 projects at a discounted rate with interface management',
+      features: [
+        'Subscription Based.',
+        'Maximum 12 users',
+        'Monthly. Annual at a discount.',
+        'Access to completed project pdfs when done with each project, and at program level.',
+        'Can upgrade anytime to portfolio.',
+        'Can\'t downgrade any active project within a program once started. All identified projects within a program stays until the program is completed.',
+        'Can add new project, program and portfolio to the account',
+        'Business email or School email (special domain. No gmail, yahoo, outlook, etc.) No other free trial for that domain.',
+        'Promocode can be applied to payment.',
       ],
-      valueProps: [
-        'Program command centers with benefit tracking, investment prioritization, and dependency views.',
-        'Consolidated risk, change request, and readiness indicators rolled up across every project.',
-        'KAZ AI scenario planning surfaces next best actions, approvals, and emerging gaps.',
-        'Procurement, contracts, and vendor governance streamlined at the program layer.',
-        'Stakeholder rituals, approval gates, and executive briefings templated for velocity.',
-      ],
-      ctaLabel: 'Start with Program',
-      badge: 'Most popular',
-      isHighlighted: true,
     ),
     _PricingPlan(
       tier: _PlanTier.portfolio,
-      label: 'Porfolio Plan',
-      subtitle: 'Optimize enterprise investments with predictive governance and executive intelligence.',
-      monthlyPrice: r'$449',
-      annualPrice: r'$4,490',
-      focusTags: [
-        'Executive scale',
-        'Predictive governance',
+      label: 'Portfolio',
+      badgeColor: _portfolioColor,
+      subtitle: 'Up to 9 projects at a bulk rate with integrated stewarding',
+      features: [
+        'Subscription Based.',
+        'Maximum 24 users',
+        'Monthly. Annual at a discount.',
+        'Access to completed project pdfs when done with each project/program.',
+        'Can\'t downgrade any active project or program once started. All identified projects within a program stays until the program is completed.',
+        'Can add new project, program and portfolio to the account',
+        'Business email or School email (special domain. No gmail, yahoo, outlook, etc.) No other free trial for that domain.',
+        'Promocode can be applied to payment.',
       ],
-      valueProps: [
-        'Strategic portfolio guardrails aligning investments, capacity, and transformation readiness.',
-        'Predictive KAZ AI governance with compliance, funding, and risk escalation guardrails.',
-        'Enterprise integrations, SSO, and API access for analytics platforms.',
-        'Advanced financial intelligence with scenario modeling and capital allocation tracking.',
-        'Dedicated success architect, white-glove onboarding, and ongoing change enablement.',
-      ],
-      ctaLabel: 'Start with Portfolio',
-      badge: 'Executive scale',
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final Size size = MediaQuery.of(context).size;
-    final bool isDesktop = size.width >= 1180;
-    final bool isTablet = size.width >= 820 && size.width < 1180;
-
-    final EdgeInsets horizontalPadding = EdgeInsets.symmetric(
-      horizontal: isDesktop
-          ? 120
-          : isTablet
-              ? 72
-              : 24,
-    );
+    final size = MediaQuery.of(context).size;
+    final isDesktop = size.width >= 1200;
+    final isTablet = size.width >= 800 && size.width < 1200;
 
     return Scaffold(
       backgroundColor: _pageBackground,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(vertical: 32),
-          child: Padding(
-            padding: horizontalPadding,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeaderRow(context),
-                const SizedBox(height: 36),
-                _buildHeroSection(),
-                const SizedBox(height: 28),
-                // Removed tier filter chips per request
-                const SizedBox(height: 0),
-                _buildBillingToggle(),
-                const SizedBox(height: 40),
-                _PlanGrid(
-                  plans: _plans,
-                  selectedTier: _selectedTier,
-                  annualBilling: _annualBilling,
-                  onSelect: (tier) => setState(() => _selectedTier = tier),
-                  onCtaTap: (plan) => _handlePlanSelection(context, plan),
+          padding: EdgeInsets.symmetric(
+            horizontal: isDesktop ? 48 : (isTablet ? 32 : 16),
+            vertical: 24,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeaderRow(context),
+              const SizedBox(height: 32),
+              // Payment Structure title
+              const Text(
+                'Payment Structure',
+                style: TextStyle(
+                  fontSize: 36,
+                  fontWeight: FontWeight.w700,
+                  color: _primaryText,
+                  letterSpacing: -0.5,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 32),
+              // Plans grid
+              _buildPlansGrid(isDesktop, isTablet),
+            ],
           ),
         ),
       ),
@@ -204,12 +194,11 @@ class _PricingScreenState extends State<PricingScreen> {
   Widget _buildHeaderRow(BuildContext context) {
     return Row(
       children: [
-        _BackButton(onPressed: () async {
+        _BackButton(onPressed: () {
           final navigator = Navigator.of(context);
           if (navigator.canPop()) {
             navigator.maybePop();
           } else {
-            // Fallback: go to management level overview if no back stack
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (_) => const ManagementLevelScreen()),
@@ -217,194 +206,117 @@ class _PricingScreenState extends State<PricingScreen> {
           }
         }),
         const SizedBox(width: 12),
-        _breadcrumb(),
-        const Spacer(),
-        TextButton(
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const ManagementLevelScreen()),
+        const Expanded(
+          child: Text(
+            'Select a plan that fits your needs',
+            style: TextStyle(color: _secondaryText, fontWeight: FontWeight.w500),
           ),
-          style: TextButton.styleFrom(
-            foregroundColor: _secondaryText,
-            textStyle: const TextStyle(fontWeight: FontWeight.w600),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          ),
-          child: const Text('Compare management tiers'),
         ),
       ],
     );
   }
 
-  Widget _breadcrumb() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(999),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+  Widget _buildPlansGrid(bool isDesktop, bool isTablet) {
+    if (isDesktop) {
+      // 4 columns on desktop
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: _plans.map((plan) => Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: _PlanColumn(
+              plan: plan,
+              isSelected: _selectedTier == plan.tier,
+              onSelect: () {
+                setState(() => _selectedTier = plan.tier);
+                _handlePlanSelection(context, plan);
+              },
+            ),
           ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+        )).toList(),
+      );
+    } else if (isTablet) {
+      // 2x2 grid on tablet
+      return Column(
         children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: const BoxDecoration(
-              color: _accent,
-              shape: BoxShape.circle,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: _PlanColumn(
+                  plan: _plans[0],
+                  isSelected: _selectedTier == _plans[0].tier,
+                  onSelect: () {
+                    setState(() => _selectedTier = _plans[0].tier);
+                    _handlePlanSelection(context, _plans[0]);
+                  },
+                ),
+              )),
+              Expanded(child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: _PlanColumn(
+                  plan: _plans[1],
+                  isSelected: _selectedTier == _plans[1].tier,
+                  onSelect: () {
+                    setState(() => _selectedTier = _plans[1].tier);
+                    _handlePlanSelection(context, _plans[1]);
+                  },
+                ),
+              )),
+            ],
           ),
-          const SizedBox(width: 10),
-          const Text(
-            'Project, Program and Portfolio delivery redefined',
-            style: TextStyle(
-              color: _secondaryText,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.15,
-            ),
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: _PlanColumn(
+                  plan: _plans[2],
+                  isSelected: _selectedTier == _plans[2].tier,
+                  onSelect: () {
+                    setState(() => _selectedTier = _plans[2].tier);
+                    _handlePlanSelection(context, _plans[2]);
+                  },
+                ),
+              )),
+              Expanded(child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: _PlanColumn(
+                  plan: _plans[3],
+                  isSelected: _selectedTier == _plans[3].tier,
+                  onSelect: () {
+                    setState(() => _selectedTier = _plans[3].tier);
+                    _handlePlanSelection(context, _plans[3]);
+                  },
+                ),
+              )),
+            ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildHeroSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: const [
-        Text(
-          'Pricing designed around how you deliver',
-          style: TextStyle(
-            fontSize: 48,
-            height: 1.05,
-            letterSpacing: -1,
-            fontWeight: FontWeight.w800,
-            color: _primaryText,
+      );
+    } else {
+      // Single column on mobile
+      return Column(
+        children: _plans.map((plan) => Padding(
+          padding: const EdgeInsets.only(bottom: 24),
+          child: _PlanColumn(
+            plan: plan,
+            isSelected: _selectedTier == plan.tier,
+            onSelect: () {
+              setState(() => _selectedTier = plan.tier);
+              _handlePlanSelection(context, plan);
+            },
           ),
-        ),
-        SizedBox(height: 16),
-        Text(
-          'Select the tier that aligns with your operating cadence. Every plan activates KAZ AI copilots and our world-class workspaces across initiation, planning, and execution.',
-          style: TextStyle(
-            color: _secondaryText,
-            fontSize: 18,
-            height: 1.6,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPlanFilters() {
-    return Wrap(
-      spacing: 14,
-      runSpacing: 12,
-      children: _PlanTier.values
-          .map(
-            (tier) => ChoiceChip(
-              label: Text(_labelForTier(tier)),
-              selected: _selectedTier == tier,
-              onSelected: (_) => setState(() => _selectedTier = tier),
-              selectedColor: Colors.black,
-              labelStyle: TextStyle(
-                color: _selectedTier == tier ? Colors.white : _secondaryText,
-                fontWeight: FontWeight.w600,
-              ),
-              backgroundColor: Colors.white,
-              showCheckmark: false,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            ),
-          )
-          .toList(),
-    );
-  }
-
-  Widget _buildBillingToggle() {
-    return Wrap(
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 16,
-      runSpacing: 12,
-      children: [
-        const Text(
-          'Billing cadence',
-          style: TextStyle(
-            color: _secondaryText,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        _billingChip(
-          label: 'Monthly',
-          selected: !_annualBilling,
-          onSelected: () => setState(() => _annualBilling = false),
-        ),
-        _billingChip(
-          label: 'Annual',
-          selected: _annualBilling,
-          onSelected: () => setState(() => _annualBilling = true),
-          highlight: true,
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: _accent.withOpacity(0.16),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: const Text(
-            'Save 2 months',
-            style: TextStyle(
-              color: Color(0xFF8C6800),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  static Widget _billingChip({
-    required String label,
-    required bool selected,
-    required VoidCallback onSelected,
-    bool highlight = false,
-  }) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (_) => onSelected(),
-      showCheckmark: false,
-      selectedColor: highlight ? _accent : Colors.black,
-      labelStyle: TextStyle(
-        color: selected ? Colors.white : _secondaryText,
-        fontWeight: FontWeight.w600,
-      ),
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-    );
-  }
-
-  static String _labelForTier(_PlanTier tier) {
-    switch (tier) {
-      case _PlanTier.project:
-        return 'Project';
-      case _PlanTier.program:
-        return 'Program';
-      case _PlanTier.portfolio:
-        return 'Portfolio';
+        )).toList(),
+      );
     }
   }
 }
 
 class _BackButton extends StatelessWidget {
   const _BackButton({required this.onPressed});
-
   final VoidCallback onPressed;
 
   @override
@@ -415,284 +327,99 @@ class _BackButton extends StatelessWidget {
       child: InkWell(
         onTap: onPressed,
         borderRadius: BorderRadius.circular(999),
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.arrow_back, color: _secondaryText, size: 20),
-            ],
-          ),
+        child: const Padding(
+          padding: EdgeInsets.all(10),
+          child: Icon(Icons.arrow_back, color: _secondaryText, size: 20),
         ),
       ),
     );
   }
 }
 
-class _PlanGrid extends StatelessWidget {
-  const _PlanGrid({
-    required this.plans,
-    required this.selectedTier,
-    required this.annualBilling,
-    required this.onSelect,
-    required this.onCtaTap,
-  });
-
-  final List<_PricingPlan> plans;
-  final _PlanTier selectedTier;
-  final bool annualBilling;
-  final ValueChanged<_PlanTier> onSelect;
-  final ValueChanged<_PricingPlan> onCtaTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const double spacing = 22;
-        int columns = 1;
-        if (constraints.maxWidth >= 1260) {
-          columns = 3;
-        } else if (constraints.maxWidth >= 840) {
-          columns = 2;
-        }
-
-        final double cardWidth = columns == 1
-            ? constraints.maxWidth
-            : (constraints.maxWidth - spacing * (columns - 1)) / columns;
-
-        // Ensure equal heights across visible cards on larger layouts.
-        // Choose a balanced height that fits all planned content.
-        final double? cardHeight = columns >= 2
-            ? (columns == 3
-                ? 760 // desktop 3-up
-                : 820) // tablet 2-up
-            : null; // mobile stacks naturally; no fixed height needed
-
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: plans
-              .map(
-                (plan) => SizedBox(
-                  width: cardWidth,
-                  child: _PlanCard(
-                    plan: plan,
-                    isSelected: selectedTier == plan.tier,
-                    annualBilling: annualBilling,
-                    onTap: () {
-                      onSelect(plan.tier);
-                      onCtaTap(plan);
-                    },
-                    onSelect: () => onSelect(plan.tier),
-                    fixedHeight: cardHeight,
-                  ),
-                ),
-              )
-              .toList(),
-        );
-      },
-    );
-  }
-}
-
-class _PlanCard extends StatelessWidget {
-  const _PlanCard({
+class _PlanColumn extends StatelessWidget {
+  const _PlanColumn({
     required this.plan,
     required this.isSelected,
-    required this.annualBilling,
-    required this.onTap,
     required this.onSelect,
-    this.fixedHeight,
   });
 
   final _PricingPlan plan;
   final bool isSelected;
-  final bool annualBilling;
-  final VoidCallback onTap;
   final VoidCallback onSelect;
-  final double? fixedHeight;
 
   @override
   Widget build(BuildContext context) {
-    final bool highlight = isSelected;
-    final Color borderColor = highlight ? _accent : Colors.black.withOpacity(0.08);
-    final Color fillColor = highlight ? const Color(0xFFFFF5D8) : Colors.white;
-    final Color priceColor = highlight ? const Color(0xFF1A1400) : Colors.black;
-    final String price = annualBilling ? plan.annualPrice : plan.monthlyPrice;
-    final String cadence = annualBilling ? 'per year' : 'per month';
-    final String note = annualBilling ? 'Save two months when billed annually.' : 'Billed monthly. Cancel anytime.';
-
-    return GestureDetector(
-      onTap: onSelect,
-      child: SizedBox(
-        height: fixedHeight,
-        child: Container(
-          padding: const EdgeInsets.all(32),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Badge
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           decoration: BoxDecoration(
-            color: fillColor,
-            borderRadius: BorderRadius.circular(32),
-            border: Border.all(color: borderColor, width: highlight ? 2 : 1),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(highlight ? 0.07 : 0.04),
-                blurRadius: highlight ? 32 : 18,
-                offset: const Offset(0, 18),
-              ),
-            ],
+            color: plan.badgeColor,
+            borderRadius: BorderRadius.circular(8),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (plan.badge != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: _accent),
-                  ),
-                  child: Text(
-                    plan.badge!,
-                    style: const TextStyle(
-                      color: Color(0xFF8C6800),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ),
-              if (plan.badge != null) const SizedBox(height: 16),
-              // Plan title (Project / Program / Portfolio)
-              Text(
-                plan.label,
-                style: const TextStyle(
-                  color: _primaryText,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.2,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                plan.subtitle,
-                style: const TextStyle(
-                  color: _secondaryText,
-                  fontSize: 16,
-                  height: 1.6,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: plan.focusTags
-                    .map(
-                      (tag) => Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: Colors.black.withOpacity(0.08)),
-                        ),
-                        child: Text(
-                          tag,
-                          style: const TextStyle(
-                            color: _secondaryText,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
-              const SizedBox(height: 28),
-              RichText(
-                text: TextSpan(
-                  text: price,
-                  style: TextStyle(
-                    color: priceColor,
-                    fontSize: 44,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -1.2,
-                  ),
-                  children: [
-                    TextSpan(
-                      text: ' $cadence',
-                      style: const TextStyle(
-                        color: _secondaryText,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                note,
-                style: const TextStyle(color: _secondaryText, fontSize: 14),
-              ),
-              const SizedBox(height: 26),
-              const Divider(color: Color(0xFFE8E8EA), thickness: 1),
-              const SizedBox(height: 12),
-              // Scrollable features zone to ensure equal-height cards never overflow
-              Expanded(
-                child: ScrollConfiguration(
-                  behavior: const _NoGlowBehavior(),
-                  child: ListView.separated(
-                    padding: EdgeInsets.zero,
-                    itemCount: plan.valueProps.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final item = plan.valueProps[index];
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.only(top: 4),
-                            child: Icon(Icons.check_circle, color: _accent, size: 18),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              item,
-                              style: const TextStyle(
-                                color: _secondaryText,
-                                height: 1.6,
-                                fontSize: 15,
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: onTap,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: highlight ? Colors.black : Colors.black.withOpacity(0.85),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    plan.ctaLabel,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                  ),
-                ),
-              ),
-            ],
+          child: Text(
+            plan.label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
           ),
         ),
-      ),
+        const SizedBox(height: 20),
+        // Subtitle
+        Text(
+          plan.subtitle,
+          style: const TextStyle(
+            color: _primaryText,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Features list
+        ...plan.features.map((feature) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('•  ', style: TextStyle(color: _primaryText, fontSize: 13)),
+              Expanded(
+                child: Text(
+                  feature,
+                  style: const TextStyle(
+                    color: _primaryText,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        )),
+        const SizedBox(height: 16),
+        // Select button
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: onSelect,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: isSelected ? Colors.white : plan.badgeColor,
+              backgroundColor: isSelected ? plan.badgeColor : Colors.transparent,
+              side: BorderSide(color: plan.badgeColor, width: 1.5),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text(
+              isSelected ? 'Selected' : 'Select Plan',
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -701,36 +428,16 @@ class _PricingPlan {
   const _PricingPlan({
     required this.tier,
     required this.label,
+    required this.badgeColor,
     required this.subtitle,
-    required this.monthlyPrice,
-    required this.annualPrice,
-    required this.focusTags,
-    required this.valueProps,
-    required this.ctaLabel,
-    this.badge,
-    this.isHighlighted = false,
+    required this.features,
   });
 
   final _PlanTier tier;
   final String label;
+  final Color badgeColor;
   final String subtitle;
-  final String monthlyPrice;
-  final String annualPrice;
-  final List<String> focusTags;
-  final List<String> valueProps;
-  final String ctaLabel;
-  final String? badge;
-  final bool isHighlighted;
+  final List<String> features;
 }
 
-enum _PlanTier { project, program, portfolio }
-
-// Removes overscroll glow inside scrollable areas within cards
-class _NoGlowBehavior extends ScrollBehavior {
-  const _NoGlowBehavior();
-
-  @override
-  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) {
-    return child;
-  }
-}
+enum _PlanTier { basicProject, project, program, portfolio }

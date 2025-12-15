@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ndu_project/widgets/header_banner_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
@@ -368,10 +369,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
           SizedBox(
             width: double.infinity,
             height: bannerHeight,
-            child: Image.asset(
-              'assets/images/NDU_items.png',
-              fit: BoxFit.cover,
-            ),
+            child: const HeaderBannerImage(),
           ),
           // Header with brand divider (gold)
           Container(

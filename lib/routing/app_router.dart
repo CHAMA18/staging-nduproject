@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -94,6 +93,7 @@ import 'package:ndu_project/screens/summarize_account_risks_screen.dart';
 import 'package:ndu_project/screens/agile_development_iterations_screen.dart';
 import 'package:ndu_project/screens/engineering_design_screen.dart';
 import 'package:ndu_project/screens/scope_completion_screen.dart';
+import 'package:ndu_project/screens/requirements_implementation_screen.dart';
 import 'package:ndu_project/screens/privacy_policy_screen.dart';
 import 'package:ndu_project/screens/terms_conditions_screen.dart';
 
@@ -204,6 +204,7 @@ class AppRoutes {
   static const agileDevelopmentIterations = 'agile-development-iterations';
   static const engineeringDesign = 'engineering-design';
   static const scopeCompletion = 'scope-completion';
+  static const requirementsImplementation = 'requirements-implementation';
   static const privacyPolicy = 'privacy-policy';
   static const termsConditions = 'terms-conditions';
 
@@ -397,6 +398,7 @@ class AppRouter {
       GoRoute(name: AppRoutes.programBasics, path: '/${AppRoutes.programBasics}', builder: (c, s) => const ProgramBasicsScreen()),
       GoRoute(name: AppRoutes.initiationPhase, path: '/${AppRoutes.initiationPhase}', builder: (c, s) => const InitiationPhaseScreen()),
       GoRoute(name: AppRoutes.designPhase, path: '/${AppRoutes.designPhase}', builder: (c, s) => const DesignPhaseScreen()),
+      GoRoute(name: AppRoutes.requirementsImplementation, path: '/${AppRoutes.requirementsImplementation}', builder: (c, s) => const RequirementsImplementationScreen()),
       GoRoute(name: AppRoutes.deliverablesRoadmap, path: '/${AppRoutes.deliverablesRoadmap}', builder: (c, s) => const DeliverablesRoadmapScreen()),
       GoRoute(name: AppRoutes.deliverProjectClosure, path: '/${AppRoutes.deliverProjectClosure}', builder: (c, s) => const DeliverProjectClosureScreen()),
       GoRoute(name: AppRoutes.transitionToProdTeam, path: '/${AppRoutes.transitionToProdTeam}', builder: (c, s) => const TransitionToProdTeamScreen()),

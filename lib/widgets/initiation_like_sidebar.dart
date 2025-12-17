@@ -75,6 +75,7 @@ import 'package:ndu_project/screens/technical_development_screen.dart';
 import 'package:ndu_project/screens/summarize_account_risks_screen.dart';
 import 'package:ndu_project/screens/agile_development_iterations_screen.dart';
 import 'package:ndu_project/screens/scope_completion_screen.dart';
+import 'package:ndu_project/screens/requirements_implementation_screen.dart';
 
  /// Sidebar styled to match InitiationPhaseScreen's sidebar.
  class InitiationLikeSidebar extends StatefulWidget {
@@ -471,6 +472,10 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
 
   void _openScopeCompletion() {
     _navigateWithCheckpoint('scope_completion', const ScopeCompletionScreen());
+  }
+
+  void _openRequirementsImplementation() {
+    _navigateWithCheckpoint('requirements_implementation', const RequirementsImplementationScreen());
   }
 
   void _openDeliverableRoadmap() {
@@ -992,7 +997,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
                 ),
                 if (_designPhaseExpanded) ...[
                   _buildSubMenuItem('Design Management', onTap: _openDesignManagement, isActive: widget.activeItemLabel == 'Design Management'),
-                  _buildSubMenuItem('Requirements Implementation', isActive: widget.activeItemLabel == 'Requirements Implementation'),
+                  _buildSubMenuItem('Requirements Implementation', onTap: _openRequirementsImplementation, isActive: widget.activeItemLabel == 'Requirements Implementation'),
                   _buildSubMenuItem('Technical Alignment', onTap: _openTechnicalAlignment, isActive: widget.activeItemLabel == 'Technical Alignment'),
                   _buildSubMenuItem('Development Set Up', isActive: widget.activeItemLabel == 'Development Set Up'),
                   _buildSubMenuItem('UI/UX Design', onTap: _openUiUxDesign, isActive: widget.activeItemLabel == 'UI/UX Design'),
@@ -1210,6 +1215,9 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     }
     if ('design management'.contains(query)) {
       results.add(_buildMenuItem(Icons.design_services_outlined, 'Design Management', onTap: _openDesignManagement, isActive: widget.activeItemLabel == 'Design Management'));
+    }
+    if ('requirements implementation'.contains(query) || 'requirements'.contains(query) || 'implementation'.contains(query)) {
+      results.add(_buildMenuItem(Icons.checklist_rtl_outlined, 'Requirements Implementation', onTap: _openRequirementsImplementation, isActive: widget.activeItemLabel == 'Requirements Implementation'));
     }
     if ('ui/ux design'.contains(query) || 'ui ux'.contains(query) || 'ux design'.contains(query) || 'user interface'.contains(query) || 'user experience'.contains(query)) {
       results.add(_buildMenuItem(Icons.palette_outlined, 'UI/UX Design', onTap: _openUiUxDesign, isActive: widget.activeItemLabel == 'UI/UX Design'));

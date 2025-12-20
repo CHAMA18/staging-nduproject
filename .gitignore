@@ -3,3 +3,5 @@
 *.hologram.dart
 build/
 lib/services/api_config_secure.dart
+.flutter-plugins
+.flutter-plugins-dependencies

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/screens/landing_screen.dart';
 import 'package:ndu_project/screens/pricing_screen.dart';
-import 'package:ndu_project/screens/admin/admin_dashboard_screen.dart';
+import 'package:ndu_project/screens/admin/admin_home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/services/user_service.dart';
@@ -92,7 +92,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
               
               if (isAdmin) {
                 // Admin users go to Admin Dashboard
-                return const _KeyLoader(child: AdminDashboardScreen());
+                return const _KeyLoader(child: AdminHomeScreen());
               } else {
                 // Client users go to Pricing Screen
                 return const _KeyLoader(child: PricingScreen());

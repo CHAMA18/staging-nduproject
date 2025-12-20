@@ -7,7 +7,7 @@ import 'package:ndu_project/services/project_service.dart';
 import 'package:ndu_project/screens/admin/admin_users_screen.dart';
 import 'package:ndu_project/screens/admin_content_screen.dart';
 import 'package:ndu_project/screens/admin/admin_projects_screen.dart';
-import 'package:ndu_project/screens/admin/admin_dashboard_screen.dart';
+
 import 'package:ndu_project/screens/admin/admin_coupons_screen.dart';
 import 'package:ndu_project/screens/admin/admin_subscription_lookup_screen.dart';
 
@@ -143,14 +143,6 @@ class AdminHomeScreen extends StatelessWidget {
           spacing: 16,
           runSpacing: 16,
           children: [
-            _ActionCard(
-              title: 'Executive Dashboard',
-              description: 'Real-time pulse across every project, program, and portfolio',
-              icon: Icons.dashboard,
-              color: const Color(0xFF1A237E),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminDashboardScreen())),
-              width: cardWidth,
-            ),
             _ActionCard(
               title: 'User Management',
               description: 'View and manage all users, roles, and permissions',

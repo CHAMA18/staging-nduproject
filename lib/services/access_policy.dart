@@ -19,9 +19,10 @@ class AccessPolicy {
   }
 
   /// Whether the provided email is allowed to access when on the admin host.
+  /// Updated: Allow all emails without domain restrictions.
   static bool isEmailAllowedForAdmin(String? email) {
-    if (email == null || email.isEmpty) return false;
-    final e = email.toLowerCase();
-    return e.endsWith('@nduproject.com') || e == 'chungu424@gmail.com';
+    // Previously restricted to @nduproject.com and a specific Gmail address.
+    // Requirement change: include all emails regardless of domain.
+    return (email != null && email.isNotEmpty);
   }
 }

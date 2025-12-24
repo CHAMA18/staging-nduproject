@@ -6,12 +6,8 @@ import 'package:ndu_project/widgets/payment_dialog.dart';
 const Color _pageBackground = Color(0xFFF5F6F8);
 const Color _primaryText = Color(0xFF0F0F0F);
 const Color _secondaryText = Color(0xFF5A5C60);
-
-// Badge colors from screenshot
-const Color _basicProjectColor = Color(0xFF6B3A75); // Purple
-const Color _projectColor = Color(0xFF009688); // Teal
-const Color _programColor = Color(0xFF4CAF50); // Green
-const Color _portfolioColor = Color(0xFFFFC940); // Yellow/Gold
+const Color _themeColor = Color(0xFFF4B400); // Unified golden theme
+const Color _themeSurface = Color(0xFFFFF7E6); // Soft warm backdrop
 
 class PricingScreen extends StatefulWidget {
   const PricingScreen({super.key});
@@ -87,7 +83,7 @@ class _PricingScreenState extends State<PricingScreen> {
     _PricingPlan(
       tier: _PlanTier.basicProject,
       label: 'Basic Project',
-      badgeColor: _basicProjectColor,
+      badgeColor: _themeColor,
       subtitle: 'No Fuss routine project delivered at a fraction of the cost',
       features: [
         'One time Freemium for the 1st month',
@@ -102,7 +98,7 @@ class _PricingScreenState extends State<PricingScreen> {
     _PricingPlan(
       tier: _PlanTier.project,
       label: 'Project',
-      badgeColor: _projectColor,
+      badgeColor: _themeColor,
       subtitle: 'Robust project delivered at an affordable rate',
       features: [
         'Subscription Based.',
@@ -120,7 +116,7 @@ class _PricingScreenState extends State<PricingScreen> {
     _PricingPlan(
       tier: _PlanTier.program,
       label: 'Program',
-      badgeColor: _programColor,
+      badgeColor: _themeColor,
       subtitle: 'Up to 3 projects at a discounted rate with interface management',
       features: [
         'Subscription Based.',
@@ -137,7 +133,7 @@ class _PricingScreenState extends State<PricingScreen> {
     _PricingPlan(
       tier: _PlanTier.portfolio,
       label: 'Portfolio',
-      badgeColor: _portfolioColor,
+      badgeColor: _themeColor,
       subtitle: 'Up to 9 projects at a bulk rate with integrated stewarding',
       features: [
         'Subscription Based.',
@@ -349,77 +345,165 @@ class _PlanColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Badge
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          decoration: BoxDecoration(
-            color: plan.badgeColor,
-            borderRadius: BorderRadius.circular(8),
+    final Color accent = _themeColor;
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: LinearGradient(
+          colors: [
+            _themeSurface,
+            Colors.white,
+            Colors.white.withOpacity(0.9),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(
+          color: isSelected ? accent : Colors.black12,
+          width: isSelected ? 1.4 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 12),
+            spreadRadius: -6,
           ),
-          child: Text(
-            plan.label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
+          if (isSelected)
+            BoxShadow(
+              color: accent.withOpacity(0.14),
+              blurRadius: 26,
+              offset: const Offset(0, 10),
+              spreadRadius: -4,
             ),
-          ),
-        ),
-        const SizedBox(height: 20),
-        // Subtitle
-        Text(
-          plan.subtitle,
-          style: const TextStyle(
-            color: _primaryText,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            height: 1.4,
-          ),
-        ),
-        const SizedBox(height: 16),
-        // Features list
-        ...plan.features.map((feature) => Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              const Text('•  ', style: TextStyle(color: _primaryText, fontSize: 13)),
-              Expanded(
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [accent, accent.withOpacity(0.85)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: accent.withOpacity(0.25),
+                      blurRadius: 14,
+                      offset: const Offset(0, 8),
+                      spreadRadius: -6,
+                    ),
+                  ],
+                ),
                 child: Text(
-                  feature,
+                  plan.label,
                   style: const TextStyle(
-                    color: _primaryText,
-                    fontSize: 13,
-                    height: 1.4,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    letterSpacing: 0.1,
                   ),
                 ),
               ),
+              const Spacer(),
+              if (isSelected)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: accent.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: accent.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.check_circle, color: _themeColor, size: 16),
+                      SizedBox(width: 6),
+                      Text(
+                        'Chosen',
+                        style: TextStyle(
+                          color: _themeColor,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
-        )),
-        const SizedBox(height: 16),
-        // Select button
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton(
-            onPressed: onSelect,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: isSelected ? Colors.white : plan.badgeColor,
-              backgroundColor: isSelected ? plan.badgeColor : Colors.transparent,
-              side: BorderSide(color: plan.badgeColor, width: 1.5),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: Text(
-              isSelected ? 'Selected' : 'Select Plan',
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          const SizedBox(height: 16),
+          Text(
+            plan.subtitle,
+            style: const TextStyle(
+              color: _primaryText,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              height: 1.5,
+              letterSpacing: -0.1,
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: 16),
+          ...plan.features.map((feature) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.only(top: 4),
+                      height: 10,
+                      width: 10,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [accent, accent.withOpacity(0.7)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        feature,
+                        style: const TextStyle(
+                          color: _primaryText,
+                          fontSize: 13,
+                          height: 1.45,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: onSelect,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isSelected ? accent : Colors.white,
+                foregroundColor: isSelected ? Colors.white : accent,
+                elevation: isSelected ? 8 : 2,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: accent, width: 1.4),
+                ),
+                textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                shadowColor: accent.withOpacity(isSelected ? 0.3 : 0.15),
+              ),
+              child: Text(isSelected ? 'Selected' : 'Select Plan'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

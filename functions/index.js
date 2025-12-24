@@ -4,6 +4,7 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 
 const db = admin.firestore();
+const APP_BASE_URL = 'https://ndu-d3f60.web.app';
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -47,6 +48,10 @@ function setCorsHeaders(req, res) {
   }
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+}
+
+function getRequestOrigin(req) {
+  return req.headers.origin || APP_BASE_URL;
 }
 
 /**
@@ -245,6 +250,7 @@ exports.createStripeCheckout = functions
       });
       
       // Call Stripe API to create checkout session
+      const origin = getRequestOrigin(req);
       const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
         method: 'POST',
         headers: {
@@ -258,8 +264,8 @@ exports.createStripeCheckout = functions
           'line_items[0][price_data][unit_amount]': priceInCents.toString(),
           'line_items[0][quantity]': '1',
           'mode': 'payment',
-          'success_url': `${req.headers.origin || 'https://app.example.com'}/payment-success?session_id={CHECKOUT_SESSION_ID}&subscription_id=${subscriptionRef.id}`,
-          'cancel_url': `${req.headers.origin || 'https://app.example.com'}/pricing`,
+          'success_url': `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&subscription_id=${subscriptionRef.id}`,
+          'cancel_url': `${origin}/pricing`,
           'customer_email': email,
           'metadata[subscription_id]': subscriptionRef.id,
           'metadata[user_id]': userId,
@@ -464,6 +470,7 @@ exports.createPayPalOrder = functions
       }
       
       // Create PayPal order
+      const origin = getRequestOrigin(req);
       const orderResponse = await fetch('https://api-m.paypal.com/v2/checkout/orders', {
         method: 'POST',
         headers: {
@@ -481,8 +488,8 @@ exports.createPayPalOrder = functions
             custom_id: subscriptionRef.id
           }],
           application_context: {
-            return_url: `${req.headers.origin || 'https://app.example.com'}/payment-success?subscription_id=${subscriptionRef.id}`,
-            cancel_url: `${req.headers.origin || 'https://app.example.com'}/pricing`
+            return_url: `${origin}/payment-success?subscription_id=${subscriptionRef.id}`,
+            cancel_url: `${origin}/pricing`
           }
         })
       });
@@ -686,6 +693,7 @@ exports.createPaystackTransaction = functions
       });
       
       // Initialize Paystack transaction
+      const origin = getRequestOrigin(req);
       const response = await fetch('https://api.paystack.co/transaction/initialize', {
         method: 'POST',
         headers: {
@@ -697,7 +705,7 @@ exports.createPaystackTransaction = functions
           amount: priceInKobo,
           currency: 'USD',
           reference: subscriptionRef.id,
-          callback_url: `${req.headers.origin || 'https://app.example.com'}/payment-success`,
+          callback_url: `${origin}/payment-success`,
           metadata: {
             subscription_id: subscriptionRef.id,
             user_id: userId,

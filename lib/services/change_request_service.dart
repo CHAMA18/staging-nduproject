@@ -31,7 +31,7 @@ class ChangeRequest {
   static ChangeRequest fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
 
-    DateTime _parseDate(dynamic value, {required String fieldName}) {
+    DateTime parseDate(dynamic value, {required String fieldName}) {
       try {
         if (value == null) return DateTime.fromMillisecondsSinceEpoch(0);
         if (value is Timestamp) return value.toDate();
@@ -72,8 +72,8 @@ class ChangeRequest {
       return DateTime.now();
     }
 
-    final requestDate = _parseDate(data['requestDate'], fieldName: 'requestDate');
-    final createdAt = _parseDate(data['createdAt'], fieldName: 'createdAt');
+    final requestDate = parseDate(data['requestDate'], fieldName: 'requestDate');
+    final createdAt = parseDate(data['createdAt'], fieldName: 'createdAt');
 
     return ChangeRequest(
       id: doc.id,

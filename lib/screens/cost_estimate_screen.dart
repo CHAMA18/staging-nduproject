@@ -838,5 +838,5 @@ String formatCurrency(double value) {
     RegExp(r'(?<!^)(?=(\d{3})+(?!\d))'),
     (match) => ',',
   );
-  return "\$${whole}.${parts.last}";
+  return "\$$whole.${parts.last}";
 }

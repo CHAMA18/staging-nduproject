@@ -195,7 +195,7 @@ class _FrontEndPlanningRequirementsScreenState extends State<FrontEndPlanningReq
               _th('Comments', headerStyle),
             ],
           ),
-          ..._rows.map((r) => r.buildRow(context)).toList(),
+          ..._rows.map((r) => r.buildRow(context)),
         ],
       ),
     );

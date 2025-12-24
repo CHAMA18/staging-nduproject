@@ -101,7 +101,7 @@ class _ArchitectureCanvasState extends State<ArchitectureCanvas> {
           LayoutBuilder(
             builder: (context, constraints) {
               return DragTarget<Object>(
-                onWillAccept: (data) => true,
+                onWillAcceptWithDetails: (data) => true,
                 onAcceptWithDetails: (details) {
                   final box = context.findRenderObject() as RenderBox?;
                   if (box == null) return;

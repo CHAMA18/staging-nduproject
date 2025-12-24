@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/widgets/header_banner_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:ndu_project/widgets/app_logo.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/auth_nav.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';

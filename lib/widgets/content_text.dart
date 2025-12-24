@@ -255,7 +255,7 @@ class _ContentEditDialogState extends State<_ContentEditDialog> {
 
     try {
       // Check if content exists in Firestore
-      final allContent = await widget.provider.contentCache;
+      final allContent = widget.provider.contentCache;
       final existingId = await _findContentId(widget.contentKey);
 
       if (existingId != null) {

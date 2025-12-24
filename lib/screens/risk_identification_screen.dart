@@ -325,13 +325,13 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
                 const CircleAvatar(
                   radius: 20,
                   backgroundColor: Color(0xFFFFD700),
-                  child: const Icon(Icons.person_outline, color: Colors.black87),
+                  child: Icon(Icons.person_outline, color: Colors.black87),
                 ),
                 const SizedBox(width: 12),
                 const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('StackOne', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black)),
+                    Text('StackOne', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black)),
                   ],
                 )
               ],
@@ -391,7 +391,7 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
               leading: const CircleAvatar(
                 radius: 18,
                 backgroundColor: Color(0xFFFFD700),
-                child: const Icon(Icons.person_outline, color: Colors.black87),
+                child: Icon(Icons.person_outline, color: Colors.black87),
               ),
               title: const Text('StackOne'),
             ),

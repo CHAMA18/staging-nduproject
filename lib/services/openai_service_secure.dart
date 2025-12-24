@@ -200,7 +200,7 @@ class OpenAiServiceSecure {
     if (!OpenAiConfig.isConfigured) {
       // Fallback: extract a few most relevant lines heuristically
       final lines = trimmedContext.split('\n').where((l) => l.trim().isNotEmpty).take(14).toList();
-      return '${section.trim()} Plan:\n' + lines.join('\n');
+      return '${section.trim()} Plan:\n${lines.join('\n')}';
     }
 
     final uri = OpenAiConfig.chatUri();
@@ -247,7 +247,7 @@ class OpenAiServiceSecure {
     } catch (e) {
       // Silent degrade to a compact fallback using the context head
       final lines = trimmedContext.split('\n').where((l) => l.trim().isNotEmpty).take(10).toList();
-      return '${section.trim()} Notes:\n' + lines.join('\n');
+      return '${section.trim()} Notes:\n${lines.join('\n')}';
     }
   }
 

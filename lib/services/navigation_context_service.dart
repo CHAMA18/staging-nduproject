@@ -2,8 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
-import '../routing/app_router.dart';
-import 'access_policy.dart';
 
 /// Tracks the last visited dashboard context for both client and admin
 /// surfaces, so clicking the brand logo can take the user to the most

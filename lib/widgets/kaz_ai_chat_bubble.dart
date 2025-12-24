@@ -303,7 +303,7 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
-                      color: scheme.surfaceVariant.withValues(alpha: 0.5),
+                      color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -440,7 +440,7 @@ class _ChatBubble extends StatelessWidget {
               decoration: BoxDecoration(
                 color: message.isUser
                     ? scheme.primary.withValues(alpha: 0.15)
-                    : scheme.surfaceVariant.withValues(alpha: 0.5),
+                    : scheme.surfaceContainerHighest.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(20),
                   topRight: const Radius.circular(20),

@@ -24,7 +24,6 @@ import 'package:ndu_project/screens/settings_screen.dart';
 import 'package:ndu_project/screens/cost_analysis_screen.dart';
 import 'package:ndu_project/screens/preferred_solution_analysis_screen.dart';
 import 'package:ndu_project/screens/home_screen.dart';
-import 'package:ndu_project/screens/cost_analysis_screen.dart';
 
 class ITConsiderationsScreen extends StatefulWidget {
   final String notes;

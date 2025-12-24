@@ -303,7 +303,7 @@ class _NewChangeRequestDialogState extends State<NewChangeRequestDialog> {
   Widget _dropdownField(String label, {required String? value, required List<String> items, required ValueChanged<String?> onChanged}) {
     return DropdownButtonFormField<String>(
       isExpanded: true,
-      value: value,
+      initialValue: value,
       items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
       onChanged: onChanged,
       validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,

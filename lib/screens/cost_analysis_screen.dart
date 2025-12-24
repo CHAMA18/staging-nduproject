@@ -904,7 +904,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen> with SingleTick
 
   Widget _buildMainContent() {
     final isMobile = AppBreakpoints.isMobile(context);
-    final horizonLabel = '${_npvHorizon}-year';
+    final horizonLabel = '$_npvHorizon-year';
     final horizontalPadding = AppBreakpoints.pagePadding(context);
     final contentPadding = EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, horizontalPadding);
     return Column(
@@ -1638,7 +1638,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen> with SingleTick
               const Text('Basis Frequency', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
-                value: _basisFrequency,
+                initialValue: _basisFrequency,
                 items: _frequencyOptions.map((f) => DropdownMenuItem(value: f, child: Text(f))).toList(),
                 onChanged: (value) {
                   if (value != null) setState(() => _basisFrequency = value);
@@ -2343,7 +2343,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen> with SingleTick
         Expanded(
           flex: 3,
           child: DropdownButtonFormField<String>(
-            value: entry.categoryKey,
+            initialValue: entry.categoryKey,
             items: categoryItems,
             onChanged: (value) {
               if (value == null) return;
@@ -2941,7 +2941,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen> with SingleTick
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
-                _formatCurrencyValue(summary!.valueTotal),
+                _formatCurrencyValue(summary.valueTotal),
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -3725,7 +3725,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen> with SingleTick
                     children: [
                       for (final item in ideasMap[field.key]!.take(20))
                         ActionChip(
-                          label: Text('${item.item}${item.estimatedCost > 0 ? ' • ' + _formatCurrencyValue(item.estimatedCost) : ''}', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
+                          label: Text('${item.item}${item.estimatedCost > 0 ? ' • ${_formatCurrencyValue(item.estimatedCost)}' : ''}', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
                           avatar: const Icon(Icons.add, size: 16),
                           onPressed: () => _applyIdeaToCategory(solutionIndex, field.key, item),
                         ),
@@ -3770,7 +3770,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen> with SingleTick
             const Expanded(flex: 4, child: Text('Solution', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
             const Expanded(flex: 2, child: Center(child: Text('ROI', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)))),
             const SizedBox(width: 16),
-            Expanded(flex: 2, child: Align(alignment: Alignment.centerRight, child: Text('NPV (${horizon}-yr)', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)))),
+            Expanded(flex: 2, child: Align(alignment: Alignment.centerRight, child: Text('NPV ($horizon-yr)', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)))),
             const SizedBox(width: 16),
             const Expanded(flex: 2, child: Center(child: Text('IRR', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)))),
             const SizedBox(width: 16),
@@ -4069,9 +4069,9 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen> with SingleTick
     // values entered in the 'Initial cost estimate' table for this solution.
     // We therefore prioritise the itemized table total; if missing, fall back to
     // any legacy/category totals.
-    final double _initialItemsTotal = _solutionTotalCost(index);
-    final double _fallbackCategoryTotal = _initialCostEstimateTotalFor(index);
-    final double totalCost = _initialItemsTotal > 0 ? _initialItemsTotal : _fallbackCategoryTotal;
+    final double initialItemsTotal = _solutionTotalCost(index);
+    final double fallbackCategoryTotal = _initialCostEstimateTotalFor(index);
+    final double totalCost = initialItemsTotal > 0 ? initialItemsTotal : fallbackCategoryTotal;
     // Only calculate NPV and ROI if Initial Project Value is set
     final double totalNpv = valueSetupSnapshot != null ? (valueSetupSnapshot.npv ?? 0) : 0;
     final double avgRoi = valueSetupSnapshot != null ? (valueSetupSnapshot.averageRoi ?? 0) : 0;
@@ -4131,7 +4131,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen> with SingleTick
           Text(helper, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
           const SizedBox(height: 16),
           Row(children: [
-            Expanded(child: _summaryMetric(label: 'NPV (${_npvHorizon}-year)', value: _formatCurrencyValue(totalNpv))),
+            Expanded(child: _summaryMetric(label: 'NPV ($_npvHorizon-year)', value: _formatCurrencyValue(totalNpv))),
             const SizedBox(width: 12),
             Expanded(child: _summaryMetric(label: 'Average ROI', value: _formatPercentValue(avgRoi))),
           ]),
@@ -4304,7 +4304,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen> with SingleTick
   Widget _assumptionSelector({required String label, required int value, required List<_QualitativeOption> options, required ValueChanged<int> onChanged}) {
     final boundedValue = _boundedIndex(value, options.length);
     return DropdownButtonFormField<int>(
-      value: boundedValue,
+      initialValue: boundedValue,
       itemHeight: null, // allow multi-line menu entries without overflow
       menuMaxHeight: 320,
       decoration: InputDecoration(
@@ -4789,7 +4789,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen> with SingleTick
 
   // Categorize a cost item into a Project Value category using simple keyword heuristics
   String _categoryForItem(AiCostItem it) {
-    final text = (it.item + ' ' + it.description).toLowerCase();
+    final text = ('${it.item} ${it.description}').toLowerCase();
     bool hasAny(List<String> keys) => keys.any((k) => text.contains(k));
     if (hasAny(['revenue', 'sales', 'uplift', 'growth', 'gross margin', 'pricing', 'income'])) {
       return 'revenue';
@@ -4847,7 +4847,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen> with SingleTick
         costCtrl.text = t.toStringAsFixed(t % 1 == 0 ? 0 : 2);
       }
       if (!hasUserNotes && (notes[key]?.isNotEmpty ?? false)) {
-        noteCtrl.text = 'AI-seeded items: ' + notes[key]!.take(6).join(', ');
+        noteCtrl.text = 'AI-seeded items: ${notes[key]!.take(6).join(', ')}';
       }
     }
     setState(() {});
@@ -4916,7 +4916,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen> with SingleTick
       final existing = entry.notesController.text.trim();
       final bullet = item.item.trim();
       final sep = existing.isEmpty ? '' : '\n';
-      entry.notesController.text = existing + sep + '• ' + bullet;
+      entry.notesController.text = '$existing$sep• $bullet';
       final cur = _parseCurrencyInput(entry.costController.text.trim());
       final add = item.estimatedCost.isFinite ? item.estimatedCost : 0;
       final next = (cur + add);
@@ -5586,9 +5586,9 @@ class _CostRow {
     final abs = v.abs();
     String s;
     if (abs >= 1000000000) {
-      s = (v / 1000000000).toStringAsFixed(2) + 'B';
+      s = '${(v / 1000000000).toStringAsFixed(2)}B';
     } else if (abs >= 1000000) {
-      s = (v / 1000000).toStringAsFixed(2) + 'M';
+      s = '${(v / 1000000).toStringAsFixed(2)}M';
     } else if (abs >= 1000) {
       s = _thousands(v);
     } else {
@@ -5608,7 +5608,7 @@ class _CostRow {
       buffer.write(intPart[i]);
       if (reverseIndex % 3 == 0 && i != intPart.length - 1) buffer.write(',');
     }
-    return buffer.toString() + '.' + decPart;
+    return '$buffer.$decPart';
   }
 
   void dispose() {
@@ -5629,7 +5629,7 @@ class _SolutionCostContext {
   bool autoGenerated = true;
   bool _updating = false;
 
-  _SolutionCostContext({this.resourceIndex = 1, this.timelineIndex = 1, this.complexityIndex = 1}) {
+  _SolutionCostContext({this.timelineIndex = 1}) {
     justificationController.addListener(_handleEdit);
   }
 

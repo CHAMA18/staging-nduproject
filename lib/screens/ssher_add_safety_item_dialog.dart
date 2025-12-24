@@ -79,7 +79,7 @@ class _AddSsherItemDialogState extends State<AddSsherItemDialog> {
       labelText: label,
       labelStyle: labelStyle,
       filled: true,
-      fillColor: Color.alphaBlend(colorScheme.primary.withOpacity(0.04), colorScheme.surfaceVariant.withOpacity(theme.brightness == Brightness.light ? 0.65 : 0.35)),
+      fillColor: Color.alphaBlend(colorScheme.primary.withOpacity(0.04), colorScheme.surfaceContainerHighest.withOpacity(theme.brightness == Brightness.light ? 0.65 : 0.35)),
       border: OutlineInputBorder(borderRadius: borderRadius, borderSide: BorderSide(color: outlineColor)),
       enabledBorder: OutlineInputBorder(borderRadius: borderRadius, borderSide: BorderSide(color: outlineColor)),
       focusedBorder: OutlineInputBorder(borderRadius: borderRadius, borderSide: BorderSide(color: widget.accentColor, width: 1.5)),
@@ -200,7 +200,7 @@ class _AddSsherItemDialogState extends State<AddSsherItemDialog> {
     return [
       Expanded(
         child: DropdownButtonFormField<String>(
-          value: _department,
+          initialValue: _department,
           items: [
             for (final option in widget.departmentOptions)
               DropdownMenuItem(value: option, child: Text(option)),
@@ -223,7 +223,7 @@ class _AddSsherItemDialogState extends State<AddSsherItemDialog> {
       const SizedBox(width: 12),
       Expanded(
         child: DropdownButtonFormField<String>(
-          value: _riskLevel,
+          initialValue: _riskLevel,
           items: const [
             DropdownMenuItem(value: 'Low', child: Text('Low')),
             DropdownMenuItem(value: 'Medium', child: Text('Medium')),

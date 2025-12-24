@@ -37,7 +37,7 @@ class ProgramService {
           final programs = <ProgramModel>[];
           for (final doc in snapshot.docs) {
             try {
-              if (doc.exists && doc.data() != null) {
+              if (doc.exists) {
                 programs.add(ProgramModel.fromFirestore(doc));
               }
             } catch (e) {

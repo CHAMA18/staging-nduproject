@@ -458,7 +458,7 @@ class _ProjectIssuesLogCard extends StatelessWidget {
                   ),
                 ),
                 const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
-                ...entries.map((entry) => _IssueLogRow(entry: entry, columnFlex: _columnFlex)).toList(),
+                ...entries.map((entry) => _IssueLogRow(entry: entry, columnFlex: _columnFlex)),
               ],
             ),
           ),

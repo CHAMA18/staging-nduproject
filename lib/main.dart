@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:ndu_project/theme.dart';
 import 'package:ndu_project/app_strings.dart';
-import 'package:ndu_project/screens/auth_wrapper.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:ndu_project/firebase_options.dart';
 import 'package:ndu_project/services/api_key_manager.dart';

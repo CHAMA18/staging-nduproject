@@ -1,6 +1,7 @@
 /// Finance utility functions for core metrics.
 /// Note: In this app, detailed time-series cashflows are not always available.
 /// These helpers provide generic calculations and safe fallbacks.
+library;
 
 import 'dart:math' as math;
 

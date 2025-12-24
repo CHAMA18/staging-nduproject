@@ -360,8 +360,8 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
           const SizedBox(height: 8),
           // DragTarget to add new output docs from the Component Library
           DragTarget<ArchitectureDragPayload>(
-            onWillAccept: (_) => true,
-            onAccept: (payload) {
+            onWillAcceptWithDetails: (_) => true,
+            onAcceptWithDetails: (payload) {
               setState(() {
                 _outputDocs.add(_DocItem(payload.label, icon: payload.icon ?? Icons.insert_drive_file_outlined, color: Colors.blueGrey));
               });
@@ -396,7 +396,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
     );
   }
 
-  Widget _buildDocItem(String title, {bool isActive = false, IconData? icon, Color? color, bool isBlue = false}) {
+  Widget _buildDocItem(String title, {IconData? icon, Color? color, bool isBlue = false}) {
     // Legacy static builder (kept for reference)
     return Container(
       margin: const EdgeInsets.only(bottom: 4),

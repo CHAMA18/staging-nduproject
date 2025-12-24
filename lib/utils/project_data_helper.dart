@@ -76,7 +76,7 @@ class ProjectDataHelper {
         final desc = (g.description).trim();
         final year = (g.targetYear).trim();
         if (title.isEmpty && desc.isEmpty && year.isEmpty) continue;
-        buf.writeln('- ${title.isEmpty ? 'Goal ${g.goalNumber}' : title} (${year.isEmpty ? 'n/a' : year}): ${desc}');
+        buf.writeln('- ${title.isEmpty ? 'Goal ${g.goalNumber}' : title} (${year.isEmpty ? 'n/a' : year}): $desc');
       }
       buf.writeln();
     }

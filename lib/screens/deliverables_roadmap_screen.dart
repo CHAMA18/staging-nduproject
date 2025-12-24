@@ -568,7 +568,7 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<_DeliverableStatus>(
-                        value: selectedStatus,
+                        initialValue: selectedStatus,
                         decoration: const InputDecoration(labelText: 'Status'),
                         items: _DeliverableStatus.values
                             .map(

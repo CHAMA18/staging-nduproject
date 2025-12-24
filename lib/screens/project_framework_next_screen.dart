@@ -78,9 +78,15 @@ class _ProjectFrameworkNextScreenState extends State<ProjectFrameworkNextScreen>
 
   @override
   void dispose() {
-    for (var c in _goalTitleControllers) c.dispose();
-    for (var c in _goalDescControllers) c.dispose();
-    for (var c in _goalYearControllers) c.dispose();
+    for (var c in _goalTitleControllers) {
+      c.dispose();
+    }
+    for (var c in _goalDescControllers) {
+      c.dispose();
+    }
+    for (var c in _goalYearControllers) {
+      c.dispose();
+    }
     for (var milestones in _goalMilestones) {
       for (var m in milestones) {
         m.dispose();

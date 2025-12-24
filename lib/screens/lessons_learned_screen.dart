@@ -931,7 +931,7 @@ class _AddLessonDialogState extends State<_AddLessonDialog> {
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: _selectedType,
+                          initialValue: _selectedType,
                           decoration: _inputDecoration('Type'),
                           items: const [
                             DropdownMenuItem(value: 'Success', child: Text('Success')),
@@ -948,7 +948,7 @@ class _AddLessonDialogState extends State<_AddLessonDialog> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: _selectedImpact,
+                          initialValue: _selectedImpact,
                           decoration: _inputDecoration('Impact'),
                           items: const [
                             DropdownMenuItem(value: 'High', child: Text('High')),

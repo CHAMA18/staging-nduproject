@@ -2,18 +2,12 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:ndu_project/widgets/app_logo.dart';
-import 'package:ndu_project/screens/change_management_screen.dart';
-import 'package:ndu_project/screens/home_screen.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
-import 'package:ndu_project/screens/lessons_learned_screen.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
-import 'package:ndu_project/widgets/content_text.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/screens/stakeholder_management_screen.dart';
-import 'package:ndu_project/services/firebase_auth_service.dart';
 
 class TeamManagementScreen extends StatelessWidget {
   const TeamManagementScreen({super.key});

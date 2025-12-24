@@ -94,7 +94,7 @@ We reserve the right to suspend or terminate accounts that violate these terms.'
 • Infringe upon the intellectual property rights of others.
 • Transmit harmful, offensive, or illegal content.
 • Attempt to gain unauthorized access to our systems.
-• Interfere with or disrupt the Platform\'s operation.
+• Interfere with or disrupt the Platform's operation.
 • Use automated means to access the Platform without permission.
 • Impersonate any person or entity.
 • Engage in any activity that could damage our reputation or business.''',

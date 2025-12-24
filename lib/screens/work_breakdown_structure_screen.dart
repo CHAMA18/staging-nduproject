@@ -133,7 +133,7 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<_GoalStatus>(
-                          value: selectedStatus,
+                          initialValue: selectedStatus,
                           decoration: const InputDecoration(labelText: 'Status'),
                           items: _GoalStatus.values
                               .map(
@@ -198,7 +198,7 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
     return SizedBox(
       width: 160,
       child: DropdownButtonFormField<String>(
-        value: value,
+        initialValue: value,
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.white,

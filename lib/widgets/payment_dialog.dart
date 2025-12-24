@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/services/subscription_service.dart';
-import 'package:ndu_project/services/coupon_service.dart';
-import 'package:ndu_project/models/coupon_model.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const Color _pageBackground = Color(0xFFF5F6F8);
@@ -54,7 +52,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
   
   // Coupon state
   final _couponController = TextEditingController();
-  CouponModel? _appliedCoupon;
+  AppliedCouponResult? _appliedCoupon;
   bool _isValidatingCoupon = false;
   String? _couponError;
 
@@ -66,10 +64,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
     return double.tryParse(priceStr) ?? 0;
   }
   
-  double get _finalPrice {
-    if (_appliedCoupon == null) return _originalPrice;
-    return CouponService.calculateDiscountedPrice(_originalPrice, _appliedCoupon!);
-  }
+  double get _finalPrice => _appliedCoupon?.discountedPrice ?? _originalPrice;
 
   @override
   void initState() {
@@ -95,27 +90,27 @@ class _PaymentDialogState extends State<PaymentDialog> {
       _couponError = null;
     });
 
-    try {
-      final coupon = await CouponService.validateCoupon(code, widget.tier.name);
-      
-      if (coupon == null) {
-        setState(() {
-          _isValidatingCoupon = false;
-          _couponError = 'Invalid or expired coupon code';
-        });
-      } else {
-        setState(() {
-          _isValidatingCoupon = false;
-          _appliedCoupon = coupon;
-          _couponError = null;
-        });
-      }
-    } catch (e) {
+    final applied = await SubscriptionService.applyCoupon(
+      couponCode: code,
+      tier: widget.tier,
+      originalPrice: _originalPrice,
+    );
+
+    if (!mounted) return;
+
+    if (applied == null) {
       setState(() {
         _isValidatingCoupon = false;
-        _couponError = 'Error validating coupon';
+        _couponError = 'Invalid or expired coupon code';
       });
+      return;
     }
+
+    setState(() {
+      _isValidatingCoupon = false;
+      _appliedCoupon = applied;
+      _couponError = null;
+    });
   }
 
   void _removeCoupon() {
@@ -185,18 +180,21 @@ class _PaymentDialogState extends State<PaymentDialog> {
           result = await SubscriptionService.initiateStripePayment(
             tier: widget.tier,
             isAnnual: widget.isAnnual,
+            couponCode: _appliedCoupon?.code,
           );
           break;
         case PaymentProvider.paypal:
           result = await SubscriptionService.initiatePayPalPayment(
             tier: widget.tier,
             isAnnual: widget.isAnnual,
+            couponCode: _appliedCoupon?.code,
           );
           break;
         case PaymentProvider.paystack:
           result = await SubscriptionService.initiatePaystackPayment(
             tier: widget.tier,
             isAnnual: widget.isAnnual,
+            couponCode: _appliedCoupon?.code,
           );
           break;
       }
@@ -409,18 +407,18 @@ class _PaymentDialogState extends State<PaymentDialog> {
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: const Color(0xFF22C55E).withValues(alpha: 0.3)),
                         ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.local_offer, color: Color(0xFF16A34A), size: 16),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                '${_appliedCoupon!.code} - ${_appliedCoupon!.discountPercent.toStringAsFixed(0)}% OFF',
-                                style: const TextStyle(
-                                  color: Color(0xFF16A34A),
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.local_offer, color: Color(0xFF16A34A), size: 16),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '${_appliedCoupon!.code} - ${_appliedCoupon!.discountPercent > 0 ? '${_appliedCoupon!.discountPercent.toStringAsFixed(0)}% OFF' : '\$${_appliedCoupon!.discountAmount.toStringAsFixed(0)} OFF'}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF16A34A),
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
                               ),
                             ),
                             InkWell(

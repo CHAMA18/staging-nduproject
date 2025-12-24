@@ -1,4 +1,3 @@
-import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -42,7 +41,6 @@ import 'package:ndu_project/screens/front_end_planning_security.dart';
 
 // Project/Process cluster
 import 'package:ndu_project/screens/project_plan_screen.dart';
-import 'package:ndu_project/screens/project_framework_screen.dart';
 import 'package:ndu_project/screens/project_framework_next_screen.dart';
 import 'package:ndu_project/screens/project_charter_screen.dart';
 import 'package:ndu_project/screens/project_decision_summary_screen.dart';
@@ -103,7 +101,6 @@ import 'package:ndu_project/screens/ssher_screen_1.dart';
 import 'package:ndu_project/screens/ssher_screen_2.dart';
 import 'package:ndu_project/screens/ssher_screen_3.dart';
 import 'package:ndu_project/screens/ssher_screen_4.dart';
-import 'package:ndu_project/screens/ssher_safety_full_view.dart';
 
 // Admin (used in admin main entry)
 import 'package:ndu_project/screens/admin/admin_home_screen.dart';

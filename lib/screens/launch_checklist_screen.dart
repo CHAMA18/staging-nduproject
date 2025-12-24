@@ -1304,7 +1304,7 @@ class _TableHeader extends StatelessWidget {
 }
 
 class _StatusPill extends StatelessWidget {
-  const _StatusPill(this.status, {super.key});
+  const _StatusPill(this.status);
 
   final String status;
 

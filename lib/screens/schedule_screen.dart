@@ -659,7 +659,7 @@ class _WbsTreeTile extends StatelessWidget {
           ),
         ),
         if (node.children.isNotEmpty)
-          ...node.children.map((child) => _WbsTreeTile(node: child, level: level + 1)).toList(),
+          ...node.children.map((child) => _WbsTreeTile(node: child, level: level + 1)),
       ],
     );
   }
@@ -1182,7 +1182,6 @@ class _BadgeStyle {
     required this.label,
     required this.textColor,
     required this.backgroundColor,
-    this.borderColor,
   });
 
   final String label;

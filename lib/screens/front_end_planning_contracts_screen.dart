@@ -1193,7 +1193,7 @@ class _QuoteRowData {
 }
 
 class _LabeledField extends StatelessWidget {
-  const _LabeledField({required this.label, required this.child, this.helper});
+  const _LabeledField({required this.label, required this.child});
 
   final String label;
   final Widget child;
@@ -1287,7 +1287,7 @@ class _ContractDropdownField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       onChanged: onChanged,
       validator: validator,
       items: items
@@ -1515,7 +1515,7 @@ class _NotesField extends StatelessWidget {
 }
 
 class _TimelineSection extends StatefulWidget {
-  _TimelineSection();
+  const _TimelineSection();
 
   @override
   State<_TimelineSection> createState() => _TimelineSectionState();
@@ -2469,7 +2469,7 @@ class _ContractingStatusScreenState extends State<ContractingStatusScreen> {
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 220),
                             child: DropdownButtonFormField<String>(
-                              value: _selectedView,
+                              initialValue: _selectedView,
                               items: const [
                                 DropdownMenuItem(value: 'Overview', child: Text('Overview')),
                                 DropdownMenuItem(value: 'Contractors', child: Text('Contractors')),
@@ -3822,7 +3822,7 @@ class _ContractorStatusDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
-      value: selectedStatus,
+      initialValue: selectedStatus,
       items: _ContractorsDirectorySection._statusFilters
           .map((status) => DropdownMenuItem(value: status, child: Text(status)))
           .toList(),
@@ -4231,7 +4231,7 @@ class _ContractExecutionSection extends StatelessWidget {
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 300),
                 child: DropdownButtonFormField<String>(
-                  value: selectedContract,
+                  initialValue: selectedContract,
                   onChanged: (value) => onContractChanged(value ?? selectedContract),
                   items: const [
                     DropdownMenuItem(value: 'Engineering Services Contract', child: Text('Engineering Services Contract')),

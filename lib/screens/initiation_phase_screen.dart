@@ -3,23 +3,12 @@ import 'dart:math' as Math;
 
 import 'package:flutter/material.dart';
 import 'package:ndu_project/widgets/header_banner_image.dart';
-import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
-import 'package:ndu_project/providers/project_data_provider.dart';
-import 'package:ndu_project/screens/design_phase_screen.dart';
-import 'package:ndu_project/screens/execution_plan_screen.dart';
-import 'package:ndu_project/screens/front_end_planning_screen.dart';
 import 'package:ndu_project/screens/potential_solutions_screen.dart';
 import 'package:ndu_project/screens/preferred_solution_analysis_screen.dart';
-import 'package:ndu_project/screens/project_charter_screen.dart';
-import 'package:ndu_project/theme.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
-import '../routing/app_router.dart';
 import '../widgets/content_text.dart';
-import '../services/openai_service_secure.dart';
-import '../services/project_navigation_service.dart';
 import '../services/auth_nav.dart';
 import '../openai/openai_config.dart';
 // Removed AppLogo from header per request
@@ -30,16 +19,11 @@ import 'package:ndu_project/screens/it_considerations_screen.dart';
 import 'package:ndu_project/screens/infrastructure_considerations_screen.dart';
 import 'package:ndu_project/screens/core_stakeholders_screen.dart';
 import 'package:ndu_project/screens/cost_analysis_screen.dart';
-import 'package:ndu_project/screens/preferred_solution_analysis_screen.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
-import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
-import 'package:ndu_project/widgets/content_text.dart';
 import 'package:ndu_project/widgets/business_case_header.dart';
 import 'package:ndu_project/widgets/business_case_navigation_buttons.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
-import 'package:ndu_project/models/project_data_model.dart';
-import 'package:ndu_project/providers/project_data_provider.dart';
 
 class InitiationPhaseScreen extends StatefulWidget {
   final bool scrollToBusinessCase;

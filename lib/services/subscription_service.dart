@@ -334,6 +334,7 @@ class SubscriptionService {
   static Future<PaymentResult> initiateStripePayment({
     required SubscriptionTier tier,
     required bool isAnnual,
+    String? couponCode,
   }) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -353,6 +354,7 @@ class SubscriptionService {
           'isAnnual': isAnnual,
           'userId': user.uid,
           'email': user.email,
+          if (couponCode != null && couponCode.isNotEmpty) 'couponCode': couponCode,
         }),
       );
 
@@ -380,6 +382,7 @@ class SubscriptionService {
   static Future<PaymentResult> initiatePayPalPayment({
     required SubscriptionTier tier,
     required bool isAnnual,
+    String? couponCode,
   }) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -399,6 +402,7 @@ class SubscriptionService {
           'isAnnual': isAnnual,
           'userId': user.uid,
           'email': user.email,
+          if (couponCode != null && couponCode.isNotEmpty) 'couponCode': couponCode,
         }),
       );
 
@@ -426,6 +430,7 @@ class SubscriptionService {
   static Future<PaymentResult> initiatePaystackPayment({
     required SubscriptionTier tier,
     required bool isAnnual,
+    String? couponCode,
   }) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -445,6 +450,7 @@ class SubscriptionService {
           'isAnnual': isAnnual,
           'userId': user.uid,
           'email': user.email,
+          if (couponCode != null && couponCode.isNotEmpty) 'couponCode': couponCode,
         }),
       );
 
@@ -611,6 +617,66 @@ class SubscriptionService {
       return [];
     }
   }
+
+  /// Validate and apply a coupon server-side (works across all providers)
+  static Future<AppliedCouponResult?> applyCoupon({
+    required String couponCode,
+    required SubscriptionTier tier,
+    required double originalPrice,
+  }) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return null;
+
+      final idToken = await user.getIdToken();
+      final response = await http.post(
+        Uri.parse('$_cloudFunctionsBaseUrl/applyCoupon'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $idToken',
+        },
+        body: jsonEncode({
+          'couponCode': couponCode,
+          'tier': tier.name,
+          'originalPrice': originalPrice,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        return AppliedCouponResult(
+          couponId: data['couponId'] ?? '',
+          code: couponCode.toUpperCase(),
+          discountedPrice: (data['discountedPrice'] ?? originalPrice).toDouble(),
+          originalPrice: originalPrice,
+          discountPercent: (data['discountPercent'] ?? 0).toDouble(),
+          discountAmount: (data['discountAmount'] ?? 0).toDouble(),
+        );
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error applying coupon: $e');
+      return null;
+    }
+  }
+}
+
+class AppliedCouponResult {
+  AppliedCouponResult({
+    required this.couponId,
+    required this.code,
+    required this.discountedPrice,
+    required this.originalPrice,
+    required this.discountPercent,
+    required this.discountAmount,
+  });
+
+  final String couponId;
+  final String code;
+  final double discountedPrice;
+  final double originalPrice;
+  final double discountPercent;
+  final double discountAmount;
 }
 
 /// Invoice model for payment history

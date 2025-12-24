@@ -529,7 +529,6 @@ class _HomeScreenState extends State<HomeScreen> {
       scaffoldBackgroundColor: Colors.white,
       canvasColor: Colors.white,
       cardColor: Colors.white,
-      useMaterial3: true,
     );
     final scheme = dashboardTheme.colorScheme;
     final programs = _visiblePrograms(scheme);
@@ -1026,7 +1025,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(18),
-                            color: scheme.surfaceVariant.withOpacity(0.25),
+                            color: scheme.surfaceContainerHighest.withOpacity(0.25),
                             border: Border.all(color: scheme.outlineVariant.withOpacity(0.3)),
                           ),
                           child: Row(
@@ -1702,7 +1701,6 @@ class _QuickStatCard extends StatelessWidget {
 
 class _ShowcaseCard extends StatelessWidget {
   const _ShowcaseCard({
-    super.key,
     required this.data,
     required this.theme,
     this.onDelete,

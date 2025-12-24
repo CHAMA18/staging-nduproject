@@ -146,7 +146,7 @@ class OpenAiAutocompleteService {
     try {
       final warn = OpenAiConfig.configurationWarning();
       if (warn != null) {
-        debugPrint('OpenAI configuration warning: ' + warn + ' (endpoint=' + OpenAiConfig.baseEndpoint + ')');
+        debugPrint('OpenAI configuration warning: $warn (endpoint=${OpenAiConfig.baseEndpoint})');
       }
       final response = await _client
           .post(uri, headers: headers, body: jsonEncode(payload))
@@ -255,7 +255,7 @@ class OpenAiAutocompleteService {
     return patterns.take(count).toList();
   }
 
-  static String _escape(String value) => value.replaceAll('"""', '"\"\"');
+  static String _escape(String value) => value.replaceAll('"""', '"""');
 }
 
 /// Diagram generation service. Returns a simple node/edge model suitable for lightweight rendering.

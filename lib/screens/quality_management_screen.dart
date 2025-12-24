@@ -363,7 +363,7 @@ class _TargetsViewState extends State<_TargetsView> {
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<_QualityTargetStatus>(
-                        value: selectedStatus,
+                        initialValue: selectedStatus,
                         decoration: const InputDecoration(labelText: 'Status'),
                         items: _QualityTargetStatus.values
                             .map((status) => DropdownMenuItem<_QualityTargetStatus>(
@@ -491,7 +491,7 @@ class _TargetsViewState extends State<_TargetsView> {
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<_QualityTargetStatus>(
-                        value: selectedStatus,
+                        initialValue: selectedStatus,
                         decoration: const InputDecoration(labelText: 'Status'),
                         items: _QualityTargetStatus.values
                             .map((status) => DropdownMenuItem<_QualityTargetStatus>(

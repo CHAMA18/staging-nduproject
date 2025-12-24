@@ -816,7 +816,6 @@ class _LabeledField extends StatelessWidget {
   const _LabeledField({
     required this.label,
     required this.controller,
-    this.hintText,
     this.autofocus = false,
     this.enabled = true,
   });
@@ -863,7 +862,6 @@ class _LabeledDropdown extends StatelessWidget {
     required this.items,
     required this.onChanged,
     this.hint,
-    super.key,
   });
 
   @override

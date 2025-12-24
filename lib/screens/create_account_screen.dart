@@ -5,7 +5,6 @@ import 'package:ndu_project/theme.dart';
 import 'package:ndu_project/widgets/app_logo.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/elevated_auth_container.dart';
-import 'package:ndu_project/screens/pricing_screen.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/screens/sign_in_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';

@@ -148,7 +148,7 @@ class _ProjectDashboardScreenState extends State<ProjectDashboardScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     filled: true,
-                    fillColor: scheme.surfaceVariant.withOpacity(0.3),
+                    fillColor: scheme.surfaceContainerHighest.withOpacity(0.3),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
@@ -1278,7 +1278,7 @@ class _GroupProjectsCardState extends State<_GroupProjectsCard> {
                     hintText: 'e.g., Terminal Modernization Program',
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     filled: true,
-                    fillColor: scheme.surfaceVariant.withValues(alpha: 0.3),
+                    fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) return 'Please enter a name';
@@ -2015,7 +2015,7 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     filled: true,
-                    fillColor: scheme.surfaceVariant.withValues(alpha: 0.3),
+                    fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
@@ -2834,7 +2834,7 @@ class _SummaryStat extends StatelessWidget {
 }
 
 class _TableHeaderLabel extends StatelessWidget {
-  const _TableHeaderLabel(this.label, {this.alignment = Alignment.center});
+  const _TableHeaderLabel(this.label);
 
   final String label;
   final Alignment alignment;

@@ -322,7 +322,7 @@ class _LandingScreenState extends State<LandingScreen> with SingleTickerProvider
     final bool isTablet = width >= 900 && width < 1200;
     final bool isMobile = width < 700;
 
-    Widget _buildLogo() {
+    Widget buildLogo() {
       return Column(
         key: const Key('header_text_logo'),
         mainAxisSize: MainAxisSize.min,
@@ -371,7 +371,7 @@ class _LandingScreenState extends State<LandingScreen> with SingleTickerProvider
       );
     }
 
-    PopupMenuButton<String> _buildMenuButton() {
+    PopupMenuButton<String> buildMenuButton() {
       return PopupMenuButton<String>(
         icon: const Icon(Icons.menu_rounded, color: Colors.white),
         onSelected: (value) {
@@ -399,7 +399,7 @@ class _LandingScreenState extends State<LandingScreen> with SingleTickerProvider
       );
     }
 
-    Widget _buildSignInButton({bool fullWidth = false}) {
+    Widget buildSignInButton({bool fullWidth = false}) {
       final button = TextButton(
         onPressed: () {
           if (_isDebugMode) {
@@ -424,7 +424,7 @@ class _LandingScreenState extends State<LandingScreen> with SingleTickerProvider
           : button;
     }
 
-    Widget _buildStartProjectButton({bool fullWidth = false}) {
+    Widget buildStartProjectButton({bool fullWidth = false}) {
       final button = ElevatedButton(
         onPressed: _handleStartProject,
         style: ElevatedButton.styleFrom(
@@ -443,10 +443,10 @@ class _LandingScreenState extends State<LandingScreen> with SingleTickerProvider
           : button;
     }
 
-    Widget _buildTabletOrDesktopContent() {
+    Widget buildTabletOrDesktopContent() {
       return Row(
         children: [
-          _buildLogo(),
+          buildLogo(),
           if (isDesktop) ...[
             const SizedBox(width: 32),
             _navButton('Platform', () => _scrollTo(_platformKey)),
@@ -456,35 +456,35 @@ class _LandingScreenState extends State<LandingScreen> with SingleTickerProvider
           ],
           const Spacer(),
           if (!isDesktop) ...[
-            _buildMenuButton(),
+            buildMenuButton(),
             const SizedBox(width: 12),
           ],
-          _buildSignInButton(),
+          buildSignInButton(),
           const SizedBox(width: 12),
-          Flexible(child: _buildStartProjectButton()),
+          Flexible(child: buildStartProjectButton()),
         ],
       );
     }
 
-    Widget _buildMobileContent() {
+    Widget buildMobileContent() {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Expanded(child: _buildLogo()),
+              Expanded(child: buildLogo()),
               const SizedBox(width: 12),
-              _buildMenuButton(),
+              buildMenuButton(),
             ],
           ),
           const SizedBox(height: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildSignInButton(fullWidth: true),
+              buildSignInButton(fullWidth: true),
               const SizedBox(height: 10),
-              _buildStartProjectButton(fullWidth: true),
+              buildStartProjectButton(fullWidth: true),
             ],
           ),
         ],
@@ -517,7 +517,7 @@ class _LandingScreenState extends State<LandingScreen> with SingleTickerProvider
                     ),
                   ],
                 ),
-                child: isMobile ? _buildMobileContent() : _buildTabletOrDesktopContent(),
+                child: isMobile ? buildMobileContent() : buildTabletOrDesktopContent(),
               ),
             ),
           ),
@@ -2945,9 +2945,7 @@ class _MetricData {
     required this.value,
     required this.label,
     required this.caption,
-    this.prefix = '',
     this.suffix = '',
-    this.decimals = 0,
   });
 
   final double value;

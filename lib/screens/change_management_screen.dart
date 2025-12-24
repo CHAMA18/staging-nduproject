@@ -449,7 +449,7 @@ class _StatsRow extends StatelessWidget {
 }
 
 class _ChangeRequestsTable extends StatelessWidget {
-  _ChangeRequestsTable({super.key});
+  const _ChangeRequestsTable();
 
   String _formatDate(DateTime d) {
     String two(int n) => n.toString().padLeft(2, '0');

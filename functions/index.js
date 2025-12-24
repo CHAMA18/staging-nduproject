@@ -68,6 +68,52 @@ function getSubscriptionPrice(tier, isAnnual) {
 }
 
 /**
+ * Validate a coupon and calculate the discounted price (in cents).
+ */
+async function validateCouponForTier(couponCode, tier, originalPriceCents) {
+  if (!couponCode) {
+    return { couponId: null, discountedPriceCents: originalPriceCents, discountPercent: 0, discountAmount: 0 };
+  }
+
+  const couponSnapshot = await db.collection('coupons')
+    .where('code', '==', couponCode.toUpperCase())
+    .limit(1)
+    .get();
+
+  if (couponSnapshot.empty) {
+    throw new Error('Coupon not found');
+  }
+
+  const couponDoc = couponSnapshot.docs[0];
+  const coupon = couponDoc.data();
+
+  const now = new Date();
+  const validFrom = coupon.validFrom?.toDate ? coupon.validFrom.toDate() : new Date(0);
+  const validUntil = coupon.validUntil?.toDate ? coupon.validUntil.toDate() : new Date(0);
+
+  if (!coupon.isActive) throw new Error('Coupon is inactive');
+  if (now < validFrom || now > validUntil) throw new Error('Coupon has expired');
+  if (coupon.maxUses && coupon.currentUses >= coupon.maxUses) throw new Error('Coupon usage limit reached');
+  if (coupon.applicableTiers && coupon.applicableTiers.length > 0 && !coupon.applicableTiers.includes(tier)) {
+    throw new Error('Coupon not valid for this plan');
+  }
+
+  let discountedPriceCents = originalPriceCents;
+  if (coupon.discountAmount && coupon.discountAmount > 0) {
+    discountedPriceCents = Math.max(0, originalPriceCents - Math.round(coupon.discountAmount * 100));
+  } else if (coupon.discountPercent && coupon.discountPercent > 0) {
+    discountedPriceCents = Math.max(0, Math.round(originalPriceCents * (1 - coupon.discountPercent / 100)));
+  }
+
+  return {
+    couponId: couponDoc.id,
+    discountedPriceCents,
+    discountPercent: coupon.discountPercent || 0,
+    discountAmount: coupon.discountAmount || 0,
+  };
+}
+
+/**
  * Secure OpenAI API Proxy
  * 
  * This Cloud Function acts as a secure proxy to OpenAI's API, keeping the API key
@@ -232,9 +278,21 @@ exports.createStripeCheckout = functions
         return;
       }
       
-      const { tier, isAnnual, email } = req.body;
+      const { tier, isAnnual, email, couponCode } = req.body;
       const userId = decodedToken.uid;
-      const priceInCents = getSubscriptionPrice(tier, isAnnual);
+      let priceInCents = getSubscriptionPrice(tier, isAnnual);
+      let couponId = null;
+
+      if (couponCode) {
+        try {
+          const couponResult = await validateCouponForTier(couponCode, tier, priceInCents);
+          priceInCents = couponResult.discountedPriceCents;
+          couponId = couponResult.couponId;
+        } catch (err) {
+          res.status(400).json({ error: err.message || 'Invalid coupon' });
+          return;
+        }
+      }
       
       // Create pending subscription record
       const subscriptionRef = db.collection('subscriptions').doc();
@@ -245,6 +303,9 @@ exports.createStripeCheckout = functions
         status: 'pending',
         provider: 'stripe',
         isAnnual: isAnnual || false,
+        couponId: couponId || null,
+        couponCode: couponCode ? couponCode.toUpperCase() : null,
+        discountedPriceCents: priceInCents,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       });
@@ -269,7 +330,8 @@ exports.createStripeCheckout = functions
           'customer_email': email,
           'metadata[subscription_id]': subscriptionRef.id,
           'metadata[user_id]': userId,
-          'metadata[tier]': tier
+          'metadata[tier]': tier,
+          ...(couponId ? { 'metadata[coupon_id]': couponId } : {})
         })
       });
       
@@ -347,11 +409,15 @@ exports.verifyStripePayment = functions
         const subscriptionId = session.metadata?.subscription_id;
         const userId = session.metadata?.user_id;
         const tier = session.metadata?.tier;
+        const couponId = session.metadata?.coupon_id;
         
         if (subscriptionId) {
           const now = new Date();
           const endDate = new Date(now);
           endDate.setFullYear(endDate.getFullYear() + 1);
+
+          const subscriptionDoc = await db.collection('subscriptions').doc(subscriptionId).get();
+          const subscriptionData = subscriptionDoc.data() || {};
           
           await db.collection('subscriptions').doc(subscriptionId).update({
             status: 'active',
@@ -359,6 +425,14 @@ exports.verifyStripePayment = functions
             endDate: admin.firestore.Timestamp.fromDate(endDate),
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
           });
+
+          const appliedCouponId = couponId || subscriptionData.couponId;
+          if (appliedCouponId) {
+            await db.collection('coupons').doc(appliedCouponId).update({
+              currentUses: admin.firestore.FieldValue.increment(1),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+          }
           
           // Record invoice
           const invoiceRef = db.collection('invoices').doc();
@@ -436,9 +510,21 @@ exports.createPayPalOrder = functions
         return;
       }
       
-      const { tier, isAnnual } = req.body;
+      const { tier, isAnnual, couponCode } = req.body;
       const userId = decodedToken.uid;
-      const priceInCents = getSubscriptionPrice(tier, isAnnual);
+      let priceInCents = getSubscriptionPrice(tier, isAnnual);
+      let couponId = null;
+
+      if (couponCode) {
+        try {
+          const couponResult = await validateCouponForTier(couponCode, tier, priceInCents);
+          priceInCents = couponResult.discountedPriceCents;
+          couponId = couponResult.couponId;
+        } catch (err) {
+          res.status(400).json({ error: err.message || 'Invalid coupon' });
+          return;
+        }
+      }
       const priceInDollars = (priceInCents / 100).toFixed(2);
       
       // Create pending subscription record
@@ -450,6 +536,9 @@ exports.createPayPalOrder = functions
         status: 'pending',
         provider: 'paypal',
         isAnnual: isAnnual || false,
+        couponId: couponId || null,
+        couponCode: couponCode ? couponCode.toUpperCase() : null,
+        discountedPriceCents: priceInCents,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       });
@@ -603,6 +692,13 @@ exports.verifyPayPalPayment = functions
             endDate: admin.firestore.Timestamp.fromDate(endDate),
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
           });
+
+          if (subscriptionData.couponId) {
+            await db.collection('coupons').doc(subscriptionData.couponId).update({
+              currentUses: admin.firestore.FieldValue.increment(1),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+          }
           
           // Record invoice
           const invoiceRef = db.collection('invoices').doc();
@@ -675,9 +771,23 @@ exports.createPaystackTransaction = functions
         return;
       }
       
-      const { tier, isAnnual, email } = req.body;
+      const { tier, isAnnual, email, couponCode } = req.body;
       const userId = decodedToken.uid;
-      const priceInKobo = getSubscriptionPrice(tier, isAnnual) * 100; // Paystack uses kobo (1/100 of Naira) but we'll use USD cents
+      let priceInCents = getSubscriptionPrice(tier, isAnnual);
+      let couponId = null;
+
+      if (couponCode) {
+        try {
+          const couponResult = await validateCouponForTier(couponCode, tier, priceInCents);
+          priceInCents = couponResult.discountedPriceCents;
+          couponId = couponResult.couponId;
+        } catch (err) {
+          res.status(400).json({ error: err.message || 'Invalid coupon' });
+          return;
+        }
+      }
+
+      const priceInKobo = priceInCents * 100; // Paystack uses kobo (1/100 of Naira) but we'll use USD cents
       
       // Create pending subscription record
       const subscriptionRef = db.collection('subscriptions').doc();
@@ -688,6 +798,9 @@ exports.createPaystackTransaction = functions
         status: 'pending',
         provider: 'paystack',
         isAnnual: isAnnual || false,
+        couponId: couponId || null,
+        couponCode: couponCode ? couponCode.toUpperCase() : null,
+        discountedPriceCents: priceInCents,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       });
@@ -804,6 +917,13 @@ exports.verifyPaystackPayment = functions
           endDate: admin.firestore.Timestamp.fromDate(endDate),
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
+
+        if (subscriptionData.couponId) {
+          await db.collection('coupons').doc(subscriptionData.couponId).update({
+            currentUses: admin.firestore.FieldValue.increment(1),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+        }
         
         // Record invoice
         const invoiceRef = db.collection('invoices').doc();
@@ -868,69 +988,22 @@ exports.applyCoupon = functions
       
       const { couponCode, tier, originalPrice } = req.body;
       
-      if (!couponCode || !tier || !originalPrice) {
+      if (!couponCode || !tier || originalPrice === undefined) {
         res.status(400).json({ error: 'Missing required fields' });
         return;
       }
-      
-      // Find coupon by code
-      const couponSnapshot = await db.collection('coupons')
-        .where('code', '==', couponCode.toUpperCase())
-        .limit(1)
-        .get();
-      
-      if (couponSnapshot.empty) {
-        res.status(404).json({ success: false, error: 'Coupon not found' });
-        return;
-      }
-      
-      const couponDoc = couponSnapshot.docs[0];
-      const coupon = couponDoc.data();
-      
-      // Validate coupon
-      const now = new Date();
-      const validFrom = coupon.validFrom?.toDate() || new Date(0);
-      const validUntil = coupon.validUntil?.toDate() || new Date(0);
-      
-      if (!coupon.isActive) {
-        res.json({ success: false, error: 'Coupon is inactive' });
-        return;
-      }
-      
-      if (now < validFrom || now > validUntil) {
-        res.json({ success: false, error: 'Coupon has expired' });
-        return;
-      }
-      
-      if (coupon.maxUses && coupon.currentUses >= coupon.maxUses) {
-        res.json({ success: false, error: 'Coupon usage limit reached' });
-        return;
-      }
-      
-      // Check tier applicability
-      if (coupon.applicableTiers && coupon.applicableTiers.length > 0) {
-        if (!coupon.applicableTiers.includes(tier)) {
-          res.json({ success: false, error: 'Coupon not valid for this plan' });
-          return;
-        }
-      }
-      
-      // Calculate discount
-      let discountedPrice = originalPrice;
-      if (coupon.discountAmount && coupon.discountAmount > 0) {
-        discountedPrice = Math.max(0, originalPrice - coupon.discountAmount);
-      } else if (coupon.discountPercent && coupon.discountPercent > 0) {
-        discountedPrice = originalPrice * (1 - coupon.discountPercent / 100);
-      }
+
+      const originalPriceCents = Math.round(Number(originalPrice) * 100);
+      const couponResult = await validateCouponForTier(couponCode, tier, originalPriceCents);
       
       res.json({
         success: true,
-        couponId: couponDoc.id,
+        couponId: couponResult.couponId,
         originalPrice,
-        discountedPrice: Math.round(discountedPrice * 100) / 100,
-        discountPercent: coupon.discountPercent || 0,
-        discountAmount: coupon.discountAmount || 0,
-        description: coupon.description
+        discountedPrice: Math.round(couponResult.discountedPriceCents) / 100,
+        discountPercent: couponResult.discountPercent,
+        discountAmount: couponResult.discountAmount || 0,
+        description: ''
       });
       
     } catch (error) {

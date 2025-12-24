@@ -720,7 +720,7 @@ class _MainContentState extends State<_MainContent> {
         ? widget.notes
         : 'Capture lessons, open questions, or action items to revisit during the next phase review.';
 
-    String _contentForActiveTab() {
+    String contentForActiveTab() {
       switch (_activeTab) {
         case 0:
           return displayBusinessCase;

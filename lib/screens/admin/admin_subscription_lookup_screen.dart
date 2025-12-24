@@ -439,7 +439,7 @@ class _AdminSubscriptionLookupScreenState extends State<AdminSubscriptionLookupS
               Text('Grant a subscription to ${_selectedUser!.displayName}'),
               const SizedBox(height: 16),
               DropdownButtonFormField<SubscriptionTier>(
-                value: selectedTier,
+                initialValue: selectedTier,
                 decoration: const InputDecoration(
                   labelText: 'Subscription Tier',
                   border: OutlineInputBorder(),
@@ -531,7 +531,7 @@ class _AdminSubscriptionLookupScreenState extends State<AdminSubscriptionLookupS
               Text('Extend trial for ${_selectedUser!.displayName}'),
               const SizedBox(height: 16),
               DropdownButtonFormField<int>(
-                value: daysToExtend,
+                initialValue: daysToExtend,
                 decoration: const InputDecoration(
                   labelText: 'Days to extend',
                   border: OutlineInputBorder(),

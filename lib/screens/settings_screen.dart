@@ -711,7 +711,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
           const SizedBox(height: 8),
           Text('Prioritized interventions to sustain momentum and de-risk the next release.', style: const TextStyle(color: Colors.black54)),
           const SizedBox(height: 20),
-          ...actionItems.map((item) => _ActionItemRow(item: item, accent: accent)).toList(),
+          ...actionItems.map((item) => _ActionItemRow(item: item, accent: accent)),
           const SizedBox(height: 12),
           TextButton.icon(
             onPressed: () {},
@@ -892,7 +892,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                       Switch(
                         value: isEditMode,
                         onChanged: (_) => contentProvider.toggleEditMode(),
-                        activeColor: Colors.green,
+                        activeThumbColor: Colors.green,
                       ),
                     ],
                   ),
@@ -1007,7 +1007,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                       Switch(
                         value: contentProvider.showEditButton,
                         onChanged: (_) => contentProvider.toggleEditButtonVisibility(),
-                        activeColor: Colors.red,
+                        activeThumbColor: Colors.red,
                       ),
                     ],
                   ),
@@ -1339,8 +1339,8 @@ class _VelocitySparklinePainter extends CustomPainter {
         ..color = accent
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2;
-      canvas.drawCircle(lastPoint!, 6, indicatorFill);
-      canvas.drawCircle(lastPoint!, 6, indicatorStroke);
+      canvas.drawCircle(lastPoint, 6, indicatorFill);
+      canvas.drawCircle(lastPoint, 6, indicatorStroke);
     }
   }
 

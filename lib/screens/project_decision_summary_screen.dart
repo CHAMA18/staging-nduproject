@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:ndu_project/screens/settings_screen.dart';
-import 'package:ndu_project/screens/home_screen.dart';
 import 'package:ndu_project/screens/initiation_phase_screen.dart';
-import 'package:ndu_project/services/auth_nav.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
-import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
-import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/content_text.dart';

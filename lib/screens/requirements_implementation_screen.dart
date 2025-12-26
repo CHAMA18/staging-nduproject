@@ -17,6 +17,24 @@ class RequirementsImplementationScreen extends StatefulWidget {
 class _RequirementsImplementationScreenState extends State<RequirementsImplementationScreen> {
   final TextEditingController _notesController = TextEditingController();
 
+  final List<_RequirementRow> _requirementRows = [
+    _RequirementRow(
+      title: 'User journeys',
+      owner: 'Product',
+      definition: 'Epic to story map locked, acceptance criteria captured.',
+    ),
+    _RequirementRow(
+      title: 'System behaviors',
+      owner: 'Engineering',
+      definition: 'Functional and non-functional requirements approved.',
+    ),
+    _RequirementRow(
+      title: 'Integration points',
+      owner: 'Platform',
+      definition: 'Contracts, payloads, and error handling documented.',
+    ),
+  ];
+
   // Checklist items with status
   final List<_ChecklistItem> _checklistItems = [
     _ChecklistItem(
@@ -175,24 +193,14 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
                           ),
                         ),
                         const SizedBox(height: 32),
-                        // Two column layout
-                        if (isMobile)
-                          Column(
-                            children: [
-                              _buildRequirementsBreakdownCard(),
-                              const SizedBox(height: 20),
-                              _buildReadinessChecklistCard(),
-                            ],
-                          )
-                        else
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: _buildRequirementsBreakdownCard()),
-                              const SizedBox(width: 24),
-                              Expanded(child: _buildReadinessChecklistCard()),
-                            ],
-                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildRequirementsBreakdownCard(),
+                            const SizedBox(height: 24),
+                            _buildReadinessChecklistCard(),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -209,155 +217,214 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
   }
 
   Widget _buildRequirementsBreakdownCard() {
+    final rowCount = _requirementRows.length;
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE4E7EC)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Requirements breakdown',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1D1F),
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionIcon(Icons.view_list_rounded, const Color(0xFF1D4ED8)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Requirements breakdown',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1D1F),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'World-class requirements ledger for implementation-ready scope.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _requirementRows.add(
+                      _RequirementRow(
+                        title: 'New requirement',
+                        owner: 'Owner',
+                        definition: 'Define acceptance criteria and evidence.',
+                      ),
+                    );
+                  });
+                },
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Add row'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF1D4ED8),
+                  side: const BorderSide(color: Color(0xFFD6DCE8)),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Turn design outcomes into implementation units',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
+          const SizedBox(height: 20),
+          _buildTableHeaderRow(
+            columns: const [
+              _TableColumn(label: 'Requirement group', flex: 3),
+              _TableColumn(label: 'Owner', flex: 2),
+              _TableColumn(label: 'Definition of ready', flex: 4),
+              _TableColumn(label: 'Action', flex: 2, alignment: Alignment.center),
+            ],
           ),
-          const SizedBox(height: 24),
-          // Core requirement groups section
-          Text(
-            'Core requirement groups',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[800],
-            ),
+          const SizedBox(height: 10),
+          for (int i = 0; i < rowCount; i++) ...[
+            _buildRequirementRow(_requirementRows[i], isStriped: i.isOdd),
+            if (i != rowCount - 1) const SizedBox(height: 8),
+          ],
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              OutlinedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _requirementRows.add(
+                      _RequirementRow(
+                        title: 'New requirement',
+                        owner: 'Owner',
+                        definition: 'Define acceptance criteria and evidence.',
+                      ),
+                    );
+                  });
+                },
+                icon: const Icon(Icons.add_circle_outline, size: 18),
+                label: const Text('Add requirement row'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF1A1D1F),
+                  side: const BorderSide(color: Color(0xFFD6DCE8)),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+              const SizedBox(width: 12),
+              TextButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.auto_awesome_outlined, size: 18),
+                label: const Text('Import from design'),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF475569),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          _buildRequirementItem(
-            'User journeys:',
-            'Map journeys into epics and user stories.',
-          ),
-          const SizedBox(height: 8),
-          _buildRequirementItem(
-            'System behaviours:',
-            'Define functional and non-functional requirements.',
-          ),
-          const SizedBox(height: 8),
-          _buildRequirementItem(
-            'Integration points:',
-            'Capture contracts, payloads, and error handling.',
-          ),
-          const SizedBox(height: 24),
-          // Definition of ready section
-          Text(
-            'Definition of ready',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[800],
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildDefinitionItem('Stories have clear acceptance criteria and owner.'),
-          const SizedBox(height: 6),
-          _buildDefinitionItem('Dependencies and blockers are listed explicitly.'),
-          const SizedBox(height: 6),
-          _buildDefinitionItem('Testing and validation expectations are captured.'),
         ],
       ),
     );
   }
 
-  Widget _buildRequirementItem(String label, String description) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF1A1D1F),
-          ),
-        ),
-        const SizedBox(width: 4),
-        Expanded(
-          child: Text(
-            description,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[700],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDefinitionItem(String text) {
-    return Text(
-      text,
-      style: TextStyle(
-        fontSize: 14,
-        color: Colors.grey[700],
-      ),
-    );
-  }
-
   Widget _buildReadinessChecklistCard() {
+    final rowCount = _checklistItems.length;
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE4E7EC)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Readiness checklist',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1D1F),
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionIcon(Icons.fact_check_outlined, const Color(0xFF16A34A)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Readiness checklist',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1D1F),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Exceptional readiness table for confident technical alignment.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _checklistItems.add(
+                      _ChecklistItem(
+                        title: 'New checklist item',
+                        description: 'Describe the evidence required.',
+                        status: ChecklistStatus.pending,
+                      ),
+                    );
+                  });
+                },
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Add item'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF16A34A),
+                  side: const BorderSide(color: Color(0xFFD6DCE8)),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Confirm what is complete before moving to technical alignment',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
+          const SizedBox(height: 20),
+          _buildTableHeaderRow(
+            columns: const [
+              _TableColumn(label: 'Checklist item', flex: 4),
+              _TableColumn(label: 'Owner', flex: 2),
+              _TableColumn(label: 'Status', flex: 2),
+              _TableColumn(label: 'Action', flex: 2, alignment: Alignment.center),
+            ],
           ),
-          const SizedBox(height: 24),
-          // Checklist items section
-          Text(
-            'Checklist items',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[800],
-            ),
-          ),
-          const SizedBox(height: 12),
-          ..._checklistItems.map((item) => _buildChecklistItemWidget(item)),
-          const SizedBox(height: 24),
-          // Implementation notes section
+          const SizedBox(height: 10),
+          for (int i = 0; i < rowCount; i++) ...[
+            _buildChecklistRow(_checklistItems[i], index: i, isStriped: i.isOdd),
+            if (i != rowCount - 1) const SizedBox(height: 8),
+          ],
+          const SizedBox(height: 16),
           Text(
             'Implementation notes',
             style: TextStyle(
@@ -367,12 +434,40 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            'Use this section to highlight sequencing decisions, launch scope, and items intentionally pushed to later releases.',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-              height: 1.5,
+          TextFormField(
+            maxLines: 3,
+            decoration: InputDecoration(
+              hintText: 'Capture sequencing decisions, launch scope, and deferred items.',
+              hintStyle: TextStyle(color: Colors.grey[500]),
+              filled: true,
+              fillColor: const Color(0xFFF8FAFC),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFF16A34A), width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: () {},
+              icon: const Icon(Icons.save_outlined, size: 18),
+              label: const Text('Save notes'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF1A1D1F),
+                side: const BorderSide(color: Color(0xFFD6DCE8)),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              ),
             ),
           ),
         ],
@@ -380,44 +475,242 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
     );
   }
 
-  Widget _buildChecklistItemWidget(_ChecklistItem item) {
+  Widget _buildSectionIcon(IconData icon, Color color) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      width: 44,
+      height: 44,
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(8),
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Icon(icon, color: color, size: 22),
+    );
+  }
+
+  Widget _buildTableHeaderRow({required List<_TableColumn> columns}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F7FB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE4E7EC)),
+      ),
+      child: Row(
+        children: [
+          for (final column in columns)
+            Expanded(
+              flex: column.flex,
+              child: Align(
+                alignment: column.alignment,
+                child: Text(
+                  column.label.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.4,
+                    color: Color(0xFF475467),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRequirementRow(_RequirementRow row, {required bool isStriped}) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isStriped ? const Color(0xFFF9FAFC) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE4E7EC)),
       ),
       child: Row(
         children: [
           Expanded(
+            flex: 3,
+            child: _buildTableField(
+              initialValue: row.title,
+              hintText: 'Requirement group',
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 2,
+            child: _buildTableField(
+              initialValue: row.owner,
+              hintText: 'Owner',
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 4,
+            child: _buildTableField(
+              initialValue: row.definition,
+              hintText: 'Definition of ready',
+              maxLines: 2,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 2,
+            child: Align(
+              alignment: Alignment.center,
+              child: OutlinedButton(
+                onPressed: () {},
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF1D4ED8),
+                  side: const BorderSide(color: Color(0xFFD6DCE8)),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                ),
+                child: const Text('Add note'),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChecklistRow(_ChecklistItem item, {required int index, required bool isStriped}) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isStriped ? const Color(0xFFF9FAFC) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE4E7EC)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 4,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  item.title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1D1F),
-                  ),
+                _buildTableField(
+                  initialValue: item.title,
+                  hintText: 'Checklist item',
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 6),
                 Text(
                   item.description,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 12,
                     color: Colors.grey[600],
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
-          _buildStatusBadge(item.status),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 2,
+            child: _buildTableField(
+              initialValue: '',
+              hintText: 'Owner',
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 2,
+            child: DropdownButtonFormField<ChecklistStatus>(
+              value: item.status,
+              items: ChecklistStatus.values
+                  .map(
+                    (status) => DropdownMenuItem(
+                      value: status,
+                      child: Text(_statusLabel(status)),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _checklistItems[index].status = value);
+              },
+              decoration: InputDecoration(
+                isDense: true,
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Color(0xFF16A34A), width: 2),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 2,
+            child: Align(
+              alignment: Alignment.center,
+              child: OutlinedButton(
+                onPressed: () {},
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF16A34A),
+                  side: const BorderSide(color: Color(0xFFD6DCE8)),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                ),
+                child: const Text('Add evidence'),
+              ),
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  Widget _buildTableField({
+    required String initialValue,
+    required String hintText,
+    int maxLines = 1,
+  }) {
+    return TextFormField(
+      initialValue: initialValue,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: TextStyle(color: Colors.grey[500]),
+        isDense: true,
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF1D4ED8), width: 2),
+        ),
+      ),
+    );
+  }
+
+  String _statusLabel(ChecklistStatus status) {
+    switch (status) {
+      case ChecklistStatus.ready:
+        return 'Ready';
+      case ChecklistStatus.inReview:
+        return 'In review';
+      case ChecklistStatus.pending:
+        return 'Pending';
+    }
   }
 
   Widget _buildStatusBadge(ChecklistStatus status) {
@@ -608,10 +901,34 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
 
 enum ChecklistStatus { ready, inReview, pending }
 
+class _TableColumn {
+  const _TableColumn({
+    required this.label,
+    this.flex = 1,
+    this.alignment = Alignment.centerLeft,
+  });
+
+  final String label;
+  final int flex;
+  final Alignment alignment;
+}
+
+class _RequirementRow {
+  const _RequirementRow({
+    required this.title,
+    required this.owner,
+    required this.definition,
+  });
+
+  final String title;
+  final String owner;
+  final String definition;
+}
+
 class _ChecklistItem {
   final String title;
   final String description;
-  final ChecklistStatus status;
+  ChecklistStatus status;
 
   _ChecklistItem({
     required this.title,

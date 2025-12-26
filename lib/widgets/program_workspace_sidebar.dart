@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/app_logo.dart';
 import 'package:ndu_project/widgets/header_banner_image.dart';
 
@@ -9,7 +10,9 @@ const Color kProgramSidebarSurfaceBorder = Color(0xFFE4E7EC);
 
 /// Sidebar used across the Front End Planning workspaces.
 class ProgramWorkspaceSidebar extends StatelessWidget {
-  const ProgramWorkspaceSidebar({super.key});
+  const ProgramWorkspaceSidebar({super.key, this.width});
+
+  final double? width;
 
   @override
   Widget build(BuildContext context) {
@@ -39,8 +42,11 @@ class ProgramWorkspaceSidebar extends StatelessWidget {
       _SidebarItem(icon: Icons.report_problem_outlined, label: 'Issue Management', isActive: false, onTap: () {}),
     ];
 
-    return Container(
-      width: 260,
+    final resolvedWidth = width ?? AppBreakpoints.sidebarWidth(context);
+
+    return SizedBox(
+      width: resolvedWidth,
+      child: Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
       child: Column(
@@ -100,6 +106,7 @@ class ProgramWorkspaceSidebar extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 }

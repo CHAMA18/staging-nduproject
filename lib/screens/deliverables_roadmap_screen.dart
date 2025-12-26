@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../widgets/initiation_like_sidebar.dart';
 import '../widgets/draggable_sidebar.dart';
@@ -214,6 +215,11 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
   }
 
   Widget _buildHeader(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final displayName = _displayName(user);
+    final subtitle = _displaySubtitle(user);
+    final initials = _initialsFor(displayName);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -247,24 +253,24 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
             border: Border.all(color: _kCardBorder),
           ),
           child: Row(
-            children: const [
+            children: [
               CircleAvatar(
                 radius: 16,
                 backgroundColor: _kAccent,
-                child: Text('S', style: TextStyle(fontWeight: FontWeight.w800, color: _kHeadline)),
+                child: Text(initials, style: const TextStyle(fontWeight: FontWeight.w800, color: _kHeadline)),
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Samuel kamanga', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kHeadline)),
-                  SizedBox(height: 2),
-                  Text('Product manager', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _kMuted)),
+                  Text(displayName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kHeadline)),
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _kMuted)),
                 ],
               ),
-              SizedBox(width: 12),
-              Icon(Icons.keyboard_arrow_down_rounded, color: _kMuted),
+              const SizedBox(width: 12),
+              const Icon(Icons.keyboard_arrow_down_rounded, color: _kMuted),
             ],
           ),
         ),
@@ -306,81 +312,153 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
     final assignedLabel = item.assignedTo.isNotEmpty ? 'Tasked: ${item.assignedTo}' : 'Tasked: -';
     final dueLabel = item.dueDate.isNotEmpty ? item.dueDate : 'No due date';
 
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 240;
+        return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  width: 10,
-                  decoration: BoxDecoration(
-                    color: _statusColor(item.status),
-                    borderRadius: const BorderRadius.horizontal(left: Radius.circular(24)),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      width: 10,
+                      decoration: BoxDecoration(
+                        color: _statusColor(item.status),
+                        borderRadius: const BorderRadius.horizontal(left: Radius.circular(24)),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Text(
-                        item.title,
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _kHeadline),
+                    if (isCompact)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.title,
+                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _kHeadline),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 8),
+                          _buildStatusChip(item.status),
+                        ],
+                      )
+                    else
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item.title,
+                              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _kHeadline),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          _buildStatusChip(item.status),
+                        ],
                       ),
+                    const SizedBox(height: 10),
+                    Text(
+                      item.description,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _kMuted),
                     ),
-                    const SizedBox(width: 12),
-                    _buildStatusChip(item.status),
+                    const SizedBox(height: 20),
+                    if (isCompact)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            assignedLabel,
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kMuted),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            dueLabel,
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kMuted),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      )
+                    else
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              assignedLabel,
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kMuted),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            dueLabel,
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kMuted),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  item.description,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _kMuted),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Text(
-                      assignedLabel,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kMuted),
-                    ),
-                    const Spacer(),
-                    Text(
-                      dueLabel,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kMuted),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
+  }
+
+  String _displayName(User? user) {
+    final name = user?.displayName?.trim();
+    if (name != null && name.isNotEmpty) return name;
+    final email = user?.email?.trim();
+    if (email != null && email.isNotEmpty) return email;
+    return 'Guest';
+  }
+
+  String _displaySubtitle(User? user) {
+    final email = user?.email?.trim();
+    if (email != null && email.isNotEmpty) return email;
+    return 'Signed in';
+  }
+
+  String _initialsFor(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return 'U';
+    final parts = trimmed.split(RegExp(r'\\s+'));
+    if (parts.length == 1) {
+      return parts.first.characters.first.toUpperCase();
+    }
+    final first = parts.first.characters.first.toUpperCase();
+    final last = parts.last.characters.first.toUpperCase();
+    return '$first$last';
   }
 
   Widget _buildHeading(String heading) {

@@ -81,6 +81,7 @@ import 'package:ndu_project/screens/transition_to_prod_team_screen.dart';
 import 'package:ndu_project/screens/contract_close_out_screen.dart';
 import 'package:ndu_project/screens/vendor_account_close_out_screen.dart';
 import 'package:ndu_project/screens/ui_ux_design_screen.dart';
+import 'package:ndu_project/screens/development_set_up_screen.dart';
 import 'package:ndu_project/screens/technical_alignment_screen.dart';
 import 'package:ndu_project/screens/long_lead_equipment_ordering_screen.dart';
 import 'package:ndu_project/screens/technical_development_screen.dart';
@@ -94,6 +95,16 @@ import 'package:ndu_project/screens/scope_completion_screen.dart';
 import 'package:ndu_project/screens/requirements_implementation_screen.dart';
 import 'package:ndu_project/screens/privacy_policy_screen.dart';
 import 'package:ndu_project/screens/terms_conditions_screen.dart';
+import 'package:ndu_project/screens/backend_design_screen.dart';
+import 'package:ndu_project/screens/technical_debt_management_screen.dart';
+import 'package:ndu_project/screens/risk_tracking_screen.dart';
+import 'package:ndu_project/screens/identify_staff_ops_team_screen.dart';
+import 'package:ndu_project/screens/contracts_tracking_screen.dart';
+import 'package:ndu_project/screens/vendor_tracking_screen.dart';
+import 'package:ndu_project/screens/detailed_design_screen.dart';
+import 'package:ndu_project/screens/scope_tracking_implementation_screen.dart';
+import 'package:ndu_project/screens/stakeholder_alignment_screen.dart';
+import 'package:ndu_project/screens/update_ops_maintenance_plans_screen.dart';
 
 // SSHER suite
 import 'package:ndu_project/screens/ssher_stacked_screen.dart';
@@ -191,8 +202,19 @@ class AppRoutes {
   static const contractCloseOut = 'contract-close-out';
   static const vendorAccountCloseOut = 'vendor-account-close-out';
   static const uiUxDesign = 'ui-ux-design';
+  static const developmentSetUp = 'development-set-up';
   static const technicalAlignment = 'technical-alignment';
+  static const backendDesign = 'backend-design';
   static const longLeadEquipmentOrdering = 'long-lead-equipment-ordering';
+  static const technicalDebtManagement = 'technical-debt-management';
+  static const riskTracking = 'risk-tracking';
+  static const identifyStaffOpsTeam = 'identify-staff-ops-team';
+  static const contractsTracking = 'contracts-tracking';
+  static const vendorTracking = 'vendor-tracking';
+  static const detailedDesign = 'detailed-design';
+  static const scopeTrackingImplementation = 'scope-tracking-implementation';
+  static const stakeholderAlignment = 'stakeholder-alignment';
+  static const updateOpsMaintenancePlans = 'update-ops-maintenance-plans';
   static const projectCloseOut = 'project-close-out';
   static const demobilizeTeam = 'demobilize-team';
   static const technicalDevelopment = 'technical-development';
@@ -401,7 +423,9 @@ class AppRouter {
       GoRoute(name: AppRoutes.contractCloseOut, path: '/${AppRoutes.contractCloseOut}', builder: (c, s) => const ContractCloseOutScreen()),
       GoRoute(name: AppRoutes.vendorAccountCloseOut, path: '/${AppRoutes.vendorAccountCloseOut}', builder: (c, s) => const VendorAccountCloseOutScreen()),
       GoRoute(name: AppRoutes.uiUxDesign, path: '/${AppRoutes.uiUxDesign}', builder: (c, s) => const UiUxDesignScreen()),
+      GoRoute(name: AppRoutes.developmentSetUp, path: '/${AppRoutes.developmentSetUp}', builder: (c, s) => const DevelopmentSetUpScreen()),
       GoRoute(name: AppRoutes.technicalAlignment, path: '/${AppRoutes.technicalAlignment}', builder: (c, s) => const TechnicalAlignmentScreen()),
+      GoRoute(name: AppRoutes.backendDesign, path: '/${AppRoutes.backendDesign}', builder: (c, s) => const BackendDesignScreen()),
       GoRoute(name: AppRoutes.longLeadEquipmentOrdering, path: '/${AppRoutes.longLeadEquipmentOrdering}', builder: (c, s) => const LongLeadEquipmentOrderingScreen()),
       GoRoute(name: AppRoutes.projectCloseOut, path: '/${AppRoutes.projectCloseOut}', builder: (c, s) => const ProjectCloseOutScreen()),
       GoRoute(name: AppRoutes.demobilizeTeam, path: '/${AppRoutes.demobilizeTeam}', builder: (c, s) => const DemobilizeTeamScreen()),
@@ -411,6 +435,15 @@ class AppRouter {
       GoRoute(name: AppRoutes.agileDevelopmentIterations, path: '/${AppRoutes.agileDevelopmentIterations}', builder: (c, s) => const AgileDevelopmentIterationsScreen()),
       GoRoute(name: AppRoutes.engineeringDesign, path: '/${AppRoutes.engineeringDesign}', builder: (c, s) => const EngineeringDesignScreen()),
       GoRoute(name: AppRoutes.scopeCompletion, path: '/${AppRoutes.scopeCompletion}', builder: (c, s) => const ScopeCompletionScreen()),
+      GoRoute(name: AppRoutes.technicalDebtManagement, path: '/${AppRoutes.technicalDebtManagement}', builder: (c, s) => const TechnicalDebtManagementScreen()),
+      GoRoute(name: AppRoutes.riskTracking, path: '/${AppRoutes.riskTracking}', builder: (c, s) => const RiskTrackingScreen()),
+      GoRoute(name: AppRoutes.identifyStaffOpsTeam, path: '/${AppRoutes.identifyStaffOpsTeam}', builder: (c, s) => const IdentifyStaffOpsTeamScreen()),
+      GoRoute(name: AppRoutes.contractsTracking, path: '/${AppRoutes.contractsTracking}', builder: (c, s) => const ContractsTrackingScreen()),
+      GoRoute(name: AppRoutes.vendorTracking, path: '/${AppRoutes.vendorTracking}', builder: (c, s) => const VendorTrackingScreen()),
+      GoRoute(name: AppRoutes.detailedDesign, path: '/${AppRoutes.detailedDesign}', builder: (c, s) => const DetailedDesignScreen()),
+      GoRoute(name: AppRoutes.scopeTrackingImplementation, path: '/${AppRoutes.scopeTrackingImplementation}', builder: (c, s) => const ScopeTrackingImplementationScreen()),
+      GoRoute(name: AppRoutes.stakeholderAlignment, path: '/${AppRoutes.stakeholderAlignment}', builder: (c, s) => const StakeholderAlignmentScreen()),
+      GoRoute(name: AppRoutes.updateOpsMaintenancePlans, path: '/${AppRoutes.updateOpsMaintenancePlans}', builder: (c, s) => const UpdateOpsMaintenancePlansScreen()),
       GoRoute(name: AppRoutes.privacyPolicy, path: '/${AppRoutes.privacyPolicy}', builder: (c, s) => const PrivacyPolicyScreen()),
       GoRoute(name: AppRoutes.termsConditions, path: '/${AppRoutes.termsConditions}', builder: (c, s) => const TermsConditionsScreen()),
 

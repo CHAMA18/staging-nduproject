@@ -92,7 +92,7 @@ class _MobileScaffold extends StatelessWidget {
           : null,
       drawer: showSidebar
           ? Drawer(
-              width: MediaQuery.sizeOf(context).width * 0.85,
+              width: AppBreakpoints.sidebarWidth(context),
               child: SafeArea(
                 child: InitiationLikeSidebar(
                   activeItemLabel: activeItemLabel,

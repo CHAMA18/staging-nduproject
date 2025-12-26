@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ndu_project/widgets/responsive.dart';
 
 /// Sidebar wrapper with a draggable handle to collapse or expand it.
 class DraggableSidebar extends StatefulWidget {
@@ -78,8 +79,40 @@ class _DraggableSidebarState extends State<DraggableSidebar> {
     });
   }
 
+  void _openMobileMenu() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        final height = MediaQuery.sizeOf(context).height * 0.92;
+        return SafeArea(
+          child: SizedBox(
+            height: height,
+            child: widget.child,
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (AppBreakpoints.isMobile(context)) {
+      return Container(
+        width: 48,
+        alignment: Alignment.topCenter,
+        child: IconButton(
+          icon: const Icon(Icons.menu, color: Color(0xFF374151)),
+          onPressed: _openMobileMenu,
+          tooltip: 'Open menu',
+        ),
+      );
+    }
+
     final bool collapsed = _isCollapsed;
     return Row(
       mainAxisSize: MainAxisSize.min,

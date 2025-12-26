@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
+import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
 class SalvageDisposalTeamScreen extends StatefulWidget {
   const SalvageDisposalTeamScreen({super.key});
@@ -17,12 +18,49 @@ class _SalvageDisposalTeamScreenState extends State<SalvageDisposalTeamScreen> {
   int _selectedTab = 0;
   final List<String> _tabs = ['Overview', 'Asset Inventory', 'Disposal Queue', 'Team Allocation'];
 
+  final List<_StatItem> _overviewStats = [
+    _StatItem('Team Members', '5 active', Icons.people, Colors.blue),
+    _StatItem('Assets Pending', '12 items', Icons.inventory, Colors.orange),
+    _StatItem('Total Salvage Value', '\$73,350', Icons.attach_money, Colors.green),
+    _StatItem('Disposal Progress', '68%', Icons.pie_chart, const Color(0xFF8B5CF6)),
+    _StatItem('Compliance Score', '94/100', Icons.verified, Colors.teal),
+  ];
+
+  final List<_StatItem> _inventoryStats = [
+    _StatItem('Tracked Assets', '86', Icons.inventory_2_outlined, const Color(0xFF0284C7)),
+    _StatItem('Ready for Disposal', '24', Icons.fact_check_outlined, const Color(0xFF10B981)),
+    _StatItem('Estimated Value', '\$128.4K', Icons.savings_outlined, const Color(0xFF16A34A)),
+    _StatItem('Reuse Potential', '41%', Icons.autorenew, const Color(0xFF7C3AED)),
+  ];
+
+  final List<_StatItem> _queueStats = [
+    _StatItem('Queue Items', '18', Icons.list_alt_outlined, const Color(0xFF0EA5E9)),
+    _StatItem('High Priority', '6', Icons.priority_high, const Color(0xFFEF4444)),
+    _StatItem('Auction Value', '\$52.7K', Icons.sell_outlined, const Color(0xFFF59E0B)),
+    _StatItem('Compliance Ready', '82%', Icons.verified_outlined, const Color(0xFF14B8A6)),
+  ];
+
+  final List<_StatItem> _allocationStats = [
+    _StatItem('Active Specialists', '12', Icons.groups_outlined, const Color(0xFF0EA5E9)),
+    _StatItem('Utilization', '74%', Icons.donut_large_outlined, const Color(0xFF6366F1)),
+    _StatItem('Open Roles', '3', Icons.person_search_outlined, const Color(0xFFFB7185)),
+    _StatItem('Training Due', '2', Icons.school_outlined, const Color(0xFFF59E0B)),
+  ];
+
   final List<_TeamMember> _teamMembers = [
     _TeamMember('Sarah Mitchell', 'Team Lead', 'sarah.m@company.com', 'Active', 12, Colors.green),
     _TeamMember('James Rodriguez', 'Asset Specialist', 'james.r@company.com', 'Active', 8, Colors.green),
     _TeamMember('Emily Chen', 'Logistics Coordinator', 'emily.c@company.com', 'On Leave', 5, Colors.orange),
     _TeamMember('Michael Thompson', 'Disposal Technician', 'michael.t@company.com', 'Active', 15, Colors.green),
     _TeamMember('Lisa Park', 'Compliance Officer', 'lisa.p@company.com', 'Active', 9, Colors.green),
+  ];
+
+  final List<_InventoryItem> _inventoryItems = [
+    _InventoryItem('SVG-019', 'Server Rack Set', 'Electronics', 'Excellent', 'Data Center', 'Ready', '\$18,400', Colors.green),
+    _InventoryItem('SVG-023', 'Operations Console', 'Hardware', 'Good', 'Control Room', 'Pending', '\$6,750', Colors.orange),
+    _InventoryItem('SVG-031', 'Hazmat Storage', 'Safety', 'Good', 'Warehouse B', 'Review', '\$4,200', Colors.blue),
+    _InventoryItem('SVG-044', 'Generator Unit', 'Power', 'Fair', 'Substation', 'Flagged', '\$12,300', Colors.red),
+    _InventoryItem('SVG-052', 'Network Switches', 'Electronics', 'Excellent', 'Data Center', 'Ready', '\$7,980', Colors.green),
   ];
 
   final List<_DisposalItem> _disposalItems = [
@@ -34,64 +72,66 @@ class _SalvageDisposalTeamScreenState extends State<SalvageDisposalTeamScreen> {
     _DisposalItem('SVG-006', 'Safety Equipment', 'PPE', 'Approved', '\$2,100', 'Medium', Colors.orange),
   ];
 
+  final List<_QueueBoardItem> _queueBoardItems = [
+    _QueueBoardItem('SVG-014', 'Industrial Sensors', 'Review', 'High', '\$9,500'),
+    _QueueBoardItem('SVG-018', 'Control Panels', 'Review', 'Medium', '\$4,200'),
+    _QueueBoardItem('SVG-022', 'Office Fixtures', 'Approved', 'Low', '\$2,800'),
+    _QueueBoardItem('SVG-027', 'Cooling Units', 'Approved', 'High', '\$13,400'),
+    _QueueBoardItem('SVG-033', 'Vehicle Fleet', 'Auction', 'High', '\$45,000'),
+    _QueueBoardItem('SVG-038', 'Copper Wiring', 'Auction', 'Medium', '\$6,150'),
+  ];
+
+  final List<_AllocationItem> _allocationItems = [
+    _AllocationItem('Sarah Mitchell', 'Team Lead', 'Compliance + Reporting', 82, 'Active'),
+    _AllocationItem('James Rodriguez', 'Asset Specialist', 'Inventory Audit', 68, 'Active'),
+    _AllocationItem('Emily Chen', 'Logistics Coordinator', 'Vendor Liaison', 45, 'On Leave'),
+    _AllocationItem('Michael Thompson', 'Disposal Technician', 'Field Ops', 76, 'Active'),
+    _AllocationItem('Lisa Park', 'Compliance Officer', 'Regulatory Review', 64, 'Active'),
+  ];
+
+  final List<_CapacityItem> _capacityItems = [
+    _CapacityItem('Field Ops', 0.78, Colors.blue),
+    _CapacityItem('Compliance', 0.64, Colors.green),
+    _CapacityItem('Logistics', 0.52, Colors.orange),
+    _CapacityItem('Reporting', 0.83, Colors.purple),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isNarrow = screenWidth < 900;
+    final isNarrow = MediaQuery.sizeOf(context).width < 900;
+    final padding = AppBreakpoints.pagePadding(context);
 
-    return Scaffold(
+    return ResponsiveScaffold(
+      activeItemLabel: 'Salvage and/or Disposal Plan',
       backgroundColor: const Color(0xFFF8FAFC),
-      body: Row(
-        children: [
-          const InitiationLikeSidebar(activeItemLabel: 'Salvage Disposal Team'),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.all(isNarrow ? 16 : 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(isNarrow),
-                  const SizedBox(height: 24),
-                  _buildTabBar(),
-                  const SizedBox(height: 24),
-                  _buildStatsRow(isNarrow),
-                  const SizedBox(height: 24),
-                  if (isNarrow) ...[
-                    _buildTeamManagementPanel(),
-                    const SizedBox(height: 24),
-                    _buildDisposalQueuePanel(),
-                    const SizedBox(height: 24),
-                    _buildCompliancePanel(),
-                    const SizedBox(height: 24),
-                    _buildTimelinePanel(),
-                  ] else ...[
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(flex: 3, child: _buildTeamManagementPanel()),
-                        const SizedBox(width: 24),
-                        Expanded(flex: 2, child: _buildCompliancePanel()),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(flex: 2, child: _buildDisposalQueuePanel()),
-                        const SizedBox(width: 24),
-                        Expanded(child: _buildTimelinePanel()),
-                      ],
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  _buildInsightsRow(isNarrow),
-                ],
-              ),
-            ),
-          ),
-        ],
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(padding),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(isNarrow),
+            const SizedBox(height: 24),
+            _buildTabBar(),
+            const SizedBox(height: 24),
+            _buildTabContent(isNarrow),
+          ],
+        ),
       ),
     );
+  }
+
+  Widget _buildTabContent(bool isNarrow) {
+    switch (_selectedTab) {
+      case 1:
+        return _buildAssetInventoryContent(isNarrow);
+      case 2:
+        return _buildDisposalQueueContent(isNarrow);
+      case 3:
+        return _buildTeamAllocationContent(isNarrow);
+      case 0:
+      default:
+        return _buildOverviewContent(isNarrow);
+    }
   }
 
   Widget _buildHeader(bool isNarrow) {
@@ -164,6 +204,157 @@ class _SalvageDisposalTeamScreenState extends State<SalvageDisposalTeamScreen> {
     );
   }
 
+  Widget _buildOverviewContent(bool isNarrow) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStatsRow(isNarrow, _overviewStats),
+        const SizedBox(height: 24),
+        if (isNarrow) ...[
+          _buildTeamManagementPanel(),
+          const SizedBox(height: 24),
+          _buildDisposalQueuePanel(),
+          const SizedBox(height: 24),
+          _buildCompliancePanel(),
+          const SizedBox(height: 24),
+          _buildTimelinePanel(),
+        ] else ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 3, child: _buildTeamManagementPanel()),
+              const SizedBox(width: 24),
+              Expanded(flex: 2, child: _buildCompliancePanel()),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 2, child: _buildDisposalQueuePanel()),
+              const SizedBox(width: 24),
+              Expanded(child: _buildTimelinePanel()),
+            ],
+          ),
+        ],
+        const SizedBox(height: 24),
+        _buildInsightsRow(isNarrow),
+      ],
+    );
+  }
+
+  Widget _buildAssetInventoryContent(bool isNarrow) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStatsRow(isNarrow, _inventoryStats),
+        const SizedBox(height: 24),
+        if (isNarrow)
+          Column(
+            children: [
+              _buildInventoryTable(),
+              const SizedBox(height: 24),
+              _buildInventorySignalsPanel(),
+            ],
+          )
+        else
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 3, child: _buildInventoryTable()),
+              const SizedBox(width: 24),
+              Expanded(child: _buildInventorySignalsPanel()),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Widget _buildDisposalQueueContent(bool isNarrow) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStatsRow(isNarrow, _queueStats),
+        const SizedBox(height: 24),
+        if (isNarrow)
+          Column(
+            children: [
+              _buildQueueBoard(),
+              const SizedBox(height: 24),
+              _buildDisposalQueuePanel(),
+              const SizedBox(height: 24),
+              _buildCompliancePanel(),
+              const SizedBox(height: 24),
+              _buildTimelinePanel(),
+            ],
+          )
+        else
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 2,
+                child: Column(
+                  children: [
+                    _buildQueueBoard(),
+                    const SizedBox(height: 24),
+                    _buildDisposalQueuePanel(),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                child: Column(
+                  children: [
+                    _buildCompliancePanel(),
+                    const SizedBox(height: 24),
+                    _buildTimelinePanel(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Widget _buildTeamAllocationContent(bool isNarrow) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStatsRow(isNarrow, _allocationStats),
+        const SizedBox(height: 24),
+        if (isNarrow)
+          Column(
+            children: [
+              _buildAllocationTable(),
+              const SizedBox(height: 24),
+              _buildCapacityPanel(),
+              const SizedBox(height: 24),
+              _buildCoveragePanel(),
+            ],
+          )
+        else
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 3, child: _buildAllocationTable()),
+              const SizedBox(width: 24),
+              Expanded(
+                child: Column(
+                  children: [
+                    _buildCapacityPanel(),
+                    const SizedBox(height: 24),
+                    _buildCoveragePanel(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+
   Widget _buildActionButtons() {
     return Wrap(
       spacing: 12,
@@ -222,15 +413,7 @@ class _SalvageDisposalTeamScreenState extends State<SalvageDisposalTeamScreen> {
     );
   }
 
-  Widget _buildStatsRow(bool isNarrow) {
-    final stats = [
-      _StatItem('Team Members', '5 active', Icons.people, Colors.blue),
-      _StatItem('Assets Pending', '12 items', Icons.inventory, Colors.orange),
-      _StatItem('Total Salvage Value', '\$73,350', Icons.attach_money, Colors.green),
-      _StatItem('Disposal Progress', '68%', Icons.pie_chart, const Color(0xFF8B5CF6)),
-      _StatItem('Compliance Score', '94/100', Icons.verified, Colors.teal),
-    ];
-
+  Widget _buildStatsRow(bool isNarrow, List<_StatItem> stats) {
     if (isNarrow) {
       return Wrap(
         spacing: 12,
@@ -278,6 +461,412 @@ class _SalvageDisposalTeamScreenState extends State<SalvageDisposalTeamScreen> {
           Text(stat.value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: stat.color)),
           const SizedBox(height: 4),
           Text(stat.label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInventoryTable() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Asset Inventory', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF1A1D1F))),
+                    SizedBox(height: 4),
+                    Text('Track active assets, condition, and disposal readiness', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+                  ],
+                ),
+              ),
+              _buildActionButton(Icons.filter_list, 'Filter', onTap: () {}),
+              const SizedBox(width: 8),
+              _buildActionButton(Icons.upload_file, 'Upload CSV', onTap: () {}),
+            ],
+          ),
+          const SizedBox(height: 20),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+              columns: const [
+                DataColumn(label: Text('Asset', style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(label: Text('Category', style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(label: Text('Condition', style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(label: Text('Location', style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(label: Text('Est. Value', style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.w600))),
+              ],
+              rows: _inventoryItems.map((item) {
+                return DataRow(
+                  cells: [
+                    DataCell(Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(item.id, style: const TextStyle(fontSize: 12, color: Color(0xFF0EA5E9), fontWeight: FontWeight.w600)),
+                        Text(item.name, style: const TextStyle(fontSize: 13)),
+                      ],
+                    )),
+                    DataCell(_buildCategoryChip(item.category)),
+                    DataCell(Text(item.condition, style: const TextStyle(fontSize: 13))),
+                    DataCell(Text(item.location, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)))),
+                    DataCell(_buildStatusBadge(item.status, item.statusColor)),
+                    DataCell(Text(item.value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+                    DataCell(Row(
+                      children: [
+                        IconButton(icon: const Icon(Icons.edit, size: 16), onPressed: () {}, color: const Color(0xFF64748B)),
+                        IconButton(icon: const Icon(Icons.visibility, size: 16), onPressed: () {}, color: const Color(0xFF64748B)),
+                      ],
+                    )),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInventorySignalsPanel() {
+    return Column(
+      children: [
+        _buildSignalCard(
+          title: 'Category Mix',
+          subtitle: 'Distribution of assets by category',
+          child: Column(
+            children: const [
+              _SignalBar(label: 'Electronics', value: 0.42, color: Color(0xFF0EA5E9)),
+              _SignalBar(label: 'Infrastructure', value: 0.28, color: Color(0xFF6366F1)),
+              _SignalBar(label: 'Safety', value: 0.16, color: Color(0xFFF59E0B)),
+              _SignalBar(label: 'Vehicles', value: 0.14, color: Color(0xFF22C55E)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        _buildSignalCard(
+          title: 'Condition Snapshot',
+          subtitle: 'Asset readiness by condition',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              _ConditionItem(label: 'Excellent', count: '28 assets', color: Color(0xFF22C55E)),
+              _ConditionItem(label: 'Good', count: '34 assets', color: Color(0xFF10B981)),
+              _ConditionItem(label: 'Fair', count: '18 assets', color: Color(0xFFF59E0B)),
+              _ConditionItem(label: 'Needs Review', count: '6 assets', color: Color(0xFFEF4444)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSignalCard({required String title, required String subtitle, required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQueueBoard() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Queue Pipeline', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF1A1D1F))),
+          const SizedBox(height: 4),
+          Text('Stage assets by review status and auction readiness', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+          const SizedBox(height: 20),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isStacked = constraints.maxWidth < 700;
+              final lanes = [
+                _buildQueueLane('Review', const Color(0xFFFDE68A)),
+                _buildQueueLane('Approved', const Color(0xFFBFDBFE)),
+                _buildQueueLane('Auction', const Color(0xFFBBF7D0)),
+              ];
+
+              if (isStacked) {
+                return Column(
+                  children: lanes.map((lane) => Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: lane,
+                  )).toList(),
+                );
+              }
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: lanes.map((lane) => Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: lane,
+                  ),
+                )).toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQueueLane(String status, Color accent) {
+    final items = _queueBoardItems.where((item) => item.status == status).toList();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: accent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(status, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1A1D1F))),
+          ),
+          const SizedBox(height: 12),
+          for (final item in items) ...[
+            _buildQueueCard(item),
+            const SizedBox(height: 10),
+          ],
+          if (items.isEmpty)
+            Text('No items', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQueueCard(_QueueBoardItem item) {
+    final priorityColor = item.priority == 'High'
+        ? const Color(0xFFEF4444)
+        : item.priority == 'Medium'
+            ? const Color(0xFFF59E0B)
+            : const Color(0xFF22C55E);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(item.id, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF0EA5E9))),
+          const SizedBox(height: 4),
+          Text(item.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _buildPriorityBadge(item.priority, priorityColor),
+              const Spacer(),
+              Text(item.value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAllocationTable() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Team Allocation', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF1A1D1F))),
+                    SizedBox(height: 4),
+                    Text('Workload balance by role and focus area', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+                  ],
+                ),
+              ),
+              _buildActionButton(Icons.person_add_alt_1, 'Assign Role', onTap: () {}),
+            ],
+          ),
+          const SizedBox(height: 20),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+              columns: const [
+                DataColumn(label: Text('Name', style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(label: Text('Role', style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(label: Text('Focus Area', style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(label: Text('Workload', style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.w600))),
+              ],
+              rows: _allocationItems.map((item) {
+                final statusColor = item.status == 'Active' ? Colors.green : Colors.orange;
+                return DataRow(cells: [
+                  DataCell(Text(item.name, style: const TextStyle(fontSize: 13))),
+                  DataCell(Text(item.role, style: const TextStyle(fontSize: 13))),
+                  DataCell(Text(item.focus, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)))),
+                  DataCell(_buildWorkloadChip(item.workload)),
+                  DataCell(_buildStatusBadge(item.status, statusColor)),
+                  DataCell(Row(
+                    children: [
+                      IconButton(icon: const Icon(Icons.edit, size: 16), onPressed: () {}, color: const Color(0xFF64748B)),
+                      IconButton(icon: const Icon(Icons.more_horiz, size: 16), onPressed: () {}, color: const Color(0xFF64748B)),
+                    ],
+                  )),
+                ]);
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorkloadChip(int workload) {
+    final color = workload >= 80
+        ? const Color(0xFFEF4444)
+        : workload >= 65
+            ? const Color(0xFFF59E0B)
+            : const Color(0xFF22C55E);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text('$workload%', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+    );
+  }
+
+  Widget _buildCapacityPanel() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Capacity Health', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          Text('Allocation by function', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          const SizedBox(height: 16),
+          for (final item in _capacityItems) ...[
+            _CapacityBar(item: item),
+            const SizedBox(height: 12),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCoveragePanel() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Shift Coverage', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          Text('Upcoming availability and handoffs', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          const SizedBox(height: 16),
+          _buildCoverageRow('Field Ops', 'Mon - Thu', 'On-site', const Color(0xFF38BDF8)),
+          _buildCoverageRow('Compliance', 'Tue - Fri', 'Remote', const Color(0xFF34D399)),
+          _buildCoverageRow('Logistics', 'Wed - Sat', 'Hybrid', const Color(0xFFF59E0B)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCoverageRow(String label, String window, String mode, Color color) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                Text(window, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(mode, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+          ),
         ],
       ),
     );
@@ -725,4 +1314,135 @@ class _InsightCard {
   final Color color;
 
   const _InsightCard(this.title, this.value, this.description, this.icon, this.color);
+}
+
+class _SignalBar extends StatelessWidget {
+  const _SignalBar({required this.label, required this.value, required this.color});
+
+  final String label;
+  final double value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+              Text('${(value * 100).round()}%', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: value,
+              minHeight: 8,
+              backgroundColor: const Color(0xFFE2E8F0),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConditionItem extends StatelessWidget {
+  const _ConditionItem({required this.label, required this.count, required this.color});
+
+  final String label;
+  final String count;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          const SizedBox(width: 10),
+          Expanded(child: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+          Text(count, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+        ],
+      ),
+    );
+  }
+}
+
+class _CapacityBar extends StatelessWidget {
+  const _CapacityBar({required this.item});
+
+  final _CapacityItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(child: Text(item.label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+            Text('${(item.value * 100).round()}%', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: LinearProgressIndicator(
+            value: item.value,
+            minHeight: 8,
+            backgroundColor: const Color(0xFFE2E8F0),
+            valueColor: AlwaysStoppedAnimation<Color>(item.color),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InventoryItem {
+  final String id;
+  final String name;
+  final String category;
+  final String condition;
+  final String location;
+  final String status;
+  final String value;
+  final Color statusColor;
+
+  const _InventoryItem(this.id, this.name, this.category, this.condition, this.location, this.status, this.value, this.statusColor);
+}
+
+class _QueueBoardItem {
+  final String id;
+  final String title;
+  final String status;
+  final String priority;
+  final String value;
+
+  const _QueueBoardItem(this.id, this.title, this.status, this.priority, this.value);
+}
+
+class _AllocationItem {
+  final String name;
+  final String role;
+  final String focus;
+  final int workload;
+  final String status;
+
+  const _AllocationItem(this.name, this.role, this.focus, this.workload, this.status);
+}
+
+class _CapacityItem {
+  final String label;
+  final double value;
+  final Color color;
+
+  const _CapacityItem(this.label, this.value, this.color);
 }

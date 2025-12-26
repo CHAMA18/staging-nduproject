@@ -341,6 +341,7 @@ class _ProjectDashboardScreenState extends State<ProjectDashboardScreen> {
   Widget build(BuildContext context) {
     // Record this dashboard so the logo knows where to return on tap
     NavigationContextService.instance.setLastClientDashboard(AppRoutes.dashboard);
+    final user = FirebaseAuth.instance.currentUser;
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -351,26 +352,63 @@ class _ProjectDashboardScreenState extends State<ProjectDashboardScreen> {
                 final isCompact = constraints.maxWidth < 1180;
                 final horizontalPadding = constraints.maxWidth < 600 ? 20.0 : 40.0;
 
-                return SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 36),
-                  child: Column(
+                Widget buildProjectColumns({
+                  required List<ProjectRecord> projects,
+                  required bool isLoading,
+                  String? error,
+                }) {
+                  if (isCompact) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _SingleProjectsCard(
+                          projects: projects,
+                          isLoading: isLoading,
+                          error: error,
+                        ),
+                        const SizedBox(height: 24),
+                        ValueListenableBuilder<Set<String>>(
+                          valueListenable: _selectedProjectIds,
+                          builder: (context, selectedIds, _) {
+                            return _GroupProjectsCard(
+                              projects: projects,
+                              isLoading: isLoading,
+                              error: error,
+                              selectedIds: selectedIds,
+                              onToggle: _toggleSelection,
+                              onClear: _clearSelection,
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 24),
+                        const _ProgramsSummaryCard(),
+                      ],
+                    );
+                  }
+
+                  return Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _ProjectHeader(onAddProject: _handleAddProject),
-                      const SizedBox(height: 26),
-                      const _StatusStrip(),
-                      const SizedBox(height: 28),
-                      if (isCompact)
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      Expanded(
+                        flex: 7,
+                        child: _SingleProjectsCard(
+                          projects: projects,
+                          isLoading: isLoading,
+                          error: error,
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                      Expanded(
+                        flex: 5,
+                        child: Column(
                           children: [
-                            const _SingleProjectsCard(projects: _projects),
-                            const SizedBox(height: 24),
                             ValueListenableBuilder<Set<String>>(
                               valueListenable: _selectedProjectIds,
                               builder: (context, selectedIds, _) {
                                 return _GroupProjectsCard(
-                                  projects: _projects,
+                                  projects: projects,
+                                  isLoading: isLoading,
+                                  error: error,
                                   selectedIds: selectedIds,
                                   onToggle: _toggleSelection,
                                   onClear: _clearSelection,
@@ -380,37 +418,40 @@ class _ProjectDashboardScreenState extends State<ProjectDashboardScreen> {
                             const SizedBox(height: 24),
                             const _ProgramsSummaryCard(),
                           ],
-                        )
+                        ),
+                      ),
+                    ],
+                  );
+                }
+
+                return SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 36),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _ProjectHeader(onAddProject: _handleAddProject),
+                      const SizedBox(height: 26),
+                      const _StatusStrip(),
+                      const SizedBox(height: 28),
+                      if (user == null)
+                        buildProjectColumns(projects: const [], isLoading: false)
                       else
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Expanded(
-                              flex: 7,
-                              child: _SingleProjectsCard(projects: _projects),
-                            ),
-                            const SizedBox(width: 24),
-                            Expanded(
-                              flex: 5,
-                              child: Column(
-                                children: [
-                                  ValueListenableBuilder<Set<String>>(
-                                    valueListenable: _selectedProjectIds,
-                                    builder: (context, selectedIds, _) {
-                                      return _GroupProjectsCard(
-                                        projects: _projects,
-                                        selectedIds: selectedIds,
-                                        onToggle: _toggleSelection,
-                                        onClear: _clearSelection,
-                                      );
-                                    },
-                                  ),
-                                  const SizedBox(height: 24),
-                                  const _ProgramsSummaryCard(),
-                                ],
-                              ),
-                            ),
-                          ],
+                        StreamBuilder<List<ProjectRecord>>(
+                          stream: ProjectService.streamProjects(
+                            ownerId: user.uid,
+                            filterByOwner: true,
+                            limit: 200,
+                          ),
+                          builder: (context, snapshot) {
+                            final projects = snapshot.data ?? const <ProjectRecord>[];
+                            final isLoading = snapshot.connectionState == ConnectionState.waiting;
+                            final error = snapshot.hasError ? snapshot.error.toString() : null;
+                            return buildProjectColumns(
+                              projects: projects,
+                              isLoading: isLoading,
+                              error: error,
+                            );
+                          },
                         ),
                       const SizedBox(height: 96),
                     ],
@@ -820,9 +861,15 @@ class _StatusStrip extends StatelessWidget {
 }
 
 class _SingleProjectsCard extends StatefulWidget {
-  const _SingleProjectsCard({required this.projects});
+  const _SingleProjectsCard({
+    required this.projects,
+    required this.isLoading,
+    this.error,
+  });
 
-  final List<_ProjectEntry> projects;
+  final List<ProjectRecord> projects;
+  final bool isLoading;
+  final String? error;
 
   @override
   State<_SingleProjectsCard> createState() => _SingleProjectsCardState();
@@ -1003,55 +1050,50 @@ class _SingleProjectsCardState extends State<_SingleProjectsCard> {
                 ),
               ),
             )
-           else
-             StreamBuilder<List<ProjectRecord>>(
-              stream: ProjectService.streamProjects(ownerId: user.uid, limit: 50),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Container(
-                    padding: const EdgeInsets.all(60),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: Colors.grey.shade200),
-                    ),
-                    child: const Center(child: CircularProgressIndicator()),
-                  );
-                }
-
-                if (snapshot.hasError) {
-                  return Container(
-                    padding: const EdgeInsets.all(40),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: Colors.grey.shade200),
-                    ),
-                    child: Center(
-                      child: Column(
-                        children: [
-                          Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Error loading projects',
-                            style: textTheme.bodyLarge?.copyWith(
-                              color: Colors.red.shade700,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            snapshot.error.toString(),
-                            style: textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
+           else if (widget.isLoading)
+            Container(
+              padding: const EdgeInsets.all(60),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: const Center(child: CircularProgressIndicator()),
+            )
+          else if (widget.error != null)
+            Container(
+              padding: const EdgeInsets.all(40),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Error loading projects',
+                      style: textTheme.bodyLarge?.copyWith(
+                        color: Colors.red.shade700,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  );
-                }
-
-                 final allProjects = snapshot.data ?? [];
+                    const SizedBox(height: 8),
+                    Text(
+                      widget.error!,
+                      style: textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            Builder(
+              builder: (context) {
+                final allProjects = widget.projects;
 
                 // Apply search filter
                 final firebaseProjects = _searchQuery.isEmpty
@@ -1129,12 +1171,12 @@ class _SingleProjectsCardState extends State<_SingleProjectsCard> {
                   );
                 }
 
-                 return LayoutBuilder(
+                return LayoutBuilder(
                   builder: (context, constraints) {
                     // Provide horizontal scroll for narrow screens
-                     final totalCount = firebaseProjects.length;
-                     final visibleCount = _showAll ? totalCount : (totalCount > 10 ? 10 : totalCount);
-                     final table = DecoratedBox(
+                    final totalCount = firebaseProjects.length;
+                    final visibleCount = _showAll ? totalCount : (totalCount > 10 ? 10 : totalCount);
+                    final table = DecoratedBox(
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
@@ -1155,30 +1197,30 @@ class _SingleProjectsCardState extends State<_SingleProjectsCard> {
                             ),
                           ),
                           const Divider(height: 1, thickness: 1, color: Color(0xFFE8E9F2)),
-                           for (int i = 0; i < visibleCount; i++) ...[
-                             _ProjectTableRowFromFirebase(project: firebaseProjects[i]),
-                             if (i < visibleCount - 1)
-                               const Divider(height: 1, thickness: 1, color: Color(0xFFE8E9F2)),
-                           ],
-                           if (totalCount > 10)
-                             Padding(
-                               padding: const EdgeInsets.fromLTRB(16, 6, 16, 14),
-                               child: Align(
-                                 alignment: Alignment.centerRight,
-                                 child: TextButton.icon(
-                                   onPressed: () {
-                                     setState(() => _showAll = !_showAll);
-                                   },
-                                   style: TextButton.styleFrom(
-                                     foregroundColor: Colors.black87,
-                                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                                   ),
-                                   icon: Icon(_showAll ? Icons.expand_less : Icons.expand_more, size: 18),
-                                   label: Text(_showAll ? 'Show 10' : 'View All ($totalCount)'),
-                                 ),
-                               ),
-                             ),
+                          for (int i = 0; i < visibleCount; i++) ...[
+                            _ProjectTableRowFromFirebase(project: firebaseProjects[i]),
+                            if (i < visibleCount - 1)
+                              const Divider(height: 1, thickness: 1, color: Color(0xFFE8E9F2)),
+                          ],
+                          if (totalCount > 10)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 6, 16, 14),
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton.icon(
+                                  onPressed: () {
+                                    setState(() => _showAll = !_showAll);
+                                  },
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.black87,
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                  ),
+                                  icon: Icon(_showAll ? Icons.expand_less : Icons.expand_more, size: 18),
+                                  label: Text(_showAll ? 'Show 10' : 'View All ($totalCount)'),
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     );
@@ -1207,12 +1249,16 @@ class _SingleProjectsCardState extends State<_SingleProjectsCard> {
 class _GroupProjectsCard extends StatefulWidget {
   const _GroupProjectsCard({
     required this.projects,
+    required this.isLoading,
+    this.error,
     required this.selectedIds,
     required this.onToggle,
     required this.onClear,
   });
 
-  final List<_ProjectEntry> projects;
+  final List<ProjectRecord> projects;
+  final bool isLoading;
+  final String? error;
   final Set<String> selectedIds;
   final ValueChanged<String> onToggle;
   final VoidCallback onClear;
@@ -1484,18 +1530,45 @@ class _GroupProjectsCardState extends State<_GroupProjectsCard> {
                 ),
               ),
             )
+          else if (widget.isLoading)
+            Container(
+              padding: const EdgeInsets.all(40),
+              child: const Center(child: CircularProgressIndicator()),
+            )
+          else if (widget.error != null)
+            Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.error_outline, size: 40, color: Colors.red.shade400),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Error loading projects',
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: Colors.red.shade700,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      widget.error!,
+                      style: textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            )
           else
-            StreamBuilder<List<ProjectRecord>>(
-              stream: ProjectService.streamProjects(ownerId: user.uid, filterByOwner: false, limit: 50),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Container(
-                    padding: const EdgeInsets.all(40),
-                    child: const Center(child: CircularProgressIndicator()),
-                  );
-                }
-
-                final allProjects = snapshot.data ?? [];
+            Builder(
+              builder: (context) {
+                final allProjects = widget.projects;
 
                 // Apply search filter
                 final firebaseProjects = _searchQuery.isEmpty
@@ -2834,7 +2907,7 @@ class _SummaryStat extends StatelessWidget {
 }
 
 class _TableHeaderLabel extends StatelessWidget {
-  const _TableHeaderLabel(this.label, {this.alignment = Alignment.centerLeft});
+  const _TableHeaderLabel(this.label, {this.alignment = Alignment.center});
 
   final String label;
   final Alignment alignment;

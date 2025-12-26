@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/screens/work_breakdown_structure_screen.dart';
-import 'package:ndu_project/widgets/program_workspace_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/content_text.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/front_end_planning_header.dart';
+import 'package:ndu_project/widgets/program_workspace_scaffold.dart';
 
 /// Front End Planning – Project Personnel page
 /// Mirrors the provided screenshot with:
@@ -38,52 +38,41 @@ class _FrontEndPlanningPersonnelScreenState extends State<FrontEndPlanningPerson
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FC),
-      body: SafeArea(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const ProgramWorkspaceSidebar(),
-            Expanded(
-              child: Stack(
-                children: [
-                  const AdminEditToggle(),
-                  Column(
+    return ProgramWorkspaceScaffold(
+      body: Stack(
+        children: [
+          const AdminEditToggle(),
+          Column(
+            children: [
+              const FrontEndPlanningHeader(),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const FrontEndPlanningHeader(),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                        _roundedField(controller: _notes, hint: 'Input your notes here…', minLines: 3),
-                        const SizedBox(height: 22),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: const [
-                            Expanded(child: _SectionTitle()),
-                            SizedBox(width: 12),
-                            _AddRoleButton(),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        const _PersonnelTable(),
-                              const SizedBox(height: 140),
-                            ],
-                          ),
-                        ),
+                      _roundedField(controller: _notes, hint: 'Input your notes here…', minLines: 3),
+                      const SizedBox(height: 22),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: const [
+                          Expanded(child: _SectionTitle()),
+                          SizedBox(width: 12),
+                          _AddRoleButton(),
+                        ],
                       ),
+                      const SizedBox(height: 14),
+                      const _PersonnelTable(),
+                      const SizedBox(height: 140),
                     ],
                   ),
-                  _BottomOverlays(onSubmit: () => WorkBreakdownStructureScreen.open(context)),
-                  const KazAiChatBubble(),
-                ],
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+          _BottomOverlays(onSubmit: () => WorkBreakdownStructureScreen.open(context)),
+          const KazAiChatBubble(),
+        ],
       ),
     );
   }

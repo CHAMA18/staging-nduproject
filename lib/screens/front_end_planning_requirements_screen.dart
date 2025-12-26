@@ -5,7 +5,6 @@ import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
-import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/widgets/content_text.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/front_end_planning_header.dart';

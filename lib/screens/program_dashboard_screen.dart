@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -23,11 +24,20 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
   List<ProjectRecord> _projects = [];
   bool _isLoading = true;
   String? _error;
+  StreamSubscription<List<ProgramModel>>? _programSubscription;
+  StreamSubscription<List<ProjectRecord>>? _projectSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadProgramData();
+  }
+
+  @override
+  void dispose() {
+    _programSubscription?.cancel();
+    _projectSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadProgramData() async {
@@ -42,30 +52,47 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
 
     try {
       // Listen to user's programs and get the first one
-      ProgramService.streamPrograms(ownerId: user.uid).listen((programs) {
+      _programSubscription?.cancel();
+      _programSubscription = ProgramService.streamPrograms(ownerId: user.uid).listen((programs) {
         if (!mounted) return;
         
         if (programs.isEmpty) {
+          _projectSubscription?.cancel();
           setState(() {
             _isLoading = false;
             _currentProgram = null;
             _projects = [];
+            _error = null;
           });
           return;
         }
 
         final program = programs.first;
-        setState(() {
-          _currentProgram = program;
-        });
+        final programChanged = _currentProgram?.id != program.id;
 
         // Now stream projects for this program
+        _projectSubscription?.cancel();
         if (program.projectIds.isNotEmpty) {
-          ProjectService.streamProjectsByIds(program.projectIds).listen((projects) {
+          if (programChanged) {
+            setState(() {
+              _currentProgram = program;
+              _projects = [];
+              _isLoading = true;
+              _error = null;
+            });
+          } else {
+            setState(() {
+              _currentProgram = program;
+              _error = null;
+            });
+          }
+
+          _projectSubscription = ProjectService.streamProjectsByIds(program.projectIds).listen((projects) {
             if (!mounted) return;
             setState(() {
               _projects = projects;
               _isLoading = false;
+              _error = null;
             });
           }, onError: (e) {
             debugPrint('Error streaming projects: $e');
@@ -77,8 +104,10 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
           });
         } else {
           setState(() {
+            _currentProgram = program;
             _projects = [];
             _isLoading = false;
+            _error = null;
           });
         }
       }, onError: (e) {
@@ -104,6 +133,7 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
   Widget build(BuildContext context) {
     NavigationContextService.instance.setLastClientDashboard(AppRoutes.programDashboard);
     const background = Color(0xFFF7F8FC);
+    final showEmptyState = !_isLoading && _error == null && _currentProgram == null;
 
     return Scaffold(
       backgroundColor: background,
@@ -120,57 +150,66 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _Header(isWide: isWide),
+                      _Header(
+                        isWide: isWide,
+                        programName: _currentProgram?.name,
+                      ),
                       const SizedBox(height: 24),
-                      _SummaryChips(isWide: isWide, projectCount: _projects.length),
-                      const SizedBox(height: 24),
-                      if (isWide)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              flex: 2,
-                              child: Column(
-                                children: [
-                                  _ProjectsCard(
-                                    projects: _projects,
-                                    isLoading: _isLoading,
-                                    error: _error,
-                                  ),
-                                  const SizedBox(height: 18),
-                                  const _ProgramActionsCard(),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 18),
-                            const Expanded(
-                              flex: 1,
-                              child: Column(
-                                children: [
-                                  _InterfaceCard(),
-                                  SizedBox(height: 18),
-                                  _RollupCard(),
-                                ],
-                              ),
-                            ),
-                          ],
+                      if (showEmptyState)
+                        _EmptyStateCard(
+                          onCreate: () => context.go('/${AppRoutes.dashboard}'),
                         )
-                      else
-                        Column(
-                          children: [
-                            _ProjectsCard(
-                              projects: _projects,
-                              isLoading: _isLoading,
-                              error: _error,
-                            ),
-                            const SizedBox(height: 18),
-                            const _ProgramActionsCard(),
-                            const SizedBox(height: 18),
-                            const _InterfaceCard(),
-                            const SizedBox(height: 18),
-                            const _RollupCard(),
-                          ],
-                        ),
+                      else ...[
+                        _SummaryChips(isWide: isWide, projectCount: _projects.length),
+                        const SizedBox(height: 24),
+                        if (isWide)
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 2,
+                                child: Column(
+                                  children: [
+                                    _ProjectsCard(
+                                      projects: _projects,
+                                      isLoading: _isLoading,
+                                      error: _error,
+                                    ),
+                                    const SizedBox(height: 18),
+                                    const _ProgramActionsCard(),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 18),
+                              const Expanded(
+                                flex: 1,
+                                child: Column(
+                                  children: [
+                                    _InterfaceCard(),
+                                    SizedBox(height: 18),
+                                    _RollupCard(),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          )
+                        else
+                          Column(
+                            children: [
+                              _ProjectsCard(
+                                projects: _projects,
+                                isLoading: _isLoading,
+                                error: _error,
+                              ),
+                              const SizedBox(height: 18),
+                              const _ProgramActionsCard(),
+                              const SizedBox(height: 18),
+                              const _InterfaceCard(),
+                              const SizedBox(height: 18),
+                              const _RollupCard(),
+                            ],
+                          ),
+                      ],
                     ],
                   ),
                 );
@@ -185,13 +224,16 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.isWide});
+  const _Header({required this.isWide, this.programName});
 
   final bool isWide;
+  final String? programName;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final trimmedName = programName?.trim();
+    final title = (trimmedName != null && trimmedName.isNotEmpty) ? trimmedName : 'Program dashboard';
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,7 +286,7 @@ class _Header extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'Program dashboard',
+                title,
                 style: textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF0E1017),
@@ -308,6 +350,43 @@ class _SummaryChips extends StatelessWidget {
           if (i != chips.length - 1) const SizedBox(height: 12),
         ],
       ],
+    );
+  }
+}
+
+class _EmptyStateCard extends StatelessWidget {
+  const _EmptyStateCard({required this.onCreate});
+
+  final VoidCallback onCreate;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return _Surface(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('No programs yet', style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          Text(
+            'Create a program from three projects to see a live program dashboard here.',
+            style: textTheme.bodyMedium?.copyWith(color: const Color(0xFF565970), height: 1.45),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: onCreate,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF111111),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              textStyle: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            child: const Text('Go to project dashboard'),
+          ),
+        ],
+      ),
     );
   }
 }

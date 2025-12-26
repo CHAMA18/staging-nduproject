@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:ndu_project/widgets/header_banner_image.dart';
 import 'package:ndu_project/screens/home_screen.dart';

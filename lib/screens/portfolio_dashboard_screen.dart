@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/kaz_ai_chat_bubble.dart';
 import '../routing/app_router.dart';
 import '../services/navigation_context_service.dart';
+import '../services/project_service.dart';
 
 class PortfolioDashboardScreen extends StatelessWidget {
   const PortfolioDashboardScreen({super.key});
@@ -28,46 +30,57 @@ class _PortfolioRollUpContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 1000;
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const _HeaderSection(),
-              const SizedBox(height: 24),
-              if (isNarrow) ...[
-                const _ProgramsProjectsCard(),
-                const SizedBox(height: 24),
-                const _GovernanceReportingCard(),
-                const SizedBox(height: 24),
-                const _IndependentProjectsCard(),
-              ] else
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 6,
-                      child: Column(
-                        children: const [
-                          _ProgramsProjectsCard(),
-                          SizedBox(height: 16),
-                          _IndependentProjectsCard(),
-                        ],
-                      ),
+    final user = FirebaseAuth.instance.currentUser;
+    final projectStream = user == null ? Stream.value(const <ProjectRecord>[]) : ProjectService.streamProjects(ownerId: user.uid);
+
+    return StreamBuilder<List<ProjectRecord>>(
+      stream: projectStream,
+      builder: (context, snapshot) {
+        final projects = snapshot.data ?? const <ProjectRecord>[];
+        final metrics = _PortfolioMetrics.fromProjects(projects);
+
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 1000;
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _HeaderSection(metrics: metrics),
+                  const SizedBox(height: 24),
+                  if (isNarrow) ...[
+                    const _ProgramsProjectsCard(),
+                    const SizedBox(height: 24),
+                    const _GovernanceReportingCard(),
+                    const SizedBox(height: 24),
+                    const _IndependentProjectsCard(),
+                  ] else
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 6,
+                          child: Column(
+                            children: const [
+                              _ProgramsProjectsCard(),
+                              SizedBox(height: 16),
+                              _IndependentProjectsCard(),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 24),
+                        const Expanded(flex: 4, child: _GovernanceReportingCard()),
+                      ],
                     ),
-                    const SizedBox(width: 24),
-                    const Expanded(flex: 4, child: _GovernanceReportingCard()),
-                  ],
-                ),
-              const SizedBox(height: 24),
-              const _CostScheduleRiskSection(),
-              const SizedBox(height: 24),
-              const _RollUpUpdateSection(),
-            ],
-          ),
+                  const SizedBox(height: 24),
+                  _CostScheduleRiskSection(metrics: metrics),
+                  const SizedBox(height: 24),
+                  const _RollUpUpdateSection(),
+                ],
+              ),
+            );
+          },
         );
       },
     );
@@ -75,7 +88,9 @@ class _PortfolioRollUpContent extends StatelessWidget {
 }
 
 class _HeaderSection extends StatelessWidget {
-  const _HeaderSection();
+  const _HeaderSection({required this.metrics});
+
+  final _PortfolioMetrics metrics;
 
   @override
   Widget build(BuildContext context) {
@@ -115,9 +130,9 @@ class _HeaderSection extends StatelessWidget {
                 runSpacing: 8,
                 children: [
                   _InfoChip(label: '3 programs', icon: Icons.layers_outlined),
-                  _InfoChip(label: '7 projects included', icon: Icons.folder_outlined),
-                  _InfoChip(label: 'Total portfolio value: \$18.2M', icon: Icons.attach_money),
-                  _InfoChip(label: 'Risk posture: Medium', icon: Icons.shield_outlined),
+                  _InfoChip(label: '${metrics.projectCount} projects included', icon: Icons.folder_outlined),
+                  _InfoChip(label: 'Total portfolio value: ${metrics.formattedTotalValue}', icon: Icons.attach_money),
+                  _InfoChip(label: 'Risk posture: ${metrics.riskPostureLabel}', icon: Icons.shield_outlined),
                 ],
               ),
             ],
@@ -418,7 +433,9 @@ class _GovernanceItem extends StatelessWidget {
 }
 
 class _CostScheduleRiskSection extends StatelessWidget {
-  const _CostScheduleRiskSection();
+  const _CostScheduleRiskSection({required this.metrics});
+
+  final _PortfolioMetrics metrics;
 
   @override
   Widget build(BuildContext context) {
@@ -437,27 +454,27 @@ class _CostScheduleRiskSection extends StatelessWidget {
               final isNarrow = constraints.maxWidth < 800;
               if (isNarrow) {
                 return Column(
-                  children: const [
-                    _PortfolioValueCard(),
-                    SizedBox(height: 16),
-                    _AggregateScheduleCard(),
+                  children: [
+                    _PortfolioValueCard(metrics: metrics),
+                    const SizedBox(height: 16),
+                    const _AggregateScheduleCard(),
                   ],
                 );
               }
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Expanded(child: _PortfolioValueCard()),
-                  SizedBox(width: 24),
-                  Expanded(child: _AggregateScheduleCard()),
+                children: [
+                  Expanded(child: _PortfolioValueCard(metrics: metrics)),
+                  const SizedBox(width: 24),
+                  const Expanded(child: _AggregateScheduleCard()),
                 ],
               );
             },
           ),
           const SizedBox(height: 24),
-          const _RiskPostureSection(),
+          _RiskPostureSection(metrics: metrics),
           const SizedBox(height: 24),
-          const _ProjectCostComparison(),
+          _ProjectCostComparison(metrics: metrics),
         ],
       ),
     );
@@ -465,7 +482,9 @@ class _CostScheduleRiskSection extends StatelessWidget {
 }
 
 class _PortfolioValueCard extends StatelessWidget {
-  const _PortfolioValueCard();
+  const _PortfolioValueCard({required this.metrics});
+
+  final _PortfolioMetrics metrics;
 
   @override
   Widget build(BuildContext context) {
@@ -477,9 +496,9 @@ class _PortfolioValueCard extends StatelessWidget {
         children: [
           const Text('Total portfolio value', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
           const SizedBox(height: 8),
-          const Text('\$18.2M', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+          Text(metrics.formattedTotalValue, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
           const SizedBox(height: 4),
-          const Text('3 programs · 7 projects · 1 related standalone', style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
+          Text('${metrics.projectCount} projects in scope', style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -578,10 +597,24 @@ class _ScheduleBar extends StatelessWidget {
 }
 
 class _RiskPostureSection extends StatelessWidget {
-  const _RiskPostureSection();
+  const _RiskPostureSection({required this.metrics});
+
+  final _PortfolioMetrics metrics;
 
   @override
   Widget build(BuildContext context) {
+    final tags = metrics.riskTags.isEmpty
+        ? [
+            _RiskTagData(label: 'No risk tags yet', severity: _RiskSeverity.low),
+          ]
+        : metrics.riskTags;
+
+    final buckets = metrics.riskBuckets.isEmpty
+        ? [
+            _RiskBucketData(label: 'Coverage', high: 0, medium: 0),
+          ]
+        : metrics.riskBuckets;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -591,24 +624,26 @@ class _RiskPostureSection extends StatelessWidget {
             children: [
               const Text('Risk posture', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF111827))),
               const SizedBox(height: 8),
-              const Text('Medium', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFFF59E0B))),
+              Text(
+                metrics.riskPostureLabel,
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: metrics.riskPostureColor),
+              ),
               const SizedBox(height: 4),
-              const Text('5 high risks · 14 medium · 8 low', style: TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+              Text(
+                '${metrics.highRiskCount} high risks · ${metrics.mediumRiskCount} medium · ${metrics.lowRiskCount} low',
+                style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+              ),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: [
-                  _RiskTag(label: 'Scope creep', severity: 'High', color: const Color(0xFFEF4444)),
-                  _RiskTag(label: 'Cybersecurity', severity: 'Medium', color: const Color(0xFFF59E0B)),
-                  _RiskTag(label: 'Vendor performance', severity: 'Medium', color: const Color(0xFFF59E0B)),
-                  _RiskTag(label: 'Change adoption', severity: 'Low', color: const Color(0xFF10B981)),
-                  _RiskTag(label: 'Training coverage', severity: 'Low', color: const Color(0xFF10B981)),
-                  _RiskTag(label: 'Retention', severity: 'Low', color: const Color(0xFF10B981)),
-                ],
+                children: tags.map((tag) => _RiskTag(label: tag.label, severity: tag.severity)).toList(),
               ),
               const SizedBox(height: 12),
-              const Text('Control system modernization', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
+              Text(
+                metrics.projects.isEmpty ? 'No projects in scope yet' : 'Based on ${metrics.projects.length} projects',
+                style: const TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)),
+              ),
             ],
           ),
         ),
@@ -616,17 +651,18 @@ class _RiskPostureSection extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Passenger experience', style: TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
-            const SizedBox(height: 8),
-            Row(children: [_RiskLevel(level: '3 high', color: const Color(0xFFEF4444)), const SizedBox(width: 8), _RiskLevel(level: '4 medium', color: const Color(0xFFF59E0B))]),
-            const SizedBox(height: 16),
-            const Text('Scheduling availability', style: TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
-            const SizedBox(height: 8),
-            Row(children: [_RiskLevel(level: '2 high', color: const Color(0xFFEF4444)), const SizedBox(width: 8), _RiskLevel(level: '5 medium', color: const Color(0xFFF59E0B))]),
-            const SizedBox(height: 16),
-            const Text('Staff experience', style: TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
-            const SizedBox(height: 8),
-            Row(children: [_RiskLevel(level: '0 high', color: const Color(0xFF9CA3AF)), const SizedBox(width: 8), _RiskLevel(level: '5 medium', color: const Color(0xFFF59E0B))]),
+            for (int i = 0; i < buckets.length; i++) ...[
+              Text(buckets[i].label, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _RiskLevel(level: '${buckets[i].high} high', color: buckets[i].high > 0 ? const Color(0xFFEF4444) : const Color(0xFF9CA3AF)),
+                  const SizedBox(width: 8),
+                  _RiskLevel(level: '${buckets[i].medium} medium', color: buckets[i].medium > 0 ? const Color(0xFFF59E0B) : const Color(0xFF9CA3AF)),
+                ],
+              ),
+              if (i != buckets.length - 1) const SizedBox(height: 16),
+            ],
           ],
         ),
       ],
@@ -635,12 +671,13 @@ class _RiskPostureSection extends StatelessWidget {
 }
 
 class _RiskTag extends StatelessWidget {
-  const _RiskTag({required this.label, required this.severity, required this.color});
-  final String label, severity;
-  final Color color;
+  const _RiskTag({required this.label, required this.severity});
+  final String label;
+  final _RiskSeverity severity;
 
   @override
   Widget build(BuildContext context) {
+    final color = _riskColor(severity);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4), border: Border.all(color: color.withValues(alpha: 0.3))),
@@ -665,40 +702,275 @@ class _RiskLevel extends StatelessWidget {
 }
 
 class _ProjectCostComparison extends StatelessWidget {
-  const _ProjectCostComparison();
+  const _ProjectCostComparison({required this.metrics});
+
+  final _PortfolioMetrics metrics;
 
   @override
   Widget build(BuildContext context) {
+    final items = metrics.costBars;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('Project cost comparison', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF111827))),
         const SizedBox(height: 16),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: const [
-              _CostBar(label: 'Gate\nexpansion', value: '\$3.5M', height: 120, color: Color(0xFF3B82F6)),
-              SizedBox(width: 8),
-              _CostBar(label: 'Runway\nresurfacing', value: '\$3.2M', height: 110, color: Color(0xFF3B82F6)),
-              SizedBox(width: 8),
-              _CostBar(label: 'Check-in\nkiosks', value: '\$1.9M', height: 70, color: Color(0xFF3B82F6)),
-              SizedBox(width: 8),
-              _CostBar(label: 'Control room\nupgrade', value: '\$2.9M', height: 100, color: Color(0xFF10B981)),
-              SizedBox(width: 8),
-              _CostBar(label: 'Automation\nupgr', value: '\$2.1M', height: 75, color: Color(0xFF10B981)),
-              SizedBox(width: 8),
-              _CostBar(label: 'Monitoring\nplatform', value: '\$1.1M', height: 45, color: Color(0xFF10B981)),
-              SizedBox(width: 8),
-              _CostBar(label: 'Change\nmanagement', value: '\$1.4M', height: 55, color: Color(0xFFF59E0B)),
-              SizedBox(width: 8),
-              _CostBar(label: 'Workforce\nprogram', value: '\$1.7M', height: 60, color: Color(0xFFF59E0B)),
-            ],
+        if (items.isEmpty)
+          const Text('No projects available yet.', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)))
+        else
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (int i = 0; i < items.length; i++) ...[
+                  _CostBar(
+                    label: items[i].label,
+                    value: items[i].formattedValue,
+                    height: items[i].height,
+                    color: items[i].color,
+                  ),
+                  if (i != items.length - 1) const SizedBox(width: 8),
+                ],
+              ],
+            ),
           ),
-        ),
       ],
     );
   }
+}
+
+enum _RiskSeverity { high, medium, low }
+
+Color _riskColor(_RiskSeverity severity) {
+  switch (severity) {
+    case _RiskSeverity.high:
+      return const Color(0xFFEF4444);
+    case _RiskSeverity.medium:
+      return const Color(0xFFF59E0B);
+    case _RiskSeverity.low:
+      return const Color(0xFF10B981);
+  }
+}
+
+class _RiskTagData {
+  const _RiskTagData({required this.label, required this.severity});
+  final String label;
+  final _RiskSeverity severity;
+}
+
+class _RiskBucketData {
+  const _RiskBucketData({required this.label, required this.high, required this.medium});
+  final String label;
+  final int high;
+  final int medium;
+}
+
+class _CostBarData {
+  const _CostBarData({required this.label, required this.formattedValue, required this.height, required this.color});
+  final String label;
+  final String formattedValue;
+  final double height;
+  final Color color;
+}
+
+class _PortfolioMetrics {
+  _PortfolioMetrics({
+    required this.projects,
+    required this.projectCount,
+    required this.totalValue,
+    required this.formattedTotalValue,
+    required this.highRiskCount,
+    required this.mediumRiskCount,
+    required this.lowRiskCount,
+    required this.riskPostureLabel,
+    required this.riskPostureColor,
+    required this.riskTags,
+    required this.riskBuckets,
+    required this.costBars,
+  });
+
+  final List<ProjectRecord> projects;
+  final int projectCount;
+  final double totalValue;
+  final String formattedTotalValue;
+  final int highRiskCount;
+  final int mediumRiskCount;
+  final int lowRiskCount;
+  final String riskPostureLabel;
+  final Color riskPostureColor;
+  final List<_RiskTagData> riskTags;
+  final List<_RiskBucketData> riskBuckets;
+  final List<_CostBarData> costBars;
+
+  static _PortfolioMetrics fromProjects(List<ProjectRecord> projects) {
+    final totalValue = projects.fold<double>(0, (sum, project) => sum + project.investmentMillions);
+    final formattedTotalValue = _formatMillions(totalValue);
+
+    if (projects.isEmpty) {
+      return _PortfolioMetrics(
+        projects: projects,
+        projectCount: 0,
+        totalValue: 0,
+        formattedTotalValue: formattedTotalValue,
+        highRiskCount: 0,
+        mediumRiskCount: 0,
+        lowRiskCount: 0,
+        riskPostureLabel: 'No data',
+        riskPostureColor: const Color(0xFF9CA3AF),
+        riskTags: const [],
+        riskBuckets: const [],
+        costBars: const [],
+      );
+    }
+
+    int high = 0;
+    int medium = 0;
+    int low = 0;
+
+    for (final project in projects) {
+      switch (_riskSeverityForProject(project)) {
+        case _RiskSeverity.high:
+          high++;
+          break;
+        case _RiskSeverity.medium:
+          medium++;
+          break;
+        case _RiskSeverity.low:
+          low++;
+          break;
+      }
+    }
+
+    final riskPosture = _overallRiskPosture(high: high, medium: medium, low: low);
+
+    final tagStats = <String, List<_RiskSeverity>>{};
+    for (final project in projects) {
+      final severity = _riskSeverityForProject(project);
+      final tags = project.tags.isNotEmpty ? project.tags : [project.status];
+      for (final rawTag in tags) {
+        final tag = rawTag.trim();
+        if (tag.isEmpty) continue;
+        tagStats.putIfAbsent(tag, () => []).add(severity);
+      }
+    }
+
+    final sortedTags = tagStats.entries.toList()
+      ..sort((a, b) => b.value.length.compareTo(a.value.length));
+
+    final riskTags = sortedTags.take(6).map((entry) {
+      final severity = _dominantSeverity(entry.value);
+      return _RiskTagData(label: entry.key, severity: severity);
+    }).toList(growable: false);
+
+    final riskBuckets = sortedTags.take(3).map((entry) {
+      final highs = entry.value.where((s) => s == _RiskSeverity.high).length;
+      final mediums = entry.value.where((s) => s == _RiskSeverity.medium).length;
+      return _RiskBucketData(label: entry.key, high: highs, medium: mediums);
+    }).toList(growable: false);
+
+    final costBars = _buildCostBars(projects);
+
+    return _PortfolioMetrics(
+      projects: projects,
+      projectCount: projects.length,
+      totalValue: totalValue,
+      formattedTotalValue: formattedTotalValue,
+      highRiskCount: high,
+      mediumRiskCount: medium,
+      lowRiskCount: low,
+      riskPostureLabel: riskPosture.label,
+      riskPostureColor: riskPosture.color,
+      riskTags: riskTags,
+      riskBuckets: riskBuckets,
+      costBars: costBars,
+    );
+  }
+}
+
+class _RiskPosture {
+  const _RiskPosture({required this.label, required this.color});
+  final String label;
+  final Color color;
+}
+
+_RiskPosture _overallRiskPosture({required int high, required int medium, required int low}) {
+  if (high >= medium && high >= low) {
+    return const _RiskPosture(label: 'High', color: Color(0xFFEF4444));
+  }
+  if (medium >= low) {
+    return const _RiskPosture(label: 'Medium', color: Color(0xFFF59E0B));
+  }
+  return const _RiskPosture(label: 'Low', color: Color(0xFF10B981));
+}
+
+_RiskSeverity _riskSeverityForProject(ProjectRecord project) {
+  if (project.progress < 0.34) return _RiskSeverity.high;
+  if (project.progress < 0.67) return _RiskSeverity.medium;
+  return _RiskSeverity.low;
+}
+
+_RiskSeverity _dominantSeverity(List<_RiskSeverity> severities) {
+  final high = severities.where((s) => s == _RiskSeverity.high).length;
+  final medium = severities.where((s) => s == _RiskSeverity.medium).length;
+  final low = severities.where((s) => s == _RiskSeverity.low).length;
+  if (high >= medium && high >= low) return _RiskSeverity.high;
+  if (medium >= low) return _RiskSeverity.medium;
+  return _RiskSeverity.low;
+}
+
+List<_CostBarData> _buildCostBars(List<ProjectRecord> projects) {
+  if (projects.isEmpty) return const [];
+
+  final sorted = [...projects]..sort((a, b) => b.investmentMillions.compareTo(a.investmentMillions));
+  final top = sorted.take(8).toList(growable: false);
+  final maxValue = top.fold<double>(0, (max, project) => project.investmentMillions > max ? project.investmentMillions : max);
+
+  return top.map((project) {
+    final value = project.investmentMillions;
+    final height = _scaleHeight(value, maxValue);
+    final label = _shortenLabel(project.name.isEmpty ? 'Untitled project' : project.name);
+    final color = _statusColor(project.status);
+    return _CostBarData(
+      label: label,
+      formattedValue: _formatMillions(value),
+      height: height,
+      color: color,
+    );
+  }).toList(growable: false);
+}
+
+double _scaleHeight(double value, double maxValue) {
+  const minHeight = 40.0;
+  const range = 90.0;
+  if (maxValue <= 0) return minHeight;
+  return minHeight + (value / maxValue) * range;
+}
+
+Color _statusColor(String status) {
+  final normalized = status.toLowerCase();
+  if (normalized.contains('execution') || normalized.contains('progress')) {
+    return const Color(0xFF10B981);
+  }
+  if (normalized.contains('planning')) {
+    return const Color(0xFF3B82F6);
+  }
+  return const Color(0xFFF59E0B);
+}
+
+String _formatMillions(double value) {
+  final rounded = value.toStringAsFixed(1);
+  return '\$${rounded}M';
+}
+
+String _shortenLabel(String label) {
+  final trimmed = label.trim();
+  if (trimmed.length <= 12) {
+    return trimmed;
+  }
+  final words = trimmed.split(RegExp(r'\s+'));
+  if (words.length >= 2) {
+    return '${words[0]}\n${words[1]}';
+  }
+  return '${trimmed.substring(0, 10)}…';
 }
 
 class _CostBar extends StatelessWidget {

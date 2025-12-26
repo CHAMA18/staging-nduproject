@@ -5,7 +5,7 @@ import 'package:ndu_project/utils/project_data_helper.dart';
 
 /// Debouncer utility to limit API calls while typing
 class _Debouncer {
-  _Debouncer({this.delay = const Duration(milliseconds: 300)});
+  _Debouncer();
   final Duration delay;
   Timer? _timer;
   void run(void Function() action) {

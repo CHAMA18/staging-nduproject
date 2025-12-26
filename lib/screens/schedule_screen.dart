@@ -1182,7 +1182,6 @@ class _BadgeStyle {
     required this.label,
     required this.textColor,
     required this.backgroundColor,
-    this.borderColor,
   });
 
   final String label;

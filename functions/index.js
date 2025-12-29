@@ -147,13 +147,13 @@ exports.openaiProxy = functions
   .https.onRequest(async (req, res) => {
     // CORS configuration - restrict to your domain in production
     const allowedOrigins = [
-      'http://localhost:3000',
       'https://your-app-domain.web.app',
       'https://your-app-domain.firebaseapp.com'
     ];
     
     const origin = req.headers.origin;
-    if (allowedOrigins.includes(origin)) {
+    const isLocalhost = typeof origin === 'string' && (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1'));
+    if (isLocalhost || allowedOrigins.includes(origin)) {
       res.set('Access-Control-Allow-Origin', origin);
     }
     

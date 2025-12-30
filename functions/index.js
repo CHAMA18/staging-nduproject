@@ -5,6 +5,8 @@ admin.initializeApp();
 
 const db = admin.firestore();
 const APP_BASE_URL = 'https://ndu-d3f60.web.app';
+const FX_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const fxCache = { usdToNgn: null, fetchedAt: 0 };
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -32,8 +34,8 @@ async function verifyAuthToken(req) {
  */
 function setCorsHeaders(req, res) {
   const allowedOrigins = [
-    'http://localhost:3000',
-    'http://localhost:5000',
+    /^(http|https):\/\/localhost(:\d+)?$/,
+    /^(http|https):\/\/127\.0\.0\.1(:\d+)?$/,
     /\.web\.app$/,
     /\.firebaseapp\.com$/
   ];
@@ -52,6 +54,52 @@ function setCorsHeaders(req, res) {
 
 function getRequestOrigin(req) {
   return req.headers.origin || APP_BASE_URL;
+}
+
+function getPayPalBaseUrl(clientId) {
+  const env = (process.env.PAYPAL_ENV || '').toLowerCase();
+  if (env === 'sandbox') return 'https://api-m.sandbox.paypal.com';
+  if (env === 'live') return 'https://api-m.paypal.com';
+
+  const normalizedId = (clientId || '').toLowerCase();
+  if (normalizedId.startsWith('sb') || normalizedId.includes('sandbox')) {
+    return 'https://api-m.sandbox.paypal.com';
+  }
+
+  return 'https://api-m.paypal.com';
+}
+
+async function getUsdToNgnRate() {
+  const now = Date.now();
+  if (fxCache.usdToNgn && now - fxCache.fetchedAt < FX_CACHE_TTL_MS) {
+    return fxCache.usdToNgn;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
+    const response = await fetch('https://open.er-api.com/v6/latest/USD', {
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      throw new Error(`FX fetch failed (${response.status})`);
+    }
+
+    const data = await response.json();
+    const rate = Number(data?.rates?.NGN);
+    if (!Number.isFinite(rate) || rate <= 0) {
+      throw new Error('FX rate for NGN unavailable');
+    }
+
+    fxCache.usdToNgn = rate;
+    fxCache.fetchedAt = now;
+    return rate;
+  } catch (error) {
+    console.warn('FX rate fetch failed:', error.message || error);
+    return null;
+  }
 }
 
 /**
@@ -544,7 +592,8 @@ exports.createPayPalOrder = functions
       });
       
       // Get PayPal access token
-      const authResponse = await fetch('https://api-m.paypal.com/v1/oauth2/token', {
+      const paypalBaseUrl = getPayPalBaseUrl(clientId);
+      const authResponse = await fetch(`${paypalBaseUrl}/v1/oauth2/token`, {
         method: 'POST',
         headers: {
           'Authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
@@ -560,7 +609,7 @@ exports.createPayPalOrder = functions
       
       // Create PayPal order
       const origin = getRequestOrigin(req);
-      const orderResponse = await fetch('https://api-m.paypal.com/v2/checkout/orders', {
+      const orderResponse = await fetch(`${paypalBaseUrl}/v2/checkout/orders`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authData.access_token}`,
@@ -650,7 +699,8 @@ exports.verifyPayPalPayment = functions
       const { reference } = req.body;
       
       // Get PayPal access token
-      const authResponse = await fetch('https://api-m.paypal.com/v1/oauth2/token', {
+      const paypalBaseUrl = getPayPalBaseUrl(clientId);
+      const authResponse = await fetch(`${paypalBaseUrl}/v1/oauth2/token`, {
         method: 'POST',
         headers: {
           'Authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
@@ -662,7 +712,7 @@ exports.verifyPayPalPayment = functions
       const authData = await authResponse.json();
       
       // Capture the payment
-      const captureResponse = await fetch(`https://api-m.paypal.com/v2/checkout/orders/${reference}/capture`, {
+      const captureResponse = await fetch(`${paypalBaseUrl}/v2/checkout/orders/${reference}/capture`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authData.access_token}`,
@@ -787,7 +837,25 @@ exports.createPaystackTransaction = functions
         }
       }
 
-      const priceInKobo = priceInCents * 100; // Paystack uses kobo (1/100 of Naira) but we'll use USD cents
+      const paystackCurrency = (process.env.PAYSTACK_CURRENCY || 'NGN').toUpperCase();
+      const paystackUsdRateRaw = process.env.PAYSTACK_USD_TO_NGN;
+      const paystackUsdRateOverride = Number.isFinite(Number(paystackUsdRateRaw)) ? Number(paystackUsdRateRaw) : null;
+      const liveUsdToNgnRate = paystackCurrency === 'NGN' ? await getUsdToNgnRate() : null;
+      const paystackUsdRate = paystackUsdRateOverride ?? liveUsdToNgnRate ?? 1500;
+      const paystackUsdEquivalentRaw = process.env.PAYSTACK_USD_EQUIVALENT;
+      const paystackUsdEquivalent = Number.isFinite(Number(paystackUsdEquivalentRaw)) ? Number(paystackUsdEquivalentRaw) : 20;
+      const baseUsdAmount = paystackUsdEquivalent > 0 ? paystackUsdEquivalent : (priceInCents / 100);
+      let priceInMinorUnits;
+
+      if (paystackCurrency === 'NGN') {
+        priceInMinorUnits = Math.round(baseUsdAmount * paystackUsdRate * 100);
+      } else {
+        const paystackAmountMultiplierRaw = process.env.PAYSTACK_AMOUNT_MULTIPLIER;
+        const paystackAmountMultiplier = Number.isFinite(Number(paystackAmountMultiplierRaw))
+          ? Number(paystackAmountMultiplierRaw)
+          : 1;
+        priceInMinorUnits = Math.round(priceInCents * paystackAmountMultiplier);
+      }
       
       // Create pending subscription record
       const subscriptionRef = db.collection('subscriptions').doc();
@@ -815,8 +883,8 @@ exports.createPaystackTransaction = functions
         },
         body: JSON.stringify({
           email,
-          amount: priceInKobo,
-          currency: 'USD',
+          amount: priceInMinorUnits,
+          currency: paystackCurrency,
           reference: subscriptionRef.id,
           callback_url: `${origin}/payment-success`,
           metadata: {
@@ -1196,7 +1264,8 @@ exports.getUserInvoices = functions
       if (paypalClientId && paypalClientSecret && userEmail) {
         try {
           // Get PayPal access token
-          const authResponse = await fetch('https://api-m.paypal.com/v1/oauth2/token', {
+          const paypalBaseUrl = getPayPalBaseUrl(paypalClientId);
+          const authResponse = await fetch(`${paypalBaseUrl}/v1/oauth2/token`, {
             method: 'POST',
             headers: {
               'Authorization': `Basic ${Buffer.from(`${paypalClientId}:${paypalClientSecret}`).toString('base64')}`,
@@ -1213,7 +1282,7 @@ exports.getUserInvoices = functions
             const endDate = new Date();
             
             const transactionsResponse = await fetch(
-              `https://api-m.paypal.com/v1/reporting/transactions?start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}&fields=all`,
+              `${paypalBaseUrl}/v1/reporting/transactions?start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}&fields=all`,
               {
                 headers: {
                   'Authorization': `Bearer ${authData.access_token}`,

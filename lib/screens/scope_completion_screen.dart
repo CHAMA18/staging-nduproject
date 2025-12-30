@@ -186,20 +186,14 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
       );
     }
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(child: _buildScopeCompletionStatusCard(context)),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            children: [
-              _buildSponsorAcceptanceCard(context),
-              const SizedBox(height: 16),
-              _buildScopeChangeSummaryCard(context),
-            ],
-          ),
-        ),
+        _buildScopeCompletionStatusCard(context),
+        const SizedBox(height: 16),
+        _buildSponsorAcceptanceCard(context),
+        const SizedBox(height: 16),
+        _buildScopeChangeSummaryCard(context),
       ],
     );
   }

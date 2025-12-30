@@ -61,38 +61,18 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                 const SizedBox(height: 20),
                 _buildStatsRow(isNarrow),
                 const SizedBox(height: 24),
-                if (isNarrow)
-                  Column(
-                    children: [
-                      _buildVendorRegister(),
-                      const SizedBox(height: 20),
-                      _buildPerformancePanel(),
-                      const SizedBox(height: 20),
-                      _buildSignalsPanel(),
-                      const SizedBox(height: 20),
-                      _buildActionPanel(),
-                    ],
-                  )
-                else
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 3, child: _buildVendorRegister()),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          children: [
-                            _buildPerformancePanel(),
-                            const SizedBox(height: 20),
-                            _buildSignalsPanel(),
-                            const SizedBox(height: 20),
-                            _buildActionPanel(),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildVendorRegister(),
+                    const SizedBox(height: 20),
+                    _buildPerformancePanel(),
+                    const SizedBox(height: 20),
+                    _buildSignalsPanel(),
+                    const SizedBox(height: 20),
+                    _buildActionPanel(),
+                  ],
+                ),
               ],
             ),
           ),
@@ -277,29 +257,36 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
       title: 'Vendor scorecard',
       subtitle: 'Performance, rating, and compliance checkpoints',
       trailing: _actionButton(Icons.filter_list, 'Filter'),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
-          columns: const [
-            DataColumn(label: Text('Vendor', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Category', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('SLA', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Rating', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Next review', style: TextStyle(fontWeight: FontWeight.w600))),
-          ],
-          rows: _vendors.map((vendor) {
-            return DataRow(cells: [
-              DataCell(Text(vendor.name, style: const TextStyle(fontSize: 13))),
-              DataCell(_chip(vendor.category)),
-              DataCell(Text(vendor.sla, style: const TextStyle(fontSize: 12))),
-              DataCell(_ratingChip(vendor.rating)),
-              DataCell(_statusChip(vendor.status)),
-              DataCell(Text(vendor.nextReview, style: const TextStyle(fontSize: 12))),
-            ]);
-          }).toList(),
-        ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: DataTable(
+                headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                columns: const [
+                  DataColumn(label: Text('Vendor', style: TextStyle(fontWeight: FontWeight.w600))),
+                  DataColumn(label: Text('Category', style: TextStyle(fontWeight: FontWeight.w600))),
+                  DataColumn(label: Text('SLA', style: TextStyle(fontWeight: FontWeight.w600))),
+                  DataColumn(label: Text('Rating', style: TextStyle(fontWeight: FontWeight.w600))),
+                  DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
+                  DataColumn(label: Text('Next review', style: TextStyle(fontWeight: FontWeight.w600))),
+                ],
+                rows: _vendors.map((vendor) {
+                  return DataRow(cells: [
+                    DataCell(Text(vendor.name, style: const TextStyle(fontSize: 13))),
+                    DataCell(_chip(vendor.category)),
+                    DataCell(Text(vendor.sla, style: const TextStyle(fontSize: 12))),
+                    DataCell(_ratingChip(vendor.rating)),
+                    DataCell(_statusChip(vendor.status)),
+                    DataCell(Text(vendor.nextReview, style: const TextStyle(fontSize: 12))),
+                  ]);
+                }).toList(),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

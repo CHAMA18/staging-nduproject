@@ -270,22 +270,12 @@ class _AgileDevelopmentIterationsScreenState extends State<AgileDevelopmentItera
   }
 
   Widget _buildBoardAndRhythmRow(BuildContext context, bool isMobile) {
-    if (isMobile) {
-      return Column(
-        children: [
-          _buildIterationBoardCard(context),
-          const SizedBox(height: 12),
-          _buildIterationRhythmCard(context),
-        ],
-      );
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(flex: 3, child: _buildIterationBoardCard(context)),
-        const SizedBox(width: 16),
-        Expanded(flex: 2, child: _buildIterationRhythmCard(context)),
+        _buildIterationBoardCard(context),
+        const SizedBox(height: 12),
+        _buildIterationRhythmCard(context),
       ],
     );
   }
@@ -503,22 +493,12 @@ class _AgileDevelopmentIterationsScreenState extends State<AgileDevelopmentItera
   }
 
   Widget _buildMilestonesAndRiskRow(BuildContext context, bool isMobile) {
-    if (isMobile) {
-      return Column(
-        children: [
-          _buildUpcomingMilestonesCard(context),
-          const SizedBox(height: 12),
-          _buildDependencyRiskCard(context),
-        ],
-      );
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(child: _buildUpcomingMilestonesCard(context)),
-        const SizedBox(width: 16),
-        Expanded(child: _buildDependencyRiskCard(context)),
+        _buildUpcomingMilestonesCard(context),
+        const SizedBox(height: 12),
+        _buildDependencyRiskCard(context),
       ],
     );
   }

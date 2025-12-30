@@ -60,38 +60,18 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                 const SizedBox(height: 20),
                 _buildStatsRow(isNarrow),
                 const SizedBox(height: 24),
-                if (isNarrow)
-                  Column(
-                    children: [
-                      _buildRiskRegister(),
-                      const SizedBox(height: 20),
-                      _buildMitigationPanel(),
-                      const SizedBox(height: 20),
-                      _buildSignalsPanel(),
-                      const SizedBox(height: 20),
-                      _buildEscalationPanel(),
-                    ],
-                  )
-                else
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 3, child: _buildRiskRegister()),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          children: [
-                            _buildMitigationPanel(),
-                            const SizedBox(height: 20),
-                            _buildSignalsPanel(),
-                            const SizedBox(height: 20),
-                            _buildEscalationPanel(),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildRiskRegister(),
+                    const SizedBox(height: 20),
+                    _buildMitigationPanel(),
+                    const SizedBox(height: 20),
+                    _buildSignalsPanel(),
+                    const SizedBox(height: 20),
+                    _buildEscalationPanel(),
+                  ],
+                ),
               ],
             ),
           ),
@@ -276,31 +256,38 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
       title: 'Risk register',
       subtitle: 'Live view of probability, impact, and mitigation status',
       trailing: _actionButton(Icons.filter_list, 'Filter'),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
-          columns: const [
-            DataColumn(label: Text('ID', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Risk', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Owner', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Probability', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Impact', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Next review', style: TextStyle(fontWeight: FontWeight.w600))),
-          ],
-          rows: _risks.map((risk) {
-            return DataRow(cells: [
-              DataCell(Text(risk.id, style: const TextStyle(fontSize: 12, color: Color(0xFF0EA5E9)))),
-              DataCell(Text(risk.title, style: const TextStyle(fontSize: 13))),
-              DataCell(Text(risk.owner, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)))),
-              DataCell(_chip('${risk.probability} p')),
-              DataCell(_impactChip(risk.impact)),
-              DataCell(_statusChip(risk.status)),
-              DataCell(Text(risk.nextReview, style: const TextStyle(fontSize: 12))),
-            ]);
-          }).toList(),
-        ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: DataTable(
+                headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                columns: const [
+                  DataColumn(label: Text('ID', style: TextStyle(fontWeight: FontWeight.w600))),
+                  DataColumn(label: Text('Risk', style: TextStyle(fontWeight: FontWeight.w600))),
+                  DataColumn(label: Text('Owner', style: TextStyle(fontWeight: FontWeight.w600))),
+                  DataColumn(label: Text('Probability', style: TextStyle(fontWeight: FontWeight.w600))),
+                  DataColumn(label: Text('Impact', style: TextStyle(fontWeight: FontWeight.w600))),
+                  DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
+                  DataColumn(label: Text('Next review', style: TextStyle(fontWeight: FontWeight.w600))),
+                ],
+                rows: _risks.map((risk) {
+                  return DataRow(cells: [
+                    DataCell(Text(risk.id, style: const TextStyle(fontSize: 12, color: Color(0xFF0EA5E9)))),
+                    DataCell(Text(risk.title, style: const TextStyle(fontSize: 13))),
+                    DataCell(Text(risk.owner, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)))),
+                    DataCell(_chip('${risk.probability} p')),
+                    DataCell(_impactChip(risk.impact)),
+                    DataCell(_statusChip(risk.status)),
+                    DataCell(Text(risk.nextReview, style: const TextStyle(fontSize: 12))),
+                  ]);
+                }).toList(),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

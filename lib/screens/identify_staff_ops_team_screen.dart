@@ -59,38 +59,18 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
                 const SizedBox(height: 18),
                 _buildStatsRow(isNarrow),
                 const SizedBox(height: 24),
-                if (isNarrow)
-                  Column(
-                    children: [
-                      _buildRosterPanel(),
-                      const SizedBox(height: 20),
-                      _buildCoveragePanel(),
-                      const SizedBox(height: 20),
-                      _buildChecklistPanel(),
-                      const SizedBox(height: 20),
-                      _buildHandoffPanel(),
-                    ],
-                  )
-                else
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 3, child: _buildRosterPanel()),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          children: [
-                            _buildCoveragePanel(),
-                            const SizedBox(height: 20),
-                            _buildChecklistPanel(),
-                            const SizedBox(height: 20),
-                            _buildHandoffPanel(),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildRosterPanel(),
+                    const SizedBox(height: 20),
+                    _buildCoveragePanel(),
+                    const SizedBox(height: 20),
+                    _buildChecklistPanel(),
+                    const SizedBox(height: 20),
+                    _buildHandoffPanel(),
+                  ],
+                ),
               ],
             ),
           ),

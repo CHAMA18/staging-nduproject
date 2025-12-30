@@ -60,38 +60,18 @@ class _ScopeTrackingImplementationScreenState extends State<ScopeTrackingImpleme
                 const SizedBox(height: 20),
                 _buildStatsRow(isNarrow),
                 const SizedBox(height: 24),
-                if (isNarrow)
-                  Column(
-                    children: [
-                      _buildScopeRegister(),
-                      const SizedBox(height: 20),
-                      _buildVariancePanel(),
-                      const SizedBox(height: 20),
-                      _buildChangeLogPanel(),
-                      const SizedBox(height: 20),
-                      _buildBaselinePanel(),
-                    ],
-                  )
-                else
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 3, child: _buildScopeRegister()),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          children: [
-                            _buildVariancePanel(),
-                            const SizedBox(height: 20),
-                            _buildChangeLogPanel(),
-                            const SizedBox(height: 20),
-                            _buildBaselinePanel(),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildScopeRegister(),
+                    const SizedBox(height: 20),
+                    _buildVariancePanel(),
+                    const SizedBox(height: 20),
+                    _buildChangeLogPanel(),
+                    const SizedBox(height: 20),
+                    _buildBaselinePanel(),
+                  ],
+                ),
               ],
             ),
           ),

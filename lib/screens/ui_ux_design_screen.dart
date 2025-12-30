@@ -101,28 +101,17 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Three Cards - responsive layout
-                  if (isMobile)
-                    Column(
-                      children: [
-                        _buildPrimaryUserJourneysCard(),
-                        const SizedBox(height: 16),
-                        _buildInterfaceStructureCard(),
-                        const SizedBox(height: 16),
-                        _buildDesignSystemElementsCard(),
-                      ],
-                    )
-                  else
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: _buildPrimaryUserJourneysCard()),
-                        const SizedBox(width: 16),
-                        Expanded(child: _buildInterfaceStructureCard()),
-                        const SizedBox(width: 16),
-                        Expanded(child: _buildDesignSystemElementsCard()),
-                      ],
-                    ),
+                  // Three Cards - stacked layout
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildPrimaryUserJourneysCard(),
+                      const SizedBox(height: 16),
+                      _buildInterfaceStructureCard(),
+                      const SizedBox(height: 16),
+                      _buildDesignSystemElementsCard(),
+                    ],
+                  ),
                   const SizedBox(height: 32),
 
                   // Bottom Navigation

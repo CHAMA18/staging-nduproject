@@ -32,6 +32,7 @@ class FrontEndPlanningRisksScreen extends StatefulWidget {
 
 class _FrontEndPlanningRisksScreenState extends State<FrontEndPlanningRisksScreen> {
   final TextEditingController _notesController = TextEditingController();
+  bool _isSyncReady = false;
 
   // Backing rows for the table; built from incoming requirements (if any).
   late List<_RiskItem> _rows;
@@ -44,6 +45,9 @@ class _FrontEndPlanningRisksScreenState extends State<FrontEndPlanningRisksScree
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final projectData = ProjectDataHelper.getData(context);
       _notesController.text = projectData.frontEndPlanning.risks;
+      _notesController.addListener(_syncRisksToProvider);
+      _isSyncReady = true;
+      _syncRisksToProvider();
       _generateRequirementsFromBusinessCase();
       if (mounted) setState(() {});
     });
@@ -80,6 +84,7 @@ class _FrontEndPlanningRisksScreenState extends State<FrontEndPlanningRisksScree
             .toList();
         _isGeneratingRequirements = false;
       });
+      _syncRisksToProvider();
     } catch (e) {
       if (!mounted) return;
       setState(() => _isGeneratingRequirements = false);
@@ -334,6 +339,7 @@ class _FrontEndPlanningRisksScreenState extends State<FrontEndPlanningRisksScree
       setState(() {
         _rows[index] = result;
       });
+      _syncRisksToProvider();
     }
   }
 
@@ -373,13 +379,32 @@ class _FrontEndPlanningRisksScreenState extends State<FrontEndPlanningRisksScree
       setState(() {
         _rows.removeAt(index);
       });
+      _syncRisksToProvider();
     }
   }
 
   @override
   void dispose() {
+    if (_isSyncReady) {
+      _notesController.removeListener(_syncRisksToProvider);
+    }
     _notesController.dispose();
     super.dispose();
+  }
+
+  void _syncRisksToProvider() {
+    if (!mounted || !_isSyncReady) return;
+    final risksText = _rows.map((r) => '${r.risk}: ${r.description}').where((s) => s.trim().isNotEmpty).join('\n');
+    final value = risksText.isNotEmpty ? risksText : _notesController.text.trim();
+    final provider = ProjectDataHelper.getProvider(context);
+    provider.updateField(
+      (data) => data.copyWith(
+        frontEndPlanning: ProjectDataHelper.updateFEPField(
+          current: data.frontEndPlanning,
+          risks: value,
+        ),
+      ),
+    );
   }
 
   @override

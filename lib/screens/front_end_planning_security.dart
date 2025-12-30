@@ -28,6 +28,7 @@ class FrontEndPlanningSecurityScreen extends StatefulWidget {
 class _FrontEndPlanningSecurityScreenState extends State<FrontEndPlanningSecurityScreen> {
   final TextEditingController _notes = TextEditingController();
   final TextEditingController _securityNotes = TextEditingController();
+  bool _isSyncReady = false;
 
   @override
   void initState() {
@@ -35,6 +36,9 @@ class _FrontEndPlanningSecurityScreenState extends State<FrontEndPlanningSecurit
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final data = ProjectDataHelper.getData(context);
       _securityNotes.text = data.frontEndPlanning.security;
+      _securityNotes.addListener(_syncSecurityToProvider);
+      _isSyncReady = true;
+      _syncSecurityToProvider();
       if (_securityNotes.text.trim().isEmpty) {
         _generateAiSuggestion();
       }
@@ -61,9 +65,25 @@ class _FrontEndPlanningSecurityScreenState extends State<FrontEndPlanningSecurit
 
   @override
   void dispose() {
+    if (_isSyncReady) {
+      _securityNotes.removeListener(_syncSecurityToProvider);
+    }
     _notes.dispose();
     _securityNotes.dispose();
     super.dispose();
+  }
+
+  void _syncSecurityToProvider() {
+    if (!mounted || !_isSyncReady) return;
+    final provider = ProjectDataHelper.getProvider(context);
+    provider.updateField(
+      (data) => data.copyWith(
+        frontEndPlanning: ProjectDataHelper.updateFEPField(
+          current: data.frontEndPlanning,
+          security: _securityNotes.text.trim(),
+        ),
+      ),
+    );
   }
 
   @override

@@ -28,6 +28,7 @@ class FrontEndPlanningAllowanceScreen extends StatefulWidget {
 class _FrontEndPlanningAllowanceScreenState extends State<FrontEndPlanningAllowanceScreen> {
   final TextEditingController _notes = TextEditingController();
   final TextEditingController _allowanceNotes = TextEditingController();
+  bool _isSyncReady = false;
 
   @override
   void initState() {
@@ -35,6 +36,9 @@ class _FrontEndPlanningAllowanceScreenState extends State<FrontEndPlanningAllowa
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final data = ProjectDataHelper.getData(context);
       _allowanceNotes.text = data.frontEndPlanning.allowance;
+      _allowanceNotes.addListener(_syncAllowanceToProvider);
+      _isSyncReady = true;
+      _syncAllowanceToProvider();
       if (_allowanceNotes.text.trim().isEmpty) {
         _generateAiSuggestion();
       }
@@ -61,9 +65,25 @@ class _FrontEndPlanningAllowanceScreenState extends State<FrontEndPlanningAllowa
 
   @override
   void dispose() {
+    if (_isSyncReady) {
+      _allowanceNotes.removeListener(_syncAllowanceToProvider);
+    }
     _notes.dispose();
     _allowanceNotes.dispose();
     super.dispose();
+  }
+
+  void _syncAllowanceToProvider() {
+    if (!mounted || !_isSyncReady) return;
+    final provider = ProjectDataHelper.getProvider(context);
+    provider.updateField(
+      (data) => data.copyWith(
+        frontEndPlanning: ProjectDataHelper.updateFEPField(
+          current: data.frontEndPlanning,
+          allowance: _allowanceNotes.text.trim(),
+        ),
+      ),
+    );
   }
 
   @override

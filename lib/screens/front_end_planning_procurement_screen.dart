@@ -31,431 +31,45 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
   bool _preferredOnly = false;
   bool _listView = true;
   String _categoryFilter = 'All Categories';
-  final Set<int> _expandedStrategies = {0};
+  final Set<int> _expandedStrategies = {};
 
   _ProcurementTab _selectedTab = _ProcurementTab.itemsList;
   int _selectedTrackableIndex = 0;
   late final NumberFormat _currencyFormat = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
 
-  final List<_ProcurementItem> _items = const [
-    _ProcurementItem(
-      name: 'Network core switches',
-      description: 'Upgrade backbone switches for the new wing.',
-      category: 'IT Equipment',
-      status: _ProcurementItemStatus.rfqReview,
-      priority: _ProcurementPriority.high,
-      budget: 85000,
-      estimatedDelivery: '2024-08-15',
-      progress: 0.35,
-    ),
-    _ProcurementItem(
-      name: 'Office renovation package',
-      description: 'Buildout for the shared collaboration floor.',
-      category: 'Construction Services',
-      status: _ProcurementItemStatus.vendorSelection,
-      priority: _ProcurementPriority.critical,
-      budget: 240000,
-      estimatedDelivery: '2024-09-30',
-      progress: 0.55,
-    ),
-    _ProcurementItem(
-      name: 'Ergonomic workstations',
-      description: 'Sit-stand desks and task chairs for 120 seats.',
-      category: 'Furniture',
-      status: _ProcurementItemStatus.ordered,
-      priority: _ProcurementPriority.medium,
-      budget: 68000,
-      estimatedDelivery: '2024-07-10',
-      progress: 0.8,
-    ),
-    _ProcurementItem(
-      name: 'Wireless access points',
-      description: 'Coverage expansion for floor 3 and floor 4.',
-      category: 'IT Equipment',
-      status: _ProcurementItemStatus.planning,
-      priority: _ProcurementPriority.high,
-      budget: 42000,
-      estimatedDelivery: '2024-10-01',
-      progress: 0.1,
-    ),
-    _ProcurementItem(
-      name: 'Security camera upgrade',
-      description: 'Replace legacy devices with smart analytics units.',
-      category: 'Security',
-      status: _ProcurementItemStatus.delivered,
-      priority: _ProcurementPriority.medium,
-      budget: 52000,
-      estimatedDelivery: '2024-06-12',
-      progress: 1.0,
-    ),
-  ];
+  final List<_ProcurementItem> _items = [];
 
-  final List<_TrackableItem> _trackableItems = const [
-    _TrackableItem(
-      name: 'Server rack shipment',
-      description: '42U racks for data center row A.',
-      orderStatus: 'PO-1042',
-      currentStatus: _TrackableStatus.inTransit,
-      lastUpdate: '2024-06-18',
-      events: [
-        _TimelineEvent(
-          title: 'Departed factory',
-          description: 'Loaded onto carrier trailer at origin site.',
-          subtext: 'Carrier: UPS Freight',
-          date: '2024-06-12',
-        ),
-        _TimelineEvent(
-          title: 'Arrived at regional hub',
-          description: 'Cross-dock completed and cleared for linehaul.',
-          subtext: 'Tracking: UPA-2291',
-          date: '2024-06-15',
-        ),
-        _TimelineEvent(
-          title: 'Customs cleared',
-          description: 'Documentation verified and released.',
-          subtext: 'Broker: BlueStar Logistics',
-          date: '2024-06-17',
-        ),
-      ],
-    ),
-    _TrackableItem(
-      name: 'Modular workstations',
-      description: 'Set of 80 desks and power rails.',
-      orderStatus: 'PO-1044',
-      currentStatus: _TrackableStatus.delivered,
-      lastUpdate: '2024-06-08',
-      events: [
-        _TimelineEvent(
-          title: 'Delivered to site',
-          description: 'Received at loading dock and inspected.',
-          subtext: 'Signed by: Facilities team',
-          date: '2024-06-08',
-        ),
-        _TimelineEvent(
-          title: 'In transit',
-          description: 'Final mile delivery in progress.',
-          subtext: 'Carrier: Coastal Freight',
-          date: '2024-06-06',
-        ),
-        _TimelineEvent(
-          title: 'Dispatched',
-          description: 'Shipment released from vendor warehouse.',
-          subtext: 'Vendor: GreenLeaf Office',
-          date: '2024-06-04',
-        ),
-      ],
-    ),
-    _TrackableItem(
-      name: 'HVAC air handlers',
-      description: 'Units for expansion zone climate control.',
-      orderStatus: 'PO-1038',
-      currentStatus: _TrackableStatus.notTracked,
-      lastUpdate: null,
-      events: [
-        _TimelineEvent(
-          title: 'Not tracked',
-          description: 'Carrier tracking unavailable.',
-          subtext: 'Awaiting vendor update.',
-          date: '2024-06-20',
-        ),
-      ],
-    ),
-  ];
+  final List<_TrackableItem> _trackableItems = [];
 
-  final List<_ProcurementStrategy> _strategies = const [
-    _ProcurementStrategy(
-      title: 'IT equipment procurement',
-      status: _StrategyStatus.active,
-      itemCount: 12,
-      description: 'Bundle network, compute, and AV purchases to secure volume discounts and align delivery dates.',
-    ),
-    _ProcurementStrategy(
-      title: 'Facilities renovation services',
-      status: _StrategyStatus.active,
-      itemCount: 6,
-      description: 'Leverage local contractors for phased buildout with strict safety and SLA requirements.',
-    ),
-    _ProcurementStrategy(
-      title: 'Workplace furniture and fixtures',
-      status: _StrategyStatus.draft,
-      itemCount: 9,
-      description: 'Standardize ergonomic configurations to streamline ordering and reduce variability.',
-    ),
-  ];
+  final List<_ProcurementStrategy> _strategies = [];
 
-  final List<_VendorRow> _vendors = const [
-    _VendorRow(
-      initials: 'AT',
-      name: 'Atlas Tech Supply',
-      category: 'IT Equipment',
-      rating: 5,
-      approved: true,
-      preferred: true,
-    ),
-    _VendorRow(
-      initials: 'BL',
-      name: 'BrightLine Interiors',
-      category: 'Construction Services',
-      rating: 4,
-      approved: true,
-      preferred: false,
-    ),
-    _VendorRow(
-      initials: 'CW',
-      name: 'Cloudway Systems',
-      category: 'IT Equipment',
-      rating: 4,
-      approved: true,
-      preferred: true,
-    ),
-    _VendorRow(
-      initials: 'SO',
-      name: 'SupplyOne Logistics',
-      category: 'Logistics',
-      rating: 3,
-      approved: false,
-      preferred: false,
-    ),
-    _VendorRow(
-      initials: 'GO',
-      name: 'GreenLeaf Office',
-      category: 'Furniture',
-      rating: 5,
-      approved: true,
-      preferred: true,
-    ),
-    _VendorRow(
-      initials: 'SN',
-      name: 'SecureNet Solutions',
-      category: 'Security',
-      rating: 4,
-      approved: true,
-      preferred: false,
-    ),
-  ];
+  final List<_VendorRow> _vendors = [];
 
-  final List<_VendorHealthMetric> _vendorHealthMetrics = const [
-    _VendorHealthMetric(category: 'IT Equipment', score: 0.86, change: '+4% QoQ'),
-    _VendorHealthMetric(category: 'Construction Services', score: 0.72, change: '-2% QoQ'),
-    _VendorHealthMetric(category: 'Furniture', score: 0.91, change: '+6% QoQ'),
-    _VendorHealthMetric(category: 'Security', score: 0.78, change: '+1% QoQ'),
-  ];
+  final List<_VendorHealthMetric> _vendorHealthMetrics = [];
 
-  final List<_VendorOnboardingTask> _vendorOnboardingTasks = const [
-    _VendorOnboardingTask(
-      title: 'Insurance verification - SupplyOne',
-      owner: 'J. Patel',
-      dueDate: '2024-06-24',
-      status: _VendorTaskStatus.inReview,
-    ),
-    _VendorOnboardingTask(
-      title: 'Security assessment - SecureNet',
-      owner: 'L. Chen',
-      dueDate: '2024-06-28',
-      status: _VendorTaskStatus.pending,
-    ),
-    _VendorOnboardingTask(
-      title: 'Payment terms signed - BrightLine',
-      owner: 'M. Owens',
-      dueDate: '2024-06-18',
-      status: _VendorTaskStatus.complete,
-    ),
-  ];
+  final List<_VendorOnboardingTask> _vendorOnboardingTasks = [];
 
-  final List<_VendorRiskItem> _vendorRiskItems = const [
-    _VendorRiskItem(
-      vendor: 'SupplyOne Logistics',
-      risk: 'Late delivery trend on three orders',
-      severity: _RiskSeverity.high,
-      lastIncident: '2024-06-10',
-    ),
-    _VendorRiskItem(
-      vendor: 'BrightLine Interiors',
-      risk: 'Pending safety documentation update',
-      severity: _RiskSeverity.medium,
-      lastIncident: '2024-06-12',
-    ),
-    _VendorRiskItem(
-      vendor: 'SecureNet Solutions',
-      risk: 'Minor SLA deviation on last install',
-      severity: _RiskSeverity.low,
-      lastIncident: '2024-06-05',
-    ),
-  ];
+  final List<_VendorRiskItem> _vendorRiskItems = [];
 
-  final List<_RfqItem> _rfqs = const [
-    _RfqItem(
-      title: 'Network infrastructure upgrade',
-      category: 'IT Equipment',
-      owner: 'J. Patel',
-      dueDate: '2024-07-05',
-      invited: 6,
-      responses: 3,
-      budget: 160000,
-      status: _RfqStatus.inMarket,
-      priority: _ProcurementPriority.high,
-    ),
-    _RfqItem(
-      title: 'Office renovation phase 2',
-      category: 'Construction Services',
-      owner: 'M. Owens',
-      dueDate: '2024-07-18',
-      invited: 4,
-      responses: 2,
-      budget: 320000,
-      status: _RfqStatus.evaluation,
-      priority: _ProcurementPriority.critical,
-    ),
-    _RfqItem(
-      title: 'AV collaboration kits',
-      category: 'Equipment',
-      owner: 'L. Chen',
-      dueDate: '2024-06-28',
-      invited: 5,
-      responses: 5,
-      budget: 98000,
-      status: _RfqStatus.review,
-      priority: _ProcurementPriority.medium,
-    ),
-    _RfqItem(
-      title: 'Security and access control',
-      category: 'Security',
-      owner: 'R. Singh',
-      dueDate: '2024-07-22',
-      invited: 3,
-      responses: 1,
-      budget: 110000,
-      status: _RfqStatus.draft,
-      priority: _ProcurementPriority.high,
-    ),
-  ];
+  final List<_RfqItem> _rfqs = [];
 
-  final List<_RfqCriterion> _rfqCriteria = const [
-    _RfqCriterion(label: 'Price competitiveness', weight: 0.4),
-    _RfqCriterion(label: 'Lead time reliability', weight: 0.25),
-    _RfqCriterion(label: 'Quality compliance', weight: 0.2),
-    _RfqCriterion(label: 'Sustainability alignment', weight: 0.15),
-  ];
+  final List<_RfqCriterion> _rfqCriteria = [];
 
-  final List<_PurchaseOrder> _purchaseOrders = const [
-    _PurchaseOrder(
-      id: 'PO-1042',
-      vendor: 'Atlas Tech Supply',
-      category: 'IT Equipment',
-      owner: 'J. Patel',
-      orderedDate: '2024-06-10',
-      expectedDate: '2024-07-02',
-      amount: 98500,
-      progress: 0.6,
-      status: _PurchaseOrderStatus.inTransit,
-    ),
-    _PurchaseOrder(
-      id: 'PO-1043',
-      vendor: 'BrightLine Interiors',
-      category: 'Construction Services',
-      owner: 'M. Owens',
-      orderedDate: '2024-06-15',
-      expectedDate: '2024-08-05',
-      amount: 185000,
-      progress: 0.2,
-      status: _PurchaseOrderStatus.awaitingApproval,
-    ),
-    _PurchaseOrder(
-      id: 'PO-1044',
-      vendor: 'GreenLeaf Office',
-      category: 'Furniture',
-      owner: 'L. Chen',
-      orderedDate: '2024-06-02',
-      expectedDate: '2024-06-30',
-      amount: 72000,
-      progress: 0.75,
-      status: _PurchaseOrderStatus.issued,
-    ),
-    _PurchaseOrder(
-      id: 'PO-1045',
-      vendor: 'SupplyOne Logistics',
-      category: 'Logistics',
-      owner: 'R. Singh',
-      orderedDate: '2024-05-28',
-      expectedDate: '2024-06-12',
-      amount: 24000,
-      progress: 1.0,
-      status: _PurchaseOrderStatus.received,
-    ),
-    _PurchaseOrder(
-      id: 'PO-1046',
-      vendor: 'SecureNet Solutions',
-      category: 'Security',
-      owner: 'S. Parker',
-      orderedDate: '2024-06-08',
-      expectedDate: '2024-07-20',
-      amount: 56000,
-      progress: 0.35,
-      status: _PurchaseOrderStatus.issued,
-    ),
-  ];
+  final List<_PurchaseOrder> _purchaseOrders = [];
 
-  final List<_TrackingAlert> _trackingAlerts = const [
-    _TrackingAlert(
-      title: 'Carrier delay risk',
-      description: 'SupplyOne shipment has not moved in 48 hours.',
-      severity: _AlertSeverity.high,
-      date: '2024-06-19',
-    ),
-    _TrackingAlert(
-      title: 'Customs review requested',
-      description: 'Atlas Tech shipment awaiting secondary inspection.',
-      severity: _AlertSeverity.medium,
-      date: '2024-06-18',
-    ),
-    _TrackingAlert(
-      title: 'Delivery window confirmed',
-      description: 'GreenLeaf furniture arrival scheduled for June 30.',
-      severity: _AlertSeverity.low,
-      date: '2024-06-16',
-    ),
-  ];
+  final List<_TrackingAlert> _trackingAlerts = [];
 
-  final List<_CarrierPerformance> _carrierPerformance = const [
-    _CarrierPerformance(carrier: 'UPS Freight', onTimeRate: 92, avgDays: 4),
-    _CarrierPerformance(carrier: 'Coastal Freight', onTimeRate: 88, avgDays: 5),
-    _CarrierPerformance(carrier: 'BlueStar Logistics', onTimeRate: 95, avgDays: 3),
-  ];
+  final List<_CarrierPerformance> _carrierPerformance = [];
 
-  final List<_ReportKpi> _reportKpis = const [
-    _ReportKpi(label: 'Total Spend YTD', value: '\$1.08M', delta: '+6.4% vs last year', positive: false),
-    _ReportKpi(label: 'Savings Identified', value: '\$214K', delta: '+18.2% vs last quarter', positive: true),
-    _ReportKpi(label: 'Contract Compliance', value: '78%', delta: '+3.1% vs last quarter', positive: true),
-    _ReportKpi(label: 'Avg Lead Time', value: '28 days', delta: '-2.4 days', positive: true),
-  ];
+  final List<_ReportKpi> _reportKpis = [];
 
-  final List<_SpendBreakdown> _spendBreakdown = const [
-    _SpendBreakdown(label: 'IT Equipment', amount: 420000, percent: 0.4, color: Color(0xFF2563EB)),
-    _SpendBreakdown(label: 'Construction Services', amount: 310000, percent: 0.3, color: Color(0xFF14B8A6)),
-    _SpendBreakdown(label: 'Furniture', amount: 160000, percent: 0.15, color: Color(0xFFF97316)),
-    _SpendBreakdown(label: 'Security', amount: 120000, percent: 0.1, color: Color(0xFF8B5CF6)),
-    _SpendBreakdown(label: 'Logistics', amount: 50000, percent: 0.05, color: Color(0xFF10B981)),
-  ];
+  final List<_SpendBreakdown> _spendBreakdown = [];
 
-  final List<_LeadTimeMetric> _leadTimeMetrics = const [
-    _LeadTimeMetric(label: 'IT Equipment', onTimeRate: 0.82),
-    _LeadTimeMetric(label: 'Construction Services', onTimeRate: 0.74),
-    _LeadTimeMetric(label: 'Furniture', onTimeRate: 0.9),
-    _LeadTimeMetric(label: 'Security', onTimeRate: 0.79),
-  ];
+  final List<_LeadTimeMetric> _leadTimeMetrics = [];
 
-  final List<_SavingsOpportunity> _savingsOpportunities = const [
-    _SavingsOpportunity(title: 'Bundle network hardware', value: '\$48K', owner: 'J. Patel'),
-    _SavingsOpportunity(title: 'Standardize workstation kits', value: '\$36K', owner: 'L. Chen'),
-    _SavingsOpportunity(title: 'Negotiate logistics tiers', value: '\$22K', owner: 'R. Singh'),
-  ];
+  final List<_SavingsOpportunity> _savingsOpportunities = [];
 
-  final List<_ComplianceMetric> _complianceMetrics = const [
-    _ComplianceMetric(label: 'Preferred vendor usage', value: 0.64),
-    _ComplianceMetric(label: 'PO matched invoices', value: 0.92),
-    _ComplianceMetric(label: 'SLA adherence', value: 0.86),
-    _ComplianceMetric(label: 'Contracted spend', value: 0.78),
-  ];
+  final List<_ComplianceMetric> _complianceMetrics = [];
 
   @override
   void initState() {
@@ -586,6 +200,7 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
           selectedIndex: _selectedTrackableIndex,
           onSelectTrackable: _handleTrackableSelected,
           currencyFormat: _currencyFormat,
+          onAddItem: _openAddItemDialog,
         );
       case _ProcurementTab.vendorManagement:
         return _VendorManagementView(
@@ -600,6 +215,7 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
           healthMetrics: _vendorHealthMetrics,
           onboardingTasks: _vendorOnboardingTasks,
           riskItems: _vendorRiskItems,
+          onAddVendor: _openAddVendorDialog,
           onApprovedChanged: (value) => setState(() => _approvedOnly = value),
           onPreferredChanged: (value) => setState(() => _preferredOnly = value),
           onCategoryChanged: (value) => setState(() => _categoryFilter = value),
@@ -611,12 +227,14 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
           rfqs: _rfqs,
           criteria: _rfqCriteria,
           currencyFormat: _currencyFormat,
+          onCreateRfq: _openCreateRfqDialog,
         );
       case _ProcurementTab.purchaseOrders:
         return _PurchaseOrdersView(
           key: const ValueKey('procurement_purchase_orders'),
           orders: _purchaseOrders,
           currencyFormat: _currencyFormat,
+          onCreatePo: _openCreatePoDialog,
         );
       case _ProcurementTab.itemTracking:
         return _ItemTrackingView(
@@ -670,6 +288,7 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
           listView: _listView,
           categoryFilter: _categoryFilter,
           categoryOptions: _categoryOptions,
+          onAddVendor: _openAddVendorDialog,
           onApprovedChanged: (value) => setState(() => _approvedOnly = value),
           onPreferredChanged: (value) => setState(() => _preferredOnly = value),
           onCategoryChanged: (value) => setState(() => _categoryFilter = value),
@@ -700,6 +319,805 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Suggestion dismissed.')),
     );
+  }
+
+  int _parseCurrency(String value) {
+    final cleaned = value.replaceAll(RegExp(r'[^0-9]'), '');
+    return int.tryParse(cleaned) ?? 0;
+  }
+
+  String _formatStoreDate(DateTime date) => DateFormat('yyyy-MM-dd').format(date);
+
+  String _formatDisplayDate(DateTime date) => DateFormat('MMM d, yyyy').format(date);
+
+  String _deriveInitials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return 'NA';
+    if (parts.length == 1) {
+      return parts.first.substring(0, parts.first.length >= 2 ? 2 : 1).toUpperCase();
+    }
+    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  }
+
+  List<Widget> _buildDialogContextChips() {
+    final data = ProjectDataHelper.getData(context);
+    final chips = <Widget>[
+      const _ContextChip(label: 'Phase', value: 'Front End Planning'),
+    ];
+    final projectName = data.projectName.trim();
+    if (projectName.isNotEmpty) {
+      chips.insert(0, _ContextChip(label: 'Project', value: projectName));
+    }
+    final solution = data.solutionTitle.trim();
+    if (solution.isNotEmpty) {
+      chips.add(_ContextChip(label: 'Solution', value: solution));
+    }
+    return chips;
+  }
+
+  InputDecoration _dialogDecoration({required String label, String? hint, Widget? prefixIcon, String? helperText, String? errorText}) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      helperText: helperText,
+      errorText: errorText,
+      prefixIcon: prefixIcon,
+      filled: true,
+      fillColor: const Color(0xFFF8FAFC),
+      labelStyle: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+      hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+    );
+  }
+
+  Future<void> _openAddItemDialog() async {
+    final formKey = GlobalKey<FormState>();
+    final nameCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    final budgetCtrl = TextEditingController();
+    final categoryOptions = const [
+      'Materials',
+      'Equipment',
+      'Services',
+      'IT Equipment',
+      'Construction Services',
+      'Furniture',
+      'Security',
+      'Logistics',
+    ];
+    String category = categoryOptions.first;
+    _ProcurementItemStatus status = _ProcurementItemStatus.planning;
+    _ProcurementPriority priority = _ProcurementPriority.medium;
+    DateTime? deliveryDate;
+    bool showDateError = false;
+
+    final result = await showDialog<_ProcurementItem>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return _ProcurementDialogShell(
+              title: 'Add Procurement Item',
+              subtitle: 'Capture scope, budget, and delivery timing.',
+              icon: Icons.inventory_2_outlined,
+              contextChips: _buildDialogContextChips(),
+              primaryLabel: 'Add Item',
+              secondaryLabel: 'Cancel',
+              onSecondary: () => Navigator.of(context).pop(),
+              onPrimary: () {
+                final valid = formKey.currentState?.validate() ?? false;
+                if (!valid) return;
+                if (deliveryDate == null) {
+                  setDialogState(() => showDateError = true);
+                  return;
+                }
+                final budget = _parseCurrency(budgetCtrl.text);
+                final item = _ProcurementItem(
+                  name: nameCtrl.text.trim(),
+                  description: descCtrl.text.trim(),
+                  category: category,
+                  status: status,
+                  priority: priority,
+                  budget: budget,
+                  estimatedDelivery: _formatStoreDate(deliveryDate!),
+                  progress: 0,
+                );
+                Navigator.of(context).pop(item);
+              },
+              child: Form(
+                key: formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _DialogSectionTitle(
+                      title: 'Item details',
+                      subtitle: 'What are you sourcing for this project?',
+                    ),
+                    TextFormField(
+                      controller: nameCtrl,
+                      decoration: _dialogDecoration(label: 'Item name', hint: 'e.g. Network core switches'),
+                      validator: (value) => (value == null || value.trim().isEmpty) ? 'Item name is required.' : null,
+                      textInputAction: TextInputAction.next,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: descCtrl,
+                      maxLines: 2,
+                      decoration: _dialogDecoration(label: 'Description', hint: 'Short scope description'),
+                    ),
+                    const SizedBox(height: 18),
+                    const _DialogSectionTitle(
+                      title: 'Classification',
+                      subtitle: 'Align the item with sourcing workflow.',
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: category,
+                            decoration: _dialogDecoration(label: 'Category'),
+                            items: categoryOptions.map((option) => DropdownMenuItem(value: option, child: Text(option))).toList(),
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setDialogState(() => category = value);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: DropdownButtonFormField<_ProcurementItemStatus>(
+                            value: status,
+                            decoration: _dialogDecoration(label: 'Status'),
+                            items: _ProcurementItemStatus.values
+                                .map((option) => DropdownMenuItem(value: option, child: Text(option.label)))
+                                .toList(),
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setDialogState(() => status = value);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<_ProcurementPriority>(
+                      value: priority,
+                      decoration: _dialogDecoration(label: 'Priority'),
+                      items: _ProcurementPriority.values
+                          .map((option) => DropdownMenuItem(value: option, child: Text(option.label)))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setDialogState(() => priority = value);
+                      },
+                    ),
+                    const SizedBox(height: 18),
+                    const _DialogSectionTitle(
+                      title: 'Budget and timing',
+                      subtitle: 'Estimate cost and delivery window.',
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: budgetCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: _dialogDecoration(label: 'Budget', hint: 'e.g. 85000', prefixIcon: const Icon(Icons.attach_money)),
+                            validator: (value) {
+                              final amount = _parseCurrency(value ?? '');
+                              return amount <= 0 ? 'Enter a budget amount.' : null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: deliveryDate ?? DateTime.now().add(const Duration(days: 14)),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(DateTime.now().year + 5),
+                              );
+                              if (picked == null) return;
+                              setDialogState(() {
+                                deliveryDate = picked;
+                                showDateError = false;
+                              });
+                            },
+                            child: InputDecorator(
+                              decoration: _dialogDecoration(
+                                label: 'Est. delivery',
+                                hint: 'Select date',
+                                prefixIcon: const Icon(Icons.event),
+                                errorText: showDateError ? 'Select a date.' : null,
+                              ),
+                              child: Text(
+                                deliveryDate == null ? 'Select date' : _formatDisplayDate(deliveryDate!),
+                                style: TextStyle(
+                                  color: deliveryDate == null ? const Color(0xFF94A3B8) : const Color(0xFF0F172A),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    nameCtrl.dispose();
+    descCtrl.dispose();
+    budgetCtrl.dispose();
+
+    if (result != null) {
+      setState(() => _items.add(result));
+    }
+  }
+
+  Future<void> _openAddVendorDialog() async {
+    final formKey = GlobalKey<FormState>();
+    final nameCtrl = TextEditingController();
+    final categoryOptions = const [
+      'IT Equipment',
+      'Construction Services',
+      'Furniture',
+      'Security',
+      'Logistics',
+      'Services',
+      'Materials',
+    ];
+    String category = categoryOptions.first;
+    double rating = 4;
+    bool approved = true;
+    bool preferred = false;
+
+    final result = await showDialog<_VendorRow>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return _ProcurementDialogShell(
+              title: 'Add Vendor Partner',
+              subtitle: 'Build your trusted supplier network.',
+              icon: Icons.storefront_outlined,
+              contextChips: _buildDialogContextChips(),
+              primaryLabel: 'Add Vendor',
+              secondaryLabel: 'Cancel',
+              onSecondary: () => Navigator.of(context).pop(),
+              onPrimary: () {
+                final valid = formKey.currentState?.validate() ?? false;
+                if (!valid) return;
+                final name = nameCtrl.text.trim();
+                final vendor = _VendorRow(
+                  initials: _deriveInitials(name),
+                  name: name,
+                  category: category,
+                  rating: rating.round().clamp(1, 5).toInt(),
+                  approved: approved,
+                  preferred: preferred,
+                );
+                Navigator.of(context).pop(vendor);
+              },
+              child: Form(
+                key: formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _DialogSectionTitle(
+                      title: 'Vendor identity',
+                      subtitle: 'Capture the partner name and sourcing category.',
+                    ),
+                    TextFormField(
+                      controller: nameCtrl,
+                      decoration: _dialogDecoration(label: 'Vendor name', hint: 'e.g. Atlas Tech Supply'),
+                      validator: (value) => (value == null || value.trim().isEmpty) ? 'Vendor name is required.' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: category,
+                      decoration: _dialogDecoration(label: 'Category'),
+                      items: categoryOptions.map((option) => DropdownMenuItem(value: option, child: Text(option))).toList(),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setDialogState(() => category = value);
+                      },
+                    ),
+                    const SizedBox(height: 18),
+                    const _DialogSectionTitle(
+                      title: 'Qualification',
+                      subtitle: 'Define rating and approval status.',
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Rating', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
+                              Slider(
+                                value: rating,
+                                min: 1,
+                                max: 5,
+                                divisions: 4,
+                                label: rating.round().toString(),
+                                activeColor: const Color(0xFF2563EB),
+                                onChanged: (value) => setDialogState(() => rating = value),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          children: [
+                            Row(
+                              children: [
+                                Switch(
+                                  value: approved,
+                                  activeColor: const Color(0xFF2563EB),
+                                  onChanged: (value) => setDialogState(() => approved = value),
+                                ),
+                                const Text('Approved'),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                Switch(
+                                  value: preferred,
+                                  activeColor: const Color(0xFF2563EB),
+                                  onChanged: (value) => setDialogState(() => preferred = value),
+                                ),
+                                const Text('Preferred'),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    nameCtrl.dispose();
+
+    if (result != null) {
+      setState(() => _vendors.add(result));
+    }
+  }
+
+  Future<void> _openCreateRfqDialog() async {
+    final formKey = GlobalKey<FormState>();
+    final titleCtrl = TextEditingController();
+    final ownerCtrl = TextEditingController();
+    final budgetCtrl = TextEditingController();
+    final invitedCtrl = TextEditingController(text: '0');
+    final responsesCtrl = TextEditingController(text: '0');
+    final categoryOptions = const ['IT Equipment', 'Construction Services', 'Furniture', 'Security', 'Services', 'Materials'];
+    String category = categoryOptions.first;
+    _RfqStatus status = _RfqStatus.draft;
+    _ProcurementPriority priority = _ProcurementPriority.medium;
+    DateTime? dueDate;
+    bool showDateError = false;
+
+    final result = await showDialog<_RfqItem>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return _ProcurementDialogShell(
+              title: 'Create RFQ',
+              subtitle: 'Kick off a request for quote with clear scope and timing.',
+              icon: Icons.request_quote_outlined,
+              contextChips: _buildDialogContextChips(),
+              primaryLabel: 'Create RFQ',
+              secondaryLabel: 'Cancel',
+              onSecondary: () => Navigator.of(context).pop(),
+              onPrimary: () {
+                final valid = formKey.currentState?.validate() ?? false;
+                if (!valid) return;
+                if (dueDate == null) {
+                  setDialogState(() => showDateError = true);
+                  return;
+                }
+                final budget = _parseCurrency(budgetCtrl.text);
+                final invited = int.tryParse(invitedCtrl.text.trim()) ?? 0;
+                final responses = int.tryParse(responsesCtrl.text.trim()) ?? 0;
+                final rfq = _RfqItem(
+                  title: titleCtrl.text.trim(),
+                  category: category,
+                  owner: ownerCtrl.text.trim().isEmpty ? 'Unassigned' : ownerCtrl.text.trim(),
+                  budget: budget,
+                  dueDate: _formatStoreDate(dueDate!),
+                  invited: invited,
+                  responses: responses.clamp(0, invited).toInt(),
+                  status: status,
+                  priority: priority,
+                );
+                Navigator.of(context).pop(rfq);
+              },
+              child: Form(
+                key: formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _DialogSectionTitle(
+                      title: 'RFQ overview',
+                      subtitle: 'Define the category and owner.',
+                    ),
+                    TextFormField(
+                      controller: titleCtrl,
+                      decoration: _dialogDecoration(label: 'RFQ title', hint: 'e.g. Network infrastructure upgrade'),
+                      validator: (value) => (value == null || value.trim().isEmpty) ? 'RFQ title is required.' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: category,
+                            decoration: _dialogDecoration(label: 'Category'),
+                            items: categoryOptions.map((option) => DropdownMenuItem(value: option, child: Text(option))).toList(),
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setDialogState(() => category = value);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: ownerCtrl,
+                            decoration: _dialogDecoration(label: 'Owner', hint: 'e.g. J. Patel'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    const _DialogSectionTitle(
+                      title: 'Budget and schedule',
+                      subtitle: 'Set a due date and target budget.',
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: budgetCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: _dialogDecoration(label: 'Budget', hint: 'e.g. 120000', prefixIcon: const Icon(Icons.attach_money)),
+                            validator: (value) {
+                              final amount = _parseCurrency(value ?? '');
+                              return amount <= 0 ? 'Enter a budget amount.' : null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: dueDate ?? DateTime.now().add(const Duration(days: 21)),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(DateTime.now().year + 5),
+                              );
+                              if (picked == null) return;
+                              setDialogState(() {
+                                dueDate = picked;
+                                showDateError = false;
+                              });
+                            },
+                            child: InputDecorator(
+                              decoration: _dialogDecoration(
+                                label: 'Due date',
+                                hint: 'Select date',
+                                prefixIcon: const Icon(Icons.event),
+                                errorText: showDateError ? 'Select a date.' : null,
+                              ),
+                              child: Text(
+                                dueDate == null ? 'Select date' : _formatDisplayDate(dueDate!),
+                                style: TextStyle(
+                                  color: dueDate == null ? const Color(0xFF94A3B8) : const Color(0xFF0F172A),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    const _DialogSectionTitle(
+                      title: 'Vendor outreach',
+                      subtitle: 'Track invitations and responses.',
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: invitedCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: _dialogDecoration(label: 'Invited', hint: '0'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: responsesCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: _dialogDecoration(label: 'Responses', hint: '0'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<_RfqStatus>(
+                            value: status,
+                            decoration: _dialogDecoration(label: 'Status'),
+                            items: _RfqStatus.values.map((option) => DropdownMenuItem(value: option, child: Text(option.label))).toList(),
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setDialogState(() => status = value);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: DropdownButtonFormField<_ProcurementPriority>(
+                            value: priority,
+                            decoration: _dialogDecoration(label: 'Priority'),
+                            items: _ProcurementPriority.values
+                                .map((option) => DropdownMenuItem(value: option, child: Text(option.label)))
+                                .toList(),
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setDialogState(() => priority = value);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    titleCtrl.dispose();
+    ownerCtrl.dispose();
+    budgetCtrl.dispose();
+    invitedCtrl.dispose();
+    responsesCtrl.dispose();
+
+    if (result != null) {
+      setState(() => _rfqs.add(result));
+    }
+  }
+
+  Future<void> _openCreatePoDialog() async {
+    final formKey = GlobalKey<FormState>();
+    final idCtrl = TextEditingController();
+    final vendorCtrl = TextEditingController();
+    final ownerCtrl = TextEditingController();
+    final amountCtrl = TextEditingController();
+    final categoryOptions = const ['IT Equipment', 'Construction Services', 'Furniture', 'Security', 'Logistics', 'Services'];
+    String category = categoryOptions.first;
+    _PurchaseOrderStatus status = _PurchaseOrderStatus.awaitingApproval;
+    DateTime orderedDate = DateTime.now();
+    DateTime expectedDate = DateTime.now().add(const Duration(days: 21));
+    double progress = 0.0;
+
+    final result = await showDialog<_PurchaseOrder>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return _ProcurementDialogShell(
+              title: 'Create Purchase Order',
+              subtitle: 'Issue a PO with clear ownership and delivery timing.',
+              icon: Icons.receipt_long_outlined,
+              contextChips: _buildDialogContextChips(),
+              primaryLabel: 'Create PO',
+              secondaryLabel: 'Cancel',
+              onSecondary: () => Navigator.of(context).pop(),
+              onPrimary: () {
+                final valid = formKey.currentState?.validate() ?? false;
+                if (!valid) return;
+                final amount = _parseCurrency(amountCtrl.text);
+                final poId = idCtrl.text.trim().isEmpty
+                    ? 'PO-${DateTime.now().millisecondsSinceEpoch % 10000}'
+                    : idCtrl.text.trim();
+                final po = _PurchaseOrder(
+                  id: poId,
+                  vendor: vendorCtrl.text.trim(),
+                  category: category,
+                  owner: ownerCtrl.text.trim().isEmpty ? 'Unassigned' : ownerCtrl.text.trim(),
+                  orderedDate: _formatStoreDate(orderedDate),
+                  expectedDate: _formatStoreDate(expectedDate),
+                  amount: amount,
+                  progress: progress,
+                  status: status,
+                );
+                Navigator.of(context).pop(po);
+              },
+              child: Form(
+                key: formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _DialogSectionTitle(
+                      title: 'PO details',
+                      subtitle: 'Define vendor, owner, and category.',
+                    ),
+                    TextFormField(
+                      controller: idCtrl,
+                      decoration: _dialogDecoration(label: 'PO number', hint: 'Auto-generated if left blank'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: vendorCtrl,
+                      decoration: _dialogDecoration(label: 'Vendor', hint: 'e.g. GreenLeaf Office'),
+                      validator: (value) => (value == null || value.trim().isEmpty) ? 'Vendor is required.' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: category,
+                            decoration: _dialogDecoration(label: 'Category'),
+                            items: categoryOptions.map((option) => DropdownMenuItem(value: option, child: Text(option))).toList(),
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setDialogState(() => category = value);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: ownerCtrl,
+                            decoration: _dialogDecoration(label: 'Owner', hint: 'e.g. L. Chen'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    const _DialogSectionTitle(
+                      title: 'Amounts and dates',
+                      subtitle: 'Track financials and delivery.',
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: amountCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: _dialogDecoration(label: 'Amount', hint: 'e.g. 72000', prefixIcon: const Icon(Icons.attach_money)),
+                      validator: (value) {
+                        final amount = _parseCurrency(value ?? '');
+                        return amount <= 0 ? 'Enter a PO amount.' : null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: orderedDate,
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(DateTime.now().year + 5),
+                              );
+                              if (picked == null) return;
+                              setDialogState(() => orderedDate = picked);
+                            },
+                            child: InputDecorator(
+                              decoration: _dialogDecoration(label: 'Ordered date', prefixIcon: const Icon(Icons.event)),
+                              child: Text(
+                                _formatDisplayDate(orderedDate),
+                                style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: expectedDate,
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(DateTime.now().year + 5),
+                              );
+                              if (picked == null) return;
+                              setDialogState(() => expectedDate = picked);
+                            },
+                            child: InputDecorator(
+                              decoration: _dialogDecoration(label: 'Expected date', prefixIcon: const Icon(Icons.event_available)),
+                              child: Text(
+                                _formatDisplayDate(expectedDate),
+                                style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<_PurchaseOrderStatus>(
+                      value: status,
+                      decoration: _dialogDecoration(label: 'Status'),
+                      items: _PurchaseOrderStatus.values
+                          .map((option) => DropdownMenuItem(value: option, child: Text(option.label)))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setDialogState(() => status = value);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('Progress', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
+                    Slider(
+                      value: progress,
+                      min: 0,
+                      max: 1,
+                      divisions: 10,
+                      label: '${(progress * 100).round()}%',
+                      activeColor: const Color(0xFF2563EB),
+                      onChanged: (value) => setDialogState(() => progress = value),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    idCtrl.dispose();
+    vendorCtrl.dispose();
+    ownerCtrl.dispose();
+    amountCtrl.dispose();
+
+    if (result != null) {
+      setState(() => _purchaseOrders.add(result));
+    }
   }
 
   @override
@@ -822,6 +1240,10 @@ class _UserBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final projectName = ProjectDataHelper.getData(context).projectName.trim();
+    final displayName = projectName.isEmpty ? 'Procurement Team' : projectName;
+    final roleLabel = projectName.isEmpty ? 'Procurement' : 'Procurement Plan';
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -831,21 +1253,21 @@ class _UserBadge extends StatelessWidget {
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        children: const [
-          CircleAvatar(
+        children: [
+          const CircleAvatar(
             radius: 16,
             backgroundColor: Color(0xFFD1D5DB),
             child: Icon(Icons.person, size: 18, color: Color(0xFF374151)),
           ),
-          SizedBox(width: 10),
+          const SizedBox(width: 10),
           Text(
-            'John Doe',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+            displayName,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
           ),
-          SizedBox(width: 6),
+          const SizedBox(width: 6),
           Text(
-            'Product Manager',
-            style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+            roleLabel,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
           ),
         ],
       ),
@@ -1002,17 +1424,20 @@ class _PlanHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final projectName = ProjectDataHelper.getData(context).projectName.trim();
+    final title = projectName.isEmpty ? 'Procurement Plan' : '$projectName Procurement Plan';
+
     return Row(
       children: [
-        const Expanded(
+        Expanded(
           child: Row(
             children: [
               Text(
-                'SmartCare Expansion Project Procurement Plan',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                title,
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
               ),
-              SizedBox(width: 8),
-              Icon(Icons.lock_outline, size: 18, color: Color(0xFF6B7280)),
+              const SizedBox(width: 8),
+              const Icon(Icons.lock_outline, size: 18, color: Color(0xFF6B7280)),
             ],
           ),
         ),
@@ -1063,7 +1488,7 @@ class _AiSuggestionCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           const Text(
-            'Based on your project scope, I recommend creating procurement strategies for IT Equipment, Office Renovation, and Furniture to organize purchasing activities effectively.',
+            'Based on your scope, group items by category and delivery window to streamline sourcing and approvals.',
             style: TextStyle(fontSize: 14, color: Color(0xFF334155)),
           ),
           const SizedBox(height: 16),
@@ -1101,6 +1526,7 @@ class _ItemsListView extends StatelessWidget {
     required this.selectedIndex,
     required this.onSelectTrackable,
     required this.currencyFormat,
+    required this.onAddItem,
   });
 
   final List<_ProcurementItem> items;
@@ -1108,6 +1534,7 @@ class _ItemsListView extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onSelectTrackable;
   final NumberFormat currencyFormat;
+  final VoidCallback onAddItem;
 
   @override
   Widget build(BuildContext context) {
@@ -1129,9 +1556,9 @@ class _ItemsListView extends StatelessWidget {
           totalBudgetLabel: currencyFormat.format(totalBudget),
         ),
         const SizedBox(height: 24),
-        _ItemsToolbar(),
+        _ItemsToolbar(onAddItem: onAddItem),
         const SizedBox(height: 20),
-        _ItemsTable(items: items, currencyFormat: currencyFormat),
+        _ItemsTable(items: items, currencyFormat: currencyFormat, onAddItem: onAddItem),
         const SizedBox(height: 28),
         _TrackableAndTimeline(
           trackableItems: trackableItems,
@@ -1266,6 +1693,10 @@ class _SummaryCard extends StatelessWidget {
 }
 
 class _ItemsToolbar extends StatelessWidget {
+  const _ItemsToolbar({required this.onAddItem});
+
+  final VoidCallback onAddItem;
+
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
@@ -1286,21 +1717,21 @@ class _ItemsToolbar extends StatelessWidget {
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerRight,
-            child: _AddItemButton(),
+            child: _AddItemButton(onPressed: onAddItem),
           ),
         ],
       );
     }
 
     return Row(
-      children: const [
-        SizedBox(width: 320, child: _SearchField()),
-        SizedBox(width: 16),
-        SizedBox(width: 190, child: _DropdownField(label: 'All Categories')),
-        SizedBox(width: 16),
-        SizedBox(width: 190, child: _DropdownField(label: 'All Statuses')),
-        Spacer(),
-        _AddItemButton(),
+      children: [
+        const SizedBox(width: 320, child: _SearchField()),
+        const SizedBox(width: 16),
+        const SizedBox(width: 190, child: _DropdownField(label: 'All Categories')),
+        const SizedBox(width: 16),
+        const SizedBox(width: 190, child: _DropdownField(label: 'All Statuses')),
+        const Spacer(),
+        _AddItemButton(onPressed: onAddItem),
       ],
     );
   }
@@ -1368,12 +1799,14 @@ class _DropdownField extends StatelessWidget {
 }
 
 class _AddItemButton extends StatelessWidget {
-  const _AddItemButton();
+  const _AddItemButton({required this.onPressed});
+
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
     return ElevatedButton.icon(
-      onPressed: () {},
+      onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFF2563EB),
         foregroundColor: Colors.white,
@@ -1388,13 +1821,24 @@ class _AddItemButton extends StatelessWidget {
 }
 
 class _ItemsTable extends StatelessWidget {
-  const _ItemsTable({required this.items, required this.currencyFormat});
+  const _ItemsTable({required this.items, required this.currencyFormat, required this.onAddItem});
 
   final List<_ProcurementItem> items;
   final NumberFormat currencyFormat;
+  final VoidCallback onAddItem;
 
   @override
   Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return _EmptyStateCard(
+        icon: Icons.inventory_2_outlined,
+        title: 'No procurement items yet',
+        message: 'Add items to track budgets, approvals, and delivery timelines.',
+        actionLabel: 'Add Item',
+        onAction: onAddItem,
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1684,6 +2128,23 @@ class _TrackableItemsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (trackableItems.isEmpty) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: const _EmptyStateBody(
+          icon: Icons.local_shipping_outlined,
+          title: 'No trackable items yet',
+          message: 'Add procurement items to begin shipment tracking.',
+          compact: true,
+        ),
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1949,19 +2410,26 @@ class _StrategiesSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 16),
-        Column(
-          children: [
-            for (var i = 0; i < strategies.length; i++)
-              Padding(
-                padding: EdgeInsets.only(bottom: i == strategies.length - 1 ? 0 : 12),
-                child: _StrategyCard(
-                  strategy: strategies[i],
-                  expanded: expandedStrategies.contains(i),
-                  onTap: () => onToggle(i),
+        if (strategies.isEmpty)
+          const _EmptyStateCard(
+            icon: Icons.insights_outlined,
+            title: 'No strategies yet',
+            message: 'Capture your procurement approach or add a strategy to organize sourcing.',
+          )
+        else
+          Column(
+            children: [
+              for (var i = 0; i < strategies.length; i++)
+                Padding(
+                  padding: EdgeInsets.only(bottom: i == strategies.length - 1 ? 0 : 12),
+                  child: _StrategyCard(
+                    strategy: strategies[i],
+                    expanded: expandedStrategies.contains(i),
+                    onTap: () => onToggle(i),
+                  ),
                 ),
-              ),
-          ],
-        ),
+            ],
+          ),
       ],
     );
   }
@@ -2090,6 +2558,7 @@ class _VendorsSection extends StatelessWidget {
     required this.onPreferredChanged,
     required this.onCategoryChanged,
     required this.onViewModeChanged,
+    this.onAddVendor,
   });
 
   final List<_VendorRow> vendors;
@@ -2103,6 +2572,7 @@ class _VendorsSection extends StatelessWidget {
   final ValueChanged<bool> onPreferredChanged;
   final ValueChanged<String> onCategoryChanged;
   final ValueChanged<bool> onViewModeChanged;
+  final VoidCallback? onAddVendor;
 
   @override
   Widget build(BuildContext context) {
@@ -2209,19 +2679,14 @@ class _VendorsSection extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         if (vendors.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
-            ),
-            child: const Text(
-              'No vendors match the selected filters.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFF6B7280)),
-            ),
+          _EmptyStateCard(
+            icon: Icons.storefront_outlined,
+            title: allVendorsCount == 0 ? 'No vendors yet' : 'No vendors match',
+            message: allVendorsCount == 0
+                ? 'Add your first vendor to track approvals, ratings, and performance.'
+                : 'Adjust filters or add new vendors to expand coverage.',
+            actionLabel: allVendorsCount == 0 ? 'Add Vendor' : null,
+            onAction: onAddVendor,
           )
         else if (listView)
           _VendorDataTable(vendors: vendors)
@@ -2445,6 +2910,7 @@ class _VendorManagementView extends StatelessWidget {
     required this.healthMetrics,
     required this.onboardingTasks,
     required this.riskItems,
+    required this.onAddVendor,
     required this.onApprovedChanged,
     required this.onPreferredChanged,
     required this.onCategoryChanged,
@@ -2461,6 +2927,7 @@ class _VendorManagementView extends StatelessWidget {
   final List<_VendorHealthMetric> healthMetrics;
   final List<_VendorOnboardingTask> onboardingTasks;
   final List<_VendorRiskItem> riskItems;
+  final VoidCallback onAddVendor;
   final ValueChanged<bool> onApprovedChanged;
   final ValueChanged<bool> onPreferredChanged;
   final ValueChanged<String> onCategoryChanged;
@@ -2530,7 +2997,7 @@ class _VendorManagementView extends StatelessWidget {
                   ),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: onAddVendor,
                   icon: const Icon(Icons.add_rounded, size: 18),
                   label: const Text('Add Vendor'),
                   style: ElevatedButton.styleFrom(
@@ -2598,6 +3065,7 @@ class _VendorManagementView extends StatelessWidget {
           listView: listView,
           categoryFilter: categoryFilter,
           categoryOptions: categoryOptions,
+          onAddVendor: onAddVendor,
           onApprovedChanged: onApprovedChanged,
           onPreferredChanged: onPreferredChanged,
           onCategoryChanged: onCategoryChanged,
@@ -2621,6 +3089,15 @@ class _VendorHealthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (metrics.isEmpty) {
+      return const _EmptyStateCard(
+        icon: Icons.health_and_safety_outlined,
+        title: 'Vendor health by category',
+        message: 'Health metrics will appear once vendor performance is tracked.',
+        compact: true,
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -2681,6 +3158,15 @@ class _VendorOnboardingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (tasks.isEmpty) {
+      return const _EmptyStateCard(
+        icon: Icons.assignment_turned_in_outlined,
+        title: 'Onboarding pipeline',
+        message: 'No onboarding tasks yet. Add vendors to start the pipeline.',
+        compact: true,
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -2735,6 +3221,15 @@ class _VendorRiskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (riskItems.isEmpty) {
+      return const _EmptyStateCard(
+        icon: Icons.shield_outlined,
+        title: 'Risk watchlist',
+        message: 'Risk items will appear once vendors are assessed.',
+        compact: true,
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -2837,11 +3332,13 @@ class _RfqWorkflowView extends StatelessWidget {
     required this.rfqs,
     required this.criteria,
     required this.currencyFormat,
+    required this.onCreateRfq,
   });
 
   final List<_RfqItem> rfqs;
   final List<_RfqCriterion> criteria;
   final NumberFormat currencyFormat;
+  final VoidCallback onCreateRfq;
 
   @override
   Widget build(BuildContext context) {
@@ -2915,7 +3412,7 @@ class _RfqWorkflowView extends StatelessWidget {
                   child: const Text('View Templates'),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: onCreateRfq,
                   icon: const Icon(Icons.add_rounded, size: 18),
                   label: const Text('Create RFQ'),
                   style: ElevatedButton.styleFrom(
@@ -2962,7 +3459,7 @@ class _RfqWorkflowView extends StatelessWidget {
         if (isMobile)
           Column(
             children: [
-              _RfqListCard(rfqs: rfqs, currencyFormat: currencyFormat),
+              _RfqListCard(rfqs: rfqs, currencyFormat: currencyFormat, onCreateRfq: onCreateRfq),
               const SizedBox(height: 16),
               _RfqSidebarCard(rfqs: rfqs, criteria: criteria),
             ],
@@ -2971,7 +3468,7 @@ class _RfqWorkflowView extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: _RfqListCard(rfqs: rfqs, currencyFormat: currencyFormat)),
+              Expanded(child: _RfqListCard(rfqs: rfqs, currencyFormat: currencyFormat, onCreateRfq: onCreateRfq)),
               const SizedBox(width: 24),
               SizedBox(width: 320, child: _RfqSidebarCard(rfqs: rfqs, criteria: criteria)),
             ],
@@ -3023,10 +3520,11 @@ class _RfqStageCard extends StatelessWidget {
 }
 
 class _RfqListCard extends StatelessWidget {
-  const _RfqListCard({required this.rfqs, required this.currencyFormat});
+  const _RfqListCard({required this.rfqs, required this.currencyFormat, required this.onCreateRfq});
 
   final List<_RfqItem> rfqs;
   final NumberFormat currencyFormat;
+  final VoidCallback onCreateRfq;
 
   @override
   Widget build(BuildContext context) {
@@ -3054,10 +3552,20 @@ class _RfqListCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          for (var i = 0; i < rfqs.length; i++) ...[
-            _RfqItemCard(rfq: rfqs[i], currencyFormat: currencyFormat),
-            if (i != rfqs.length - 1) const SizedBox(height: 12),
-          ],
+          if (rfqs.isEmpty)
+            _EmptyStateBody(
+              icon: Icons.request_quote_outlined,
+              title: 'No active RFQs',
+              message: 'Create an RFQ to begin vendor outreach.',
+              actionLabel: 'Create RFQ',
+              onAction: onCreateRfq,
+              compact: true,
+            )
+          else
+            for (var i = 0; i < rfqs.length; i++) ...[
+              _RfqItemCard(rfq: rfqs[i], currencyFormat: currencyFormat),
+              if (i != rfqs.length - 1) const SizedBox(height: 12),
+            ],
         ],
       ),
     );
@@ -3235,33 +3743,39 @@ class _RfqSidebarCard extends StatelessWidget {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
               ),
               const SizedBox(height: 12),
-              for (var i = 0; i < criteria.length; i++) ...[
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        criteria[i].label,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1F2937)),
+              if (criteria.isEmpty)
+                const Text(
+                  'Define evaluation criteria once the RFQ scope is approved.',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                )
+              else
+                for (var i = 0; i < criteria.length; i++) ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          criteria[i].label,
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1F2937)),
+                        ),
                       ),
-                    ),
-                    Text(
-                      '${(criteria[i].weight * 100).round()}%',
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: criteria[i].weight,
-                    minHeight: 6,
-                    backgroundColor: const Color(0xFFE2E8F0),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
+                      Text(
+                        '${(criteria[i].weight * 100).round()}%',
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                      ),
+                    ],
                   ),
-                ),
-                if (i != criteria.length - 1) const SizedBox(height: 12),
-              ],
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      value: criteria[i].weight,
+                      minHeight: 6,
+                      backgroundColor: const Color(0xFFE2E8F0),
+                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
+                    ),
+                  ),
+                  if (i != criteria.length - 1) const SizedBox(height: 12),
+                ],
             ],
           ),
         ),
@@ -3281,23 +3795,29 @@ class _RfqSidebarCard extends StatelessWidget {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
               ),
               const SizedBox(height: 12),
-              for (var i = 0; i < topUpcoming.length; i++) ...[
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        topUpcoming[i].title,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1F2937)),
+              if (topUpcoming.isEmpty)
+                const Text(
+                  'Deadlines will surface once RFQs are created.',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                )
+              else
+                for (var i = 0; i < topUpcoming.length; i++) ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          topUpcoming[i].title,
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1F2937)),
+                        ),
                       ),
-                    ),
-                    Text(
-                      DateFormat('MMM d').format(DateTime.parse(topUpcoming[i].dueDate)),
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                    ),
-                  ],
-                ),
-                if (i != topUpcoming.length - 1) const SizedBox(height: 12),
-              ],
+                      Text(
+                        DateFormat('MMM d').format(DateTime.parse(topUpcoming[i].dueDate)),
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                      ),
+                    ],
+                  ),
+                  if (i != topUpcoming.length - 1) const SizedBox(height: 12),
+                ],
             ],
           ),
         ),
@@ -3311,10 +3831,12 @@ class _PurchaseOrdersView extends StatelessWidget {
     super.key,
     required this.orders,
     required this.currencyFormat,
+    required this.onCreatePo,
   });
 
   final List<_PurchaseOrder> orders;
   final NumberFormat currencyFormat;
+  final VoidCallback onCreatePo;
 
   @override
   Widget build(BuildContext context) {
@@ -3379,7 +3901,7 @@ class _PurchaseOrdersView extends StatelessWidget {
                   child: const Text('Export'),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: onCreatePo,
                   icon: const Icon(Icons.add_rounded, size: 18),
                   label: const Text('Create PO'),
                   style: ElevatedButton.styleFrom(
@@ -3417,7 +3939,15 @@ class _PurchaseOrdersView extends StatelessWidget {
             ],
           ),
         const SizedBox(height: 24),
-        if (isMobile)
+        if (orders.isEmpty)
+          _EmptyStateCard(
+            icon: Icons.receipt_long_outlined,
+            title: 'No purchase orders yet',
+            message: 'Create a PO to track approvals, shipments, and invoices.',
+            actionLabel: 'Create PO',
+            onAction: onCreatePo,
+          )
+        else if (isMobile)
           Column(
             children: [
               for (var i = 0; i < orders.length; i++) ...[
@@ -3427,7 +3957,7 @@ class _PurchaseOrdersView extends StatelessWidget {
             ],
           )
         else
-          _PurchaseOrderTable(orders: orders, currencyFormat: currencyFormat),
+          _PurchaseOrderTable(orders: orders, currencyFormat: currencyFormat, onCreatePo: onCreatePo),
         const SizedBox(height: 24),
         if (isMobile)
           Column(
@@ -3451,13 +3981,24 @@ class _PurchaseOrdersView extends StatelessWidget {
 }
 
 class _PurchaseOrderTable extends StatelessWidget {
-  const _PurchaseOrderTable({required this.orders, required this.currencyFormat});
+  const _PurchaseOrderTable({required this.orders, required this.currencyFormat, required this.onCreatePo});
 
   final List<_PurchaseOrder> orders;
   final NumberFormat currencyFormat;
+  final VoidCallback onCreatePo;
 
   @override
   Widget build(BuildContext context) {
+    if (orders.isEmpty) {
+      return _EmptyStateCard(
+        icon: Icons.receipt_long_outlined,
+        title: 'No purchase orders yet',
+        message: 'Create a PO to track approvals, shipments, and invoices.',
+        actionLabel: 'Create PO',
+        onAction: onCreatePo,
+      );
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
         return Container(
@@ -3940,6 +4481,15 @@ class _TrackingAlertsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (alerts.isEmpty) {
+      return const _EmptyStateCard(
+        icon: Icons.warning_amber_rounded,
+        title: 'Logistics alerts',
+        message: 'Alerts will surface once shipments are in motion.',
+        compact: true,
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -4095,6 +4645,64 @@ class _ReportsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
+    final hasData = kpis.isNotEmpty ||
+        spendBreakdown.isNotEmpty ||
+        leadTimeMetrics.isNotEmpty ||
+        savingsOpportunities.isNotEmpty ||
+        complianceMetrics.isNotEmpty;
+
+    if (!hasData) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Procurement Reports',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                ),
+              ),
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton(
+                    onPressed: () {},
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF0F172A),
+                      side: const BorderSide(color: Color(0xFFCBD5E1)),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Share'),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () {},
+                    icon: const Icon(Icons.file_download_outlined, size: 18),
+                    label: const Text('Export PDF'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2563EB),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const _EmptyStateCard(
+            icon: Icons.insert_chart_outlined,
+            title: 'No report data yet',
+            message: 'Reports will populate as procurement activity is recorded.',
+          ),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -4244,6 +4852,15 @@ class _SpendBreakdownCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (breakdown.isEmpty) {
+      return const _EmptyStateCard(
+        icon: Icons.pie_chart_outline,
+        title: 'Spend by category',
+        message: 'Category spend will appear after items and POs are logged.',
+        compact: true,
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -4313,6 +4930,15 @@ class _LeadTimePerformanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (metrics.isEmpty) {
+      return const _EmptyStateCard(
+        icon: Icons.schedule_outlined,
+        title: 'Lead time performance',
+        message: 'Lead time data will appear once deliveries are tracked.',
+        compact: true,
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -4368,6 +4994,15 @@ class _SavingsOpportunitiesCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return const _EmptyStateCard(
+        icon: Icons.savings_outlined,
+        title: 'Savings opportunities',
+        message: 'Savings will appear as sourcing insights are captured.',
+        compact: true,
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -4423,6 +5058,15 @@ class _ComplianceSnapshotCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (metrics.isEmpty) {
+      return const _EmptyStateCard(
+        icon: Icons.verified_outlined,
+        title: 'Compliance snapshot',
+        message: 'Compliance tracking appears after vendors and orders are recorded.',
+        compact: true,
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -4466,6 +5110,324 @@ class _ComplianceSnapshotCard extends StatelessWidget {
             if (i != metrics.length - 1) const SizedBox(height: 12),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _ProcurementDialogShell extends StatelessWidget {
+  const _ProcurementDialogShell({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.contextChips,
+    required this.primaryLabel,
+    required this.secondaryLabel,
+    required this.onPrimary,
+    required this.onSecondary,
+    required this.child,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final List<Widget> contextChips;
+  final String primaryLabel;
+  final String secondaryLabel;
+  final VoidCallback onPrimary;
+  final VoidCallback onSecondary;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: BoxConstraints(maxWidth: 720, maxHeight: media.size.height * 0.88),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: const [
+            BoxShadow(color: Color(0x1F0F172A), blurRadius: 30, offset: Offset(0, 18)),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFFF8FAFF), Color(0xFFEFF6FF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Stack(
+                children: [
+                  Positioned(
+                    right: -20,
+                    top: -30,
+                    child: Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDBEAFE).withValues(alpha: 0.4),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          boxShadow: const [
+                            BoxShadow(color: Color(0x140F172A), blurRadius: 10, offset: Offset(0, 6)),
+                          ],
+                        ),
+                        child: Icon(icon, color: const Color(0xFF2563EB)),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              subtitle,
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF475569)),
+                            ),
+                            if (contextChips.isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: contextChips,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: onSecondary,
+                        icon: const Icon(Icons.close, color: Color(0xFF64748B)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+                child: child,
+              ),
+            ),
+            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
+              child: Row(
+                children: [
+                  const Text(
+                    'Saved to this workspace only.',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                  ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: onSecondary,
+                    child: Text(secondaryLabel),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: onPrimary,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2563EB),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                    child: Text(primaryLabel, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DialogSectionTitle extends StatelessWidget {
+  const _DialogSectionTitle({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+        ),
+      ],
+    );
+  }
+}
+
+class _ContextChip extends StatelessWidget {
+  const _ContextChip({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+          const SizedBox(width: 6),
+          Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyStateBody extends StatelessWidget {
+  const _EmptyStateBody({
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.actionLabel,
+    this.onAction,
+    this.compact = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final double iconSize = compact ? 40 : 52;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: iconSize,
+          height: iconSize,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEFF6FF),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(icon, color: const Color(0xFF2563EB), size: compact ? 20 : 24),
+        ),
+        SizedBox(height: compact ? 10 : 14),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: compact ? 14 : 16,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF0F172A),
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          message,
+          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+          textAlign: TextAlign.center,
+        ),
+        if (actionLabel != null && onAction != null) ...[
+          const SizedBox(height: 12),
+          ElevatedButton(
+            onPressed: onAction,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              elevation: 0,
+            ),
+            child: Text(actionLabel!, style: const TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _EmptyStateCard extends StatelessWidget {
+  const _EmptyStateCard({
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.actionLabel,
+    this.onAction,
+    this.compact = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0F0F172A), blurRadius: 12, offset: Offset(0, 8)),
+        ],
+      ),
+      padding: EdgeInsets.symmetric(horizontal: 24, vertical: compact ? 24 : 32),
+      child: _EmptyStateBody(
+        icon: icon,
+        title: title,
+        message: message,
+        actionLabel: actionLabel,
+        onAction: onAction,
+        compact: compact,
       ),
     );
   }

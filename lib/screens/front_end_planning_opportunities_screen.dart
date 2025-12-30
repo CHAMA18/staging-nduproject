@@ -35,6 +35,7 @@ class FrontEndPlanningOpportunitiesScreen extends StatefulWidget {
 
 class _FrontEndPlanningOpportunitiesScreenState extends State<FrontEndPlanningOpportunitiesScreen> {
   final TextEditingController _notes = TextEditingController();
+  bool _isSyncReady = false;
 
   // Backing rows for the table; built from incoming requirements (if any).
   late List<_OpportunityItem> _rows;
@@ -46,6 +47,9 @@ class _FrontEndPlanningOpportunitiesScreenState extends State<FrontEndPlanningOp
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final projectData = ProjectDataHelper.getData(context);
       _notes.text = projectData.frontEndPlanning.opportunities;
+      _notes.addListener(_syncOpportunitiesToProvider);
+      _isSyncReady = true;
+      _syncOpportunitiesToProvider();
       if (_rows.isEmpty) {
         _generateOpportunitiesFromContext();
       }
@@ -55,8 +59,29 @@ class _FrontEndPlanningOpportunitiesScreenState extends State<FrontEndPlanningOp
 
   @override
   void dispose() {
+    if (_isSyncReady) {
+      _notes.removeListener(_syncOpportunitiesToProvider);
+    }
     _notes.dispose();
     super.dispose();
+  }
+
+  void _syncOpportunitiesToProvider() {
+    if (!mounted || !_isSyncReady) return;
+    final oppText = _rows
+        .map((r) => '${r.opportunity}: ${r.discipline}')
+        .where((s) => s.trim().isNotEmpty)
+        .join('\n');
+    final value = oppText.isNotEmpty ? oppText : _notes.text.trim();
+    final provider = ProjectDataHelper.getProvider(context);
+    provider.updateField(
+      (data) => data.copyWith(
+        frontEndPlanning: ProjectDataHelper.updateFEPField(
+          current: data.frontEndPlanning,
+          opportunities: value,
+        ),
+      ),
+    );
   }
 
   Future<void> _generateOpportunitiesFromContext() async {
@@ -78,6 +103,7 @@ class _FrontEndPlanningOpportunitiesScreenState extends State<FrontEndPlanningOp
                   ))
               .toList();
         });
+        _syncOpportunitiesToProvider();
       }
     } catch (e) {
       debugPrint('AI opportunities suggestion failed: $e');
@@ -169,6 +195,7 @@ class _FrontEndPlanningOpportunitiesScreenState extends State<FrontEndPlanningOp
     );
     if (item != null) {
       setState(() => _rows.add(item));
+      _syncOpportunitiesToProvider();
     }
   }
 }

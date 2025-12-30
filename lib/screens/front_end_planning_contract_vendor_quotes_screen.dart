@@ -30,6 +30,7 @@ class FrontEndPlanningContractVendorQuotesScreen extends StatefulWidget {
 class _FrontEndPlanningContractVendorQuotesScreenState extends State<FrontEndPlanningContractVendorQuotesScreen> {
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _contractsController = TextEditingController();
+  bool _isSyncReady = false;
 
   @override
   void initState() {
@@ -37,6 +38,9 @@ class _FrontEndPlanningContractVendorQuotesScreenState extends State<FrontEndPla
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final data = ProjectDataHelper.getData(context);
       _contractsController.text = data.frontEndPlanning.contractVendorQuotes;
+      _contractsController.addListener(_syncContractsToProvider);
+      _isSyncReady = true;
+      _syncContractsToProvider();
       if (_contractsController.text.trim().isEmpty) {
         _generateAiSuggestion();
       }
@@ -63,9 +67,25 @@ class _FrontEndPlanningContractVendorQuotesScreenState extends State<FrontEndPla
 
   @override
   void dispose() {
+    if (_isSyncReady) {
+      _contractsController.removeListener(_syncContractsToProvider);
+    }
     _notesController.dispose();
     _contractsController.dispose();
     super.dispose();
+  }
+
+  void _syncContractsToProvider() {
+    if (!mounted || !_isSyncReady) return;
+    final provider = ProjectDataHelper.getProvider(context);
+    provider.updateField(
+      (data) => data.copyWith(
+        frontEndPlanning: ProjectDataHelper.updateFEPField(
+          current: data.frontEndPlanning,
+          contractVendorQuotes: _contractsController.text.trim(),
+        ),
+      ),
+    );
   }
 
   @override

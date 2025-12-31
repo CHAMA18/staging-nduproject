@@ -24,44 +24,7 @@ class LessonsLearnedScreen extends StatefulWidget {
 class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
 
   final TextEditingController _searchController = TextEditingController();
-  static const List<_LessonEntry> _seedEntries = [
-    _LessonEntry(
-      id: 'T-001',
-      lesson: 'Early stakeholder engagement improved',
-      type: 'Success',
-      category: 'Process',
-      phase: 'Planning',
-      impact: 'High',
-      status: 'Implemented',
-      submittedBy: 'Emily Johnson',
-      date: '2025-02-15',
-      highlight: true,
-    ),
-    _LessonEntry(
-      id: 'T-002',
-      lesson: 'Communication gaps identified',
-      type: 'Challenge',
-      category: 'Collaboration',
-      phase: 'Execution',
-      impact: 'Medium',
-      status: 'In Review',
-      submittedBy: 'Emily Johnson',
-      date: '2025-02-15',
-      highlight: false,
-    ),
-    _LessonEntry(
-      id: 'T-003',
-      lesson: 'Introduce onboarding playbook update',
-      type: 'Insight',
-      category: 'Process',
-      phase: 'Planning',
-      impact: 'Medium',
-      status: 'Draft',
-      submittedBy: 'Emily Johnson',
-      date: '2025-02-15',
-      highlight: false,
-    ),
-  ];
+  static const List<_LessonEntry> _seedEntries = [];
 
   late final List<_LessonEntry> _entries;
 

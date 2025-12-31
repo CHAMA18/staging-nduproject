@@ -5,6 +5,8 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/models/project_data_model.dart';
 
 class ProjectPlanScreen extends StatefulWidget {
   const ProjectPlanScreen({super.key});
@@ -21,26 +23,21 @@ class ProjectPlanScreen extends StatefulWidget {
 
 class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  String _selectedProject = 'Cloud Migration Project';
+  String? _selectedProject;
 
-  static const List<_Deliverable> _deliverables = [
-    _Deliverable(id: 'D-001', name: 'Requirements Document', phase: 'Planning', dueDate: 'Feb 28, 2023', status: 'Completed', owner: 'Sarah Johnson'),
-    _Deliverable(id: 'D-002', name: 'System Architecture Design', phase: 'Design', dueDate: 'Apr 15, 2023', status: 'Completed', owner: 'Mark Taylor'),
-    _Deliverable(id: 'D-003', name: 'Database Schema', phase: 'Design', dueDate: 'Apr 30, 2023', status: 'In Progress', owner: 'Jennifer Lee'),
-    _Deliverable(id: 'D-004', name: 'UI/UX Design Mockups', phase: 'Design', dueDate: 'May 15, 2023', status: 'In Progress', owner: 'Michael Wong'),
-    _Deliverable(id: 'D-005', name: 'Test Plan', phase: 'Testing', dueDate: 'Jul 1, 2023', status: 'Not Started', owner: 'Laura Smith'),
-  ];
-
-  static const List<_CommunicationPlan> _communications = [
-    _CommunicationPlan(meetingType: 'Status Update', frequency: 'Weekly', attendees: 'Project Team', purpose: 'Review progress, discuss blockers, plan for the week'),
-    _CommunicationPlan(meetingType: 'Steering Committee', frequency: 'Monthly', attendees: 'Executive Sponsors, Project Manager', purpose: 'Review project status, budget, timeline, risks'),
-    _CommunicationPlan(meetingType: 'Technical Sync', frequency: 'Bi-weekly', attendees: 'Technical Team', purpose: 'Discuss technical challenges and solutions'),
-  ];
+  static const List<_Deliverable> _deliverables = [];
+  static const List<_CommunicationPlan> _communications = [];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 5, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final projectName = ProjectDataHelper.getData(context).projectName.trim();
+      if (projectName.isNotEmpty && mounted) {
+        setState(() => _selectedProject = projectName);
+      }
+    });
   }
 
   @override
@@ -153,6 +150,10 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
   }
 
   Widget _buildProjectDropdown() {
+    if ((_selectedProject ?? '').isEmpty) {
+      return const _EmptyStateChip(label: 'Select project', icon: Icons.folder_open_outlined);
+    }
+    final options = [_selectedProject!];
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
@@ -162,15 +163,13 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          value: _selectedProject,
+          value: _selectedProject ?? options.first,
           isDense: true,
           icon: const Icon(Icons.keyboard_arrow_down, size: 20, color: Color(0xFF6B7280)),
           style: const TextStyle(fontSize: 14, color: Color(0xFF111827), fontWeight: FontWeight.w500),
-          items: const [
-            DropdownMenuItem(value: 'Cloud Migration Project', child: Text('Cloud Migration Project')),
-            DropdownMenuItem(value: 'ERP Implementation', child: Text('ERP Implementation')),
-            DropdownMenuItem(value: 'Mobile App Development', child: Text('Mobile App Development')),
-          ],
+          items: options
+              .map((project) => DropdownMenuItem<String>(value: project, child: Text(project)))
+              .toList(),
           onChanged: (value) {
             if (value != null) setState(() => _selectedProject = value);
           },
@@ -186,17 +185,17 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: const Color(0xFF22C55E),
+            color: const Color(0xFFE5E7EB),
             borderRadius: BorderRadius.circular(999),
           ),
-          child: const Text('On Track', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+          child: const Text('Status: —', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
         ),
         const SizedBox(width: 12),
         Row(
           children: [
             const Icon(Icons.calendar_today_outlined, size: 14, color: Color(0xFF6B7280)),
             const SizedBox(width: 6),
-            const Text('Start Jan 15, 2023', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+            const Text('Start —', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
           ],
         ),
         const SizedBox(width: 12),
@@ -204,7 +203,7 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
           children: [
             const Icon(Icons.flag_outlined, size: 14, color: Color(0xFF6B7280)),
             const SizedBox(width: 6),
-            const Text('End Dec 28, 2023', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+            const Text('End —', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
           ],
         ),
       ],
@@ -306,6 +305,17 @@ class _ProjectPlanOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final data = ProjectDataHelper.getData(context);
+    final objectives = _objectiveItems(data);
+    final scopes = _scopeItems(data);
+    final hasOverview = data.projectName.trim().isNotEmpty || objectives.isNotEmpty || scopes.isNotEmpty;
+    if (!hasOverview) {
+      return const _SectionEmptyState(
+        title: 'No project overview yet',
+        message: 'Add goals, objectives, or scope details to populate the overview.',
+        icon: Icons.assignment_outlined,
+      );
+    }
     return Container(
       padding: EdgeInsets.all(isMobile ? 20 : 28),
       decoration: BoxDecoration(
@@ -325,21 +335,21 @@ class _ProjectPlanOverviewCard extends StatelessWidget {
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildProjectDetails(),
+                    _buildProjectDetails(context),
                     const SizedBox(height: 24),
-                    _buildProjectObjectives(),
+                    _buildProjectObjectives(objectives),
                     const SizedBox(height: 24),
-                    _buildProjectScope(),
+                    _buildProjectScope(scopes),
                   ],
                 )
               : Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(flex: 2, child: _buildProjectDetails()),
+                    Expanded(flex: 2, child: _buildProjectDetails(context)),
                     const SizedBox(width: 32),
-                    Expanded(flex: 2, child: _buildProjectObjectives()),
+                    Expanded(flex: 2, child: _buildProjectObjectives(objectives)),
                     const SizedBox(width: 32),
-                    Expanded(flex: 2, child: _buildProjectScope()),
+                    Expanded(flex: 2, child: _buildProjectScope(scopes)),
                   ],
                 ),
         ],
@@ -347,7 +357,14 @@ class _ProjectPlanOverviewCard extends StatelessWidget {
     );
   }
 
-  Widget _buildProjectDetails() {
+  Widget _buildProjectDetails(BuildContext context) {
+    final data = ProjectDataHelper.getData(context);
+    final projectName = data.projectName.trim().isEmpty ? '—' : data.projectName.trim();
+    final manager = _firstTeamMemberName(data, keyword: 'manager') ?? '—';
+    final sponsor = _firstTeamMemberName(data, keyword: 'sponsor') ?? '—';
+    const methodology = '—';
+    const startDate = '—';
+    const endDate = '—';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -356,17 +373,17 @@ class _ProjectPlanOverviewCard extends StatelessWidget {
           style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
         ),
         const SizedBox(height: 16),
-        _buildDetailRow('Project Name:', 'Cloud Migration Project'),
+        _buildDetailRow('Project Name:', projectName),
         const SizedBox(height: 10),
-        _buildDetailRow('Project Manager:', 'Alex Johnson'),
+        _buildDetailRow('Project Manager:', manager),
         const SizedBox(height: 10),
-        _buildDetailRow('Sponsor:', 'Sarah Williams, CTO'),
+        _buildDetailRow('Sponsor:', sponsor),
         const SizedBox(height: 10),
-        _buildDetailRow('Methodology:', 'Hybrid (Agile/Waterfall)'),
+        _buildDetailRow('Methodology:', methodology),
         const SizedBox(height: 10),
-        _buildDetailRow('Start Date:', 'January 15, 2023'),
+        _buildDetailRow('Start Date:', startDate),
         const SizedBox(height: 10),
-        _buildDetailRow('End Date:', 'December 28, 2023'),
+        _buildDetailRow('End Date:', endDate),
       ],
     );
   }
@@ -392,14 +409,7 @@ class _ProjectPlanOverviewCard extends StatelessWidget {
     );
   }
 
-  Widget _buildProjectObjectives() {
-    const objectives = [
-      'Complete migration of all enterprise applications to cloud',
-      'Ensure 99.9% uptime during and after migration',
-      'Reduce operational IT costs by 30%',
-      'Improve disaster recovery capabilities with RPO < 15min',
-      'Enhance security posture with zero critical vulnerabilities',
-    ];
+  Widget _buildProjectObjectives(List<String> objectives) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -408,29 +418,29 @@ class _ProjectPlanOverviewCard extends StatelessWidget {
           style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
         ),
         const SizedBox(height: 16),
-        ...objectives.map((obj) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('• ', style: TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
-                  Expanded(
-                    child: Text(obj, style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
-                  ),
-                ],
-              ),
-            )),
+        if (objectives.isEmpty)
+          const Text(
+            'No objectives captured yet.',
+            style: TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
+          )
+        else
+          ...objectives.map((obj) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('• ', style: TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
+                    Expanded(
+                      child: Text(obj, style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
+                    ),
+                  ],
+                ),
+              )),
       ],
     );
   }
 
-  Widget _buildProjectScope() {
-    const scopes = [
-      'All enterprise applications (42 total)',
-      'Customer data warehouse',
-      'Internal collaboration tools',
-      'Security systems and monitoring',
-    ];
+  Widget _buildProjectScope(List<String> scopes) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -439,25 +449,61 @@ class _ProjectPlanOverviewCard extends StatelessWidget {
           style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
         ),
         const SizedBox(height: 8),
-        const Text(
-          'Complete migration of the following to cloud-based services:',
-          style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+        Text(
+          scopes.isEmpty ? 'No scope defined yet.' : 'Scope highlights:',
+          style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
         ),
         const SizedBox(height: 12),
-        ...scopes.map((scope) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('• ', style: TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
-                  Expanded(
-                    child: Text(scope, style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
-                  ),
-                ],
-              ),
-            )),
+        if (scopes.isNotEmpty)
+          ...scopes.map((scope) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('• ', style: TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
+                    Expanded(
+                      child: Text(scope, style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
+                    ),
+                  ],
+                ),
+              )),
       ],
     );
+  }
+
+  List<String> _objectiveItems(ProjectDataModel data) {
+    final items = <String>[];
+    final objective = data.projectObjective.trim();
+    if (objective.isNotEmpty) items.add(objective);
+    for (final goal in data.projectGoals) {
+      final desc = goal.description.trim();
+      if (desc.isNotEmpty) items.add(desc);
+    }
+    return items;
+  }
+
+  List<String> _scopeItems(ProjectDataModel data) {
+    final items = <String>[];
+    final requirements = data.frontEndPlanning.requirements.trim();
+    if (requirements.isNotEmpty) {
+      items.addAll(
+        requirements
+            .split(RegExp(r'[\n•]+'))
+            .map((item) => item.trim())
+            .where((item) => item.isNotEmpty),
+      );
+    }
+    return items;
+  }
+
+  String? _firstTeamMemberName(ProjectDataModel data, {required String keyword}) {
+    for (final member in data.teamMembers) {
+      final role = member.role.toLowerCase();
+      if (role.contains(keyword) && member.name.trim().isNotEmpty) {
+        return member.name.trim();
+      }
+    }
+    return data.teamMembers.isNotEmpty ? data.teamMembers.first.name.trim() : null;
   }
 }
 
@@ -469,6 +515,13 @@ class _KeyDeliverablesCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (deliverables.isEmpty) {
+      return const _SectionEmptyState(
+        title: 'No deliverables yet',
+        message: 'Add deliverables to track ownership, phase, and due dates.',
+        icon: Icons.task_alt_outlined,
+      );
+    }
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -566,6 +619,78 @@ class _StatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(status, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textColor)),
+    );
+  }
+}
+
+class _SectionEmptyState extends StatelessWidget {
+  const _SectionEmptyState({required this.title, required this.message, required this.icon});
+
+  final String title;
+  final String message;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7ED),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: const Color(0xFFF59E0B)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                const SizedBox(height: 6),
+                Text(message, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyStateChip extends StatelessWidget {
+  const _EmptyStateChip({required this.label, required this.icon});
+
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: const Color(0xFF9CA3AF)),
+          const SizedBox(width: 8),
+          Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF6B7280))),
+        ],
+      ),
     );
   }
 }

@@ -207,16 +207,81 @@ class _TabContent extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (selectedTab) {
       case _SecurityTab.dashboard:
-        return const _DashboardView();
+        return const _EmptySecurityState(
+          title: 'No security dashboard data yet',
+          message: 'Add security inputs to populate monitoring and alert insights.',
+          icon: Icons.shield_outlined,
+        );
       case _SecurityTab.roles:
-        return const _RolesView();
+        return const _EmptySecurityState(
+          title: 'No role data yet',
+          message: 'Define security roles to populate access coverage.',
+          icon: Icons.badge_outlined,
+        );
       case _SecurityTab.permissions:
-        return const _PermissionsView();
+        return const _EmptySecurityState(
+          title: 'No permission data yet',
+          message: 'Capture permissions and access scopes to populate this view.',
+          icon: Icons.lock_open_outlined,
+        );
       case _SecurityTab.settings:
-        return const _SettingsView();
+        return const _EmptySecurityState(
+          title: 'No security settings yet',
+          message: 'Add configuration details to populate security settings.',
+          icon: Icons.settings_outlined,
+        );
       case _SecurityTab.accessLogs:
-        return const _AccessLogsView();
+        return const _EmptySecurityState(
+          title: 'No access logs yet',
+          message: 'Log security events to populate access history.',
+          icon: Icons.receipt_long_outlined,
+        );
     }
+  }
+}
+
+class _EmptySecurityState extends StatelessWidget {
+  const _EmptySecurityState({required this.title, required this.message, required this.icon});
+
+  final String title;
+  final String message;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7ED),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: const Color(0xFFF59E0B)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                const SizedBox(height: 6),
+                Text(message, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

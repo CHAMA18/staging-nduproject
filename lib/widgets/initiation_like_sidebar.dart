@@ -967,91 +967,6 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     );
   }
 
-  Widget _buildSubSubExpandableHeader(String title, {required bool expanded, required VoidCallback onTap, bool isActive = false}) {
-    final primary = const Color(0xFFFFD700);
-    return Padding(
-      padding: const EdgeInsets.only(left: 72, right: 24, top: 2, bottom: 2),
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-          decoration: BoxDecoration(
-            color: isActive ? primary.withValues(alpha: 0.08) : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 4,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: isActive ? primary : Colors.grey[400],
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isActive ? primary : Colors.black87,
-                    fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Icon(expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: Colors.grey[600], size: 16),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSubSubSubMenuItem(String title, {VoidCallback? onTap, bool isActive = false}) {
-    final primary = const Color(0xFFFFD700);
-    return Padding(
-      padding: const EdgeInsets.only(left: 92, right: 24, top: 2, bottom: 2),
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: isActive ? primary.withValues(alpha: 0.08) : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 4,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: isActive ? primary : Colors.grey[400],
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: isActive ? primary : Colors.black87,
-                    fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildExpandableHeader(IconData icon, String title, {required bool expanded, required VoidCallback onTap, bool isActive = false}) {
     final primary = const Color(0xFFFFD700);
     return Padding(
@@ -1278,22 +1193,22 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
                       _costEstimateExpanded = !_costEstimateExpanded;
                       _sharedCostEstimateExpanded = _costEstimateExpanded;
                     }),
-                    isActive: widget.activeItemLabel == 'Cost Estimate' || widget.activeItemLabel == 'Scope Tracking Plan',
+                    isActive: widget.activeItemLabel == 'Cost Estimate',
                   ),
                   if (_costEstimateExpanded) ...[
                     _buildSubSubMenuItem('Cost Estimate Overview', onTap: _openCostEstimate, isActive: widget.activeItemLabel == 'Cost Estimate'),
-                    _buildSubSubExpandableHeader(
-                      'Project Services',
-                      expanded: _projectServicesExpanded,
-                      onTap: () => setState(() {
-                        _projectServicesExpanded = !_projectServicesExpanded;
-                        _sharedProjectServicesExpanded = _projectServicesExpanded;
-                      }),
-                      isActive: widget.activeItemLabel == 'Scope Tracking Plan',
-                    ),
-                    if (_projectServicesExpanded) ...[
-                      _buildSubSubSubMenuItem('Scope Tracking Plan', onTap: _openScopeTrackingPlan, isActive: widget.activeItemLabel == 'Scope Tracking Plan'),
-                    ],
+                  ],
+                  _buildSubExpandableHeader(
+                    'Project Services',
+                    expanded: _projectServicesExpanded,
+                    onTap: () => setState(() {
+                      _projectServicesExpanded = !_projectServicesExpanded;
+                      _sharedProjectServicesExpanded = _projectServicesExpanded;
+                    }),
+                    isActive: widget.activeItemLabel == 'Scope Tracking Plan',
+                  ),
+                  if (_projectServicesExpanded) ...[
+                    _buildSubSubMenuItem('Scope Tracking Plan', onTap: _openScopeTrackingPlan, isActive: widget.activeItemLabel == 'Scope Tracking Plan'),
                   ],
                   _buildSubMenuItem('Contract', onTap: _openContract, isActive: widget.activeItemLabel == 'Contract'),
                   _buildSubMenuItem('Procurement', onTap: _openProcurement, isActive: widget.activeItemLabel == 'Procurement'),

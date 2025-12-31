@@ -12,6 +12,7 @@ import 'package:ndu_project/services/contract_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ndu_project/routing/app_router.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
 
 /// Front End Planning – Contracts screen
 /// Recreates the provided contract management mock with tabs, notes field,
@@ -40,6 +41,17 @@ class _FrontEndPlanningContractsScreenState extends State<FrontEndPlanningContra
   }
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final saved = ProjectDataHelper.getData(context).frontEndPlanning.contracts;
+      if (saved.trim().isNotEmpty) {
+        _notesController.text = saved;
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _notesController.dispose();
     super.dispose();
@@ -54,6 +66,8 @@ class _FrontEndPlanningContractsScreenState extends State<FrontEndPlanningContra
 
   @override
   Widget build(BuildContext context) {
+    final projectData = ProjectDataHelper.getData(context);
+    final hasContractData = (projectData.planningNotes['contract_dashboard_payload'] ?? '').trim().isNotEmpty;
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -103,13 +117,32 @@ class _FrontEndPlanningContractsScreenState extends State<FrontEndPlanningContra
                                 description: 'Summarize contract scope, vendor commitments, and negotiation priorities.',
                               ),
                               const SizedBox(height: 20),
-                              _NotesField(controller: _notesController),
+                              _NotesField(
+                                controller: _notesController,
+                                onChanged: (value) async {
+                                  await ProjectDataHelper.updateAndSave(
+                                    context: context,
+                                    checkpoint: 'contracts',
+                                    dataUpdater: (data) => data.copyWith(
+                                      frontEndPlanning: ProjectDataHelper.updateFEPField(
+                                        current: data.frontEndPlanning,
+                                        contracts: value.trim(),
+                                      ),
+                                    ),
+                                    showSnackbar: false,
+                                  );
+                                },
+                              ),
                               const SizedBox(height: 28),
-                              _TimelineSection(),
-                              const SizedBox(height: 40),
-                              const _ContractDashboardSection(),
-                              const SizedBox(height: 32),
-                              const _ContractingNoteBanner(),
+                              if (!hasContractData)
+                                const _EmptyContractsState()
+                              else ...[
+                                _TimelineSection(),
+                                const SizedBox(height: 40),
+                                const _ContractDashboardSection(),
+                                const SizedBox(height: 32),
+                                const _ContractingNoteBanner(),
+                              ],
                               const SizedBox(height: 32),
                               Align(
                                 alignment: Alignment.centerRight,
@@ -1491,9 +1524,10 @@ class _ContractTabs extends StatelessWidget {
 }
 
 class _NotesField extends StatelessWidget {
-  const _NotesField({required this.controller});
+  const _NotesField({required this.controller, this.onChanged});
 
   final TextEditingController controller;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -1511,12 +1545,57 @@ class _NotesField extends StatelessWidget {
         controller: controller,
         minLines: 5,
         maxLines: null,
+        onChanged: onChanged,
         decoration: const InputDecoration(
           border: InputBorder.none,
           hintText: 'Input your notes here...',
           hintStyle: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
         ),
         style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
+      ),
+    );
+  }
+}
+
+class _EmptyContractsState extends StatelessWidget {
+  const _EmptyContractsState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7ED),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.description_outlined, color: Color(0xFFF59E0B)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text('No contract data yet', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                SizedBox(height: 6),
+                Text(
+                  'Capture contract notes or add contract details to populate the dashboard.',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

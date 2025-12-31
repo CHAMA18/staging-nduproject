@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/services/integration_oauth_service.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
+import 'package:ndu_project/widgets/app_logo.dart';
 
 class ToolsIntegrationScreen extends StatefulWidget {
   const ToolsIntegrationScreen({super.key});
@@ -148,6 +149,8 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildBrandMark(),
+        const SizedBox(height: 16),
         // Phase tabs and search row
         Wrap(
           spacing: 12,
@@ -193,6 +196,25 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
           _buildActionButtons(),
         ],
       ],
+    );
+  }
+
+  Widget _buildBrandMark() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: const AppLogo(height: 30, width: 120),
     );
   }
 

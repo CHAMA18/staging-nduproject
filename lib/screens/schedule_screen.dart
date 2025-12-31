@@ -216,74 +216,9 @@ class _ScheduleManagementCard extends StatelessWidget {
 
   static const List<String> _methodologies = ['Waterfall', 'Agile', 'Hybrid'];
 
-  static const List<_ScheduleMetric> _metrics = [
-    _ScheduleMetric(
-      icon: Icons.payments_outlined,
-      label: 'Project Cost',
-      value: '\$125,000',
-      caption: 'Estimated total cost',
-    ),
-    _ScheduleMetric(
-      icon: Icons.access_time_outlined,
-      label: 'Total Effort',
-      value: '1,080h',
-      caption: 'Resource hours planned',
-    ),
-  ];
-
-  static final List<_TeamUtilization> _teamUtilization = [
-    _TeamUtilization(label: 'Engineering', percent: 0.80, color: const Color(0xFF2563EB)),
-    _TeamUtilization(label: 'Operations', percent: 0.65, color: const Color(0xFF10B981)),
-    _TeamUtilization(label: 'Compliance', percent: 0.45, color: const Color(0xFFF59E0B)),
-  ];
-
-  static const List<_WbsNode> _wbsNodes = [
-    _WbsNode(
-      title: 'Infrastructure Development',
-      duration: '120 days',
-      badges: [
-        _BadgeStyle(label: 'Unassigned', textColor: Color(0xFF047857), backgroundColor: Color(0xFFE7F6EF)),
-      ],
-      children: [
-        _WbsNode(
-          title: 'Unassigned Deliverables (1)',
-          badges: [
-            _BadgeStyle(label: 'Unassigned', textColor: Color(0xFF92400E), backgroundColor: Color(0xFFFDE68A)),
-          ],
-          highlight: true,
-        ),
-        _WbsNode(
-          title: 'Safety & Health Risk Assessment',
-          duration: '10 days',
-          badges: [
-            _BadgeStyle(label: 'SSHER', textColor: Color(0xFFDB7C0F), backgroundColor: Color(0xFFFFF7ED)),
-            _BadgeStyle(label: 'Unassigned', textColor: Color(0xFF6B7280), backgroundColor: Color(0xFFF3F4F6)),
-          ],
-        ),
-        _WbsNode(
-          title: 'Site Preparation Complete',
-          duration: '30 days',
-          badges: [
-            _BadgeStyle(label: 'Assigned', textColor: Color(0xFF1F2937), backgroundColor: Color(0xFFE5E7EB)),
-          ],
-        ),
-        _WbsNode(
-          title: 'Foundation Systems',
-          duration: '45 days',
-          badges: [
-            _BadgeStyle(label: 'In Progress', textColor: Color(0xFF2563EB), backgroundColor: Color(0xFFEFF6FF)),
-          ],
-        ),
-      ],
-    ),
-    _WbsNode(
-      title: 'Systems Integration',
-      duration: '80 days',
-      badges: [
-        _BadgeStyle(label: 'Unassigned', textColor: Color(0xFF047857), backgroundColor: Color(0xFFE7F6EF)),
-      ],
-    ),
-  ];
+  static const List<_ScheduleMetric> _metrics = [];
+  static const List<_TeamUtilization> _teamUtilization = [];
+  static const List<_WbsNode> _wbsNodes = [];
 
   @override
   Widget build(BuildContext context) {
@@ -539,6 +474,51 @@ class _SummaryPanel extends StatelessWidget {
   }
 }
 
+class _SectionEmptyState extends StatelessWidget {
+  const _SectionEmptyState({required this.title, required this.message, required this.icon});
+
+  final String title;
+  final String message;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7ED),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: const Color(0xFFF59E0B)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                const SizedBox(height: 6),
+                Text(message, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _MetricTile extends StatelessWidget {
   const _MetricTile({required this.metric});
 
@@ -747,69 +727,7 @@ class _ProjectTimelineCard extends StatelessWidget {
 
   static const List<String> _tabs = ['Gantt Chart', 'List', 'Board'];
 
-  static const List<_TimelineItem> _timelineItems = [
-    _TimelineItem.milestone(
-      label: 'Platform Foundation',
-      startWeek: 12,
-      color: Color(0xFFF59E0B),
-    ),
-    _TimelineItem(
-      label: 'Back-end',
-      progressLabel: 'Back-end — 100%',
-      startWeek: 5,
-      durationWeeks: 6,
-      color: Color(0xFF10B981),
-      progress: 1.0,
-    ),
-    _TimelineItem(
-      label: 'API Development',
-      progressLabel: 'API Development — 45%',
-      startWeek: 8,
-      durationWeeks: 10,
-      color: Color(0xFF2563EB),
-      progress: 0.45,
-    ),
-    _TimelineItem(
-      label: 'Core Integration (Critical)',
-      progressLabel: 'Core Integration (Critical) — 30%',
-      startWeek: 10,
-      durationWeeks: 14,
-      color: Color(0xFFDC2626),
-      progress: 0.30,
-      isCritical: true,
-    ),
-    _TimelineItem(
-      label: 'Frontend Setup',
-      progressLabel: 'Frontend Setup — 0%',
-      startWeek: 16,
-      durationWeeks: 8,
-      color: Color(0xFF6B7280),
-    ),
-    _TimelineItem(
-      label: 'UI/UX Design Implementation',
-      progressLabel: 'UI/UX Design Implementation — 0%',
-      startWeek: 20,
-      durationWeeks: 8,
-      color: Color(0xFF334155),
-    ),
-    _TimelineItem(
-      label: 'System Testing',
-      progressLabel: 'System Testing — 0%',
-      startWeek: 28,
-      durationWeeks: 9,
-      color: Color(0xFF475569),
-    ),
-    _TimelineItem.milestone(
-      label: 'User Experience Layer',
-      startWeek: 34,
-      color: Color(0xFF6366F1),
-    ),
-    _TimelineItem.milestone(
-      label: 'Integration & Testing',
-      startWeek: 46,
-      color: Color(0xFF0EA5E9),
-    ),
-  ];
+  static const List<_TimelineItem> _timelineItems = [];
 
   @override
   Widget build(BuildContext context) {
@@ -914,14 +832,21 @@ class _ProjectTimelineCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 24),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: selectedTab == 0
-                ? _TimelineGanttView(items: _timelineItems)
-                : selectedTab == 1
-                    ? _TimelineListView(items: _timelineItems)
-                    : _TimelineBoardView(items: _timelineItems),
-          ),
+          if (_timelineItems.isEmpty)
+            const _SectionEmptyState(
+              title: 'No timeline data yet',
+              message: 'Add schedule items to view Gantt, list, or board timelines.',
+              icon: Icons.timeline_outlined,
+            )
+          else
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: selectedTab == 0
+                  ? _TimelineGanttView(items: _timelineItems)
+                  : selectedTab == 1
+                      ? _TimelineListView(items: _timelineItems)
+                      : _TimelineBoardView(items: _timelineItems),
+            ),
         ],
       ),
     );

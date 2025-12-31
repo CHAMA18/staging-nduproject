@@ -5,6 +5,7 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
 
 class ProjectBaselineScreen extends StatefulWidget {
   const ProjectBaselineScreen({super.key});
@@ -20,78 +21,23 @@ class ProjectBaselineScreen extends StatefulWidget {
 }
 
 class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
-  static const List<String> _projectOptions = [
-    'Cloud Migration Project',
-    'Data Platform Refresh',
-    'Mobile App Modernization',
-  ];
+  static const List<String> _projectOptions = [];
+  static const List<_BaselineHistoryEntry> _history = [];
+  static const List<_ScheduleVarianceRow> _scheduleVariance = [];
+  static const List<_CostVarianceRow> _costVariance = [];
 
-  static const List<_BaselineHistoryEntry> _history = [
-    _BaselineHistoryEntry(
-      version: 'Baseline v1.0',
-      date: 'Jan 15, 2023',
-      approvedBy: 'Robert Chen',
-      description: 'Initial project baseline',
-    ),
-    _BaselineHistoryEntry(
-      version: 'Baseline v1.1',
-      date: 'Mar 01, 2023',
-      approvedBy: 'Robert Chen',
-      description: 'Updated after requirements phase',
-    ),
-  ];
+  String? _selectedProject;
 
-  static const List<_ScheduleVarianceRow> _scheduleVariance = [
-    _ScheduleVarianceRow(
-      label: 'Requirements Phase',
-      varianceLabel: 'On time',
-      progress: 0.25,
-      tone: _VarianceTone.onTrack,
-    ),
-    _ScheduleVarianceRow(
-      label: 'Design Phase',
-      varianceLabel: 'On time',
-      progress: 0.5,
-      tone: _VarianceTone.onTrack,
-    ),
-    _ScheduleVarianceRow(
-      label: 'Development Phase',
-      varianceLabel: '+7 days',
-      progress: 0.68,
-      tone: _VarianceTone.behind,
-    ),
-    _ScheduleVarianceRow(
-      label: 'Testing Phase',
-      varianceLabel: '+8 days (planned)',
-      progress: 0.42,
-      tone: _VarianceTone.warning,
-    ),
-  ];
-
-  static const List<_CostVarianceRow> _costVariance = [
-    _CostVarianceRow(
-      category: 'Hardware & Infrastructure',
-      actual: '\$180,000',
-      planned: '\$175,000',
-    ),
-    _CostVarianceRow(
-      category: 'Software Licenses',
-      actual: '\$95,000',
-      planned: '\$85,000',
-    ),
-    _CostVarianceRow(
-      category: 'Development Resources',
-      actual: '\$325,000',
-      planned: '\$300,000',
-    ),
-    _CostVarianceRow(
-      category: 'Testing & QA',
-      actual: '\$82,500',
-      planned: '\$80,000',
-    ),
-  ];
-
-  String _selectedProject = _projectOptions.first;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final name = ProjectDataHelper.getData(context).projectName.trim();
+      if (name.isNotEmpty && mounted) {
+        setState(() => _selectedProject = name);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -225,9 +171,9 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
               runSpacing: 12,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: const [
-                _StatusChip(label: 'On Track', color: Color(0xFF047857)),
-                _StatusChip(label: 'Start: Jan 15, 2023', color: Color(0xFF1F2937), inverted: true),
-                _StatusChip(label: 'End: Dec 20, 2023', color: Color(0xFF1F2937), inverted: true),
+                _StatusChip(label: 'Status: —', color: Color(0xFF1F2937), inverted: true),
+                _StatusChip(label: 'Start: —', color: Color(0xFF1F2937), inverted: true),
+                _StatusChip(label: 'End: —', color: Color(0xFF1F2937), inverted: true),
               ],
             ),
           ],
@@ -237,6 +183,13 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
   }
 
   Widget _buildProjectDropdown() {
+    final options = _selectedProject != null ? [_selectedProject!] : _projectOptions;
+    if (options.isEmpty) {
+      return _EmptyStateChip(
+        label: 'Select project',
+        icon: Icons.folder_open_outlined,
+      );
+    }
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -253,7 +206,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 18),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          value: _selectedProject,
+          value: _selectedProject ?? options.first,
           icon: const Icon(Icons.keyboard_arrow_down_rounded),
           borderRadius: BorderRadius.circular(12),
           style: const TextStyle(
@@ -261,7 +214,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
             fontWeight: FontWeight.w600,
             color: Color(0xFF111827),
           ),
-          items: _projectOptions
+          items: options
               .map(
                 (project) => DropdownMenuItem<String>(
                   value: project,
@@ -318,6 +271,13 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
   }
 
   Widget _buildScheduleBaselineCard() {
+    if (_scheduleDetails.isEmpty) {
+      return const _EmptyStateCard(
+        title: 'No schedule baseline yet',
+        message: 'Add baseline milestones to see schedule health.',
+        icon: Icons.schedule_outlined,
+      );
+    }
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -409,6 +369,13 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
   }
 
   Widget _buildCostBaselineCard() {
+    if (_costDetails.isEmpty) {
+      return const _EmptyStateCard(
+        title: 'No cost baseline yet',
+        message: 'Add baseline cost items to track budget health.',
+        icon: Icons.account_balance_wallet_outlined,
+      );
+    }
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: _whiteCardDecoration(),
@@ -468,7 +435,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
                   style: TextStyle(color: Color(0xFF6B21A8), fontWeight: FontWeight.w700),
                 ),
                 Text(
-                  '+\$32,500 (5%)',
+                  '—',
                   style: TextStyle(color: Color(0xFF6B21A8), fontWeight: FontWeight.w800),
                 ),
               ],
@@ -504,11 +471,11 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    _buildScopeStatRow('Last Baseline Date', 'Mar 01, 2023'),
-                    _buildScopeStatRow('Original EPICs', '5'),
-                    _buildScopeStatRow('Current EPICs', '6'),
-                    _buildScopeStatRow('Original Features', '18'),
-                    _buildScopeStatRow('Current Features', '22'),
+                    _buildScopeStatRow('Last Baseline Date', '—'),
+                    _buildScopeStatRow('Original EPICs', '—'),
+                    _buildScopeStatRow('Current EPICs', '—'),
+                    _buildScopeStatRow('Original Features', '—'),
+                    _buildScopeStatRow('Current Features', '—'),
                   ],
                 ),
               ),
@@ -516,14 +483,14 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
               const Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  _StatusChip(label: 'On Track', color: Color(0xFF047857)),
+                  _StatusChip(label: 'Status: —', color: Color(0xFF1F2937), inverted: true),
                   SizedBox(height: 12),
                   Text(
-                    'Start: Jan 15, 2023',
+                    'Start: —',
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
                   ),
                   Text(
-                    'End: Dec 20, 2023',
+                    'End: —',
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
                   ),
                 ],
@@ -548,7 +515,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '+1 EPIC, +4 Features',
+                    'Not set',
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1D4ED8)),
                   ),
                 ),
@@ -561,6 +528,13 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
   }
 
   Widget _buildBaselineHistory() {
+    if (_history.isEmpty) {
+      return const _EmptyStateCard(
+        title: 'No baseline history yet',
+        message: 'Capture baseline approvals to build version history.',
+        icon: Icons.history_outlined,
+      );
+    }
     return Container(
       decoration: _whiteCardDecoration(),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -675,6 +649,13 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
   }
 
   Widget _buildVarianceAnalysis() {
+    if (_scheduleVariance.isEmpty && _costVariance.isEmpty) {
+      return const _EmptyStateCard(
+        title: 'No variance data yet',
+        message: 'Add schedule and cost baselines to track variance trends.',
+        icon: Icons.equalizer_outlined,
+      );
+    }
     return Container(
       decoration: _whiteCardDecoration(),
       padding: const EdgeInsets.all(24),
@@ -709,6 +690,13 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
   }
 
   Widget _buildScheduleVarianceColumn() {
+    if (_scheduleVariance.isEmpty) {
+      return const _EmptyStateCard(
+        title: 'No schedule variance',
+        message: 'Schedule variance will appear once baselines are captured.',
+        icon: Icons.timeline_outlined,
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -759,6 +747,13 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
   }
 
   Widget _buildCostVarianceColumn() {
+    if (_costVariance.isEmpty) {
+      return const _EmptyStateCard(
+        title: 'No cost variance',
+        message: 'Cost variance will appear once baselines are captured.',
+        icon: Icons.payments_outlined,
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -911,6 +906,85 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
+class _EmptyStateCard extends StatelessWidget {
+  const _EmptyStateCard({required this.title, required this.message, required this.icon});
+
+  final String title;
+  final String message;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7ED),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: const Color(0xFFF59E0B)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                const SizedBox(height: 6),
+                Text(message, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyStateChip extends StatelessWidget {
+  const _EmptyStateChip({required this.label, required this.icon});
+
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: const Color(0xFF9CA3AF)),
+          const SizedBox(width: 8),
+          Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF6B7280))),
+        ],
+      ),
+    );
+  }
+}
+
 class _VarianceTone {
   const _VarianceTone._(this.color, this.barColor);
 
@@ -936,18 +1010,6 @@ class _CostDetail {
   final String value;
 }
 
-const List<_ScheduleDetail> _scheduleDetails = [
-  _ScheduleDetail(label: 'Last Baseline Date', value: 'Mar 01, 2023'),
-  _ScheduleDetail(label: 'Original Start Date', value: 'Jan 15, 2023'),
-  _ScheduleDetail(label: 'Original End Date', value: 'Oct 15, 2023'),
-  _ScheduleDetail(label: 'Current End Date', value: 'Oct 30, 2023'),
-  _ScheduleDetail(label: 'Schedule Variance', value: '+15 days'),
-];
+const List<_ScheduleDetail> _scheduleDetails = [];
 
-const List<_CostDetail> _costDetails = [
-  _CostDetail(label: 'Last Baseline Date', value: 'Mar 01, 2023'),
-  _CostDetail(label: 'Original Budget', value: '\$650,000'),
-  _CostDetail(label: 'Current Budget', value: '\$682,500'),
-  _CostDetail(label: 'Spent to Date', value: '\$423,500'),
-  _CostDetail(label: 'Budget Variance', value: '+\$32,500 (5%)'),
-];
+const List<_CostDetail> _costDetails = [];

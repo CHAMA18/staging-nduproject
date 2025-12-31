@@ -18,50 +18,8 @@ class DeliverableRoadmapAgileMapOutScreen extends StatelessWidget {
         noteKey: 'planning_deliverable_roadmap_agile_map_out',
         checkpoint: 'deliverable_roadmap_agile_map_out',
         activeItemLabel: 'Deliverable Roadmap - Agile Map Out',
-        metrics: const [
-          _MetricData('Sprints', '12', Color(0xFF2563EB)),
-          _MetricData('Cadence', '2 weeks', Color(0xFF10B981)),
-          _MetricData('Epics', '8', Color(0xFFF59E0B)),
-          _MetricData('Velocity', '32 pts', Color(0xFF8B5CF6)),
-        ],
-        sections: const [
-          _SectionData(
-            title: 'Release Waves',
-            subtitle: 'Incremental releases aligned to value delivery.',
-            bullets: [
-              _BulletData('Wave 1: Core onboarding and auth', true),
-              _BulletData('Wave 2: Payments and reporting', true),
-              _BulletData('Wave 3: Integrations and automation', true),
-            ],
-          ),
-          _SectionData(
-            title: 'Sprint Objectives',
-            subtitle: 'Top outcomes for the next three sprints.',
-            bullets: [
-              _BulletData('Complete MVP workflow coverage', true),
-              _BulletData('Harden API error handling', false),
-              _BulletData('Ship analytics dashboards', false),
-            ],
-          ),
-          _SectionData(
-            title: 'Backlog Readiness',
-            subtitle: 'Stories ready for upcoming sprints.',
-            statusRows: [
-              _StatusRowData('Ready', '46', Color(0xFF10B981)),
-              _StatusRowData('Grooming', '18', Color(0xFFF59E0B)),
-              _StatusRowData('Needs Detail', '9', Color(0xFF94A3B8)),
-            ],
-          ),
-          _SectionData(
-            title: 'Dependency Watch',
-            subtitle: 'Items that affect sprint commitments.',
-            bullets: [
-              _BulletData('Vendor API rate limits confirmed', false),
-              _BulletData('Infra scaling plan approved', false),
-              _BulletData('Security review scheduled', false),
-            ],
-          ),
-        ],
+        metrics: const [],
+        sections: const [],
       ),
     );
   }
@@ -98,6 +56,7 @@ class _PlanningSubsectionScreen extends StatelessWidget {
                         const gap = 24.0;
                         final twoCol = width >= 980;
                         final halfWidth = twoCol ? (width - gap) / 2 : width;
+                        final hasContent = config.metrics.isNotEmpty || config.sections.isNotEmpty;
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -116,15 +75,22 @@ class _PlanningSubsectionScreen extends StatelessWidget {
                               description: 'Capture sprint priorities, dependencies, and release sequencing.',
                             ),
                             const SizedBox(height: 24),
-                            _MetricsRow(metrics: config.metrics),
-                            const SizedBox(height: 24),
-                            Wrap(
-                              spacing: gap,
-                              runSpacing: gap,
-                              children: config.sections
-                                  .map((section) => SizedBox(width: halfWidth, child: _SectionCard(data: section)))
-                                  .toList(),
-                            ),
+                            if (hasContent) ...[
+                              _MetricsRow(metrics: config.metrics),
+                              const SizedBox(height: 24),
+                              Wrap(
+                                spacing: gap,
+                                runSpacing: gap,
+                                children: config.sections
+                                    .map((section) => SizedBox(width: halfWidth, child: _SectionCard(data: section)))
+                                    .toList(),
+                              ),
+                            ] else
+                              const _SectionEmptyState(
+                                title: 'No roadmap details yet',
+                                message: 'Add sprint scope and delivery notes to populate this view.',
+                                icon: Icons.view_kanban_outlined,
+                              ),
                             const SizedBox(height: 40),
                           ],
                         );
@@ -437,6 +403,51 @@ class _StatusRow extends StatelessWidget {
             child: Text(
               data.value,
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: data.color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionEmptyState extends StatelessWidget {
+  const _SectionEmptyState({required this.title, required this.message, required this.icon});
+
+  final String title;
+  final String message;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7ED),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: const Color(0xFFF59E0B)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                const SizedBox(height: 6),
+                Text(message, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+              ],
             ),
           ),
         ],

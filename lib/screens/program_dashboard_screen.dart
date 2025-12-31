@@ -162,53 +162,21 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
                       else ...[
                         _SummaryChips(isWide: isWide, projectCount: _projects.length),
                         const SizedBox(height: 24),
-                        if (isWide)
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                flex: 2,
-                                child: Column(
-                                  children: [
-                                    _ProjectsCard(
-                                      projects: _projects,
-                                      isLoading: _isLoading,
-                                      error: _error,
-                                    ),
-                                    const SizedBox(height: 18),
-                                    const _ProgramActionsCard(),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 18),
-                              const Expanded(
-                                flex: 1,
-                                child: Column(
-                                  children: [
-                                    _InterfaceCard(),
-                                    SizedBox(height: 18),
-                                    _RollupCard(),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          )
-                        else
-                          Column(
-                            children: [
-                              _ProjectsCard(
-                                projects: _projects,
-                                isLoading: _isLoading,
-                                error: _error,
-                              ),
-                              const SizedBox(height: 18),
-                              const _ProgramActionsCard(),
-                              const SizedBox(height: 18),
-                              const _InterfaceCard(),
-                              const SizedBox(height: 18),
-                              const _RollupCard(),
-                            ],
-                          ),
+                        Column(
+                          children: [
+                            _ProjectsCard(
+                              projects: _projects,
+                              isLoading: _isLoading,
+                              error: _error,
+                            ),
+                            const SizedBox(height: 18),
+                            const _ProgramActionsCard(),
+                            const SizedBox(height: 18),
+                            const _InterfaceCard(),
+                            const SizedBox(height: 18),
+                            const _RollupCard(),
+                          ],
+                        ),
                       ],
                     ],
                   ),

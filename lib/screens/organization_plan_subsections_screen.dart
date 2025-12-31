@@ -18,50 +18,8 @@ class OrganizationRolesResponsibilitiesScreen extends StatelessWidget {
         noteKey: 'planning_organization_roles_responsibilities',
         checkpoint: 'organization_roles_responsibilities',
         activeItemLabel: 'Organization Plan - Roles & Responsibilities',
-        metrics: const [
-          _MetricData('Roles', '18', Color(0xFF2563EB)),
-          _MetricData('Owners', '12', Color(0xFF10B981)),
-          _MetricData('RACI Items', '24', Color(0xFFF59E0B)),
-          _MetricData('Open Gaps', '3', Color(0xFFEF4444)),
-        ],
-        sections: const [
-          _SectionData(
-            title: 'RACI Highlights',
-            subtitle: 'Top role assignments for key deliverables.',
-            bullets: [
-              _BulletData('Project sponsor accountable for scope changes', true),
-              _BulletData('Product owner approves backlog priority', true),
-              _BulletData('Engineering lead owns release sign-off', true),
-            ],
-          ),
-          _SectionData(
-            title: 'Decision Owners',
-            subtitle: 'Primary decision-makers by domain.',
-            statusRows: [
-              _StatusRowData('Architecture', 'CTO', Color(0xFF2563EB)),
-              _StatusRowData('Security', 'CISO', Color(0xFF10B981)),
-              _StatusRowData('Budget', 'PMO', Color(0xFFF59E0B)),
-            ],
-          ),
-          _SectionData(
-            title: 'Coverage Gaps',
-            subtitle: 'Roles still missing owners.',
-            bullets: [
-              _BulletData('Data governance lead', false),
-              _BulletData('Vendor escalation manager', false),
-              _BulletData('Change control coordinator', false),
-            ],
-          ),
-          _SectionData(
-            title: 'Escalation Path',
-            subtitle: 'Routing for unresolved decisions.',
-            bullets: [
-              _BulletData('Workstream lead to PM', false),
-              _BulletData('PM to steering committee', false),
-              _BulletData('Steering committee to sponsor', false),
-            ],
-          ),
-        ],
+        metrics: const [],
+        sections: const [],
       ),
     );
   }
@@ -79,51 +37,8 @@ class OrganizationStaffingPlanScreen extends StatelessWidget {
         noteKey: 'planning_organization_staffing_plan',
         checkpoint: 'organization_staffing_plan',
         activeItemLabel: 'Organization Plan - Staffing Plan',
-        metrics: const [
-          _MetricData('FTEs', '26', Color(0xFF2563EB)),
-          _MetricData('Contractors', '8', Color(0xFF10B981)),
-          _MetricData('Ramp', '6 weeks', Color(0xFFF59E0B)),
-          _MetricData('Open Reqs', '5', Color(0xFFEF4444)),
-        ],
-        sections: const [
-          _SectionData(
-            title: 'Hiring Timeline',
-            subtitle: 'Key onboarding windows by role.',
-            bullets: [
-              _BulletData('Backend hires onboard by Sprint 4', true),
-              _BulletData('QA expansion scheduled Sprint 6', true),
-              _BulletData('Ops handoff hires by Sprint 8', false),
-            ],
-          ),
-          _SectionData(
-            title: 'Capacity Allocation',
-            subtitle: 'Planned staffing by workstream.',
-            statusRows: [
-              _StatusRowData('Product', '6 FTE', Color(0xFF2563EB)),
-              _StatusRowData('Engineering', '12 FTE', Color(0xFF10B981)),
-              _StatusRowData('QA', '4 FTE', Color(0xFFF59E0B)),
-              _StatusRowData('Ops', '4 FTE', Color(0xFF8B5CF6)),
-            ],
-          ),
-          _SectionData(
-            title: 'Onboarding Plan',
-            subtitle: 'Enablement tasks for new staff.',
-            bullets: [
-              _BulletData('Environment access and tooling setup', false),
-              _BulletData('Product and domain walkthroughs', false),
-              _BulletData('Process and cadence alignment', false),
-            ],
-          ),
-          _SectionData(
-            title: 'Staffing Risks',
-            subtitle: 'Risks that impact resource readiness.',
-            bullets: [
-              _BulletData('Competitive hiring market for data roles', false),
-              _BulletData('Contractor availability post-launch', false),
-              _BulletData('Training bandwidth for new hires', false),
-            ],
-          ),
-        ],
+        metrics: const [],
+        sections: const [],
       ),
     );
   }
@@ -160,6 +75,7 @@ class _PlanningSubsectionScreen extends StatelessWidget {
                         const gap = 24.0;
                         final twoCol = width >= 980;
                         final halfWidth = twoCol ? (width - gap) / 2 : width;
+                        final hasContent = config.metrics.isNotEmpty || config.sections.isNotEmpty;
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -178,15 +94,22 @@ class _PlanningSubsectionScreen extends StatelessWidget {
                               description: 'Capture ownership, staffing needs, and role coverage.',
                             ),
                             const SizedBox(height: 24),
-                            _MetricsRow(metrics: config.metrics),
-                            const SizedBox(height: 24),
-                            Wrap(
-                              spacing: gap,
-                              runSpacing: gap,
-                              children: config.sections
-                                  .map((section) => SizedBox(width: halfWidth, child: _SectionCard(data: section)))
-                                  .toList(),
-                            ),
+                            if (hasContent) ...[
+                              _MetricsRow(metrics: config.metrics),
+                              const SizedBox(height: 24),
+                              Wrap(
+                                spacing: gap,
+                                runSpacing: gap,
+                                children: config.sections
+                                    .map((section) => SizedBox(width: halfWidth, child: _SectionCard(data: section)))
+                                    .toList(),
+                              ),
+                            ] else
+                              const _SectionEmptyState(
+                                title: 'No staffing details yet',
+                                message: 'Add roles, responsibilities, and staffing notes to populate this view.',
+                                icon: Icons.group_outlined,
+                              ),
                             const SizedBox(height: 40),
                           ],
                         );
@@ -499,6 +422,51 @@ class _StatusRow extends StatelessWidget {
             child: Text(
               data.value,
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: data.color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionEmptyState extends StatelessWidget {
+  const _SectionEmptyState({required this.title, required this.message, required this.icon});
+
+  final String title;
+  final String message;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7ED),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: const Color(0xFFF59E0B)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                const SizedBox(height: 6),
+                Text(message, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+              ],
             ),
           ),
         ],

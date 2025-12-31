@@ -22,29 +22,9 @@ class IssueManagementScreen extends StatefulWidget {
 class _IssueManagementScreenState extends State<IssueManagementScreen> {
   String _selectedFilter = 'All Issues';
 
-  static const List<_IssueMetric> _metrics = [
-    _IssueMetric(label: 'Total', value: '8', color: Color(0xFF1F2937), icon: Icons.all_inclusive),
-    _IssueMetric(label: 'Open', value: '8', color: Color(0xFFE11D48), icon: Icons.error_outline),
-    _IssueMetric(label: 'In Progress', value: '8', color: Color(0xFFF59E0B), icon: Icons.timer_outlined),
-    _IssueMetric(label: 'Resolved', value: '8', color: Color(0xFF2563EB), icon: Icons.check_circle_outline),
-    _IssueMetric(label: 'Closed', value: '8', color: Color(0xFF059669), icon: Icons.lock_outline),
-    _IssueMetric(label: 'On Hold', value: '8', color: Color(0xFF7C3AED), icon: Icons.pause_circle_outline),
-  ];
-
-  static const List<_MilestoneIssues> _milestones = [
-    _MilestoneIssues(title: 'Requirements Finalization', issuesCountLabel: '1 issues', dueDate: 'Due: 2025-02-28', statusLabel: 'Completed', indicatorColor: Color(0xFF22C55E)),
-    _MilestoneIssues(title: 'System Intergration', issuesCountLabel: '1 issues', dueDate: 'Due: 2025-02-28', statusLabel: 'Completed', indicatorColor: Color(0xFF3B82F6)),
-    _MilestoneIssues(title: 'Team Coordination', issuesCountLabel: '1 issues', dueDate: 'Due: 2025-02-28', statusLabel: 'Completed', indicatorColor: Color(0xFF3B82F6)),
-    _MilestoneIssues(title: 'External Dependencies', issuesCountLabel: '1 issues', dueDate: 'Due: 2025-02-28', statusLabel: 'Completed', indicatorColor: Color(0xFF22C55E)),
-    _MilestoneIssues(title: 'Budget Review', issuesCountLabel: '1 issues', dueDate: 'Due: 2025-02-28', statusLabel: 'Completed', indicatorColor: Color(0xFF3B82F6)),
-  ];
-
-  static const List<_IssueLogEntry> _logEntries = [
-    _IssueLogEntry(id: 'T-001', title: 'Database performance', description: 'Database performance', type: 'Completed', severity: 'High', status: 'In Progress', assignee: 'David Chen', dueDate: '2025-0-01', milestone: 'System Integration'),
-    _IssueLogEntry(id: 'T-001', title: 'Database performance', description: 'Database performance', type: 'Completed', severity: 'High', status: 'In Progress', assignee: 'David Chen', dueDate: '2025-0-01', milestone: 'System Integration'),
-    _IssueLogEntry(id: 'T-001', title: 'Database performance', description: 'Database performance', type: 'Completed', severity: 'High', status: 'In Progress', assignee: 'David Chen', dueDate: '2025-0-01', milestone: 'System Integration'),
-    _IssueLogEntry(id: 'T-001', title: 'Database performance', description: 'Database performance', type: 'Completed', severity: 'High', status: 'In Progress', assignee: 'David Chen', dueDate: '2025-0-01', milestone: 'System Integration'),
-  ];
+  final List<_IssueMetric> _metrics = const [];
+  final List<_MilestoneIssues> _milestones = const [];
+  final List<_IssueLogEntry> _logEntries = const [];
 
   @override
   Widget build(BuildContext context) {
@@ -81,7 +61,7 @@ class _IssueManagementScreenState extends State<IssueManagementScreen> {
                         const SizedBox(height: 24),
                         const _PageTitle(),
                         const SizedBox(height: 24),
-                        const _IssuesOverviewCard(metrics: _metrics),
+                        _IssuesOverviewCard(metrics: _metrics),
                         const SizedBox(height: 24),
                         _IssuesByMilestoneCard(
                           milestones: _milestones,
@@ -89,7 +69,7 @@ class _IssueManagementScreenState extends State<IssueManagementScreen> {
                           onFilterChanged: (value) => setState(() => _selectedFilter = value),
                         ),
                         const SizedBox(height: 24),
-                        const _ProjectIssuesLogCard(entries: _logEntries),
+                        _ProjectIssuesLogCard(entries: _logEntries),
                         const SizedBox(height: 80),
                       ],
                     ),
@@ -187,6 +167,13 @@ class _IssuesOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (metrics.isEmpty) {
+      return const _SectionEmptyState(
+        title: 'No issue metrics yet',
+        message: 'Capture issues to populate health, status, and resolution metrics.',
+        icon: Icons.insights_outlined,
+      );
+    }
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -287,6 +274,13 @@ class _IssuesByMilestoneCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (milestones.isEmpty) {
+      return const _SectionEmptyState(
+        title: 'No milestone issues logged',
+        message: 'Add milestone issues to track escalation risk and delivery impact.',
+        icon: Icons.flag_outlined,
+      );
+    }
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -394,6 +388,13 @@ class _ProjectIssuesLogCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (entries.isEmpty) {
+      return const _SectionEmptyState(
+        title: 'Issue log is empty',
+        message: 'Log issues to build a traceable resolution history.',
+        icon: Icons.list_alt_outlined,
+      );
+    }
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -582,6 +583,51 @@ class _IssueLogRow extends StatelessWidget {
             onPressed: () {},
             icon: const Icon(Icons.edit_outlined, size: 20, color: Color(0xFF4B5563)),
             splashRadius: 20,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionEmptyState extends StatelessWidget {
+  const _SectionEmptyState({required this.title, required this.message, required this.icon});
+
+  final String title;
+  final String message;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7ED),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: const Color(0xFFF59E0B)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                const SizedBox(height: 6),
+                Text(message, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+              ],
+            ),
           ),
         ],
       ),

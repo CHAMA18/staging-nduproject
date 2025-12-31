@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
@@ -7,6 +8,7 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/content_text.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
 
 /// Technology – Planning Dashboard
 /// World‑class UX matching the provided design:
@@ -106,14 +108,35 @@ class _FrontEndPlanningTechnologyScreenState extends State<FrontEndPlanningTechn
   int _activeTab = 4; // 4 = AI Recommendations
   String _category = 'All Categories';
 
-  late final List<_TechItem> _items;
-  late final List<_AiRecommendation> _aiRecommendations;
+  late List<_TechItem> _items;
+  late List<_AiRecommendation> _aiRecommendations;
+  late List<_AiIntegrationItem> _aiIntegrations;
+  late List<_ExternalIntegrationItem> _externalIntegrations;
+  late List<_TechnologyDefinitionItem> _techDefinitions;
+
+  static const String _kInventoryKey = 'technology_inventory_items';
+  static const String _kAiRecommendationsKey = 'technology_ai_recommendations';
+  static const String _kAiIntegrationsKey = 'technology_ai_integrations';
+  static const String _kExternalIntegrationsKey = 'technology_external_integrations';
+  static const String _kDefinitionsKey = 'technology_definitions';
 
   @override
   void initState() {
     super.initState();
-    _items = widget._seedItemsClean();
-    _aiRecommendations = _seedAiRecommendations();
+    _items = [];
+    _aiRecommendations = [];
+    _aiIntegrations = [];
+    _externalIntegrations = [];
+    _techDefinitions = [];
+    _searchCtrl.addListener(_handleSearchChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadPersistedData());
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.removeListener(_handleSearchChanged);
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   @override
@@ -155,32 +178,63 @@ class _FrontEndPlanningTechnologyScreenState extends State<FrontEndPlanningTechn
                                 description: 'Summarize technology decisions, integrations, and budget assumptions.',
                               ),
                               const SizedBox(height: 24),
-                              _SummaryRow2(items: _items),
+                              _SummaryRow2(
+                                items: _items,
+                                aiIntegrations: _aiIntegrations,
+                                aiRecommendations: _aiRecommendations,
+                              ),
                               const SizedBox(height: 20),
-                              _Tabs(active: _activeTab, onChanged: (i) => setState(() => _activeTab = i)),
+                              _Tabs(active: _activeTab, onChanged: _handleTabChanged),
                               const SizedBox(height: 18),
                               if (_activeTab == 0) ...[
                                 _SearchAndFilter(
                                   searchCtrl: _searchCtrl,
                                   category: _category,
                                   onCategoryChanged: (val) => setState(() => _category = val),
+                                  options: _categoryOptionsForTab(_activeTab),
                                 ),
                                 const SizedBox(height: 12),
                                 _InventoryTable(
                                   items: _filteredItems(),
                                 ),
+                              ] else if (_activeTab == 1) ...[
+                                _SearchAndFilter(
+                                  searchCtrl: _searchCtrl,
+                                  category: _category,
+                                  onCategoryChanged: (val) => setState(() => _category = val),
+                                  options: _categoryOptionsForTab(_activeTab),
+                                ),
+                                const SizedBox(height: 16),
+                                _AiIntegrationsView(items: _filteredAiIntegrations()),
+                              ] else if (_activeTab == 2) ...[
+                                _SearchAndFilter(
+                                  searchCtrl: _searchCtrl,
+                                  category: _category,
+                                  onCategoryChanged: (val) => setState(() => _category = val),
+                                  options: _categoryOptionsForTab(_activeTab),
+                                ),
+                                const SizedBox(height: 16),
+                                _ExternalIntegrationsView(items: _filteredExternalIntegrations()),
+                              ] else if (_activeTab == 3) ...[
+                                _SearchAndFilter(
+                                  searchCtrl: _searchCtrl,
+                                  category: _category,
+                                  onCategoryChanged: (val) => setState(() => _category = val),
+                                  options: const ['All Categories'],
+                                ),
+                                const SizedBox(height: 16),
+                                _TechnologyDefinitionsView(items: _filteredTechDefinitions()),
                               ] else if (_activeTab == 4) ...[
                                 _SearchAndFilter(
                                   searchCtrl: _searchCtrl,
                                   category: _category,
                                   onCategoryChanged: (val) => setState(() => _category = val),
+                                  options: _categoryOptionsForTab(_activeTab),
                                 ),
                                 const SizedBox(height: 16),
                                 _AiRecommendationsView(
                                   recommendations: _aiRecommendations,
                                 ),
-                              ] else ...[
-                                _ComingSoonCard(index: _activeTab),
                               ],
                               const SizedBox(height: 140),
                             ],
@@ -212,6 +266,72 @@ class _FrontEndPlanningTechnologyScreenState extends State<FrontEndPlanningTechn
     }).toList();
   }
 
+  List<String> _categoryOptionsForTab(int tab) {
+    switch (tab) {
+      case 1:
+        return const ['All Categories', 'NLP', 'Vision', 'Automation', 'Analytics'];
+      case 2:
+        return const ['All Categories', 'Payments', 'CRM', 'ERP', 'Logistics', 'Analytics'];
+      case 3:
+        return const ['All Categories'];
+      case 4:
+        return const ['All Categories'];
+      default:
+        return const ['All Categories', 'Hardware', 'Software', 'Devtools'];
+    }
+  }
+
+  void _handleTabChanged(int i) {
+    final options = _categoryOptionsForTab(i);
+    setState(() {
+      _activeTab = i;
+      if (!options.contains(_category)) {
+        _category = options.first;
+      }
+    });
+  }
+
+  void _handleSearchChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  List<_AiIntegrationItem> _filteredAiIntegrations() {
+    final q = _searchCtrl.text.trim().toLowerCase();
+    return _aiIntegrations.where((item) {
+      final matchQuery = q.isEmpty ||
+          item.name.toLowerCase().contains(q) ||
+          item.summary.toLowerCase().contains(q) ||
+          item.tags.any((t) => t.toLowerCase().contains(q));
+      final matchCat = _category == 'All Categories' || _category == item.category;
+      return matchQuery && matchCat;
+    }).toList();
+  }
+
+  List<_ExternalIntegrationItem> _filteredExternalIntegrations() {
+    final q = _searchCtrl.text.trim().toLowerCase();
+    return _externalIntegrations.where((item) {
+      final matchQuery = q.isEmpty ||
+          item.name.toLowerCase().contains(q) ||
+          item.summary.toLowerCase().contains(q) ||
+          item.tags.any((t) => t.toLowerCase().contains(q));
+      final matchCat = _category == 'All Categories' || _category == item.category;
+      return matchQuery && matchCat;
+    }).toList();
+  }
+
+  List<_TechnologyDefinitionItem> _filteredTechDefinitions() {
+    final q = _searchCtrl.text.trim().toLowerCase();
+    return _techDefinitions.where((item) {
+      final matchQuery = q.isEmpty ||
+          item.domain.toLowerCase().contains(q) ||
+          item.decision.toLowerCase().contains(q) ||
+          item.stack.toLowerCase().contains(q);
+      return matchQuery;
+    }).toList();
+  }
+
   List<_AiRecommendation> _seedAiRecommendations() {
     return const [
       _AiRecommendation(
@@ -224,6 +344,258 @@ class _FrontEndPlanningTechnologyScreenState extends State<FrontEndPlanningTechn
           'Centralized communication',
           'Document sharing',
         ],
+      ),
+    ];
+  }
+
+  Future<void> _loadPersistedData() async {
+    final data = ProjectDataHelper.getData(context);
+    final notes = data.planningNotes;
+    bool needsSave = false;
+
+    final inventoryResult = _decodeList<_TechItem>(
+      notes[_kInventoryKey],
+      (json) => _TechItem.fromJson(json),
+      const [],
+    );
+    final aiRecResult = _decodeList<_AiRecommendation>(
+      notes[_kAiRecommendationsKey],
+      (json) => _AiRecommendation.fromJson(json),
+      const [],
+    );
+    final aiIntResult = _decodeList<_AiIntegrationItem>(
+      notes[_kAiIntegrationsKey],
+      (json) => _AiIntegrationItem.fromJson(json),
+      const [],
+    );
+    final externalResult = _decodeList<_ExternalIntegrationItem>(
+      notes[_kExternalIntegrationsKey],
+      (json) => _ExternalIntegrationItem.fromJson(json),
+      const [],
+    );
+    final definitionsResult = _decodeList<_TechnologyDefinitionItem>(
+      notes[_kDefinitionsKey],
+      (json) => _TechnologyDefinitionItem.fromJson(json),
+      const [],
+    );
+
+    _items = inventoryResult.items;
+    _aiRecommendations = aiRecResult.items;
+    _aiIntegrations = aiIntResult.items;
+    _externalIntegrations = externalResult.items;
+    _techDefinitions = definitionsResult.items;
+
+    needsSave = needsSave ||
+        inventoryResult.usedFallback ||
+        aiRecResult.usedFallback ||
+        aiIntResult.usedFallback ||
+        externalResult.usedFallback ||
+        definitionsResult.usedFallback;
+
+    if (needsSave) {
+      final updatedNotes = {
+        ...notes,
+        _kInventoryKey: _encodeList(_items, (item) => item.toJson()),
+        _kAiRecommendationsKey: _encodeList(_aiRecommendations, (item) => item.toJson()),
+        _kAiIntegrationsKey: _encodeList(_aiIntegrations, (item) => item.toJson()),
+        _kExternalIntegrationsKey: _encodeList(_externalIntegrations, (item) => item.toJson()),
+        _kDefinitionsKey: _encodeList(_techDefinitions, (item) => item.toJson()),
+      };
+      await ProjectDataHelper.updateAndSave(
+        context: context,
+        checkpoint: 'technology',
+        dataUpdater: (data) => data.copyWith(planningNotes: updatedNotes),
+        showSnackbar: false,
+      );
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  _DecodedList<T> _decodeList<T>(
+    String? source,
+    T Function(Map<String, dynamic>) fromJson,
+    List<T> fallback,
+  ) {
+    if (source == null || source.trim().isEmpty) {
+      return _DecodedList<T>(fallback, true);
+    }
+    try {
+      final decoded = jsonDecode(source);
+      if (decoded is List) {
+        final items = <T>[];
+        for (final entry in decoded) {
+          if (entry is Map) {
+            items.add(fromJson(entry.map((key, value) => MapEntry(key.toString(), value))));
+          }
+        }
+        return _DecodedList<T>(items, false);
+      }
+    } catch (_) {}
+    return _DecodedList<T>(fallback, true);
+  }
+
+  String _encodeList<T>(List<T> items, Map<String, dynamic> Function(T) toJson) {
+    return jsonEncode(items.map(toJson).toList());
+  }
+
+  List<_AiIntegrationItem> _seedAiIntegrations() {
+    return const [
+      _AiIntegrationItem(
+        name: 'Customer Support Copilot',
+        summary: 'AI agent that drafts responses and routes tickets by intent.',
+        model: 'GPT-4.1 mini',
+        status: 'Deployed',
+        owner: 'Support Ops',
+        latency: '1.2s',
+        monthlyCost: '\$1,100',
+        category: 'NLP',
+        tags: ['ticketing', 'agent assist'],
+      ),
+      _AiIntegrationItem(
+        name: 'Vision Quality Scanner',
+        summary: 'Detects defects in image uploads and flags manual review.',
+        model: 'Vision Inspect v2',
+        status: 'Pilot',
+        owner: 'QA',
+        latency: '850ms',
+        monthlyCost: '\$820',
+        category: 'Vision',
+        tags: ['computer vision', 'risk'],
+      ),
+      _AiIntegrationItem(
+        name: 'Forecasting Engine',
+        summary: 'Predicts demand and resource needs by region.',
+        model: 'TimeCast X',
+        status: 'Pending',
+        owner: 'Analytics',
+        latency: '2.6s',
+        monthlyCost: '\$640',
+        category: 'Analytics',
+        tags: ['forecasting', 'capacity'],
+      ),
+      _AiIntegrationItem(
+        name: 'Workflow Automation',
+        summary: 'Auto-triage recurring tasks and apply rule-based approvals.',
+        model: 'FlowSense',
+        status: 'Deployed',
+        owner: 'PMO',
+        latency: '1.6s',
+        monthlyCost: '\$540',
+        category: 'Automation',
+        tags: ['approvals', 'efficiency'],
+      ),
+    ];
+  }
+
+  List<_ExternalIntegrationItem> _seedExternalIntegrations() {
+    return const [
+      _ExternalIntegrationItem(
+        name: 'Stripe Payments',
+        summary: 'Primary card payments and invoicing.',
+        vendor: 'Stripe',
+        status: 'Live',
+        sla: '99.9%',
+        dataFlow: 'Bi-directional',
+        lastSync: '10 mins ago',
+        owner: 'Finance',
+        category: 'Payments',
+        tags: ['pci', 'billing'],
+      ),
+      _ExternalIntegrationItem(
+        name: 'Salesforce CRM',
+        summary: 'Customer records and sales pipeline.',
+        vendor: 'Salesforce',
+        status: 'Live',
+        sla: '99.5%',
+        dataFlow: 'Inbound',
+        lastSync: '35 mins ago',
+        owner: 'Revenue Ops',
+        category: 'CRM',
+        tags: ['accounts', 'contacts'],
+      ),
+      _ExternalIntegrationItem(
+        name: 'SAP ERP',
+        summary: 'Finance, procurement, and inventory data sync.',
+        vendor: 'SAP',
+        status: 'In Review',
+        sla: '99.0%',
+        dataFlow: 'Outbound',
+        lastSync: '2 hrs ago',
+        owner: 'IT',
+        category: 'ERP',
+        tags: ['finance', 'procurement'],
+      ),
+      _ExternalIntegrationItem(
+        name: 'Segment Analytics',
+        summary: 'Event routing and customer analytics.',
+        vendor: 'Segment',
+        status: 'Live',
+        sla: '99.9%',
+        dataFlow: 'Outbound',
+        lastSync: '5 mins ago',
+        owner: 'Analytics',
+        category: 'Analytics',
+        tags: ['events', 'tracking'],
+      ),
+      _ExternalIntegrationItem(
+        name: 'Shippo Logistics',
+        summary: 'Shipment labels and tracking updates.',
+        vendor: 'Shippo',
+        status: 'Pending',
+        sla: '98.9%',
+        dataFlow: 'Bi-directional',
+        lastSync: 'Not connected',
+        owner: 'Operations',
+        category: 'Logistics',
+        tags: ['shipping', 'tracking'],
+      ),
+    ];
+  }
+
+  List<_TechnologyDefinitionItem> _seedTechDefinitions() {
+    return const [
+      _TechnologyDefinitionItem(
+        domain: 'Frontend Experience',
+        stack: 'Flutter Web + Tailwind tokens',
+        decision: 'Single UI stack for admin and web.',
+        rationale: 'Accelerate delivery while keeping design tokens aligned.',
+        owner: 'Design Systems',
+        standards: ['WCAG AA', 'Responsive grid', 'Theme tokens'],
+      ),
+      _TechnologyDefinitionItem(
+        domain: 'Backend Services',
+        stack: 'Node.js + GraphQL + Firebase',
+        decision: 'GraphQL gateway for all product APIs.',
+        rationale: 'Reduce coupling and provide a unified schema.',
+        owner: 'Platform',
+        standards: ['Schema-first', 'Rate limits', 'Audit logs'],
+      ),
+      _TechnologyDefinitionItem(
+        domain: 'Data & Analytics',
+        stack: 'BigQuery + dbt + Looker',
+        decision: 'Centralize analytics in a governed warehouse.',
+        rationale: 'Single source of truth for product reporting.',
+        owner: 'Data Team',
+        standards: ['PII masking', 'Daily SLAs', 'Metric registry'],
+      ),
+      _TechnologyDefinitionItem(
+        domain: 'Infrastructure',
+        stack: 'AWS + Terraform + CloudWatch',
+        decision: 'Infrastructure as code for all environments.',
+        rationale: 'Consistent deployments and auditability.',
+        owner: 'SRE',
+        standards: ['IaC reviews', 'DR drills', 'Budget alerts'],
+      ),
+      _TechnologyDefinitionItem(
+        domain: 'Security & Compliance',
+        stack: 'Okta + Vault + Prisma',
+        decision: 'Zero-trust access with continuous posture checks.',
+        rationale: 'Protect sensitive project data end-to-end.',
+        owner: 'Security',
+        standards: ['SOC2', 'Secrets rotation', 'Pen testing'],
       ),
     ];
   }
@@ -371,8 +743,14 @@ class _FrontEndPlanningTechnologyScreenState extends State<FrontEndPlanningTechn
 
 // Revised summary row with clean currency strings
 class _SummaryRow2 extends StatelessWidget {
-  const _SummaryRow2({required this.items});
+  const _SummaryRow2({
+    required this.items,
+    required this.aiIntegrations,
+    required this.aiRecommendations,
+  });
   final List<_TechItem> items;
+  final List<_AiIntegrationItem> aiIntegrations;
+  final List<_AiRecommendation> aiRecommendations;
 
   int get _hardware => items.where((e) => e.categoryName == 'Hardware').length;
   int get _software => items.where((e) => e.categoryName == 'Software').length;
@@ -380,6 +758,12 @@ class _SummaryRow2 extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool hasBudget = items.isNotEmpty;
+    final String budgetLabel = hasBudget ? '—' : '—';
+    final String oneTimeLabel = hasBudget ? '—' : 'Not set';
+    final String annualLabel = hasBudget ? '—' : 'Not set';
+    final int deployedCount = aiIntegrations.where((e) => e.status.toLowerCase() == 'deployed').length;
+    final int proposedCount = aiIntegrations.where((e) => e.status.toLowerCase().contains('proposed') || e.status.toLowerCase().contains('pending')).length;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -406,15 +790,15 @@ class _SummaryRow2 extends StatelessWidget {
         Expanded(
           child: _SummaryCard(
             title: 'Total Technology Budget',
-            primary: '\$24,157',
+            primary: budgetLabel,
             icon: Icons.payments_outlined,
             iconColor: const Color(0xFF16A34A),
             iconBg: const Color(0xFFE9FBEF),
             subtitle: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                _kv('One-time Costs', '\$2,500'),
-                _kv('Annual Running Costs', '\$21,657/year'),
+              children: [
+                _kv('One-time Costs', oneTimeLabel),
+                _kv('Annual Running Costs', annualLabel),
               ],
             ),
           ),
@@ -423,18 +807,18 @@ class _SummaryRow2 extends StatelessWidget {
         Expanded(
           child: _SummaryCard(
             title: 'AI Integrations',
-            primary: '3',
+            primary: aiIntegrations.length.toString(),
             icon: Icons.grid_view_rounded,
             iconColor: const Color(0xFF14B8A6),
             iconBg: const Color(0xFFE6FFFB),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                _kv('Deployed', '1'),
-                SizedBox(height: 6),
-                _kv('Proposed/Pending', '2'),
-                SizedBox(height: 6),
-                _kv('Available Recommendations', '4'),
+              children: [
+                _kv('Deployed', deployedCount.toString()),
+                const SizedBox(height: 6),
+                _kv('Proposed/Pending', proposedCount.toString()),
+                const SizedBox(height: 6),
+                _kv('Available Recommendations', aiRecommendations.length.toString()),
               ],
             ),
           ),
@@ -622,10 +1006,12 @@ class _SearchAndFilter extends StatelessWidget {
     required this.searchCtrl,
     required this.category,
     required this.onCategoryChanged,
+    required this.options,
   });
   final TextEditingController searchCtrl;
   final String category;
   final ValueChanged<String> onCategoryChanged;
+  final List<String> options;
 
   @override
   Widget build(BuildContext context) {
@@ -640,7 +1026,7 @@ class _SearchAndFilter extends StatelessWidget {
     );
     final categoryField = SizedBox(
       width: isNarrow ? double.infinity : 220,
-      child: _CategoryDropdown(value: category, onChanged: onCategoryChanged),
+      child: _CategoryDropdown(value: category, onChanged: onCategoryChanged, options: options),
     );
 
     if (isNarrow) {
@@ -666,12 +1052,12 @@ class _SearchAndFilter extends StatelessWidget {
 }
 
 class _CategoryDropdown extends StatelessWidget {
-  const _CategoryDropdown({required this.value, required this.onChanged});
+  const _CategoryDropdown({required this.value, required this.onChanged, required this.options});
   final String value;
   final ValueChanged<String> onChanged;
+  final List<String> options;
   @override
   Widget build(BuildContext context) {
-    final options = const ['All Categories', 'Hardware', 'Software', 'Devtools'];
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -864,11 +1250,21 @@ class _CategoryCell extends StatelessWidget {
 }
 
 Widget _StatusChip(String status) {
+  final normalized = status.toLowerCase();
   Color bg = const Color(0xFFE3FCEF);
   Color fg = const Color(0xFF16A34A);
-  if (status.toLowerCase().contains('pending')) {
+  if (normalized.contains('pending') || normalized.contains('pilot')) {
     bg = const Color(0xFFFFF7E6);
     fg = const Color(0xFF92400E);
+  } else if (normalized.contains('review')) {
+    bg = const Color(0xFFE0F2FE);
+    fg = const Color(0xFF0369A1);
+  } else if (normalized.contains('live') || normalized.contains('deployed')) {
+    bg = const Color(0xFFE3FCEF);
+    fg = const Color(0xFF16A34A);
+  } else {
+    bg = const Color(0xFFF3F4F6);
+    fg = const Color(0xFF6B7280);
   }
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -879,6 +1275,674 @@ Widget _StatusChip(String status) {
     ),
     child: Text(status, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: fg)),
   );
+}
+
+// ===== AI Integrations ====================================================
+class _AiIntegrationsView extends StatelessWidget {
+  const _AiIntegrationsView({required this.items});
+
+  final List<_AiIntegrationItem> items;
+
+  int get _deployed => items.where((e) => e.status.toLowerCase().contains('deployed')).length;
+  int get _pending => items.where((e) => !e.status.toLowerCase().contains('deployed')).length;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHeading(
+          title: 'AI Integrations',
+          subtitle: 'Track AI services, model coverage, and readiness signals.',
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: [
+            _MetricTile(label: 'Deployed', value: '$_deployed', accent: const Color(0xFF10B981)),
+            _MetricTile(label: 'Pending/Pilot', value: '$_pending', accent: const Color(0xFFF59E0B)),
+            const _MetricTile(label: 'Avg Latency', value: '1.4s', accent: Color(0xFF2563EB)),
+            const _MetricTile(label: 'Compliance', value: '92%', accent: Color(0xFF8B5CF6)),
+          ],
+        ),
+        const SizedBox(height: 20),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final bool wide = constraints.maxWidth >= 980;
+            final double gap = 20;
+            final double cardWidth = wide ? (constraints.maxWidth - gap) / 2 : constraints.maxWidth;
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [
+                SizedBox(width: cardWidth, child: const _ModelGovernanceCard()),
+                SizedBox(width: cardWidth, child: const _IntegrationPipelineCard()),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 20),
+        const Text(
+          'Active Integrations',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+        ),
+        const SizedBox(height: 12),
+        ...items.map((item) => _AiIntegrationCard(item: item)),
+      ],
+    );
+  }
+}
+
+class _AiIntegrationCard extends StatelessWidget {
+  const _AiIntegrationCard({required this.item});
+
+  final _AiIntegrationItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A000000), blurRadius: 8, offset: Offset(0, 4)),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFD7E5FF)),
+            ),
+            child: const Icon(Icons.auto_awesome, color: Color(0xFF2563EB)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.name,
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                      ),
+                    ),
+                    _StatusChip(item.status),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(item.summary, style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 8,
+                  children: [
+                    _MetaPair(label: 'Model', value: item.model),
+                    _MetaPair(label: 'Latency', value: item.latency),
+                    _MetaPair(label: 'Owner', value: item.owner),
+                    _MetaPair(label: 'Cost', value: item.monthlyCost),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final tag in item.tags)
+                      _TagChip(label: tag, tone: const Color(0xFF2563EB)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModelGovernanceCard extends StatelessWidget {
+  const _ModelGovernanceCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _PanelCard(
+      title: 'Model Governance',
+      subtitle: 'Controls, reviews, and guardrails for AI use.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          _BulletRow(text: 'Bias evaluation complete for 3 models'),
+          _BulletRow(text: 'Human-in-the-loop enabled for critical flows'),
+          _BulletRow(text: 'Audit trail stored for model decisions'),
+          SizedBox(height: 12),
+          _StatusRow(label: 'Next review', value: 'Oct 22', tone: Color(0xFF2563EB)),
+        ],
+      ),
+    );
+  }
+}
+
+class _IntegrationPipelineCard extends StatelessWidget {
+  const _IntegrationPipelineCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _PanelCard(
+      title: 'Integration Pipeline',
+      subtitle: 'AI services moving into production.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          _PipelineStep(step: '1', title: 'Discovery', detail: 'Use case validation'),
+          _PipelineStep(step: '2', title: 'Pilot', detail: 'Sandbox testing'),
+          _PipelineStep(step: '3', title: 'Security', detail: 'Threat modeling'),
+          _PipelineStep(step: '4', title: 'Release', detail: 'Rollout + monitoring'),
+        ],
+      ),
+    );
+  }
+}
+
+// ===== External Integrations =============================================
+class _ExternalIntegrationsView extends StatelessWidget {
+  const _ExternalIntegrationsView({required this.items});
+
+  final List<_ExternalIntegrationItem> items;
+
+  int get _liveCount => items.where((e) => e.status.toLowerCase().contains('live')).length;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHeading(
+          title: 'External Integrations',
+          subtitle: 'Monitor partner connectivity, data flow, and SLA adherence.',
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: [
+            _MetricTile(label: 'Active Integrations', value: _liveCount.toString(), accent: const Color(0xFF10B981)),
+            const _MetricTile(label: 'Sync Success', value: '97.8%', accent: Color(0xFF2563EB)),
+            const _MetricTile(label: 'Avg Data Latency', value: '4 mins', accent: Color(0xFFF59E0B)),
+            const _MetricTile(label: 'Contracts Due', value: '2', accent: Color(0xFF8B5CF6)),
+          ],
+        ),
+        const SizedBox(height: 20),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final bool wide = constraints.maxWidth >= 980;
+            final double gap = 20;
+            final double cardWidth = wide ? (constraints.maxWidth - gap) / 2 : constraints.maxWidth;
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [
+                SizedBox(width: cardWidth, child: const _IntegrationHealthCard()),
+                SizedBox(width: cardWidth, child: const _DataFlowMapCard()),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 20),
+        _ExternalIntegrationsTable(items: items),
+      ],
+    );
+  }
+}
+
+class _ExternalIntegrationsTable extends StatelessWidget {
+  const _ExternalIntegrationsTable({required this.items});
+
+  final List<_ExternalIntegrationItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Integration Register',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+          ),
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+              columns: const [
+                DataColumn(label: Text('Integration')),
+                DataColumn(label: Text('Vendor')),
+                DataColumn(label: Text('Data Flow')),
+                DataColumn(label: Text('SLA')),
+                DataColumn(label: Text('Status')),
+                DataColumn(label: Text('Last Sync')),
+              ],
+              rows: [
+                for (final item in items)
+                  DataRow(
+                    cells: [
+                      DataCell(Text(item.name)),
+                      DataCell(Text(item.vendor)),
+                      DataCell(Text(item.dataFlow)),
+                      DataCell(Text(item.sla)),
+                      DataCell(_StatusChip(item.status)),
+                      DataCell(Text(item.lastSync)),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IntegrationHealthCard extends StatelessWidget {
+  const _IntegrationHealthCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _PanelCard(
+      title: 'Connection Health',
+      subtitle: 'Signal strength and queue status.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          _HealthRow(label: 'Queue backlog', value: '12 events', tone: Color(0xFFF59E0B)),
+          _HealthRow(label: 'Error rate', value: '0.6%', tone: Color(0xFFEF4444)),
+          _HealthRow(label: 'Retries in flight', value: '4', tone: Color(0xFF2563EB)),
+          _HealthRow(label: 'SLA breach risk', value: 'Low', tone: Color(0xFF10B981)),
+        ],
+      ),
+    );
+  }
+}
+
+class _DataFlowMapCard extends StatelessWidget {
+  const _DataFlowMapCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _PanelCard(
+      title: 'Data Flow Map',
+      subtitle: 'Inbound and outbound exchange paths.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          _BulletRow(text: 'Payments data ingested hourly'),
+          _BulletRow(text: 'CRM leads sync every 15 minutes'),
+          _BulletRow(text: 'ERP batch jobs nightly at 02:00'),
+          SizedBox(height: 12),
+          _TagChip(label: '3 Inbound', tone: Color(0xFF2563EB)),
+          _TagChip(label: '2 Outbound', tone: Color(0xFF10B981)),
+          _TagChip(label: '1 Bi-directional', tone: Color(0xFFF59E0B)),
+        ],
+      ),
+    );
+  }
+}
+
+// ===== Technology Definitions ============================================
+class _TechnologyDefinitionsView extends StatelessWidget {
+  const _TechnologyDefinitionsView({required this.items});
+
+  final List<_TechnologyDefinitionItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHeading(
+          title: 'Technology Definitions',
+          subtitle: 'Document stack decisions, rationale, and delivery standards.',
+        ),
+        const SizedBox(height: 16),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final bool wide = constraints.maxWidth >= 980;
+            final double gap = 20;
+            final double cardWidth = wide ? (constraints.maxWidth - gap) / 2 : constraints.maxWidth;
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [
+                for (final item in items)
+                  SizedBox(width: cardWidth, child: _DefinitionCard(item: item)),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 20),
+        const _DefinitionGuardrailsCard(),
+      ],
+    );
+  }
+}
+
+class _DefinitionCard extends StatelessWidget {
+  const _DefinitionCard({required this.item});
+
+  final _TechnologyDefinitionItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return _PanelCard(
+      title: item.domain,
+      subtitle: item.decision,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _MetaPair(label: 'Stack', value: item.stack),
+          const SizedBox(height: 8),
+          Text(item.rationale, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+          const SizedBox(height: 12),
+          _MetaPair(label: 'Owner', value: item.owner),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final tag in item.standards) _TagChip(label: tag, tone: const Color(0xFF2563EB)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DefinitionGuardrailsCard extends StatelessWidget {
+  const _DefinitionGuardrailsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return _PanelCard(
+      title: 'Architecture Guardrails',
+      subtitle: 'Non-negotiable technical principles.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          _BulletRow(text: 'All services publish telemetry to the same observability stack.'),
+          _BulletRow(text: 'API changes must be versioned with backward compatibility.'),
+          _BulletRow(text: 'Security reviews required before any production deployment.'),
+          _BulletRow(text: 'Data access follows least-privilege and audit logging.'),
+        ],
+      ),
+    );
+  }
+}
+
+// ===== Shared Pieces ======================================================
+class _SectionHeading extends StatelessWidget {
+  const _SectionHeading({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+        const SizedBox(height: 4),
+        Text(subtitle, style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
+      ],
+    );
+  }
+}
+
+class _MetricTile extends StatelessWidget {
+  const _MetricTile({required this.label, required this.value, required this.accent});
+
+  final String label;
+  final String value;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 190,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+          const SizedBox(height: 8),
+          Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: accent)),
+        ],
+      ),
+    );
+  }
+}
+
+class _PanelCard extends StatelessWidget {
+  const _PanelCard({required this.title, required this.subtitle, required this.child});
+
+  final String title;
+  final String subtitle;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0B000000), blurRadius: 10, offset: Offset(0, 6)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+          const SizedBox(height: 4),
+          Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _PipelineStep extends StatelessWidget {
+  const _PipelineStep({required this.step, required this.title, required this.detail});
+
+  final String step;
+  final String title;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFDE68A),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: Text(step, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF92400E))),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Text(detail, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetaPair extends StatelessWidget {
+  const _MetaPair({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return RichText(
+      text: TextSpan(
+        style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+        children: [
+          TextSpan(text: '$label: '),
+          TextSpan(text: value, style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF111827))),
+        ],
+      ),
+    );
+  }
+}
+
+class _TagChip extends StatelessWidget {
+  const _TagChip({required this.label, required this.tone});
+
+  final String label;
+  final Color tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: tone.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: tone),
+      ),
+    );
+  }
+}
+
+class _BulletRow extends StatelessWidget {
+  const _BulletRow({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.check_circle_outline, size: 16, color: Color(0xFF10B981)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF374151), height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusRow extends StatelessWidget {
+  const _StatusRow({required this.label, required this.value, required this.tone});
+
+  final String label;
+  final String value;
+  final Color tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: tone.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            value,
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: tone),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HealthRow extends StatelessWidget {
+  const _HealthRow({required this.label, required this.value, required this.tone});
+
+  final String label;
+  final String value;
+  final Color tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+          ),
+          Text(
+            value,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: tone),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ComingSoonCard extends StatelessWidget {
@@ -1136,6 +2200,59 @@ class _TechItem {
     required this.addedTeam,
     required this.tags,
   });
+
+  String get _iconKey {
+    if (icon == Icons.desktop_windows_outlined) return 'desktop';
+    if (icon == Icons.design_services_outlined) return 'design';
+    if (icon == Icons.code_outlined) return 'code';
+    if (icon == Icons.cloud_outlined) return 'cloud';
+    return 'grid';
+  }
+
+  static IconData _iconFromKey(String key) {
+    switch (key) {
+      case 'desktop':
+        return Icons.desktop_windows_outlined;
+      case 'design':
+        return Icons.design_services_outlined;
+      case 'code':
+        return Icons.code_outlined;
+      case 'cloud':
+        return Icons.cloud_outlined;
+      default:
+        return Icons.grid_view_outlined;
+    }
+  }
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'description': description,
+        'categoryName': categoryName,
+        'categorySub': categorySub,
+        'icon': _iconKey,
+        'vendor': vendor,
+        'costText': costText,
+        'status': status,
+        'addedDate': addedDate,
+        'addedTeam': addedTeam,
+        'tags': tags,
+      };
+
+  factory _TechItem.fromJson(Map<String, dynamic> json) {
+    return _TechItem(
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      categoryName: json['categoryName']?.toString() ?? '',
+      categorySub: json['categorySub']?.toString() ?? '',
+      icon: _iconFromKey(json['icon']?.toString() ?? ''),
+      vendor: json['vendor']?.toString() ?? '',
+      costText: json['costText']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
+      addedDate: json['addedDate']?.toString() ?? '',
+      addedTeam: json['addedTeam']?.toString() ?? '',
+      tags: (json['tags'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+    );
+  }
 }
 
 class _AiRecommendation {
@@ -1152,6 +2269,173 @@ class _AiRecommendation {
     required this.vendor,
     required this.benefits,
   });
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'description': description,
+        'estimatedCost': estimatedCost,
+        'vendor': vendor,
+        'benefits': benefits,
+      };
+
+  factory _AiRecommendation.fromJson(Map<String, dynamic> json) {
+    return _AiRecommendation(
+      title: json['title']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      estimatedCost: json['estimatedCost']?.toString() ?? '',
+      vendor: json['vendor']?.toString() ?? '',
+      benefits: (json['benefits'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+    );
+  }
+}
+
+class _AiIntegrationItem {
+  final String name;
+  final String summary;
+  final String model;
+  final String status;
+  final String owner;
+  final String latency;
+  final String monthlyCost;
+  final String category;
+  final List<String> tags;
+
+  const _AiIntegrationItem({
+    required this.name,
+    required this.summary,
+    required this.model,
+    required this.status,
+    required this.owner,
+    required this.latency,
+    required this.monthlyCost,
+    required this.category,
+    required this.tags,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'summary': summary,
+        'model': model,
+        'status': status,
+        'owner': owner,
+        'latency': latency,
+        'monthlyCost': monthlyCost,
+        'category': category,
+        'tags': tags,
+      };
+
+  factory _AiIntegrationItem.fromJson(Map<String, dynamic> json) {
+    return _AiIntegrationItem(
+      name: json['name']?.toString() ?? '',
+      summary: json['summary']?.toString() ?? '',
+      model: json['model']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
+      owner: json['owner']?.toString() ?? '',
+      latency: json['latency']?.toString() ?? '',
+      monthlyCost: json['monthlyCost']?.toString() ?? '',
+      category: json['category']?.toString() ?? '',
+      tags: (json['tags'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+    );
+  }
+}
+
+class _ExternalIntegrationItem {
+  final String name;
+  final String summary;
+  final String vendor;
+  final String status;
+  final String sla;
+  final String dataFlow;
+  final String lastSync;
+  final String owner;
+  final String category;
+  final List<String> tags;
+
+  const _ExternalIntegrationItem({
+    required this.name,
+    required this.summary,
+    required this.vendor,
+    required this.status,
+    required this.sla,
+    required this.dataFlow,
+    required this.lastSync,
+    required this.owner,
+    required this.category,
+    required this.tags,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'summary': summary,
+        'vendor': vendor,
+        'status': status,
+        'sla': sla,
+        'dataFlow': dataFlow,
+        'lastSync': lastSync,
+        'owner': owner,
+        'category': category,
+        'tags': tags,
+      };
+
+  factory _ExternalIntegrationItem.fromJson(Map<String, dynamic> json) {
+    return _ExternalIntegrationItem(
+      name: json['name']?.toString() ?? '',
+      summary: json['summary']?.toString() ?? '',
+      vendor: json['vendor']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
+      sla: json['sla']?.toString() ?? '',
+      dataFlow: json['dataFlow']?.toString() ?? '',
+      lastSync: json['lastSync']?.toString() ?? '',
+      owner: json['owner']?.toString() ?? '',
+      category: json['category']?.toString() ?? '',
+      tags: (json['tags'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+    );
+  }
+}
+
+class _TechnologyDefinitionItem {
+  final String domain;
+  final String stack;
+  final String decision;
+  final String rationale;
+  final String owner;
+  final List<String> standards;
+
+  const _TechnologyDefinitionItem({
+    required this.domain,
+    required this.stack,
+    required this.decision,
+    required this.rationale,
+    required this.owner,
+    required this.standards,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'domain': domain,
+        'stack': stack,
+        'decision': decision,
+        'rationale': rationale,
+        'owner': owner,
+        'standards': standards,
+      };
+
+  factory _TechnologyDefinitionItem.fromJson(Map<String, dynamic> json) {
+    return _TechnologyDefinitionItem(
+      domain: json['domain']?.toString() ?? '',
+      stack: json['stack']?.toString() ?? '',
+      decision: json['decision']?.toString() ?? '',
+      rationale: json['rationale']?.toString() ?? '',
+      owner: json['owner']?.toString() ?? '',
+      standards: (json['standards'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+    );
+  }
+}
+
+class _DecodedList<T> {
+  const _DecodedList(this.items, this.usedFallback);
+
+  final List<T> items;
+  final bool usedFallback;
 }
 
 class _BottomOverlays extends StatelessWidget {

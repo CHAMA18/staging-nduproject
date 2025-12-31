@@ -21,40 +21,7 @@ class StakeholderManagementScreen extends StatefulWidget {
 class _StakeholderManagementScreenState extends State<StakeholderManagementScreen> {
   int _activeTabIndex = 1; // 0 = Stakeholders, 1 = Engagement Plans
 
-  final List<_EngagementPlan> _plans = const [
-    _EngagementPlan(
-      stakeholder: 'James Wilson',
-      method: 'Executive Report',
-      frequency: 'Bi-Weekly',
-      owner: 'Emily Johnson',
-      status: 'Active',
-      description: 'Financial summary and budget updates',
-    ),
-    _EngagementPlan(
-      stakeholder: 'James Wilson',
-      method: 'Executive Report',
-      frequency: 'Bi-Weekly',
-      owner: 'Emily Johnson',
-      status: 'Active',
-      description: 'Financial summary and budget updates',
-    ),
-    _EngagementPlan(
-      stakeholder: 'James Wilson',
-      method: 'Executive Report',
-      frequency: 'Bi-Weekly',
-      owner: 'Emily Johnson',
-      status: 'Active',
-      description: 'Financial summary and budget updates',
-    ),
-    _EngagementPlan(
-      stakeholder: 'James Wilson',
-      method: 'Executive Report',
-      frequency: 'Bi-Weekly',
-      owner: 'Emily Johnson',
-      status: 'Active',
-      description: 'Financial summary and budget updates',
-    ),
-  ];
+  final List<_EngagementPlan> _plans = const [];
 
   @override
   Widget build(BuildContext context) {
@@ -107,11 +74,14 @@ class _StakeholderManagementScreenState extends State<StakeholderManagementScree
                               'Communication frequency depends on project duration. Should be tailored for stakeholder groups. Meetings integrate with google meet, zoom, Skype or account or any other one. can use name/emails from the personnel and send the invite.',
                         ),
                         const SizedBox(height: 28),
-                        _StatsRow(isMobile: isMobile),
+                        _StatsRow(
+                          isMobile: isMobile,
+                          totalStakeholders: _plans.length,
+                        ),
                         const SizedBox(height: 24),
                         _InfoCardsRow(isMobile: isMobile),
                         const SizedBox(height: 24),
-                        const _InfluenceInterestMatrix(),
+                        _InfluenceInterestMatrix(hasData: _plans.isNotEmpty),
                         const SizedBox(height: 28),
                         _EngagementSection(
                           activeTabIndex: _activeTabIndex,
@@ -319,22 +289,28 @@ class _ParagraphBlock extends StatelessWidget {
 }
 
 class _StatsRow extends StatelessWidget {
-  const _StatsRow({required this.isMobile});
+  const _StatsRow({
+    required this.isMobile,
+    required this.totalStakeholders,
+  });
 
   final bool isMobile;
+  final int totalStakeholders;
 
   @override
   Widget build(BuildContext context) {
+    final String totalLabel = totalStakeholders == 0 ? '0' : totalStakeholders.toString();
+    final String highInfluenceLabel = totalStakeholders == 0 ? '—' : '—';
     final children = [
-      const _MetricCard(
+      _MetricCard(
         title: 'Total Stakeholders',
-        value: '8',
+        value: totalLabel,
         icon: Icons.people_alt_outlined,
         accentColor: Color(0xFF60A5FA),
       ),
-      const _MetricCard(
+      _MetricCard(
         title: 'High Influence',
-        value: '8',
+        value: highInfluenceLabel,
         icon: Icons.trending_up_rounded,
         accentColor: Color(0xFFF87171),
       ),
@@ -443,15 +419,17 @@ class _InfoCardsRow extends StatelessWidget {
 class _CommunicationFrequencyCard extends StatelessWidget {
   const _CommunicationFrequencyCard();
 
-  static const List<String> _items = [
-    'Daily for team members',
-    'Weekly for vendors and project team',
-    'Bi-weekly for management and key stakeholders',
-    'Monthly for executive sponsors',
-  ];
+  static const List<String> _items = [];
 
   @override
   Widget build(BuildContext context) {
+    if (_items.isEmpty) {
+      return const _SectionEmptyState(
+        title: 'No cadence defined',
+        message: 'Add communication frequency to align stakeholders.',
+        icon: Icons.forum_outlined,
+      );
+    }
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -492,53 +470,28 @@ class _LevelDistributionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Level Distribution', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
-          const SizedBox(height: 16),
-          _progressRow(label: 'High Level', color: const Color(0xFFEF4444), value: 0.75),
-          const SizedBox(height: 12),
-          _progressRow(label: 'Medium Level', color: const Color(0xFFFACC15), value: 0.55),
-          const SizedBox(height: 12),
-          _progressRow(label: 'Low Level', color: const Color(0xFF22C55E), value: 0.85),
-        ],
-      ),
-    );
-  }
-
-  Widget _progressRow({required String label, required Color color, required double value}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280))),
-        const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            value: value,
-            minHeight: 12,
-            valueColor: AlwaysStoppedAnimation<Color>(color),
-            backgroundColor: const Color(0xFFF3F4F6),
-          ),
-        ),
-      ],
+    return const _SectionEmptyState(
+      title: 'No influence distribution yet',
+      message: 'Map stakeholder influence to visualize engagement tiers.',
+      icon: Icons.pie_chart_outline,
     );
   }
 }
 
 class _InfluenceInterestMatrix extends StatelessWidget {
-  const _InfluenceInterestMatrix();
+  const _InfluenceInterestMatrix({required this.hasData});
+
+  final bool hasData;
 
   @override
   Widget build(BuildContext context) {
+    if (!hasData) {
+      return const _SectionEmptyState(
+        title: 'No matrix data yet',
+        message: 'Add stakeholders to populate the influence-interest matrix.',
+        icon: Icons.grid_view_outlined,
+      );
+    }
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -635,6 +588,51 @@ class _InfluenceInterestMatrix extends StatelessWidget {
           Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827))),
           const SizedBox(height: 8),
           Text(name, style: const TextStyle(fontSize: 13, color: Color(0xFF4B5563))),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionEmptyState extends StatelessWidget {
+  const _SectionEmptyState({required this.title, required this.message, required this.icon});
+
+  final String title;
+  final String message;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7ED),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: const Color(0xFFF59E0B)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                const SizedBox(height: 6),
+                Text(message, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -827,6 +825,13 @@ class _EngagementTable extends StatelessWidget {
   Widget build(BuildContext context) {
     const headers = ['STAKEHOLDER', 'METHOD', 'FREQUENCY', 'OWNER', 'STATUS', 'DESCRIPTION'];
 
+    if (plans.isEmpty) {
+      return const _SectionEmptyState(
+        title: 'No engagement plans yet',
+        message: 'Add engagement plans to define stakeholder touchpoints.',
+        icon: Icons.playlist_add_check_outlined,
+      );
+    }
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),

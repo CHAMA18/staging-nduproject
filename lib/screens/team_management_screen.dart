@@ -4,8 +4,13 @@ import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/screens/stakeholder_management_screen.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
+import 'package:provider/provider.dart';
 
-class TeamManagementScreen extends StatelessWidget {
+class TeamManagementScreen extends StatefulWidget {
   const TeamManagementScreen({super.key});
 
   static void open(BuildContext context) {
@@ -15,7 +20,109 @@ class TeamManagementScreen extends StatelessWidget {
   }
 
   @override
+  State<TeamManagementScreen> createState() => _TeamManagementScreenState();
+}
+
+class _TeamManagementScreenState extends State<TeamManagementScreen> {
+  Future<void> _openAddMemberDialog(List<TeamMember> members) async {
+    final nameController = TextEditingController();
+    final roleController = TextEditingController();
+    final emailController = TextEditingController();
+    final responsibilitiesController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final result = await showDialog<TeamMember>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text(
+            'Add Team Member',
+            style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+          ),
+          content: SizedBox(
+            width: 420,
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _DialogTextField(
+                    controller: nameController,
+                    label: 'Full name',
+                    validator: (value) => (value ?? '').trim().isEmpty ? 'Name is required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  _DialogTextField(
+                    controller: roleController,
+                    label: 'Role',
+                  ),
+                  const SizedBox(height: 12),
+                  _DialogTextField(
+                    controller: emailController,
+                    label: 'Email',
+                  ),
+                  const SizedBox(height: 12),
+                  _DialogTextField(
+                    controller: responsibilitiesController,
+                    label: 'Responsibilities',
+                    maxLines: 3,
+                    hintText: 'Add key responsibilities, separated by line breaks.',
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actionsPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (formKey.currentState?.validate() != true) {
+                  return;
+                }
+                final member = TeamMember(
+                  name: nameController.text.trim(),
+                  role: roleController.text.trim(),
+                  email: emailController.text.trim(),
+                  responsibilities: responsibilitiesController.text.trim(),
+                );
+                Navigator.of(dialogContext).pop(member);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFD700),
+                foregroundColor: const Color(0xFF111827),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == null || !mounted) {
+      return;
+    }
+
+    final updated = [...members, result];
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'team_management',
+      dataUpdater: (data) => data.copyWith(teamMembers: updated),
+      showSnackbar: false,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final projectData = context.watch<ProjectDataProvider>().projectData;
+    final members = projectData.teamMembers;
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -70,7 +177,7 @@ class TeamManagementScreen extends StatelessWidget {
                               ),
                             ),
                             ElevatedButton.icon(
-                              onPressed: () {},
+                              onPressed: () => _openAddMemberDialog(members),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFFFFD700),
                                 foregroundColor: const Color(0xFF111827),
@@ -87,18 +194,32 @@ class TeamManagementScreen extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 24),
-                        GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: 3,
-                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: columns,
-                            mainAxisSpacing: gap,
-                            crossAxisSpacing: gap,
-                            childAspectRatio: cardAspectRatio,
-                          ),
-                          itemBuilder: (context, index) => const _TeamRoleCard(),
+                        const PlanningAiNotesCard(
+                          title: 'AI Notes',
+                          sectionLabel: 'Team Management',
+                          noteKey: 'planning_team_management_notes',
+                          checkpoint: 'team_management',
+                          description: 'Capture team structure, ownership, and role coverage.',
                         ),
+                        const SizedBox(height: 24),
+                        if (members.isEmpty)
+                          const _EmptyStateCard(
+                            title: 'No team members yet',
+                            message: 'Add team members to define roles, responsibilities, and ownership.',
+                          )
+                        else
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: members.length,
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: columns,
+                              mainAxisSpacing: gap,
+                              crossAxisSpacing: gap,
+                              childAspectRatio: cardAspectRatio,
+                            ),
+                            itemBuilder: (context, index) => _TeamRoleCard(member: members[index]),
+                          ),
                         const SizedBox(height: 28),
                         Align(
                           alignment: Alignment.centerRight,
@@ -205,10 +326,23 @@ class _UserChip extends StatelessWidget {
 }
 
 class _TeamRoleCard extends StatelessWidget {
-  const _TeamRoleCard();
+  const _TeamRoleCard({required this.member});
+
+  final TeamMember member;
+
+  List<String> _responsibilityItems() {
+    final raw = member.responsibilities.trim();
+    if (raw.isEmpty) return [];
+    return raw
+        .split(RegExp(r'[\n;]+'))
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final responsibilities = _responsibilityItems();
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -235,18 +369,18 @@ class _TeamRoleCard extends StatelessWidget {
                 child: const Icon(Icons.work_outline, color: Color(0xFF2563EB), size: 20),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Project Manager',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                      member.name.isNotEmpty ? member.name : 'Team member',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
-                      'Responsible for overall project planning, execution, and delivery',
-                      style: TextStyle(fontSize: 11, color: Color(0xFF6B7280), height: 1.4),
+                      member.role.isNotEmpty ? member.role : 'Role not set',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280), height: 1.4),
                     ),
                   ],
                 ),
@@ -260,22 +394,13 @@ class _TeamRoleCard extends StatelessWidget {
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
           ),
           const SizedBox(height: 8),
-          const _ResponsibilityRow(text: 'Project planning and scheduling'),
-          const _ResponsibilityRow(text: 'Resource allocation'),
-          const _ResponsibilityRow(text: 'Risk management'),
-          const SizedBox(height: 12),
-          const Divider(color: Color(0xFFE5E7EB), height: 1),
-          const SizedBox(height: 12),
-          const Text(
-            'Work Progress',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
-          ),
-          const SizedBox(height: 10),
-          const _ProgressHeader(),
-          const SizedBox(height: 6),
-          const _ProgressRow(label: 'Work A in prog', status: 'Done'),
-          const SizedBox(height: 6),
-          const _ProgressRow(label: 'Work A in prog', status: 'Done', shaded: true),
+          if (responsibilities.isEmpty)
+            const Text(
+              'Add responsibilities to outline ownership.',
+              style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+            )
+          else
+            for (final item in responsibilities) _ResponsibilityRow(text: item),
         ],
       ),
     );
@@ -307,68 +432,79 @@ class _ResponsibilityRow extends StatelessWidget {
   }
 }
 
-class _ProgressHeader extends StatelessWidget {
-  const _ProgressHeader();
+class _EmptyStateCard extends StatelessWidget {
+  const _EmptyStateCard({required this.title, required this.message});
 
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: const [
-        Expanded(
-          child: Text('Name', style: TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
-        ),
-        Text('Status', style: TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
-      ],
-    );
-  }
-}
-
-class _ProgressRow extends StatelessWidget {
-  const _ProgressRow({required this.label, required this.status, this.shaded = false});
-
-  final String label;
-  final String status;
-  final bool shaded;
+  final String title;
+  final String message;
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: shaded ? const Color(0xFFF3F4F6) : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       child: Row(
         children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7ED),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.group_outlined, color: Color(0xFFF59E0B)),
+          ),
+          const SizedBox(width: 14),
           Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(fontSize: 11, color: Color(0xFF374151)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                const SizedBox(height: 6),
+                Text(message, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+              ],
             ),
           ),
-          _StatusPill(label: status),
         ],
       ),
     );
   }
 }
 
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.label});
+class _DialogTextField extends StatelessWidget {
+  const _DialogTextField({
+    required this.controller,
+    required this.label,
+    this.hintText,
+    this.validator,
+    this.maxLines = 1,
+  });
 
+  final TextEditingController controller;
   final String label;
+  final String? hintText;
+  final String? Function(String?)? validator;
+  final int maxLines;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE6F9ED),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF10B981)),
+    return TextFormField(
+      controller: controller,
+      validator: validator,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hintText,
+        filled: true,
+        fillColor: const Color(0xFFF9FAFB),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFFFD700), width: 1.6)),
       ),
     );
   }

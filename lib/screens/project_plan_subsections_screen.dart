@@ -18,51 +18,8 @@ class ProjectPlanLevel1ScheduleScreen extends StatelessWidget {
         noteKey: 'planning_project_plan_level1_notes',
         checkpoint: 'project_plan_level1_schedule',
         activeItemLabel: 'Project Plan - Level 1 - Project Schedule',
-        metrics: const [
-          _MetricData('Milestones', '12', Color(0xFF2563EB)),
-          _MetricData('Phases', '5', Color(0xFF10B981)),
-          _MetricData('Critical Path', '6', Color(0xFFF59E0B)),
-          _MetricData('Variance', '+3 days', Color(0xFFEF4444)),
-        ],
-        sections: const [
-          _SectionData(
-            title: 'Major Milestones',
-            subtitle: 'High-level checkpoints across delivery.',
-            bullets: [
-              _BulletData('Project kickoff and charter sign-off', true),
-              _BulletData('Design freeze and stakeholder approval', true),
-              _BulletData('Build complete and QA sign-off', true),
-              _BulletData('Go-live readiness review', true),
-            ],
-          ),
-          _SectionData(
-            title: 'Phase Timeline',
-            subtitle: 'Planned status by phase.',
-            statusRows: [
-              _StatusRowData('Planning', 'Complete', Color(0xFF10B981)),
-              _StatusRowData('Design', 'In Progress', Color(0xFFF59E0B)),
-              _StatusRowData('Build', 'Not Started', Color(0xFF94A3B8)),
-            ],
-          ),
-          _SectionData(
-            title: 'Dependency Highlights',
-            subtitle: 'External dependencies that impact the schedule.',
-            bullets: [
-              _BulletData('Vendor contract execution before Build', false),
-              _BulletData('Infrastructure provisioning before Integration', false),
-              _BulletData('Compliance review before Launch', false),
-            ],
-          ),
-          _SectionData(
-            title: 'Governance Cadence',
-            subtitle: 'Executive checkpoints for schedule validation.',
-            bullets: [
-              _BulletData('Weekly schedule steering review', false),
-              _BulletData('Monthly sponsor checkpoint', false),
-              _BulletData('Critical path risk review', false),
-            ],
-          ),
-        ],
+        metrics: const [],
+        sections: const [],
       ),
     );
   }
@@ -80,51 +37,8 @@ class ProjectPlanDetailedScheduleScreen extends StatelessWidget {
         noteKey: 'planning_project_plan_detailed_notes',
         checkpoint: 'project_plan_detailed_schedule',
         activeItemLabel: 'Project Plan - Detailed Project Schedule',
-        metrics: const [
-          _MetricData('Tasks', '248', Color(0xFF2563EB)),
-          _MetricData('Workstreams', '8', Color(0xFF10B981)),
-          _MetricData('Resource Load', '92%', Color(0xFFF59E0B)),
-          _MetricData('Baseline Delta', '-2 days', Color(0xFF8B5CF6)),
-        ],
-        sections: const [
-          _SectionData(
-            title: 'Workstream Breakdown',
-            subtitle: 'Task volume by workstream.',
-            statusRows: [
-              _StatusRowData('Product', '42 tasks', Color(0xFF2563EB)),
-              _StatusRowData('Engineering', '106 tasks', Color(0xFF10B981)),
-              _StatusRowData('Operations', '38 tasks', Color(0xFFF59E0B)),
-              _StatusRowData('Data', '24 tasks', Color(0xFF8B5CF6)),
-            ],
-          ),
-          _SectionData(
-            title: 'Critical Path Tasks',
-            subtitle: 'Tasks with zero float.',
-            bullets: [
-              _BulletData('Finalize architecture diagrams', true),
-              _BulletData('API integration testing', true),
-              _BulletData('Security review sign-off', true),
-            ],
-          ),
-          _SectionData(
-            title: 'Resource Allocation',
-            subtitle: 'High-load areas this sprint.',
-            bullets: [
-              _BulletData('Frontend squad at 98% capacity', false),
-              _BulletData('QA team aligned for regression run', false),
-              _BulletData('Infra team reserved for staging rollout', false),
-            ],
-          ),
-          _SectionData(
-            title: 'Lookahead (6 weeks)',
-            subtitle: 'Near-term schedule commitments.',
-            bullets: [
-              _BulletData('Complete design QA and handoff', false),
-              _BulletData('Finish integration build for core flows', false),
-              _BulletData('Start pilot runbook validation', false),
-            ],
-          ),
-        ],
+        metrics: const [],
+        sections: const [],
       ),
     );
   }
@@ -142,51 +56,8 @@ class ProjectPlanCondensedSummaryScreen extends StatelessWidget {
         noteKey: 'planning_project_plan_condensed_notes',
         checkpoint: 'project_plan_condensed_summary',
         activeItemLabel: 'Project Plan - Condensed Project Summary',
-        metrics: const [
-          _MetricData('Duration', '42 weeks', Color(0xFF2563EB)),
-          _MetricData('Budget', '\$1.8M', Color(0xFF10B981)),
-          _MetricData('Teams', '6', Color(0xFFF59E0B)),
-          _MetricData('Readiness', '78%', Color(0xFF8B5CF6)),
-        ],
-        sections: const [
-          _SectionData(
-            title: 'Executive Highlights',
-            subtitle: 'One-line narrative of the plan.',
-            bullets: [
-              _BulletData('Schedule aligns with Q4 go-live target', true),
-              _BulletData('Budget coverage secured for core scope', true),
-              _BulletData('Critical dependencies tracked weekly', true),
-            ],
-          ),
-          _SectionData(
-            title: 'Timeline Snapshot',
-            subtitle: 'Phase timing at a glance.',
-            statusRows: [
-              _StatusRowData('Planning', 'Jan - Mar', Color(0xFF2563EB)),
-              _StatusRowData('Design', 'Apr - May', Color(0xFF10B981)),
-              _StatusRowData('Build', 'Jun - Sep', Color(0xFFF59E0B)),
-              _StatusRowData('Launch', 'Oct', Color(0xFF8B5CF6)),
-            ],
-          ),
-          _SectionData(
-            title: 'Risk Watchlist',
-            subtitle: 'Top schedule risks to monitor.',
-            bullets: [
-              _BulletData('Vendor hardware lead time variance', false),
-              _BulletData('Integration test environment capacity', false),
-              _BulletData('Security review turnaround', false),
-            ],
-          ),
-          _SectionData(
-            title: 'Decision Log',
-            subtitle: 'Open decisions impacting scope or timing.',
-            statusRows: [
-              _StatusRowData('Scope freeze date', 'Approved', Color(0xFF10B981)),
-              _StatusRowData('Change window', 'Pending', Color(0xFFF59E0B)),
-              _StatusRowData('Budget contingency', 'In Review', Color(0xFF2563EB)),
-            ],
-          ),
-        ],
+        metrics: const [],
+        sections: const [],
       ),
     );
   }
@@ -223,6 +94,7 @@ class _ProjectPlanSectionScreen extends StatelessWidget {
                         const gap = 24.0;
                         final twoCol = width >= 980;
                         final halfWidth = twoCol ? (width - gap) / 2 : width;
+                        final hasContent = config.metrics.isNotEmpty || config.sections.isNotEmpty;
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -241,15 +113,22 @@ class _ProjectPlanSectionScreen extends StatelessWidget {
                               description: 'Capture plan assumptions, deadlines, and key constraints.',
                             ),
                             const SizedBox(height: 24),
-                            _MetricsRow(metrics: config.metrics),
-                            const SizedBox(height: 24),
-                            Wrap(
-                              spacing: gap,
-                              runSpacing: gap,
-                              children: config.sections
-                                  .map((section) => SizedBox(width: halfWidth, child: _SectionCard(data: section)))
-                                  .toList(),
-                            ),
+                            if (hasContent) ...[
+                              _MetricsRow(metrics: config.metrics),
+                              const SizedBox(height: 24),
+                              Wrap(
+                                spacing: gap,
+                                runSpacing: gap,
+                                children: config.sections
+                                    .map((section) => SizedBox(width: halfWidth, child: _SectionCard(data: section)))
+                                    .toList(),
+                              ),
+                            ] else
+                              const _SectionEmptyState(
+                                title: 'No schedule details yet',
+                                message: 'Add schedule insights to populate this view.',
+                                icon: Icons.calendar_today_outlined,
+                              ),
                             const SizedBox(height: 40),
                           ],
                         );
@@ -562,6 +441,51 @@ class _StatusRow extends StatelessWidget {
             child: Text(
               data.value,
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: data.color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionEmptyState extends StatelessWidget {
+  const _SectionEmptyState({required this.title, required this.message, required this.icon});
+
+  final String title;
+  final String message;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7ED),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: const Color(0xFFF59E0B)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                const SizedBox(height: 6),
+                Text(message, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+              ],
             ),
           ),
         ],

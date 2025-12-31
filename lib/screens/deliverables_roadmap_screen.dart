@@ -89,84 +89,9 @@ class _SprintConfig {
 }
 
 class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
-  late final Map<int, List<_DeliverableItem>> _sprintItems = {
-    0: [
-      const _DeliverableItem(
-        title: 'User Interface Wireframes',
-        description: 'Create wireframes for all major screens and user flows',
-        assignedTo: 'Samuel',
-        dueDate: 'May 26, 2025',
-        status: _DeliverableStatus.completed,
-      ),
-      const _DeliverableItem(
-        title: 'User Interface Wireframes',
-        description: 'Create wireframes for all major screens and user flows',
-        assignedTo: 'Samuel',
-        dueDate: 'May 26, 2025',
-        status: _DeliverableStatus.inProgress,
-      ),
-      const _DeliverableItem(
-        title: 'User Interface Wireframes',
-        description: 'Create wireframes for all major screens and user flows',
-        assignedTo: 'Samuel',
-        dueDate: 'May 26, 2025',
-        status: _DeliverableStatus.planned,
-      ),
-    ],
-    1: [
-      const _DeliverableItem(
-        title: 'Sprint Planning Review',
-        description: 'Review backlog and finalize user stories for build.',
-        assignedTo: 'Jennifer',
-        dueDate: 'Jun 02, 2025',
-        status: _DeliverableStatus.inProgress,
-      ),
-    ],
-    2: [
-      const _DeliverableItem(
-        title: 'Testing Strategy',
-        description: 'Outline test cases and automation coverage expectations.',
-        assignedTo: 'Oliver',
-        dueDate: 'Jun 09, 2025',
-        status: _DeliverableStatus.planned,
-      ),
-    ],
-    3: [
-      const _DeliverableItem(
-        title: 'Deployment Checklist',
-        description: 'Define go-live readiness checklist and owners.',
-        assignedTo: 'Alicia',
-        dueDate: 'Jun 16, 2025',
-        status: _DeliverableStatus.notStarted,
-      ),
-    ],
-  };
+  late final Map<int, List<_DeliverableItem>> _sprintItems = {};
 
-  final List<_SprintConfig> _sprints = const [
-    _SprintConfig(
-      heading: 'Splint 1 (Planning)',
-      summaryLabel: 'Completed',
-      summaryColor: Color(0xFF34D399),
-      allowAdd: true,
-    ),
-    _SprintConfig(
-      heading: 'Splint 2 (Planning)',
-      summaryLabel: 'In Progress',
-      summaryColor: Color(0xFFF97316),
-      allowAdd: true,
-    ),
-    _SprintConfig(
-      heading: 'Splint 3 (Planning)',
-      summaryLabel: 'Planned',
-      summaryColor: Color(0xFF6B7280),
-      allowAdd: true,
-    ),
-    _SprintConfig(
-      heading: 'Splint 4 (Planning)',
-      summaryLabel: 'Not Started',
-      summaryColor: Color(0xFFEF4444),
-    ),
-  ];
+  final List<_SprintConfig> _sprints = const [];
 
   Color _statusColor(_DeliverableStatus status) {
     switch (status) {
@@ -731,7 +656,13 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 return SingleChildScrollView(
-                  child: _buildColumns(constraints.maxWidth),
+                  child: _sprints.isEmpty
+                      ? const _EmptyStateCard(
+                          title: 'No sprint roadmap yet',
+                          message: 'Add roadmap deliverables to visualize sprint pacing.',
+                          icon: Icons.view_week_outlined,
+                        )
+                      : _buildColumns(constraints.maxWidth),
                 );
               },
             ),
@@ -758,6 +689,51 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
                   ),
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyStateCard extends StatelessWidget {
+  const _EmptyStateCard({required this.title, required this.message, required this.icon});
+
+  final String title;
+  final String message;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _kCardBorder),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7ED),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: const Color(0xFFF59E0B)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _kHeadline)),
+                const SizedBox(height: 6),
+                Text(message, style: const TextStyle(fontSize: 12, color: _kMuted)),
+              ],
             ),
           ),
         ],

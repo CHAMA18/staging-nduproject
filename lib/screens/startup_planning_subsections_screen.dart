@@ -18,50 +18,8 @@ class StartUpPlanningOperationsScreen extends StatelessWidget {
         noteKey: 'planning_startup_operations_notes',
         checkpoint: 'startup_planning_operations',
         activeItemLabel: 'Start-Up Planning - Operations Plan and Manual',
-        metrics: const [
-          _MetricData('Runbooks', '8', Color(0xFF2563EB)),
-          _MetricData('SOPs', '12', Color(0xFF10B981)),
-          _MetricData('SLA Coverage', '95%', Color(0xFFF59E0B)),
-          _MetricData('Escalation Paths', '4', Color(0xFF8B5CF6)),
-        ],
-        sections: const [
-          _SectionData(
-            title: 'Operations Manual',
-            subtitle: 'Key procedures required for day-one support.',
-            bullets: [
-              _BulletData('Incident response flow and severity definitions', true),
-              _BulletData('Service ownership matrix by component', true),
-              _BulletData('Customer escalation and communication plan', true),
-            ],
-          ),
-          _SectionData(
-            title: 'Runbook Coverage',
-            subtitle: 'Status of critical operational runbooks.',
-            statusRows: [
-              _StatusRowData('Deployment rollback', 'Ready', Color(0xFF10B981)),
-              _StatusRowData('Database recovery', 'In Review', Color(0xFFF59E0B)),
-              _StatusRowData('Third-party outage', 'Draft', Color(0xFF94A3B8)),
-            ],
-          ),
-          _SectionData(
-            title: 'Service Ownership',
-            subtitle: 'Ownership coverage across operations domains.',
-            bullets: [
-              _BulletData('Platform monitoring: SRE Team', false),
-              _BulletData('API performance: Backend Lead', false),
-              _BulletData('Vendor support: Procurement Ops', false),
-            ],
-          ),
-          _SectionData(
-            title: 'Support Channels',
-            subtitle: 'Primary channels for incident and user support.',
-            bullets: [
-              _BulletData('On-call rotation: 24/7 escalation', false),
-              _BulletData('Launch war room: Daily standups', false),
-              _BulletData('Customer support desk: Tiered intake', false),
-            ],
-          ),
-        ],
+        metrics: const [],
+        sections: const [],
       ),
     );
   }
@@ -79,50 +37,8 @@ class StartUpPlanningHypercareScreen extends StatelessWidget {
         noteKey: 'planning_startup_hypercare_notes',
         checkpoint: 'startup_planning_hypercare',
         activeItemLabel: 'Start-Up Planning - Hypercare Plan',
-        metrics: const [
-          _MetricData('Hypercare Days', '14', Color(0xFF2563EB)),
-          _MetricData('Coverage Shifts', '3', Color(0xFF10B981)),
-          _MetricData('Open Sev-1', '0', Color(0xFFF59E0B)),
-          _MetricData('Critical Alerts', '18', Color(0xFFEF4444)),
-        ],
-        sections: const [
-          _SectionData(
-            title: 'Coverage & War Room',
-            subtitle: 'Plan the operational coverage for launch period.',
-            bullets: [
-              _BulletData('24/7 coverage for first 7 days', true),
-              _BulletData('Daily war room sync with owners', true),
-              _BulletData('Dedicated triage lead per shift', true),
-            ],
-          ),
-          _SectionData(
-            title: 'Issue Triage Process',
-            subtitle: 'Escalation and priority management.',
-            bullets: [
-              _BulletData('Sev-1 response within 30 minutes', false),
-              _BulletData('Daily incident review and RCA log', false),
-              _BulletData('Product sign-off for severity changes', false),
-            ],
-          ),
-          _SectionData(
-            title: 'Monitoring Focus',
-            subtitle: 'Systems to monitor closely after launch.',
-            bullets: [
-              _BulletData('API latency and error rates', false),
-              _BulletData('Payment gateway success rate', false),
-              _BulletData('User onboarding drop-off', false),
-            ],
-          ),
-          _SectionData(
-            title: 'Communications Cadence',
-            subtitle: 'Stakeholder updates during hypercare.',
-            bullets: [
-              _BulletData('Twice-daily stakeholder updates', false),
-              _BulletData('Incident broadcast within 15 minutes', false),
-              _BulletData('Executive summary every 48 hours', false),
-            ],
-          ),
-        ],
+        metrics: const [],
+        sections: const [],
       ),
     );
   }
@@ -140,50 +56,8 @@ class StartUpPlanningDevOpsScreen extends StatelessWidget {
         noteKey: 'planning_startup_devops_notes',
         checkpoint: 'startup_planning_devops',
         activeItemLabel: 'Start-Up Planning - DevOps',
-        metrics: const [
-          _MetricData('Pipelines', '6', Color(0xFF2563EB)),
-          _MetricData('Environments', '4', Color(0xFF10B981)),
-          _MetricData('Release Cadence', 'Weekly', Color(0xFFF59E0B)),
-          _MetricData('Automation', '78%', Color(0xFF8B5CF6)),
-        ],
-        sections: const [
-          _SectionData(
-            title: 'CI/CD Status',
-            subtitle: 'Pipeline checks for release readiness.',
-            statusRows: [
-              _StatusRowData('Build & unit tests', 'Passing', Color(0xFF10B981)),
-              _StatusRowData('Security scans', 'Scheduled', Color(0xFFF59E0B)),
-              _StatusRowData('Release gates', 'Configured', Color(0xFF2563EB)),
-            ],
-          ),
-          _SectionData(
-            title: 'Environment Readiness',
-            subtitle: 'Stability across environments.',
-            bullets: [
-              _BulletData('Prod & staging parity verified', true),
-              _BulletData('Disaster recovery drills scheduled', true),
-              _BulletData('Performance baselines captured', true),
-            ],
-          ),
-          _SectionData(
-            title: 'Deployment Checklist',
-            subtitle: 'Steps required for release readiness.',
-            bullets: [
-              _BulletData('Release notes approved', false),
-              _BulletData('Rollback procedures documented', false),
-              _BulletData('Feature flags configured', false),
-            ],
-          ),
-          _SectionData(
-            title: 'Observability',
-            subtitle: 'Monitoring & alerting coverage.',
-            bullets: [
-              _BulletData('Synthetic tests active', false),
-              _BulletData('Alert thresholds tuned', false),
-              _BulletData('Dashboards shared with stakeholders', false),
-            ],
-          ),
-        ],
+        metrics: const [],
+        sections: const [],
       ),
     );
   }
@@ -201,50 +75,8 @@ class StartUpPlanningCloseOutPlanScreen extends StatelessWidget {
         noteKey: 'planning_startup_closeout_notes',
         checkpoint: 'startup_planning_closeout',
         activeItemLabel: 'Start-Up Planning - Close Out Plan',
-        metrics: const [
-          _MetricData('Close-out Tasks', '18', Color(0xFF2563EB)),
-          _MetricData('Approvals', '6', Color(0xFF10B981)),
-          _MetricData('Archive Items', '12', Color(0xFFF59E0B)),
-          _MetricData('Lessons Logged', '4', Color(0xFF8B5CF6)),
-        ],
-        sections: const [
-          _SectionData(
-            title: 'Close Out Checklist',
-            subtitle: 'Key activities after launch stabilization.',
-            bullets: [
-              _BulletData('Finalize documentation and runbooks', true),
-              _BulletData('Obtain final stakeholder sign-off', true),
-              _BulletData('Confirm support handoff completion', true),
-            ],
-          ),
-          _SectionData(
-            title: 'Approval Tracker',
-            subtitle: 'Approval status by stakeholder group.',
-            statusRows: [
-              _StatusRowData('Executive sponsor', 'Pending', Color(0xFFF59E0B)),
-              _StatusRowData('Product owner', 'Approved', Color(0xFF10B981)),
-              _StatusRowData('Security', 'In Review', Color(0xFF2563EB)),
-            ],
-          ),
-          _SectionData(
-            title: 'Archive & Access',
-            subtitle: 'Artifacts and access to archive.',
-            bullets: [
-              _BulletData('Project documentation stored in archive', false),
-              _BulletData('Repository access updated for maintenance', false),
-              _BulletData('Vendor contracts stored and tagged', false),
-            ],
-          ),
-          _SectionData(
-            title: 'Post-Launch Review',
-            subtitle: 'Capture learnings and improvement actions.',
-            bullets: [
-              _BulletData('Retro session scheduled', false),
-              _BulletData('Metrics report finalized', false),
-              _BulletData('Improvement backlog created', false),
-            ],
-          ),
-        ],
+        metrics: const [],
+        sections: const [],
       ),
     );
   }
@@ -281,6 +113,7 @@ class _StartUpPlanningSectionScreen extends StatelessWidget {
                         final gap = 24.0;
                         final twoCol = width >= 980;
                         final halfWidth = twoCol ? (width - gap) / 2 : width;
+                        final hasContent = config.metrics.isNotEmpty || config.sections.isNotEmpty;
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -299,15 +132,22 @@ class _StartUpPlanningSectionScreen extends StatelessWidget {
                               description: 'Capture critical decisions, dependencies, and readiness updates.',
                             ),
                             const SizedBox(height: 24),
-                            _MetricsRow(metrics: config.metrics),
-                            const SizedBox(height: 24),
-                            Wrap(
-                              spacing: gap,
-                              runSpacing: gap,
-                              children: config.sections
-                                  .map((section) => SizedBox(width: halfWidth, child: _SectionCard(data: section)))
-                                  .toList(),
-                            ),
+                            if (hasContent) ...[
+                              _MetricsRow(metrics: config.metrics),
+                              const SizedBox(height: 24),
+                              Wrap(
+                                spacing: gap,
+                                runSpacing: gap,
+                                children: config.sections
+                                    .map((section) => SizedBox(width: halfWidth, child: _SectionCard(data: section)))
+                                    .toList(),
+                              ),
+                            ] else
+                              const _SectionEmptyState(
+                                title: 'No launch readiness details yet',
+                                message: 'Add operational plans and readiness notes to populate this view.',
+                                icon: Icons.checklist_outlined,
+                              ),
                             const SizedBox(height: 40),
                           ],
                         );
@@ -620,6 +460,51 @@ class _StatusRow extends StatelessWidget {
             child: Text(
               data.value,
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: data.color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionEmptyState extends StatelessWidget {
+  const _SectionEmptyState({required this.title, required this.message, required this.icon});
+
+  final String title;
+  final String message;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7ED),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: const Color(0xFFF59E0B)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                const SizedBox(height: 6),
+                Text(message, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+              ],
             ),
           ),
         ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ndu_project/screens/basic_plan_dashboard_screen.dart';
 import 'program_dashboard_screen.dart';
 import '../widgets/app_logo.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
@@ -79,6 +80,19 @@ class _ManagementLevelScreenState extends State<ManagementLevelScreen> {
           spacing: cardSpacing,
           runSpacing: cardSpacing,
           children: [
+            _buildManagementCardWithImage(
+              width: cardWidth,
+              imageUrl: 'assets/images/project-management.png',
+              title: 'Basic',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const BasicPlanDashboardScreen(),
+                  ),
+                );
+              },
+            ),
             _buildManagementCardWithImage(
               width: cardWidth,
               imageUrl: 'assets/images/project-management.png',

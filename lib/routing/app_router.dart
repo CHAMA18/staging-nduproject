@@ -509,6 +509,11 @@ class AppRouter {
       GoRoute(name: AppRoutes.adminUsers, path: '/${AppRoutes.adminUsers}', builder: (c, s) => const AdminUsersScreen()),
       GoRoute(name: AppRoutes.adminCoupons, path: '/${AppRoutes.adminCoupons}', builder: (c, s) => const AdminCouponsScreen()),
       GoRoute(name: AppRoutes.adminSubscriptionLookup, path: '/${AppRoutes.adminSubscriptionLookup}', builder: (c, s) => const AdminSubscriptionLookupScreen()),
+      GoRoute(
+        name: AppRoutes.settings,
+        path: '/${AppRoutes.settings}',
+        builder: (c, s) => const AdminAuthWrapper(child: SettingsScreen()),
+      ),
     ],
     errorBuilder: (context, state) => _RouteNotFound(path: state.uri.toString()),
   );

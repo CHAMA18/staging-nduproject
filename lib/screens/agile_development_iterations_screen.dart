@@ -21,6 +21,21 @@ class AgileDevelopmentIterationsScreen extends StatefulWidget {
 class _AgileDevelopmentIterationsScreenState extends State<AgileDevelopmentIterationsScreen> {
   final Set<String> _selectedFilters = {'Single view of iteration health'};
   final TextEditingController _notesController = TextEditingController();
+  bool _expandAllStories = false;
+  final Map<_BoardStatus, List<_StoryCard>> _boardStories = {
+    _BoardStatus.planned: [
+      _StoryCard(id: 'planned-1', title: 'User onboarding flow v2', owner: 'Product', points: '8 pts', notes: 'Definition locked · Design sign-off complete.'),
+      _StoryCard(id: 'planned-2', title: 'Security hardening checklist', owner: 'Security', points: '5 pts', notes: 'Must complete before go-live gate.'),
+    ],
+    _BoardStatus.inProgress: [
+      _StoryCard(id: 'in-progress-1', title: 'Payments integration with gateway', owner: 'Backend', points: '13 pts', notes: 'Blocked on sandbox instability from vendor.'),
+      _StoryCard(id: 'in-progress-2', title: 'Observability baseline dashboards', owner: 'SRE', points: '5 pts', notes: 'Core metrics wired · alerts configuration pending.'),
+    ],
+    _BoardStatus.readyToDemo: [
+      _StoryCard(id: 'ready-1', title: 'Admin project overview', owner: 'Frontend', points: '3 pts', notes: 'UX validated · waiting for stakeholder demo.'),
+      _StoryCard(id: 'ready-2', title: 'Audit log export', owner: 'Platform', points: '2 pts', notes: 'Meets regulatory acceptance criteria.'),
+    ],
+  };
 
   @override
   void dispose() {
@@ -288,11 +303,29 @@ class _AgileDevelopmentIterationsScreenState extends State<AgileDevelopmentItera
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Iteration board snapshot',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+              const Expanded(
+                child: Text(
+                  'Iteration board snapshot',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                ),
               ),
-              _buildOutlineBadge('Stand-up view'),
+              Wrap(
+                spacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => setState(() => _expandAllStories = !_expandAllStories),
+                    icon: Icon(_expandAllStories ? Icons.unfold_less : Icons.unfold_more, size: 16),
+                    label: Text(_expandAllStories ? 'Collapse all' : 'Expand all'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF374151),
+                      side: const BorderSide(color: Color(0xFFE5E7EB)),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  ),
+                  _buildOutlineBadge('Stand-up view'),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -308,71 +341,118 @@ class _AgileDevelopmentIterationsScreenState extends State<AgileDevelopmentItera
   }
 
   Widget _buildKanbanBoard() {
+    final columns = [
+      _BoardStatus.planned,
+      _BoardStatus.inProgress,
+      _BoardStatus.readyToDemo,
+    ];
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: _buildKanbanColumn('PLANNED', '7 stories', [
-          _StoryCard(title: 'User onboarding flow v2', owner: 'Product', points: '8 pts', notes: 'Definition locked · Design sign-off complete.'),
-          _StoryCard(title: 'Security hardening checklist', owner: 'Security', points: '5 pts', notes: 'Must complete before go-live gate.'),
-        ])),
-        const SizedBox(width: 12),
-        Expanded(child: _buildKanbanColumn('IN PROGRESS', '9 stories', [
-          _StoryCard(title: 'Payments integration with gateway', owner: 'Backend', points: '13 pts', notes: 'Blocked on sandbox instability from vendor.'),
-          _StoryCard(title: 'Observability baseline dashboards', owner: 'SRE', points: '5 pts', notes: 'Core metrics wired · alerts configuration pending.'),
-        ])),
-        const SizedBox(width: 12),
-        Expanded(child: _buildKanbanColumn('READY TO DEMO', '5 stories', [
-          _StoryCard(title: 'Admin project overview', owner: 'Frontend', points: '3 pts', notes: 'UX validated · waiting for stakeholder demo.'),
-          _StoryCard(title: 'Audit log export', owner: 'Platform', points: '2 pts', notes: 'Meets regulatory acceptance criteria.'),
-        ])),
+        for (int i = 0; i < columns.length; i++) ...[
+          Expanded(child: _buildKanbanColumn(columns[i], _boardStories[columns[i]] ?? [])),
+          if (i != columns.length - 1) const SizedBox(width: 12),
+        ],
       ],
     );
   }
 
-  Widget _buildKanbanColumn(String header, String count, List<_StoryCard> stories) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            header,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF6B7280), letterSpacing: 0.5),
+  Widget _buildKanbanColumn(_BoardStatus status, List<_StoryCard> stories) {
+    return DragTarget<_StoryDragData>(
+      onWillAccept: (data) => data != null && data.from != status,
+      onAccept: (data) => _moveStory(data, status),
+      builder: (context, candidateData, _) {
+        final isActive = candidateData.isNotEmpty;
+        final header = _statusLabel(status);
+        final count = '${stories.length} stories';
+        final badgeColors = _statusBadgeColors(status);
+
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isActive ? badgeColors.highlight : const Color(0xFFF9FAFB),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: isActive ? badgeColors.border : const Color(0xFFE5E7EB)),
           ),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE0F2FE),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              count,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF0369A1)),
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                header,
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF6B7280), letterSpacing: 0.5),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: badgeColors.background,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  count,
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: badgeColors.foreground),
+                ),
+              ),
+              const SizedBox(height: 12),
+              ...stories.map((story) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _buildDraggableStory(status, story),
+              )),
+              if (stories.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                  ),
+                  child: const Text(
+                    'Drag stories here',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(height: 12),
-          ...stories.map((story) => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _buildStoryCard(story),
-          )),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildStoryCard(_StoryCard story) {
+  Widget _buildDraggableStory(_BoardStatus status, _StoryCard story) {
+    final card = _buildStoryCard(story, isExpanded: _expandAllStories);
+    return Draggable<_StoryDragData>(
+      data: _StoryDragData(from: status, story: story),
+      feedback: Material(
+        color: Colors.transparent,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 240),
+          child: Opacity(opacity: 0.95, child: _buildStoryCard(story, isExpanded: true, isDragging: true)),
+        ),
+      ),
+      childWhenDragging: Opacity(opacity: 0.45, child: card),
+      child: card,
+    );
+  }
+
+  Widget _buildStoryCard(_StoryCard story, {required bool isExpanded, bool isDragging = false}) {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: isDragging ? const Color(0xFF93C5FD) : const Color(0xFFE5E7EB)),
+        boxShadow: isDragging
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.12),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ]
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -398,6 +478,8 @@ class _AgileDevelopmentIterationsScreenState extends State<AgileDevelopmentItera
           const SizedBox(height: 6),
           Text(
             story.notes,
+            maxLines: isExpanded ? null : 2,
+            overflow: isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF), height: 1.3),
           ),
         ],
@@ -714,6 +796,50 @@ class _AgileDevelopmentIterationsScreenState extends State<AgileDevelopmentItera
       ],
     );
   }
+
+  void _moveStory(_StoryDragData data, _BoardStatus target) {
+    setState(() {
+      _boardStories[data.from]?.removeWhere((story) => story.id == data.story.id);
+      _boardStories[target]?.add(data.story);
+    });
+  }
+
+  String _statusLabel(_BoardStatus status) {
+    switch (status) {
+      case _BoardStatus.planned:
+        return 'PLANNED';
+      case _BoardStatus.inProgress:
+        return 'IN PROGRESS';
+      case _BoardStatus.readyToDemo:
+        return 'READY TO DEMO';
+    }
+  }
+
+  _StatusBadgeColors _statusBadgeColors(_BoardStatus status) {
+    switch (status) {
+      case _BoardStatus.planned:
+        return const _StatusBadgeColors(
+          background: Color(0xFFE0F2FE),
+          foreground: Color(0xFF0369A1),
+          border: Color(0xFF93C5FD),
+          highlight: Color(0xFFF0F9FF),
+        );
+      case _BoardStatus.inProgress:
+        return const _StatusBadgeColors(
+          background: Color(0xFFEDE9FE),
+          foreground: Color(0xFF6D28D9),
+          border: Color(0xFFC4B5FD),
+          highlight: Color(0xFFF5F3FF),
+        );
+      case _BoardStatus.readyToDemo:
+        return const _StatusBadgeColors(
+          background: Color(0xFFDCFCE7),
+          foreground: Color(0xFF15803D),
+          border: Color(0xFF86EFAC),
+          highlight: Color(0xFFF0FDF4),
+        );
+    }
+  }
 }
 
 class _ContentCard extends StatelessWidget {
@@ -752,17 +878,42 @@ class _MetricData {
 }
 
 class _StoryCard {
+  final String id;
   final String title;
   final String owner;
   final String points;
   final String notes;
 
   _StoryCard({
+    required this.id,
     required this.title,
     required this.owner,
     required this.points,
     required this.notes,
   });
+}
+
+enum _BoardStatus { planned, inProgress, readyToDemo }
+
+class _StoryDragData {
+  final _BoardStatus from;
+  final _StoryCard story;
+
+  _StoryDragData({required this.from, required this.story});
+}
+
+class _StatusBadgeColors {
+  const _StatusBadgeColors({
+    required this.background,
+    required this.foreground,
+    required this.border,
+    required this.highlight,
+  });
+
+  final Color background;
+  final Color foreground;
+  final Color border;
+  final Color highlight;
 }
 
 class _MilestoneItem {

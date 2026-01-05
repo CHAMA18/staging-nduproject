@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:http/http.dart' as http;
 import 'package:ndu_project/openai/openai_config.dart';
 
@@ -416,6 +417,21 @@ class _ChatBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final baseStyle = theme.textTheme.bodyMedium?.copyWith(
+      color: scheme.onSurface,
+      height: 1.5,
+    );
+    final markdownStyle = MarkdownStyleSheet.fromTheme(theme).copyWith(
+      p: baseStyle,
+      strong: baseStyle?.copyWith(fontWeight: FontWeight.w700),
+      em: baseStyle?.copyWith(fontStyle: FontStyle.italic),
+      listBullet: baseStyle,
+      code: baseStyle?.copyWith(
+        fontFamily: 'monospace',
+        backgroundColor: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
+      ),
+    );
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
@@ -447,13 +463,11 @@ class _ChatBubble extends StatelessWidget {
                   bottomLeft: message.isUser ? const Radius.circular(20) : const Radius.circular(4),
                   bottomRight: message.isUser ? const Radius.circular(4) : const Radius.circular(20),
                 ),
-              ),
-              child: Text(
-                message.text,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: scheme.onSurface,
-                  height: 1.5,
-                ),
+            ),
+              child: MarkdownBody(
+                data: message.text,
+                styleSheet: markdownStyle,
+                selectable: false,
               ),
             ),
           ),

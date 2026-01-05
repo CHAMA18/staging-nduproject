@@ -9,11 +9,13 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/providers/app_content_provider.dart';
+import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ndu_project/routing/app_router.dart';
 import 'package:intl/intl.dart';
 import 'dart:html' as html;
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -76,10 +78,26 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     final isMobile = AppBreakpoints.isMobile(context);
     final sidebarWidth = AppBreakpoints.sidebarWidth(context);
     final canPop = Navigator.of(context).canPop();
+    final fromRoute = GoRouterState.of(context).uri.queryParameters['from'];
+    final openedFromDashboard = fromRoute == AppRoutes.dashboard ||
+        fromRoute == AppRoutes.programDashboard ||
+        fromRoute == AppRoutes.portfolioDashboard;
+    final projectProvider = ProjectDataInherited.maybeOf(context);
+    final hasProject = (projectProvider?.projectData.projectId ?? '').isNotEmpty;
+    final isAuthenticated = FirebaseAuth.instance.currentUser != null;
+    final showSidebar = isAuthenticated && hasProject;
+    void handleBackNavigation() {
+      if (openedFromDashboard && (fromRoute ?? '').isNotEmpty) {
+        context.go('/$fromRoute');
+        return;
+      }
+      context.go('/${AppRoutes.dashboard}');
+    }
+
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: Colors.white,
-      drawer: isMobile ? const Drawer(child: InitiationLikeSidebar(activeItemLabel: 'Settings')) : null,
+      drawer: isMobile && showSidebar ? const Drawer(child: InitiationLikeSidebar(activeItemLabel: 'Settings')) : null,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(84),
         child: SafeArea(
@@ -97,19 +115,16 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                   ),
                   const SizedBox(width: 4),
                 ],
-                if (canPop) ...[
-                  IconButton(
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    icon: const Icon(Icons.arrow_back),
-                    color: Colors.black,
-                    tooltip: 'Back',
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                const Text('Settings', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700)),
+                IconButton(
+                  onPressed: handleBackNavigation,
+                  icon: const Icon(Icons.arrow_back),
+                  color: Colors.black,
+                  tooltip: 'Back',
+                ),
+                const SizedBox(width: 8),
                 const Spacer(),
                 OutlinedButton(
-                  onPressed: () => Navigator.of(context).maybePop(),
+                  onPressed: handleBackNavigation,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.black,
                     side: BorderSide(color: Colors.grey.withValues(alpha: 0.4)),
@@ -140,7 +155,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
           Row(
             children: [
               // Sidebar column (draggable)
-              if (!isMobile)
+              if (!isMobile && showSidebar)
                 DraggableSidebar(
                   openWidth: sidebarWidth,
                   child: const InitiationLikeSidebar(activeItemLabel: 'Settings'),
@@ -798,6 +813,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   Widget _editContentPanel() {
     final contentProvider = Provider.of<AppContentProvider>(context);
     final isEditMode = contentProvider.isEditMode;
+    final canEdit = AdminEditToggle.isAdmin();
     const accent = Color(0xFFFFC107);
     final theme = Theme.of(context);
 
@@ -883,13 +899,20 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                   : 'Enable edit mode to start modifying content across all pages.',
                               style: const TextStyle(color: Colors.black54),
                             ),
+                            if (!canEdit) ...[
+                              const SizedBox(height: 6),
+                              const Text(
+                                'Admin access required to enable edit mode.',
+                                style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600),
+                              ),
+                            ],
                           ],
                         ),
                       ),
                       const SizedBox(width: 12),
                       Switch(
                         value: isEditMode,
-                        onChanged: (_) => contentProvider.toggleEditMode(),
+                        onChanged: canEdit ? (_) => contentProvider.toggleEditMode() : null,
                         activeThumbColor: Colors.green,
                       ),
                     ],
@@ -998,13 +1021,20 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                   : 'The "Edit Content" button is currently visible on all pages.',
                               style: const TextStyle(color: Colors.black54),
                             ),
+                            if (!canEdit) ...[
+                              const SizedBox(height: 6),
+                              const Text(
+                                'Admin access required to change this setting.',
+                                style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600),
+                              ),
+                            ],
                           ],
                         ),
                       ),
                       const SizedBox(width: 12),
                       Switch(
                         value: contentProvider.showEditButton,
-                        onChanged: (_) => contentProvider.toggleEditButtonVisibility(),
+                        onChanged: canEdit ? (_) => contentProvider.toggleEditButtonVisibility() : null,
                         activeThumbColor: Colors.red,
                       ),
                     ],

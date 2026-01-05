@@ -122,7 +122,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ProjectDataProvider()),
-        ChangeNotifierProvider(create: (_) => AppContentProvider()..watchContent()),
+        ChangeNotifierProvider(create: (_) => AppContentProvider()..watchContent()..loadLocalOverrides()),
       ],
       child: Builder(
         builder: (context) {

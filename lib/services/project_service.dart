@@ -16,6 +16,7 @@ class ProjectRecord {
   final double investmentMillions;
   final String milestone;
   final List<String> tags;
+  final bool isBasicPlanProject;
   final DateTime createdAt;
   final DateTime updatedAt;
   final String checkpointRoute; // identifies where to resume when opening from dashboard
@@ -36,6 +37,7 @@ class ProjectRecord {
     required this.investmentMillions,
     required this.milestone,
     required this.tags,
+    required this.isBasicPlanProject,
     required this.createdAt,
     required this.updatedAt,
     required this.checkpointRoute,
@@ -82,6 +84,7 @@ class ProjectRecord {
       investmentMillions: parseDouble(data['investmentMillions'], fallback: 0.0),
       milestone: (data['milestone'] ?? '').toString(),
       tags: parseTags(tagsRaw),
+      isBasicPlanProject: data['isBasicPlanProject'] == true,
       createdAt: parseTimestamp(createdTs, fallback: DateTime.fromMillisecondsSinceEpoch(0)),
       updatedAt: parseTimestamp(updatedTs, fallback: DateTime.fromMillisecondsSinceEpoch(0)),
       checkpointRoute: (data['checkpointRoute'] ?? '').toString(),

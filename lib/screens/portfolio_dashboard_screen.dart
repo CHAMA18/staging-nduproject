@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import '../widgets/kaz_ai_chat_bubble.dart';
 import '../routing/app_router.dart';
 import '../services/navigation_context_service.dart';
 import '../services/project_service.dart';
+import '../services/program_service.dart';
+import '../models/program_model.dart';
 
 class PortfolioDashboardScreen extends StatelessWidget {
   const PortfolioDashboardScreen({super.key});
@@ -32,53 +35,60 @@ class _PortfolioRollUpContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     final projectStream = user == null ? Stream.value(const <ProjectRecord>[]) : ProjectService.streamProjects(ownerId: user.uid);
+    final programStream = user == null ? Stream.value(const <ProgramModel>[]) : ProgramService.streamPrograms(ownerId: user.uid);
 
     return StreamBuilder<List<ProjectRecord>>(
       stream: projectStream,
       builder: (context, snapshot) {
         final projects = snapshot.data ?? const <ProjectRecord>[];
-        final metrics = _PortfolioMetrics.fromProjects(projects);
+        return StreamBuilder<List<ProgramModel>>(
+          stream: programStream,
+          builder: (context, programSnapshot) {
+            final programs = programSnapshot.data ?? const <ProgramModel>[];
+            final metrics = _PortfolioMetrics.fromData(projects: projects, programs: programs);
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final isNarrow = constraints.maxWidth < 1000;
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _HeaderSection(metrics: metrics),
-                  const SizedBox(height: 24),
-                  if (isNarrow) ...[
-                    const _ProgramsProjectsCard(),
-                    const SizedBox(height: 24),
-                    const _GovernanceReportingCard(),
-                    const SizedBox(height: 24),
-                    const _IndependentProjectsCard(),
-                  ] else
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: 6,
-                          child: Column(
-                            children: const [
-                              _ProgramsProjectsCard(),
-                              SizedBox(height: 16),
-                              _IndependentProjectsCard(),
-                            ],
-                          ),
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 1000;
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _HeaderSection(metrics: metrics),
+                      const SizedBox(height: 24),
+                      if (isNarrow) ...[
+                        _ProgramsProjectsCard(metrics: metrics),
+                        const SizedBox(height: 24),
+                        const _GovernanceReportingCard(),
+                        const SizedBox(height: 24),
+                        _IndependentProjectsCard(metrics: metrics),
+                      ] else
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 6,
+                              child: Column(
+                                children: [
+                                  _ProgramsProjectsCard(metrics: metrics),
+                                  const SizedBox(height: 16),
+                                  _IndependentProjectsCard(metrics: metrics),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            const Expanded(flex: 4, child: _GovernanceReportingCard()),
+                          ],
                         ),
-                        const SizedBox(width: 24),
-                        const Expanded(flex: 4, child: _GovernanceReportingCard()),
-                      ],
-                    ),
-                  const SizedBox(height: 24),
-                  _CostScheduleRiskSection(metrics: metrics),
-                  const SizedBox(height: 24),
-                  const _RollUpUpdateSection(),
-                ],
-              ),
+                      const SizedBox(height: 24),
+                      _CostScheduleRiskSection(metrics: metrics),
+                      const SizedBox(height: 24),
+                      _RollUpUpdateSection(metrics: metrics),
+                    ],
+                  ),
+                );
+              },
             );
           },
         );
@@ -94,6 +104,9 @@ class _HeaderSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final programLabel = '${metrics.programCount} ${metrics.programCount == 1 ? 'program' : 'programs'}';
+    final projectLabel = '${metrics.projectCount} ${metrics.projectCount == 1 ? 'project' : 'projects'} included';
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -129,8 +142,8 @@ class _HeaderSection extends StatelessWidget {
                 spacing: 16,
                 runSpacing: 8,
                 children: [
-                  _InfoChip(label: '3 programs', icon: Icons.layers_outlined),
-                  _InfoChip(label: '${metrics.projectCount} projects included', icon: Icons.folder_outlined),
+                  _InfoChip(label: programLabel, icon: Icons.layers_outlined),
+                  _InfoChip(label: projectLabel, icon: Icons.folder_outlined),
                   _InfoChip(label: 'Total portfolio value: ${metrics.formattedTotalValue}', icon: Icons.attach_money),
                   _InfoChip(label: 'Risk posture: ${metrics.riskPostureLabel}', icon: Icons.shield_outlined),
                 ],
@@ -185,10 +198,18 @@ class _InfoChip extends StatelessWidget {
 }
 
 class _ProgramsProjectsCard extends StatelessWidget {
-  const _ProgramsProjectsCard();
+  const _ProgramsProjectsCard({required this.metrics});
+
+  final _PortfolioMetrics metrics;
 
   @override
   Widget build(BuildContext context) {
+    final programCount = metrics.programCount;
+    final programScopeLabel = programCount == 0
+        ? 'No programs yet'
+        : '$programCount ${programCount == 1 ? 'program' : 'programs'} · ${metrics.inProgramProjectCount} ${metrics.inProgramProjectCount == 1 ? 'project' : 'projects'}';
+    final rollups = metrics.programRollups;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -214,28 +235,43 @@ class _ProgramsProjectsCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(6)),
-                  child: const Text('3 programs · 7 projects', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF2563EB))),
+                  child: Text(programScopeLabel, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF2563EB))),
                 ),
               ],
             ),
           ),
           const Divider(height: 1, color: Color(0xFFE5E7EB)),
-          // Table Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            color: const Color(0xFFF9FAFB),
-            child: Row(
-              children: const [
-                Expanded(flex: 3, child: Text('Program', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF6B7280)))),
-                Expanded(flex: 2, child: Text('Projects in scope', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF6B7280)))),
-                Expanded(flex: 1, child: Text('Value', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF6B7280)))),
-                Expanded(flex: 1, child: Text('Priority', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF6B7280)))),
-              ],
+          if (rollups.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Text(
+                'No programs created yet. Group projects into programs to see a roll-up here.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B7280)),
+              ),
+            )
+          else ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              color: const Color(0xFFF9FAFB),
+              child: const Row(
+                children: [
+                  Expanded(flex: 3, child: Text('Program', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF6B7280)))),
+                  Expanded(flex: 2, child: Text('Projects in scope', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF6B7280)))),
+                  Expanded(flex: 1, child: Text('Value', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF6B7280)))),
+                  Expanded(flex: 1, child: Text('Priority', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF6B7280)))),
+                ],
+              ),
             ),
-          ),
-          const _ProgramRow(title: 'Airport capacity uplift', description: 'Improve passenger throughput and on-time performance across terminals.', projects: '3 of 3 projects', value: '\$7.4M', priority: 'Rank 1 · Primary', priorityColor: Color(0xFF10B981)),
-          const _ProgramRow(title: 'Control system modernization', description: 'Consolidate legacy control rooms, automation, and monitoring platforms.', projects: '2 of 3 projects', value: '\$6.1M', priority: 'Rank 2 · Growth', priorityColor: Color(0xFF3B82F6)),
-          const _ProgramRow(title: 'People & readiness', description: 'Training, change, and readiness initiatives for frontline teams.', projects: '3 of 3 projects', value: '\$4.7M', priority: 'Rank 3 · Enablement', priorityColor: Color(0xFF8B5CF6)),
+            for (final rollup in rollups)
+              _ProgramRow(
+                title: rollup.name,
+                description: rollup.description,
+                projectScopeLabel: rollup.projectScopeLabel,
+                value: rollup.formattedValue,
+                priority: rollup.priorityLabel,
+                priorityColor: rollup.priorityColor,
+              ),
+          ],
         ],
       ),
     );
@@ -243,8 +279,20 @@ class _ProgramsProjectsCard extends StatelessWidget {
 }
 
 class _ProgramRow extends StatelessWidget {
-  const _ProgramRow({required this.title, required this.description, required this.projects, required this.value, required this.priority, required this.priorityColor});
-  final String title, description, projects, value, priority;
+  const _ProgramRow({
+    required this.title,
+    required this.description,
+    required this.projectScopeLabel,
+    required this.value,
+    required this.priority,
+    required this.priorityColor,
+  });
+
+  final String title;
+  final String description;
+  final String projectScopeLabel;
+  final String value;
+  final String priority;
   final Color priorityColor;
 
   @override
@@ -266,7 +314,14 @@ class _ProgramRow extends StatelessWidget {
               ],
             ),
           ),
-          Expanded(flex: 2, child: Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: const Color(0xFFFEF3C7), borderRadius: BorderRadius.circular(4)), child: Text(projects, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF92400E))))),
+          Expanded(
+            flex: 2,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(color: const Color(0xFFFEF3C7), borderRadius: BorderRadius.circular(4)),
+              child: Text(projectScopeLabel, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF92400E))),
+            ),
+          ),
           Expanded(flex: 1, child: Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF111827)))),
           Expanded(flex: 1, child: Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: priorityColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)), child: Text(priority, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: priorityColor)))),
         ],
@@ -276,10 +331,20 @@ class _ProgramRow extends StatelessWidget {
 }
 
 class _IndependentProjectsCard extends StatelessWidget {
-  const _IndependentProjectsCard();
+  const _IndependentProjectsCard({required this.metrics});
+
+  final _PortfolioMetrics metrics;
 
   @override
   Widget build(BuildContext context) {
+    final independentProjects = metrics.independentProjects;
+    final previewProjects = independentProjects.take(2).toList(growable: false);
+    final chipLabel = metrics.independentProjectCount == 0
+        ? 'No standalone projects'
+        : metrics.independentProjectCount == 1
+            ? '1 standalone project'
+            : '${metrics.independentProjectCount} standalone projects';
+
     return Container(
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFE5E7EB))),
       padding: const EdgeInsets.all(20),
@@ -290,15 +355,38 @@ class _IndependentProjectsCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Independent projects in roll-up', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-              Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(4)), child: const Text('Related vs. unrelated', style: TextStyle(fontSize: 11, color: Color(0xFF6B7280)))),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(4)),
+                child: Text(chipLabel, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+              ),
             ],
           ),
           const SizedBox(height: 8),
           Text('Decide which independent projects should be reflected in this portfolio\'s value and reporting.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B7280))),
           const SizedBox(height: 16),
-          _IndependentProjectRow(title: 'Terminal wayfinding refresh', subtitle: 'Linked to this portfolio. Not assigned to any program.', phase: 'Front-end planning', phaseChips: const ['In-sync', 'Award', 'Vendor Q', 'Authority']),
-          const SizedBox(height: 12),
-          _IndependentProjectRow(title: 'Regional hub pilot', subtitle: 'Unrelated exploratory project. Outside portfolio targets.', phase: 'Concept stage', phaseChips: const ['Excluded', 'Unrelated']),
+          if (previewProjects.isEmpty)
+            Text(
+              'All projects are grouped into programs right now.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B7280)),
+            )
+          else ...[
+            for (int i = 0; i < previewProjects.length; i++) ...[
+              _IndependentProjectRow(
+                title: previewProjects[i].name.isEmpty ? 'Untitled project' : previewProjects[i].name,
+                subtitle: _projectSubtitle(previewProjects[i]),
+                phase: _projectPhase(previewProjects[i]),
+              ),
+              if (i != previewProjects.length - 1) const SizedBox(height: 12),
+            ],
+            if (independentProjects.length > previewProjects.length) ...[
+              const SizedBox(height: 12),
+              Text(
+                '+${independentProjects.length - previewProjects.length} more independent project${independentProjects.length - previewProjects.length == 1 ? '' : 's'}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF9CA3AF)),
+              ),
+            ],
+          ],
           const SizedBox(height: 16),
           Row(
             children: [
@@ -314,9 +402,10 @@ class _IndependentProjectsCard extends StatelessWidget {
 }
 
 class _IndependentProjectRow extends StatelessWidget {
-  const _IndependentProjectRow({required this.title, required this.subtitle, required this.phase, required this.phaseChips});
-  final String title, subtitle, phase;
-  final List<String> phaseChips;
+  const _IndependentProjectRow({required this.title, required this.subtitle, required this.phase});
+  final String title;
+  final String subtitle;
+  final String phase;
 
   @override
   Widget build(BuildContext context) {
@@ -457,7 +546,7 @@ class _CostScheduleRiskSection extends StatelessWidget {
                   children: [
                     _PortfolioValueCard(metrics: metrics),
                     const SizedBox(height: 16),
-                    const _AggregateScheduleCard(),
+                    _AggregateScheduleCard(metrics: metrics),
                   ],
                 );
               }
@@ -466,7 +555,7 @@ class _CostScheduleRiskSection extends StatelessWidget {
                 children: [
                   Expanded(child: _PortfolioValueCard(metrics: metrics)),
                   const SizedBox(width: 24),
-                  const Expanded(child: _AggregateScheduleCard()),
+                  Expanded(child: _AggregateScheduleCard(metrics: metrics)),
                 ],
               );
             },
@@ -488,6 +577,8 @@ class _PortfolioValueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final breakdowns = metrics.valueBreakdowns;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(8)),
@@ -500,15 +591,17 @@ class _PortfolioValueCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text('${metrics.projectCount} projects in scope', style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              _ValueBreakdown(label: 'Capex', value: '\$10.8M', color: const Color(0xFF3B82F6)),
-              const SizedBox(width: 12),
-              _ValueBreakdown(label: 'Opex', value: '\$4.9M', color: const Color(0xFF10B981)),
-              const SizedBox(width: 12),
-              _ValueBreakdown(label: 'Contingency', value: '15%', color: const Color(0xFFF59E0B)),
-            ],
-          ),
+          if (breakdowns.isEmpty)
+            const Text('No value breakdowns yet.', style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)))
+          else
+            Row(
+              children: [
+                for (int i = 0; i < breakdowns.length; i++) ...[
+                  _ValueBreakdown(label: breakdowns[i].label, value: breakdowns[i].value, color: breakdowns[i].color),
+                  if (i != breakdowns.length - 1) const SizedBox(width: 12),
+                ],
+              ],
+            ),
         ],
       ),
     );
@@ -534,29 +627,41 @@ class _ValueBreakdown extends StatelessWidget {
 }
 
 class _AggregateScheduleCard extends StatelessWidget {
-  const _AggregateScheduleCard();
+  const _AggregateScheduleCard({required this.metrics});
+
+  final _PortfolioMetrics metrics;
 
   @override
   Widget build(BuildContext context) {
+    final rollups = metrics.programRollups;
+    final averageLabel = _formatPercent(metrics.averageProgress);
+    final earliestLabel = _formatShortDate(metrics.earliestStartAt);
+    final latestLabel = _formatShortDate(metrics.lastUpdatedAt);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(8)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Aggregate schedule', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+          const Text('Aggregate progress', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
           const SizedBox(height: 8),
-          const Text('32 months', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+          Text(averageLabel, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
           const SizedBox(height: 4),
-          const Text('Span by program', style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
+          Text('${metrics.projectCount} projects in scope', style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
           const SizedBox(height: 12),
-          _ScheduleBar(label: 'Airport capacity uplift', months: '2 - 18 months', progress: 0.9, color: const Color(0xFF10B981)),
-          const SizedBox(height: 8),
-          _ScheduleBar(label: 'Control system modernization', months: '3 - 14 months', progress: 0.7, color: const Color(0xFFF59E0B)),
-          const SizedBox(height: 8),
-          _ScheduleBar(label: 'People & readiness', months: '1 - 18 months', progress: 0.85, color: const Color(0xFF3B82F6)),
+          const Text('Progress by program', style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
           const SizedBox(height: 12),
-          const Text('Earliest start: Month 1     Critical path: Capacity uplift → Control modernization', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
+          if (rollups.isEmpty)
+            const Text('No programs yet.', style: TextStyle(fontSize: 11, color: Color(0xFF6B7280)))
+          else ...[
+            for (int i = 0; i < rollups.length; i++) ...[
+              _ScheduleBar(label: rollups[i].name, detail: rollups[i].progressLabel, progress: rollups[i].averageProgress, color: rollups[i].priorityColor),
+              if (i != rollups.length - 1) const SizedBox(height: 8),
+            ],
+          ],
+          const SizedBox(height: 12),
+          Text('Earliest start: $earliestLabel · Latest update: $latestLabel', style: const TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
         ],
       ),
     );
@@ -564,8 +669,9 @@ class _AggregateScheduleCard extends StatelessWidget {
 }
 
 class _ScheduleBar extends StatelessWidget {
-  const _ScheduleBar({required this.label, required this.months, required this.progress, required this.color});
-  final String label, months;
+  const _ScheduleBar({required this.label, required this.detail, required this.progress, required this.color});
+  final String label;
+  final String detail;
   final double progress;
   final Color color;
 
@@ -578,7 +684,7 @@ class _ScheduleBar extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Flexible(child: Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF374151)), overflow: TextOverflow.ellipsis)),
-            Text(months, style: const TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
+            Text(detail, style: const TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
           ],
         ),
         const SizedBox(height: 4),
@@ -772,10 +878,64 @@ class _CostBarData {
   final Color color;
 }
 
+class _ValueBreakdownData {
+  const _ValueBreakdownData({required this.label, required this.value, required this.color});
+  final String label;
+  final String value;
+  final Color color;
+}
+
+class _ProgramRollupData {
+  const _ProgramRollupData({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.projectScopeLabel,
+    required this.totalValue,
+    required this.formattedValue,
+    required this.averageProgress,
+    required this.progressLabel,
+    required this.priorityLabel,
+    required this.priorityColor,
+  });
+
+  final String id;
+  final String name;
+  final String description;
+  final String projectScopeLabel;
+  final double totalValue;
+  final String formattedValue;
+  final double averageProgress;
+  final String progressLabel;
+  final String priorityLabel;
+  final Color priorityColor;
+
+  _ProgramRollupData copyWith({
+    String? priorityLabel,
+    Color? priorityColor,
+  }) {
+    return _ProgramRollupData(
+      id: id,
+      name: name,
+      description: description,
+      projectScopeLabel: projectScopeLabel,
+      totalValue: totalValue,
+      formattedValue: formattedValue,
+      averageProgress: averageProgress,
+      progressLabel: progressLabel,
+      priorityLabel: priorityLabel ?? this.priorityLabel,
+      priorityColor: priorityColor ?? this.priorityColor,
+    );
+  }
+}
+
 class _PortfolioMetrics {
   _PortfolioMetrics({
     required this.projects,
     required this.projectCount,
+    required this.programCount,
+    required this.inProgramProjectCount,
+    required this.independentProjectCount,
     required this.totalValue,
     required this.formattedTotalValue,
     required this.highRiskCount,
@@ -786,10 +946,19 @@ class _PortfolioMetrics {
     required this.riskTags,
     required this.riskBuckets,
     required this.costBars,
+    required this.programRollups,
+    required this.independentProjects,
+    required this.valueBreakdowns,
+    required this.averageProgress,
+    required this.earliestStartAt,
+    required this.lastUpdatedAt,
   });
 
   final List<ProjectRecord> projects;
   final int projectCount;
+  final int programCount;
+  final int inProgramProjectCount;
+  final int independentProjectCount;
   final double totalValue;
   final String formattedTotalValue;
   final int highRiskCount;
@@ -800,26 +969,89 @@ class _PortfolioMetrics {
   final List<_RiskTagData> riskTags;
   final List<_RiskBucketData> riskBuckets;
   final List<_CostBarData> costBars;
+  final List<_ProgramRollupData> programRollups;
+  final List<ProjectRecord> independentProjects;
+  final List<_ValueBreakdownData> valueBreakdowns;
+  final double averageProgress;
+  final DateTime? earliestStartAt;
+  final DateTime? lastUpdatedAt;
 
-  static _PortfolioMetrics fromProjects(List<ProjectRecord> projects) {
+  static _PortfolioMetrics fromData({
+    required List<ProjectRecord> projects,
+    required List<ProgramModel> programs,
+  }) {
     final totalValue = projects.fold<double>(0, (sum, project) => sum + project.investmentMillions);
     final formattedTotalValue = _formatMillions(totalValue);
 
-    if (projects.isEmpty) {
-      return _PortfolioMetrics(
-        projects: projects,
-        projectCount: 0,
-        totalValue: 0,
-        formattedTotalValue: formattedTotalValue,
-        highRiskCount: 0,
-        mediumRiskCount: 0,
-        lowRiskCount: 0,
-        riskPostureLabel: 'No data',
-        riskPostureColor: const Color(0xFF9CA3AF),
-        riskTags: const [],
-        riskBuckets: const [],
-        costBars: const [],
-      );
+    final projectById = {for (final project in projects) project.id: project};
+    final allProgramProjectIds = <String>{};
+    final rollups = <_ProgramRollupData>[];
+
+    for (final program in programs) {
+      final name = program.name.trim().isEmpty ? 'Untitled program' : program.name.trim();
+      final projectIds = program.projectIds;
+      allProgramProjectIds.addAll(projectIds);
+      final programProjects = projectIds.map((id) => projectById[id]).whereType<ProjectRecord>().toList();
+      final inScopeCount = programProjects.length;
+      final totalCount = projectIds.length;
+      final programValue = programProjects.fold<double>(0, (sum, project) => sum + project.investmentMillions);
+      final double averageProgress = programProjects.isEmpty
+          ? 0.0
+          : programProjects.fold<double>(0.0, (sum, project) => sum + project.progress) / programProjects.length;
+      final scopeLabel = totalCount == 0 ? 'No projects yet' : '$inScopeCount of $totalCount projects';
+      final description = programProjects.isEmpty
+          ? 'No projects assigned yet.'
+          : 'Avg progress ${_formatPercent(averageProgress)} · $inScopeCount ${inScopeCount == 1 ? 'project' : 'projects'}';
+
+      rollups.add(_ProgramRollupData(
+        id: program.id,
+        name: name,
+        description: description,
+        projectScopeLabel: scopeLabel,
+        totalValue: programValue,
+        formattedValue: _formatMillions(programValue),
+        averageProgress: averageProgress,
+        progressLabel: programProjects.isEmpty ? '—' : '${_formatPercent(averageProgress)} avg',
+        priorityLabel: 'Rank —',
+        priorityColor: const Color(0xFF6B7280),
+      ));
+    }
+
+    if (rollups.isNotEmpty) {
+      final sortedByValue = [...rollups]..sort((a, b) => b.totalValue.compareTo(a.totalValue));
+      for (int i = 0; i < sortedByValue.length; i++) {
+        final rank = i + 1;
+        final index = rollups.indexWhere((rollup) => rollup.id == sortedByValue[i].id);
+        if (index == -1) continue;
+        rollups[index] = rollups[index].copyWith(
+          priorityLabel: 'Rank $rank · ${_priorityDescriptor(rank)}',
+          priorityColor: _priorityColor(rank),
+        );
+      }
+      rollups.sort((a, b) => b.totalValue.compareTo(a.totalValue));
+    }
+
+    final independentProjects = projects.where((project) => !allProgramProjectIds.contains(project.id)).toList(growable: false);
+    final inProgramProjectCount = projects.where((project) => allProgramProjectIds.contains(project.id)).length;
+    final independentProjectCount = independentProjects.length;
+
+    final double averageProgress = projects.isEmpty
+        ? 0.0
+        : projects.fold<double>(0.0, (sum, project) => sum + project.progress) / projects.length;
+
+    DateTime? earliestStartAt;
+    DateTime? lastUpdatedAt;
+    for (final project in projects) {
+      if (project.createdAt.millisecondsSinceEpoch > 0) {
+        if (earliestStartAt == null || project.createdAt.isBefore(earliestStartAt)) {
+          earliestStartAt = project.createdAt;
+        }
+      }
+      if (project.updatedAt.millisecondsSinceEpoch > 0) {
+        if (lastUpdatedAt == null || project.updatedAt.isAfter(lastUpdatedAt)) {
+          lastUpdatedAt = project.updatedAt;
+        }
+      }
     }
 
     int high = 0;
@@ -840,7 +1072,9 @@ class _PortfolioMetrics {
       }
     }
 
-    final riskPosture = _overallRiskPosture(high: high, medium: medium, low: low);
+    final riskPosture = projects.isEmpty
+        ? const _RiskPosture(label: 'No data', color: Color(0xFF9CA3AF))
+        : _overallRiskPosture(high: high, medium: medium, low: low);
 
     final tagStats = <String, List<_RiskSeverity>>{};
     for (final project in projects) {
@@ -868,10 +1102,14 @@ class _PortfolioMetrics {
     }).toList(growable: false);
 
     final costBars = _buildCostBars(projects);
+    final valueBreakdowns = _buildValueBreakdowns(projects);
 
     return _PortfolioMetrics(
       projects: projects,
       projectCount: projects.length,
+      programCount: programs.length,
+      inProgramProjectCount: inProgramProjectCount,
+      independentProjectCount: independentProjectCount,
       totalValue: totalValue,
       formattedTotalValue: formattedTotalValue,
       highRiskCount: high,
@@ -882,6 +1120,12 @@ class _PortfolioMetrics {
       riskTags: riskTags,
       riskBuckets: riskBuckets,
       costBars: costBars,
+      programRollups: rollups,
+      independentProjects: independentProjects,
+      valueBreakdowns: valueBreakdowns,
+      averageProgress: averageProgress,
+      earliestStartAt: earliestStartAt,
+      lastUpdatedAt: lastUpdatedAt,
     );
   }
 }
@@ -973,6 +1217,93 @@ String _shortenLabel(String label) {
   return '${trimmed.substring(0, 10)}…';
 }
 
+String _formatPercent(double value) {
+  final percent = (value * 100).round().clamp(0, 100);
+  return '$percent%';
+}
+
+String _priorityDescriptor(int rank) {
+  switch (rank) {
+    case 1:
+      return 'Primary';
+    case 2:
+      return 'Growth';
+    case 3:
+      return 'Enablement';
+    default:
+      return 'Supporting';
+  }
+}
+
+Color _priorityColor(int rank) {
+  switch (rank) {
+    case 1:
+      return const Color(0xFF10B981);
+    case 2:
+      return const Color(0xFF3B82F6);
+    case 3:
+      return const Color(0xFF8B5CF6);
+    default:
+      return const Color(0xFF64748B);
+  }
+}
+
+List<_ValueBreakdownData> _buildValueBreakdowns(List<ProjectRecord> projects) {
+  if (projects.isEmpty) return const [];
+  final totals = <String, double>{};
+  for (final project in projects) {
+    final status = project.status.trim().isEmpty ? 'Unspecified' : project.status.trim();
+    totals[status] = (totals[status] ?? 0) + project.investmentMillions;
+  }
+  final sorted = totals.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+  return sorted.take(3).map((entry) {
+    return _ValueBreakdownData(
+      label: entry.key,
+      value: _formatMillions(entry.value),
+      color: _statusColor(entry.key),
+    );
+  }).toList(growable: false);
+}
+
+String _formatShortDate(DateTime? date) {
+  if (date == null) return '—';
+  return DateFormat('MMM d').format(date);
+}
+
+String _scopeSummary(_PortfolioMetrics metrics) {
+  if (metrics.projectCount == 0) {
+    return 'No projects in scope yet';
+  }
+  if (metrics.programCount == 0 && metrics.independentProjectCount > 0) {
+    return '${metrics.independentProjectCount} standalone project${metrics.independentProjectCount == 1 ? '' : 's'}';
+  }
+  final programLabel = '${metrics.programCount} ${metrics.programCount == 1 ? 'program' : 'programs'}';
+  final programProjectLabel = '${metrics.inProgramProjectCount} program project${metrics.inProgramProjectCount == 1 ? '' : 's'}';
+  if (metrics.independentProjectCount == 0) {
+    return '$programLabel · $programProjectLabel';
+  }
+  final independentLabel = '${metrics.independentProjectCount} standalone project${metrics.independentProjectCount == 1 ? '' : 's'}';
+  return '$programLabel · $programProjectLabel + $independentLabel';
+}
+
+String _projectSubtitle(ProjectRecord project) {
+  final solutionTitle = project.solutionTitle.trim();
+  if (solutionTitle.isNotEmpty) return solutionTitle;
+  final status = project.status.trim();
+  if (status.isNotEmpty) return status;
+  final notes = project.notes.trim();
+  if (notes.isNotEmpty) return notes;
+  return 'Independent project';
+}
+
+String _projectPhase(ProjectRecord project) {
+  final milestone = project.milestone.trim();
+  if (milestone.isNotEmpty) return milestone;
+  final status = project.status.trim();
+  if (status.isNotEmpty) return status;
+  return 'Unspecified';
+}
+
 class _CostBar extends StatelessWidget {
   const _CostBar({required this.label, required this.value, required this.height, required this.color});
   final String label, value;
@@ -995,10 +1326,17 @@ class _CostBar extends StatelessWidget {
 }
 
 class _RollUpUpdateSection extends StatelessWidget {
-  const _RollUpUpdateSection();
+  const _RollUpUpdateSection({required this.metrics});
+
+  final _PortfolioMetrics metrics;
 
   @override
   Widget build(BuildContext context) {
+    final lastUpdatedLabel = metrics.lastUpdatedAt == null
+        ? 'No updates yet'
+        : DateFormat('MMM d, h:mm a').format(metrics.lastUpdatedAt!);
+    final scopeLabel = _scopeSummary(metrics);
+
     return Container(
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFE5E7EB))),
       padding: const EdgeInsets.all(20),
@@ -1017,11 +1355,11 @@ class _RollUpUpdateSection extends StatelessWidget {
                   children: [
                     Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey.shade500),
                     const SizedBox(width: 6),
-                    const Text('Effective date', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                    const Text('Latest refresh', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
                   ],
                 ),
                 const SizedBox(height: 4),
-                const Text("Today's date at next reporting cycle", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF111827))),
+                Text(lastUpdatedLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF111827))),
                 const SizedBox(height: 12),
                 Row(
                   children: [
@@ -1031,7 +1369,7 @@ class _RollUpUpdateSection extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
-                const Text('3 programs · 5 related + 1 standalone project', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF111827))),
+                Text(scopeLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF111827))),
                 const SizedBox(height: 12),
                 Text('Once published, this roll-up becomes the live portfolio view used in steering committees, executive dashboards, and downstream project scorecards.', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
               ],

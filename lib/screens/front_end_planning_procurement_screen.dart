@@ -508,7 +508,7 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: category,
+                            initialValue: category,
                             decoration: _dialogDecoration(label: 'Category'),
                             items: categoryOptions.map((option) => DropdownMenuItem(value: option, child: Text(option))).toList(),
                             onChanged: (value) {
@@ -520,7 +520,7 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
                         const SizedBox(width: 12),
                         Expanded(
                           child: DropdownButtonFormField<_ProcurementItemStatus>(
-                            value: status,
+                            initialValue: status,
                             decoration: _dialogDecoration(label: 'Status'),
                             items: _ProcurementItemStatus.values
                                 .map((option) => DropdownMenuItem(value: option, child: Text(option.label)))
@@ -535,7 +535,7 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<_ProcurementPriority>(
-                      value: priority,
+                      initialValue: priority,
                       decoration: _dialogDecoration(label: 'Priority'),
                       items: _ProcurementPriority.values
                           .map((option) => DropdownMenuItem(value: option, child: Text(option.label)))
@@ -679,7 +679,7 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: category,
+                      initialValue: category,
                       decoration: _dialogDecoration(label: 'Category'),
                       items: categoryOptions.map((option) => DropdownMenuItem(value: option, child: Text(option))).toList(),
                       onChanged: (value) {
@@ -719,7 +719,7 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
                               children: [
                                 Switch(
                                   value: approved,
-                                  activeColor: const Color(0xFF2563EB),
+                                  activeThumbColor: const Color(0xFF2563EB),
                                   onChanged: (value) => setDialogState(() => approved = value),
                                 ),
                                 const Text('Approved'),
@@ -729,7 +729,7 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
                               children: [
                                 Switch(
                                   value: preferred,
-                                  activeColor: const Color(0xFF2563EB),
+                                  activeThumbColor: const Color(0xFF2563EB),
                                   onChanged: (value) => setDialogState(() => preferred = value),
                                 ),
                                 const Text('Preferred'),
@@ -826,7 +826,7 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: category,
+                            initialValue: category,
                             decoration: _dialogDecoration(label: 'Category'),
                             items: categoryOptions.map((option) => DropdownMenuItem(value: option, child: Text(option))).toList(),
                             onChanged: (value) {
@@ -928,7 +928,7 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<_RfqStatus>(
-                            value: status,
+                            initialValue: status,
                             decoration: _dialogDecoration(label: 'Status'),
                             items: _RfqStatus.values.map((option) => DropdownMenuItem(value: option, child: Text(option.label))).toList(),
                             onChanged: (value) {
@@ -940,7 +940,7 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
                         const SizedBox(width: 12),
                         Expanded(
                           child: DropdownButtonFormField<_ProcurementPriority>(
-                            value: priority,
+                            initialValue: priority,
                             decoration: _dialogDecoration(label: 'Priority'),
                             items: _ProcurementPriority.values
                                 .map((option) => DropdownMenuItem(value: option, child: Text(option.label)))
@@ -1045,7 +1045,7 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: category,
+                            initialValue: category,
                             decoration: _dialogDecoration(label: 'Category'),
                             items: categoryOptions.map((option) => DropdownMenuItem(value: option, child: Text(option))).toList(),
                             onChanged: (value) {
@@ -1128,7 +1128,7 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<_PurchaseOrderStatus>(
-                      value: status,
+                      initialValue: status,
                       decoration: _dialogDecoration(label: 'Status'),
                       items: _PurchaseOrderStatus.values
                           .map((option) => DropdownMenuItem(value: option, child: Text(option.label)))

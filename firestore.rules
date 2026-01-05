@@ -11,12 +11,19 @@ service cloud.firestore {
     function isOwner(ownerId) {
       return isAuthenticated() && request.auth.uid == ownerId;
     }
+
+    // Helper function to check if user has admin privileges
+    function isAdmin() {
+      return isAuthenticated()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
     
     // Users collection
     match /users/{userId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.auth.uid == userId;
-      allow update, delete: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAuthenticated() && isAdmin();
     }
     
     // Projects collection
@@ -25,31 +32,32 @@ service cloud.firestore {
       allow create: if isAuthenticated() && request.auth.uid == request.resource.data.ownerId;
       allow update: if isAuthenticated() && (
         request.auth.uid == resource.data.ownerId ||
-        request.auth.uid in resource.data.get('teamMembers', [])
+        request.auth.uid in resource.data.get('teamMembers', []) ||
+        isAdmin()
       );
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.ownerId;
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.ownerId || isAdmin());
     }
     
     // Programs collection
     match /programs/{programId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.auth.uid == request.resource.data.ownerId;
-      allow update: if isAuthenticated() && request.auth.uid == resource.data.ownerId;
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.ownerId;
+      allow update: if isAuthenticated() && (request.auth.uid == resource.data.ownerId || isAdmin());
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.ownerId || isAdmin());
     }
     
     // Portfolios collection
     match /portfolios/{portfolioId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.auth.uid == request.resource.data.ownerId;
-      allow update: if isAuthenticated() && request.auth.uid == resource.data.ownerId;
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.ownerId;
+      allow update: if isAuthenticated() && (request.auth.uid == resource.data.ownerId || isAdmin());
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.ownerId || isAdmin());
     }
     
     // App content collection (for admin content management)
     match /app_content/{contentId} {
       allow read: if true; // Public read access
-      allow write: if isAuthenticated(); // Authenticated users can write
+      allow write: if isAdmin(); // Admin-only write access
     }
     
     // Change requests collection
@@ -67,18 +75,25 @@ service cloud.firestore {
       allow update: if isAuthenticated();
       allow delete: if isAuthenticated();
     }
-    
+
     // Subscriptions collection - users can only read their own subscriptions
     // Users can create trial subscriptions, other writes handled by Cloud Functions
     match /subscriptions/{subscriptionId} {
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
       // Allow users to create trial subscriptions for themselves
-      allow create: if isAuthenticated() 
-        && request.resource.data.userId == request.auth.uid
-        && request.resource.data.isTrial == true
-        && request.resource.data.status == 'trial';
-      allow update: if false; // Only Cloud Functions can update subscriptions
-      allow delete: if false; // Only Cloud Functions can delete subscriptions
+      allow create: if isAuthenticated() && (
+        (request.resource.data.userId == request.auth.uid
+          && request.resource.data.isTrial == true
+          && request.resource.data.status == 'trial')
+        || isAdmin()
+      );
+      allow update: if isAdmin(); // Admin dashboard can update subscriptions
+      allow delete: if isAdmin(); // Admin dashboard can delete subscriptions
+    }
+
+    // Coupons collection (admin only)
+    match /coupons/{couponId} {
+      allow read, write: if isAdmin();
     }
     
     // Default deny all other collections

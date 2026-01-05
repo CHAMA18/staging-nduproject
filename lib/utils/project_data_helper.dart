@@ -342,7 +342,14 @@ class ProjectDataHelper {
     }
 
     final ssher = data.ssherData;
-    if (ssher.safetyItems.isNotEmpty) {
+    if (ssher.entries.isNotEmpty) {
+      final items = ssher.entries.map((entry) {
+        final concern = entry.concern.trim().isEmpty ? 'SSHER Item' : entry.concern.trim();
+        final category = entry.category.trim();
+        return category.isEmpty ? concern : '$concern ($category)';
+      });
+      wList('SSHER Items', items);
+    } else if (ssher.safetyItems.isNotEmpty) {
       final items = ssher.safetyItems.map((s) {
         final title = s.title.trim().isEmpty ? 'Safety Item' : s.title.trim();
         final category = s.category.trim();

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:ndu_project/screens/ssher_components.dart';
 import 'package:ndu_project/screens/ssher_add_safety_item_dialog.dart';
 import 'package:ndu_project/screens/ssher_safety_full_view.dart';
+import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
@@ -9,6 +11,10 @@ import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/content_text.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
+
+enum _SsherCategory { safety, security, health, environment, regulatory }
+
+String _categoryKey(_SsherCategory category) => category.name;
 
 class SsherStackedScreen extends StatefulWidget {
   const SsherStackedScreen({super.key});
@@ -25,27 +31,40 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
   final Color _regulatoryAccent = const Color(0xFF8E24AA);
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  late List<List<Widget>> _safetyRows;
-  late List<List<Widget>> _securityRows;
-  late List<List<Widget>> _healthRows;
-  late List<List<Widget>> _environmentRows;
-  late List<List<Widget>> _regulatoryRows;
+  late List<SsherEntry> _safetyEntries;
+  late List<SsherEntry> _securityEntries;
+  late List<SsherEntry> _healthEntries;
+  late List<SsherEntry> _environmentEntries;
+  late List<SsherEntry> _regulatoryEntries;
 
   @override
   void initState() {
     super.initState();
     // Initialize all SSHER sections with NO default data.
     // Users can add items via the "Add ... Item" actions.
-    _safetyRows = [];
-    _securityRows = [];
-    _healthRows = [];
-    _environmentRows = [];
-    _regulatoryRows = [];
+    _safetyEntries = [];
+    _securityEntries = [];
+    _healthEntries = [];
+    _environmentEntries = [];
+    _regulatoryEntries = [];
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadSavedEntries());
   }
 
-  List<Widget> _buildRow({required int index, required String department, required String member, required String concern, required String riskLevel, required String mitigation}) {
+  void _loadSavedEntries() {
+    final ssherData = ProjectDataHelper.getData(context).ssherData;
+    final entries = ssherData.entries;
+    setState(() {
+      _safetyEntries = entries.where((e) => e.category == _categoryKey(_SsherCategory.safety)).toList();
+      _securityEntries = entries.where((e) => e.category == _categoryKey(_SsherCategory.security)).toList();
+      _healthEntries = entries.where((e) => e.category == _categoryKey(_SsherCategory.health)).toList();
+      _environmentEntries = entries.where((e) => e.category == _categoryKey(_SsherCategory.environment)).toList();
+      _regulatoryEntries = entries.where((e) => e.category == _categoryKey(_SsherCategory.regulatory)).toList();
+    });
+  }
+
+  List<Widget> _buildRow({required int index, required SsherEntry entry}) {
     Widget risk;
-    switch (riskLevel) {
+    switch (entry.riskLevel) {
       case 'Low':
         risk = const RiskBadge.low();
         break;
@@ -58,13 +77,69 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
 
     return [
       Text('$index', style: const TextStyle(fontSize: 12)),
-      Text(department, style: const TextStyle(fontSize: 13)),
-      Text(member, style: const TextStyle(fontSize: 13)),
-      Text(concern, style: const TextStyle(fontSize: 13, color: Colors.black87), overflow: TextOverflow.ellipsis),
+      Text(entry.department, style: const TextStyle(fontSize: 13)),
+      Text(entry.teamMember, style: const TextStyle(fontSize: 13)),
+      Text(entry.concern, style: const TextStyle(fontSize: 13, color: Colors.black87), overflow: TextOverflow.ellipsis),
       risk,
-      Text(mitigation, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
+      Text(entry.mitigation, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
       const ActionButtons(),
     ];
+  }
+
+  List<List<Widget>> _rowsFor(List<SsherEntry> entries) {
+    return entries.asMap().entries.map((entry) {
+      final index = entry.key + 1;
+      return _buildRow(index: index, entry: entry.value);
+    }).toList();
+  }
+
+  List<SsherEntry> _entriesForCategory(_SsherCategory category) {
+    switch (category) {
+      case _SsherCategory.safety:
+        return _safetyEntries;
+      case _SsherCategory.security:
+        return _securityEntries;
+      case _SsherCategory.health:
+        return _healthEntries;
+      case _SsherCategory.environment:
+        return _environmentEntries;
+      case _SsherCategory.regulatory:
+        return _regulatoryEntries;
+    }
+  }
+
+  List<SsherEntry> _allEntries() {
+    return [
+      ..._safetyEntries,
+      ..._securityEntries,
+      ..._healthEntries,
+      ..._environmentEntries,
+      ..._regulatoryEntries,
+    ];
+  }
+
+  Future<void> _saveEntries() async {
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'ssher',
+      dataUpdater: (data) => data.copyWith(
+        ssherData: data.ssherData.copyWith(entries: _allEntries()),
+      ),
+      showSnackbar: false,
+    );
+  }
+
+  Future<void> _addEntry(_SsherCategory category, SsherItemInput input) async {
+    final entry = SsherEntry(
+      category: _categoryKey(category),
+      department: input.department,
+      teamMember: input.teamMember,
+      concern: input.concern,
+      riskLevel: input.riskLevel,
+      mitigation: input.mitigation,
+    );
+    setState(() => _entriesForCategory(category).add(entry));
+    await _saveEntries();
   }
 
   Future<void> _onAddSafetyItem() async {
@@ -79,17 +154,7 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
       ),
     );
     if (input == null) return;
-    final nextIndex = _safetyRows.length + 1;
-    setState(() {
-      _safetyRows.add(_buildRow(
-        index: nextIndex,
-        department: input.department,
-        member: input.teamMember,
-        concern: input.concern,
-        riskLevel: input.riskLevel,
-        mitigation: input.mitigation,
-      ));
-    });
+    await _addEntry(_SsherCategory.safety, input);
   }
 
   Future<void> _onAddSecurityItem() async {
@@ -104,17 +169,7 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
       ),
     );
     if (input == null) return;
-    final nextIndex = _securityRows.length + 1;
-    setState(() {
-      _securityRows.add(_buildRow(
-        index: nextIndex,
-        department: input.department,
-        member: input.teamMember,
-        concern: input.concern,
-        riskLevel: input.riskLevel,
-        mitigation: input.mitigation,
-      ));
-    });
+    await _addEntry(_SsherCategory.security, input);
   }
 
   Future<void> _onAddHealthItem() async {
@@ -129,17 +184,7 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
       ),
     );
     if (input == null) return;
-    final nextIndex = _healthRows.length + 1;
-    setState(() {
-      _healthRows.add(_buildRow(
-        index: nextIndex,
-        department: input.department,
-        member: input.teamMember,
-        concern: input.concern,
-        riskLevel: input.riskLevel,
-        mitigation: input.mitigation,
-      ));
-    });
+    await _addEntry(_SsherCategory.health, input);
   }
 
   Future<void> _onAddEnvironmentItem() async {
@@ -154,17 +199,7 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
       ),
     );
     if (input == null) return;
-    final nextIndex = _environmentRows.length + 1;
-    setState(() {
-      _environmentRows.add(_buildRow(
-        index: nextIndex,
-        department: input.department,
-        member: input.teamMember,
-        concern: input.concern,
-        riskLevel: input.riskLevel,
-        mitigation: input.mitigation,
-      ));
-    });
+    await _addEntry(_SsherCategory.environment, input);
   }
 
   Future<void> _onAddRegulatoryItem() async {
@@ -179,17 +214,7 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
       ),
     );
     if (input == null) return;
-    final nextIndex = _regulatoryRows.length + 1;
-    setState(() {
-      _regulatoryRows.add(_buildRow(
-        index: nextIndex,
-        department: input.department,
-        member: input.teamMember,
-        concern: input.concern,
-        riskLevel: input.riskLevel,
-        mitigation: input.mitigation,
-      ));
-    });
+    await _addEntry(_SsherCategory.regulatory, input);
   }
 
   @override
@@ -291,30 +316,20 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
           subtitle: 'Workplace safety protocols and risk management',
           detailsPlaceholder:
               'Comprehensive safety protocols including personal protective equipment requirements, emergency evacuation procedures, incident reporting systems , and regular safety training programs for all personnel .',
-          itemsLabel: '${_safetyRows.length} items',
+          itemsLabel: '${_safetyEntries.length} items',
           addButtonLabel: 'Add Safety Item',
           columns: const ['#', 'Department', 'Team Member', 'Safety Concern', 'Risk Level', 'Mitigation Strategy', 'Actions'],
-          rows: _safetyRows,
+          rows: _rowsFor(_safetyEntries),
           onFullView: () {
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => SafetyFullViewScreen(
                   columns: const ['#', 'Department', 'Team Member', 'Safety Concern', 'Risk Level', 'Mitigation Strategy', 'Actions'],
-                  initialRows: _safetyRows,
+                  initialRows: _rowsFor(_safetyEntries),
                   accentColor: _safetyAccent,
                   detailsText: 'Comprehensive safety protocols including personal protective equipment requirements, emergency evacuation procedures, incident reporting systems , and regular safety training programs for all personnel .',
                   onAddItem: (input) {
-                    final nextIndex = _safetyRows.length + 1;
-                    setState(() {
-                      _safetyRows.add(_buildRow(
-                        index: nextIndex,
-                        department: input.department,
-                        member: input.teamMember,
-                        concern: input.concern,
-                        riskLevel: input.riskLevel,
-                        mitigation: input.mitigation,
-                      ));
-                    });
+                    _addEntry(_SsherCategory.safety, input);
                   },
                 ),
               ),
@@ -331,10 +346,10 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
           subtitle: 'Physical and cyber security measures',
           detailsPlaceholder:
               'Multi- layered security approach including physical access controls, cybersecurity measures, surveillance systems, and incident response',
-          itemsLabel: '${_securityRows.length} items',
+          itemsLabel: '${_securityEntries.length} items',
           addButtonLabel: 'Add Security Item',
           columns: const ['#', 'Department', 'Team Member', 'Security Concern', 'Risk Level', 'Mitigation Strategy', 'Actions'],
-          rows: _securityRows,
+          rows: _rowsFor(_securityEntries),
           onAdd: _onAddSecurityItem,
         ),
 
@@ -346,10 +361,10 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
           subtitle: 'Occupational health and wellness programs',
           detailsPlaceholder:
               'Multi- layered security approach including physical access controls, cybersecurity measures, surveillance systems, and incident response',
-          itemsLabel: '${_healthRows.length} items',
+          itemsLabel: '${_healthEntries.length} items',
           addButtonLabel: 'Add Health Item',
           columns: const ['#', 'Department', 'Team Member', 'Health Concern', 'Risk Level', 'Mitigation Strategy', 'Actions'],
-          rows: _healthRows,
+          rows: _rowsFor(_healthEntries),
           onAdd: _onAddHealthItem,
         ),
 
@@ -361,10 +376,10 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
           subtitle: 'Environmental sustainability and compliance',
           detailsPlaceholder:
               'Environmental stewardship program including waste reduction initiatives, energy efficiency measures, carbon footprint monitoring, and sustainable resource management. Regular environmental impact assessments ensure compliance with regulations .',
-          itemsLabel: '${_environmentRows.length} items',
+          itemsLabel: '${_environmentEntries.length} items',
           addButtonLabel: 'Add Environment Item',
           columns: const ['#', 'Department', 'Team Member', 'Environmental Concern', 'Risk Level', 'Mitigation Strategy', 'Actions'],
-          rows: _environmentRows,
+          rows: _rowsFor(_environmentEntries),
           onAdd: _onAddEnvironmentItem,
         ),
 
@@ -376,10 +391,10 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
           subtitle: 'Compliance and regulatory requirements',
           detailsPlaceholder:
               'EComprehensive regulatory compliance framework ensuring adherence to industry standards, legal requirements, and best practices. Regular audits documentation',
-          itemsLabel: '${_regulatoryRows.length} items',
+          itemsLabel: '${_regulatoryEntries.length} items',
           addButtonLabel: 'Add Regulatory Item',
           columns: const ['#', 'Department', 'Team Member', 'Regulatory Requirement', 'Risk Level', 'Mitigation Strategy', 'Actions'],
-          rows: _regulatoryRows,
+          rows: _rowsFor(_regulatoryEntries),
           onAdd: _onAddRegulatoryItem,
         ),
 

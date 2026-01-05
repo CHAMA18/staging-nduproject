@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/models/app_content_model.dart';
+import 'package:ndu_project/providers/app_content_provider.dart';
 import 'package:ndu_project/services/app_content_service.dart';
-import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
-import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
+import 'package:ndu_project/widgets/admin_edit_toggle.dart';
+import 'package:provider/provider.dart';
 
 class AdminContentScreen extends StatefulWidget {
   const AdminContentScreen({super.key});
@@ -25,13 +26,12 @@ class _AdminContentScreenState extends State<AdminContentScreen> {
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
-    final sidebarWidth = AppBreakpoints.sidebarWidth(context);
     final canPop = Navigator.of(context).canPop();
+    final canEdit = AdminEditToggle.isAdmin();
 
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: Colors.white,
-      drawer: isMobile ? const Drawer(child: InitiationLikeSidebar(activeItemLabel: 'Settings')) : null,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(84),
         child: SafeArea(
@@ -40,15 +40,6 @@ class _AdminContentScreenState extends State<AdminContentScreen> {
             padding: EdgeInsets.fromLTRB(isMobile ? 20 : 48, 20, isMobile ? 20 : 48, 0),
             child: Row(
               children: [
-                if (isMobile) ...[
-                  IconButton(
-                    onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-                    icon: const Icon(Icons.menu),
-                    color: Colors.black,
-                    tooltip: 'Menu',
-                  ),
-                  const SizedBox(width: 4),
-                ],
                 if (canPop) ...[
                   IconButton(
                     onPressed: () => Navigator.of(context).maybePop(),
@@ -81,42 +72,62 @@ class _AdminContentScreenState extends State<AdminContentScreen> {
       ),
       body: Stack(
         children: [
-          Row(
-            children: [
-              if (!isMobile)
-                DraggableSidebar(
-                  openWidth: sidebarWidth,
-                  child: const InitiationLikeSidebar(activeItemLabel: 'Settings'),
-                ),
-              Expanded(
-                child: StreamBuilder<List<AppContent>>(
-                  stream: AppContentService.watchContent(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
+          StreamBuilder<List<AppContent>>(
+            stream: AppContentService.watchContent(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                            const SizedBox(height: 16),
-                            Text('Error: ${snapshot.error}'),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: () => setState(() {}),
-                              child: const Text('Retry'),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
+              if (snapshot.hasError) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                      const SizedBox(height: 16),
+                      Text('Error: ${snapshot.error}'),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => setState(() {}),
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                );
+              }
 
-                    final content = snapshot.data ?? [];
-                    if (content.isEmpty) {
-                      return Center(
+              final content = snapshot.data ?? [];
+
+              // Extract unique categories
+              final categories = content.isEmpty
+                  ? _categories
+                  : ['all', ...content.map((c) => c.category).toSet().toList()..sort()];
+              if (content.isNotEmpty && _categories.length != categories.length) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  setState(() => _categories = categories);
+                });
+              }
+
+              final filteredContent = _selectedCategory == 'all' ? content : content.where((c) => c.category == _selectedCategory).toList();
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(isMobile ? 20 : 48, 20, isMobile ? 20 : 48, 12),
+                    child: Consumer<AppContentProvider>(
+                      builder: (context, provider, _) => _StaticEditBanner(
+                        isEnabled: provider.isStaticEditMode,
+                        onToggle: provider.toggleStaticEditMode,
+                        isMobile: isMobile,
+                        canEdit: canEdit,
+                      ),
+                    ),
+                  ),
+                  if (content.isEmpty)
+                    Expanded(
+                      child: Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -139,43 +150,28 @@ class _AdminContentScreenState extends State<AdminContentScreen> {
                             ),
                           ],
                         ),
-                      );
-                    }
-
-                    // Extract unique categories
-                    final categories = ['all', ...content.map((c) => c.category).toSet().toList()..sort()];
-                    if (_categories.length != categories.length) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        setState(() => _categories = categories);
-                      });
-                    }
-
-                    final filteredContent = _selectedCategory == 'all' ? content : content.where((c) => c.category == _selectedCategory).toList();
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(isMobile ? 20 : 48, 20, isMobile ? 20 : 48, 16),
-                          child: _buildCategoryFilter(categories),
+                      ),
+                    )
+                  else ...[
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(isMobile ? 20 : 48, 8, isMobile ? 20 : 48, 16),
+                      child: _buildCategoryFilter(categories),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        padding: EdgeInsets.fromLTRB(isMobile ? 20 : 48, 0, isMobile ? 20 : 48, 48),
+                        itemCount: filteredContent.length,
+                        itemBuilder: (context, index) => _ContentCard(
+                          content: filteredContent[index],
+                          onEdit: () => _showEditContentDialog(filteredContent[index]),
+                          onDelete: () => _deleteContent(filteredContent[index]),
                         ),
-                        Expanded(
-                          child: ListView.builder(
-                            padding: EdgeInsets.fromLTRB(isMobile ? 20 : 48, 0, isMobile ? 20 : 48, 48),
-                            itemCount: filteredContent.length,
-                            itemBuilder: (context, index) => _ContentCard(
-                              content: filteredContent[index],
-                              onEdit: () => _showEditContentDialog(filteredContent[index]),
-                              onDelete: () => _deleteContent(filteredContent[index]),
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ],
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
           ),
           const KazAiChatBubble(),
         ],
@@ -300,6 +296,95 @@ class _AdminContentScreenState extends State<AdminContentScreen> {
         );
       }
     }
+  }
+}
+
+class _StaticEditBanner extends StatelessWidget {
+  const _StaticEditBanner({
+    required this.isEnabled,
+    required this.onToggle,
+    required this.isMobile,
+    required this.canEdit,
+  });
+
+  final bool isEnabled;
+  final VoidCallback onToggle;
+  final bool isMobile;
+  final bool canEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = isEnabled ? Colors.green : const Color(0xFFFFC107);
+    final effectiveAccent = canEdit ? accent : Colors.grey;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: effectiveAccent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: effectiveAccent.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: effectiveAccent.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(isEnabled ? Icons.edit_note : Icons.edit_off, color: effectiveAccent, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isEnabled ? 'Static Edit Mode is On' : 'Static Edit Mode',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  isEnabled
+                      ? 'Go to any page and click highlighted text to edit local, static copy.'
+                      : 'Enable to edit static text across pages without changing backend content.',
+                  style: TextStyle(color: Colors.grey[700], height: 1.4),
+                ),
+                if (!canEdit) ...[
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Admin access required to enable static edit mode.',
+                    style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (!isMobile) ...[
+            const SizedBox(width: 12),
+            ElevatedButton.icon(
+              onPressed: canEdit ? onToggle : null,
+              icon: Icon(isEnabled ? Icons.check : Icons.edit, size: 18),
+              label: Text(isEnabled ? 'Enabled' : 'Enable'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: accent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              ),
+            ),
+          ] else ...[
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: canEdit ? onToggle : null,
+              icon: Icon(isEnabled ? Icons.check_circle : Icons.edit, color: effectiveAccent),
+              tooltip: isEnabled ? 'Disable static edit mode' : 'Enable static edit mode',
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 

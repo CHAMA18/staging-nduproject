@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ndu_project/providers/app_content_provider.dart';
 import 'package:ndu_project/models/app_content_model.dart';
 import 'package:ndu_project/services/app_content_service.dart';
+import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:provider/provider.dart';
 
 /// Widget that displays content from Firestore with real-time updates
@@ -35,7 +36,7 @@ class ContentText extends StatelessWidget {
   Widget build(BuildContext context) {
     // Use Selector to only rebuild when this specific content key changes
     return Selector<AppContentProvider, String>(
-      selector: (_, provider) => provider.getContent(contentKey, fallback: fallback),
+      selector: (_, provider) => provider.getDisplayContent(contentKey, fallback: fallback),
       builder: (_, content, __) => Text(
         content,
         style: style,
@@ -64,7 +65,7 @@ class ContentBuilder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final contentProvider = Provider.of<AppContentProvider>(context);
-    return builder(context, contentProvider.getContent);
+    return builder(context, contentProvider.getDisplayContent);
   }
 }
 
@@ -100,18 +101,20 @@ class EditableContentText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Use Selector to only rebuild when edit mode or content changes
-    return Selector<AppContentProvider, ({bool isEditMode, String content})>(
+    return Selector<AppContentProvider, ({bool isEditMode, bool isStaticEditMode, String content})>(
       selector: (_, provider) => (
         isEditMode: provider.isEditMode,
-        content: provider.getContent(contentKey, fallback: fallback),
+        isStaticEditMode: provider.isStaticEditMode,
+        content: provider.getDisplayContent(contentKey, fallback: fallback),
       ),
-      builder: (context, data, _) => _buildContent(context, data.isEditMode, data.content),
+      builder: (context, data, _) => _buildContent(context, data.isEditMode || data.isStaticEditMode, data.isStaticEditMode, data.content),
     );
   }
 
-  Widget _buildContent(BuildContext context, bool isEditMode, String content) {
+  Widget _buildContent(BuildContext context, bool isEditMode, bool isStaticEditMode, String content) {
+    final canEdit = AdminEditToggle.isAdmin();
 
-    if (!isEditMode) {
+    if (!isEditMode || !canEdit) {
       return Text(
         content,
         style: style,
@@ -122,14 +125,15 @@ class EditableContentText extends StatelessWidget {
     }
 
     // In edit mode, make it clickable with visual indicator
+    final accent = isStaticEditMode ? const Color(0xFFB45309) : Colors.blue;
     return InkWell(
-      onTap: () => _showEditDialog(context),
+      onTap: () => _showEditDialog(context, isStaticEditMode: isStaticEditMode),
       borderRadius: BorderRadius.circular(4),
       child: Container(
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.blue.withValues(alpha: 0.3), width: 1),
+          border: Border.all(color: accent.withValues(alpha: 0.3), width: 1),
           borderRadius: BorderRadius.circular(4),
-          color: Colors.blue.withValues(alpha: 0.05),
+          color: accent.withValues(alpha: 0.05),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         child: Row(
@@ -145,23 +149,25 @@ class EditableContentText extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 4),
-            Icon(Icons.edit, size: 14, color: Colors.blue.withValues(alpha: 0.7)),
+            Icon(Icons.edit, size: 14, color: accent.withValues(alpha: 0.7)),
           ],
         ),
       ),
     );
   }
 
-  void _showEditDialog(BuildContext context) {
+  void _showEditDialog(BuildContext context, {required bool isStaticEditMode}) {
     final provider = context.read<AppContentProvider>();
     showDialog(
       context: context,
       builder: (ctx) => _ContentEditDialog(
         contentKey: contentKey,
-        currentValue: provider.getContent(contentKey, fallback: fallback),
+        currentValue: provider.getDisplayContent(contentKey, fallback: fallback),
         fallback: fallback,
         category: category,
         provider: provider,
+        isStaticEditMode: isStaticEditMode,
+        hasLocalOverride: provider.hasLocalOverride(contentKey),
       ),
     );
   }
@@ -175,6 +181,8 @@ class _ContentEditDialog extends StatefulWidget {
     required this.fallback,
     required this.category,
     required this.provider,
+    required this.isStaticEditMode,
+    required this.hasLocalOverride,
   });
 
   final String contentKey;
@@ -182,6 +190,8 @@ class _ContentEditDialog extends StatefulWidget {
   final String fallback;
   final String category;
   final AppContentProvider provider;
+  final bool isStaticEditMode;
+  final bool hasLocalOverride;
 
   @override
   State<_ContentEditDialog> createState() => _ContentEditDialogState();
@@ -206,7 +216,7 @@ class _ContentEditDialogState extends State<_ContentEditDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Edit Content'),
+      title: Text(widget.isStaticEditMode ? 'Edit Static Content' : 'Edit Content'),
       content: SizedBox(
         width: 500,
         child: Column(
@@ -216,6 +226,13 @@ class _ContentEditDialogState extends State<_ContentEditDialog> {
             Text('Key: ${widget.contentKey}', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
             const SizedBox(height: 8),
             Text('Category: ${widget.category}', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+            if (widget.isStaticEditMode) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Static edits are stored locally on this device and do not sync to the backend.',
+                style: TextStyle(color: Colors.black54, fontSize: 12),
+              ),
+            ],
             const SizedBox(height: 16),
             TextField(
               controller: _controller,
@@ -234,6 +251,12 @@ class _ContentEditDialogState extends State<_ContentEditDialog> {
           onPressed: _isSaving ? null : () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
+        if (widget.isStaticEditMode && widget.hasLocalOverride)
+          TextButton(
+            onPressed: _isSaving ? null : _resetOverride,
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+            child: const Text('Reset'),
+          ),
         ElevatedButton(
           onPressed: _isSaving ? null : _saveContent,
           child: _isSaving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Save'),
@@ -254,8 +277,18 @@ class _ContentEditDialogState extends State<_ContentEditDialog> {
     setState(() => _isSaving = true);
 
     try {
+      if (widget.isStaticEditMode) {
+        await widget.provider.saveStaticOverride(widget.contentKey, newValue);
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Static content updated on this device')),
+          );
+        }
+        return;
+      }
+
       // Check if content exists in Firestore
-      final allContent = widget.provider.contentCache;
       final existingId = await _findContentId(widget.contentKey);
 
       if (existingId != null) {
@@ -300,6 +333,21 @@ class _ContentEditDialogState extends State<_ContentEditDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error saving content: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _resetOverride() async {
+    setState(() => _isSaving = true);
+    try {
+      await widget.provider.removeStaticOverride(widget.contentKey);
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Static override removed')),
         );
       }
     } finally {

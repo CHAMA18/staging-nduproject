@@ -4,7 +4,24 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 
 const db = admin.firestore();
-const APP_BASE_URL = 'https://ndu-d3f60.web.app';
+const runtimeConfig = typeof functions.config === 'function' ? functions.config() : {};
+const appConfig = runtimeConfig.app || {};
+const configuredBaseUrl = appConfig.base_url || appConfig.baseUrl || '';
+const configAllowedOrigins = appConfig.allowed_origins || appConfig.allowedOrigins || '';
+const envAllowedOrigins = process.env.APP_ALLOWED_ORIGINS || '';
+const APP_BASE_URL = process.env.APP_BASE_URL || configuredBaseUrl || 'https://ndu-d3f60.web.app';
+const EXTRA_ALLOWED_ORIGINS = [configAllowedOrigins, envAllowedOrigins]
+  .flatMap((value) => value.split(','))
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const CORS_ALLOWED_ORIGINS = [
+  /^(http|https):\/\/localhost(:\d+)?$/,
+  /^(http|https):\/\/127\.0\.0\.1(:\d+)?$/,
+  /\.web\.app$/,
+  /\.firebaseapp\.com$/,
+  APP_BASE_URL,
+  ...EXTRA_ALLOWED_ORIGINS
+];
 const FX_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const fxCache = { usdToNgn: null, fetchedAt: 0 };
 
@@ -33,15 +50,8 @@ async function verifyAuthToken(req) {
  * Set CORS headers for response
  */
 function setCorsHeaders(req, res) {
-  const allowedOrigins = [
-    /^(http|https):\/\/localhost(:\d+)?$/,
-    /^(http|https):\/\/127\.0\.0\.1(:\d+)?$/,
-    /\.web\.app$/,
-    /\.firebaseapp\.com$/
-  ];
-  
   const origin = req.headers.origin;
-  const isAllowed = allowedOrigins.some(allowed => 
+  const isAllowed = origin && CORS_ALLOWED_ORIGINS.some((allowed) =>
     typeof allowed === 'string' ? allowed === origin : allowed.test(origin)
   );
   

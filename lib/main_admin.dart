@@ -4,6 +4,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:ndu_project/firebase_options.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/routing/app_router.dart';
+import 'package:ndu_project/providers/app_content_provider.dart';
+import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:provider/provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -92,21 +95,35 @@ class AdminApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'NDU Project - Admin Dashboard',
-      debugShowCheckedModeBanner: false,
-      theme: lightTheme,
-      darkTheme: darkTheme,
-      themeMode: ThemeMode.system,
-      routerConfig: AppRouter.admin,
-      builder: (context, child) {
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(boldText: false),
-          child: child ?? const SizedBox.shrink(),
-        );
-      },
-      checkerboardRasterCacheImages: false,
-      checkerboardOffscreenLayers: false,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ProjectDataProvider()),
+        ChangeNotifierProvider(create: (_) => AppContentProvider()..watchContent()..loadLocalOverrides()),
+      ],
+      child: Builder(
+        builder: (context) {
+          final projectProvider = Provider.of<ProjectDataProvider>(context, listen: false);
+          return ProjectDataInherited(
+            provider: projectProvider,
+            child: MaterialApp.router(
+              title: 'NDU Project - Admin Dashboard',
+              debugShowCheckedModeBanner: false,
+              theme: lightTheme,
+              darkTheme: darkTheme,
+              themeMode: ThemeMode.system,
+              routerConfig: AppRouter.admin,
+              builder: (context, child) {
+                return MediaQuery(
+                  data: MediaQuery.of(context).copyWith(boldText: false),
+                  child: child ?? const SizedBox.shrink(),
+                );
+              },
+              checkerboardRasterCacheImages: false,
+              checkerboardOffscreenLayers: false,
+            ),
+          );
+        },
+      ),
     );
   }
 }

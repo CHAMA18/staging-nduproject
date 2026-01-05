@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
@@ -24,12 +26,27 @@ class _IssueManagementScreenState extends State<IssueManagementScreen> {
 
   final List<_IssueMetric> _metrics = const [];
   final List<_MilestoneIssues> _milestones = const [];
-  final List<_IssueLogEntry> _logEntries = const [];
+
+  Future<void> _handleNewIssue() async {
+    final entry = await showDialog<IssueLogItem>(
+      context: context,
+      builder: (dialogContext) => const _NewIssueDialog(),
+    );
+    if (entry == null) return;
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'issue_management',
+      dataUpdater: (data) => data.copyWith(
+        issueLogItems: [...data.issueLogItems, entry],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final bool isMobile = AppBreakpoints.isMobile(context);
     final double horizontalPadding = isMobile ? 20 : 36;
+    final issueItems = ProjectDataHelper.getData(context).issueLogItems;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -49,7 +66,10 @@ class _IssueManagementScreenState extends State<IssueManagementScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _TopUtilityBar(onBack: () => Navigator.maybePop(context)),
+                        _TopUtilityBar(
+                          onBack: () => Navigator.maybePop(context),
+                          onAddIssue: _handleNewIssue,
+                        ),
                         const SizedBox(height: 24),
                         const PlanningAiNotesCard(
                           title: 'AI Notes',
@@ -69,7 +89,7 @@ class _IssueManagementScreenState extends State<IssueManagementScreen> {
                           onFilterChanged: (value) => setState(() => _selectedFilter = value),
                         ),
                         const SizedBox(height: 24),
-                        _ProjectIssuesLogCard(entries: _logEntries),
+                        _ProjectIssuesLogCard(entries: issueItems),
                         const SizedBox(height: 80),
                       ],
                     ),
@@ -86,9 +106,10 @@ class _IssueManagementScreenState extends State<IssueManagementScreen> {
 }
 
 class _TopUtilityBar extends StatelessWidget {
-  const _TopUtilityBar({required this.onBack});
+  const _TopUtilityBar({required this.onBack, required this.onAddIssue});
 
   final VoidCallback onBack;
+  final VoidCallback onAddIssue;
 
   @override
   Widget build(BuildContext context) {
@@ -114,7 +135,7 @@ class _TopUtilityBar extends StatelessWidget {
           const SizedBox(width: 12),
           _OutlinedButton(label: 'Export', onPressed: () {}),
           const SizedBox(width: 12),
-          _YellowButton(label: 'New Project', onPressed: () {}),
+          _YellowButton(label: 'New Issue', onPressed: onAddIssue),
         ],
       ),
     );
@@ -382,7 +403,7 @@ class _IssuesByMilestoneCard extends StatelessWidget {
 class _ProjectIssuesLogCard extends StatelessWidget {
   const _ProjectIssuesLogCard({required this.entries});
 
-  final List<_IssueLogEntry> entries;
+  final List<IssueLogItem> entries;
 
   static const List<int> _columnFlex = [2, 3, 2, 2, 2, 2, 2, 2];
 
@@ -491,7 +512,7 @@ class _ProjectIssuesLogCard extends StatelessWidget {
 class _IssueLogRow extends StatelessWidget {
   const _IssueLogRow({required this.entry, required this.columnFlex});
 
-  final _IssueLogEntry entry;
+  final IssueLogItem entry;
   final List<int> columnFlex;
 
   @override
@@ -635,6 +656,178 @@ class _SectionEmptyState extends StatelessWidget {
   }
 }
 
+class _NewIssueDialog extends StatefulWidget {
+  const _NewIssueDialog();
+
+  @override
+  State<_NewIssueDialog> createState() => _NewIssueDialogState();
+}
+
+class _NewIssueDialogState extends State<_NewIssueDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _titleCtrl = TextEditingController();
+  final TextEditingController _descriptionCtrl = TextEditingController();
+  final TextEditingController _assigneeCtrl = TextEditingController();
+  final TextEditingController _dueDateCtrl = TextEditingController();
+  final TextEditingController _milestoneCtrl = TextEditingController();
+
+  final List<String> _types = const ['Scope', 'Schedule', 'Cost', 'Quality', 'Risk', 'Other'];
+  final List<String> _severities = const ['Low', 'Medium', 'High', 'Critical'];
+  final List<String> _statuses = const ['Open', 'In Progress', 'Resolved', 'Closed'];
+
+  String _selectedType = 'Scope';
+  String _selectedSeverity = 'Medium';
+  String _selectedStatus = 'Open';
+  DateTime? _selectedDate;
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _descriptionCtrl.dispose();
+    _assigneeCtrl.dispose();
+    _dueDateCtrl.dispose();
+    _milestoneCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 5),
+      initialDate: _selectedDate ?? now,
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedDate = picked;
+        _dueDateCtrl.text = _formatDate(picked);
+      });
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    String two(int value) => value.toString().padLeft(2, '0');
+    return '${date.year}-${two(date.month)}-${two(date.day)}';
+  }
+
+  String _generateId() {
+    final seed = DateTime.now().microsecondsSinceEpoch.toString();
+    return 'ISS-${seed.substring(seed.length - 4)}';
+  }
+
+  void _submit() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final entry = IssueLogItem(
+      id: _generateId(),
+      title: _titleCtrl.text.trim(),
+      description: _descriptionCtrl.text.trim(),
+      type: _selectedType,
+      severity: _selectedSeverity,
+      status: _selectedStatus,
+      assignee: _assigneeCtrl.text.trim(),
+      dueDate: _dueDateCtrl.text.trim(),
+      milestone: _milestoneCtrl.text.trim(),
+    );
+    Navigator.of(context).pop(entry);
+  }
+
+  InputDecoration _decoration(String label, {String? hint, Widget? suffixIcon}) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.35))),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.35))),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFFFD54F), width: 1.6)),
+      suffixIcon: suffixIcon,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('New Issue'),
+      content: SizedBox(
+        width: 520,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: _titleCtrl,
+                  decoration: _decoration('Title', hint: 'e.g. Data migration delay'),
+                  validator: (value) => value == null || value.trim().isEmpty ? 'Required' : null,
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedType,
+                  items: _types.map((type) => DropdownMenuItem(value: type, child: Text(type))).toList(),
+                  onChanged: (value) => setState(() => _selectedType = value ?? _selectedType),
+                  decoration: _decoration('Type'),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedSeverity,
+                  items: _severities.map((severity) => DropdownMenuItem(value: severity, child: Text(severity))).toList(),
+                  onChanged: (value) => setState(() => _selectedSeverity = value ?? _selectedSeverity),
+                  decoration: _decoration('Severity'),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedStatus,
+                  items: _statuses.map((status) => DropdownMenuItem(value: status, child: Text(status))).toList(),
+                  onChanged: (value) => setState(() => _selectedStatus = value ?? _selectedStatus),
+                  decoration: _decoration('Status'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _assigneeCtrl,
+                  decoration: _decoration('Assignee', hint: 'Owner'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _dueDateCtrl,
+                  readOnly: true,
+                  onTap: _pickDate,
+                  decoration: _decoration('Due Date', hint: 'YYYY-MM-DD', suffixIcon: const Icon(Icons.calendar_today_outlined, size: 18)),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _milestoneCtrl,
+                  decoration: _decoration('Milestone', hint: 'Related milestone'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _descriptionCtrl,
+                  minLines: 3,
+                  maxLines: 5,
+                  decoration: _decoration('Description', hint: 'Describe the issue'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        ElevatedButton(
+          onPressed: _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFFFD700),
+            foregroundColor: Colors.black,
+          ),
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
+
 class _UserChip extends StatelessWidget {
   const _UserChip({required this.name, required this.role});
 
@@ -765,28 +958,4 @@ class _MilestoneIssues {
   final String dueDate;
   final String statusLabel;
   final Color indicatorColor;
-}
-
-class _IssueLogEntry {
-  const _IssueLogEntry({
-    required this.id,
-    required this.title,
-    required this.description,
-    required this.type,
-    required this.severity,
-    required this.status,
-    required this.assignee,
-    required this.dueDate,
-    required this.milestone,
-  });
-
-  final String id;
-  final String title;
-  final String description;
-  final String type;
-  final String severity;
-  final String status;
-  final String assignee;
-  final String dueDate;
-  final String milestone;
 }

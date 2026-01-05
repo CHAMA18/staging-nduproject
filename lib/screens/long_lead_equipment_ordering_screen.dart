@@ -111,28 +111,16 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
                   ),
                   const SizedBox(height: 24),
 
-                  // Three Cards - responsive layout
-                  if (isMobile)
-                    Column(
-                      children: [
-                        _buildCategoriesCard(),
-                        const SizedBox(height: 16),
-                        _buildEquipmentTrackingCard(),
-                        const SizedBox(height: 16),
-                        _buildProcurementActionsCard(),
-                      ],
-                    )
-                  else
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: _buildCategoriesCard()),
-                        const SizedBox(width: 16),
-                        Expanded(child: _buildEquipmentTrackingCard()),
-                        const SizedBox(width: 16),
-                        Expanded(child: _buildProcurementActionsCard()),
-                      ],
-                    ),
+                  // Three Cards - stacked layout
+                  Column(
+                    children: [
+                      _buildCategoriesCard(),
+                      const SizedBox(height: 16),
+                      _buildEquipmentTrackingCard(),
+                      const SizedBox(height: 16),
+                      _buildProcurementActionsCard(),
+                    ],
+                  ),
                   const SizedBox(height: 32),
 
                   // Bottom Navigation
@@ -157,17 +145,40 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Equipment categories', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          Row(
+            children: [
+              const Expanded(
+                child: Text('Equipment categories', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              ),
+              TextButton.icon(
+                onPressed: _showCreateCategoryDialog,
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Create Item'),
+                style: TextButton.styleFrom(
+                  foregroundColor: LightModeColors.accent,
+                  padding: EdgeInsets.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  minimumSize: const Size(0, 32),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 4),
           Text('Types of items requiring early procurement', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
           const SizedBox(height: 16),
-          ..._categories.map((c) => _buildCategoryItem(c)),
+          ...List.generate(
+            _categories.length,
+            (index) => _buildCategoryItem(
+              _categories[index],
+              onModify: () => _showEditCategoryDialog(index),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildCategoryItem(_EquipmentCategory item) {
+  Widget _buildCategoryItem(_EquipmentCategory item, {required VoidCallback onModify}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
@@ -198,6 +209,16 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
               ],
             ),
           ),
+          TextButton(
+            onPressed: onModify,
+            style: TextButton.styleFrom(
+              foregroundColor: LightModeColors.accent,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              minimumSize: const Size(0, 32),
+            ),
+            child: const Text('Modify', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          ),
         ],
       ),
     );
@@ -214,7 +235,24 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Equipment tracking', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          Row(
+            children: [
+              const Expanded(
+                child: Text('Equipment tracking', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              ),
+              TextButton.icon(
+                onPressed: _showCreateEquipmentDialog,
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Create Item'),
+                style: TextButton.styleFrom(
+                  foregroundColor: LightModeColors.accent,
+                  padding: EdgeInsets.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  minimumSize: const Size(0, 32),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 4),
           Text('Current status of long-lead items', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
           const SizedBox(height: 16),
@@ -225,10 +263,17 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
               Expanded(flex: 2, child: Text('Vendor', style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500))),
               Expanded(flex: 1, child: Text('Lead time', style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500))),
               Expanded(flex: 1, child: Text('Status', style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500))),
+              Expanded(flex: 1, child: Text('Modify', style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500))),
             ],
           ),
           const Divider(height: 16),
-          ..._equipmentItems.map((e) => _buildEquipmentRow(e)),
+          ...List.generate(
+            _equipmentItems.length,
+            (index) => _buildEquipmentRow(
+              _equipmentItems[index],
+              onModify: () => _showEditEquipmentDialog(index),
+            ),
+          ),
           const SizedBox(height: 16),
           Text(
             'Track all equipment with lead times exceeding 4 weeks to ensure timely delivery.',
@@ -239,7 +284,7 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
     );
   }
 
-  Widget _buildEquipmentRow(_EquipmentItem item) {
+  Widget _buildEquipmentRow(_EquipmentItem item, {required VoidCallback onModify}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -260,6 +305,22 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
               child: Text(item.status, style: TextStyle(fontSize: 11, color: Colors.grey[700]), textAlign: TextAlign.center),
             ),
           ),
+          Expanded(
+            flex: 1,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: onModify,
+                style: TextButton.styleFrom(
+                  foregroundColor: LightModeColors.accent,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  minimumSize: const Size(0, 32),
+                ),
+                child: const Text('Modify', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -276,11 +337,34 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Procurement actions', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          Row(
+            children: [
+              const Expanded(
+                child: Text('Procurement actions', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              ),
+              TextButton.icon(
+                onPressed: _showCreateActionDialog,
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Create Item'),
+                style: TextButton.styleFrom(
+                  foregroundColor: LightModeColors.accent,
+                  padding: EdgeInsets.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  minimumSize: const Size(0, 32),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 4),
           Text('Steps to manage long-lead procurement', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
           const SizedBox(height: 16),
-          ..._actions.map((a) => _buildActionItem(a)),
+          ...List.generate(
+            _actions.length,
+            (index) => _buildActionItem(
+              _actions[index],
+              onModify: () => _showEditActionDialog(index),
+            ),
+          ),
           const SizedBox(height: 16),
           // Export button
           SizedBox(
@@ -302,7 +386,7 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
     );
   }
 
-  Widget _buildActionItem(_ProcurementAction item) {
+  Widget _buildActionItem(_ProcurementAction item, {required VoidCallback onModify}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
@@ -332,6 +416,16 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
                 Text(item.description, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
               ],
             ),
+          ),
+          TextButton(
+            onPressed: onModify,
+            style: TextButton.styleFrom(
+              foregroundColor: LightModeColors.accent,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              minimumSize: const Size(0, 32),
+            ),
+            child: const Text('Modify', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -422,6 +516,385 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
       ],
     );
   }
+
+  Future<void> _showCreateCategoryDialog() async {
+    final titleController = TextEditingController();
+    final descriptionController = TextEditingController();
+
+    final result = await showDialog<_EquipmentCategory>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Create Category'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(labelText: 'Title'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: descriptionController,
+              decoration: const InputDecoration(labelText: 'Description'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final title = titleController.text.trim();
+              if (title.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Title is required.')),
+                );
+                return;
+              }
+              final description = descriptionController.text.trim();
+              Navigator.of(dialogContext).pop(_EquipmentCategory(title, description));
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null) {
+      setState(() => _categories.add(result));
+    }
+  }
+
+  Future<void> _showEditCategoryDialog(int index) async {
+    final current = _categories[index];
+    final titleController = TextEditingController(text: current.title);
+    final descriptionController = TextEditingController(text: current.description);
+
+    final result = await showDialog<_EditResult<_EquipmentCategory>>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Modify Category'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(labelText: 'Title'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: descriptionController,
+              decoration: const InputDecoration(labelText: 'Description'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(const _EditResult.delete()),
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+            child: const Text('Delete'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final title = titleController.text.trim();
+              if (title.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Title is required.')),
+                );
+                return;
+              }
+              final description = descriptionController.text.trim();
+              Navigator.of(dialogContext).pop(
+                _EditResult.save(_EquipmentCategory(title, description)),
+              );
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == null) return;
+    if (result.action == _EditAction.delete) {
+      setState(() => _categories.removeAt(index));
+      return;
+    }
+    if (result.item != null) {
+      setState(() => _categories[index] = result.item!);
+    }
+  }
+
+  Future<void> _showCreateEquipmentDialog() async {
+    final nameController = TextEditingController();
+    final vendorController = TextEditingController();
+    final leadTimeController = TextEditingController();
+    final statusController = TextEditingController();
+
+    final result = await showDialog<_EquipmentItem>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Create Equipment Item'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'Item'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: vendorController,
+              decoration: const InputDecoration(labelText: 'Vendor'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: leadTimeController,
+              decoration: const InputDecoration(labelText: 'Lead time'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: statusController,
+              decoration: const InputDecoration(labelText: 'Status'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final name = nameController.text.trim();
+              if (name.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Item name is required.')),
+                );
+                return;
+              }
+              final vendor = vendorController.text.trim();
+              final leadTime = leadTimeController.text.trim();
+              final status = statusController.text.trim();
+              Navigator.of(dialogContext).pop(_EquipmentItem(name, vendor, leadTime, status));
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null) {
+      setState(() => _equipmentItems.add(result));
+    }
+  }
+
+  Future<void> _showEditEquipmentDialog(int index) async {
+    final current = _equipmentItems[index];
+    final nameController = TextEditingController(text: current.name);
+    final vendorController = TextEditingController(text: current.vendor);
+    final leadTimeController = TextEditingController(text: current.leadTime);
+    final statusController = TextEditingController(text: current.status);
+
+    final result = await showDialog<_EditResult<_EquipmentItem>>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Modify Equipment Item'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'Item'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: vendorController,
+              decoration: const InputDecoration(labelText: 'Vendor'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: leadTimeController,
+              decoration: const InputDecoration(labelText: 'Lead time'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: statusController,
+              decoration: const InputDecoration(labelText: 'Status'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(const _EditResult.delete()),
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+            child: const Text('Delete'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final name = nameController.text.trim();
+              if (name.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Item name is required.')),
+                );
+                return;
+              }
+              final vendor = vendorController.text.trim();
+              final leadTime = leadTimeController.text.trim();
+              final status = statusController.text.trim();
+              Navigator.of(dialogContext).pop(
+                _EditResult.save(_EquipmentItem(name, vendor, leadTime, status)),
+              );
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == null) return;
+    if (result.action == _EditAction.delete) {
+      setState(() => _equipmentItems.removeAt(index));
+      return;
+    }
+    if (result.item != null) {
+      setState(() => _equipmentItems[index] = result.item!);
+    }
+  }
+
+  Future<void> _showCreateActionDialog() async {
+    final titleController = TextEditingController();
+    final descriptionController = TextEditingController();
+
+    final result = await showDialog<_ProcurementAction>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Create Procurement Action'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(labelText: 'Title'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: descriptionController,
+              decoration: const InputDecoration(labelText: 'Description'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final title = titleController.text.trim();
+              if (title.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Title is required.')),
+                );
+                return;
+              }
+              final description = descriptionController.text.trim();
+              Navigator.of(dialogContext).pop(_ProcurementAction(title, description));
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null) {
+      setState(() => _actions.add(result));
+    }
+  }
+
+  Future<void> _showEditActionDialog(int index) async {
+    final current = _actions[index];
+    final titleController = TextEditingController(text: current.title);
+    final descriptionController = TextEditingController(text: current.description);
+
+    final result = await showDialog<_EditResult<_ProcurementAction>>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Modify Procurement Action'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(labelText: 'Title'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: descriptionController,
+              decoration: const InputDecoration(labelText: 'Description'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(const _EditResult.delete()),
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+            child: const Text('Delete'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final title = titleController.text.trim();
+              if (title.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Title is required.')),
+                );
+                return;
+              }
+              final description = descriptionController.text.trim();
+              Navigator.of(dialogContext).pop(
+                _EditResult.save(_ProcurementAction(title, description)),
+              );
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == null) return;
+    if (result.action == _EditAction.delete) {
+      setState(() => _actions.removeAt(index));
+      return;
+    }
+    if (result.item != null) {
+      setState(() => _actions[index] = result.item!);
+    }
+  }
+}
+
+enum _EditAction { save, delete }
+
+class _EditResult<T> {
+  const _EditResult.save(this.item) : action = _EditAction.save;
+  const _EditResult.delete()
+      : action = _EditAction.delete,
+        item = null;
+
+  final _EditAction action;
+  final T? item;
 }
 
 class _EquipmentCategory {

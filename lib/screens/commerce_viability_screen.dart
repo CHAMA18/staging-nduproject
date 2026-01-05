@@ -29,7 +29,7 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
     final double horizontalPadding = isMobile ? 16 : 32;
 
     return ResponsiveScaffold(
-      activeItemLabel: 'Commerce Warranty',
+      activeItemLabel: 'Warranties & Operations Support',
       backgroundColor: const Color(0xFFF5F7FB),
       floatingActionButton: const KazAiChatBubble(),
       body: SingleChildScrollView(

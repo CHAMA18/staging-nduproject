@@ -1,17 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/providers/app_content_provider.dart';
+import 'package:ndu_project/services/user_service.dart';
 import 'package:provider/provider.dart';
-
-/// Admin email domain for automatic admin access
-/// All emails from @nduproject.com domain will have admin privileges
-const String _adminDomain = 'nduproject.com';
-
-/// Additional admin email addresses (optional)
-/// Add specific email addresses here for admin access
-const List<String> _additionalAdminEmails = [
-  'chungu424@gmail.com',
-];
 
 /// Floating button that allows admins to toggle content edit mode
 /// Only visible to users whose email is from @nduproject.com or in the additional admin list
@@ -23,13 +14,7 @@ class AdminEditToggle extends StatefulWidget {
   static bool isAdmin() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return false;
-    final email = user.email?.toLowerCase() ?? '';
-    
-    // Check if email is from the admin domain
-    if (email.endsWith('@$_adminDomain')) return true;
-    
-    // Check if email is in the additional admin list
-    return _additionalAdminEmails.any((adminEmail) => adminEmail.toLowerCase() == email);
+    return UserService.isAdminEmail(user.email ?? '');
   }
 
   @override

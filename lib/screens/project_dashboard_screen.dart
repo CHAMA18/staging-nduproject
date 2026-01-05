@@ -15,10 +15,15 @@ import '../services/user_service.dart';
 import '../services/project_navigation_service.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/kaz_ai_chat_bubble.dart';
+import 'basic_plan_dashboard_screen.dart';
 import 'initiation_phase_screen.dart';
+import 'portfolio_dashboard_screen.dart';
+import 'program_dashboard_screen.dart';
 
 class ProjectDashboardScreen extends StatefulWidget {
-  const ProjectDashboardScreen({super.key});
+  const ProjectDashboardScreen({super.key, this.isBasicPlan = false});
+
+  final bool isBasicPlan;
 
   @override
   State<ProjectDashboardScreen> createState() => _ProjectDashboardScreenState();
@@ -236,6 +241,9 @@ class _ProjectDashboardScreenState extends State<ProjectDashboardScreen> {
         notes: '',
         tags: const ['Initiation'],
       );
+      provider.updateField(
+        (data) => data.copyWith(isBasicPlanProject: widget.isBasicPlan),
+      );
 
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
@@ -366,23 +374,26 @@ class _ProjectDashboardScreenState extends State<ProjectDashboardScreen> {
                           projects: projects,
                           isLoading: isLoading,
                           error: error,
+                          isBasicPlan: widget.isBasicPlan,
                         ),
                         const SizedBox(height: 24),
-                        ValueListenableBuilder<Set<String>>(
-                          valueListenable: _selectedProjectIds,
-                          builder: (context, selectedIds, _) {
-                            return _GroupProjectsCard(
-                              projects: projects,
-                              isLoading: isLoading,
-                              error: error,
-                              selectedIds: selectedIds,
-                              selectedIdsListenable: _selectedProjectIds,
-                              onToggle: _toggleSelection,
-                              onClear: _clearSelection,
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 24),
+                        if (!widget.isBasicPlan) ...[
+                          ValueListenableBuilder<Set<String>>(
+                            valueListenable: _selectedProjectIds,
+                            builder: (context, selectedIds, _) {
+                              return _GroupProjectsCard(
+                                projects: projects,
+                                isLoading: isLoading,
+                                error: error,
+                                selectedIds: selectedIds,
+                                selectedIdsListenable: _selectedProjectIds,
+                                onToggle: _toggleSelection,
+                                onClear: _clearSelection,
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 24),
+                        ],
                         const _ProgramsSummaryCard(),
                       ],
                     );
@@ -397,32 +408,35 @@ class _ProjectDashboardScreenState extends State<ProjectDashboardScreen> {
                           projects: projects,
                           isLoading: isLoading,
                           error: error,
+                          isBasicPlan: widget.isBasicPlan,
                         ),
                       ),
-                      const SizedBox(width: 24),
-                      Expanded(
-                        flex: 5,
-                        child: Column(
-                          children: [
-                            ValueListenableBuilder<Set<String>>(
-                              valueListenable: _selectedProjectIds,
-                              builder: (context, selectedIds, _) {
-                                return _GroupProjectsCard(
-                                  projects: projects,
-                                  isLoading: isLoading,
-                                  error: error,
-                                  selectedIds: selectedIds,
-                                  selectedIdsListenable: _selectedProjectIds,
-                                  onToggle: _toggleSelection,
-                                  onClear: _clearSelection,
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 24),
-                            const _ProgramsSummaryCard(),
-                          ],
+                      if (!widget.isBasicPlan) ...[
+                        const SizedBox(width: 24),
+                        Expanded(
+                          flex: 5,
+                          child: Column(
+                            children: [
+                              ValueListenableBuilder<Set<String>>(
+                                valueListenable: _selectedProjectIds,
+                                builder: (context, selectedIds, _) {
+                                  return _GroupProjectsCard(
+                                    projects: projects,
+                                    isLoading: isLoading,
+                                    error: error,
+                                    selectedIds: selectedIds,
+                                    selectedIdsListenable: _selectedProjectIds,
+                                    onToggle: _toggleSelection,
+                                    onClear: _clearSelection,
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 24),
+                              const _ProgramsSummaryCard(),
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   );
                 }
@@ -432,7 +446,10 @@ class _ProjectDashboardScreenState extends State<ProjectDashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _ProjectHeader(onAddProject: _handleAddProject),
+                      _ProjectHeader(
+                        onAddProject: _handleAddProject,
+                        isBasicPlan: widget.isBasicPlan,
+                      ),
                       const SizedBox(height: 26),
                       const _StatusStrip(),
                       const SizedBox(height: 28),
@@ -471,9 +488,10 @@ class _ProjectDashboardScreenState extends State<ProjectDashboardScreen> {
 }
 
 class _ProjectHeader extends StatefulWidget {
-  const _ProjectHeader({required this.onAddProject});
+  const _ProjectHeader({required this.onAddProject, required this.isBasicPlan});
 
   final VoidCallback onAddProject;
+  final bool isBasicPlan;
 
   @override
   State<_ProjectHeader> createState() => _ProjectHeaderState();
@@ -502,7 +520,7 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
     if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        context.go('/${AppRoutes.settings}');
+        context.go('/${AppRoutes.settings}?from=${AppRoutes.dashboard}');
       }
     });
   }
@@ -636,23 +654,25 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(Icons.add_circle_outline, size: 22),
-                          SizedBox(width: 10),
-                          Text('Create Project'),
-                          SizedBox(width: 6),
-                          Icon(Icons.arrow_forward, size: 20),
+                        children: [
+                          const Icon(Icons.add_circle_outline, size: 22),
+                          const SizedBox(width: 10),
+                          Text(widget.isBasicPlan ? 'Create Basic Project' : 'Create Project'),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.arrow_forward, size: 20),
                         ],
                       ),
                     ),
-                    _secondaryCta(
-                      label: 'Create Program',
-                      onPressed: _navigateToProgram,
-                    ),
-                    _secondaryCta(
-                      label: 'Create Portfolio',
-                      onPressed: _navigateToPortfolio,
-                    ),
+                    if (!widget.isBasicPlan)
+                      _secondaryCta(
+                        label: 'Create Program',
+                        onPressed: _navigateToProgram,
+                      ),
+                    if (!widget.isBasicPlan)
+                      _secondaryCta(
+                        label: 'Create Portfolio',
+                        onPressed: _navigateToPortfolio,
+                      ),
                     _secondaryCta(
                       label: 'Billing',
                       onPressed: _navigateToBilling,
@@ -696,7 +716,7 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
               ),
             const SizedBox(height: 26),
             Text(
-              'Project dashboard',
+              widget.isBasicPlan ? 'Basic plan dashboard' : 'Project dashboard',
               style: textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: const Color(0xFF0F1117),
@@ -704,7 +724,9 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Manage all single projects before they are linked into programs or portfolios. Add new work, track status, and quickly roll three projects into a program when you are ready.',
+              widget.isBasicPlan
+                  ? 'Manage your basic plan project workspace. Build the core initiation details and upgrade when you are ready to unlock more sections.'
+                  : 'Manage all single projects before they are linked into programs or portfolios. Add new work, track status, and quickly roll three projects into a program when you are ready.',
               style: textTheme.bodyMedium?.copyWith(
                 color: Colors.grey.shade700,
                 height: 1.55,
@@ -750,6 +772,33 @@ class _StatusStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
+    void openProjectDashboard() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ProjectDashboardScreen()),
+      );
+    }
+
+    void openBasicDashboard() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const BasicPlanDashboardScreen()),
+      );
+    }
+
+    void openProgramDashboard() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ProgramDashboardScreen()),
+      );
+    }
+
+    void openPortfolioDashboard() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const PortfolioDashboardScreen()),
+      );
+    }
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -763,6 +812,15 @@ class _StatusStrip extends StatelessWidget {
               subLabel: 'Sign in to view',
               icon: Icons.folder_open_rounded,
               color: Colors.blue.shade600,
+              onTap: openProjectDashboard,
+            ),
+            _StatCard(
+              label: 'Basic Projects',
+              value: '—',
+              subLabel: 'Sign in to view',
+              icon: Icons.folder_special_rounded,
+              color: Colors.teal.shade600,
+              onTap: openBasicDashboard,
             ),
             _StatCard(
               label: 'Programs',
@@ -770,6 +828,7 @@ class _StatusStrip extends StatelessWidget {
               subLabel: 'Sign in to view',
               icon: Icons.layers_outlined,
               color: Colors.purple.shade600,
+              onTap: openProgramDashboard,
             ),
             _StatCard(
               label: 'Portfolios',
@@ -777,6 +836,7 @@ class _StatusStrip extends StatelessWidget {
               subLabel: 'Sign in to view',
               icon: Icons.pie_chart_outline_rounded,
               color: Colors.green.shade600,
+              onTap: openPortfolioDashboard,
             ),
           ];
 
@@ -804,7 +864,9 @@ class _StatusStrip extends StatelessWidget {
         return StreamBuilder<List<ProjectRecord>>(
           stream: ProjectService.streamProjects(ownerId: user.uid, limit: 100),
           builder: (context, projectSnapshot) {
-            final projectCount = projectSnapshot.hasData ? projectSnapshot.data!.length : 0;
+            final projects = projectSnapshot.data ?? const <ProjectRecord>[];
+            final projectCount = projects.length;
+            final basicProjectCount = projects.where((project) => project.isBasicPlanProject).length;
             
             return StreamBuilder<List<ProgramModel>>(
               stream: ProgramService.streamPrograms(ownerId: user.uid),
@@ -818,6 +880,15 @@ class _StatusStrip extends StatelessWidget {
                     subLabel: 'Active workspaces',
                     icon: Icons.folder_open_rounded,
                     color: Colors.blue.shade600,
+                    onTap: openProjectDashboard,
+                  ),
+                  _StatCard(
+                    label: 'Basic Projects',
+                    value: '$basicProjectCount',
+                    subLabel: 'Basic plan workspaces',
+                    icon: Icons.folder_special_rounded,
+                    color: Colors.teal.shade600,
+                    onTap: openBasicDashboard,
                   ),
                   _StatCard(
                     label: 'Programs',
@@ -825,6 +896,7 @@ class _StatusStrip extends StatelessWidget {
                     subLabel: 'Grouped projects',
                     icon: Icons.layers_outlined,
                     color: Colors.purple.shade600,
+                    onTap: openProgramDashboard,
                   ),
                   _StatCard(
                     label: 'Portfolios',
@@ -832,6 +904,7 @@ class _StatusStrip extends StatelessWidget {
                     subLabel: 'Executive views',
                     icon: Icons.pie_chart_outline_rounded,
                     color: Colors.green.shade600,
+                    onTap: openPortfolioDashboard,
                   ),
                 ];
 
@@ -869,12 +942,14 @@ class _SingleProjectsCard extends StatefulWidget {
     required this.isLoading,
     this.error,
     this.expandedView = false,
+    this.isBasicPlan = false,
   });
 
   final List<ProjectRecord> projects;
   final bool isLoading;
   final String? error;
   final bool expandedView;
+  final bool isBasicPlan;
 
   @override
   State<_SingleProjectsCard> createState() => _SingleProjectsCardState();
@@ -906,6 +981,7 @@ class _SingleProjectsCardState extends State<_SingleProjectsCard> {
           projects: widget.projects,
           isLoading: widget.isLoading,
           error: widget.error,
+          isBasicPlan: widget.isBasicPlan,
         ),
       ),
     );
@@ -915,6 +991,14 @@ class _SingleProjectsCardState extends State<_SingleProjectsCard> {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final user = FirebaseAuth.instance.currentUser;
+    final titleText = widget.isBasicPlan ? 'Basic Projects' : 'Single Projects';
+    final subtitleText = widget.isBasicPlan
+        ? 'Review all basic plan projects before upgrading to unlock more sections.'
+        : 'Review all standalone projects before they are linked into programs or portfolios.';
+    final searchHint = widget.isBasicPlan ? 'Search basic projects...' : 'Search projects...';
+    final tipText = widget.isBasicPlan
+        ? 'Basic plan workspaces focus on initiation essentials'
+        : 'If more than 3 projects, group up to 3 into a program';
 
     return _FrostedSurface(
       padding: const EdgeInsets.fromLTRB(28, 28, 28, 24),
@@ -949,7 +1033,7 @@ class _SingleProjectsCardState extends State<_SingleProjectsCard> {
                     const SizedBox(width: 8),
                     Flexible(
                       child: Text(
-                        'If more than 3 projects, group up to 3 into a program',
+                        tipText,
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
@@ -973,7 +1057,7 @@ class _SingleProjectsCardState extends State<_SingleProjectsCard> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Single Projects',
+                            titleText,
                             style: textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.w700,
                               fontSize: 24,
@@ -981,7 +1065,7 @@ class _SingleProjectsCardState extends State<_SingleProjectsCard> {
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            'Review all standalone projects before they are linked into programs or portfolios.',
+                            subtitleText,
                             style: textTheme.bodyMedium?.copyWith(
                               color: Colors.grey.shade600,
                               fontSize: 16,
@@ -1011,7 +1095,7 @@ class _SingleProjectsCardState extends State<_SingleProjectsCard> {
                     children: [
                       Expanded(
                         child: Text(
-                          'Single Projects',
+                          titleText,
                           style: textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.w700,
                             fontSize: 24,
@@ -1023,7 +1107,7 @@ class _SingleProjectsCardState extends State<_SingleProjectsCard> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Review all standalone projects before they are linked into programs or portfolios.',
+                    subtitleText,
                     style: textTheme.bodyMedium?.copyWith(
                       color: Colors.grey.shade600,
                       fontSize: 16,
@@ -1041,7 +1125,7 @@ class _SingleProjectsCardState extends State<_SingleProjectsCard> {
             controller: _searchController,
             style: const TextStyle(fontSize: 16),
             decoration: InputDecoration(
-              hintText: 'Search projects...',
+              hintText: searchHint,
               hintStyle: const TextStyle(fontSize: 16),
               prefixIcon: Icon(Icons.search, color: Colors.grey.shade600, size: 24),
               suffixIcon: _searchQuery.isNotEmpty
@@ -1143,7 +1227,9 @@ class _SingleProjectsCardState extends State<_SingleProjectsCard> {
           else
             Builder(
               builder: (context) {
-                final allProjects = widget.projects;
+                final allProjects = widget.isBasicPlan
+                    ? widget.projects.where((project) => project.isBasicPlanProject).toList()
+                    : widget.projects;
 
                 // Apply search filter
                 final firebaseProjects = _searchQuery.isEmpty
@@ -1171,7 +1257,7 @@ class _SingleProjectsCardState extends State<_SingleProjectsCard> {
                           Icon(Icons.folder_off_outlined, size: 48, color: Colors.grey.shade400),
                           const SizedBox(height: 16),
                           Text(
-                            'No projects yet',
+                            widget.isBasicPlan ? 'No basic projects yet' : 'No projects yet',
                             style: textTheme.bodyLarge?.copyWith(
                               color: Colors.grey.shade600,
                               fontWeight: FontWeight.w600,
@@ -1179,7 +1265,9 @@ class _SingleProjectsCardState extends State<_SingleProjectsCard> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Create your first project using the "Create Project" button above',
+                            widget.isBasicPlan
+                                ? 'Create your first basic project using the "Create Project" button above'
+                                : 'Create your first project using the "Create Project" button above',
                             style: textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
                             textAlign: TextAlign.center,
                           ),
@@ -1934,18 +2022,20 @@ class _SingleProjectsExpandedScreen extends StatelessWidget {
     required this.projects,
     required this.isLoading,
     this.error,
+    this.isBasicPlan = false,
   });
 
   final List<ProjectRecord> projects;
   final bool isLoading;
   final String? error;
+  final bool isBasicPlan;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Single Projects'),
+        title: Text(isBasicPlan ? 'Basic Projects' : 'Single Projects'),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black87,
@@ -1958,6 +2048,7 @@ class _SingleProjectsExpandedScreen extends StatelessWidget {
             isLoading: isLoading,
             error: error,
             expandedView: true,
+            isBasicPlan: isBasicPlan,
           ),
         ),
       ),
@@ -3137,6 +3228,7 @@ class _StatCard extends StatelessWidget {
     required this.subLabel,
     required this.icon,
     required this.color,
+    this.onTap,
   });
 
   final String label;
@@ -3144,10 +3236,11 @@ class _StatCard extends StatelessWidget {
   final String subLabel;
   final IconData icon;
   final Color color;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final card = Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -3210,6 +3303,20 @@ class _StatCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+
+    if (onTap == null) {
+      return card;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: card,
       ),
     );
   }

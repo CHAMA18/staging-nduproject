@@ -324,7 +324,7 @@ class _ExecutionPlanForm extends StatefulWidget {
   const _ExecutionPlanForm({
     this.title = 'Executive Plan Outline',
     required this.hintText,
-    this.showFieldLabel = false,
+    this.showFieldLabel = true,
     this.noteKey,
   });
 

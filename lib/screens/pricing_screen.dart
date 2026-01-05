@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:ndu_project/screens/basic_plan_dashboard_screen.dart';
 import 'package:ndu_project/screens/management_level_screen.dart';
 import 'package:ndu_project/services/subscription_service.dart';
 import 'package:ndu_project/widgets/payment_dialog.dart';
@@ -17,21 +19,23 @@ class PricingScreen extends StatefulWidget {
 }
 
 class _PricingScreenState extends State<PricingScreen> {
+  static final NumberFormat _currencyFormatter = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
   _PlanTier _selectedTier = _PlanTier.program;
   bool _isCheckingSubscription = false;
-  bool _isAnnual = true;
+  bool _isAnnual = false;
 
   Future<void> _handlePlanSelection(BuildContext context, _PricingPlan plan) async {
     setState(() => _isCheckingSubscription = true);
     
     try {
+      final isBasicPlan = plan.tier == _PlanTier.basicProject;
       final subscriptionTier = _convertToSubscriptionTier(plan.tier);
       final hasSubscription = await SubscriptionService.hasActiveSubscription(tier: subscriptionTier);
       
       if (!mounted) return;
       
       if (hasSubscription) {
-        _navigateToManagementLevel(context);
+        _navigateToManagementLevel(context, isBasicPlan: isBasicPlan);
       } else {
         final paymentResult = await PaymentDialog.show(
           context: context,
@@ -50,7 +54,7 @@ class _PricingScreenState extends State<PricingScreen> {
         );
         
         if (paymentResult && mounted) {
-          _navigateToManagementLevel(context);
+          _navigateToManagementLevel(context, isBasicPlan: isBasicPlan);
         }
       }
     } catch (e) {
@@ -76,15 +80,31 @@ class _PricingScreenState extends State<PricingScreen> {
     }
   }
   
-  void _navigateToManagementLevel(BuildContext context) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => const ManagementLevelScreen()));
+  void _navigateToManagementLevel(BuildContext context, {bool isBasicPlan = false}) {
+    final screen = isBasicPlan
+        ? const BasicPlanDashboardScreen()
+        : const ManagementLevelScreen();
+    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
   }
 
   _PlanPrice _priceForPlan(_PricingPlan plan) {
-    final tier = _convertToSubscriptionTier(plan.tier);
-    final price = SubscriptionService.getPriceForTier(tier, annual: _isAnnual);
     final String? note = plan.tier == _PlanTier.basicProject ? 'First month free' : null;
-    return _PlanPrice(price: price['price']!, period: price['period']!, note: note);
+    if (_isAnnual) {
+      final double annualPrice = plan.monthlyPrice * 11;
+      final double annualOriginal = plan.monthlyPrice * 12;
+      return _PlanPrice(
+        price: _currencyFormatter.format(annualPrice),
+        originalPrice: _currencyFormatter.format(annualOriginal),
+        period: 'per year',
+        note: note,
+      );
+    }
+    return _PlanPrice(
+      price: _currencyFormatter.format(plan.monthlyPrice),
+      originalPrice: _currencyFormatter.format(plan.monthlyOriginalPrice),
+      period: 'per month',
+      note: note,
+    );
   }
 
   static const List<_PricingPlan> _plans = [
@@ -93,6 +113,8 @@ class _PricingScreenState extends State<PricingScreen> {
       label: 'Basic Project',
       badgeColor: _themeColor,
       subtitle: 'No Fuss routine project delivered at a fraction of the cost',
+      monthlyPrice: 39,
+      monthlyOriginalPrice: 79,
       features: [
         'One time Freemium for the 1st month',
         'Monthly payment with annual discount.',
@@ -108,6 +130,8 @@ class _PricingScreenState extends State<PricingScreen> {
       label: 'Project',
       badgeColor: _themeColor,
       subtitle: 'Robust project delivered at an affordable rate',
+      monthlyPrice: 129,
+      monthlyOriginalPrice: 179,
       features: [
         'Subscription Based.',
         'Maximum 7 users',
@@ -126,6 +150,8 @@ class _PricingScreenState extends State<PricingScreen> {
       label: 'Program',
       badgeColor: _themeColor,
       subtitle: 'Up to 3 projects at a discounted rate with interface management',
+      monthlyPrice: 319,
+      monthlyOriginalPrice: 1000,
       features: [
         'Subscription Based.',
         'Maximum 12 users',
@@ -143,6 +169,8 @@ class _PricingScreenState extends State<PricingScreen> {
       label: 'Portfolio',
       badgeColor: _themeColor,
       subtitle: 'Up to 9 projects at a bulk rate with integrated stewarding',
+      monthlyPrice: 750,
+      monthlyOriginalPrice: 1400,
       features: [
         'Subscription Based.',
         'Maximum 24 users',
@@ -187,14 +215,28 @@ class _PricingScreenState extends State<PricingScreen> {
   }
 
   Widget _buildSectionHeader(bool showInlineToggle) {
-    final title = const Text(
-      'Payment Structure',
-      style: TextStyle(
-        fontSize: 36,
-        fontWeight: FontWeight.w700,
-        color: _primaryText,
-        letterSpacing: -0.5,
-      ),
+    final title = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Pricing',
+          style: TextStyle(
+            fontSize: 36,
+            fontWeight: FontWeight.w700,
+            color: _primaryText,
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 6,
+          width: 220,
+          decoration: BoxDecoration(
+            color: _themeColor,
+            borderRadius: BorderRadius.circular(999),
+          ),
+        ),
+      ],
     );
 
     if (showInlineToggle) {
@@ -203,9 +245,23 @@ class _PricingScreenState extends State<PricingScreen> {
         children: [
           title,
           const Spacer(),
-          _BillingToggle(
-            isAnnual: _isAnnual,
-            onChanged: (value) => setState(() => _isAnnual = value),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _BillingToggle(
+                isAnnual: _isAnnual,
+                onChanged: (value) => setState(() => _isAnnual = value),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Annual will save 1 month\'s payment',
+                style: TextStyle(
+                  color: _secondaryText,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
         ],
       );
@@ -219,6 +275,15 @@ class _PricingScreenState extends State<PricingScreen> {
         _BillingToggle(
           isAnnual: _isAnnual,
           onChanged: (value) => setState(() => _isAnnual = value),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Annual will save 1 month\'s payment',
+          style: TextStyle(
+            color: _secondaryText,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ],
     );
@@ -553,7 +618,7 @@ class _PlanColumn extends StatelessWidget {
                       Icon(Icons.check_circle, color: _themeColor, size: 16),
                       SizedBox(width: 6),
                       Text(
-                        'Chosen',
+                        'Selected',
                         style: TextStyle(
                           color: _themeColor,
                           fontWeight: FontWeight.w700,
@@ -580,6 +645,18 @@ class _PlanColumn extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
+              if (price.originalPrice != null) ...[
+                Text(
+                  price.originalPrice!,
+                  style: const TextStyle(
+                    color: _secondaryText,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    decoration: TextDecoration.lineThrough,
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
               Text(
                 price.price,
                 style: const TextStyle(
@@ -680,6 +757,8 @@ class _PricingPlan {
     required this.badgeColor,
     required this.subtitle,
     required this.features,
+    required this.monthlyPrice,
+    required this.monthlyOriginalPrice,
   });
 
   final _PlanTier tier;
@@ -687,14 +766,17 @@ class _PricingPlan {
   final Color badgeColor;
   final String subtitle;
   final List<String> features;
+  final double monthlyPrice;
+  final double monthlyOriginalPrice;
 }
 
 class _PlanPrice {
-  const _PlanPrice({required this.price, required this.period, this.note});
+  const _PlanPrice({required this.price, required this.period, this.note, this.originalPrice});
 
   final String price;
   final String period;
   final String? note;
+  final String? originalPrice;
 }
 
 enum _PlanTier { basicProject, project, program, portfolio }

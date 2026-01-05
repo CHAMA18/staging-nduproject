@@ -38,7 +38,7 @@ class _SummarizeAccountRisksScreenState extends State<SummarizeAccountRisksScree
           children: [
             DraggableSidebar(
               openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(activeItemLabel: 'Summarize Account Of All Section Including Risks'),
+              child: const InitiationLikeSidebar(activeItemLabel: 'Project Summary'),
             ),
             Expanded(
               child: Stack(

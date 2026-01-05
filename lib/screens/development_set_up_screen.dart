@@ -85,8 +85,8 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
                   _buildHeader(isMobile),
                   const SizedBox(height: 28),
                   ResponsiveGrid(
-                    desktopColumns: 3,
-                    tabletColumns: 2,
+                    desktopColumns: 1,
+                    tabletColumns: 1,
                     mobileColumns: 1,
                     spacing: 20,
                     runSpacing: 20,

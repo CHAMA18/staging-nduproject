@@ -4,11 +4,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/access_policy.dart';
 import 'package:ndu_project/screens/create_account_screen.dart';
-import 'package:ndu_project/screens/pricing_screen.dart';
-import 'package:ndu_project/screens/admin/admin_home_screen.dart';
 import 'package:ndu_project/widgets/app_logo.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/elevated_auth_container.dart';
+import 'package:go_router/go_router.dart';
+import 'package:ndu_project/routing/app_router.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -54,13 +54,7 @@ class _SignInScreenState extends State<SignInScreen> {
       await FirebaseAuthService.signInWithGoogle();
       if (!mounted) return;
       _showSnack('Signed in with Google', Colors.green);
-      
-      // For admin version, skip billing and go to admin home
-      final isAdmin = AccessPolicy.isRestrictedAdminHost();
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => isAdmin ? const AdminHomeScreen() : const PricingScreen()),
-      );
+      _navigateAfterSignIn();
     } catch (e) {
       _showSnack('Google sign-in failed: $e', Colors.red);
     } finally {
@@ -87,14 +81,10 @@ class _SignInScreenState extends State<SignInScreen> {
       if (!mounted) return;
       final user = cred.user;
       await user?.reload();
+      if (!mounted) return;
       final refreshed = FirebaseAuth.instance.currentUser;
       if (refreshed != null && (refreshed.emailVerified || _isGoogleProvider(refreshed))) {
-        // For admin version, skip billing and go to admin home
-        final isAdmin = AccessPolicy.isRestrictedAdminHost();
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => isAdmin ? const AdminHomeScreen() : const PricingScreen()),
-        );
+        _navigateAfterSignIn();
       } else {
         await _showVerifyEmailDialog(refreshed?.email ?? _emailController.text.trim());
         // Keep user on sign-in; optionally sign out to prevent accidental access
@@ -109,6 +99,28 @@ class _SignInScreenState extends State<SignInScreen> {
 
   bool _isGoogleProvider(User user) {
     return user.providerData.any((p) => p.providerId == 'google.com');
+  }
+
+  void _navigateAfterSignIn() {
+    if (!mounted) return;
+    if (_shouldDeferToAuthWrapper()) return;
+
+    final isAdminHost = AccessPolicy.isRestrictedAdminHost();
+    final target = isAdminHost ? '/${AppRoutes.adminHome}' : '/${AppRoutes.pricing}';
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.go(target);
+    });
+  }
+
+  bool _shouldDeferToAuthWrapper() {
+    try {
+      final path = GoRouterState.of(context).uri.path;
+      return path.startsWith('/${AppRoutes.adminPortal}') || path.startsWith('/admin-');
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _showVerifyEmailDialog(String email) async {

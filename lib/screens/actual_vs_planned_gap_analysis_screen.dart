@@ -30,7 +30,7 @@ class _ActualVsPlannedGapAnalysisScreenState extends State<ActualVsPlannedGapAna
     final double horizontalPadding = isMobile ? 16 : 32;
 
     return ResponsiveScaffold(
-      activeItemLabel: 'Actual vs Planned Gap Analysis',
+      activeItemLabel: 'Project Financial Review',
       backgroundColor: const Color(0xFFF5F7FB),
       floatingActionButton: const KazAiChatBubble(),
       body: SingleChildScrollView(

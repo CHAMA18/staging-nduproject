@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
+import 'package:ndu_project/services/contract_service.dart';
+import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ContractsTrackingScreen extends StatefulWidget {
   const ContractsTrackingScreen({super.key});
@@ -19,25 +23,14 @@ class ContractsTrackingScreen extends StatefulWidget {
 class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
   final Set<String> _selectedFilters = {'All contracts'};
 
-  final List<_ContractItem> _contracts = const [
-    _ContractItem('CT-1024', 'Omega Systems', 'Integration', 'Active', 'Nov 12', '\$2.4M', 'L. Park'),
-    _ContractItem('CT-1031', 'BrightWorks', 'Infrastructure', 'Renewal due', 'Oct 22', '\$1.1M', 'S. Mitchell'),
-    _ContractItem('CT-1040', 'Vantage Labs', 'Security', 'At risk', 'Oct 18', '\$940K', 'J. Rodriguez'),
-    _ContractItem('CT-1044', 'Eastline Partners', 'Operations', 'Active', 'Dec 05', '\$1.8M', 'M. Thompson'),
-    _ContractItem('CT-1052', 'Nimbus Health', 'Compliance', 'Pending sign-off', 'Oct 28', '\$560K', 'E. Chen'),
-  ];
-
-  final List<_RenewalLane> _renewalLanes = const [
-    _RenewalLane('30 days', 3, Color(0xFFF97316)),
-    _RenewalLane('60 days', 5, Color(0xFF6366F1)),
-    _RenewalLane('90 days', 8, Color(0xFF10B981)),
-  ];
-
-  final List<_SignalItem> _signals = const [
-    _SignalItem('Renewal risk flagged', '2 vendors require escalation this week.'),
-    _SignalItem('Service credits pending', '1 contract has SLA credits to reconcile.'),
-    _SignalItem('Legal review backlog', '3 items awaiting legal sign-off.'),
-  ];
+  String? get _projectId {
+    try {
+      final provider = ProjectDataInherited.maybeOf(context);
+      return provider?.projectData.projectId;
+    } catch (e) {
+      return null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -130,7 +123,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
       spacing: 10,
       runSpacing: 10,
       children: [
-        _actionButton(Icons.add, 'Add contract'),
+        _actionButton(Icons.add, 'Add contract', onPressed: () => _showAddContractDialog(context)),
         _actionButton(Icons.upload_outlined, 'Upload addendum'),
         _actionButton(Icons.description_outlined, 'Export register'),
         _primaryButton('Start renewal review'),
@@ -138,9 +131,9 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
     );
   }
 
-  Widget _actionButton(IconData icon, String label) {
+  Widget _actionButton(IconData icon, String label, {VoidCallback? onPressed}) {
     return OutlinedButton.icon(
-      onPressed: () {},
+      onPressed: onPressed ?? () {},
       icon: Icon(icon, size: 18, color: const Color(0xFF64748B)),
       label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
       style: OutlinedButton.styleFrom(
@@ -213,31 +206,53 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
   }
 
   Widget _buildStatsRow(bool isNarrow) {
-    final stats = [
-      _StatCardData('Active contracts', '26', '8 strategic', const Color(0xFF0EA5E9)),
-      _StatCardData('Renewal due', '4', 'Next 30 days', const Color(0xFFF97316)),
-      _StatCardData('Total value', '\$8.4M', 'FY spend', const Color(0xFF10B981)),
-      _StatCardData('Compliance score', '92%', '2 open findings', const Color(0xFF6366F1)),
-    ];
-
-    if (isNarrow) {
-      return Column(
-        children: [
-          for (int i = 0; i < stats.length; i++) ...[
-            SizedBox(width: double.infinity, child: _buildStatCard(stats[i])),
-            if (i < stats.length - 1) const SizedBox(height: 12),
-          ],
-        ],
-      );
+    if (_projectId == null) {
+      return const SizedBox.shrink();
     }
 
-    return Row(
-      children: [
-        for (int i = 0; i < stats.length; i++) ...[
-          Expanded(child: _buildStatCard(stats[i])),
-          if (i < stats.length - 1) const SizedBox(width: 12),
-        ],
-      ],
+    return StreamBuilder<List<ContractModel>>(
+      stream: ContractService.streamContracts(_projectId!),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const SizedBox.shrink();
+        }
+
+        final contracts = snapshot.data!;
+        final activeCount = contracts.where((c) => c.status == 'Active').length;
+        final renewalDue = contracts.where((c) {
+          final daysUntilRenewal = c.endDate.difference(DateTime.now()).inDays;
+          return daysUntilRenewal <= 30 && daysUntilRenewal > 0;
+        }).length;
+        final totalValue = contracts.fold<double>(0.0, (sum, c) => sum + c.estimatedValue);
+        final atRiskCount = contracts.where((c) => c.status == 'At risk').length;
+
+        final stats = [
+          _StatCardData('Active contracts', '$activeCount', '${contracts.length} total', const Color(0xFF0EA5E9)),
+          _StatCardData('Renewal due', '$renewalDue', 'Next 30 days', const Color(0xFFF97316)),
+          _StatCardData('Total value', '\$${(totalValue / 1000000).toStringAsFixed(1)}M', 'FY spend', const Color(0xFF10B981)),
+          _StatCardData('At risk', '$atRiskCount', atRiskCount > 0 ? 'Require attention' : 'All stable', const Color(0xFF6366F1)),
+        ];
+
+        if (isNarrow) {
+          return Column(
+            children: [
+              for (int i = 0; i < stats.length; i++) ...[
+                SizedBox(width: double.infinity, child: _buildStatCard(stats[i])),
+                if (i < stats.length - 1) const SizedBox(height: 12),
+              ],
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            for (int i = 0; i < stats.length; i++) ...[
+              Expanded(child: _buildStatCard(stats[i])),
+              if (i < stats.length - 1) const SizedBox(width: 12),
+            ],
+          ],
+        );
+      },
     );
   }
 
@@ -263,104 +278,282 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
   }
 
   Widget _buildContractRegister() {
+    if (_projectId == null) {
+      return _PanelShell(
+        title: 'Contract register',
+        subtitle: 'Track scope, owners, and renewal milestones',
+        child: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Text('No project selected. Please open a project first.', style: TextStyle(color: Color(0xFF64748B))),
+          ),
+        ),
+      );
+    }
+
     return _PanelShell(
       title: 'Contract register',
       subtitle: 'Track scope, owners, and renewal milestones',
       trailing: _actionButton(Icons.filter_list, 'Filter'),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minWidth: constraints.maxWidth),
-              child: DataTable(
-                headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
-                columns: const [
-                  DataColumn(label: Text('ID', style: TextStyle(fontWeight: FontWeight.w600))),
-                  DataColumn(label: Text('Vendor', style: TextStyle(fontWeight: FontWeight.w600))),
-                  DataColumn(label: Text('Type', style: TextStyle(fontWeight: FontWeight.w600))),
-                  DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
-                  DataColumn(label: Text('Renewal', style: TextStyle(fontWeight: FontWeight.w600))),
-                  DataColumn(label: Text('Value', style: TextStyle(fontWeight: FontWeight.w600))),
-                  DataColumn(label: Text('Owner', style: TextStyle(fontWeight: FontWeight.w600))),
-                ],
-                rows: _contracts.map((item) {
-                  return DataRow(cells: [
-                    DataCell(Text(item.id, style: const TextStyle(fontSize: 12, color: Color(0xFF0EA5E9)))),
-                    DataCell(Text(item.vendor, style: const TextStyle(fontSize: 13))),
-                    DataCell(_chip(item.type)),
-                    DataCell(_statusChip(item.status)),
-                    DataCell(Text(item.renewal, style: const TextStyle(fontSize: 12))),
-                    DataCell(Text(item.value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
-                    DataCell(Text(item.owner, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)))),
-                  ]);
-                }).toList(),
+      child: StreamBuilder<List<ContractModel>>(
+        stream: ContractService.streamContracts(_projectId!),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: Padding(padding: EdgeInsets.all(24.0), child: CircularProgressIndicator()));
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Text('Error loading contracts: ${snapshot.error}', style: const TextStyle(color: Colors.red)),
               ),
-            ),
+            );
+          }
+
+          final contracts = snapshot.data ?? [];
+          final filteredContracts = _filterContracts(contracts);
+
+          if (filteredContracts.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  children: [
+                    const Text('No contracts found.', style: TextStyle(color: Color(0xFF64748B))),
+                    const SizedBox(height: 12),
+                    ElevatedButton.icon(
+                      onPressed: () => _showAddContractDialog(context),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Add First Contract'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                  child: DataTable(
+                    headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                    columns: const [
+                      DataColumn(label: Text('ID', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Contract Name', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Type', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Renewal', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Value', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Owner', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.w600))),
+                    ],
+                    rows: filteredContracts.map((contract) {
+                      final renewalDate = DateFormat('MMM dd').format(contract.endDate);
+                      final valueStr = contract.estimatedValue >= 1000000
+                          ? '\$${(contract.estimatedValue / 1000000).toStringAsFixed(1)}M'
+                          : '\$${(contract.estimatedValue / 1000).toStringAsFixed(0)}K';
+                      final contractId = contract.id.length > 8 ? contract.id.substring(0, 8).toUpperCase() : contract.id.toUpperCase();
+                      final ownerName = contract.createdByName.split(' ').map((n) => n[0]).join('. ');
+                      
+                      return DataRow(cells: [
+                        DataCell(Text('CT-$contractId', style: const TextStyle(fontSize: 12, color: Color(0xFF0EA5E9)))),
+                        DataCell(Text(contract.name, style: const TextStyle(fontSize: 13))),
+                        DataCell(_chip(contract.contractType)),
+                        DataCell(_statusChip(contract.status)),
+                        DataCell(Text(renewalDate, style: const TextStyle(fontSize: 12))),
+                        DataCell(Text(valueStr, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+                        DataCell(Text(ownerName, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)))),
+                        DataCell(
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit, size: 18, color: Color(0xFF64748B)),
+                                onPressed: () => _showEditContractDialog(context, contract),
+                                tooltip: 'Edit',
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete, size: 18, color: Color(0xFFEF4444)),
+                                onPressed: () => _showDeleteContractDialog(context, contract),
+                                tooltip: 'Delete',
+                              ),
+                            ],
+                          ),
+                        ),
+                      ]);
+                    }).toList(),
+                  ),
+                ),
+              );
+            },
           );
         },
       ),
     );
   }
 
+  List<ContractModel> _filterContracts(List<ContractModel> contracts) {
+    if (_selectedFilters.contains('All contracts')) return contracts;
+    return contracts.where((c) {
+      if (_selectedFilters.contains('Renewal due')) {
+        final daysUntilRenewal = c.endDate.difference(DateTime.now()).inDays;
+        return daysUntilRenewal <= 30 && daysUntilRenewal > 0;
+      }
+      if (_selectedFilters.contains('At risk') && c.status == 'At risk') return true;
+      if (_selectedFilters.contains('Pending sign-off') && c.status == 'Pending sign-off') return true;
+      if (_selectedFilters.contains('Archived') && c.status == 'Archived') return true;
+      return false;
+    }).toList();
+  }
+
   Widget _buildRenewalPanel() {
+    if (_projectId == null) {
+      return _PanelShell(
+        title: 'Renewal pipeline',
+        subtitle: 'Contracts rolling into renewal windows',
+        child: const SizedBox.shrink(),
+      );
+    }
+
     return _PanelShell(
       title: 'Renewal pipeline',
       subtitle: 'Contracts rolling into renewal windows',
-      child: Column(
-        children: _renewalLanes.map((lane) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(color: lane.color, shape: BoxShape.circle),
+      child: StreamBuilder<List<ContractModel>>(
+        stream: ContractService.streamContracts(_projectId!),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const SizedBox.shrink();
+          }
+
+          final contracts = snapshot.data!;
+          final now = DateTime.now();
+          
+          final renewal30 = contracts.where((c) {
+            final days = c.endDate.difference(now).inDays;
+            return days <= 30 && days > 0;
+          }).length;
+          
+          final renewal60 = contracts.where((c) {
+            final days = c.endDate.difference(now).inDays;
+            return days <= 60 && days > 30;
+          }).length;
+          
+          final renewal90 = contracts.where((c) {
+            final days = c.endDate.difference(now).inDays;
+            return days <= 90 && days > 60;
+          }).length;
+
+          final lanes = [
+            _RenewalLane('30 days', renewal30, const Color(0xFFF97316)),
+            _RenewalLane('60 days', renewal60, const Color(0xFF6366F1)),
+            _RenewalLane('90 days', renewal90, const Color(0xFF10B981)),
+          ];
+
+          return Column(
+            children: lanes.map((lane) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(lane.label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(color: lane.color, shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(lane.label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                    ),
+                    Text('${lane.count} contracts', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: lane.color)),
+                  ],
                 ),
-                Text('${lane.count} contracts', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: lane.color)),
-              ],
-            ),
+              );
+            }).toList(),
           );
-        }).toList(),
+        },
       ),
     );
   }
 
   Widget _buildSignalsPanel() {
+    if (_projectId == null) {
+      return _PanelShell(
+        title: 'Risk signals',
+        subtitle: 'Items that need attention this week',
+        child: const SizedBox.shrink(),
+      );
+    }
+
     return _PanelShell(
       title: 'Risk signals',
       subtitle: 'Items that need attention this week',
-      child: Column(
-        children: _signals.map((signal) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(signal.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Text(signal.subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-              ],
-            ),
+      child: StreamBuilder<List<ContractModel>>(
+        stream: ContractService.streamContracts(_projectId!),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const SizedBox.shrink();
+          }
+
+          final contracts = snapshot.data!;
+          final renewalDue = contracts.where((c) {
+            final days = c.endDate.difference(DateTime.now()).inDays;
+            return days <= 7 && days > 0;
+          }).length;
+          final atRiskCount = contracts.where((c) => c.status == 'At risk').length;
+          final pendingCount = contracts.where((c) => c.status == 'Pending sign-off').length;
+
+          final signals = <_SignalItem>[];
+          if (renewalDue > 0) {
+            signals.add(_SignalItem('Renewal risk flagged', '$renewalDue contract${renewalDue > 1 ? 's' : ''} require escalation this week.'));
+          }
+          if (atRiskCount > 0) {
+            signals.add(_SignalItem('At-risk contracts', '$atRiskCount contract${atRiskCount > 1 ? 's' : ''} marked as at risk.'));
+          }
+          if (pendingCount > 0) {
+            signals.add(_SignalItem('Legal review backlog', '$pendingCount item${pendingCount > 1 ? 's' : ''} awaiting legal sign-off.'));
+          }
+
+          if (signals.isEmpty) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24.0),
+                child: Text('No active risk signals', style: TextStyle(color: Color(0xFF10B981))),
+              ),
+            );
+          }
+
+          return Column(
+            children: signals.map((signal) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(signal.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Text(signal.subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                  ],
+                ),
+              );
+            }).toList(),
           );
-        }).toList(),
+        },
       ),
     );
   }
@@ -412,7 +605,216 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+      child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)      ),
+    );
+  }
+
+  void _showAddContractDialog(BuildContext context) {
+    final projectId = _projectId;
+    if (projectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No project selected. Please open a project first.')),
+      );
+      return;
+    }
+    _showContractDialog(context, null, projectId);
+  }
+
+  void _showEditContractDialog(BuildContext context, ContractModel contract) {
+    final projectId = _projectId;
+    if (projectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No project selected. Please open a project first.')),
+      );
+      return;
+    }
+    _showContractDialog(context, contract, projectId);
+  }
+
+  void _showContractDialog(BuildContext context, ContractModel? contract, String projectId) {
+    final isEdit = contract != null;
+    final nameController = TextEditingController(text: contract?.name ?? '');
+    final descriptionController = TextEditingController(text: contract?.description ?? '');
+    final contractTypeController = TextEditingController(text: contract?.contractType ?? '');
+    final paymentTypeController = TextEditingController(text: contract?.paymentType ?? '');
+    final statusController = TextEditingController(text: contract?.status ?? 'Active');
+    final estimatedValueController = TextEditingController(text: contract?.estimatedValue.toString() ?? '0');
+    final scopeController = TextEditingController(text: contract?.scope ?? '');
+    final disciplineController = TextEditingController(text: contract?.discipline ?? '');
+    final notesController = TextEditingController(text: contract?.notes ?? '');
+    DateTime? startDate = contract?.startDate;
+    DateTime? endDate = contract?.endDate;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(isEdit ? 'Edit Contract' : 'Add New Contract'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Contract Name *')),
+                const SizedBox(height: 12),
+                TextField(controller: descriptionController, decoration: const InputDecoration(labelText: 'Description *'), maxLines: 2),
+                const SizedBox(height: 12),
+                TextField(controller: contractTypeController, decoration: const InputDecoration(labelText: 'Contract Type *')),
+                const SizedBox(height: 12),
+                TextField(controller: paymentTypeController, decoration: const InputDecoration(labelText: 'Payment Type *')),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: statusController.text,
+                  decoration: const InputDecoration(labelText: 'Status *'),
+                  items: ['Active', 'Renewal due', 'At risk', 'Pending sign-off', 'Archived'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                  onChanged: (v) => setDialogState(() => statusController.text = v ?? 'Active'),
+                ),
+                const SizedBox(height: 12),
+                TextField(controller: estimatedValueController, decoration: const InputDecoration(labelText: 'Estimated Value *', hintText: 'e.g., 1000000')),
+                const SizedBox(height: 12),
+                ListTile(
+                  title: Text('Start Date: ${startDate != null ? DateFormat('MMM dd, yyyy').format(startDate!) : 'Not set'}'),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final date = await showDatePicker(context: context, initialDate: startDate ?? DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2030));
+                    if (date != null) setDialogState(() => startDate = date);
+                  },
+                ),
+                ListTile(
+                  title: Text('End Date: ${endDate != null ? DateFormat('MMM dd, yyyy').format(endDate!) : 'Not set'}'),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final date = await showDatePicker(context: context, initialDate: endDate ?? DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2030));
+                    if (date != null) setDialogState(() => endDate = date);
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(controller: scopeController, decoration: const InputDecoration(labelText: 'Scope *')),
+                const SizedBox(height: 12),
+                TextField(controller: disciplineController, decoration: const InputDecoration(labelText: 'Discipline *')),
+                const SizedBox(height: 12),
+                TextField(controller: notesController, decoration: const InputDecoration(labelText: 'Notes'), maxLines: 3),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (nameController.text.isEmpty || descriptionController.text.isEmpty || startDate == null || endDate == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please fill in all required fields')),
+                  );
+                  return;
+                }
+
+                try {
+                  final user = FirebaseAuth.instance.currentUser;
+                  final estimatedValue = double.tryParse(estimatedValueController.text) ?? 0.0;
+
+                  if (isEdit) {
+                    await ContractService.updateContract(
+                      projectId: projectId,
+                      contractId: contract.id,
+                      name: nameController.text,
+                      description: descriptionController.text,
+                      contractType: contractTypeController.text,
+                      paymentType: paymentTypeController.text,
+                      status: statusController.text,
+                      estimatedValue: estimatedValue,
+                      startDate: startDate!,
+                      endDate: endDate!,
+                      scope: scopeController.text,
+                      discipline: disciplineController.text,
+                      notes: notesController.text.isEmpty ? null : notesController.text,
+                    );
+                  } else {
+                    await ContractService.createContract(
+                      projectId: projectId,
+                      name: nameController.text,
+                      description: descriptionController.text,
+                      contractType: contractTypeController.text,
+                      paymentType: paymentTypeController.text,
+                      status: statusController.text,
+                      estimatedValue: estimatedValue,
+                      startDate: startDate!,
+                      endDate: endDate!,
+                      scope: scopeController.text,
+                      discipline: disciplineController.text,
+                      notes: notesController.text,
+                      createdById: user?.uid ?? '',
+                      createdByEmail: user?.email ?? '',
+                      createdByName: user?.displayName ?? user?.email?.split('@').first ?? '',
+                    );
+                  }
+
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(isEdit ? 'Contract updated successfully' : 'Contract added successfully')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: $e')),
+                    );
+                  }
+                }
+              },
+              child: Text(isEdit ? 'Update' : 'Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteContractDialog(BuildContext context, ContractModel contract) {
+    final projectId = _projectId;
+    if (projectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No project selected. Please open a project first.')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Contract'),
+        content: Text('Are you sure you want to delete "${contract.name}"? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await ContractService.deleteContract(projectId: projectId, contractId: contract.id);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Contract deleted successfully')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error deleting contract: $e')),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -494,18 +896,6 @@ class _ApprovalItem extends StatelessWidget {
       ),
     );
   }
-}
-
-class _ContractItem {
-  const _ContractItem(this.id, this.vendor, this.type, this.status, this.renewal, this.value, this.owner);
-
-  final String id;
-  final String vendor;
-  final String type;
-  final String status;
-  final String renewal;
-  final String value;
-  final String owner;
 }
 
 class _RenewalLane {

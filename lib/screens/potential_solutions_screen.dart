@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ndu_project/widgets/header_banner_image.dart';
+import 'package:ndu_project/widgets/app_logo.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
@@ -131,8 +131,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  // Use the exact string requested by the user
-                  'While AI suggestions are helpful, we strongly encourage you to make the requied adjustments are required',
+                  'Although AI-generated outputs can provide valuable insights, please review and refine them as needed to ensure they align with your project requirements.',
                   style: TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
                 ),
                 const SizedBox(height: 16),
@@ -368,7 +367,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
           SizedBox(
             width: double.infinity,
             height: bannerHeight,
-            child: const HeaderBannerImage(),
+            child: Center(child: AppLogo(height: 64)),
           ),
           // Header with brand divider (gold)
           Container(

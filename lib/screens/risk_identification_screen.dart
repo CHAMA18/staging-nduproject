@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:ndu_project/widgets/header_banner_image.dart';
+import 'package:ndu_project/widgets/app_logo.dart';
 import 'package:ndu_project/screens/home_screen.dart';
 import 'package:ndu_project/services/auth_nav.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
@@ -312,7 +312,7 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
           SizedBox(
             width: double.infinity,
             height: bannerHeight,
-            child: const HeaderBannerImage(),
+            child: Center(child: AppLogo(height: 64)),
           ),
           Container(
             padding: const EdgeInsets.all(24),

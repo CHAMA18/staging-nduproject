@@ -327,7 +327,6 @@ class _CircularNavButton extends StatelessWidget {
     required this.background,
     required this.borderColor,
     required this.iconColor,
-    this.onTap,
   });
 
   final IconData icon;
@@ -466,7 +465,7 @@ void _showAiHintDialog(BuildContext context) {
                 Icon(Icons.lightbulb_outline, color: _kAccentColor, size: 36),
                 SizedBox(height: 12),
                 Text(
-                  'While AI suggestions are helpful, we strongly encourage you to make the requied adjustments are required',
+                  'Although AI-generated outputs can provide valuable insights, please review and refine them as needed to ensure they align with your project requirements.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: _kTextPrimary,

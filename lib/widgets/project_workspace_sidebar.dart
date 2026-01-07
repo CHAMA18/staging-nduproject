@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/widgets/app_logo.dart';
-import 'package:ndu_project/widgets/header_banner_image.dart';
 
 import 'package:ndu_project/screens/ssher_stacked_screen.dart';
 
@@ -87,7 +86,7 @@ class _ProjectWorkspaceSidebarState extends State<ProjectWorkspaceSidebar> {
             child: SizedBox(
               width: double.infinity,
               height: 96,
-              child: const HeaderBannerImage(),
+              child: Center(child: AppLogo(height: 64)),
             ),
           ),
           const SizedBox(height: 12),

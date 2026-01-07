@@ -79,7 +79,6 @@ class _SprintConfig {
     required this.heading,
     required this.summaryLabel,
     required this.summaryColor,
-    this.allowAdd = false,
   });
 
   final String heading;

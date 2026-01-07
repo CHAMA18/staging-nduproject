@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../services/navigation_context_service.dart';
 
-/// World-class, interactive app logo widget using assets/images/NDU_logo.jpg.
+/// World-class, interactive app logo widget that automatically switches between
+/// assets/images/Logo.png (light mode) and assets/images/Ndu_logodarkmode.png (dark mode).
 /// Features smooth hover animations and professional visual feedback.
 class AppLogo extends StatefulWidget {
   const AppLogo({
@@ -68,9 +69,15 @@ class _AppLogoState extends State<AppLogo> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final h = widget.height ?? 56;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Use theme-aware logo selection: dark mode uses dark logo, light mode uses standard logo
+    final assetPath = isDark
+        ? 'assets/images/Ndu_logodarkmode.png'  // Dark mode logo
+        : 'assets/images/Logo.png';              // Light mode logo (using Logo.png as requested)
 
     final image = Image.asset(
-      'assets/images/NDU_logo.jpg',
+      assetPath,
       height: h,
       width: widget.width,
       fit: BoxFit.contain,

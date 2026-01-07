@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ndu_project/widgets/header_banner_image.dart';
+import 'package:ndu_project/widgets/app_logo.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
@@ -181,7 +181,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
         SizedBox(
           width: double.infinity,
           height: bannerHeight,
-          child: const HeaderBannerImage(),
+          child: Center(child: AppLogo(height: 64)),
         ),
         Container(
           padding: const EdgeInsets.all(24),

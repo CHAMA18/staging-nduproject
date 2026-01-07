@@ -1234,7 +1234,7 @@ class _QuoteRowData {
 }
 
 class _LabeledField extends StatelessWidget {
-  const _LabeledField({required this.label, required this.child, this.helper});
+  const _LabeledField({required this.label, required this.child});
 
   final String label;
   final Widget child;

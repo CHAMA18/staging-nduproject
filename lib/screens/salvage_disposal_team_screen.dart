@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
+import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/services/salvage_service.dart';
 
 class SalvageDisposalTeamScreen extends StatefulWidget {
   const SalvageDisposalTeamScreen({super.key});
@@ -17,6 +19,15 @@ class SalvageDisposalTeamScreen extends StatefulWidget {
 class _SalvageDisposalTeamScreenState extends State<SalvageDisposalTeamScreen> {
   int _selectedTab = 0;
   final List<String> _tabs = ['Overview', 'Asset Inventory', 'Disposal Queue', 'Team Allocation'];
+  
+  String? _getProjectId() {
+    try {
+      final provider = ProjectDataInherited.maybeOf(context);
+      return provider?.projectData.projectId;
+    } catch (e) {
+      return null;
+    }
+  }
 
   final List<_StatItem> _overviewStats = [
     _StatItem('Team Members', '5 active', Icons.people, Colors.blue),
@@ -479,45 +490,299 @@ class _SalvageDisposalTeamScreenState extends State<SalvageDisposalTeamScreen> {
             ],
           ),
           const SizedBox(height: 20),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
-              columns: const [
-                DataColumn(label: Text('Asset', style: TextStyle(fontWeight: FontWeight.w600))),
-                DataColumn(label: Text('Category', style: TextStyle(fontWeight: FontWeight.w600))),
-                DataColumn(label: Text('Condition', style: TextStyle(fontWeight: FontWeight.w600))),
-                DataColumn(label: Text('Location', style: TextStyle(fontWeight: FontWeight.w600))),
-                DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
-                DataColumn(label: Text('Est. Value', style: TextStyle(fontWeight: FontWeight.w600))),
-                DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.w600))),
-              ],
-              rows: _inventoryItems.map((item) {
-                return DataRow(
-                  cells: [
-                    DataCell(Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(item.id, style: const TextStyle(fontSize: 12, color: Color(0xFF0EA5E9), fontWeight: FontWeight.w600)),
-                        Text(item.name, style: const TextStyle(fontSize: 13)),
-                      ],
-                    )),
-                    DataCell(_buildCategoryChip(item.category)),
-                    DataCell(Text(item.condition, style: const TextStyle(fontSize: 13))),
-                    DataCell(Text(item.location, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)))),
-                    DataCell(_buildStatusBadge(item.status, item.statusColor)),
-                    DataCell(Text(item.value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
-                    DataCell(Row(
-                      children: [
-                        IconButton(icon: const Icon(Icons.edit, size: 16), onPressed: () {}, color: const Color(0xFF64748B)),
-                        IconButton(icon: const Icon(Icons.visibility, size: 16), onPressed: () {}, color: const Color(0xFF64748B)),
-                      ],
-                    )),
-                  ],
-                );
-              }).toList(),
+          _buildInventoryTableContent(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInventoryTableContent() {
+    final projectId = _getProjectId();
+    if (projectId == null) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24.0),
+          child: Text('No project selected. Please open a project first.',
+              style: TextStyle(color: Color(0xFF64748B))),
+        ),
+      );
+    }
+    
+    return StreamBuilder<List<SalvageInventoryItemModel>>(
+      stream: SalvageService.streamInventoryItems(projectId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: Padding(padding: EdgeInsets.all(24.0), child: CircularProgressIndicator()));
+        }
+        
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)),
             ),
+          );
+        }
+        
+        final items = snapshot.data ?? [];
+        
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+            columns: const [
+              DataColumn(label: Text('Asset', style: TextStyle(fontWeight: FontWeight.w600))),
+              DataColumn(label: Text('Category', style: TextStyle(fontWeight: FontWeight.w600))),
+              DataColumn(label: Text('Condition', style: TextStyle(fontWeight: FontWeight.w600))),
+              DataColumn(label: Text('Location', style: TextStyle(fontWeight: FontWeight.w600))),
+              DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
+              DataColumn(label: Text('Est. Value', style: TextStyle(fontWeight: FontWeight.w600))),
+              DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.w600))),
+            ],
+            rows: items.isEmpty
+                ? [
+                    const DataRow(cells: [
+                      DataCell(Text('No inventory items added yet', style: TextStyle(color: Color(0xFF64748B), fontStyle: FontStyle.italic))),
+                      DataCell(SizedBox()),
+                      DataCell(SizedBox()),
+                      DataCell(SizedBox()),
+                      DataCell(SizedBox()),
+                      DataCell(SizedBox()),
+                      DataCell(SizedBox()),
+                    ]),
+                  ]
+                : items.map((item) {
+                    Color statusColor;
+                    switch (item.status.toLowerCase()) {
+                      case 'ready':
+                        statusColor = Colors.green;
+                        break;
+                      case 'pending':
+                        statusColor = Colors.orange;
+                        break;
+                      case 'flagged':
+                        statusColor = Colors.red;
+                        break;
+                      default:
+                        statusColor = Colors.blue;
+                    }
+                    
+                    return DataRow(
+                      cells: [
+                        DataCell(Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(item.assetId, style: const TextStyle(fontSize: 12, color: Color(0xFF0EA5E9), fontWeight: FontWeight.w600)),
+                            Text(item.name, style: const TextStyle(fontSize: 13)),
+                          ],
+                        )),
+                        DataCell(_buildCategoryChip(item.category)),
+                        DataCell(Text(item.condition, style: const TextStyle(fontSize: 13))),
+                        DataCell(Text(item.location, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)))),
+                        DataCell(_buildStatusBadge(item.status, statusColor)),
+                        DataCell(Text(item.estimatedValue, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+                        DataCell(Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit, size: 16),
+                              onPressed: () => _showEditInventoryDialog(context, item),
+                              color: const Color(0xFF64748B),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, size: 16),
+                              onPressed: () => _showDeleteInventoryDialog(context, item),
+                              color: Colors.red,
+                            ),
+                          ],
+                        )),
+                      ],
+                    );
+                  }).toList(),
+          ),
+        );
+      },
+    );
+  }
+  
+  void _showEditInventoryDialog(BuildContext context, SalvageInventoryItemModel item) {
+    final projectId = _getProjectId();
+    if (projectId == null) return;
+    
+    final assetIdController = TextEditingController(text: item.assetId);
+    final nameController = TextEditingController(text: item.name);
+    final categoryController = TextEditingController(text: item.category);
+    final conditionController = TextEditingController(text: item.condition);
+    final locationController = TextEditingController(text: item.location);
+    final statusController = TextEditingController(text: item.status);
+    final valueController = TextEditingController(text: item.estimatedValue);
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Inventory Item'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: assetIdController, decoration: const InputDecoration(labelText: 'Asset ID *')),
+              const SizedBox(height: 12),
+              TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Name *')),
+              const SizedBox(height: 12),
+              TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'Category *')),
+              const SizedBox(height: 12),
+              TextField(controller: conditionController, decoration: const InputDecoration(labelText: 'Condition *')),
+              const SizedBox(height: 12),
+              TextField(controller: locationController, decoration: const InputDecoration(labelText: 'Location *')),
+              const SizedBox(height: 12),
+              TextField(controller: statusController, decoration: const InputDecoration(labelText: 'Status *')),
+              const SizedBox(height: 12),
+              TextField(controller: valueController, decoration: const InputDecoration(labelText: 'Estimated Value *')),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await SalvageService.updateInventoryItem(
+                  projectId: projectId,
+                  itemId: item.id,
+                  assetId: assetIdController.text,
+                  name: nameController.text,
+                  category: categoryController.text,
+                  condition: conditionController.text,
+                  location: locationController.text,
+                  status: statusController.text,
+                  estimatedValue: valueController.text,
+                );
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Item updated successfully')));
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              }
+            },
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _showAddInventoryDialog(BuildContext context) {
+    final projectId = _getProjectId();
+    if (projectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No project selected. Please open a project first.')),
+      );
+      return;
+    }
+    
+    final assetIdController = TextEditingController();
+    final nameController = TextEditingController();
+    final categoryController = TextEditingController();
+    final conditionController = TextEditingController();
+    final locationController = TextEditingController();
+    final statusController = TextEditingController(text: 'Pending');
+    final valueController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Inventory Item'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: assetIdController, decoration: const InputDecoration(labelText: 'Asset ID *')),
+              const SizedBox(height: 12),
+              TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Name *')),
+              const SizedBox(height: 12),
+              TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'Category *')),
+              const SizedBox(height: 12),
+              TextField(controller: conditionController, decoration: const InputDecoration(labelText: 'Condition *')),
+              const SizedBox(height: 12),
+              TextField(controller: locationController, decoration: const InputDecoration(labelText: 'Location *')),
+              const SizedBox(height: 12),
+              TextField(controller: statusController, decoration: const InputDecoration(labelText: 'Status *')),
+              const SizedBox(height: 12),
+              TextField(controller: valueController, decoration: const InputDecoration(labelText: 'Estimated Value *')),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              if (assetIdController.text.isEmpty || nameController.text.isEmpty || categoryController.text.isEmpty ||
+                  conditionController.text.isEmpty || locationController.text.isEmpty || statusController.text.isEmpty ||
+                  valueController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please fill in all required fields')),
+                );
+                return;
+              }
+              
+              try {
+                await SalvageService.createInventoryItem(
+                  projectId: projectId,
+                  assetId: assetIdController.text,
+                  name: nameController.text,
+                  category: categoryController.text,
+                  condition: conditionController.text,
+                  location: locationController.text,
+                  status: statusController.text,
+                  estimatedValue: valueController.text,
+                );
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Item added successfully')));
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _showDeleteInventoryDialog(BuildContext context, SalvageInventoryItemModel item) {
+    final projectId = _getProjectId();
+    if (projectId == null) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Inventory Item'),
+        content: Text('Are you sure you want to delete "${item.name}"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await SalvageService.deleteInventoryItem(projectId: projectId, itemId: item.id);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Item deleted successfully')));
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

@@ -151,4 +151,57 @@ class ContractService {
         .snapshots()
         .map((snap) => snap.docs.map(ContractModel.fromDoc).toList());
   }
+
+  /// Update an existing contract
+  static Future<void> updateContract({
+    required String projectId,
+    required String contractId,
+    String? name,
+    String? description,
+    String? contractType,
+    String? paymentType,
+    String? status,
+    double? estimatedValue,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? scope,
+    String? discipline,
+    String? notes,
+  }) async {
+    final updateData = <String, dynamic>{
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    if (name != null) updateData['name'] = name;
+    if (description != null) updateData['description'] = description;
+    if (contractType != null) updateData['contractType'] = contractType;
+    if (paymentType != null) updateData['paymentType'] = paymentType;
+    if (status != null) updateData['status'] = status;
+    if (estimatedValue != null) updateData['estimatedValue'] = estimatedValue;
+    if (startDate != null) updateData['startDate'] = Timestamp.fromDate(startDate);
+    if (endDate != null) updateData['endDate'] = Timestamp.fromDate(endDate);
+    if (scope != null) updateData['scope'] = scope;
+    if (discipline != null) updateData['discipline'] = discipline;
+    if (notes != null) updateData['notes'] = notes;
+
+    await _contractsCol(projectId).doc(contractId).update(updateData);
+  }
+
+  /// Delete a contract
+  static Future<void> deleteContract({
+    required String projectId,
+    required String contractId,
+  }) async {
+    await _contractsCol(projectId).doc(contractId).delete();
+  }
+
+  /// Get a single contract
+  static Future<ContractModel?> getContract({
+    required String projectId,
+    required String contractId,
+  }) async {
+    final doc = await _contractsCol(projectId).doc(contractId).get();
+    if (!doc.exists) return null;
+    return ContractModel.fromDoc(doc);
+  }
 }

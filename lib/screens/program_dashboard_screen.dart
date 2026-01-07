@@ -10,10 +10,15 @@ import '../models/program_model.dart';
 import '../services/navigation_context_service.dart';
 import '../services/program_service.dart';
 import '../services/project_service.dart';
+import '../services/project_navigation_service.dart';
+import '../providers/project_data_provider.dart';
+import '../screens/initiation_phase_screen.dart';
 import '../widgets/kaz_ai_chat_bubble.dart';
 
 class ProgramDashboardScreen extends StatefulWidget {
-  const ProgramDashboardScreen({super.key});
+  const ProgramDashboardScreen({super.key, this.programId});
+
+  final String? programId;
 
   @override
   State<ProgramDashboardScreen> createState() => _ProgramDashboardScreenState();
@@ -51,7 +56,7 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
     }
 
     try {
-      // Listen to user's programs and get the first one
+      // Listen to user's programs and get the specified one or first one
       _programSubscription?.cancel();
       _programSubscription = ProgramService.streamPrograms(ownerId: user.uid).listen((programs) {
         if (!mounted) return;
@@ -67,7 +72,13 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
           return;
         }
 
-        final program = programs.first;
+        // Find program by ID if provided, otherwise use first
+        final program = widget.programId != null
+            ? programs.firstWhere(
+                (p) => p.id == widget.programId,
+                orElse: () => programs.first,
+              )
+            : programs.first;
         final programChanged = _currentProgram?.id != program.id;
 
         // Now stream projects for this program
@@ -496,7 +507,7 @@ class _ProjectsCard extends StatelessWidget {
                   )
                 else
                   for (int i = 0; i < projects.length; i++) ...[
-                    _ProjectRow(info: _toProjectInfo(projects[i], i)),
+                    _ProjectRow(projectId: projects[i].id, info: _toProjectInfo(projects[i], i)),
                     if (i != projects.length - 1) const Divider(height: 1, color: Color(0xFFE6E7EE)),
                   ],
               ],
@@ -880,44 +891,120 @@ class _ScheduleRow extends StatelessWidget {
 }
 
 class _ProjectRow extends StatelessWidget {
-  const _ProjectRow({required this.info});
+  const _ProjectRow({required this.projectId, required this.info});
 
+  final String projectId;
   final _ProjectInfo info;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            flex: 4,
+    return InkWell(
+      onTap: () {
+        // Load project and navigate to initiation phase
+        _handleProjectTap(context, projectId);
+      },
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              flex: 4,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(info.title, style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 4),
+                  Text(info.code, style: textTheme.bodySmall?.copyWith(color: const Color(0xFF6B6D80))),
+                ],
+              ),
+            ),
+            Expanded(flex: 2, child: _Pill(label: info.stage, color: info.stageColor)),
+            Expanded(flex: 2, child: _Pill(label: info.priority, color: info.priorityColor, foreground: Colors.white)),
+            Expanded(
+              flex: 2,
+              child: Text(info.owner, style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+            ),
+            SizedBox(
+              width: 64,
+              child: Center(
+                child: Text(info.status, style: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleProjectTap(BuildContext context, String projectId) async {
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(info.title, style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 4),
-                Text(info.code, style: textTheme.bodySmall?.copyWith(color: const Color(0xFF6B6D80))),
+                CircularProgressIndicator(strokeWidth: 3),
+                SizedBox(height: 16),
+                Text(
+                  'Loading project...',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  textAlign: TextAlign.center,
+                ),
               ],
             ),
           ),
-          Expanded(flex: 2, child: _Pill(label: info.stage, color: info.stageColor)),
-          Expanded(flex: 2, child: _Pill(label: info.priority, color: info.priorityColor, foreground: Colors.white)),
-          Expanded(
-            flex: 2,
-            child: Text(info.owner, style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
-          ),
-          SizedBox(
-            width: 64,
-            child: Center(
-              child: Text(info.status, style: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
-            ),
-          ),
-        ],
+        ),
       ),
     );
+
+    try {
+      final provider = ProjectDataInherited.of(context);
+      debugPrint('📥 Calling loadFromFirebase for project: $projectId');
+      
+      final success = await provider.loadFromFirebase(projectId);
+
+      debugPrint('📤 Load result: $success, error: ${provider.lastError}');
+
+      if (!context.mounted) return;
+
+      Navigator.of(context).pop(); // Close loading dialog
+
+      if (success) {
+        // Get the last visited page for this project
+        final lastPage = await ProjectNavigationService.instance.getLastPage(projectId);
+        debugPrint('✅ Project loaded successfully, navigating to last page: $lastPage');
+        
+        // Navigate to the last visited page (default to initiation)
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const InitiationPhaseScreen(),
+          ),
+        );
+      } else {
+        debugPrint('❌ Failed to load project: ${provider.lastError}');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to load project: ${provider.lastError ?? "Unknown error"}')),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading project: $e');
+      if (context.mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading project: $e')),
+        );
+      }
+    }
   }
 }
 

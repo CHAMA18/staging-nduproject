@@ -4,6 +4,8 @@ import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/services/agile_service.dart';
 
 class AgileDevelopmentIterationsScreen extends StatefulWidget {
   const AgileDevelopmentIterationsScreen({super.key});
@@ -22,20 +24,41 @@ class _AgileDevelopmentIterationsScreenState extends State<AgileDevelopmentItera
   final Set<String> _selectedFilters = {'Single view of iteration health'};
   final TextEditingController _notesController = TextEditingController();
   bool _expandAllStories = false;
-  final Map<_BoardStatus, List<_StoryCard>> _boardStories = {
-    _BoardStatus.planned: [
-      _StoryCard(id: 'planned-1', title: 'User onboarding flow v2', owner: 'Product', points: '8 pts', notes: 'Definition locked · Design sign-off complete.'),
-      _StoryCard(id: 'planned-2', title: 'Security hardening checklist', owner: 'Security', points: '5 pts', notes: 'Must complete before go-live gate.'),
-    ],
-    _BoardStatus.inProgress: [
-      _StoryCard(id: 'in-progress-1', title: 'Payments integration with gateway', owner: 'Backend', points: '13 pts', notes: 'Blocked on sandbox instability from vendor.'),
-      _StoryCard(id: 'in-progress-2', title: 'Observability baseline dashboards', owner: 'SRE', points: '5 pts', notes: 'Core metrics wired · alerts configuration pending.'),
-    ],
-    _BoardStatus.readyToDemo: [
-      _StoryCard(id: 'ready-1', title: 'Admin project overview', owner: 'Frontend', points: '3 pts', notes: 'UX validated · waiting for stakeholder demo.'),
-      _StoryCard(id: 'ready-2', title: 'Audit log export', owner: 'Platform', points: '2 pts', notes: 'Meets regulatory acceptance criteria.'),
-    ],
-  };
+  
+  String? _getProjectId() {
+    try {
+      final provider = ProjectDataInherited.maybeOf(context);
+      return provider?.projectData.projectId;
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  Map<_BoardStatus, List<AgileStoryModel>> _groupStoriesByStatus(List<AgileStoryModel> stories) {
+    final grouped = <_BoardStatus, List<AgileStoryModel>>{
+      _BoardStatus.planned: [],
+      _BoardStatus.inProgress: [],
+      _BoardStatus.readyToDemo: [],
+    };
+    
+    for (final story in stories) {
+      switch (story.status.toLowerCase()) {
+        case 'planned':
+          grouped[_BoardStatus.planned]!.add(story);
+          break;
+        case 'inprogress':
+        case 'in_progress':
+          grouped[_BoardStatus.inProgress]!.add(story);
+          break;
+        case 'readytodemo':
+        case 'ready_to_demo':
+          grouped[_BoardStatus.readyToDemo]!.add(story);
+          break;
+      }
+    }
+    
+    return grouped;
+  }
 
   @override
   void dispose() {
@@ -341,23 +364,59 @@ class _AgileDevelopmentIterationsScreenState extends State<AgileDevelopmentItera
   }
 
   Widget _buildKanbanBoard() {
-    final columns = [
-      _BoardStatus.planned,
-      _BoardStatus.inProgress,
-      _BoardStatus.readyToDemo,
-    ];
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (int i = 0; i < columns.length; i++) ...[
-          Expanded(child: _buildKanbanColumn(columns[i], _boardStories[columns[i]] ?? [])),
-          if (i != columns.length - 1) const SizedBox(width: 12),
-        ],
-      ],
+    final projectId = _getProjectId();
+    if (projectId == null) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24.0),
+          child: Text('No project selected. Please open a project first.',
+              style: TextStyle(color: Color(0xFF64748B))),
+        ),
+      );
+    }
+    
+    return StreamBuilder<List<AgileStoryModel>>(
+      stream: AgileService.streamStories(projectId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+              child: Padding(
+                  padding: EdgeInsets.all(24.0),
+                  child: CircularProgressIndicator()));
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Text('Error loading stories: ${snapshot.error}',
+                  style: const TextStyle(color: Colors.red)),
+            ),
+          );
+        }
+
+        final stories = snapshot.data ?? [];
+        final groupedStories = _groupStoriesByStatus(stories);
+        
+        final columns = [
+          _BoardStatus.planned,
+          _BoardStatus.inProgress,
+          _BoardStatus.readyToDemo,
+        ];
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (int i = 0; i < columns.length; i++) ...[
+              Expanded(child: _buildKanbanColumn(columns[i], groupedStories[columns[i]] ?? [])),
+              if (i != columns.length - 1) const SizedBox(width: 12),
+            ],
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildKanbanColumn(_BoardStatus status, List<_StoryCard> stories) {
+  Widget _buildKanbanColumn(_BoardStatus status, List<AgileStoryModel> stories) {
     return DragTarget<_StoryDragData>(
       onWillAccept: (data) => data != null && data.from != status,
       onAccept: (data) => _moveStory(data, status),
@@ -414,6 +473,17 @@ class _AgileDevelopmentIterationsScreenState extends State<AgileDevelopmentItera
                     style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
                   ),
                 ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => _showAddStoryDialog(context, status),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Add Story'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF374151),
+                  side: const BorderSide(color: Color(0xFFE5E7EB)),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              ),
             ],
           ),
         );
@@ -421,15 +491,15 @@ class _AgileDevelopmentIterationsScreenState extends State<AgileDevelopmentItera
     );
   }
 
-  Widget _buildDraggableStory(_BoardStatus status, _StoryCard story) {
-    final card = _buildStoryCard(story, isExpanded: _expandAllStories);
+  Widget _buildDraggableStory(_BoardStatus status, AgileStoryModel story) {
+    final card = _buildStoryCard(story, isExpanded: _expandAllStories, status: status);
     return Draggable<_StoryDragData>(
       data: _StoryDragData(from: status, story: story),
       feedback: Material(
         color: Colors.transparent,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 240),
-          child: Opacity(opacity: 0.95, child: _buildStoryCard(story, isExpanded: true, isDragging: true)),
+          child: Opacity(opacity: 0.95, child: _buildStoryCard(story, isExpanded: true, isDragging: true, status: status)),
         ),
       ),
       childWhenDragging: Opacity(opacity: 0.45, child: card),
@@ -437,50 +507,286 @@ class _AgileDevelopmentIterationsScreenState extends State<AgileDevelopmentItera
     );
   }
 
-  Widget _buildStoryCard(_StoryCard story, {required bool isExpanded, bool isDragging = false}) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: isDragging ? const Color(0xFF93C5FD) : const Color(0xFFE5E7EB)),
-        boxShadow: isDragging
-            ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.12),
-                  blurRadius: 12,
-                  offset: const Offset(0, 6),
+  Widget _buildStoryCard(AgileStoryModel story, {required bool isExpanded, bool isDragging = false, required _BoardStatus status}) {
+    return GestureDetector(
+      onTap: () => _showEditStoryDialog(context, story),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: isDragging ? const Color(0xFF93C5FD) : const Color(0xFFE5E7EB)),
+          boxShadow: isDragging
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    story.title,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+                  ),
                 ),
-              ]
-            : null,
+                PopupMenuButton(
+                  icon: const Icon(Icons.more_vert, size: 16, color: Color(0xFF6B7280)),
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      child: const Text('Edit'),
+                      onTap: () => Future.delayed(Duration.zero, () => _showEditStoryDialog(context, story)),
+                    ),
+                    PopupMenuItem(
+                      child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                      onTap: () => Future.delayed(Duration.zero, () => _showDeleteStoryDialog(context, story)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Owner: ${story.owner}',
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+                ),
+                Text(
+                  story.points,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              story.notes,
+              maxLines: isExpanded ? null : 2,
+              overflow: isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF), height: 1.3),
+            ),
+          ],
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            story.title,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    );
+  }
+  
+  void _showAddStoryDialog(BuildContext context, _BoardStatus status) {
+    final projectId = _getProjectId();
+    if (projectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No project selected. Please open a project first.')),
+      );
+      return;
+    }
+    
+    String statusString;
+    switch (status) {
+      case _BoardStatus.planned:
+        statusString = 'planned';
+        break;
+      case _BoardStatus.inProgress:
+        statusString = 'inProgress';
+        break;
+      case _BoardStatus.readyToDemo:
+        statusString = 'readyToDemo';
+        break;
+    }
+    
+    final titleController = TextEditingController();
+    final ownerController = TextEditingController();
+    final pointsController = TextEditingController();
+    final notesController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add New Story'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'Owner: ${story.owner}',
-                style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
-              ),
-              Text(
-                story.points,
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
-              ),
+              TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title *')),
+              const SizedBox(height: 12),
+              TextField(controller: ownerController, decoration: const InputDecoration(labelText: 'Owner *')),
+              const SizedBox(height: 12),
+              TextField(controller: pointsController, decoration: const InputDecoration(labelText: 'Points *')),
+              const SizedBox(height: 12),
+              TextField(controller: notesController, decoration: const InputDecoration(labelText: 'Notes *'), maxLines: 3),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            story.notes,
-            maxLines: isExpanded ? null : 2,
-            overflow: isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF), height: 1.3),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (titleController.text.isEmpty || ownerController.text.isEmpty || pointsController.text.isEmpty || notesController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please fill in all required fields')),
+                );
+                return;
+              }
+              
+              try {
+                await AgileService.createStory(
+                  projectId: projectId,
+                  title: titleController.text,
+                  owner: ownerController.text,
+                  points: pointsController.text,
+                  notes: notesController.text,
+                  status: statusString,
+                );
+                
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Story added successfully')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _showEditStoryDialog(BuildContext context, AgileStoryModel story) {
+    final projectId = _getProjectId();
+    if (projectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No project selected. Please open a project first.')),
+      );
+      return;
+    }
+    
+    final titleController = TextEditingController(text: story.title);
+    final ownerController = TextEditingController(text: story.owner);
+    final pointsController = TextEditingController(text: story.points);
+    final notesController = TextEditingController(text: story.notes);
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Story'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title *')),
+              const SizedBox(height: 12),
+              TextField(controller: ownerController, decoration: const InputDecoration(labelText: 'Owner *')),
+              const SizedBox(height: 12),
+              TextField(controller: pointsController, decoration: const InputDecoration(labelText: 'Points *')),
+              const SizedBox(height: 12),
+              TextField(controller: notesController, decoration: const InputDecoration(labelText: 'Notes *'), maxLines: 3),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (titleController.text.isEmpty || ownerController.text.isEmpty || pointsController.text.isEmpty || notesController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please fill in all required fields')),
+                );
+                return;
+              }
+              
+              try {
+                await AgileService.updateStory(
+                  projectId: projectId,
+                  storyId: story.id,
+                  title: titleController.text,
+                  owner: ownerController.text,
+                  points: pointsController.text,
+                  notes: notesController.text,
+                );
+                
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Story updated successfully')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _showDeleteStoryDialog(BuildContext context, AgileStoryModel story) {
+    final projectId = _getProjectId();
+    if (projectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No project selected. Please open a project first.')),
+      );
+      return;
+    }
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Story'),
+        content: Text('Are you sure you want to delete "${story.title}"? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await AgileService.deleteStory(projectId: projectId, storyId: story.id);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Story deleted successfully')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error deleting story: $e')),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -797,11 +1103,36 @@ class _AgileDevelopmentIterationsScreenState extends State<AgileDevelopmentItera
     );
   }
 
-  void _moveStory(_StoryDragData data, _BoardStatus target) {
-    setState(() {
-      _boardStories[data.from]?.removeWhere((story) => story.id == data.story.id);
-      _boardStories[target]?.add(data.story);
-    });
+  Future<void> _moveStory(_StoryDragData data, _BoardStatus target) async {
+    final projectId = _getProjectId();
+    if (projectId == null) return;
+    
+    String statusString;
+    switch (target) {
+      case _BoardStatus.planned:
+        statusString = 'planned';
+        break;
+      case _BoardStatus.inProgress:
+        statusString = 'inProgress';
+        break;
+      case _BoardStatus.readyToDemo:
+        statusString = 'readyToDemo';
+        break;
+    }
+    
+    try {
+      await AgileService.updateStory(
+        projectId: projectId,
+        storyId: data.story.id,
+        status: statusString,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating story: $e')),
+        );
+      }
+    }
   }
 
   String _statusLabel(_BoardStatus status) {
@@ -877,27 +1208,11 @@ class _MetricData {
   });
 }
 
-class _StoryCard {
-  final String id;
-  final String title;
-  final String owner;
-  final String points;
-  final String notes;
-
-  _StoryCard({
-    required this.id,
-    required this.title,
-    required this.owner,
-    required this.points,
-    required this.notes,
-  });
-}
-
 enum _BoardStatus { planned, inProgress, readyToDemo }
 
 class _StoryDragData {
   final _BoardStatus from;
-  final _StoryCard story;
+  final AgileStoryModel story;
 
   _StoryDragData({required this.from, required this.story});
 }

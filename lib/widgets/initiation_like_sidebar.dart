@@ -45,7 +45,7 @@ import 'package:ndu_project/screens/deliverable_roadmap_subsections_screen.dart'
 import 'package:ndu_project/screens/organization_plan_subsections_screen.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/models/project_data_model.dart';
-import 'package:ndu_project/widgets/header_banner_image.dart';
+import 'package:ndu_project/widgets/app_logo.dart';
 import 'package:ndu_project/screens/issue_management_screen.dart';
 import 'package:ndu_project/screens/risk_assessment_screen.dart';
 import 'package:ndu_project/screens/staff_team_screen.dart';
@@ -1069,9 +1069,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
             SizedBox(
               width: double.infinity,
               height: bannerHeight,
-              child: const HeaderBannerImage(
-                height: null, // SizedBox will constrain height
-              ),
+              child: Center(child: AppLogo(height: 64)),
             ),
             Container(
               padding: const EdgeInsets.all(24),

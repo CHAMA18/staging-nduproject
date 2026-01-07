@@ -36,6 +36,59 @@ service cloud.firestore {
         isAdmin()
       );
       allow delete: if isAuthenticated() && (request.auth.uid == resource.data.ownerId || isAdmin());
+      
+      // Execution subcollections
+      match /execution_tools/{toolId} {
+        allow read, write: if isAuthenticated();
+      }
+      match /execution_issues/{issueId} {
+        allow read, write: if isAuthenticated();
+      }
+      match /execution_enabling_works/{workId} {
+        allow read, write: if isAuthenticated();
+      }
+      match /execution_change_requests/{requestId} {
+        allow read, write: if isAuthenticated();
+      }
+      
+      // Vendor subcollection
+      match /vendors/{vendorId} {
+        allow read, write: if isAuthenticated();
+      }
+      
+      // Contract subcollection
+      match /contracts/{contractId} {
+        allow read, write: if isAuthenticated();
+      }
+      
+      // Ops subcollections
+      match /ops_members/{memberId} {
+        allow read, write: if isAuthenticated();
+      }
+      match /ops_checklist/{itemId} {
+        allow read, write: if isAuthenticated();
+      }
+      
+      // Agile subcollection
+      match /agile_stories/{storyId} {
+        allow read, write: if isAuthenticated();
+      }
+      
+      // Salvage subcollections
+      match /salvage_team_members/{memberId} {
+        allow read, write: if isAuthenticated();
+      }
+      match /salvage_inventory/{itemId} {
+        allow read, write: if isAuthenticated();
+      }
+      match /salvage_disposal/{itemId} {
+        allow read, write: if isAuthenticated();
+      }
+      
+      // Tools integration subcollection
+      match /tool_integrations/{integrationId} {
+        allow read, write: if isAuthenticated();
+      }
     }
     
     // Programs collection

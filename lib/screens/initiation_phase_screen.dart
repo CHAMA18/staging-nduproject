@@ -3,7 +3,7 @@ import 'dart:math' as Math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:ndu_project/widgets/header_banner_image.dart';
+import 'package:ndu_project/widgets/app_logo.dart';
 import 'package:ndu_project/screens/potential_solutions_screen.dart';
 import 'package:ndu_project/screens/preferred_solution_analysis_screen.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
@@ -720,7 +720,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
           SizedBox(
             width: double.infinity,
             height: bannerHeight,
-            child: const HeaderBannerImage(),
+            child: Center(child: AppLogo(height: 64)),
           ),
           Container(
             padding: const EdgeInsets.all(24),

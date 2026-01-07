@@ -338,12 +338,18 @@ class AppRouter {
       GoRoute(
         name: AppRoutes.programDashboard,
         path: '/${AppRoutes.programDashboard}',
-        builder: (context, state) => const ProgramDashboardScreen(),
+        builder: (context, state) {
+          final programId = state.uri.queryParameters['programId'];
+          return ProgramDashboardScreen(programId: programId);
+        },
       ),
       GoRoute(
         name: AppRoutes.portfolioDashboard,
         path: '/${AppRoutes.portfolioDashboard}',
-        builder: (context, state) => const PortfolioDashboardScreen(),
+        builder: (context, state) {
+          final portfolioId = state.uri.queryParameters['portfolioId'];
+          return PortfolioDashboardScreen(portfolioId: portfolioId);
+        },
       ),
       GoRoute(
         name: AppRoutes.launchChecklist,
@@ -497,6 +503,33 @@ class AppRouter {
     initialLocation: '/',
     redirect: (context, state) {
       final user = FirebaseAuth.instance.currentUser;
+      // On admin domain, allow all authenticated users
+      if (AccessPolicy.isRestrictedAdminHost()) {
+        final currentPath = state.uri.path;
+        // Redirect /landing to appropriate page (it doesn't exist in admin router)
+        if (currentPath == '/${AppRoutes.landing}' || currentPath == '/landing') {
+          final email = user?.email;
+          if (email != null && email.isNotEmpty) {
+            return '/${AppRoutes.adminHome}';
+          }
+          return '/${AppRoutes.signIn}';
+        }
+        // If user is authenticated (has email), allow access
+        final email = user?.email;
+        if (email != null && email.isNotEmpty) {
+          // If on root path and authenticated, redirect to admin home
+          if (currentPath == '/' || state.matchedLocation == '/') {
+            return '/${AppRoutes.adminHome}';
+          }
+          return null; // Allow access to other routes
+        }
+        // If not authenticated, redirect to sign-in (not /landing which doesn't exist in admin router)
+        if (currentPath != '/${AppRoutes.signIn}' && state.matchedLocation != '/${AppRoutes.signIn}') {
+          return '/${AppRoutes.signIn}';
+        }
+        return null;
+      }
+      // For non-admin domains, use the standard guard
       final block = _adminHostGuard(user);
       if (block != null) return block;
       return null;
@@ -525,6 +558,10 @@ class _RouteNotFound extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
+    final isAdminDomain = AccessPolicy.isRestrictedAdminHost();
+    final user = FirebaseAuth.instance.currentUser;
+    final hasEmail = user?.email != null && user!.email!.isNotEmpty;
+    
     return Scaffold(
       body: Center(
         child: ConstrainedBox(
@@ -546,7 +583,17 @@ class _RouteNotFound extends StatelessWidget {
                 Text('We couldn\'t find "$path". Check the URL or use navigation.', style: t.textTheme.bodyMedium),
                 const SizedBox(height: 16),
                 FilledButton.icon(
-                  onPressed: () => context.go('/${AppRoutes.dashboard}'),
+                  onPressed: () {
+                    if (isAdminDomain) {
+                      if (hasEmail) {
+                        context.go('/${AppRoutes.adminHome}');
+                      } else {
+                        context.go('/${AppRoutes.signIn}');
+                      }
+                    } else {
+                      context.go('/${AppRoutes.dashboard}');
+                    }
+                  },
                   icon: const Icon(Icons.dashboard),
                   label: const Text('Go to dashboard'),
                 )

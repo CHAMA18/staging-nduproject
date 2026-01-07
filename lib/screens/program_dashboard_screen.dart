@@ -10,13 +10,10 @@ import '../models/program_model.dart';
 import '../services/navigation_context_service.dart';
 import '../services/program_service.dart';
 import '../services/project_service.dart';
-<<<<<<< HEAD
-import '../widgets/dashboard_stat_card.dart';
-=======
 import '../services/project_navigation_service.dart';
 import '../providers/project_data_provider.dart';
 import '../screens/initiation_phase_screen.dart';
->>>>>>> origin/sub
+import '../widgets/dashboard_stat_card.dart';
 import '../widgets/kaz_ai_chat_bubble.dart';
 
 class ProgramDashboardScreen extends StatefulWidget {
@@ -99,18 +96,13 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
           return;
         }
 
-<<<<<<< HEAD
         final programCount = programs.length;
-        final program = programs.first;
-=======
-        // Find program by ID if provided, otherwise use first
         final program = widget.programId != null
             ? programs.firstWhere(
                 (p) => p.id == widget.programId,
                 orElse: () => programs.first,
               )
             : programs.first;
->>>>>>> origin/sub
         final programChanged = _currentProgram?.id != program.id;
 
         // Now stream projects for this program

@@ -8,6 +8,7 @@ import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
 import 'project_framework_next_screen.dart';
 
 class ProjectFrameworkScreen extends StatefulWidget {
@@ -26,11 +27,13 @@ class ProjectFrameworkScreen extends StatefulWidget {
 class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
   String? _selectedOverallFramework;
   final List<_Goal> _goals = [_Goal(id: 1, name: 'Goal 1', framework: null)];
+  bool _isAiPopulating = false;
+  bool _aiPopulated = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final projectData = ProjectDataHelper.getData(context);
       _selectedOverallFramework = projectData.overallFramework;
       
@@ -47,6 +50,7 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
         }
         setState(() {});
       }
+      await _maybePopulateAi(projectData);
     });
   }
 
@@ -78,6 +82,64 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
       final goal = _goals.firstWhere((g) => g.id == goalId);
       goal.dispose();
       _goals.removeWhere((g) => g.id == goalId);
+    });
+  }
+
+  Future<void> _maybePopulateAi(ProjectDataModel projectData) async {
+    if (_aiPopulated) return;
+    final needsFramework = (projectData.overallFramework ?? '').trim().isEmpty;
+    final filledGoals = projectData.projectGoals.where((g) => g.description.trim().isNotEmpty).length;
+    final needsGoals = filledGoals < 3;
+    if (!needsFramework && !needsGoals) return;
+
+    final contextText = ProjectDataHelper.buildFepContext(
+      projectData,
+      sectionLabel: 'Project Management Framework',
+    );
+    if (contextText.trim().isEmpty) return;
+
+    setState(() => _isAiPopulating = true);
+    AiProjectFrameworkAndGoals aiResult;
+    try {
+      aiResult = await OpenAiServiceSecure().suggestProjectFrameworkGoals(context: contextText);
+    } catch (e) {
+      print('AI framework suggestion failed: $e');
+      aiResult = AiProjectFrameworkAndGoals.fallback(contextText);
+    }
+
+    if (!mounted) return;
+    _applyAiResult(aiResult);
+  }
+
+  void _applyAiResult(AiProjectFrameworkAndGoals aiResult) {
+    final suggestions = aiResult.goals.isNotEmpty
+        ? aiResult.goals
+        : AiProjectFrameworkAndGoals.fallback('').goals;
+    setState(() {
+      _aiPopulated = true;
+      _isAiPopulating = false;
+      if ((_selectedOverallFramework ?? '').trim().isEmpty && aiResult.framework.isNotEmpty) {
+        _selectedOverallFramework = aiResult.framework;
+      }
+      for (final goal in _goals) {
+        goal.dispose();
+      }
+      _goals
+        ..clear()
+        ..addAll(List.generate(3, (index) {
+          final suggestion = index < suggestions.length ? suggestions[index] : suggestions.last;
+          const fallbackFrameworks = ['Agile', 'Waterfall', 'Hybrid'];
+          final fallbackFramework = fallbackFrameworks[index % fallbackFrameworks.length];
+          final frameworkCandidate = (suggestion.framework?.trim().isNotEmpty == true)
+              ? suggestion.framework!.trim()
+              : fallbackFramework;
+          return _Goal(
+            id: index + 1,
+            name: suggestion.name.isNotEmpty ? suggestion.name : 'Goal ${index + 1}',
+            framework: frameworkCandidate.isNotEmpty ? frameworkCandidate : null,
+            description: suggestion.description,
+          );
+        }));
     });
   }
 
@@ -145,6 +207,7 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
                                 },
                                 onAddGoal: _addGoal,
                                 onDeleteGoal: _deleteGoal,
+                                isAiPopulating: _isAiPopulating,
                               ),
                               const SizedBox(height: 24),
                               BusinessCaseNavigationButtons(
@@ -159,6 +222,7 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
                       ),
                     ],
                   ),
+                  const _BottomOverlay(),
                   const KazAiChatBubble(),
                 ],
               ),
@@ -190,6 +254,7 @@ class _MainContentCard extends StatelessWidget {
     required this.onGoalFrameworkChanged,
     required this.onAddGoal,
     required this.onDeleteGoal,
+    required this.isAiPopulating,
   });
 
   final String? selectedOverallFramework;
@@ -198,6 +263,7 @@ class _MainContentCard extends StatelessWidget {
   final void Function(int goalId, String? framework) onGoalFrameworkChanged;
   final VoidCallback onAddGoal;
   final void Function(int goalId) onDeleteGoal;
+  final bool isAiPopulating;
 
   @override
   Widget build(BuildContext context) {
@@ -220,6 +286,18 @@ class _MainContentCard extends StatelessWidget {
             'Select a framework for the overall project and individual goals .',
             style: TextStyle(fontSize: 15, color: Color(0xFF6B7280)),
           ),
+          if (isAiPopulating) ...[
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: const LinearProgressIndicator(minHeight: 6),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'AI is drafting framework and goal suggestions...',
+              style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+            ),
+          ],
           const SizedBox(height: 48),
           _OverallFrameworkSection(
             selectedFramework: selectedOverallFramework,

@@ -11,6 +11,7 @@ import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/content_text.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
 
 enum _SsherCategory { safety, security, health, environment, regulatory }
 
@@ -31,6 +32,10 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
   final Color _regulatoryAccent = const Color(0xFF8E24AA);
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  String _aiPlanSummary = '';
+  bool _isGeneratingSummary = false;
+  bool _summaryLoaded = false;
+
   late List<SsherEntry> _safetyEntries;
   late List<SsherEntry> _securityEntries;
   late List<SsherEntry> _healthEntries;
@@ -47,7 +52,10 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
     _healthEntries = [];
     _environmentEntries = [];
     _regulatoryEntries = [];
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadSavedEntries());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadSavedEntries();
+      _populateSsherSummaryFromAi();
+    });
   }
 
   void _loadSavedEntries() {
@@ -60,6 +68,55 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
       _environmentEntries = entries.where((e) => e.category == _categoryKey(_SsherCategory.environment)).toList();
       _regulatoryEntries = entries.where((e) => e.category == _categoryKey(_SsherCategory.regulatory)).toList();
     });
+  }
+
+  Future<void> _populateSsherSummaryFromAi() async {
+    if (_summaryLoaded) return;
+    final projectData = ProjectDataHelper.getData(context);
+    final existingSummary = projectData.ssherData.screen1Data.trim();
+    if (existingSummary.isNotEmpty) {
+      setState(() {
+        _aiPlanSummary = existingSummary;
+        _summaryLoaded = true;
+      });
+      return;
+    }
+
+    final contextText = ProjectDataHelper.buildFepContext(projectData, sectionLabel: 'SSHER');
+    if (contextText.trim().isEmpty) {
+      setState(() => _summaryLoaded = true);
+      return;
+    }
+
+    setState(() {
+      _isGeneratingSummary = true;
+    });
+
+    String summary = '';
+    try {
+      summary = await OpenAiServiceSecure().generateSsherPlanSummary(context: contextText);
+    } catch (error) {
+      debugPrint('SSHER summary AI call failed: $error');
+    }
+
+    if (!mounted) return;
+
+    final trimmedSummary = summary.trim();
+    setState(() {
+      _aiPlanSummary = trimmedSummary;
+      _isGeneratingSummary = false;
+      _summaryLoaded = true;
+    });
+
+    if (trimmedSummary.isEmpty) return;
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'ssher',
+      showSnackbar: false,
+      dataUpdater: (data) => data.copyWith(
+        ssherData: data.ssherData.copyWith(screen1Data: trimmedSummary),
+      ),
+    );
   }
 
   List<Widget> _buildRow({required int index, required SsherEntry entry}) {
@@ -307,6 +364,56 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
             ),
           ]),
         ),
+
+        if (_isGeneratingSummary)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: Colors.blue.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                const SizedBox(
+                  height: 16,
+                  width: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'AI is preparing a tailored SSHER summary using your prior section inputs. This will be saved automatically to your project.',
+                    style: TextStyle(color: Colors.blue[900], fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (_aiPlanSummary.isNotEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('AI-generated SSHER Summary', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Text(
+                  _aiPlanSummary,
+                  style: TextStyle(color: Colors.grey[800], fontSize: 14, height: 1.5),
+                ),
+              ],
+            ),
+          ),
 
         // Safety (from page 1)
         SsherSectionCard(

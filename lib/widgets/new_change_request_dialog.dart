@@ -4,7 +4,10 @@ import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/change_request_service.dart';
 
 class NewChangeRequestDialog extends StatefulWidget {
-  const NewChangeRequestDialog({super.key});
+  const NewChangeRequestDialog({super.key, this.changeRequest, this.onSaved});
+
+  final ChangeRequest? changeRequest;
+  final VoidCallback? onSaved;
 
   @override
   State<NewChangeRequestDialog> createState() => _NewChangeRequestDialogState();
@@ -32,6 +35,23 @@ class _NewChangeRequestDialogState extends State<NewChangeRequestDialog> {
   String _selectedStatus = 'Pending';
 
   DateTime? _selectedDate;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.changeRequest;
+    if (initial != null) {
+      _titleCtrl.text = initial.title;
+      _descriptionCtrl.text = initial.description ?? '';
+      _justificationCtrl.text = initial.justification ?? '';
+      _selectedType = initial.type.isEmpty ? null : initial.type;
+      _selectedImpact = initial.impact.isEmpty ? null : initial.impact;
+      _selectedStatus = initial.status;
+      _requesterCtrl.text = initial.requester;
+      _selectedDate = initial.requestDate;
+      _dateCtrl.text = _formatDate(initial.requestDate);
+    }
+  }
 
   @override
   void dispose() {
@@ -205,21 +225,39 @@ class _NewChangeRequestDialogState extends State<NewChangeRequestDialog> {
     if (_selectedDate == null) return;
     setState(() => _submitting = true);
     try {
-      await ChangeRequestService.createChangeRequest(
-        title: _titleCtrl.text.trim(),
-        type: _selectedType!,
-        impact: _selectedImpact!,
-        status: _selectedStatus,
-        requester: _requesterCtrl.text.trim(),
-        requestDate: _selectedDate!,
-        description: _descriptionCtrl.text.trim().isEmpty ? null : _descriptionCtrl.text.trim(),
-        justification: _justificationCtrl.text.trim().isEmpty ? null : _justificationCtrl.text.trim(),
-      );
+      if (widget.changeRequest != null) {
+        final updated = ChangeRequest(
+          id: widget.changeRequest!.id,
+          displayId: widget.changeRequest!.displayId,
+          title: _titleCtrl.text.trim(),
+          type: _selectedType!,
+          impact: _selectedImpact!,
+          status: _selectedStatus,
+          requester: _requesterCtrl.text.trim(),
+          description: _descriptionCtrl.text.trim().isEmpty ? null : _descriptionCtrl.text.trim(),
+          justification: _justificationCtrl.text.trim().isEmpty ? null : _justificationCtrl.text.trim(),
+          requestDate: _selectedDate!,
+          createdAt: widget.changeRequest!.createdAt,
+        );
+        await ChangeRequestService.updateChangeRequest(updated);
+      } else {
+        await ChangeRequestService.createChangeRequest(
+          title: _titleCtrl.text.trim(),
+          type: _selectedType!,
+          impact: _selectedImpact!,
+          status: _selectedStatus,
+          requester: _requesterCtrl.text.trim(),
+          requestDate: _selectedDate!,
+          description: _descriptionCtrl.text.trim().isEmpty ? null : _descriptionCtrl.text.trim(),
+          justification: _justificationCtrl.text.trim().isEmpty ? null : _justificationCtrl.text.trim(),
+        );
+      }
       if (mounted) Navigator.of(context).pop(true);
+      widget.onSaved?.call();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create request: $e')),
+          SnackBar(content: Text(widget.changeRequest != null ? 'Failed to update request: $e' : 'Failed to create request: $e')),
         );
       }
     } finally {

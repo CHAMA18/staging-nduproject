@@ -629,7 +629,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen> with SingleTick
         } else if (title == 'Team Management') {
           Navigator.push(context, MaterialPageRoute(builder: (context) => const TeamManagementScreen()));
         } else if (title == 'Change Management') {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => const ChangeManagementScreen()));
+          Navigator.push(context, MaterialPageRoute(builder: (context) => ChangeManagementScreen()));
         } else if (title == 'Lessons Learned') {
           LessonsLearnedScreen.open(context);
         }

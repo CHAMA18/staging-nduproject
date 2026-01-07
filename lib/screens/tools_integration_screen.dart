@@ -836,7 +836,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
     }
 
     final saved = updated;
-    if (!mounted) return;
+    if (saved == null || !mounted) return;
     setState(() => _integrations[index] = saved);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

@@ -212,7 +212,7 @@ class _Sidebar extends StatelessWidget {
             menu(Icons.change_circle_outlined, 'Change Management', onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const ChangeManagementScreen()),
+                MaterialPageRoute(builder: (context) => ChangeManagementScreen()),
               );
             }),
             menu(Icons.assessment_outlined, 'Project Plan'),

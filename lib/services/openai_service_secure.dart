@@ -114,6 +114,120 @@ class AiProjectValueInsights {
   }
 }
 
+class AiProjectGoalRecommendation {
+  final String name;
+  final String description;
+  final String? framework;
+
+  AiProjectGoalRecommendation({
+    required this.name,
+    required this.description,
+    this.framework,
+  });
+
+  factory AiProjectGoalRecommendation.fromMap(Map<String, dynamic> map) {
+    final rawName = map['name'] ?? map['goal_name'] ?? map['title'] ?? '';
+    final rawDesc = map['description'] ?? map['details'] ?? map['text'] ?? '';
+    final rawFramework = map['framework'] ?? map['methodology'] ?? map['approach'] ?? '';
+    final name = rawName.toString().trim();
+    final description = rawDesc.toString().trim();
+    final framework = rawFramework?.toString().trim();
+    return AiProjectGoalRecommendation(
+      name: name,
+      description: description,
+      framework: (framework?.isEmpty ?? true) ? null : framework,
+    );
+  }
+
+  factory AiProjectGoalRecommendation.fallback({
+    required String name,
+    required String description,
+    String? framework,
+  }) {
+    return AiProjectGoalRecommendation(
+      name: name,
+      description: description,
+      framework: framework,
+    );
+  }
+}
+
+class AiProjectFrameworkAndGoals {
+  final String framework;
+  final List<AiProjectGoalRecommendation> goals;
+
+  AiProjectFrameworkAndGoals({
+    required this.framework,
+    required this.goals,
+  });
+
+  factory AiProjectFrameworkAndGoals.fromMap(Map<String, dynamic> map) {
+    final rawFramework = map['framework'] ?? map['overallFramework'] ?? map['methodology'] ?? '';
+    final framework = rawFramework.toString().trim();
+    final rawGoals = map['goals'];
+    final parsedGoals = <AiProjectGoalRecommendation>[];
+    if (rawGoals is List) {
+      for (final entry in rawGoals) {
+        if (entry is Map<String, dynamic>) {
+          parsedGoals.add(AiProjectGoalRecommendation.fromMap(entry));
+        } else if (entry is String) {
+          parsedGoals.add(AiProjectGoalRecommendation(
+            name: '',
+            description: entry.trim(),
+            framework: framework.isEmpty ? null : framework,
+          ));
+        }
+      }
+    } else if (rawGoals is Map<String, dynamic>) {
+      parsedGoals.add(AiProjectGoalRecommendation.fromMap(rawGoals));
+    }
+
+    return AiProjectFrameworkAndGoals(
+      framework: framework,
+      goals: parsedGoals,
+    );
+  }
+
+  factory AiProjectFrameworkAndGoals.fallback(String context) {
+    final projectName = _extractProjectName(context);
+    final assetName = projectName.isEmpty ? 'project' : projectName;
+    final descriptions = [
+      'Define a governance model and stakeholder alignment for $assetName to keep priorities clear and enable timely decisions.',
+      'Deliver measurable outcomes around customer experience, regulation, or operational efficiency while reinforcing transparency for $assetName.',
+      'Create delivery cadences (planning, review, launch) that keep teams accountable and surface risks early during $assetName implementation.',
+    ];
+    const frameworkOptions = ['Agile', 'Waterfall', 'Hybrid'];
+    final goals = List.generate(3, (index) {
+      return AiProjectGoalRecommendation.fallback(
+        name: 'Goal ${index + 1}',
+        description: descriptions[index % descriptions.length],
+        framework: frameworkOptions[index % frameworkOptions.length],
+      );
+    });
+    return AiProjectFrameworkAndGoals(framework: 'Hybrid', goals: goals);
+  }
+}
+
+String _guessFramework(String context) {
+  final lower = context.toLowerCase();
+  if (lower.contains('compliance') || lower.contains('regulatory') || lower.contains('audit')) return 'Waterfall';
+  if (lower.contains('hybrid') || lower.contains('governance') || lower.contains('programs')) return 'Hybrid';
+  if (lower.contains('agile') || lower.contains('iterative') || lower.contains('customer experience')) return 'Agile';
+  return 'Agile';
+}
+
+String _extractProjectName(String context) {
+  final lines = context.split('\n');
+  for (final line in lines) {
+    final lower = line.toLowerCase();
+    if (lower.startsWith('project name:')) {
+      final value = line.substring(line.indexOf(':') + 1).trim();
+      if (value.isNotEmpty) return value;
+    }
+  }
+  return '';
+}
+
 class BenefitLineItemInput {
   final String category;
   final String title;
@@ -249,6 +363,70 @@ class OpenAiServiceSecure {
       final lines = trimmedContext.split('\n').where((l) => l.trim().isNotEmpty).take(10).toList();
       return '${section.trim()} Notes:\n${lines.join('\n')}';
     }
+  }
+
+  Future<AiProjectFrameworkAndGoals> suggestProjectFrameworkGoals({
+    required String context,
+    int maxTokens = 450,
+    double temperature = 0.4,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) {
+      return AiProjectFrameworkAndGoals.fallback(trimmedContext);
+    }
+    if (!OpenAiConfig.isConfigured) {
+      return AiProjectFrameworkAndGoals.fallback(trimmedContext);
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a senior project strategist helping to set the right delivery framework and goals. Always reply with JSON only and obey the required schema.'
+        },
+        {
+          'role': 'user',
+          'content': _projectFrameworkPrompt(trimmedContext),
+        },
+      ],
+    });
+
+    try {
+      final response = await _client.post(uri, headers: headers, body: body).timeout(const Duration(seconds: 12));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('OpenAI error ${response.statusCode}: ${response.body}');
+      }
+      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final choices = data['choices'] as List<dynamic>? ?? [];
+      if (choices.isNotEmpty) {
+        final firstMessage = choices.first['message'] as Map<String, dynamic>? ?? {};
+        final content = (firstMessage['content'] as String?)?.trim() ?? '';
+        final parsed = _decodeJsonSafely(content);
+        if (parsed != null) {
+          final result = AiProjectFrameworkAndGoals.fromMap(parsed);
+          if (result.goals.length >= 3 && result.framework.isNotEmpty) {
+            return result;
+          }
+          if (result.goals.isNotEmpty) {
+            return result;
+          }
+        }
+      }
+    } catch (e) {
+      print('suggestProjectFrameworkGoals failed: $e');
+    }
+
+    return AiProjectFrameworkAndGoals.fallback(trimmedContext);
   }
 
   // OPPORTUNITIES
@@ -1590,6 +1768,126 @@ Make each suggestion:
       allFallbacks[(startIdx + 1) % allFallbacks.length],
       allFallbacks[(startIdx + 2) % allFallbacks.length],
     ];
+  }
+
+  String _projectFrameworkPrompt(String context) {
+    final escaped = _escape(context);
+    return '''
+Determine the best overall project framework (Waterfall, Agile, or Hybrid) and generate three distinct project goals aligned with that framework. Each goal should include a brief description (max 40 words) and may optionally specify the preferred framework if Hybrid is chosen.
+
+Return ONLY valid JSON in this exact structure:
+{
+  "framework": "Waterfall|Agile|Hybrid",
+  "goals": [
+    {
+      "name": "Goal 1",
+      "description": "Concise description",
+      "framework": "Optional: Waterfall|Agile|Hybrid"
+    }
+  ]
+}
+
+Project Context:
+"""
+$escaped
+"""
+''';
+  }
+
+  Future<String> generateSsherPlanSummary({
+    required String context,
+    int maxTokens = 450,
+    double temperature = 0.45,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) return '';
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackSsherSummary(trimmedContext);
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content': 'You are an SSHER strategist. Craft a concise summary (120-180 words) that highlights the safety, security, health, environment, and regulatory priorities tied to the provided context. Always return ONLY valid JSON matching the requested schema.'
+        },
+        {
+          'role': 'user',
+          'content': _ssherSummaryPrompt(trimmedContext),
+        },
+      ],
+    });
+
+    try {
+      final response = await _client.post(uri, headers: headers, body: body).timeout(const Duration(seconds: 12));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('OpenAI error ${response.statusCode}: ${response.body}');
+      }
+      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final choices = data['choices'] as List<dynamic>? ?? [];
+      if (choices.isNotEmpty) {
+        final firstMessage = choices.first['message'] as Map<String, dynamic>? ?? {};
+        final content = (firstMessage['content'] as String?)?.trim() ?? '';
+        final parsed = _decodeJsonSafely(content);
+        final summary = parsed != null ? (parsed['summary'] ?? parsed['text'] ?? '').toString().trim() : '';
+        if (summary.isNotEmpty) return summary;
+      }
+    } catch (e) {
+      print('generateSsherPlanSummary failed: $e');
+    }
+
+    return _fallbackSsherSummary(trimmedContext);
+  }
+
+  String _ssherSummaryPrompt(String context) {
+    final escaped = _escape(context);
+    return '''
+ Using the project inputs below, write a single coherent SSHER summary (120-180 words) that highlights safety, security, health, environment, and regulatory priorities while tying the language directly to the context.
+
+ Return ONLY valid JSON with this exact structure:
+ {
+   "summary": "Concise SSHER plan summary text goes here."
+ }
+
+ Project context:
+ """
+ $escaped
+ """
+ ''';
+  }
+
+  String _fallbackSsherSummary(String context) {
+    final lines = context.split('\n').where((line) => line.trim().isNotEmpty).take(5).join(' ');
+    return lines.isEmpty ? 'SSHER plan is in progress.' : 'SSHER plan summary: $lines';
+  }
+
+  Map<String, dynamic>? _decodeJsonSafely(String content) {
+    final trimmed = content.trim();
+    if (trimmed.isEmpty) return null;
+    try {
+      return jsonDecode(trimmed) as Map<String, dynamic>;
+    } catch (_) {
+      final start = trimmed.indexOf('{');
+      final end = trimmed.lastIndexOf('}');
+      if (start >= 0 && end > start) {
+        try {
+          return jsonDecode(trimmed.substring(start, end + 1)) as Map<String, dynamic>;
+        } catch (_) {
+          return null;
+        }
+      }
+      return null;
+    }
   }
 
   String _technologiesPrompt(List<AiSolutionItem> solutions, String notes) {

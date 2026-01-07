@@ -3,12 +3,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-<<<<<<< HEAD
+
 import '../widgets/dashboard_stat_card.dart';
-=======
-import 'package:go_router/go_router.dart';
->>>>>>> origin/sub
 import '../widgets/kaz_ai_chat_bubble.dart';
+import 'package:go_router/go_router.dart';
 import '../routing/app_router.dart';
 import '../services/navigation_context_service.dart';
 import '../services/project_service.dart';

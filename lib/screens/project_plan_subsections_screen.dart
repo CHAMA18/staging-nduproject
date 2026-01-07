@@ -323,6 +323,8 @@ class _SectionData {
   const _SectionData({
     required this.title,
     required this.subtitle,
+    this.bullets = const [],
+    this.statusRows = const [],
   });
 
   final String title;

@@ -160,7 +160,6 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     'Security',
     'Allowance',
     'Work Breakdown Structure',
-    'Change Management',
     'Interface Management',
     'Project Baseline',
     'Level 1 - Project Schedule',
@@ -520,7 +519,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
   }
 
   void _openChangeManagement() {
-    _navigateWithCheckpoint('change_management', const ChangeManagementScreen());
+    _navigateWithCheckpoint('change_management', ChangeManagementScreen());
   }
 
   void _openProjectPlan() {

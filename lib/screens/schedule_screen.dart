@@ -1480,6 +1480,7 @@ class _BadgeStyle {
     required this.label,
     required this.textColor,
     required this.backgroundColor,
+    this.borderColor,
   });
 
   final String label;
@@ -1491,6 +1492,10 @@ class _BadgeStyle {
 class _WbsNode {
   const _WbsNode({
     required this.title,
+    this.duration,
+    this.badges = const [],
+    this.children = const [],
+    this.highlight = false,
   });
 
   final String title;
@@ -1507,7 +1512,10 @@ class _TimelineItem {
     required this.startWeek,
     required this.durationWeeks,
     required this.color,
-  }) : isMilestone = false;
+    this.progress = 0,
+    this.isCritical = false,
+    this.isMilestone = false,
+  });
 
   const _TimelineItem.milestone({
     required this.label,

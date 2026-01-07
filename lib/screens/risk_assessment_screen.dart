@@ -321,6 +321,7 @@ class _MetricCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     this.height,
+    this.badges = const [],
     this.progress,
     this.footer,
     this.footerIcon,

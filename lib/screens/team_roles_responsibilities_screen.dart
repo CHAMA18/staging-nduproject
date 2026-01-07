@@ -1235,6 +1235,7 @@ class _DialogTextField extends StatelessWidget {
     this.icon,
     this.keyboardType,
     this.maxLines = 1,
+    this.onChanged,
   });
 
   final TextEditingController controller;

@@ -107,11 +107,26 @@ class ChangeRequest {
 }
 
 class ChangeRequestService {
-  static final _col = FirebaseFirestore.instance.collection('change_requests');
+  static CollectionReference<Map<String, dynamic>>? _tryCollection() {
+    try {
+      return FirebaseFirestore.instance.collection('change_requests');
+    } catch (e, st) {
+      debugPrint('ChangeRequestService: Firestore not ready ($e)\n$st');
+      return null;
+    }
+  }
+
+  static CollectionReference<Map<String, dynamic>> _requireCollection() {
+    final col = _tryCollection();
+    if (col == null) {
+      throw StateError('Firestore is not initialized');
+    }
+    return col;
+  }
 
   // Generates a displayId like CR-001 based on current count; not transaction-safe but fine for demo.
   static Future<String> _generateDisplayId() async {
-    final snapshot = await _col.count().get();
+    final snapshot = await _requireCollection().count().get();
     final next = (snapshot.count ?? 0) + 1;
     String pad(int n) => n.toString().padLeft(3, '0');
     return 'CR-${pad(next)}';
@@ -140,14 +155,49 @@ class ChangeRequestService {
       'requestDate': Timestamp.fromDate(requestDate),
       'createdAt': FieldValue.serverTimestamp(),
     };
-    final ref = await _col.add(data);
+    final ref = await _requireCollection().add(data);
     return ref.id;
   }
 
   static Stream<List<ChangeRequest>> streamChangeRequests() {
-    return _col
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((s) => s.docs.map((d) => ChangeRequest.fromDoc(d)).toList());
+    final col = _tryCollection();
+    if (col == null) {
+      return Stream<List<ChangeRequest>>.value(const []);
+    }
+    try {
+      return col
+          .orderBy('createdAt', descending: true)
+          .snapshots()
+          .map((s) => s.docs.map((d) => ChangeRequest.fromDoc(d)).toList());
+    } catch (e, st) {
+      debugPrint('ChangeRequestService: stream failure ($e)\n$st');
+      return Stream<List<ChangeRequest>>.value(const []);
+    }
+  }
+
+  static Future<void> updateChangeRequest(ChangeRequest request) async {
+    try {
+      await _requireCollection().doc(request.id).update({
+        'title': request.title,
+        'type': request.type,
+        'impact': request.impact,
+        'status': request.status,
+        'requester': request.requester,
+        'description': request.description,
+        'justification': request.justification,
+        'requestDate': Timestamp.fromDate(request.requestDate),
+      });
+    } catch (e) {
+      debugPrint('Failed to update change request (${request.id}): $e');
+      rethrow;
+    }
+  }
+
+  static Future<void> deleteChangeRequest(String id) async {
+    try {
+      await _requireCollection().doc(id).delete();
+    } catch (e) {
+      debugPrint('Failed to delete change request ($id): $e');
+    }
   }
 }

@@ -21,7 +21,7 @@ import 'package:ndu_project/screens/it_considerations_screen.dart';
 import 'package:ndu_project/screens/infrastructure_considerations_screen.dart';
 import 'package:ndu_project/screens/core_stakeholders_screen.dart';
 import 'package:ndu_project/screens/cost_analysis_screen.dart';
-import 'package:ndu_project/screens/front_end_planning_screen.dart';
+import 'package:ndu_project/screens/project_framework_screen.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/business_case_header.dart';
@@ -450,15 +450,15 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
       businessCase: _businessCaseController.text.trim(),
     );
 
-    await provider.saveToFirebase(checkpoint: 'front_end_planning');
+    await provider.saveToFirebase(checkpoint: 'project_framework');
 
     final projectId = provider.projectData.projectId;
     if (projectId != null && projectId.isNotEmpty) {
       try {
         await FirebaseFirestore.instance.collection('projects').doc(projectId).update({
           'status': 'Planning',
-          'milestone': 'front-end planning',
-          'checkpointRoute': 'front_end_planning',
+          'milestone': 'planning',
+          'checkpointRoute': 'project_framework',
           'checkpointAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
         });
@@ -474,7 +474,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => const FrontEndPlanningScreen(),
+        builder: (_) => const ProjectFrameworkScreen(),
       ),
     );
   }

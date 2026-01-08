@@ -5,6 +5,8 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
+import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/services/project_insights_service.dart';
 
 class ScopeTrackingImplementationScreen extends StatefulWidget {
   const ScopeTrackingImplementationScreen({super.key});
@@ -22,12 +24,19 @@ class ScopeTrackingImplementationScreen extends StatefulWidget {
 class _ScopeTrackingImplementationScreenState extends State<ScopeTrackingImplementationScreen> {
   final Set<String> _selectedFilters = {'All scope'};
 
+  static const List<String> _scopeStatusOptions = [
+    'On track',
+    'Variance',
+    'At risk',
+    'Pending',
+  ];
+
+  static const List<String> _changeStatusOptions = ['Pending', 'Approved', 'Rejected'];
+
   final List<_ScopeItem> _scopeItems = [
     _ScopeItem('SC-301', 'Core platform rollout', 'On track', '0%', 'Engineering', 'Oct 18'),
     _ScopeItem('SC-308', 'Reporting dashboards', 'Variance', '+6%', 'Analytics', 'Oct 22'),
     _ScopeItem('SC-315', 'Integration hub', 'At risk', '+3%', 'Platform', 'Oct 20'),
-    _ScopeItem('SC-323', 'Training enablement', 'On track', '0%', 'Change team', 'Oct 28'),
-    _ScopeItem('SC-332', 'Ops handover', 'Pending', '+2%', 'Operations', 'Nov 02'),
   ];
 
   final List<_VarianceSignal> _varianceSignals = [
@@ -37,48 +46,50 @@ class _ScopeTrackingImplementationScreenState extends State<ScopeTrackingImpleme
   ];
 
   final List<_ChangeItem> _changeItems = [
-    _ChangeItem('CR-112', 'Add audit log export', 'Approved', 'Oct 10'),
-    _ChangeItem('CR-118', 'Reduce legacy migration scope', 'Approved', 'Oct 14'),
-    _ChangeItem('CR-123', 'Expand training scope', 'Pending', 'Oct 19'),
+    _ChangeItem('CR-019', 'Add analytics export', 'In Review', 'Oct 18'),
+    _ChangeItem('CR-021', 'Integrate vendor payment gateway', 'Approved', 'Oct 22'),
+    _ChangeItem('CR-024', 'Extend onboarding flow', 'Submitted', 'Oct 20'),
   ];
 
   final List<_BaselineCheckpoint> _baselineItems = [
-    _BaselineCheckpoint('Baseline scope sign-off', 'Complete', true),
-    _BaselineCheckpoint('Scope variance review', 'In progress', false),
-    _BaselineCheckpoint('Sponsor acceptance', 'Scheduled', false),
+    _BaselineCheckpoint('Milestone review', 'Ready', true),
+    _BaselineCheckpoint('Runbook refresh', 'In review', false),
+    _BaselineCheckpoint('Disaster recovery drill', 'Pending', false),
   ];
 
-  final List<_StatCardData> _stats = [
-    _StatCardData('Scope items', '32', '4 critical', const Color(0xFF0EA5E9)),
-    _StatCardData('Variance', '2.4%', 'Within guardrails', const Color(0xFF10B981)),
-    _StatCardData('Change requests', '3', '1 pending', const Color(0xFFF59E0B)),
-    _StatCardData('Acceptance', '84%', 'Stakeholder aligned', const Color(0xFF6366F1)),
-  ];
-
-  static const List<String> _scopeStatusOptions = [
-    'On track',
-    'Variance',
-    'At risk',
-    'Pending',
-  ];
-
-  static const List<String> _changeStatusOptions = [
-    'Approved',
-    'Pending',
-  ];
-
-  static const Map<String, Color> _statColors = {
-    'Blue': Color(0xFF0EA5E9),
+  final Map<String, Color> _statColors = const {
+    'Blue': Color(0xFF2563EB),
     'Green': Color(0xFF10B981),
     'Orange': Color(0xFFF59E0B),
-    'Purple': Color(0xFF6366F1),
-    'Gray': Color(0xFF64748B),
+    'Purple': Color(0xFF8B5CF6),
   };
+
+  final List<_StatCardData> _stats = [
+    _StatCardData('Scope items', '32', '4 critical', Color(0xFF2563EB)),
+    _StatCardData('Variance', '2.4%', 'Within guardrails', Color(0xFF10B981)),
+    _StatCardData('Change requests', '3', '1 pending', Color(0xFFF59E0B)),
+    _StatCardData('Acceptance', '84%', 'Stakeholder aligned', Color(0xFF8B5CF6)),
+  ];
 
   @override
   Widget build(BuildContext context) {
     final isNarrow = MediaQuery.sizeOf(context).width < 980;
     final padding = AppBreakpoints.pagePadding(context);
+    final provider = ProjectDataInherited.maybeOf(context);
+    final projectId = provider?.projectData.projectId;
+
+    if (projectId == null) {
+      return ResponsiveScaffold(
+        activeItemLabel: 'Scope Tracking Implementation',
+        backgroundColor: const Color(0xFFF5F7FB),
+        body: Center(
+          child: Text(
+            'Pick a project to load scope tracking metrics.',
+            style: TextStyle(color: Colors.grey[700], fontSize: 16),
+          ),
+        ),
+      );
+    }
 
     return ResponsiveScaffold(
       activeItemLabel: 'Scope Tracking Implementation',
@@ -96,12 +107,12 @@ class _ScopeTrackingImplementationScreenState extends State<ScopeTrackingImpleme
                 const SizedBox(height: 20),
                 _buildStatsHeader(),
                 const SizedBox(height: 12),
-                _buildStatsRow(isNarrow),
+                _buildStatsRow(isNarrow, projectId),
                 const SizedBox(height: 24),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildScopeRegister(),
+                    _buildScopeRegister(projectId),
                     const SizedBox(height: 20),
                     _buildVariancePanel(),
                     const SizedBox(height: 20),
@@ -293,17 +304,33 @@ class _ScopeTrackingImplementationScreenState extends State<ScopeTrackingImpleme
     );
   }
 
-  Widget _buildStatsRow(bool isNarrow) {
+  Widget _buildStatsRow(bool isNarrow, String projectId) {
+    return StreamBuilder<List<ScopeTrackingStat>>(
+      stream: ProjectInsightsService.streamScopeStats(projectId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          final placeholders = List.generate(4, (_) => ScopeTrackingStat(label: '', value: '—', supporting: '', color: const Color(0xFFB1B5C3)));
+          return _statsLayout(isNarrow, placeholders);
+        }
+        final stats = snapshot.data ?? [];
+        if (stats.isEmpty) {
+          return _emptyPanelMessage('Scope metrics are not available yet.');
+        }
+        return _statsLayout(isNarrow, stats);
+      },
+    );
+  }
+
+  Widget _statsLayout(bool isNarrow, List<ScopeTrackingStat> stats) {
     if (isNarrow) {
       return Wrap(
         spacing: 12,
         runSpacing: 12,
-        children: _stats.map((stat) => _buildStatCard(stat)).toList(),
+        children: stats.map((stat) => _buildStatCard(stat)).toList(),
       );
     }
-
     return Row(
-      children: _stats.map((stat) => Expanded(
+      children: stats.map((stat) => Expanded(
         child: Padding(
           padding: const EdgeInsets.only(right: 12),
           child: _buildStatCard(stat),
@@ -312,7 +339,19 @@ class _ScopeTrackingImplementationScreenState extends State<ScopeTrackingImpleme
     );
   }
 
-  Widget _buildStatCard(_StatCardData data) {
+  Widget _emptyPanelMessage(String message) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Text(message, style: const TextStyle(color: Color(0xFF6B7280))),
+    );
+  }
+
+  Widget _buildStatCard(ScopeTrackingStat data) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -323,26 +362,9 @@ class _ScopeTrackingImplementationScreenState extends State<ScopeTrackingImpleme
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(data.value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: data.color)),
-              ),
-              _cardIconButton(
-                icon: Icons.edit,
-                tooltip: 'Edit stat',
-                onPressed: () => _showStatDialog(existing: data),
-              ),
-              _cardIconButton(
-                icon: Icons.delete_outline,
-                tooltip: 'Delete stat',
-                onPressed: () => _confirmDelete(
-                  label: 'stat "${data.label}"',
-                  onDelete: () => setState(() => _stats.remove(data)),
-                ),
-              ),
-            ],
+          Text(
+            data.value,
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: data.color),
           ),
           const SizedBox(height: 6),
           Text(data.label, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
@@ -353,73 +375,77 @@ class _ScopeTrackingImplementationScreenState extends State<ScopeTrackingImpleme
     );
   }
 
-  Widget _buildScopeRegister() {
-    return _PanelShell(
-      title: 'Scope register',
-      subtitle: 'Baseline delivery and variance tracking',
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _panelIconButton(
-            icon: Icons.add,
-            tooltip: 'Add scope item',
-            onPressed: () => _showScopeItemDialog(),
-          ),
-          const SizedBox(width: 6),
-          _actionButton(Icons.filter_list, 'Filter'),
-        ],
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minWidth: constraints.maxWidth),
-              child: DataTable(
-                headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
-                columnSpacing: 24,
-                columns: const [
-                  DataColumn(label: Text('ID', style: TextStyle(fontWeight: FontWeight.w600))),
-                  DataColumn(label: Text('Scope item', style: TextStyle(fontWeight: FontWeight.w600))),
-                  DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
-                  DataColumn(label: Text('Variance', style: TextStyle(fontWeight: FontWeight.w600))),
-                  DataColumn(label: Text('Owner', style: TextStyle(fontWeight: FontWeight.w600))),
-                  DataColumn(label: Text('Next review', style: TextStyle(fontWeight: FontWeight.w600))),
-                  DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.w600))),
-                ],
-                rows: _scopeItems.map((item) {
-                  return DataRow(cells: [
-                    DataCell(Text(item.id, style: const TextStyle(fontSize: 12, color: Color(0xFF0EA5E9)))),
-                    DataCell(Text(item.title, style: const TextStyle(fontSize: 13))),
-                    DataCell(_statusChip(item.status)),
-                    DataCell(Text(item.variance, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
-                    DataCell(Text(item.owner, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)))),
-                    DataCell(Text(item.reviewDate, style: const TextStyle(fontSize: 12))),
-                    DataCell(Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _cardIconButton(
-                          icon: Icons.edit,
-                          tooltip: 'Edit scope item',
-                          onPressed: () => _showScopeItemDialog(existing: item),
-                        ),
-                        _cardIconButton(
-                          icon: Icons.delete_outline,
-                          tooltip: 'Delete scope item',
-                          onPressed: () => _confirmDelete(
-                            label: 'scope item "${item.id}"',
-                            onDelete: () => setState(() => _scopeItems.remove(item)),
-                          ),
-                        ),
-                      ],
-                    )),
-                  ]);
-                }).toList(),
-              ),
-            ),
+  Widget _buildScopeRegister(String projectId) {
+    return StreamBuilder<List<ScopeTrackingItem>>(
+      stream: ProjectInsightsService.streamScopeItems(projectId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: CircularProgressIndicator()),
           );
-        },
-      ),
+        }
+        final items = snapshot.data ?? [];
+        if (items.isEmpty) {
+          return _emptyPanelMessage('No scope items recorded yet.');
+        }
+        final filtered = items.where((item) {
+          if (_selectedFilters.contains('All scope')) return true;
+          final normalized = item.status.trim();
+          return _selectedFilters.contains(normalized);
+        }).toList();
+        if (filtered.isEmpty) {
+          return _emptyPanelMessage('No scope items match the selected filters.');
+        }
+        return _PanelShell(
+          title: 'Scope register',
+          subtitle: 'Baseline delivery and variance tracking',
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _panelIconButton(
+                icon: Icons.add,
+                tooltip: 'Add scope item',
+                onPressed: () => _showScopeItemDialog(),
+              ),
+              const SizedBox(width: 6),
+              _actionButton(Icons.filter_list, 'Filter'),
+            ],
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                  child: DataTable(
+                    headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                    columnSpacing: 24,
+                    columns: const [
+                      DataColumn(label: Text('ID', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Scope item', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Variance', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Owner', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Next review', style: TextStyle(fontWeight: FontWeight.w600))),
+                    ],
+                    rows: filtered.map((item) {
+                      return DataRow(cells: [
+                        DataCell(Text(item.id, style: const TextStyle(fontSize: 12, color: Color(0xFF0EA5E9)))),
+                        DataCell(Text(item.title, style: const TextStyle(fontSize: 13))),
+                        DataCell(_statusChip(item.status)),
+                        DataCell(Text(item.variance, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+                        DataCell(Text(item.owner, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)))),
+                        DataCell(Text(item.nextReview, style: const TextStyle(fontSize: 12))),
+                      ]);
+                    }).toList(),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 

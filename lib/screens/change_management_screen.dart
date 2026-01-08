@@ -10,6 +10,7 @@ import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/utils/download_helper.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/screens/project_framework_screen.dart';
+import 'package:ndu_project/providers/project_data_provider.dart';
 
 class ChangeManagementScreen extends StatefulWidget {
   const ChangeManagementScreen({super.key});
@@ -30,21 +31,23 @@ class _ChangeManagementScreenState extends State<ChangeManagementScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: SafeArea(
-        child: Stack(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                DraggableSidebar(
-                  openWidth: sidebarWidth,
-                  child: const InitiationLikeSidebar(activeItemLabel: 'Change Management'),
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+            DraggableSidebar(
+              openWidth: sidebarWidth,
+              child: const InitiationLikeSidebar(activeItemLabel: 'Change Management'),
+            ),
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Positioned.fill(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                         // Top navigation bar
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
@@ -73,13 +76,7 @@ class _ChangeManagementScreenState extends State<ChangeManagementScreen> {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        const PlanningAiNotesCard(
-                          title: 'AI Notes',
-                          sectionLabel: 'Change Management',
-                          noteKey: 'planning_change_management_notes',
-                          checkpoint: 'change_management',
-                          description: 'Capture change governance, approval workflows, and impact assessment focus areas.',
-                        ),
+                        _buildAiNotesCard(),
                         const SizedBox(height: 24),
                         // Page title
                         const Text(
@@ -217,19 +214,20 @@ class _ChangeManagementScreenState extends State<ChangeManagementScreen> {
 
                         _ChangeRequestsTable(key: _tableKey),
                         const SizedBox(height: 24),
-                        LaunchPhaseNavigation(
-                          backLabel: 'Back: Issue Management',
-                          nextLabel: 'Next: Project Management Framework',
-                          onBack: () => Navigator.of(context).maybePop(),
-                          onNext: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ProjectFrameworkScreen())),
-                        ),
-                      ],
+                          LaunchPhaseNavigation(
+                            backLabel: 'Back: Issue Management',
+                            nextLabel: 'Next: Project Management Framework',
+                            onBack: () => Navigator.of(context).maybePop(),
+                            onNext: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ProjectFrameworkScreen())),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                  const KazAiChatBubble(),
+                ],
+              ),
             ),
-            const KazAiChatBubble(),
           ],
         ),
       ),
@@ -247,6 +245,34 @@ class _ChangeManagementScreenState extends State<ChangeManagementScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
+    );
+  }
+
+  Widget _buildAiNotesCard() {
+    final provider = ProjectDataInherited.maybeOf(context);
+    if (provider == null) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+          boxShadow: const [
+            BoxShadow(color: Color(0x0F000000), blurRadius: 18, offset: Offset(0, 12)),
+          ],
+        ),
+        child: const Text(
+          'AI Notes unavailable (project context not loaded).',
+          style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+        ),
+      );
+    }
+    return const PlanningAiNotesCard(
+      title: 'AI Notes',
+      sectionLabel: 'Change Management',
+      noteKey: 'planning_change_management_notes',
+      checkpoint: 'change_management',
+      description: 'Capture change governance, approval workflows, and impact assessment focus areas.',
     );
   }
 
@@ -598,8 +624,9 @@ class _ChangeRequestsTableState extends State<_ChangeRequestsTable> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final minWidth = constraints.maxWidth < 900 ? 900.0 : constraints.maxWidth;
+        final boxWidth = constraints.maxWidth;
         return Container(
+          width: double.infinity,
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
@@ -608,7 +635,7 @@ class _ChangeRequestsTableState extends State<_ChangeRequestsTable> {
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: ConstrainedBox(
-              constraints: BoxConstraints(minWidth: minWidth),
+              constraints: BoxConstraints(minWidth: boxWidth),
               child: Column(
                 children: [
                   Container(

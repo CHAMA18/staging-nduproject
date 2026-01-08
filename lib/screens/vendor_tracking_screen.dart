@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ndu_project/screens/contracts_tracking_screen.dart';
 import 'package:ndu_project/screens/detailed_design_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:ndu_project/services/vendor_service.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
@@ -217,13 +218,16 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
   }
 
   Widget _buildStatsRow(bool isNarrow) {
-    if (_projectId == null) {
+    if (_projectId == null || _projectId!.isEmpty) {
       return const SizedBox.shrink();
     }
 
     return StreamBuilder<List<VendorModel>>(
       stream: VendorService.streamVendors(_projectId!),
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _buildPermissionError(snapshot.error);
+        }
         if (!snapshot.hasData) {
           return const SizedBox.shrink();
         }
@@ -323,7 +327,7 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
   }
 
   Widget _buildVendorRegister() {
-    if (_projectId == null) {
+    if (_projectId == null || _projectId!.isEmpty) {
       return _PanelShell(
         title: 'Vendor scorecard',
         subtitle: 'Performance, rating, and compliance checkpoints',
@@ -352,13 +356,7 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
           }
 
           if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Text('Error loading vendors: ${snapshot.error}',
-                    style: const TextStyle(color: Colors.red)),
-              ),
-            );
+            return _buildPermissionError(snapshot.error);
           }
 
           final vendors = snapshot.data ?? [];
@@ -456,6 +454,20 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
             },
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildPermissionError(Object? error) {
+    final isPermissionDenied =
+        error is FirebaseException && error.code == 'permission-denied';
+    final message = isPermissionDenied
+        ? 'You are not authorized to view vendors for this project. Contact the project owner or admin to request access.'
+        : 'Error loading vendors: ${error ?? 'Unknown error'}';
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Text(message, style: const TextStyle(color: Color(0xFFDC2626))),
       ),
     );
   }

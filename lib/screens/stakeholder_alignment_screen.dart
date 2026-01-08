@@ -5,6 +5,8 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
+import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/services/project_insights_service.dart';
 
 class StakeholderAlignmentScreen extends StatefulWidget {
   const StakeholderAlignmentScreen({super.key});
@@ -22,30 +24,25 @@ class StakeholderAlignmentScreen extends StatefulWidget {
 class _StakeholderAlignmentScreenState extends State<StakeholderAlignmentScreen> {
   final Set<String> _selectedFilters = {'All stakeholders'};
 
-  final List<_StakeholderItem> _stakeholders = const [
-    _StakeholderItem('A. Gomez', 'Executive sponsor', 'High', 'Aligned', 'Sep 28', 'Oct 18'),
-    _StakeholderItem('M. Patel', 'Operations', 'High', 'Watch', 'Oct 02', 'Oct 20'),
-    _StakeholderItem('J. Nguyen', 'Finance', 'Medium', 'Aligned', 'Sep 30', 'Oct 25'),
-    _StakeholderItem('S. Lee', 'Security', 'High', 'At risk', 'Oct 04', 'Oct 16'),
-    _StakeholderItem('R. Cole', 'Product', 'Medium', 'Aligned', 'Oct 01', 'Oct 22'),
-  ];
-
-  final List<_PulseItem> _pulses = const [
-    _PulseItem('Alignment score', '84%', 'Stable', Color(0xFF10B981)),
-    _PulseItem('Open decisions', '6', '2 urgent', Color(0xFFF59E0B)),
-    _PulseItem('Engagement cadence', 'Weekly', 'Next sync Fri', Color(0xFF0EA5E9)),
-  ];
-
-  final List<_SignalItem> _signals = const [
-    _SignalItem('Decision backlog', '2 items need sponsor confirmation.'),
-    _SignalItem('Scope sensitivity', 'Ops team needs clarity on runbook ownership.'),
-    _SignalItem('Timeline pressure', 'Security review shift requested.'),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final provider = ProjectDataInherited.maybeOf(context);
+    final projectId = provider?.projectData.projectId;
     final isNarrow = MediaQuery.sizeOf(context).width < 980;
     final padding = AppBreakpoints.pagePadding(context);
+
+    if (projectId == null) {
+      return ResponsiveScaffold(
+        activeItemLabel: 'Stakeholder Alignment',
+        backgroundColor: const Color(0xFFF5F7FB),
+        body: Center(
+          child: Text(
+            'Select a project to view stakeholder alignment metrics.',
+            style: TextStyle(color: Colors.grey[700], fontSize: 16),
+          ),
+        ),
+      );
+    }
 
     return ResponsiveScaffold(
       activeItemLabel: 'Stakeholder Alignment',
@@ -61,14 +58,14 @@ class _StakeholderAlignmentScreenState extends State<StakeholderAlignmentScreen>
                 const SizedBox(height: 16),
                 _buildFilterChips(),
                 const SizedBox(height: 20),
-                _buildPulseRow(isNarrow),
+                _buildPulseRow(isNarrow, projectId),
                 const SizedBox(height: 24),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildStakeholderRegister(),
+                    _buildStakeholderRegister(projectId),
                     const SizedBox(height: 20),
-                    _buildSignalsPanel(),
+                    _buildSignalsPanel(projectId),
                     const SizedBox(height: 20),
                     _buildDecisionPanel(),
                     const SizedBox(height: 20),
@@ -214,25 +211,44 @@ class _StakeholderAlignmentScreenState extends State<StakeholderAlignmentScreen>
     );
   }
 
-  Widget _buildPulseRow(bool isNarrow) {
-    if (isNarrow) {
-      return Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        children: _pulses.map(_buildPulseCard).toList(),
-      );
-    }
-    return Row(
-      children: _pulses.map((pulse) => Expanded(
-        child: Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: _buildPulseCard(pulse),
-        ),
-      )).toList(),
+  Widget _buildPulseRow(bool isNarrow, String projectId) {
+    return StreamBuilder<StakeholderAlignmentOverview>(
+      stream: ProjectInsightsService.streamStakeholderOverview(projectId),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final pulses = snapshot.data!.pulses;
+        if (pulses.isEmpty) {
+          return const Text('No alignment metrics captured yet.', style: TextStyle(color: Color(0xFF6B7280)));
+        }
+        if (isNarrow) {
+          return Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: pulses.map(_buildPulseCard).toList(),
+          );
+        }
+        return Row(
+          children: pulses
+              .map(
+                (pulse) => Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: _buildPulseCard(pulse),
+                  ),
+                ),
+              )
+              .toList(),
+        );
+      },
     );
   }
 
-  Widget _buildPulseCard(_PulseItem item) {
+  Widget _buildPulseCard(StakeholderPulse item) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -253,63 +269,93 @@ class _StakeholderAlignmentScreenState extends State<StakeholderAlignmentScreen>
     );
   }
 
-  Widget _buildStakeholderRegister() {
-    return _PanelShell(
-      title: 'Stakeholder register',
-      subtitle: 'Influence, sentiment, and next actions',
-      trailing: _actionButton(Icons.filter_list, 'Filter'),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
-          columns: const [
-            DataColumn(label: Text('Name', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Role', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Influence', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Sentiment', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Last touch', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Next sync', style: TextStyle(fontWeight: FontWeight.w600))),
-          ],
-          rows: _stakeholders.map((stakeholder) {
-            return DataRow(cells: [
-              DataCell(Text(stakeholder.name, style: const TextStyle(fontSize: 13))),
-              DataCell(Text(stakeholder.role, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)))),
-              DataCell(_chip(stakeholder.influence)),
-              DataCell(_statusChip(stakeholder.sentiment)),
-              DataCell(Text(stakeholder.lastTouch, style: const TextStyle(fontSize: 12))),
-              DataCell(Text(stakeholder.nextSync, style: const TextStyle(fontSize: 12))),
-            ]);
-          }).toList(),
-        ),
-      ),
+  Widget _buildStakeholderRegister(String projectId) {
+    return StreamBuilder<List<StakeholderMember>>(
+      stream: ProjectInsightsService.streamStakeholders(projectId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final stakeholders = snapshot.data ?? [];
+        if (stakeholders.isEmpty) {
+          return _emptyPanelMessage('No stakeholders captured yet.');
+        }
+        return _PanelShell(
+          title: 'Stakeholder register',
+          subtitle: 'Influence, sentiment, and next actions',
+          trailing: _actionButton(Icons.filter_list, 'Filter'),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+              columns: const [
+                DataColumn(label: Text('Name', style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(label: Text('Role', style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(label: Text('Influence', style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(label: Text('Sentiment', style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(label: Text('Last touch', style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(label: Text('Next sync', style: TextStyle(fontWeight: FontWeight.w600))),
+              ],
+              rows: stakeholders.map((stakeholder) {
+                return DataRow(cells: [
+                  DataCell(Text(stakeholder.name, style: const TextStyle(fontSize: 13))),
+                  DataCell(Text(stakeholder.role, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)))),
+                  DataCell(_chip(stakeholder.influence)),
+                  DataCell(_statusChip(stakeholder.sentiment)),
+                  DataCell(Text(stakeholder.lastTouch, style: const TextStyle(fontSize: 12))),
+                  DataCell(Text(stakeholder.nextSync, style: const TextStyle(fontSize: 12))),
+                ]);
+              }).toList(),
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildSignalsPanel() {
-    return _PanelShell(
-      title: 'Alignment signals',
-      subtitle: 'Signals that require attention',
-      child: Column(
-        children: _signals.map((signal) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(signal.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Text(signal.subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-              ],
-            ),
+  Widget _buildSignalsPanel(String projectId) {
+    return StreamBuilder<StakeholderAlignmentOverview>(
+      stream: ProjectInsightsService.streamStakeholderOverview(projectId),
+      builder: (context, snapshot) {
+        final signals = snapshot.data?.signals ?? [];
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: CircularProgressIndicator()),
           );
-        }).toList(),
-      ),
+        }
+        if (signals.isEmpty) {
+          return _emptyPanelMessage('No alignment signals recorded yet.');
+        }
+        return _PanelShell(
+          title: 'Alignment signals',
+          subtitle: 'Signals that require attention',
+          child: Column(
+            children: signals.map((signal) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(signal.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Text(signal.detail, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      },
     );
   }
 
@@ -373,6 +419,18 @@ class _StakeholderAlignmentScreenState extends State<StakeholderAlignmentScreen>
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+    );
+  }
+
+  Widget _emptyPanelMessage(String message) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Text(message, style: const TextStyle(color: Color(0xFF6B7280))),
     );
   }
 }
@@ -491,31 +549,4 @@ class _CadenceItem extends StatelessWidget {
       ),
     );
   }
-}
-
-class _StakeholderItem {
-  const _StakeholderItem(this.name, this.role, this.influence, this.sentiment, this.lastTouch, this.nextSync);
-
-  final String name;
-  final String role;
-  final String influence;
-  final String sentiment;
-  final String lastTouch;
-  final String nextSync;
-}
-
-class _PulseItem {
-  const _PulseItem(this.label, this.value, this.supporting, this.color);
-
-  final String label;
-  final String value;
-  final String supporting;
-  final Color color;
-}
-
-class _SignalItem {
-  const _SignalItem(this.title, this.subtitle);
-
-  final String title;
-  final String subtitle;
 }

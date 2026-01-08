@@ -51,14 +51,18 @@ class BusinessCaseNavigationButtons extends StatelessWidget {
             const SizedBox(width: 120),
 
           if (hasSkip)
-            TextButton(
+            OutlinedButton.icon(
               onPressed: handleSkip,
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF6B7280),
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              style: OutlinedButton.styleFrom(
+                backgroundColor: const Color(0xFFF8FAFC),
+                foregroundColor: const Color(0xFF475569),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                side: const BorderSide(color: Color(0xFFE2E8F0)),
                 textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
               ),
-              child: Text(skipLabel),
+              icon: const Icon(Icons.skip_next_rounded, size: 18),
+              label: Text(skipLabel),
             ),
 
           // Forward button

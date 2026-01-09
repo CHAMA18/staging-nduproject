@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:ndu_project/screens/actual_vs_planned_gap_analysis_screen.dart';
 import 'package:ndu_project/screens/deliver_project_closure_screen.dart';
@@ -9,6 +10,8 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
 
 class GapAnalysisScopeReconcillationScreen extends StatefulWidget {
   const GapAnalysisScopeReconcillationScreen({
@@ -31,6 +34,20 @@ class GapAnalysisScopeReconcillationScreen extends StatefulWidget {
 class _GapAnalysisScopeReconcillationScreenState extends State<GapAnalysisScopeReconcillationScreen> {
   final Set<String> _selectedFocusFilters = {'Gap register'};
   final Set<String> _selectedVisibilityFilters = {'Scope baseline', 'Mitigation backlog'};
+  final List<_ImpactRow> _impactRows = [];
+  final List<_WorkflowStep> _workflowSteps = [];
+  final List<String> _lessonsLearned = [];
+  bool _loadedEntries = false;
+  bool _aiGenerated = false;
+  bool _isGenerating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadEntries();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +103,11 @@ class _GapAnalysisScopeReconcillationScreenState extends State<GapAnalysisScopeR
                         const SizedBox(height: 28),
                         const _PrimarySections(),
                         const SizedBox(height: 24),
-                        const _SecondarySections(),
+                        _SecondarySections(
+                          impacts: _impactRows,
+                          workflowSteps: _workflowSteps,
+                          lessons: _lessonsLearned,
+                        ),
                         const SizedBox(height: 24),
                         LaunchPhaseNavigation(
                           backLabel: 'Back: Scope Completion',
@@ -106,6 +127,147 @@ class _GapAnalysisScopeReconcillationScreenState extends State<GapAnalysisScopeR
         ),
       ),
     );
+  }
+
+  Future<void> _loadEntries() async {
+    if (_loadedEntries) return;
+    final provider = ProjectDataHelper.getProvider(context);
+    final projectId = provider.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('launch_phase')
+          .doc('gap_analysis_scope_reconciliation')
+          .get();
+      if (doc.exists) {
+        final data = doc.data() ?? {};
+        final impacts = (data['impactAssessment'] as List?)
+                ?.whereType<Map>()
+                .map((e) => _ImpactRow.fromJson(Map<String, dynamic>.from(e)))
+                .toList() ??
+            [];
+        final workflow = (data['reconciliationWorkflow'] as List?)
+                ?.whereType<Map>()
+                .map((e) => _WorkflowStep.fromJson(Map<String, dynamic>.from(e)))
+                .toList() ??
+            [];
+        final lessons = (data['lessonsLearned'] as List?)
+                ?.map((e) => e.toString())
+                .where((e) => e.trim().isNotEmpty)
+                .toList() ??
+            [];
+        if (!mounted) return;
+        setState(() {
+          _impactRows
+            ..clear()
+            ..addAll(impacts);
+          _workflowSteps
+            ..clear()
+            ..addAll(workflow);
+          _lessonsLearned
+            ..clear()
+            ..addAll(lessons);
+        });
+      }
+      _loadedEntries = true;
+      if (_impactRows.isEmpty && _workflowSteps.isEmpty && _lessonsLearned.isEmpty) {
+        await _populateFromAi();
+      }
+    } catch (error) {
+      debugPrint('Failed to load gap analysis entries: $error');
+    }
+  }
+
+  Future<void> _populateFromAi() async {
+    if (_aiGenerated || _isGenerating) return;
+    final projectData = ProjectDataHelper.getData(context);
+    final contextText = ProjectDataHelper.buildFepContext(projectData, sectionLabel: 'Gap Analysis & Scope Reconciliation');
+    if (contextText.trim().isEmpty) return;
+
+    setState(() => _isGenerating = true);
+    Map<String, List<Map<String, dynamic>>> generated = {};
+    try {
+      generated = await OpenAiServiceSecure().generateLaunchPhaseEntries(
+        context: contextText,
+        sections: const {
+          'impact_assessment': 'Impact assessment results',
+          'reconciliation_workflow': 'Reconciliation workflow & backlog',
+          'lessons_learned': 'Lessons learned & prevention',
+        },
+        itemsPerSection: 3,
+      );
+    } catch (error) {
+      debugPrint('Gap analysis AI call failed: $error');
+    }
+
+    if (!mounted) return;
+    if (_impactRows.isNotEmpty || _workflowSteps.isNotEmpty || _lessonsLearned.isNotEmpty) {
+      setState(() => _isGenerating = false);
+      _aiGenerated = true;
+      return;
+    }
+
+    setState(() {
+      _impactRows
+        ..clear()
+        ..addAll(_mapImpactRows(generated['impact_assessment']));
+      _workflowSteps
+        ..clear()
+        ..addAll(_mapWorkflowSteps(generated['reconciliation_workflow']));
+      _lessonsLearned
+        ..clear()
+        ..addAll(_mapLessons(generated['lessons_learned']));
+      _isGenerating = false;
+    });
+    _aiGenerated = true;
+    await _persistEntries();
+  }
+
+  List<_ImpactRow> _mapImpactRows(List<Map<String, dynamic>>? raw) {
+    if (raw == null) return [];
+    return raw
+        .map((item) => _ImpactRow.fromLaunchEntry(item))
+        .where((row) => row.area.isNotEmpty)
+        .toList();
+  }
+
+  List<_WorkflowStep> _mapWorkflowSteps(List<Map<String, dynamic>>? raw) {
+    if (raw == null) return [];
+    return raw
+        .map((item) => _WorkflowStep.fromLaunchEntry(item))
+        .where((step) => step.label.isNotEmpty)
+        .toList();
+  }
+
+  List<String> _mapLessons(List<Map<String, dynamic>>? raw) {
+    if (raw == null) return [];
+    return raw
+        .map((item) => (item['title'] ?? '').toString().trim())
+        .where((text) => text.isNotEmpty)
+        .toList();
+  }
+
+  Future<void> _persistEntries() async {
+    final provider = ProjectDataHelper.getProvider(context);
+    final projectId = provider.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+
+    final payload = {
+      'impactAssessment': _impactRows.map((e) => e.toJson()).toList(),
+      'reconciliationWorkflow': _workflowSteps.map((e) => e.toJson()).toList(),
+      'lessonsLearned': _lessonsLearned,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    await FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId)
+        .collection('launch_phase')
+        .doc('gap_analysis_scope_reconciliation')
+        .set(payload, SetOptions(merge: true));
   }
 }
 
@@ -503,7 +665,15 @@ class _PrimarySections extends StatelessWidget {
 }
 
 class _SecondarySections extends StatelessWidget {
-  const _SecondarySections();
+  const _SecondarySections({
+    required this.impacts,
+    required this.workflowSteps,
+    required this.lessons,
+  });
+
+  final List<_ImpactRow> impacts;
+  final List<_WorkflowStep> workflowSteps;
+  final List<String> lessons;
 
   @override
   Widget build(BuildContext context) {
@@ -514,11 +684,11 @@ class _SecondarySections extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _ImpactAssessmentCard(width: sectionWidth),
+            _ImpactAssessmentCard(width: sectionWidth, impacts: impacts),
             const SizedBox(height: 20),
-            _ReconciliationWorkflowCard(width: sectionWidth),
+            _ReconciliationWorkflowCard(width: sectionWidth, steps: workflowSteps),
             const SizedBox(height: 20),
-            _LessonsLearnedCard(width: sectionWidth),
+            _LessonsLearnedCard(width: sectionWidth, lessons: lessons),
           ],
         );
       },
@@ -757,16 +927,10 @@ class _ReconciliationPlanningCard extends StatelessWidget {
 }
 
 class _ImpactAssessmentCard extends StatelessWidget {
-  const _ImpactAssessmentCard({required this.width});
+  const _ImpactAssessmentCard({required this.width, required this.impacts});
 
   final double width;
-
-  static const impacts = [
-    _ImpactRow(area: 'Schedule', rating: 'Medium', trend: 'Improving', detail: 'Variance trimmed from 6 to 4 days with paired testing.'),
-    _ImpactRow(area: 'Cost', rating: 'Low', trend: 'Stable', detail: 'Budget buffer of 4.1% remains after QA automation spend.'),
-    _ImpactRow(area: 'Quality', rating: 'Medium', trend: 'Needs attention', detail: 'Automation scripts pending validation before go-live.'),
-    _ImpactRow(area: 'Adoption', rating: 'High', trend: 'Improving', detail: 'New knowledge base ready for pilot customers next week.'),
-  ];
+  final List<_ImpactRow> impacts;
 
   @override
   Widget build(BuildContext context) {
@@ -775,7 +939,17 @@ class _ImpactAssessmentCard extends StatelessWidget {
       title: 'Impact assessment results',
       subtitle: 'Evaluate schedule, cost, quality, and adoption exposure for unresolved gaps.',
       trailing: TextButton.icon(
-        onPressed: () {},
+        onPressed: () {
+          showDialog<void>(
+            context: context,
+            barrierColor: Colors.black.withValues(alpha: 0.35),
+            builder: (_) => _ScenarioMatrixDialog(
+              impacts: impacts,
+              gaps: _GapRegisterCard.entries,
+              plans: _ReconciliationPlanningCard.plans,
+            ),
+          );
+        },
         icon: const Icon(Icons.analytics_outlined),
         label: const Text('View scenario matrix'),
       ),
@@ -797,34 +971,40 @@ class _ImpactAssessmentCard extends StatelessWidget {
                   ],
                 ),
                 const Divider(height: 1, color: Color(0xFFE5E7EB)),
-                ...impacts.map(
-                  (impact) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                impact.area,
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1F2937)),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                impact.detail,
-                                style: const TextStyle(fontSize: 13, color: Color(0xFF4B5563), fontWeight: FontWeight.w500),
-                              ),
-                            ],
+                if (impacts.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                    child: _EmptyPanel(label: 'No impact assessment items yet.'),
+                  )
+                else
+                  ...impacts.map(
+                    (impact) => Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  impact.area,
+                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1F2937)),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  impact.detail,
+                                  style: const TextStyle(fontSize: 13, color: Color(0xFF4B5563), fontWeight: FontWeight.w500),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        SizedBox(width: 120, child: _StatusBadge(label: impact.rating)),
-                        SizedBox(width: 120, child: _TrendPill(label: impact.trend)),
-                      ],
+                          SizedBox(width: 120, child: _StatusBadge(label: impact.rating)),
+                          SizedBox(width: 120, child: _TrendPill(label: impact.trend)),
+                        ],
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
@@ -834,18 +1014,590 @@ class _ImpactAssessmentCard extends StatelessWidget {
   }
 }
 
+class _ScenarioMatrixDialog extends StatefulWidget {
+  const _ScenarioMatrixDialog({
+    required this.impacts,
+    required this.gaps,
+    required this.plans,
+  });
+
+  final List<_ImpactRow> impacts;
+  final List<_GapEntry> gaps;
+  final List<_PlanEntry> plans;
+
+  @override
+  State<_ScenarioMatrixDialog> createState() => _ScenarioMatrixDialogState();
+}
+
+class _ScenarioMatrixDialogState extends State<_ScenarioMatrixDialog> {
+  final TextEditingController _searchController = TextEditingController();
+  final Set<String> _categoryFilters = {'All'};
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scenarios = _buildScenarios();
+    final filtered = _filterScenarios(scenarios);
+
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1100, maxHeight: 760),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              _buildHeader(context, scenarios.length),
+              const SizedBox(height: 16),
+              _buildControls(),
+              const SizedBox(height: 16),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 3, child: _buildMatrix(filtered)),
+                    const SizedBox(width: 16),
+                    Expanded(flex: 2, child: _buildInsightsPanel(filtered)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, int totalCount) {
+    return Row(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEEF2FF),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Icon(Icons.grid_view_rounded, color: Color(0xFF4338CA)),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Scenario Matrix',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+              ),
+              Text(
+                'Synthesized from your gap register, impact ratings, and plan milestones.',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Text('$totalCount scenarios', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        ),
+        const SizedBox(width: 8),
+        IconButton(
+          tooltip: 'Close',
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildControls() {
+    const categories = ['All', 'Impact', 'Gap', 'Plan'];
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _searchController,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: 'Search scenarios, owners, or tags',
+              prefixIcon: const Icon(Icons.search, size: 20),
+              filled: true,
+              fillColor: const Color(0xFFF8FAFC),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF4338CA), width: 1.6)),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Wrap(
+          spacing: 8,
+          children: categories.map((category) {
+            final selected = _categoryFilters.contains(category);
+            return ChoiceChip(
+              label: Text(category),
+              selected: selected,
+              onSelected: (value) {
+                setState(() {
+                  _categoryFilters
+                    ..clear()
+                    ..add(value ? category : 'All');
+                  if (category != 'All' && value) {
+                    _categoryFilters.remove('All');
+                  }
+                  if (_categoryFilters.isEmpty) {
+                    _categoryFilters.add('All');
+                  }
+                });
+              },
+              selectedColor: const Color(0xFF111827),
+              backgroundColor: Colors.white,
+              labelStyle: TextStyle(
+                color: selected ? Colors.white : const Color(0xFF475569),
+                fontWeight: FontWeight.w600,
+              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999), side: const BorderSide(color: Color(0xFFE2E8F0))),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMatrix(List<_ScenarioPoint> scenarios) {
+    final grouped = _groupByCell(scenarios);
+    const likelihoodLabels = ['Low likelihood', 'Medium likelihood', 'High likelihood'];
+    const impactLabels = ['Low impact', 'Medium impact', 'High impact'];
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            const SizedBox(width: 110),
+            for (int i = 0; i < 3; i++)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: _AxisHeader(label: likelihoodLabels[i]),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: Column(
+            children: [
+              for (int row = 2; row >= 0; row--)
+                Expanded(
+                  child: Row(
+                    children: [
+                      SizedBox(width: 110, child: _AxisHeader(label: impactLabels[row], isVertical: true)),
+                      for (int col = 0; col < 3; col++)
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: _MatrixCell(
+                              scenarios: grouped[_cellKey(row, col)] ?? const [],
+                              tone: _cellTone(row, col),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInsightsPanel(List<_ScenarioPoint> scenarios) {
+    final sorted = [...scenarios]..sort((a, b) => b.score.compareTo(a.score));
+    final topThree = sorted.take(3).toList();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Priority scenarios', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 6),
+          Text('Highest impact and likelihood combinations based on your inputs.',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          const SizedBox(height: 16),
+          if (topThree.isEmpty)
+            const Text('No scenarios match the current filters.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B)))
+          else
+            ...topThree.map(
+              (scenario) => Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(scenario.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                        ),
+                        _ScorePill(score: scenario.score),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(scenario.detail, style: const TextStyle(fontSize: 12, color: Color(0xFF475569))),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        _Tag(label: scenario.category),
+                        const SizedBox(width: 6),
+                        _Tag(label: scenario.owner),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          const Spacer(),
+          OutlinedButton.icon(
+            onPressed: () {},
+            icon: const Icon(Icons.ios_share_outlined, size: 16),
+            label: const Text('Export matrix'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF111827),
+              side: const BorderSide(color: Color(0xFFE2E8F0)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<_ScenarioPoint> _buildScenarios() {
+    final scenarios = <_ScenarioPoint>[];
+    for (final impact in widget.impacts) {
+      final severity = _severityFromRating(impact.rating);
+      final likelihood = _likelihoodFromTrend(impact.trend);
+      scenarios.add(
+        _ScenarioPoint(
+          title: '${impact.area} exposure',
+          detail: impact.detail,
+          category: 'Impact',
+          owner: impact.area,
+          severity: severity,
+          likelihood: likelihood,
+        ),
+      );
+    }
+    for (final gap in widget.gaps) {
+      final severity = _severityFromStage(gap.stage);
+      final likelihood = severity;
+      scenarios.add(
+        _ScenarioPoint(
+          title: gap.title,
+          detail: gap.nextStep,
+          category: 'Gap',
+          owner: gap.owner,
+          severity: severity,
+          likelihood: likelihood,
+        ),
+      );
+    }
+    for (final plan in widget.plans) {
+      final severity = _severityFromPlanStatus(plan.status);
+      final likelihood = _likelihoodFromPlanStatus(plan.status);
+      scenarios.add(
+        _ScenarioPoint(
+          title: plan.title,
+          detail: '${plan.due} · ${plan.owner}',
+          category: 'Plan',
+          owner: plan.owner,
+          severity: severity,
+          likelihood: likelihood,
+        ),
+      );
+    }
+    return scenarios;
+  }
+
+  List<_ScenarioPoint> _filterScenarios(List<_ScenarioPoint> scenarios) {
+    final query = _searchController.text.trim().toLowerCase();
+    return scenarios.where((scenario) {
+      final matchesCategory = _categoryFilters.contains('All') || _categoryFilters.contains(scenario.category);
+      final matchesQuery = query.isEmpty ||
+          scenario.title.toLowerCase().contains(query) ||
+          scenario.detail.toLowerCase().contains(query) ||
+          scenario.owner.toLowerCase().contains(query);
+      return matchesCategory && matchesQuery;
+    }).toList();
+  }
+
+  Map<String, List<_ScenarioPoint>> _groupByCell(List<_ScenarioPoint> scenarios) {
+    final map = <String, List<_ScenarioPoint>>{};
+    for (final scenario in scenarios) {
+      final key = _cellKey(scenario.severity - 1, scenario.likelihood - 1);
+      map.putIfAbsent(key, () => []).add(scenario);
+    }
+    return map;
+  }
+
+  int _severityFromRating(String rating) {
+    switch (rating.toLowerCase()) {
+      case 'high':
+        return 3;
+      case 'medium':
+        return 2;
+      case 'low':
+        return 1;
+      default:
+        return 2;
+    }
+  }
+
+  int _severityFromStage(String stage) {
+    switch (stage.toLowerCase()) {
+      case 'critical':
+        return 3;
+      case 'moderate':
+        return 2;
+      case 'low':
+        return 1;
+      default:
+        return 2;
+    }
+  }
+
+  int _severityFromPlanStatus(String status) {
+    switch (status.toLowerCase()) {
+      case 'at risk':
+        return 3;
+      case 'in review':
+        return 2;
+      case 'not started':
+        return 3;
+      default:
+        return 1;
+    }
+  }
+
+  int _likelihoodFromTrend(String trend) {
+    switch (trend.toLowerCase()) {
+      case 'needs attention':
+        return 3;
+      case 'stable':
+        return 2;
+      case 'improving':
+        return 1;
+      default:
+        return 2;
+    }
+  }
+
+  int _likelihoodFromPlanStatus(String status) {
+    switch (status.toLowerCase()) {
+      case 'at risk':
+        return 3;
+      case 'in review':
+        return 2;
+      case 'not started':
+        return 3;
+      default:
+        return 1;
+    }
+  }
+
+  String _cellKey(int severityIndex, int likelihoodIndex) => '$severityIndex-$likelihoodIndex';
+
+  Color _cellTone(int severityIndex, int likelihoodIndex) {
+    final score = (severityIndex + 1) * (likelihoodIndex + 1);
+    if (score >= 7) return const Color(0xFFFEE2E2);
+    if (score >= 4) return const Color(0xFFFEF3C7);
+    return const Color(0xFFECFDF3);
+  }
+}
+
+class _ScenarioPoint {
+  const _ScenarioPoint({
+    required this.title,
+    required this.detail,
+    required this.category,
+    required this.owner,
+    required this.severity,
+    required this.likelihood,
+  });
+
+  final String title;
+  final String detail;
+  final String category;
+  final String owner;
+  final int severity;
+  final int likelihood;
+
+  int get score => severity * likelihood;
+}
+
+class _MatrixCell extends StatelessWidget {
+  const _MatrixCell({required this.scenarios, required this.tone});
+
+  final List<_ScenarioPoint> scenarios;
+  final Color tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: tone,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('${scenarios.length} scenario${scenarios.length == 1 ? '' : 's'}',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF1F2937))),
+              const Spacer(),
+              if (scenarios.isNotEmpty) _ScorePill(score: scenarios.map((s) => s.score).reduce((a, b) => a > b ? a : b)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: scenarios.isEmpty
+                ? const Center(child: Text('—', style: TextStyle(color: Color(0xFF94A3B8))))
+                : ListView.separated(
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: scenarios.length.clamp(0, 3),
+                    separatorBuilder: (_, __) => const SizedBox(height: 6),
+                    itemBuilder: (context, index) {
+                      final scenario = scenarios[index];
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                scenario.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF1F2937)),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            _Tag(label: scenario.category),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AxisHeader extends StatelessWidget {
+  const _AxisHeader({required this.label, this.isVertical = false});
+
+  final String label;
+  final bool isVertical;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Text(
+        label,
+        textAlign: isVertical ? TextAlign.right : TextAlign.center,
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569)),
+      ),
+    );
+  }
+}
+
+class _ScorePill extends StatelessWidget {
+  const _ScorePill({required this.score});
+
+  final int score;
+
+  @override
+  Widget build(BuildContext context) {
+    Color color;
+    if (score >= 7) {
+      color = const Color(0xFFDC2626);
+    } else if (score >= 4) {
+      color = const Color(0xFFF59E0B);
+    } else {
+      color = const Color(0xFF10B981);
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text('Score $score', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
+    );
+  }
+}
+
+class _Tag extends StatelessWidget {
+  const _Tag({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
+    );
+  }
+}
+
 class _ReconciliationWorkflowCard extends StatelessWidget {
-  const _ReconciliationWorkflowCard({required this.width});
+  const _ReconciliationWorkflowCard({required this.width, required this.steps});
 
   final double width;
-
-  static const steps = [
-    _WorkflowStep(label: 'Discovery', status: 'Complete', description: 'All gap interviews and system scans logged.'),
-    _WorkflowStep(label: 'Alignment workshop', status: 'Complete', description: 'Findings confirmed with design, ops, adoption leads.'),
-    _WorkflowStep(label: 'Mitigation backlog', status: 'In progress', description: '13 of 18 actions scheduled with delivery squads.'),
-    _WorkflowStep(label: 'Validation & sign-off', status: 'Upcoming', description: 'Stakeholder verification targeted for Friday review.'),
-    _WorkflowStep(label: 'Post-launch monitoring', status: 'Planned', description: 'Success metrics dashboard in drafting with analytics.'),
-  ];
+  final List<_WorkflowStep> steps;
 
   @override
   Widget build(BuildContext context) {
@@ -859,56 +1611,54 @@ class _ReconciliationWorkflowCard extends StatelessWidget {
         label: const Text('Open workflow board'),
       ),
       child: Column(
-        children: steps
-            .map(
-              (step) => Container(
-                margin: const EdgeInsets.symmetric(vertical: 6),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            step.label,
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            step.description,
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF4B5563)),
-                          ),
-                        ],
-                      ),
+        children: steps.isEmpty
+            ? const [
+                _EmptyPanel(label: 'No workflow items yet.'),
+              ]
+            : steps
+                .map(
+                  (step) => Container(
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    _StatusBadge(label: step.status),
-                  ],
-                ),
-              ),
-            )
-            .toList(),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                step.label,
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                step.description,
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF4B5563)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        _StatusBadge(label: step.status),
+                      ],
+                    ),
+                  ),
+                )
+                .toList(),
       ),
     );
   }
 }
 
 class _LessonsLearnedCard extends StatelessWidget {
-  const _LessonsLearnedCard({required this.width});
+  const _LessonsLearnedCard({required this.width, required this.lessons});
 
   final double width;
-
-  static const lessons = [
-    'Embed ops readiness checkpoints in discovery playback to avoid scope drift.',
-    'Codify AI model retraining needs within scope assumptions for downstream teams.',
-    'Pre-schedule support enablement refresh once feature flag thresholds are set.',
-    'Retain a rolling dependency map between squads to surface cross-team blockers earlier.',
-  ];
+  final List<String> lessons;
 
   @override
   Widget build(BuildContext context) {
@@ -923,29 +1673,64 @@ class _LessonsLearnedCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: lessons
-            .map(
-              (line) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.only(top: 6),
-                      child: Icon(Icons.check_circle, size: 18, color: Color(0xFF22C55E)),
+        children: lessons.isEmpty
+            ? const [
+                _EmptyPanel(label: 'No lessons captured yet.'),
+              ]
+            : lessons
+                .map(
+                  (line) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.only(top: 6),
+                          child: Icon(Icons.check_circle, size: 18, color: Color(0xFF22C55E)),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            line,
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF1F2937)),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        line,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF1F2937)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-            .toList(),
+                  ),
+                )
+                .toList(),
+      ),
+    );
+  }
+}
+
+class _EmptyPanel extends StatelessWidget {
+  const _EmptyPanel({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline, size: 18, color: Color(0xFF9CA3AF)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF6B7280)),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1353,6 +2138,49 @@ class _ImpactRow {
   final String rating;
   final String trend;
   final String detail;
+
+  Map<String, dynamic> toJson() => {
+        'area': area,
+        'rating': rating,
+        'trend': trend,
+        'detail': detail,
+      };
+
+  factory _ImpactRow.fromJson(Map<String, dynamic> json) {
+    return _ImpactRow(
+      area: json['area']?.toString() ?? '',
+      rating: json['rating']?.toString() ?? 'Medium',
+      trend: json['trend']?.toString() ?? 'Stable',
+      detail: json['detail']?.toString() ?? '',
+    );
+  }
+
+  factory _ImpactRow.fromLaunchEntry(Map<String, dynamic> json) {
+    final title = (json['title'] ?? '').toString().trim();
+    final detail = (json['details'] ?? '').toString().trim();
+    final status = (json['status'] ?? '').toString().trim();
+    var rating = 'Medium';
+    var trend = 'Stable';
+    if (status.isNotEmpty) {
+      final parts = status
+          .split(RegExp(r'[|/,-]'))
+          .map((part) => part.trim())
+          .where((part) => part.isNotEmpty)
+          .toList();
+      if (parts.length >= 2) {
+        rating = parts[0];
+        trend = parts[1];
+      } else if (parts.length == 1) {
+        rating = parts[0];
+      }
+    }
+    return _ImpactRow(
+      area: title,
+      rating: rating,
+      trend: trend,
+      detail: detail.isEmpty ? 'Update impact details.' : detail,
+    );
+  }
 }
 
 class _WorkflowStep {
@@ -1361,4 +2189,29 @@ class _WorkflowStep {
   final String label;
   final String status;
   final String description;
+
+  Map<String, dynamic> toJson() => {
+        'label': label,
+        'status': status,
+        'description': description,
+      };
+
+  factory _WorkflowStep.fromJson(Map<String, dynamic> json) {
+    return _WorkflowStep(
+      label: json['label']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'Planned',
+      description: json['description']?.toString() ?? '',
+    );
+  }
+
+  factory _WorkflowStep.fromLaunchEntry(Map<String, dynamic> json) {
+    final label = (json['title'] ?? '').toString().trim();
+    final description = (json['details'] ?? '').toString().trim();
+    final status = (json['status'] ?? '').toString().trim();
+    return _WorkflowStep(
+      label: label,
+      status: status.isEmpty ? 'Planned' : status,
+      description: description.isEmpty ? 'Define workflow details.' : description,
+    );
+  }
 }

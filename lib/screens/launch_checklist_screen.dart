@@ -922,31 +922,13 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
   }
 
   Widget _buildTimelineAndHighlights(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final bool stack = constraints.maxWidth < 980;
-        final children = [
-          Expanded(child: _buildTimelineCard()),
-          const SizedBox(width: 24, height: 24),
-          Expanded(child: _buildLaunchHighlightsCard()),
-        ];
-
-        if (stack) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              children[0],
-              const SizedBox(height: 24),
-              children[2],
-            ],
-          );
-        }
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: children,
-        );
-      },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTimelineCard(),
+        const SizedBox(height: 24),
+        _buildLaunchHighlightsCard(),
+      ],
     );
   }
 
@@ -1148,30 +1130,14 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
   }
 
   Widget _buildInsightsGrid(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        double targetWidth;
-        if (constraints.maxWidth >= 1140) {
-          targetWidth = (constraints.maxWidth - 40) / 3;
-        } else if (constraints.maxWidth >= 760) {
-          targetWidth = (constraints.maxWidth - 24) / 2;
-        } else {
-          targetWidth = constraints.maxWidth;
-        }
-
-        return Wrap(
-          spacing: 20,
-          runSpacing: 20,
-          children: _insightCards
-              .map(
-                (card) => SizedBox(
-                  width: targetWidth,
-                  child: _LaunchInsightCard(data: card),
-                ),
-              )
-              .toList(),
-        );
-      },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (int i = 0; i < _insightCards.length; i++) ...[
+          _LaunchInsightCard(data: _insightCards[i]),
+          if (i != _insightCards.length - 1) const SizedBox(height: 20),
+        ],
+      ],
     );
   }
 }

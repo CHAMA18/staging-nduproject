@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ndu_project/screens/launch_checklist_screen.dart';
 import 'package:ndu_project/screens/stakeholder_alignment_screen.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
+import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/services/project_insights_service.dart';
 
 class UpdateOpsMaintenancePlansScreen extends StatefulWidget {
   const UpdateOpsMaintenancePlansScreen({super.key});
@@ -21,14 +24,7 @@ class UpdateOpsMaintenancePlansScreen extends StatefulWidget {
 
 class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePlansScreen> {
   final Set<String> _selectedFilters = {'All plans'};
-
-  final List<_PlanItem> _plans = const [
-    _PlanItem('OP-201', 'Runbook refresh', 'Operations', 'Ready', 'Oct 18', 'M. Thompson'),
-    _PlanItem('OP-209', 'Incident escalation', 'Support', 'In review', 'Oct 20', 'S. Mitchell'),
-    _PlanItem('OP-214', 'Patch management', 'Infrastructure', 'Pending', 'Oct 25', 'J. Rodriguez'),
-    _PlanItem('OP-221', 'Monitoring thresholds', 'Observability', 'Ready', 'Oct 28', 'E. Chen'),
-    _PlanItem('OP-230', 'Disaster recovery drill', 'Security', 'Scheduled', 'Nov 02', 'L. Park'),
-  ];
+  final List<String> _planStatuses = const ['Ready', 'In review', 'Pending', 'Scheduled'];
 
   final List<_CoverageItem> _coverage = const [
     _CoverageItem('Runbooks updated', 0.82, Color(0xFF10B981)),
@@ -47,6 +43,8 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
   Widget build(BuildContext context) {
     final isNarrow = MediaQuery.sizeOf(context).width < 980;
     final padding = AppBreakpoints.pagePadding(context);
+    final provider = ProjectDataInherited.maybeOf(context);
+    final projectId = provider?.projectData.projectId;
 
     return ResponsiveScaffold(
       activeItemLabel: 'Update Ops and Maintenance Plans',
@@ -67,7 +65,7 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildPlanRegister(),
+                    _buildPlanRegister(projectId),
                     const SizedBox(height: 20),
                     _buildCoveragePanel(),
                     const SizedBox(height: 20),
@@ -150,9 +148,9 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
     );
   }
 
-  Widget _actionButton(IconData icon, String label) {
+  Widget _actionButton(IconData icon, String label, {VoidCallback? onPressed}) {
     return OutlinedButton.icon(
-      onPressed: () {},
+      onPressed: onPressed ?? () {},
       icon: Icon(icon, size: 18, color: const Color(0xFF64748B)),
       label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
       style: OutlinedButton.styleFrom(
@@ -262,42 +260,300 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
     );
   }
 
-  Widget _buildPlanRegister() {
+  Widget _buildPlanRegister(String? projectId) {
     return _PanelShell(
       title: 'Ops plan register',
       subtitle: 'Maintenance and runbook updates',
-      trailing: _actionButton(Icons.filter_list, 'Filter'),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minWidth: constraints.maxWidth),
-              child: DataTable(
-                headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
-                columns: const [
-                  DataColumn(label: Text('ID', style: TextStyle(fontWeight: FontWeight.w600))),
-                  DataColumn(label: Text('Plan item', style: TextStyle(fontWeight: FontWeight.w600))),
-                  DataColumn(label: Text('Team', style: TextStyle(fontWeight: FontWeight.w600))),
-                  DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
-                  DataColumn(label: Text('Due', style: TextStyle(fontWeight: FontWeight.w600))),
-                  DataColumn(label: Text('Owner', style: TextStyle(fontWeight: FontWeight.w600))),
-                ],
-                rows: _plans.map((plan) {
-                  return DataRow(cells: [
-                    DataCell(Text(plan.id, style: const TextStyle(fontSize: 12, color: Color(0xFF0EA5E9)))),
-                    DataCell(Text(plan.title, style: const TextStyle(fontSize: 13))),
-                    DataCell(Text(plan.team, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)))),
-                    DataCell(_statusChip(plan.status)),
-                    DataCell(Text(plan.dueDate, style: const TextStyle(fontSize: 12))),
-                    DataCell(Text(plan.owner, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)))),
-                  ]);
-                }).toList(),
-              ),
-            ),
-          );
-        },
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _actionButton(Icons.add, 'Add', onPressed: projectId == null ? null : () => _openAddPlanDialog(projectId)),
+          const SizedBox(width: 8),
+          _actionButton(Icons.filter_list, 'Filter'),
+        ],
       ),
+      child: projectId == null
+          ? _emptyPanelMessage('Select a project to manage ops plans.')
+          : StreamBuilder<List<OpsPlanItem>>(
+              stream: ProjectInsightsService.streamOpsPlans(projectId),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                if (snapshot.hasError) {
+                  return _emptyPanelMessage('Unable to load ops plans. ${snapshot.error}');
+                }
+                final plans = snapshot.data ?? [];
+                final filtered = plans.where((plan) {
+                  if (_selectedFilters.contains('All plans')) return true;
+                  return _selectedFilters.contains(plan.status);
+                }).toList();
+                if (filtered.isEmpty) {
+                  return _emptyState(
+                    message: 'No ops plans recorded yet.',
+                    onAdd: () => _openAddPlanDialog(projectId),
+                  );
+                }
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                        child: DataTable(
+                          headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                          columns: const [
+                            DataColumn(label: Text('ID', style: TextStyle(fontWeight: FontWeight.w600))),
+                            DataColumn(label: Text('Plan item', style: TextStyle(fontWeight: FontWeight.w600))),
+                            DataColumn(label: Text('Team', style: TextStyle(fontWeight: FontWeight.w600))),
+                            DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
+                            DataColumn(label: Text('Due', style: TextStyle(fontWeight: FontWeight.w600))),
+                            DataColumn(label: Text('Owner', style: TextStyle(fontWeight: FontWeight.w600))),
+                          ],
+                          rows: filtered.map((plan) {
+                            return DataRow(cells: [
+                              DataCell(Text(plan.id, style: const TextStyle(fontSize: 12, color: Color(0xFF0EA5E9)))),
+                              DataCell(Text(plan.title, style: const TextStyle(fontSize: 13))),
+                              DataCell(Text(plan.team, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)))),
+                              DataCell(_statusChip(plan.status)),
+                              DataCell(Text(plan.due, style: const TextStyle(fontSize: 12))),
+                              DataCell(Text(plan.owner, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)))),
+                            ]);
+                          }).toList(),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+    );
+  }
+
+  Future<void> _openAddPlanDialog(String projectId) async {
+    final idController = TextEditingController();
+    final titleController = TextEditingController();
+    final teamController = TextEditingController();
+    final ownerController = TextEditingController();
+    final dueController = TextEditingController();
+    String status = _planStatuses.first;
+    DateTime? dueDate;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: const Icon(Icons.playlist_add_check_rounded, color: Color(0xFF0EA5E9)),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Add ops plan item', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                            SizedBox(height: 4),
+                            Text('Log a runbook or maintenance update for the ops register.',
+                                style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Close',
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _dialogField('Plan ID', controller: idController, hint: 'e.g. OP-301'),
+                  const SizedBox(height: 12),
+                  _dialogField('Plan item', controller: titleController, hint: 'e.g. Runbook refresh'),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(child: _dialogField('Team', controller: teamController, hint: 'e.g. Operations')),
+                      const SizedBox(width: 12),
+                      Expanded(child: _dialogField('Owner', controller: ownerController, hint: 'e.g. M. Thompson')),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: status,
+                          items: _planStatuses.map((option) => DropdownMenuItem(value: option, child: Text(option))).toList(),
+                          decoration: _dialogDecoration('Status'),
+                          onChanged: (value) => setDialogState(() => status = value ?? _planStatuses.first),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: dueController,
+                          readOnly: true,
+                          decoration: _dialogDecoration('Due date', hint: 'Select date')
+                              .copyWith(suffixIcon: const Icon(Icons.calendar_today_outlined, size: 18)),
+                          onTap: () async {
+                            final now = DateTime.now();
+                            final picked = await showDatePicker(
+                              context: dialogContext,
+                              firstDate: now.subtract(const Duration(days: 365)),
+                              lastDate: now.add(const Duration(days: 365 * 5)),
+                              initialDate: dueDate ?? now,
+                            );
+                            if (picked != null) {
+                              setDialogState(() {
+                                dueDate = picked;
+                                dueController.text = '${picked.month}/${picked.day}/${picked.year}';
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        child: const Text('Cancel'),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () async {
+                          if (idController.text.trim().isEmpty ||
+                              titleController.text.trim().isEmpty ||
+                              teamController.text.trim().isEmpty ||
+                              ownerController.text.trim().isEmpty ||
+                              dueController.text.trim().isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Please complete all fields.')),
+                            );
+                            return;
+                          }
+                          await FirebaseFirestore.instance
+                              .collection('projects')
+                              .doc(projectId)
+                              .collection('opsMaintenance')
+                              .doc('overview')
+                              .collection('plans')
+                              .add({
+                                'id': idController.text.trim(),
+                                'title': titleController.text.trim(),
+                                'team': teamController.text.trim(),
+                                'status': status,
+                                'due': dueController.text.trim(),
+                                'owner': ownerController.text.trim(),
+                                'createdAt': FieldValue.serverTimestamp(),
+                              });
+                          if (mounted) Navigator.of(dialogContext).pop();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0EA5E9),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: const Text('Add plan'),
+                      ),
+                    ],
+                  ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _emptyPanelMessage(String message) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Text(message, style: const TextStyle(color: Color(0xFF64748B))),
+    );
+  }
+
+  Widget _emptyState({required String message, required VoidCallback onAdd}) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        children: [
+          Text(message, style: const TextStyle(color: Color(0xFF64748B))),
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
+            onPressed: onAdd,
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Add plan item'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0EA5E9),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  InputDecoration _dialogDecoration(String label, {String? hint}) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      filled: true,
+      fillColor: const Color(0xFFF8FAFC),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF0EA5E9), width: 1.6)),
+    );
+  }
+
+  Widget _dialogField(String label, {required TextEditingController controller, String? hint}) {
+    return TextFormField(
+      controller: controller,
+      decoration: _dialogDecoration(label, hint: hint),
     );
   }
 
@@ -341,9 +597,11 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
       title: 'Ops signals',
       subtitle: 'Items that need immediate attention',
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: _signals.map((signal) {
           return Container(
             margin: const EdgeInsets.only(bottom: 12),
+            width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: const Color(0xFFF8FAFC),
@@ -489,17 +747,6 @@ class _MaintenanceItem extends StatelessWidget {
       ),
     );
   }
-}
-
-class _PlanItem {
-  const _PlanItem(this.id, this.title, this.team, this.status, this.dueDate, this.owner);
-
-  final String id;
-  final String title;
-  final String team;
-  final String status;
-  final String dueDate;
-  final String owner;
 }
 
 class _CoverageItem {

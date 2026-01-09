@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -9,10 +10,62 @@ import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/screens/front_end_planning_procurement_screen.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/contract_service.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ndu_project/routing/app_router.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+
+const String _contractingCollection = 'contracting';
+
+String _formatShortDate(DateTime? date) {
+  if (date == null) return 'TBD';
+  final String month = date.month.toString().padLeft(2, '0');
+  final String day = date.day.toString().padLeft(2, '0');
+  return '$month/$day/${date.year}';
+}
+
+String _formatMonthLabel(DateTime date) {
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return months[date.month - 1];
+}
+
+String _formatCurrency(double value) {
+  final rounded = value.round();
+  final text = rounded.toString();
+  final formatted = text.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',');
+  return '\$$formatted';
+}
+
+Color _statusColorFor(String status) {
+  final normalized = status.toLowerCase();
+  if (normalized.contains('award') || normalized.contains('complete') || normalized.contains('approved')) {
+    return const Color(0xFF22C55E);
+  }
+  if (normalized.contains('behind') || normalized.contains('risk') || normalized.contains('blocked')) {
+    return const Color(0xFFEF4444);
+  }
+  if (normalized.contains('review') || normalized.contains('pending') || normalized.contains('shortlist')) {
+    return const Color(0xFFF59E0B);
+  }
+  if (normalized.contains('in progress') || normalized.contains('active')) {
+    return const Color(0xFF2563EB);
+  }
+  return const Color(0xFF64748B);
+}
 
 /// Front End Planning – Contracts screen
 /// Recreates the provided contract management mock with tabs, notes field,
@@ -566,6 +619,16 @@ class ContractingStrategyScreen extends StatefulWidget {
 class _ContractingStrategyScreenState extends State<ContractingStrategyScreen> {
   String _awardStrategy = 'Sole Source';
   String _contractType = 'Not Sure';
+  final List<_QuoteRowData> _quotes = [];
+  bool _loadedStrategy = false;
+  bool _isGeneratingStrategy = false;
+  bool _aiGeneratedStrategy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadStrategyData());
+  }
 
   void _openContractDetails() {
     Navigator.of(context).push(
@@ -583,6 +646,115 @@ class _ContractingStrategyScreenState extends State<ContractingStrategyScreen> {
         builder: (_) => const ContractingStatusScreen(),
       ),
     );
+  }
+
+  Future<void> _loadStrategyData() async {
+    if (_loadedStrategy) return;
+    final provider = ProjectDataHelper.getProvider(context);
+    final projectId = provider.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection(_contractingCollection)
+          .doc('strategy')
+          .get();
+      if (doc.exists) {
+        final data = doc.data() ?? {};
+        final quotes = (data['quotes'] as List?)
+                ?.whereType<Map>()
+                .map((row) => _QuoteRowData.fromJson(Map<String, dynamic>.from(row)))
+                .toList() ??
+            [];
+        if (!mounted) return;
+        setState(() {
+          _awardStrategy = (data['awardStrategy'] ?? _awardStrategy).toString();
+          _contractType = (data['contractType'] ?? _contractType).toString();
+          _quotes
+            ..clear()
+            ..addAll(quotes);
+        });
+      }
+      _loadedStrategy = true;
+      if (_quotes.isEmpty) {
+        await _populateStrategyFromAi();
+      }
+    } catch (error) {
+      debugPrint('Failed to load contract strategy data: $error');
+    }
+  }
+
+  Future<void> _populateStrategyFromAi() async {
+    if (_aiGeneratedStrategy || _isGeneratingStrategy) return;
+    final projectData = ProjectDataHelper.getData(context);
+    final contextText = ProjectDataHelper.buildFepContext(projectData, sectionLabel: 'Contracting Strategy');
+    if (contextText.trim().isEmpty) return;
+
+    setState(() => _isGeneratingStrategy = true);
+    Map<String, List<Map<String, dynamic>>> generated = {};
+    try {
+      generated = await OpenAiServiceSecure().generateLaunchPhaseEntries(
+        context: contextText,
+        sections: const {
+          'contract_quotes':
+              'Existing contracting quotes (title=contractor, details=summary of scope, status=estimated value or status)',
+        },
+        itemsPerSection: 3,
+      );
+    } catch (error) {
+      debugPrint('Strategy AI call failed: $error');
+    }
+
+    if (!mounted) return;
+    if (_quotes.isNotEmpty) {
+      setState(() => _isGeneratingStrategy = false);
+      _aiGeneratedStrategy = true;
+      return;
+    }
+
+    final mapped = _mapQuoteRows(generated['contract_quotes']);
+    setState(() {
+      _quotes
+        ..clear()
+        ..addAll(mapped);
+      _isGeneratingStrategy = false;
+    });
+    _aiGeneratedStrategy = true;
+    await _persistStrategy();
+  }
+
+  List<_QuoteRowData> _mapQuoteRows(List<Map<String, dynamic>>? raw) {
+    if (raw == null) return [];
+    return raw
+        .map(_QuoteRowData.fromLaunchEntry)
+        .where((row) => row.contractor.isNotEmpty)
+        .toList();
+  }
+
+  Future<void> _persistStrategy() async {
+    final provider = ProjectDataHelper.getProvider(context);
+    final projectId = provider.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+
+    final payload = {
+      'awardStrategy': _awardStrategy,
+      'contractType': _contractType,
+      'quotes': _quotes.map((row) => row.toJson()).toList(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection(_contractingCollection)
+          .doc('strategy')
+          .set(payload, SetOptions(merge: true));
+    } catch (error) {
+      debugPrint('Failed to save contract strategy: $error');
+    }
   }
 
   @override
@@ -628,12 +800,21 @@ class _ContractingStrategyScreenState extends State<ContractingStrategyScreen> {
                         SizedBox(height: isMobile ? 24 : 36),
                         _ContractingStrategyCard(
                           selectedAwardStrategy: _awardStrategy,
-                          onAwardStrategyChanged: (value) => setState(() => _awardStrategy = value),
+                          onAwardStrategyChanged: (value) {
+                            setState(() => _awardStrategy = value);
+                            _persistStrategy();
+                          },
                           selectedContractType: _contractType,
-                          onContractTypeChanged: (value) => setState(() => _contractType = value),
+                          onContractTypeChanged: (value) {
+                            setState(() => _contractType = value);
+                            _persistStrategy();
+                          },
                         ),
                         SizedBox(height: isMobile ? 28 : 40),
-                          _ExistingQuotesSection(onViewDetails: _openContractDetails),
+                          _ExistingQuotesSection(
+                            quotes: _quotes,
+                            onViewDetails: _openContractDetails,
+                          ),
                           SizedBox(height: isMobile ? 24 : 32),
                           Align(
                             alignment: Alignment.centerRight,
@@ -1008,43 +1189,31 @@ class _StrategyInfoCard extends StatelessWidget {
 }
 
 class _ExistingQuotesSection extends StatelessWidget {
-  const _ExistingQuotesSection({this.onViewDetails});
+  const _ExistingQuotesSection({required this.quotes, this.onViewDetails});
 
+  final List<_QuoteRowData> quotes;
   final VoidCallback? onViewDetails;
 
   @override
   Widget build(BuildContext context) {
-    const quotes = [
-      _QuoteRowData(
-        contractor: 'Tech Systems Inc.',
-        description: 'Equipment Procurement & Installation',
-        estimatedValue: r'$115,000 - $125,000',
-        status: 'Not a Contract',
-        statusColor: Color(0xFF9CA3AF),
-      ),
-      _QuoteRowData(
-        contractor: 'Contract Tech Solutions',
-        description: 'Software Integration',
-        estimatedValue: r'$40,000 - $50,000',
-        status: 'Not a Contract',
-        statusColor: Color(0xFF9CA3AF),
-      ),
-      _QuoteRowData(
-        contractor: 'Office Supplies Co.',
-        description: 'Project Management Supplies',
-        estimatedValue: r'$3,000',
-        status: 'Not a Contract',
-        statusColor: Color(0xFF9CA3AF),
-      ),
-      _QuoteRowData(
-        contractor: 'Engineering Consultants Ltd.',
-        description: 'Engineering Services',
-        estimatedValue: r'$60,000 - $90,000',
-        status: 'Added as Contract',
-        statusColor: Color(0xFF22C55E),
-        showViewDetails: true,
-      ),
-    ];
+    if (quotes.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          Text(
+            'Existing Contracting quotes',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+          ),
+          SizedBox(height: 6),
+          Text(
+            'Review initial obtained quotes from earlier project phase and decide on how to proceed.',
+            style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+          ),
+          SizedBox(height: 18),
+          _EmptyPanelMessage('No quotes loaded yet. Add contracts to populate this section.'),
+        ],
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1216,12 +1385,11 @@ class _QuoteStatusChip extends StatelessWidget {
 }
 
 class _QuoteRowData {
-  const _QuoteRowData({
+  _QuoteRowData({
     required this.contractor,
     required this.description,
     required this.estimatedValue,
     required this.status,
-    required this.statusColor,
     this.showViewDetails = false,
   });
 
@@ -1229,8 +1397,47 @@ class _QuoteRowData {
   final String description;
   final String estimatedValue;
   final String status;
-  final Color statusColor;
   final bool showViewDetails;
+
+  Color get statusColor => _statusColorFor(status);
+
+  factory _QuoteRowData.fromJson(Map<String, dynamic> json) {
+    return _QuoteRowData(
+      contractor: (json['contractor'] ?? '').toString(),
+      description: (json['description'] ?? '').toString(),
+      estimatedValue: (json['estimatedValue'] ?? '').toString(),
+      status: (json['status'] ?? '').toString(),
+      showViewDetails: json['showViewDetails'] == true,
+    );
+  }
+
+  factory _QuoteRowData.fromLaunchEntry(Map<String, dynamic> json) {
+    final title = (json['title'] ?? '').toString().trim();
+    final details = (json['details'] ?? '').toString().trim();
+    final status = (json['status'] ?? '').toString().trim();
+    String value = 'TBD';
+    if (status.startsWith(r'$')) {
+      value = status;
+    } else if (details.contains(r'$')) {
+      final parts = details.split(RegExp(r'(?=\$)'));
+      value = parts.isNotEmpty ? parts.last.trim() : 'TBD';
+    }
+    return _QuoteRowData(
+      contractor: title,
+      description: details.isEmpty ? 'Quote details pending.' : details,
+      estimatedValue: value,
+      status: status.isEmpty ? 'In review' : status,
+      showViewDetails: status.toLowerCase().contains('contract') || status.toLowerCase().contains('awarded'),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'contractor': contractor,
+        'description': description,
+        'estimatedValue': estimatedValue,
+        'status': status,
+        'showViewDetails': showViewDetails,
+      };
 }
 
 class _LabeledField extends StatelessWidget {
@@ -1596,6 +1803,29 @@ class _EmptyContractsState extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _EmptyPanelMessage extends StatelessWidget {
+  const _EmptyPanelMessage(this.message);
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Text(
+        message,
+        style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
       ),
     );
   }
@@ -2373,11 +2603,307 @@ class ContractDetailsScreen extends StatefulWidget {
 class _ContractDetailsScreenState extends State<ContractDetailsScreen> {
   final TextEditingController _additionalInfoController = TextEditingController();
   int _selectedTabIndex = 0;
+  bool _detailsLoaded = false;
+  bool _isGeneratingDetails = false;
+  bool _aiGeneratedDetails = false;
+  ContractModel? _primaryContract;
+  String _overviewTitle = '';
+  String _overviewStatus = '';
+  String _contractIdLabel = '';
+  List<_ContractMilestoneData> _overviewMilestones = [];
+  String _overviewDescription = '';
+  List<String> _scopeItems = [];
+  List<_ContractDocumentData> _documents = [];
+  List<_BidderInfoData> _bidderInfo = [];
+  _ContactInfoData? _contactInfo;
+  _PreBidMeetingData? _preBidMeeting;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadDetailsData());
+  }
 
   @override
   void dispose() {
     _additionalInfoController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadDetailsData() async {
+    if (_detailsLoaded) return;
+    final provider = ProjectDataHelper.getProvider(context);
+    final projectId = provider.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+
+    try {
+      final contracts = await ContractService.streamContracts(projectId).first;
+      if (contracts.isNotEmpty) {
+        _primaryContract = contracts.first;
+      }
+    } catch (error) {
+      debugPrint('Failed to load contracts for details: $error');
+    }
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection(_contractingCollection)
+          .doc('details')
+          .get();
+      final docExists = doc.exists;
+      if (doc.exists) {
+        final data = doc.data() ?? {};
+        final milestones = (data['milestones'] as List?)
+                ?.whereType<Map>()
+                .map((row) => _ContractMilestoneData.fromJson(Map<String, dynamic>.from(row)))
+                .toList() ??
+            [];
+        final documents = (data['documents'] as List?)
+                ?.whereType<Map>()
+                .map((row) => _ContractDocumentData.fromJson(Map<String, dynamic>.from(row)))
+                .toList() ??
+            [];
+        final bidderInfo = (data['bidderInfo'] as List?)
+                ?.whereType<Map>()
+                .map((row) => _BidderInfoData.fromJson(Map<String, dynamic>.from(row)))
+                .toList() ??
+            [];
+        final contact = data['contactInfo'];
+        final meeting = data['preBidMeeting'];
+        final scope = (data['scopeItems'] as List?)
+                ?.map((item) => item.toString())
+                .where((item) => item.trim().isNotEmpty)
+                .toList() ??
+            [];
+        if (!mounted) return;
+        setState(() {
+          _additionalInfoController.text = (data['additionalInfo'] ?? '').toString();
+          _overviewTitle = (data['overviewTitle'] ?? '').toString();
+          _overviewStatus = (data['overviewStatus'] ?? '').toString();
+          _contractIdLabel = (data['contractIdLabel'] ?? '').toString();
+          _overviewDescription = (data['overviewDescription'] ?? '').toString();
+          _overviewMilestones
+            ..clear()
+            ..addAll(milestones);
+          _documents
+            ..clear()
+            ..addAll(documents);
+          _bidderInfo
+            ..clear()
+            ..addAll(bidderInfo);
+          _scopeItems
+            ..clear()
+            ..addAll(scope);
+          _contactInfo = contact is Map ? _ContactInfoData.fromJson(Map<String, dynamic>.from(contact)) : null;
+          _preBidMeeting = meeting is Map ? _PreBidMeetingData.fromJson(Map<String, dynamic>.from(meeting)) : null;
+        });
+      }
+      _detailsLoaded = true;
+      if (_documents.isEmpty && _bidderInfo.isEmpty && _overviewMilestones.isEmpty) {
+        await _populateDetailsFromAi();
+      } else {
+        _applyContractFallbacks();
+        if (!docExists && _primaryContract != null) {
+          await _persistDetails();
+        }
+      }
+    } catch (error) {
+      debugPrint('Failed to load contract details: $error');
+    }
+  }
+
+  void _applyContractFallbacks() {
+    if (_primaryContract == null) return;
+    final contract = _primaryContract!;
+    if (_overviewTitle.trim().isEmpty) {
+      _overviewTitle = contract.name;
+    }
+    if (_contractIdLabel.trim().isEmpty) {
+      _contractIdLabel = contract.id;
+    }
+    if (_overviewStatus.trim().isEmpty) {
+      _overviewStatus = contract.status;
+    }
+    if (_overviewDescription.trim().isEmpty && contract.description.trim().isNotEmpty) {
+      _overviewDescription = contract.description.trim();
+    }
+    if (_scopeItems.isEmpty && contract.scope.trim().isNotEmpty) {
+      _scopeItems = contract.scope
+          .split(RegExp(r'[\n;•]+'))
+          .map((item) => item.trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+    if (_overviewMilestones.isEmpty) {
+      final created = contract.createdAt;
+      final start = contract.startDate;
+      final end = contract.endDate;
+      _overviewMilestones = [
+        _ContractMilestoneData(
+          title: 'Published Date',
+          value: _formatShortDate(created),
+          accentColor: const Color(0xFF2563EB),
+        ),
+        _ContractMilestoneData(
+          title: 'Clarification Deadline',
+          value: _formatShortDate(start),
+          accentColor: const Color(0xFF2563EB),
+        ),
+        _ContractMilestoneData(
+          title: 'Submission Deadline',
+          value: _formatShortDate(end),
+          accentColor: const Color(0xFFEF4444),
+          emphasize: true,
+        ),
+        _ContractMilestoneData(
+          title: 'Bid Opening',
+          value: _formatShortDate(end?.add(const Duration(days: 2))),
+          accentColor: const Color(0xFF2563EB),
+        ),
+      ];
+    }
+  }
+
+  Future<void> _populateDetailsFromAi() async {
+    if (_aiGeneratedDetails || _isGeneratingDetails) return;
+    final projectData = ProjectDataHelper.getData(context);
+    final contextText = ProjectDataHelper.buildFepContext(projectData, sectionLabel: 'Contract Details');
+    if (contextText.trim().isEmpty) return;
+
+    setState(() => _isGeneratingDetails = true);
+    Map<String, List<Map<String, dynamic>>> generated = {};
+    try {
+      generated = await OpenAiServiceSecure().generateLaunchPhaseEntries(
+        context: contextText,
+        sections: const {
+          'contract_overview': 'Contract overview milestone cards (title=label, details=date/value, status=priority)',
+          'contract_description': 'Contract description (title=heading, details=paragraph)',
+          'scope_items': 'Scope of work bullets (title=item)',
+          'contract_documents': 'Required documents (title=document, details=type/size, status=file type)',
+          'bidder_information': 'Information for bidders (title=topic, details=guidance)',
+          'contact_details': 'Primary contact (title=name, details=role, status=email)',
+          'prebid_meeting': 'Pre-bid meeting (title=date, details=time, status=location)',
+        },
+        itemsPerSection: 3,
+      );
+    } catch (error) {
+      debugPrint('Details AI call failed: $error');
+    }
+
+    if (!mounted) return;
+    if (_documents.isNotEmpty || _bidderInfo.isNotEmpty || _overviewMilestones.isNotEmpty) {
+      setState(() => _isGeneratingDetails = false);
+      _aiGeneratedDetails = true;
+      return;
+    }
+
+    setState(() {
+      _overviewMilestones = _mapOverviewMilestones(generated['contract_overview']);
+      _overviewDescription = _mapDescription(generated['contract_description']);
+      _scopeItems = _mapScopeItems(generated['scope_items']);
+      _documents = _mapDocuments(generated['contract_documents']);
+      _bidderInfo = _mapBidderInfo(generated['bidder_information']);
+      _contactInfo = _mapContactInfo(generated['contact_details']);
+      _preBidMeeting = _mapPreBidMeeting(generated['prebid_meeting']);
+      _isGeneratingDetails = false;
+    });
+    _applyContractFallbacks();
+    _aiGeneratedDetails = true;
+    await _persistDetails();
+  }
+
+  List<_ContractMilestoneData> _mapOverviewMilestones(List<Map<String, dynamic>>? raw) {
+    if (raw == null) return [];
+    return raw
+        .map((item) {
+          final title = (item['title'] ?? '').toString().trim();
+          final value = (item['details'] ?? '').toString().trim();
+          final status = (item['status'] ?? '').toString().trim();
+          if (title.isEmpty || value.isEmpty) return null;
+          final bool emphasize = status.toLowerCase().contains('deadline');
+          return _ContractMilestoneData(
+            title: title,
+            value: value,
+            accentColor: emphasize ? const Color(0xFFEF4444) : const Color(0xFF2563EB),
+            emphasize: emphasize,
+          );
+        })
+        .whereType<_ContractMilestoneData>()
+        .toList();
+  }
+
+  String _mapDescription(List<Map<String, dynamic>>? raw) {
+    if (raw == null || raw.isEmpty) return '';
+    final details = (raw.first['details'] ?? raw.first['title'] ?? '').toString().trim();
+    return details;
+  }
+
+  List<String> _mapScopeItems(List<Map<String, dynamic>>? raw) {
+    if (raw == null) return [];
+    return raw
+        .map((item) => (item['title'] ?? '').toString().trim())
+        .where((text) => text.isNotEmpty)
+        .toList();
+  }
+
+  List<_ContractDocumentData> _mapDocuments(List<Map<String, dynamic>>? raw) {
+    if (raw == null) return [];
+    return raw
+        .map((item) => _ContractDocumentData.fromLaunchEntry(item))
+        .where((doc) => doc.title.isNotEmpty)
+        .toList();
+  }
+
+  List<_BidderInfoData> _mapBidderInfo(List<Map<String, dynamic>>? raw) {
+    if (raw == null) return [];
+    return raw
+        .map((item) => _BidderInfoData.fromLaunchEntry(item))
+        .where((info) => info.title.isNotEmpty)
+        .toList();
+  }
+
+  _ContactInfoData? _mapContactInfo(List<Map<String, dynamic>>? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    return _ContactInfoData.fromLaunchEntry(raw.first);
+  }
+
+  _PreBidMeetingData? _mapPreBidMeeting(List<Map<String, dynamic>>? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    return _PreBidMeetingData.fromLaunchEntry(raw.first);
+  }
+
+  Future<void> _persistDetails() async {
+    final provider = ProjectDataHelper.getProvider(context);
+    final projectId = provider.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+
+    final payload = {
+      'additionalInfo': _additionalInfoController.text.trim(),
+      'overviewTitle': _overviewTitle,
+      'overviewStatus': _overviewStatus,
+      'contractIdLabel': _contractIdLabel,
+      'overviewDescription': _overviewDescription,
+      'scopeItems': _scopeItems,
+      'milestones': _overviewMilestones.map((item) => item.toJson()).toList(),
+      'documents': _documents.map((item) => item.toJson()).toList(),
+      'bidderInfo': _bidderInfo.map((item) => item.toJson()).toList(),
+      'contactInfo': _contactInfo?.toJson(),
+      'preBidMeeting': _preBidMeeting?.toJson(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection(_contractingCollection)
+          .doc('details')
+          .set(payload, SetOptions(merge: true));
+    } catch (error) {
+      debugPrint('Failed to save contract details: $error');
+    }
   }
 
   void _handleStepTap(int index) {
@@ -2429,13 +2955,33 @@ class _ContractDetailsScreenState extends State<ContractDetailsScreen> {
                         SizedBox(height: isMobile ? 24 : 36),
                         _StrategyStepPills(selectedIndex: 1, onStepTap: _handleStepTap),
                         SizedBox(height: isMobile ? 24 : 32),
-                        _AdditionalInfoField(controller: _additionalInfoController),
+                        _AdditionalInfoField(
+                          controller: _additionalInfoController,
+                          onChanged: (_) => _persistDetails(),
+                        ),
                         SizedBox(height: isMobile ? 24 : 32),
-                        const _ContractOverviewSummaryCard(),
+                        _ContractOverviewSummaryCard(
+                          title: _overviewTitle.isNotEmpty
+                              ? _overviewTitle
+                              : (_primaryContract?.name ?? 'Contract overview'),
+                          contractId: _contractIdLabel.isNotEmpty
+                              ? _contractIdLabel
+                              : (_primaryContract?.id ?? 'TBD'),
+                          statusLabel: _overviewStatus.isNotEmpty
+                              ? _overviewStatus
+                              : (_primaryContract?.status ?? 'Pending'),
+                          milestones: _overviewMilestones,
+                        ),
                         SizedBox(height: isMobile ? 24 : 32),
                         _ContractDetailsContent(
                           selectedIndex: _selectedTabIndex,
                           onTabSelected: (index) => setState(() => _selectedTabIndex = index),
+                          description: _overviewDescription,
+                          scopeItems: _scopeItems,
+                          documents: _documents,
+                          bidderInfo: _bidderInfo,
+                          contactInfo: _contactInfo,
+                          preBidMeeting: _preBidMeeting,
                         ),
                         SizedBox(height: isMobile ? 80 : 120),
                       ],
@@ -2463,13 +3009,298 @@ class ContractingStatusScreen extends StatefulWidget {
 class _ContractingStatusScreenState extends State<ContractingStatusScreen> {
   final TextEditingController _additionalInfoController = TextEditingController();
   String _selectedView = 'Overview';
-  String _selectedContract = 'Engineering Services Contract';
+  String _selectedContract = 'Select contract';
   String _selectedContractorStatus = 'All Status';
+  bool _statusLoaded = false;
+  bool _isGeneratingStatus = false;
+  bool _aiGeneratedStatus = false;
+  List<String> _timelineMonths = [];
+  List<_StatusTimelineRowData> _timelineRows = [];
+  double _timelineProgress = 0.0;
+  _StatusSummaryData _summaryData = const _StatusSummaryData();
+  List<_RecentActivityData> _recentActivity = [];
+  List<_MilestoneEntry> _milestones = [];
+  List<_ExecutionStepData> _executionSteps = [];
+  List<_ContractorRowData> _contractors = [];
+  List<ContractModel> _contracts = [];
+  List<String> _contractOptions = [];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadStatusData());
+  }
 
   @override
   void dispose() {
     _additionalInfoController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadStatusData() async {
+    if (_statusLoaded) return;
+    final provider = ProjectDataHelper.getProvider(context);
+    final projectId = provider.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+
+    try {
+      _contracts = await ContractService.streamContracts(projectId).first;
+      _contractOptions = _contracts.map((c) => c.name).where((name) => name.isNotEmpty).toList();
+      if (_contractOptions.isNotEmpty) {
+        _selectedContract = _contractOptions.first;
+      }
+    } catch (error) {
+      debugPrint('Failed to load contracts for status: $error');
+    }
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection(_contractingCollection)
+          .doc('status')
+          .get();
+      if (doc.exists) {
+        final data = doc.data() ?? {};
+        final timeline = data['timeline'] as Map<String, dynamic>? ?? {};
+        final rows = (timeline['rows'] as List?)
+                ?.whereType<Map>()
+                .map((row) => _StatusTimelineRowData.fromJson(Map<String, dynamic>.from(row)))
+                .toList() ??
+            [];
+        final milestones = (data['milestones'] as List?)
+                ?.whereType<Map>()
+                .map((row) => _MilestoneEntry.fromJson(Map<String, dynamic>.from(row)))
+                .toList() ??
+            [];
+        final recent = (data['recentActivity'] as List?)
+                ?.whereType<Map>()
+                .map((row) => _RecentActivityData.fromJson(Map<String, dynamic>.from(row)))
+                .toList() ??
+            [];
+        final contractors = (data['contractors'] as List?)
+                ?.whereType<Map>()
+                .map((row) => _ContractorRowData.fromJson(Map<String, dynamic>.from(row)))
+                .toList() ??
+            [];
+        final steps = (data['executionSteps'] as List?)
+                ?.whereType<Map>()
+                .map((row) => _ExecutionStepData.fromJson(Map<String, dynamic>.from(row)))
+                .toList() ??
+            [];
+        if (!mounted) return;
+        setState(() {
+          _additionalInfoController.text = (data['additionalInfo'] ?? '').toString();
+          _timelineMonths = (timeline['months'] as List?)?.map((e) => e.toString()).toList() ?? [];
+          _timelineRows = rows;
+          _timelineProgress = (timeline['progress'] as num?)?.toDouble() ?? 0.0;
+          _summaryData = _StatusSummaryData.fromJson(data['summary'] as Map<String, dynamic>? ?? {});
+          _recentActivity = recent;
+          _milestones = milestones;
+          _contractors = contractors;
+          _executionSteps = steps;
+        });
+      }
+      _statusLoaded = true;
+      if (_timelineRows.isEmpty && _contractors.isEmpty && _executionSteps.isEmpty) {
+        await _populateStatusFromAi();
+      } else if (_timelineRows.isEmpty && _contracts.isNotEmpty) {
+        _buildTimelineFromContracts();
+      }
+
+      if (_summaryData.averageBidValue == 'TBD' && _contracts.isNotEmpty) {
+        _applySummaryFromContracts();
+      }
+    } catch (error) {
+      debugPrint('Failed to load contract status data: $error');
+    }
+  }
+
+  void _buildTimelineFromContracts() {
+    if (_contracts.isEmpty) return;
+    final startDates = _contracts.map((c) => c.startDate).toList();
+    final endDates = _contracts.map((c) => c.endDate).toList();
+    final earliest = startDates.reduce((a, b) => a.isBefore(b) ? a : b);
+    final latest = endDates.reduce((a, b) => a.isAfter(b) ? a : b);
+
+    final months = <String>[];
+    DateTime cursor = DateTime(earliest.year, earliest.month);
+    final endCursor = DateTime(latest.year, latest.month);
+    while (!cursor.isAfter(endCursor) && months.length < 9) {
+      months.add(_formatMonthLabel(cursor));
+      cursor = DateTime(cursor.year, cursor.month + 1);
+    }
+
+    final now = DateTime.now();
+    final rows = _contracts.map((contract) {
+      final cells = months.map((_) {
+        if (now.isAfter(contract.endDate)) {
+          return const _StatusTimelineCellData(status: _TimelineStatusState.complete);
+        }
+        if (now.isBefore(contract.startDate)) {
+          return const _StatusTimelineCellData(status: _TimelineStatusState.notStarted);
+        }
+        return const _StatusTimelineCellData(status: _TimelineStatusState.inProgress);
+      }).toList();
+      return _StatusTimelineRowData(label: contract.name, cells: cells);
+    }).toList();
+
+    setState(() {
+      _timelineMonths = months;
+      _timelineRows = rows;
+      _timelineProgress = _contracts.isEmpty ? 0.0 : 0.5;
+    });
+  }
+
+  void _applySummaryFromContracts() {
+    if (_contracts.isEmpty) return;
+    final totalValue = _contracts.fold<double>(0.0, (sum, c) => sum + c.estimatedValue);
+    final averageValue = totalValue / _contracts.length;
+    final completed = _contracts.where((c) => c.status.toLowerCase().contains('complete')).length;
+    final statusLabel = completed == _contracts.length ? 'Complete' : 'In Progress';
+    setState(() {
+      _summaryData = _StatusSummaryData(
+        averageBidValue: _formatCurrency(averageValue),
+        totalContractors: '${_contracts.length}',
+        milestoneProgress: '$completed/${_contracts.length} Complete',
+        statusLabel: statusLabel,
+      );
+    });
+  }
+
+  Future<void> _populateStatusFromAi() async {
+    if (_aiGeneratedStatus || _isGeneratingStatus) return;
+    final projectData = ProjectDataHelper.getData(context);
+    final contextText = ProjectDataHelper.buildFepContext(projectData, sectionLabel: 'Contracting Status');
+    if (contextText.trim().isEmpty) return;
+
+    setState(() => _isGeneratingStatus = true);
+    Map<String, List<Map<String, dynamic>>> generated = {};
+    try {
+      generated = await OpenAiServiceSecure().generateLaunchPhaseEntries(
+        context: contextText,
+        sections: const {
+          'contract_timeline': 'Contract status timeline rows (title=row label, details=summary, status=status)',
+          'contract_status_summary': 'Contract summary metrics (title=label, details=value, status=overall status)',
+          'contract_recent_activity': 'Recent activity (title=activity, details=date)',
+          'contract_milestones': 'Milestone dates (title=milestone, details=date, status=status)',
+          'contract_execution_steps': 'Execution steps (title=step, details=description, status=next action)',
+          'contractors_directory': 'Contractor entries (title=name, details=role | location | bid, status=status)',
+        },
+        itemsPerSection: 4,
+      );
+    } catch (error) {
+      debugPrint('Status AI call failed: $error');
+    }
+
+    if (!mounted) return;
+    if (_timelineRows.isNotEmpty || _contractors.isNotEmpty || _executionSteps.isNotEmpty) {
+      setState(() => _isGeneratingStatus = false);
+      _aiGeneratedStatus = true;
+      return;
+    }
+
+    final months = _defaultTimelineMonths();
+    setState(() {
+      _timelineMonths = months;
+      _timelineRows = _mapTimelineRows(generated['contract_timeline'], months.length);
+      _timelineProgress = 0.45;
+      _summaryData = _StatusSummaryData.fromEntries(generated['contract_status_summary']);
+      _recentActivity = _mapRecentActivity(generated['contract_recent_activity']);
+      _milestones = _mapMilestones(generated['contract_milestones']);
+      _executionSteps = _mapExecutionSteps(generated['contract_execution_steps']);
+      _contractors = _mapContractors(generated['contractors_directory']);
+      _isGeneratingStatus = false;
+    });
+    _aiGeneratedStatus = true;
+    await _persistStatus();
+  }
+
+  List<String> _defaultTimelineMonths() {
+    final now = DateTime.now();
+    return List.generate(6, (index) => _formatMonthLabel(DateTime(now.year, now.month + index)));
+  }
+
+  List<_StatusTimelineRowData> _mapTimelineRows(List<Map<String, dynamic>>? raw, int monthsLength) {
+    if (raw == null) return [];
+    return raw
+        .map((item) => _StatusTimelineRowData.fromLaunchEntry(item, monthsLength))
+        .where((row) => row.label.isNotEmpty)
+        .toList();
+  }
+
+  List<_RecentActivityData> _mapRecentActivity(List<Map<String, dynamic>>? raw) {
+    if (raw == null) return [];
+    return raw
+        .map((item) => _RecentActivityData.fromLaunchEntry(item))
+        .where((entry) => entry.description.isNotEmpty)
+        .toList();
+  }
+
+  List<_MilestoneEntry> _mapMilestones(List<Map<String, dynamic>>? raw) {
+    if (raw == null) return [];
+    return raw
+        .map((item) => _MilestoneEntry.fromLaunchEntry(item))
+        .where((entry) => entry.label.isNotEmpty)
+        .toList();
+  }
+
+  List<_ExecutionStepData> _mapExecutionSteps(List<Map<String, dynamic>>? raw) {
+    if (raw == null) return [];
+    final steps = raw
+        .map((item) => _ExecutionStepData.fromLaunchEntry(item))
+        .where((entry) => entry.title.isNotEmpty)
+        .toList();
+    if (steps.isNotEmpty) {
+      final first = steps.first;
+      steps[0] = _ExecutionStepData(
+        title: first.title,
+        description: first.description,
+        statusDetail: first.statusDetail,
+        highlightAction: true,
+      );
+    }
+    return steps;
+  }
+
+  List<_ContractorRowData> _mapContractors(List<Map<String, dynamic>>? raw) {
+    if (raw == null) return [];
+    return raw
+        .map((item) => _ContractorRowData.fromLaunchEntry(item))
+        .where((entry) => entry.name.isNotEmpty)
+        .toList();
+  }
+
+  Future<void> _persistStatus() async {
+    final provider = ProjectDataHelper.getProvider(context);
+    final projectId = provider.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+
+    final payload = {
+      'additionalInfo': _additionalInfoController.text.trim(),
+      'timeline': {
+        'months': _timelineMonths,
+        'rows': _timelineRows.map((row) => row.toJson()).toList(),
+        'progress': _timelineProgress,
+      },
+      'summary': _summaryData.toJson(),
+      'recentActivity': _recentActivity.map((entry) => entry.toJson()).toList(),
+      'milestones': _milestones.map((entry) => entry.toJson()).toList(),
+      'executionSteps': _executionSteps.map((entry) => entry.toJson()).toList(),
+      'contractors': _contractors.map((entry) => entry.toJson()).toList(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection(_contractingCollection)
+          .doc('status')
+          .set(payload, SetOptions(merge: true));
+    } catch (error) {
+      debugPrint('Failed to save contract status: $error');
+    }
   }
 
   void _handleStepTap(int index) {
@@ -2494,13 +3325,22 @@ class _ContractingStatusScreenState extends State<ContractingStatusScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _ContractStatusOverview(isMobile: isMobile),
+            _ContractStatusOverview(
+              isMobile: isMobile,
+              months: _timelineMonths,
+              rows: _timelineRows,
+              progress: _timelineProgress,
+              summaryData: _summaryData,
+              recentActivity: _recentActivity,
+            ),
             SizedBox(height: isMobile ? 24 : 32),
-            const _ContractStatusMilestonesCard(),
+            _ContractStatusMilestonesCard(milestones: _milestones),
             SizedBox(height: isMobile ? 28 : 36),
             _ContractExecutionSection(
               selectedContract: _selectedContract,
               onContractChanged: (value) => setState(() => _selectedContract = value),
+              steps: _executionSteps,
+              contractOptions: _contractOptions,
             ),
           ],
         );
@@ -2509,6 +3349,8 @@ class _ContractingStatusScreenState extends State<ContractingStatusScreen> {
           isMobile: isMobile,
           selectedStatus: _selectedContractorStatus,
           onStatusChanged: (value) => setState(() => _selectedContractorStatus = value),
+          rows: _filteredContractors(),
+          contractTitle: _selectedContract,
         );
       case 'Contract Specifications':
       case 'Milestones':
@@ -2517,6 +3359,15 @@ class _ContractingStatusScreenState extends State<ContractingStatusScreen> {
       default:
         return const SizedBox.shrink();
     }
+  }
+
+  List<_ContractorRowData> _filteredContractors() {
+    if (_selectedContractorStatus == 'All Status') {
+      return _contractors;
+    }
+    return _contractors
+        .where((row) => row.statusLabel.toLowerCase().contains(_selectedContractorStatus.toLowerCase()))
+        .toList();
   }
 
   @override
@@ -2549,7 +3400,10 @@ class _ContractingStatusScreenState extends State<ContractingStatusScreen> {
                         SizedBox(height: isMobile ? 24 : 36),
                         _StrategyStepPills(selectedIndex: 2, onStepTap: _handleStepTap),
                         SizedBox(height: isMobile ? 24 : 32),
-                        _AdditionalInfoField(controller: _additionalInfoController),
+                        _AdditionalInfoField(
+                          controller: _additionalInfoController,
+                          onChanged: (_) => _persistStatus(),
+                        ),
                         SizedBox(height: isMobile ? 24 : 32),
                         Align(
                           alignment: Alignment.centerLeft,
@@ -2622,6 +3476,22 @@ class ContractingSummaryScreen extends StatefulWidget {
 }
 
 class _ContractingSummaryScreenState extends State<ContractingSummaryScreen> {
+  bool _summaryLoaded = false;
+  bool _isGeneratingSummary = false;
+  bool _aiGeneratedSummary = false;
+  List<ContractModel> _contracts = [];
+  List<_SummaryTableRowData> _summaryRows = [];
+  _BudgetImpactData _budgetImpact = const _BudgetImpactData();
+  _ScheduleImpactData _scheduleImpact = const _ScheduleImpactData();
+  List<_WarrantyRowData> _warrantyRows = [];
+  List<_SummaryHighlightCardData> _highlightCards = [];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadSummaryData());
+  }
+
   void _handleStepTap(int index) {
     if (index == 0) {
       _returnToStrategy();
@@ -2656,6 +3526,244 @@ class _ContractingSummaryScreenState extends State<ContractingSummaryScreen> {
     );
   }
 
+  Future<void> _loadSummaryData() async {
+    if (_summaryLoaded) return;
+    final provider = ProjectDataHelper.getProvider(context);
+    final projectId = provider.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+
+    try {
+      _contracts = await ContractService.streamContracts(projectId).first;
+    } catch (error) {
+      debugPrint('Failed to load contracts for summary: $error');
+    }
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection(_contractingCollection)
+          .doc('summary')
+          .get();
+      if (doc.exists) {
+        final data = doc.data() ?? {};
+        final summaryRows = (data['summaryRows'] as List?)
+                ?.whereType<Map>()
+                .map((row) => _SummaryTableRowData.fromJson(Map<String, dynamic>.from(row)))
+                .toList() ??
+            [];
+        final warrantyRows = (data['warrantyRows'] as List?)
+                ?.whereType<Map>()
+                .map((row) => _WarrantyRowData.fromJson(Map<String, dynamic>.from(row)))
+                .toList() ??
+            [];
+        final highlightCards = (data['highlightCards'] as List?)
+                ?.whereType<Map>()
+                .map((row) => _SummaryHighlightCardData.fromJson(Map<String, dynamic>.from(row)))
+                .toList() ??
+            [];
+        if (!mounted) return;
+        setState(() {
+          _summaryRows = summaryRows;
+          _budgetImpact = _BudgetImpactData.fromJson(data['budgetImpact'] as Map<String, dynamic>? ?? {});
+          _scheduleImpact = _ScheduleImpactData.fromJson(data['scheduleImpact'] as Map<String, dynamic>? ?? {});
+          _warrantyRows = warrantyRows;
+          _highlightCards = highlightCards;
+        });
+      }
+      _summaryLoaded = true;
+      if (_summaryRows.isEmpty && _contracts.isNotEmpty) {
+        _buildSummaryFromContracts();
+        await _persistSummary();
+      } else if (_summaryRows.isEmpty) {
+        await _populateSummaryFromAi();
+      }
+    } catch (error) {
+      debugPrint('Failed to load contract summary: $error');
+    }
+  }
+
+  void _buildSummaryFromContracts() {
+    if (_contracts.isEmpty) return;
+    final rows = <_SummaryTableRowData>[];
+    double totalValue = 0.0;
+    int maxDurationDays = 0;
+    for (final contract in _contracts) {
+      final duration = contract.endDate.difference(contract.startDate).inDays;
+      maxDurationDays = duration > maxDurationDays ? duration : maxDurationDays;
+      totalValue += contract.estimatedValue;
+      rows.add(_SummaryTableRowData(
+        contract: contract.name,
+        contractor: contract.discipline.isNotEmpty ? contract.discipline : (contract.createdByName.isNotEmpty ? contract.createdByName : 'TBD'),
+        method: '${contract.contractType} / ${contract.paymentType}',
+        estimatedValue: _formatCurrency(contract.estimatedValue),
+        duration: '${duration < 0 ? 0 : duration} days',
+        statusLabel: contract.status.isNotEmpty ? contract.status : 'Pending',
+      ));
+    }
+    rows.add(_SummaryTableRowData(
+      contract: 'Total',
+      contractor: '',
+      method: '',
+      estimatedValue: _formatCurrency(totalValue),
+      duration: '${maxDurationDays < 0 ? 0 : maxDurationDays} days',
+      isTotals: true,
+    ));
+    _summaryRows = rows;
+
+    _budgetImpact = _BudgetImpactData(
+      headline:
+          'The total contract value of ${_formatCurrency(totalValue)} has been added to the project cost estimate.',
+      originalBudget: 'TBD',
+      currentEstimate: _formatCurrency(totalValue),
+      variance: 'TBD',
+    );
+    final earliest = _contracts.map((c) => c.startDate).reduce((a, b) => a.isBefore(b) ? a : b);
+    final latest = _contracts.map((c) => c.endDate).reduce((a, b) => a.isAfter(b) ? a : b);
+    _scheduleImpact = _ScheduleImpactData(
+      summary:
+          'Contract durations have been incorporated into the project schedule. The longest contract duration informs the critical path.',
+      projectStart: _formatShortDate(earliest),
+      contractingFinish: _formatShortDate(latest),
+      totalDuration: '${latest.difference(earliest).inDays} days',
+    );
+    _warrantyRows = _contracts
+        .map((contract) => _WarrantyRowData(
+              contract: contract.name,
+              warrantyPeriod: 'TBD',
+              supportType: 'TBD',
+              contactInformation: contract.createdByEmail.isNotEmpty ? contract.createdByEmail : 'TBD',
+              documentLabel: 'View',
+            ))
+        .toList();
+    _highlightCards = _buildHighlightsFromContracts(totalValue);
+  }
+
+  List<_SummaryHighlightCardData> _buildHighlightsFromContracts(double totalValue) {
+    final total = _contracts.length;
+    final completed = _contracts.where((c) => c.status.toLowerCase().contains('complete')).length;
+    final inProgress = _contracts.where((c) => c.status.toLowerCase().contains('progress')).length;
+    return [
+      _SummaryHighlightCardData(
+        title: 'Contract Summary',
+        items: [
+          '$total Contracts Planned',
+          '$inProgress Contracts In-Progress',
+          '$completed Contracts Completed',
+        ],
+      ),
+      _SummaryHighlightCardData(
+        title: 'Timeline Status',
+        items: [
+          '${total - completed} Contracts Active',
+          '$completed Contracts Closed',
+          'Next milestone in review',
+        ],
+      ),
+      _SummaryHighlightCardData(
+        title: 'Budget Impact',
+        items: [
+          '${_formatCurrency(totalValue)} Total Contract Value.',
+          'Budget tracking in progress.',
+          'Variance pending.',
+        ],
+      ),
+    ];
+  }
+
+  Future<void> _populateSummaryFromAi() async {
+    if (_aiGeneratedSummary || _isGeneratingSummary) return;
+    final projectData = ProjectDataHelper.getData(context);
+    final contextText = ProjectDataHelper.buildFepContext(projectData, sectionLabel: 'Contracting Summary');
+    if (contextText.trim().isEmpty) return;
+
+    setState(() => _isGeneratingSummary = true);
+    Map<String, List<Map<String, dynamic>>> generated = {};
+    try {
+      generated = await OpenAiServiceSecure().generateLaunchPhaseEntries(
+        context: contextText,
+        sections: const {
+          'summary_rows': 'Summary table rows (title=contract, details=contractor/method/value/duration, status=status)',
+          'budget_impact': 'Budget impact stats (title=label, details=value)',
+          'schedule_impact': 'Schedule impact stats (title=label, details=value)',
+          'warranty_support': 'Warranty & support entries (title=contract, details=warranty/support/contact, status=document label)',
+          'summary_highlights': 'Summary highlights (title=card title, details=bullet list)',
+        },
+        itemsPerSection: 3,
+      );
+    } catch (error) {
+      debugPrint('Summary AI call failed: $error');
+    }
+
+    if (!mounted) return;
+    if (_summaryRows.isNotEmpty) {
+      setState(() => _isGeneratingSummary = false);
+      _aiGeneratedSummary = true;
+      return;
+    }
+
+    setState(() {
+      _summaryRows = _mapSummaryRows(generated['summary_rows']);
+      _budgetImpact = _BudgetImpactData.fromEntries(generated['budget_impact']);
+      _scheduleImpact = _ScheduleImpactData.fromEntries(generated['schedule_impact']);
+      _warrantyRows = _mapWarrantyRows(generated['warranty_support']);
+      _highlightCards = _mapHighlightCards(generated['summary_highlights']);
+      _isGeneratingSummary = false;
+    });
+    _aiGeneratedSummary = true;
+    await _persistSummary();
+  }
+
+  List<_SummaryTableRowData> _mapSummaryRows(List<Map<String, dynamic>>? raw) {
+    if (raw == null) return [];
+    return raw
+        .map((item) => _SummaryTableRowData.fromLaunchEntry(item))
+        .where((row) => row.contract.isNotEmpty)
+        .toList();
+  }
+
+  List<_WarrantyRowData> _mapWarrantyRows(List<Map<String, dynamic>>? raw) {
+    if (raw == null) return [];
+    return raw
+        .map((item) => _WarrantyRowData.fromLaunchEntry(item))
+        .where((row) => row.contract.isNotEmpty)
+        .toList();
+  }
+
+  List<_SummaryHighlightCardData> _mapHighlightCards(List<Map<String, dynamic>>? raw) {
+    if (raw == null) return [];
+    return raw
+        .map((item) => _SummaryHighlightCardData.fromLaunchEntry(item))
+        .where((card) => card.title.isNotEmpty)
+        .toList();
+  }
+
+  Future<void> _persistSummary() async {
+    final provider = ProjectDataHelper.getProvider(context);
+    final projectId = provider.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+
+    final payload = {
+      'summaryRows': _summaryRows.map((row) => row.toJson()).toList(),
+      'budgetImpact': _budgetImpact.toJson(),
+      'scheduleImpact': _scheduleImpact.toJson(),
+      'warrantyRows': _warrantyRows.map((row) => row.toJson()).toList(),
+      'highlightCards': _highlightCards.map((row) => row.toJson()).toList(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection(_contractingCollection)
+          .doc('summary')
+          .set(payload, SetOptions(merge: true));
+    } catch (error) {
+      debugPrint('Failed to save contract summary: $error');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isMobile = AppBreakpoints.isMobile(context);
@@ -2686,13 +3794,16 @@ class _ContractingSummaryScreenState extends State<ContractingSummaryScreen> {
                         SizedBox(height: isMobile ? 24 : 36),
                         _StrategyStepPills(selectedIndex: 3, onStepTap: _handleStepTap),
                         SizedBox(height: isMobile ? 24 : 32),
-                        const _ContractingSummaryOverviewCard(),
+                        _ContractingSummaryOverviewCard(rows: _summaryRows),
                         SizedBox(height: isMobile ? 24 : 32),
-                        const _ContractingSummaryImpactsRow(),
+                        _ContractingSummaryImpactsRow(
+                          budgetImpact: _budgetImpact,
+                          scheduleImpact: _scheduleImpact,
+                        ),
                         SizedBox(height: isMobile ? 24 : 32),
-                        const _ContractingSummaryWarrantyCard(),
+                        _ContractingSummaryWarrantyCard(rows: _warrantyRows),
                         SizedBox(height: isMobile ? 24 : 32),
-                        const _ContractingSummaryHighlightsRow(),
+                        _ContractingSummaryHighlightsRow(cards: _highlightCards),
                         SizedBox(height: isMobile ? 80 : 120),
                       ],
                     ),
@@ -2710,36 +3821,9 @@ class _ContractingSummaryScreenState extends State<ContractingSummaryScreen> {
 }
 
 class _ContractingSummaryOverviewCard extends StatelessWidget {
-  const _ContractingSummaryOverviewCard();
+  _ContractingSummaryOverviewCard({required this.rows});
 
-  static final List<_SummaryTableRowData> _rows = [
-    _SummaryTableRowData(
-      contract: 'Engineering Services Contract',
-      contractor: 'Engineering Consultants Ltd.',
-      method: 'Bidding / Lump Sum',
-      estimatedValue: '\$90,000',
-      duration: '90 days',
-      statusLabel: 'Behind Schedule',
-      statusColor: const Color(0xFFEF4444),
-    ),
-    _SummaryTableRowData(
-      contract: 'Contract 1',
-      contractor: 'TBD',
-      method: 'Bidding / Reimbursable',
-      estimatedValue: '\$17,000',
-      duration: '0 days',
-      statusLabel: 'Behind Schedule',
-      statusColor: const Color(0xFFF97316),
-    ),
-    _SummaryTableRowData(
-      contract: 'Total',
-      contractor: '',
-      method: '',
-      estimatedValue: '\$102,000',
-      duration: '90 days (critical path)',
-      isTotals: true,
-    ),
-  ];
+  final List<_SummaryTableRowData> rows;
 
   @override
   Widget build(BuildContext context) {
@@ -2788,10 +3872,16 @@ class _ContractingSummaryOverviewCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  for (int i = 0; i < _rows.length; i++) ...[
-                    _SummaryTableRow(data: _rows[i]),
-                    if (i != _rows.length - 1) const Divider(height: 1, color: Color(0xFFE5E7EB)),
-                  ],
+                  if (rows.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: _EmptyPanelMessage('No contracts have been summarized yet.'),
+                    )
+                  else
+                    for (int i = 0; i < rows.length; i++) ...[
+                      _SummaryTableRow(data: rows[i]),
+                      if (i != rows.length - 1) const Divider(height: 1, color: Color(0xFFE5E7EB)),
+                    ],
                 ],
               ),
             ),
@@ -2863,7 +3953,7 @@ class _SummaryTableRow extends StatelessWidget {
                     alignment: Alignment.centerLeft,
                     child: _ContractStatusChip(
                       label: data.statusLabel!,
-                      color: data.statusColor ?? const Color(0xFFEF4444),
+                      color: data.statusColor,
                     ),
                   )
                 : const SizedBox.shrink(),
@@ -2875,14 +3965,13 @@ class _SummaryTableRow extends StatelessWidget {
 }
 
 class _SummaryTableRowData {
-  const _SummaryTableRowData({
+  _SummaryTableRowData({
     required this.contract,
     required this.contractor,
     required this.method,
     required this.estimatedValue,
     required this.duration,
     this.statusLabel,
-    this.statusColor,
     this.isTotals = false,
   });
 
@@ -2892,12 +3981,56 @@ class _SummaryTableRowData {
   final String estimatedValue;
   final String duration;
   final String? statusLabel;
-  final Color? statusColor;
   final bool isTotals;
+
+  Color get statusColor => _statusColorFor(statusLabel ?? '');
+
+  factory _SummaryTableRowData.fromJson(Map<String, dynamic> json) {
+    return _SummaryTableRowData(
+      contract: (json['contract'] ?? '').toString(),
+      contractor: (json['contractor'] ?? '').toString(),
+      method: (json['method'] ?? '').toString(),
+      estimatedValue: (json['estimatedValue'] ?? '').toString(),
+      duration: (json['duration'] ?? '').toString(),
+      statusLabel: (json['statusLabel'] ?? '').toString(),
+      isTotals: json['isTotals'] == true,
+    );
+  }
+
+  factory _SummaryTableRowData.fromLaunchEntry(Map<String, dynamic> json) {
+    final title = (json['title'] ?? '').toString().trim();
+    final details = (json['details'] ?? '').toString().trim();
+    final status = (json['status'] ?? '').toString().trim();
+    final parts = details.split('|').map((part) => part.trim()).toList();
+    return _SummaryTableRowData(
+      contract: title,
+      contractor: parts.isNotEmpty ? parts[0] : 'TBD',
+      method: parts.length > 1 ? parts[1] : 'TBD',
+      estimatedValue: parts.length > 2 ? parts[2] : 'TBD',
+      duration: parts.length > 3 ? parts[3] : 'TBD',
+      statusLabel: status.isEmpty ? 'Pending' : status,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'contract': contract,
+        'contractor': contractor,
+        'method': method,
+        'estimatedValue': estimatedValue,
+        'duration': duration,
+        'statusLabel': statusLabel,
+        'isTotals': isTotals,
+      };
 }
 
 class _ContractingSummaryImpactsRow extends StatelessWidget {
-  const _ContractingSummaryImpactsRow();
+  const _ContractingSummaryImpactsRow({
+    required this.budgetImpact,
+    required this.scheduleImpact,
+  });
+
+  final _BudgetImpactData budgetImpact;
+  final _ScheduleImpactData scheduleImpact;
 
   @override
   Widget build(BuildContext context) {
@@ -2906,19 +4039,19 @@ class _ContractingSummaryImpactsRow extends StatelessWidget {
         if (constraints.maxWidth < 960) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: const [
-              _ContractingSummaryBudgetImpactCard(),
-              SizedBox(height: 24),
-              _ContractingSummaryScheduleImpactCard(),
+            children: [
+              _ContractingSummaryBudgetImpactCard(data: budgetImpact),
+              const SizedBox(height: 24),
+              _ContractingSummaryScheduleImpactCard(data: scheduleImpact),
             ],
           );
         }
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Expanded(child: _ContractingSummaryBudgetImpactCard()),
-            SizedBox(width: 24),
-            Expanded(child: _ContractingSummaryScheduleImpactCard()),
+          children: [
+            Expanded(child: _ContractingSummaryBudgetImpactCard(data: budgetImpact)),
+            const SizedBox(width: 24),
+            Expanded(child: _ContractingSummaryScheduleImpactCard(data: scheduleImpact)),
           ],
         );
       },
@@ -2927,7 +4060,9 @@ class _ContractingSummaryImpactsRow extends StatelessWidget {
 }
 
 class _ContractingSummaryBudgetImpactCard extends StatelessWidget {
-  const _ContractingSummaryBudgetImpactCard();
+  const _ContractingSummaryBudgetImpactCard({required this.data});
+
+  final _BudgetImpactData data;
 
   @override
   Widget build(BuildContext context) {
@@ -2944,16 +4079,20 @@ class _ContractingSummaryBudgetImpactCard extends StatelessWidget {
         children: [
           const Text('Budget Impact', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
           const SizedBox(height: 14),
-          const Text(
-            'The total contract value of \$102,000 has been automatically added to the project cost estimate.',
-            style: TextStyle(fontSize: 13, height: 1.6, color: Color(0xFF4B5563)),
+          Text(
+            data.headline,
+            style: const TextStyle(fontSize: 13, height: 1.6, color: Color(0xFF4B5563)),
           ),
           const SizedBox(height: 18),
-          const _ImpactStatRow(label: 'Original Budget', value: '\$200,000'),
+          _ImpactStatRow(label: 'Original Budget', value: data.originalBudget),
           const SizedBox(height: 10),
-          const _ImpactStatRow(label: 'Current Estimate', value: '\$102,000'),
+          _ImpactStatRow(label: 'Current Estimate', value: data.currentEstimate),
           const SizedBox(height: 10),
-          const _ImpactStatRow(label: 'Variance', value: '\$98,000 (-49%)', valueColor: Color(0xFFDC2626)),
+          _ImpactStatRow(
+            label: 'Variance',
+            value: data.variance,
+            valueColor: data.varianceColor,
+          ),
           const SizedBox(height: 18),
           TextButton(
             onPressed: () {},
@@ -2973,7 +4112,9 @@ class _ContractingSummaryBudgetImpactCard extends StatelessWidget {
 }
 
 class _ContractingSummaryScheduleImpactCard extends StatelessWidget {
-  const _ContractingSummaryScheduleImpactCard();
+  const _ContractingSummaryScheduleImpactCard({required this.data});
+
+  final _ScheduleImpactData data;
 
   @override
   Widget build(BuildContext context) {
@@ -2990,16 +4131,16 @@ class _ContractingSummaryScheduleImpactCard extends StatelessWidget {
         children: [
           const Text('Schedule Impact', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
           const SizedBox(height: 14),
-          const Text(
-            'Contract durations have been incorporated into the project schedule. The longest contract duration is on the critical path.',
-            style: TextStyle(fontSize: 13, height: 1.6, color: Color(0xFF4B5563)),
+          Text(
+            data.summary,
+            style: const TextStyle(fontSize: 13, height: 1.6, color: Color(0xFF4B5563)),
           ),
           const SizedBox(height: 18),
-          const _ImpactStatRow(label: 'Project Start', value: 'April 1, 2025'),
+          _ImpactStatRow(label: 'Project Start', value: data.projectStart),
           const SizedBox(height: 10),
-          const _ImpactStatRow(label: 'Contracting Finish', value: 'June 30, 2025'),
+          _ImpactStatRow(label: 'Contracting Finish', value: data.contractingFinish),
           const SizedBox(height: 10),
-          const _ImpactStatRow(label: 'Total Duration', value: '90 days'),
+          _ImpactStatRow(label: 'Total Duration', value: data.totalDuration),
           const SizedBox(height: 18),
           TextButton(
             onPressed: () {},
@@ -3047,25 +4188,122 @@ class _ImpactStatRow extends StatelessWidget {
   }
 }
 
-class _ContractingSummaryWarrantyCard extends StatelessWidget {
-  const _ContractingSummaryWarrantyCard();
+class _BudgetImpactData {
+  const _BudgetImpactData({
+    this.headline = 'Budget impact details pending.',
+    this.originalBudget = 'TBD',
+    this.currentEstimate = 'TBD',
+    this.variance = 'TBD',
+    this.varianceColor = const Color(0xFFDC2626),
+  });
 
-  static final List<_WarrantyRowData> _rows = [
-    _WarrantyRowData(
-      contract: 'Engineering Services Contract',
-      warrantyPeriod: 'TBD',
-      supportType: 'TBD',
-      contactInformation: 'TBD',
-      documentLabel: 'View here',
-    ),
-    _WarrantyRowData(
-      contract: 'Contract 1',
-      warrantyPeriod: 'TBD',
-      supportType: 'TBD',
-      contactInformation: 'TBD',
-      documentLabel: 'View Here',
-    ),
-  ];
+  final String headline;
+  final String originalBudget;
+  final String currentEstimate;
+  final String variance;
+  final Color varianceColor;
+
+  factory _BudgetImpactData.fromJson(Map<String, dynamic> json) {
+    return _BudgetImpactData(
+      headline: (json['headline'] ?? 'Budget impact details pending.').toString(),
+      originalBudget: (json['originalBudget'] ?? 'TBD').toString(),
+      currentEstimate: (json['currentEstimate'] ?? 'TBD').toString(),
+      variance: (json['variance'] ?? 'TBD').toString(),
+      varianceColor: Color((json['varianceColor'] ?? 0xFFDC2626) as int),
+    );
+  }
+
+  factory _BudgetImpactData.fromEntries(List<Map<String, dynamic>>? raw) {
+    if (raw == null || raw.isEmpty) return const _BudgetImpactData();
+    String original = 'TBD';
+    String current = 'TBD';
+    String variance = 'TBD';
+    for (final entry in raw) {
+      final label = (entry['title'] ?? '').toString().toLowerCase();
+      final value = (entry['details'] ?? '').toString();
+      if (label.contains('original')) {
+        original = value;
+      } else if (label.contains('current')) {
+        current = value;
+      } else if (label.contains('variance')) {
+        variance = value;
+      }
+    }
+    return _BudgetImpactData(
+      headline: raw.first['details']?.toString() ?? 'Budget impact details pending.',
+      originalBudget: original,
+      currentEstimate: current,
+      variance: variance,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'headline': headline,
+        'originalBudget': originalBudget,
+        'currentEstimate': currentEstimate,
+        'variance': variance,
+        'varianceColor': varianceColor.value,
+      };
+}
+
+class _ScheduleImpactData {
+  const _ScheduleImpactData({
+    this.summary = 'Schedule impact details pending.',
+    this.projectStart = 'TBD',
+    this.contractingFinish = 'TBD',
+    this.totalDuration = 'TBD',
+  });
+
+  final String summary;
+  final String projectStart;
+  final String contractingFinish;
+  final String totalDuration;
+
+  factory _ScheduleImpactData.fromJson(Map<String, dynamic> json) {
+    return _ScheduleImpactData(
+      summary: (json['summary'] ?? 'Schedule impact details pending.').toString(),
+      projectStart: (json['projectStart'] ?? 'TBD').toString(),
+      contractingFinish: (json['contractingFinish'] ?? 'TBD').toString(),
+      totalDuration: (json['totalDuration'] ?? 'TBD').toString(),
+    );
+  }
+
+  factory _ScheduleImpactData.fromEntries(List<Map<String, dynamic>>? raw) {
+    if (raw == null || raw.isEmpty) return const _ScheduleImpactData();
+    String start = 'TBD';
+    String finish = 'TBD';
+    String duration = 'TBD';
+    for (final entry in raw) {
+      final label = (entry['title'] ?? '').toString().toLowerCase();
+      final value = (entry['details'] ?? '').toString();
+      if (label.contains('start')) {
+        start = value;
+      } else if (label.contains('finish')) {
+        finish = value;
+      } else if (label.contains('duration')) {
+        duration = value;
+      }
+    }
+    return _ScheduleImpactData(
+      summary: raw.first['details']?.toString() ?? 'Schedule impact details pending.',
+      projectStart: start,
+      contractingFinish: finish,
+      totalDuration: duration,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'summary': summary,
+        'projectStart': projectStart,
+        'contractingFinish': contractingFinish,
+        'totalDuration': totalDuration,
+      };
+}
+
+class _ContractingSummaryWarrantyCard extends StatelessWidget {
+  _ContractingSummaryWarrantyCard({required this.rows});
+
+  final List<_WarrantyRowData> rows;
 
   @override
   Widget build(BuildContext context) {
@@ -3113,10 +4351,16 @@ class _ContractingSummaryWarrantyCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  for (int i = 0; i < _rows.length; i++) ...[
-                    _WarrantyTableRow(data: _rows[i]),
-                    if (i != _rows.length - 1) const Divider(height: 1, color: Color(0xFFE5E7EB)),
-                  ],
+                  if (rows.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: _EmptyPanelMessage('No warranty or support records yet.'),
+                    )
+                  else
+                    for (int i = 0; i < rows.length; i++) ...[
+                      _WarrantyTableRow(data: rows[i]),
+                      if (i != rows.length - 1) const Divider(height: 1, color: Color(0xFFE5E7EB)),
+                    ],
                 ],
               ),
             ),
@@ -3203,49 +4447,58 @@ class _WarrantyRowData {
   final String supportType;
   final String contactInformation;
   final String? documentLabel;
+
+  factory _WarrantyRowData.fromJson(Map<String, dynamic> json) {
+    return _WarrantyRowData(
+      contract: (json['contract'] ?? '').toString(),
+      warrantyPeriod: (json['warrantyPeriod'] ?? '').toString(),
+      supportType: (json['supportType'] ?? '').toString(),
+      contactInformation: (json['contactInformation'] ?? '').toString(),
+      documentLabel: (json['documentLabel'] ?? '').toString(),
+    );
+  }
+
+  factory _WarrantyRowData.fromLaunchEntry(Map<String, dynamic> json) {
+    final title = (json['title'] ?? '').toString().trim();
+    final details = (json['details'] ?? '').toString().trim();
+    final parts = details.split('|').map((part) => part.trim()).toList();
+    return _WarrantyRowData(
+      contract: title,
+      warrantyPeriod: parts.isNotEmpty ? parts[0] : 'TBD',
+      supportType: parts.length > 1 ? parts[1] : 'TBD',
+      contactInformation: parts.length > 2 ? parts[2] : 'TBD',
+      documentLabel: (json['status'] ?? 'View').toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'contract': contract,
+        'warrantyPeriod': warrantyPeriod,
+        'supportType': supportType,
+        'contactInformation': contactInformation,
+        'documentLabel': documentLabel,
+      };
 }
 
 class _ContractingSummaryHighlightsRow extends StatelessWidget {
-  const _ContractingSummaryHighlightsRow();
+  _ContractingSummaryHighlightsRow({required this.cards});
 
-  static final List<_SummaryHighlightCardData> _cards = [
-    _SummaryHighlightCardData(
-      title: 'Contract Summary',
-      items: [
-        '2 Contracts Planned',
-        '0 Contract In-Progress',
-        '0 Contracts Completed',
-      ],
-    ),
-    _SummaryHighlightCardData(
-      title: 'Timeline Status',
-      items: [
-        '2 Contracts Behind Schedule.',
-        '0 Contracts On Schedule.',
-        '30 Days to Next Milestone',
-      ],
-    ),
-    _SummaryHighlightCardData(
-      title: 'Budget Impact',
-      items: [
-        '\$102,000 Total Contract Value.',
-        '\$200,000 Budgeted.',
-        '\$98,000 Variance (-49%)',
-      ],
-    ),
-  ];
+  final List<_SummaryHighlightCardData> cards;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        if (cards.isEmpty) {
+          return const _EmptyPanelMessage('No summary highlights available yet.');
+        }
         if (constraints.maxWidth < 900) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: List.generate(_cards.length, (index) {
+            children: List.generate(cards.length, (index) {
               return Padding(
-                padding: EdgeInsets.only(bottom: index == _cards.length - 1 ? 0 : 20),
-                child: _SummaryHighlightCard(data: _cards[index]),
+                padding: EdgeInsets.only(bottom: index == cards.length - 1 ? 0 : 20),
+                child: _SummaryHighlightCard(data: cards[index]),
               );
             }),
           );
@@ -3253,9 +4506,9 @@ class _ContractingSummaryHighlightsRow extends StatelessWidget {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            for (int i = 0; i < _cards.length; i++) ...[
-              Expanded(child: _SummaryHighlightCard(data: _cards[i])),
-              if (i != _cards.length - 1) const SizedBox(width: 20),
+            for (int i = 0; i < cards.length; i++) ...[
+              Expanded(child: _SummaryHighlightCard(data: cards[i])),
+              if (i != cards.length - 1) const SizedBox(width: 20),
             ],
           ],
         );
@@ -3303,6 +4556,29 @@ class _SummaryHighlightCardData {
 
   final String title;
   final List<String> items;
+
+  factory _SummaryHighlightCardData.fromJson(Map<String, dynamic> json) {
+    return _SummaryHighlightCardData(
+      title: (json['title'] ?? '').toString(),
+      items: (json['items'] as List?)?.map((item) => item.toString()).toList() ?? [],
+    );
+  }
+
+  factory _SummaryHighlightCardData.fromLaunchEntry(Map<String, dynamic> json) {
+    final title = (json['title'] ?? '').toString().trim();
+    final details = (json['details'] ?? '').toString();
+    final items = details
+        .split(RegExp(r'[•\n]'))
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+    return _SummaryHighlightCardData(title: title, items: items.isEmpty ? ['Details pending.'] : items);
+  }
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'items': items,
+      };
 }
 
 class _SummaryHighlightBullet extends StatelessWidget {
@@ -3332,21 +4608,33 @@ class _SummaryHighlightBullet extends StatelessWidget {
 }
 
 class _ContractStatusOverview extends StatelessWidget {
-  const _ContractStatusOverview({required this.isMobile});
+  const _ContractStatusOverview({
+    required this.isMobile,
+    required this.months,
+    required this.rows,
+    required this.progress,
+    required this.summaryData,
+    required this.recentActivity,
+  });
 
   final bool isMobile;
+  final List<String> months;
+  final List<_StatusTimelineRowData> rows;
+  final double progress;
+  final _StatusSummaryData summaryData;
+  final List<_RecentActivityData> recentActivity;
 
   @override
   Widget build(BuildContext context) {
     if (isMobile) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: const [
-          _ContractStatusTimelineCard(),
-          SizedBox(height: 24),
-          _ContractStatusSummaryCard(),
-          SizedBox(height: 20),
-          _ContractStatusRecentActivityCard(),
+        children: [
+          _ContractStatusTimelineCard(months: months, rows: rows, progress: progress),
+          const SizedBox(height: 24),
+          _ContractStatusSummaryCard(summaryData: summaryData),
+          const SizedBox(height: 20),
+          _ContractStatusRecentActivityCard(activities: recentActivity),
         ],
       );
     }
@@ -3356,12 +4644,12 @@ class _ContractStatusOverview extends StatelessWidget {
         if (constraints.maxWidth < 720) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: const [
-              _ContractStatusTimelineCard(),
-              SizedBox(height: 24),
-              _ContractStatusSummaryCard(),
-              SizedBox(height: 20),
-              _ContractStatusRecentActivityCard(),
+            children: [
+              _ContractStatusTimelineCard(months: months, rows: rows, progress: progress),
+              const SizedBox(height: 24),
+              _ContractStatusSummaryCard(summaryData: summaryData),
+              const SizedBox(height: 20),
+              _ContractStatusRecentActivityCard(activities: recentActivity),
             ],
           );
         }
@@ -3373,16 +4661,16 @@ class _ContractStatusOverview extends StatelessWidget {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(width: timelineWidth, child: const _ContractStatusTimelineCard()),
+            SizedBox(width: timelineWidth, child: _ContractStatusTimelineCard(months: months, rows: rows, progress: progress)),
             SizedBox(width: spacing),
             SizedBox(
               width: rightColumnWidth,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: const [
-                  _ContractStatusSummaryCard(),
-                  SizedBox(height: 20),
-                  _ContractStatusRecentActivityCard(),
+                children: [
+                  _ContractStatusSummaryCard(summaryData: summaryData),
+                  const SizedBox(height: 20),
+                  _ContractStatusRecentActivityCard(activities: recentActivity),
                 ],
               ),
             ),
@@ -3394,63 +4682,21 @@ class _ContractStatusOverview extends StatelessWidget {
 }
 
 class _ContractStatusTimelineCard extends StatelessWidget {
-  const _ContractStatusTimelineCard();
+  _ContractStatusTimelineCard({
+    required this.months,
+    required this.rows,
+    required this.progress,
+  });
 
-  static const List<String> _months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
-
-  static const List<_StatusTimelineRowData> _rows = [
-    _StatusTimelineRowData(
-      label: 'All Contract Awards Complete',
-      cells: [
-        _StatusTimelineCellData(status: _TimelineStatusState.complete),
-        _StatusTimelineCellData(status: _TimelineStatusState.complete),
-        _StatusTimelineCellData(status: _TimelineStatusState.complete),
-        _StatusTimelineCellData(status: _TimelineStatusState.inProgress),
-        _StatusTimelineCellData(status: _TimelineStatusState.inProgress),
-        _StatusTimelineCellData(status: _TimelineStatusState.notStarted),
-        _StatusTimelineCellData(status: _TimelineStatusState.notStarted),
-      ],
-    ),
-    _StatusTimelineRowData(
-      label: 'Equipment Delivery',
-      cells: [
-        _StatusTimelineCellData(status: _TimelineStatusState.notStarted),
-        _StatusTimelineCellData(status: _TimelineStatusState.notStarted),
-        _StatusTimelineCellData(status: _TimelineStatusState.inProgress),
-        _StatusTimelineCellData(status: _TimelineStatusState.inProgress),
-        _StatusTimelineCellData(status: _TimelineStatusState.complete),
-        _StatusTimelineCellData(status: _TimelineStatusState.complete),
-        _StatusTimelineCellData(status: _TimelineStatusState.complete),
-      ],
-    ),
-    _StatusTimelineRowData(
-      label: 'Software Integration Complete',
-      cells: [
-        _StatusTimelineCellData(status: _TimelineStatusState.notStarted),
-        _StatusTimelineCellData(status: _TimelineStatusState.notStarted),
-        _StatusTimelineCellData(status: _TimelineStatusState.notStarted),
-        _StatusTimelineCellData(status: _TimelineStatusState.inProgress),
-        _StatusTimelineCellData(status: _TimelineStatusState.behindSchedule),
-        _StatusTimelineCellData(status: _TimelineStatusState.inProgress),
-        _StatusTimelineCellData(status: _TimelineStatusState.inProgress),
-      ],
-    ),
-    _StatusTimelineRowData(
-      label: 'Project Handover',
-      cells: [
-        _StatusTimelineCellData(status: _TimelineStatusState.notStarted),
-        _StatusTimelineCellData(status: _TimelineStatusState.notStarted),
-        _StatusTimelineCellData(status: _TimelineStatusState.notStarted),
-        _StatusTimelineCellData(status: _TimelineStatusState.notStarted),
-        _StatusTimelineCellData(status: _TimelineStatusState.notStarted),
-        _StatusTimelineCellData(status: _TimelineStatusState.inProgress),
-        _StatusTimelineCellData(status: _TimelineStatusState.inProgress),
-      ],
-    ),
-  ];
+  final List<String> months;
+  final List<_StatusTimelineRowData> rows;
+  final double progress;
 
   @override
   Widget build(BuildContext context) {
+    final displayMonths = months.isNotEmpty
+        ? months
+        : const ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
       decoration: BoxDecoration(
@@ -3478,12 +4724,15 @@ class _ContractStatusTimelineCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 22),
-          _TimelineHeader(months: _months),
+          _TimelineHeader(months: displayMonths),
           const Divider(height: 32, color: Color(0xFFE5E7EB)),
-          for (int i = 0; i < _rows.length; i++) ...[
-            _TimelineRow(row: _rows[i]),
-            if (i != _rows.length - 1) const SizedBox(height: 18),
-          ],
+          if (rows.isEmpty)
+            const _EmptyPanelMessage('No timeline data available yet.')
+          else
+            for (int i = 0; i < rows.length; i++) ...[
+              _TimelineRow(row: rows[i]),
+              if (i != rows.length - 1) const SizedBox(height: 18),
+            ],
           const SizedBox(height: 28),
           const Divider(height: 24, color: Color(0xFFE5E7EB)),
           const SizedBox(height: 12),
@@ -3492,14 +4741,14 @@ class _ContractStatusTimelineCard extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
             child: LinearProgressIndicator(
-              value: 0.5,
+              value: progress.clamp(0.0, 1.0),
               minHeight: 10,
               backgroundColor: const Color(0xFFF3F4F6),
               valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFFC233)),
             ),
           ),
           const SizedBox(height: 10),
-          const Text('50% complete', style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
+          Text('${(progress * 100).round()}% complete', style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
         ],
       ),
     );
@@ -3617,7 +4866,9 @@ class _TimelineLegend extends StatelessWidget {
 }
 
 class _ContractStatusSummaryCard extends StatelessWidget {
-  const _ContractStatusSummaryCard();
+  const _ContractStatusSummaryCard({required this.summaryData});
+
+  final _StatusSummaryData summaryData;
 
   @override
   Widget build(BuildContext context) {
@@ -3636,17 +4887,20 @@ class _ContractStatusSummaryCard extends StatelessWidget {
           const SizedBox(height: 18),
           const Text('Average Bid Value', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
           const SizedBox(height: 6),
-          const Text('\$2,874,000', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+          Text(
+            summaryData.averageBidValue,
+            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+          ),
           const SizedBox(height: 12),
-          _SummaryStat(label: 'Total Contractors', value: '5'),
+          _SummaryStat(label: 'Total Contractors', value: summaryData.totalContractors),
           const SizedBox(height: 10),
-          _SummaryStat(label: 'Milestone Progress', value: '2/4 Complete'),
+          _SummaryStat(label: 'Milestone Progress', value: summaryData.milestoneProgress),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text('Status', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
-              _StatusPill(label: 'Bid Evaluation', color: Color(0xFFF59E0B)),
+            children: [
+              const Text('Status', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+              _StatusPill(label: summaryData.statusLabel, color: _statusColorFor(summaryData.statusLabel)),
             ],
           ),
         ],
@@ -3673,16 +4927,67 @@ class _SummaryStat extends StatelessWidget {
   }
 }
 
-class _ContractStatusRecentActivityCard extends StatelessWidget {
-  const _ContractStatusRecentActivityCard();
+class _StatusSummaryData {
+  const _StatusSummaryData({
+    this.averageBidValue = 'TBD',
+    this.totalContractors = '0',
+    this.milestoneProgress = '0/0',
+    this.statusLabel = 'Pending',
+  });
 
-  static const List<_RecentActivityData> _activities = [
-    _RecentActivityData(description: 'BuildTech Engineering Corp submitted bid', date: '8/21/2025'),
-    _RecentActivityData(description: 'MetroStructural Solutions status updated', date: '8/17/2025'),
-    _RecentActivityData(description: 'Prime Construction Group status updated', date: '8/10/2025'),
-    _RecentActivityData(description: 'TechBuild Systems Inc status updated', date: '8/02/2025'),
-    _RecentActivityData(description: 'Apex Engineering Services submitted bid', date: '7/21/2025'),
-  ];
+  final String averageBidValue;
+  final String totalContractors;
+  final String milestoneProgress;
+  final String statusLabel;
+
+  factory _StatusSummaryData.fromJson(Map<String, dynamic> json) {
+    return _StatusSummaryData(
+      averageBidValue: (json['averageBidValue'] ?? 'TBD').toString(),
+      totalContractors: (json['totalContractors'] ?? '0').toString(),
+      milestoneProgress: (json['milestoneProgress'] ?? '0/0').toString(),
+      statusLabel: (json['statusLabel'] ?? 'Pending').toString(),
+    );
+  }
+
+  factory _StatusSummaryData.fromEntries(List<Map<String, dynamic>>? raw) {
+    if (raw == null || raw.isEmpty) return const _StatusSummaryData();
+    String average = 'TBD';
+    String total = '0';
+    String progress = '0/0';
+    String status = 'Pending';
+    for (final entry in raw) {
+      final label = (entry['title'] ?? '').toString().toLowerCase();
+      final value = (entry['details'] ?? '').toString();
+      if (label.contains('average')) {
+        average = value;
+      } else if (label.contains('contractor')) {
+        total = value;
+      } else if (label.contains('milestone')) {
+        progress = value;
+      } else if (label.contains('status')) {
+        status = value;
+      }
+    }
+    return _StatusSummaryData(
+      averageBidValue: average,
+      totalContractors: total,
+      milestoneProgress: progress,
+      statusLabel: status.isEmpty ? 'Pending' : status,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'averageBidValue': averageBidValue,
+        'totalContractors': totalContractors,
+        'milestoneProgress': milestoneProgress,
+        'statusLabel': statusLabel,
+      };
+}
+
+class _ContractStatusRecentActivityCard extends StatelessWidget {
+  _ContractStatusRecentActivityCard({required this.activities});
+
+  final List<_RecentActivityData> activities;
 
   @override
   Widget build(BuildContext context) {
@@ -3699,31 +5004,34 @@ class _ContractStatusRecentActivityCard extends StatelessWidget {
         children: [
           const Text('Recent Activity', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
           const SizedBox(height: 18),
-          ..._activities.map(
-            (activity) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: 5),
-                    child: Icon(Icons.fiber_manual_record, size: 8, color: Color(0xFF2563EB)),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(activity.description, style: const TextStyle(fontSize: 13, color: Color(0xFF1F2937))),
-                        const SizedBox(height: 4),
-                        Text(activity.date, style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
-                      ],
+          if (activities.isEmpty)
+            const _EmptyPanelMessage('No recent contract activity yet.')
+          else
+            ...activities.map(
+              (activity) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(top: 5),
+                      child: Icon(Icons.fiber_manual_record, size: 8, color: Color(0xFF2563EB)),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(activity.description, style: const TextStyle(fontSize: 13, color: Color(0xFF1F2937))),
+                          const SizedBox(height: 4),
+                          Text(activity.date, style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -3731,11 +5039,19 @@ class _ContractStatusRecentActivityCard extends StatelessWidget {
 }
 
 class _ContractorsDirectorySection extends StatelessWidget {
-  const _ContractorsDirectorySection({required this.isMobile, required this.selectedStatus, required this.onStatusChanged});
+  _ContractorsDirectorySection({
+    required this.isMobile,
+    required this.selectedStatus,
+    required this.onStatusChanged,
+    required this.rows,
+    required this.contractTitle,
+  });
 
   final bool isMobile;
   final String selectedStatus;
   final ValueChanged<String> onStatusChanged;
+  final List<_ContractorRowData> rows;
+  final String contractTitle;
 
   static const List<String> _statusFilters = [
     'All Status',
@@ -3743,64 +5059,6 @@ class _ContractorsDirectorySection extends StatelessWidget {
     'Under Review',
     'Shortlisted',
     'Awarded',
-  ];
-
-  static final List<_ContractorRowData> _rows = [
-    _ContractorRowData(
-      name: 'BuildTech Engineering Corp',
-      role: 'General Contractor',
-      location: 'New York, NY',
-      bidAmount: r'$2,850,000',
-      statusLabel: 'Bid Submitted',
-      statusColor: Color(0xFFF59E0B),
-      submissionDate: '8/15/2024',
-      score: 92,
-      scoreColor: Color(0xFF22C55E),
-    ),
-    _ContractorRowData(
-      name: 'MetroStructural Solutions',
-      role: 'Structural Engineering',
-      location: 'Chicago, IL',
-      bidAmount: r'$2,720,000',
-      statusLabel: 'Under Review',
-      statusColor: Color(0xFFF59E0B),
-      submissionDate: '8/18/2024',
-      score: 89,
-      scoreColor: Color(0xFFF59E0B),
-    ),
-    _ContractorRowData(
-      name: 'Prime Construction Group',
-      role: 'General Contractor',
-      location: 'Los Angeles, CA',
-      bidAmount: r'$3,200,000',
-      statusLabel: 'Shortlisted',
-      statusColor: Color(0xFFF59E0B),
-      submissionDate: '8/12/2024',
-      score: 85,
-      scoreColor: Color(0xFFF59E0B),
-    ),
-    _ContractorRowData(
-      name: 'TechBuild Systems Inc',
-      role: 'MEP Engineering',
-      location: 'Seattle, WA',
-      bidAmount: r'$2,650,000',
-      statusLabel: 'Awarded',
-      statusColor: Color(0xFF22C55E),
-      submissionDate: '8/20/2024',
-      score: 95,
-      scoreColor: Color(0xFF22C55E),
-    ),
-    _ContractorRowData(
-      name: 'Apex Engineering Services',
-      role: 'Civil Engineering',
-      location: 'Dallas, TX',
-      bidAmount: r'$2,950,000',
-      statusLabel: 'Bid Submitted',
-      statusColor: Color(0xFFF59E0B),
-      submissionDate: '8/16/2024',
-      score: 87,
-      scoreColor: Color(0xFFF59E0B),
-    ),
   ];
 
   @override
@@ -3820,23 +5078,23 @@ class _ContractorsDirectorySection extends StatelessWidget {
           if (isMobile)
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Text(
-                  'Contractors for Engineering Services Contract',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                  'Contractors for ${contractTitle.isNotEmpty ? contractTitle : 'selected contract'}',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
                 ),
-                SizedBox(height: 12),
-                _ContractComparisonsButton(fullWidth: true),
+                const SizedBox(height: 12),
+                const _ContractComparisonsButton(fullWidth: true),
               ],
             )
           else
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Contractors for Engineering Services Contract',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                    'Contractors for ${contractTitle.isNotEmpty ? contractTitle : 'selected contract'}',
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -3862,7 +5120,10 @@ class _ContractorsDirectorySection extends StatelessWidget {
               ],
             ),
           const SizedBox(height: 24),
-          _ContractorsTable(rows: _rows, isMobile: isMobile),
+          if (rows.isEmpty)
+            const _EmptyPanelMessage('No contractor records available yet.')
+          else
+            _ContractorsTable(rows: rows, isMobile: isMobile),
         ],
       ),
     );
@@ -4156,16 +5417,14 @@ class _ContractComparisonsButton extends StatelessWidget {
 }
 
 class _ContractorRowData {
-  const _ContractorRowData({
+  _ContractorRowData({
     required this.name,
     required this.role,
     required this.location,
     required this.bidAmount,
     required this.statusLabel,
-    required this.statusColor,
     required this.submissionDate,
     required this.score,
-    required this.scoreColor,
   });
 
   final String name;
@@ -4173,10 +5432,64 @@ class _ContractorRowData {
   final String location;
   final String bidAmount;
   final String statusLabel;
-  final Color statusColor;
   final String submissionDate;
   final int score;
-  final Color scoreColor;
+
+  Color get statusColor => _statusColorFor(statusLabel);
+
+  Color get scoreColor {
+    if (score >= 90) return const Color(0xFF22C55E);
+    if (score >= 80) return const Color(0xFFF59E0B);
+    return const Color(0xFFEF4444);
+  }
+
+  factory _ContractorRowData.fromJson(Map<String, dynamic> json) {
+    return _ContractorRowData(
+      name: (json['name'] ?? '').toString(),
+      role: (json['role'] ?? '').toString(),
+      location: (json['location'] ?? '').toString(),
+      bidAmount: (json['bidAmount'] ?? '').toString(),
+      statusLabel: (json['statusLabel'] ?? '').toString(),
+      submissionDate: (json['submissionDate'] ?? '').toString(),
+      score: (json['score'] ?? 0) is num ? (json['score'] as num).toInt() : 0,
+    );
+  }
+
+  factory _ContractorRowData.fromLaunchEntry(Map<String, dynamic> json) {
+    final title = (json['title'] ?? '').toString().trim();
+    final details = (json['details'] ?? '').toString().trim();
+    final status = (json['status'] ?? '').toString().trim();
+    final parts = details.split('|').map((part) => part.trim()).toList();
+    final role = parts.isNotEmpty ? parts[0] : 'Contractor';
+    final location = parts.length > 1 ? parts[1] : 'Remote';
+    final bidAmount = parts.length > 2 ? parts[2] : 'TBD';
+    final score = status.toLowerCase().contains('award')
+        ? 94
+        : status.toLowerCase().contains('short')
+            ? 88
+            : status.toLowerCase().contains('review')
+                ? 82
+                : 76;
+    return _ContractorRowData(
+      name: title,
+      role: role,
+      location: location,
+      bidAmount: bidAmount,
+      statusLabel: status.isEmpty ? 'Under Review' : status,
+      submissionDate: _formatShortDate(DateTime.now()),
+      score: score,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'role': role,
+        'location': location,
+        'bidAmount': bidAmount,
+        'statusLabel': statusLabel,
+        'submissionDate': submissionDate,
+        'score': score,
+      };
 }
 
 class _StatusViewPlaceholder extends StatelessWidget {
@@ -4211,14 +5524,9 @@ class _StatusViewPlaceholder extends StatelessWidget {
 }
 
 class _ContractStatusMilestonesCard extends StatelessWidget {
-  const _ContractStatusMilestonesCard();
+  _ContractStatusMilestonesCard({required this.milestones});
 
-  static const List<_MilestoneEntry> _entries = [
-    _MilestoneEntry(label: 'All Contract Awards Complete', date: '5/15/2024', statusColor: Color(0xFF22C55E)),
-    _MilestoneEntry(label: 'Equipment Delivery', date: '7/15/2024', statusColor: Color(0xFF2563EB)),
-    _MilestoneEntry(label: 'Software Integration Complete', date: '9/15/2024', statusColor: Color(0xFFF59E0B)),
-    _MilestoneEntry(label: 'Project Handover', date: '11/15/2024', statusColor: Color(0xFFE5E7EB)),
-  ];
+  final List<_MilestoneEntry> milestones;
 
   @override
   Widget build(BuildContext context) {
@@ -4236,25 +5544,28 @@ class _ContractStatusMilestonesCard extends StatelessWidget {
         children: [
           const Text('Key Milestone Dates', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
           const SizedBox(height: 20),
-          ..._entries.map(
-            (entry) => Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(entry.label, style: const TextStyle(fontSize: 13, color: Color(0xFF4B5563))),
-                  ),
-                  Row(
-                    children: [
-                      Container(width: 10, height: 10, decoration: BoxDecoration(color: entry.statusColor, shape: BoxShape.circle)),
-                      const SizedBox(width: 10),
-                      Text(entry.date, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827))),
-                    ],
-                  ),
-                ],
+          if (milestones.isEmpty)
+            const _EmptyPanelMessage('No milestone dates set yet.')
+          else
+            ...milestones.map(
+              (entry) => Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(entry.label, style: const TextStyle(fontSize: 13, color: Color(0xFF4B5563))),
+                    ),
+                    Row(
+                      children: [
+                        Container(width: 10, height: 10, decoration: BoxDecoration(color: entry.statusColor, shape: BoxShape.circle)),
+                        const SizedBox(width: 10),
+                        Text(entry.date, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827))),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -4262,42 +5573,21 @@ class _ContractStatusMilestonesCard extends StatelessWidget {
 }
 
 class _ContractExecutionSection extends StatelessWidget {
-  const _ContractExecutionSection({required this.selectedContract, required this.onContractChanged});
+  _ContractExecutionSection({
+    required this.selectedContract,
+    required this.onContractChanged,
+    required this.steps,
+    required this.contractOptions,
+  });
 
   final String selectedContract;
   final ValueChanged<String> onContractChanged;
-
-  static const List<_ExecutionStepData> _steps = [
-    _ExecutionStepData(
-      title: 'Request for Quote (RFQ)',
-      description: 'Create and distribute RFQ documents to potential vendors',
-      statusDetail: 'calendar today Not scheduled',
-      highlightAction: true,
-    ),
-    _ExecutionStepData(
-      title: 'Bidding',
-      description: 'Vendors submit their proposals and quotes',
-      statusDetail: 'calendar today Not scheduled',
-    ),
-    _ExecutionStepData(
-      title: 'Clarifications',
-      description: 'Request additional information from vendors',
-      statusDetail: 'calendar today Not scheduled',
-    ),
-    _ExecutionStepData(
-      title: 'Review Quotes',
-      description: 'Analyze and compare vendor proposals',
-      statusDetail: 'calendar today Not scheduled',
-    ),
-    _ExecutionStepData(
-      title: 'Award',
-      description: 'Select vendor and finalize contract',
-      statusDetail: 'calendar today Not scheduled',
-    ),
-  ];
+  final List<_ExecutionStepData> steps;
+  final List<String> contractOptions;
 
   @override
   Widget build(BuildContext context) {
+    final availableContracts = contractOptions.isNotEmpty ? contractOptions : [selectedContract];
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
@@ -4320,11 +5610,9 @@ class _ContractExecutionSection extends StatelessWidget {
                 child: DropdownButtonFormField<String>(
                   initialValue: selectedContract,
                   onChanged: (value) => onContractChanged(value ?? selectedContract),
-                  items: const [
-                    DropdownMenuItem(value: 'Engineering Services Contract', child: Text('Engineering Services Contract')),
-                    DropdownMenuItem(value: 'IT Support Contract', child: Text('IT Support Contract')),
-                    DropdownMenuItem(value: 'Infrastructure Contract', child: Text('Infrastructure Contract')),
-                  ],
+                  items: availableContracts
+                      .map((contract) => DropdownMenuItem(value: contract, child: Text(contract)))
+                      .toList(),
                   icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF6B7280)),
                   decoration: InputDecoration(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -4349,16 +5637,19 @@ class _ContractExecutionSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 28),
-          Column(
-            children: List.generate(
-              _steps.length,
-              (index) => _ExecutionTimelineRow(
-                data: _steps[index],
-                isFirst: index == 0,
-                isLast: index == _steps.length - 1,
+          if (steps.isEmpty)
+            const _EmptyPanelMessage('No execution steps defined yet.')
+          else
+            Column(
+              children: List.generate(
+                steps.length,
+                (index) => _ExecutionTimelineRow(
+                  data: steps[index],
+                  isFirst: index == 0,
+                  isLast: index == steps.length - 1,
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -4460,12 +5751,57 @@ class _StatusTimelineRowData {
 
   final String label;
   final List<_StatusTimelineCellData> cells;
+
+  factory _StatusTimelineRowData.fromJson(Map<String, dynamic> json) {
+    final cells = (json['cells'] as List?)
+            ?.whereType<Map>()
+            .map((cell) => _StatusTimelineCellData.fromJson(Map<String, dynamic>.from(cell)))
+            .toList() ??
+        [];
+    return _StatusTimelineRowData(
+      label: (json['label'] ?? '').toString(),
+      cells: cells,
+    );
+  }
+
+  factory _StatusTimelineRowData.fromLaunchEntry(Map<String, dynamic> json, int monthsLength) {
+    final label = (json['title'] ?? '').toString().trim();
+    final statusText = (json['status'] ?? '').toString().trim().toLowerCase();
+    final status = _StatusTimelineCellData._statusFromText(statusText);
+    final cells = List.generate(
+      monthsLength,
+      (index) => _StatusTimelineCellData(status: index < monthsLength / 2 ? status : _TimelineStatusState.notStarted),
+    );
+    return _StatusTimelineRowData(label: label, cells: cells);
+  }
+
+  Map<String, dynamic> toJson() => {
+        'label': label,
+        'cells': cells.map((cell) => cell.toJson()).toList(),
+      };
 }
 
 class _StatusTimelineCellData {
   const _StatusTimelineCellData({required this.status});
 
   final _TimelineStatusState status;
+
+  factory _StatusTimelineCellData.fromJson(Map<String, dynamic> json) {
+    final statusText = (json['status'] ?? '').toString();
+    return _StatusTimelineCellData(status: _StatusTimelineCellData._statusFromText(statusText));
+  }
+
+  Map<String, dynamic> toJson() => {
+        'status': status.name,
+      };
+
+  static _TimelineStatusState _statusFromText(String statusText) {
+    final text = statusText.toLowerCase();
+    if (text.contains('complete')) return _TimelineStatusState.complete;
+    if (text.contains('behind') || text.contains('risk')) return _TimelineStatusState.behindSchedule;
+    if (text.contains('progress')) return _TimelineStatusState.inProgress;
+    return _TimelineStatusState.notStarted;
+  }
 }
 
 enum _TimelineStatusState { complete, inProgress, notStarted, behindSchedule }
@@ -4476,6 +5812,31 @@ class _MilestoneEntry {
   final String label;
   final String date;
   final Color statusColor;
+
+  factory _MilestoneEntry.fromJson(Map<String, dynamic> json) {
+    return _MilestoneEntry(
+      label: (json['label'] ?? '').toString(),
+      date: (json['date'] ?? '').toString(),
+      statusColor: Color((json['statusColor'] ?? 0xFF2563EB) as int),
+    );
+  }
+
+  factory _MilestoneEntry.fromLaunchEntry(Map<String, dynamic> json) {
+    final label = (json['title'] ?? '').toString().trim();
+    final date = (json['details'] ?? '').toString().trim();
+    final status = (json['status'] ?? '').toString().trim();
+    return _MilestoneEntry(
+      label: label,
+      date: date.isEmpty ? 'TBD' : date,
+      statusColor: _statusColorFor(status),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'label': label,
+        'date': date,
+        'statusColor': statusColor.value,
+      };
 }
 
 class _RecentActivityData {
@@ -4483,6 +5844,25 @@ class _RecentActivityData {
 
   final String description;
   final String date;
+
+  factory _RecentActivityData.fromJson(Map<String, dynamic> json) {
+    return _RecentActivityData(
+      description: (json['description'] ?? '').toString(),
+      date: (json['date'] ?? '').toString(),
+    );
+  }
+
+  factory _RecentActivityData.fromLaunchEntry(Map<String, dynamic> json) {
+    return _RecentActivityData(
+      description: (json['title'] ?? '').toString().trim(),
+      date: (json['details'] ?? '').toString().trim(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'description': description,
+        'date': date,
+      };
 }
 
 class _ExecutionStepData {
@@ -4494,12 +5874,38 @@ class _ExecutionStepData {
   final bool highlightAction;
 
   String get shortCode => title.isNotEmpty ? title[0].toUpperCase() : '?';
+
+  factory _ExecutionStepData.fromJson(Map<String, dynamic> json) {
+    return _ExecutionStepData(
+      title: (json['title'] ?? '').toString(),
+      description: (json['description'] ?? '').toString(),
+      statusDetail: (json['statusDetail'] ?? '').toString(),
+      highlightAction: json['highlightAction'] == true,
+    );
+  }
+
+  factory _ExecutionStepData.fromLaunchEntry(Map<String, dynamic> json) {
+    return _ExecutionStepData(
+      title: (json['title'] ?? '').toString().trim(),
+      description: (json['details'] ?? '').toString().trim(),
+      statusDetail: (json['status'] ?? '').toString().trim(),
+      highlightAction: false,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'description': description,
+        'statusDetail': statusDetail,
+        'highlightAction': highlightAction,
+      };
 }
 
 class _AdditionalInfoField extends StatelessWidget {
-  const _AdditionalInfoField({required this.controller});
+  const _AdditionalInfoField({required this.controller, this.onChanged});
 
   final TextEditingController controller;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -4514,6 +5920,7 @@ class _AdditionalInfoField extends StatelessWidget {
       child: TextField(
         controller: controller,
         maxLines: 4,
+        onChanged: onChanged,
         decoration: const InputDecoration(
           border: InputBorder.none,
           hintText: 'Any additional information about this contract',
@@ -4526,31 +5933,17 @@ class _AdditionalInfoField extends StatelessWidget {
 }
 
 class _ContractOverviewSummaryCard extends StatelessWidget {
-  const _ContractOverviewSummaryCard();
+  _ContractOverviewSummaryCard({
+    required this.title,
+    required this.contractId,
+    required this.statusLabel,
+    required this.milestones,
+  });
 
-  static const List<_ContractMilestoneData> _milestones = [
-    _ContractMilestoneData(
-      title: 'Published Date',
-      value: 'July 22, 2025',
-      accentColor: Color(0xFF2563EB),
-    ),
-    _ContractMilestoneData(
-      title: 'Clarification Deadline',
-      value: 'August 5, 2025',
-      accentColor: Color(0xFF2563EB),
-    ),
-    _ContractMilestoneData(
-      title: 'Submission Deadline',
-      value: 'August 20, 2025 (5:00 PM CAT)',
-      accentColor: Color(0xFFEF4444),
-      emphasize: true,
-    ),
-    _ContractMilestoneData(
-      title: 'Bid Opening',
-      value: 'August 22, 2025',
-      accentColor: Color(0xFF2563EB),
-    ),
-  ];
+  final String title;
+  final String contractId;
+  final String statusLabel;
+  final List<_ContractMilestoneData> milestones;
 
   @override
   Widget build(BuildContext context) {
@@ -4575,9 +5968,9 @@ class _ContractOverviewSummaryCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'New Downtown Office Tower Construction',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                    Text(
+                      title.isNotEmpty ? title : 'Contract overview',
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -4593,8 +5986,8 @@ class _ContractOverviewSummaryCard extends StatelessWidget {
                             color: const Color(0xFFF3F4F6),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Text(
-                            'DT-2025-001',
+                          child: Text(
+                            contractId.isNotEmpty ? contractId : 'TBD',
                             style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
                           ),
                         ),
@@ -4603,16 +5996,28 @@ class _ContractOverviewSummaryCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const _StatusPill(label: 'Open for Bidding', color: Color(0xFF22C55E)),
+              _StatusPill(
+                label: statusLabel.isNotEmpty ? statusLabel : 'Pending',
+                color: _statusColorFor(statusLabel),
+              ),
             ],
           ),
           const SizedBox(height: 28),
           LayoutBuilder(
             builder: (context, constraints) {
               final bool stack = constraints.maxWidth < 720;
+              final milestoneCards = milestones.isNotEmpty
+                  ? milestones
+                  : [
+                      const _ContractMilestoneData(
+                        title: 'Published Date',
+                        value: 'TBD',
+                        accentColor: Color(0xFF2563EB),
+                      ),
+                    ];
               if (stack) {
                 return Column(
-                  children: _milestones
+                  children: milestoneCards
                       .map(
                         (milestone) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
@@ -4624,11 +6029,11 @@ class _ContractOverviewSummaryCard extends StatelessWidget {
               }
 
               return Row(
-                children: List.generate(_milestones.length, (index) {
-                  final Widget card = _ContractMilestoneCard(data: _milestones[index]);
+                children: List.generate(milestoneCards.length, (index) {
+                  final Widget card = _ContractMilestoneCard(data: milestoneCards[index]);
                   return Expanded(
                     child: Padding(
-                      padding: EdgeInsets.only(right: index == _milestones.length - 1 ? 0 : 18),
+                      padding: EdgeInsets.only(right: index == milestoneCards.length - 1 ? 0 : 18),
                       child: card,
                     ),
                   );
@@ -4681,13 +6086,44 @@ class _ContractMilestoneData {
   final String value;
   final Color accentColor;
   final bool emphasize;
+
+  factory _ContractMilestoneData.fromJson(Map<String, dynamic> json) {
+    return _ContractMilestoneData(
+      title: (json['title'] ?? '').toString(),
+      value: (json['value'] ?? '').toString(),
+      accentColor: Color((json['accentColor'] ?? 0xFF2563EB) as int),
+      emphasize: json['emphasize'] == true,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'value': value,
+        'accentColor': accentColor.value,
+        'emphasize': emphasize,
+      };
 }
 
 class _ContractDetailsContent extends StatelessWidget {
-  const _ContractDetailsContent({required this.selectedIndex, required this.onTabSelected});
+  const _ContractDetailsContent({
+    required this.selectedIndex,
+    required this.onTabSelected,
+    required this.description,
+    required this.scopeItems,
+    required this.documents,
+    required this.bidderInfo,
+    required this.contactInfo,
+    required this.preBidMeeting,
+  });
 
   final int selectedIndex;
   final ValueChanged<int> onTabSelected;
+  final String description;
+  final List<String> scopeItems;
+  final List<_ContractDocumentData> documents;
+  final List<_BidderInfoData> bidderInfo;
+  final _ContactInfoData? contactInfo;
+  final _PreBidMeetingData? preBidMeeting;
 
   @override
   Widget build(BuildContext context) {
@@ -4700,9 +6136,19 @@ class _ContractDetailsContent extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _ContractDetailsTabBlock(selectedIndex: selectedIndex, onTabSelected: onTabSelected),
+              _ContractDetailsTabBlock(
+                selectedIndex: selectedIndex,
+                onTabSelected: onTabSelected,
+                description: description,
+                scopeItems: scopeItems,
+                documents: documents,
+                bidderInfo: bidderInfo,
+              ),
               const SizedBox(height: 24),
-              const _ContractDetailsSidebar(),
+              _ContractDetailsSidebar(
+                contactInfo: contactInfo,
+                preBidMeeting: preBidMeeting,
+              ),
             ],
           );
         }
@@ -4714,10 +6160,23 @@ class _ContractDetailsContent extends StatelessWidget {
           children: [
             SizedBox(
               width: contentWidth,
-              child: _ContractDetailsTabBlock(selectedIndex: selectedIndex, onTabSelected: onTabSelected),
+              child: _ContractDetailsTabBlock(
+                selectedIndex: selectedIndex,
+                onTabSelected: onTabSelected,
+                description: description,
+                scopeItems: scopeItems,
+                documents: documents,
+                bidderInfo: bidderInfo,
+              ),
             ),
             const SizedBox(width: 24),
-            const SizedBox(width: sidebarWidth, child: _ContractDetailsSidebar()),
+            SizedBox(
+              width: sidebarWidth,
+              child: _ContractDetailsSidebar(
+                contactInfo: contactInfo,
+                preBidMeeting: preBidMeeting,
+              ),
+            ),
           ],
         );
       },
@@ -4726,17 +6185,35 @@ class _ContractDetailsContent extends StatelessWidget {
 }
 
 class _ContractDetailsTabBlock extends StatelessWidget {
-  const _ContractDetailsTabBlock({required this.selectedIndex, required this.onTabSelected});
+  const _ContractDetailsTabBlock({
+    required this.selectedIndex,
+    required this.onTabSelected,
+    required this.description,
+    required this.scopeItems,
+    required this.documents,
+    required this.bidderInfo,
+  });
 
   final int selectedIndex;
   final ValueChanged<int> onTabSelected;
+  final String description;
+  final List<String> scopeItems;
+  final List<_ContractDocumentData> documents;
+  final List<_BidderInfoData> bidderInfo;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _ContractDetailsTabCard(selectedIndex: selectedIndex, onTabSelected: onTabSelected),
+        _ContractDetailsTabCard(
+          selectedIndex: selectedIndex,
+          onTabSelected: onTabSelected,
+          description: description,
+          scopeItems: scopeItems,
+          documents: documents,
+          bidderInfo: bidderInfo,
+        ),
         const SizedBox(height: 24),
         const _UploadBidDocumentsCard(),
       ],
@@ -4745,10 +6222,21 @@ class _ContractDetailsTabBlock extends StatelessWidget {
 }
 
 class _ContractDetailsTabCard extends StatelessWidget {
-  const _ContractDetailsTabCard({required this.selectedIndex, required this.onTabSelected});
+  const _ContractDetailsTabCard({
+    required this.selectedIndex,
+    required this.onTabSelected,
+    required this.description,
+    required this.scopeItems,
+    required this.documents,
+    required this.bidderInfo,
+  });
 
   final int selectedIndex;
   final ValueChanged<int> onTabSelected;
+  final String description;
+  final List<String> scopeItems;
+  final List<_ContractDocumentData> documents;
+  final List<_BidderInfoData> bidderInfo;
 
   @override
   Widget build(BuildContext context) {
@@ -4768,7 +6256,13 @@ class _ContractDetailsTabCard extends StatelessWidget {
           const Divider(height: 1, color: Color(0xFFE5E7EB)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
-            child: _ContractDetailsTabContent(selectedIndex: selectedIndex),
+            child: _ContractDetailsTabContent(
+              selectedIndex: selectedIndex,
+              description: description,
+              scopeItems: scopeItems,
+              documents: documents,
+              bidderInfo: bidderInfo,
+            ),
           ),
         ],
       ),
@@ -4826,19 +6320,29 @@ class _ContractDetailsTabBar extends StatelessWidget {
 }
 
 class _ContractDetailsTabContent extends StatelessWidget {
-  const _ContractDetailsTabContent({required this.selectedIndex});
+  const _ContractDetailsTabContent({
+    required this.selectedIndex,
+    required this.description,
+    required this.scopeItems,
+    required this.documents,
+    required this.bidderInfo,
+  });
 
   final int selectedIndex;
+  final String description;
+  final List<String> scopeItems;
+  final List<_ContractDocumentData> documents;
+  final List<_BidderInfoData> bidderInfo;
 
   @override
   Widget build(BuildContext context) {
     switch (selectedIndex) {
       case 0:
-        return const _DescriptionTabContent();
+        return _DescriptionTabContent(description: description, scopeItems: scopeItems);
       case 1:
-        return const _ContractDocumentsTabContent();
+        return _ContractDocumentsTabContent(documents: documents);
       case 2:
-        return const _InformationForBiddersTabContent();
+        return _InformationForBiddersTabContent(info: bidderInfo);
       default:
         return const SizedBox.shrink();
     }
@@ -4846,63 +6350,45 @@ class _ContractDetailsTabContent extends StatelessWidget {
 }
 
 class _DescriptionTabContent extends StatelessWidget {
-  const _DescriptionTabContent();
+  const _DescriptionTabContent({required this.description, required this.scopeItems});
+
+  final String description;
+  final List<String> scopeItems;
 
   @override
   Widget build(BuildContext context) {
+    final descriptionText = description.trim().isNotEmpty ? description.trim() : 'Description not available yet.';
+    final items = scopeItems.isNotEmpty
+        ? scopeItems
+        : ['Scope details will appear here once added to the contract.'];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: const [
-        Text(
+      children: [
+        const Text(
           'Project Overview',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
         ),
-        SizedBox(height: 12),
+        const SizedBox(height: 12),
         Text(
-          'The City of Lusaka invites sealed bids for the construction of a new 20-story office tower located at the corner of Independence Avenue and Cairo Road. This landmark project aims to provide modern, sustainable office space to support the city\'s growing commercial sector. The project includes the complete construction from foundation to finishing, including all mechanical, electrical, and plumbing (MEP) systems, landscaping, and associated infrastructure.',
-          style: TextStyle(fontSize: 14, height: 1.6, color: Color(0xFF4B5563)),
+          descriptionText,
+          style: const TextStyle(fontSize: 14, height: 1.6, color: Color(0xFF4B5563)),
         ),
-        SizedBox(height: 22),
-        Text(
+        const SizedBox(height: 22),
+        const Text(
           'Scope of Work',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
         ),
-        SizedBox(height: 12),
-        _BulletItem(text: 'Site preparation, excavation, and foundation work.'),
-        _BulletItem(text: 'Structural steel and concrete framework construction.'),
-        _BulletItem(text: 'Curtain wall and facade installation.'),
-        _BulletItem(text: 'Complete interior fit-out, including walls, flooring, and ceilings.'),
-        _BulletItem(text: 'Installation of all MEP systems (HVAC, electrical, plumbing, fire suppression).'),
-        _BulletItem(text: 'Installation of elevators and building management systems.'),
-        _BulletItem(text: 'Landscaping and external works, including parking facilities.'),
+        const SizedBox(height: 12),
+        ...items.map((item) => _BulletItem(text: item)).toList(),
       ],
     );
   }
 }
 
 class _ContractDocumentsTabContent extends StatelessWidget {
-  const _ContractDocumentsTabContent();
+  _ContractDocumentsTabContent({required this.documents});
 
-  static const List<_ContractDocumentData> _documents = [
-    _ContractDocumentData(
-      title: 'Architectural Drawings - Full Set',
-      details: 'PDF, 45.2 MB',
-      accentColor: Color(0xFFEF4444),
-      icon: Icons.picture_as_pdf_outlined,
-    ),
-    _ContractDocumentData(
-      title: 'Technical Specifications',
-      details: 'DOCX, 2.1 MB',
-      accentColor: Color(0xFF6366F1),
-      icon: Icons.description_outlined,
-    ),
-    _ContractDocumentData(
-      title: 'Bill of Quantities',
-      details: 'XLSX, 850 KB',
-      accentColor: Color(0xFF22C55E),
-      icon: Icons.table_chart_outlined,
-    ),
-  ];
+  final List<_ContractDocumentData> documents;
 
   @override
   Widget build(BuildContext context) {
@@ -4930,75 +6416,65 @@ class _ContractDocumentsTabContent extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 18),
-        Column(
-          children: _documents
-              .map(
-                (doc) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _ContractDocumentRow(data: doc),
-                ),
-              )
-              .toList(),
-        ),
+        if (documents.isEmpty)
+          const _EmptyPanelMessage('No contract documents added yet.')
+        else
+          Column(
+            children: documents
+                .map(
+                  (doc) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _ContractDocumentRow(data: doc),
+                  ),
+                )
+                .toList(),
+          ),
       ],
     );
   }
 }
 
 class _InformationForBiddersTabContent extends StatelessWidget {
-  const _InformationForBiddersTabContent();
+  _InformationForBiddersTabContent({required this.info});
 
-  static const List<_BidderInfoData> _info = [
-    _BidderInfoData(
-      title: 'Eligibility',
-      description:
-          'Bidders must be registered with the National Council for Construction (NCC) in Grade 1, Category B or higher. A valid Tax Clearance Certificate is mandatory.',
-    ),
-    _BidderInfoData(
-      title: 'Bid Security',
-      description: 'A bid security of 2% of the bid price in the form of a bank guarantee is required.',
-    ),
-    _BidderInfoData(
-      title: 'Evaluation Criteria',
-      description:
-          'Bids will be evaluated based on 70% technical compliance and 30% financial proposal. Past performance on similar projects will be considered.',
-    ),
-    _BidderInfoData(
-      title: 'Submission',
-      description:
-          'All bids must be submitted electronically through this portal. No physical submissions will be accepted. Ensure all required documents are uploaded in the correct format.',
-    ),
-  ];
+  final List<_BidderInfoData> info;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: _info
-          .map(
-            (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 18),
-              child: _BidderInfoRow(data: item),
-            ),
-          )
-          .toList(),
+      children: info.isEmpty
+          ? const [
+              _EmptyPanelMessage('No bidder information added yet.'),
+            ]
+          : info
+              .map(
+                (item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 18),
+                  child: _BidderInfoRow(data: item),
+                ),
+              )
+              .toList(),
     );
   }
 }
 
 class _ContractDetailsSidebar extends StatelessWidget {
-  const _ContractDetailsSidebar();
+  const _ContractDetailsSidebar({this.contactInfo, this.preBidMeeting});
+
+  final _ContactInfoData? contactInfo;
+  final _PreBidMeetingData? preBidMeeting;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: const [
-        _ActionsSidebarCard(),
-        SizedBox(height: 20),
-        _ContactSidebarCard(),
-        SizedBox(height: 20),
-        _PreBidMeetingSidebarCard(),
+      children: [
+        const _ActionsSidebarCard(),
+        const SizedBox(height: 20),
+        _ContactSidebarCard(contactInfo: contactInfo),
+        const SizedBox(height: 20),
+        _PreBidMeetingSidebarCard(preBidMeeting: preBidMeeting),
       ],
     );
   }
@@ -5051,10 +6527,13 @@ class _ActionsSidebarCard extends StatelessWidget {
 }
 
 class _ContactSidebarCard extends StatelessWidget {
-  const _ContactSidebarCard();
+  const _ContactSidebarCard({this.contactInfo});
+
+  final _ContactInfoData? contactInfo;
 
   @override
   Widget build(BuildContext context) {
+    final info = contactInfo;
     return _SidebarCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -5071,17 +6550,29 @@ class _ContactSidebarCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                 ),
                 alignment: Alignment.center,
-                child: const Text('PK', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                child: Text(
+                  info?.initials ?? '—',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                ),
               ),
               const SizedBox(width: 14),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text('Precious Kaluba', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF111827))),
-                  SizedBox(height: 4),
-                  Text('Procurement Officer', style: TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
-                  SizedBox(height: 4),
-                  Text('p.kaluba@lusaka-city.gov.zm', style: TextStyle(fontSize: 13, color: Color(0xFF2563EB))),
+                children: [
+                  Text(
+                    info?.name ?? 'Contact not set',
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    info?.role ?? 'Role pending',
+                    style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    info?.email ?? 'Email pending',
+                    style: const TextStyle(fontSize: 13, color: Color(0xFF2563EB)),
+                  ),
                 ],
               ),
             ],
@@ -5093,21 +6584,24 @@ class _ContactSidebarCard extends StatelessWidget {
 }
 
 class _PreBidMeetingSidebarCard extends StatelessWidget {
-  const _PreBidMeetingSidebarCard();
+  const _PreBidMeetingSidebarCard({this.preBidMeeting});
+
+  final _PreBidMeetingData? preBidMeeting;
 
   @override
   Widget build(BuildContext context) {
+    final meeting = preBidMeeting;
     return _SidebarCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Pre-Bid Meeting', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
           const SizedBox(height: 16),
-          const _SidebarInfoRow(label: 'Date', value: 'August 1, 2025'),
+          _SidebarInfoRow(label: 'Date', value: meeting?.date ?? 'TBD'),
           const SizedBox(height: 10),
-          const _SidebarInfoRow(label: 'Time', value: '10:00 AM CAT'),
+          _SidebarInfoRow(label: 'Time', value: meeting?.time ?? 'TBD'),
           const SizedBox(height: 10),
-          const _SidebarInfoRow(label: 'Location', value: 'Virtual (Link will be sent to registered bidders)'),
+          _SidebarInfoRow(label: 'Location', value: meeting?.location ?? 'TBD'),
           const SizedBox(height: 22),
           SizedBox(
             width: double.infinity,
@@ -5275,6 +6769,46 @@ class _ContractDocumentData {
   final String details;
   final Color accentColor;
   final IconData icon;
+
+  factory _ContractDocumentData.fromJson(Map<String, dynamic> json) {
+    return _ContractDocumentData(
+      title: (json['title'] ?? '').toString(),
+      details: (json['details'] ?? '').toString(),
+      accentColor: Color((json['accentColor'] ?? 0xFF2563EB) as int),
+      icon: IconData((json['iconCodePoint'] ?? Icons.description_outlined.codePoint) as int, fontFamily: 'MaterialIcons'),
+    );
+  }
+
+  factory _ContractDocumentData.fromLaunchEntry(Map<String, dynamic> json) {
+    final title = (json['title'] ?? '').toString().trim();
+    final details = (json['details'] ?? '').toString().trim();
+    final status = (json['status'] ?? '').toString().toLowerCase();
+    IconData icon = Icons.description_outlined;
+    Color color = const Color(0xFF2563EB);
+    if (status.contains('pdf') || details.toLowerCase().contains('pdf')) {
+      icon = Icons.picture_as_pdf_outlined;
+      color = const Color(0xFFEF4444);
+    } else if (status.contains('xls') || details.toLowerCase().contains('xls')) {
+      icon = Icons.table_chart_outlined;
+      color = const Color(0xFF22C55E);
+    } else if (status.contains('doc') || details.toLowerCase().contains('doc')) {
+      icon = Icons.description_outlined;
+      color = const Color(0xFF6366F1);
+    }
+    return _ContractDocumentData(
+      title: title,
+      details: details.isEmpty ? 'Document details pending.' : details,
+      accentColor: color,
+      icon: icon,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'details': details,
+        'accentColor': accentColor.value,
+        'iconCodePoint': icon.codePoint,
+      };
 }
 
 class _BidderInfoRow extends StatelessWidget {
@@ -5300,6 +6834,92 @@ class _BidderInfoData {
 
   final String title;
   final String description;
+
+  factory _BidderInfoData.fromJson(Map<String, dynamic> json) {
+    return _BidderInfoData(
+      title: (json['title'] ?? '').toString(),
+      description: (json['description'] ?? '').toString(),
+    );
+  }
+
+  factory _BidderInfoData.fromLaunchEntry(Map<String, dynamic> json) {
+    return _BidderInfoData(
+      title: (json['title'] ?? '').toString().trim(),
+      description: (json['details'] ?? json['status'] ?? '').toString().trim(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'description': description,
+      };
+}
+
+class _ContactInfoData {
+  const _ContactInfoData({required this.name, required this.role, required this.email});
+
+  final String name;
+  final String role;
+  final String email;
+
+  String get initials {
+    final parts = name.trim().split(' ').where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return '—';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+    return '${parts.first[0]}${parts[1][0]}'.toUpperCase();
+  }
+
+  factory _ContactInfoData.fromJson(Map<String, dynamic> json) {
+    return _ContactInfoData(
+      name: (json['name'] ?? '').toString(),
+      role: (json['role'] ?? '').toString(),
+      email: (json['email'] ?? '').toString(),
+    );
+  }
+
+  factory _ContactInfoData.fromLaunchEntry(Map<String, dynamic> json) {
+    return _ContactInfoData(
+      name: (json['title'] ?? '').toString().trim(),
+      role: (json['details'] ?? '').toString().trim(),
+      email: (json['status'] ?? '').toString().trim(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'role': role,
+        'email': email,
+      };
+}
+
+class _PreBidMeetingData {
+  const _PreBidMeetingData({required this.date, required this.time, required this.location});
+
+  final String date;
+  final String time;
+  final String location;
+
+  factory _PreBidMeetingData.fromJson(Map<String, dynamic> json) {
+    return _PreBidMeetingData(
+      date: (json['date'] ?? '').toString(),
+      time: (json['time'] ?? '').toString(),
+      location: (json['location'] ?? '').toString(),
+    );
+  }
+
+  factory _PreBidMeetingData.fromLaunchEntry(Map<String, dynamic> json) {
+    return _PreBidMeetingData(
+      date: (json['title'] ?? '').toString().trim(),
+      time: (json['details'] ?? '').toString().trim(),
+      location: (json['status'] ?? '').toString().trim(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'date': date,
+        'time': time,
+        'location': location,
+      };
 }
 
 class _BulletItem extends StatelessWidget {

@@ -434,7 +434,7 @@ class AppRouter {
       GoRoute(name: AppRoutes.issueManagement, path: '/${AppRoutes.issueManagement}', builder: (c, s) => const IssueManagementScreen()),
       GoRoute(name: AppRoutes.changeManagement, path: '/${AppRoutes.changeManagement}', builder: (c, s) => ChangeManagementScreen()),
       GoRoute(name: AppRoutes.schedule, path: '/${AppRoutes.schedule}', builder: (c, s) => const ScheduleScreen()),
-      GoRoute(name: AppRoutes.contractDetails, path: '/${AppRoutes.contractDetails}', builder: (c, s) => const ContractDetailsDashboardScreen()),
+      GoRoute(name: AppRoutes.contractDetails, path: '/${AppRoutes.contractDetails}', builder: (c, s) => ContractDetailsDashboardScreen()),
       GoRoute(name: AppRoutes.scheduleManagementBoard, path: '/${AppRoutes.scheduleManagementBoard}', builder: (c, s) => const ScheduleManagementBoardScreen()),
 
       // Team cluster

@@ -37,6 +37,8 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
   String _aiPlanSummary = '';
   bool _isGeneratingSummary = false;
   bool _summaryLoaded = false;
+  bool _entriesGenerated = false;
+  bool _isGeneratingEntries = false;
 
   late List<SsherEntry> _safetyEntries;
   late List<SsherEntry> _securityEntries;
@@ -70,6 +72,90 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
       _environmentEntries = entries.where((e) => e.category == _categoryKey(_SsherCategory.environment)).toList();
       _regulatoryEntries = entries.where((e) => e.category == _categoryKey(_SsherCategory.regulatory)).toList();
     });
+    if (entries.isEmpty) {
+      _populateSsherEntriesFromAi();
+    } else {
+      _entriesGenerated = true;
+    }
+  }
+
+  Future<void> _populateSsherEntriesFromAi() async {
+    if (_entriesGenerated || _isGeneratingEntries) return;
+    if (_allEntries().isNotEmpty) {
+      _entriesGenerated = true;
+      return;
+    }
+
+    final projectData = ProjectDataHelper.getData(context);
+    final contextText = ProjectDataHelper.buildFepContext(projectData, sectionLabel: 'SSHER');
+    if (contextText.trim().isEmpty) {
+      _entriesGenerated = true;
+      return;
+    }
+
+    setState(() => _isGeneratingEntries = true);
+
+    List<SsherEntry> generatedEntries = [];
+    try {
+      generatedEntries = await OpenAiServiceSecure().generateSsherEntries(context: contextText, itemsPerCategory: 2);
+    } catch (error) {
+      debugPrint('SSHER entries AI call failed: $error');
+    }
+
+    if (!mounted) return;
+
+    if (_allEntries().isNotEmpty) {
+      setState(() => _isGeneratingEntries = false);
+      _entriesGenerated = true;
+      return;
+    }
+
+    final safety = <SsherEntry>[];
+    final security = <SsherEntry>[];
+    final health = <SsherEntry>[];
+    final environment = <SsherEntry>[];
+    final regulatory = <SsherEntry>[];
+
+    for (final entry in generatedEntries) {
+      switch (entry.category) {
+        case 'safety':
+          safety.add(entry);
+          break;
+        case 'security':
+          security.add(entry);
+          break;
+        case 'health':
+          health.add(entry);
+          break;
+        case 'environment':
+          environment.add(entry);
+          break;
+        case 'regulatory':
+          regulatory.add(entry);
+          break;
+      }
+    }
+
+    if (safety.isEmpty &&
+        security.isEmpty &&
+        health.isEmpty &&
+        environment.isEmpty &&
+        regulatory.isEmpty) {
+      setState(() => _isGeneratingEntries = false);
+      _entriesGenerated = true;
+      return;
+    }
+
+    setState(() {
+      _safetyEntries = safety;
+      _securityEntries = security;
+      _healthEntries = health;
+      _environmentEntries = environment;
+      _regulatoryEntries = regulatory;
+      _isGeneratingEntries = false;
+    });
+    _entriesGenerated = true;
+    await _saveEntries();
   }
 
   Future<void> _populateSsherSummaryFromAi() async {

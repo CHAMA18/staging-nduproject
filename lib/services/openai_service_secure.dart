@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:ndu_project/openai/openai_config.dart';
+import 'package:ndu_project/models/project_data_model.dart';
 
 class AiSolutionItem {
   final String title;
@@ -1669,6 +1670,123 @@ $escaped
     return _fallbackSsherSummary(trimmedContext);
   }
 
+  Future<List<SsherEntry>> generateSsherEntries({
+    required String context,
+    int itemsPerCategory = 2,
+    int maxTokens = 900,
+    double temperature = 0.5,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) return [];
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackSsherEntries(trimmedContext, itemsPerCategory);
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content': 'You are an SSHER strategist. Generate concise, realistic table entries for safety, security, health, environment, and regulatory risks. Always return ONLY valid JSON matching the requested schema.'
+        },
+        {
+          'role': 'user',
+          'content': _ssherEntriesPrompt(trimmedContext, itemsPerCategory),
+        },
+      ],
+    });
+
+    try {
+      final response = await _client.post(uri, headers: headers, body: body).timeout(const Duration(seconds: 12));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('OpenAI error ${response.statusCode}: ${response.body}');
+      }
+      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final choices = data['choices'] as List<dynamic>? ?? [];
+      if (choices.isNotEmpty) {
+        final firstMessage = choices.first['message'] as Map<String, dynamic>? ?? {};
+        final content = (firstMessage['content'] as String?)?.trim() ?? '';
+        final parsed = _decodeJsonSafely(content);
+        if (parsed != null) {
+          final entries = _parseSsherEntries(parsed, itemsPerCategory);
+          if (entries.isNotEmpty) return entries;
+        }
+      }
+    } catch (e) {
+      print('generateSsherEntries failed: $e');
+    }
+
+    return _fallbackSsherEntries(trimmedContext, itemsPerCategory);
+  }
+
+  Future<Map<String, List<Map<String, dynamic>>>> generateLaunchPhaseEntries({
+    required String context,
+    required Map<String, String> sections,
+    int itemsPerSection = 2,
+    int maxTokens = 900,
+    double temperature = 0.5,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) return {};
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackLaunchEntries(trimmedContext, sections, itemsPerSection);
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content': 'You are a launch-phase analyst. Generate concise, realistic table entries for each section key provided. Always return ONLY valid JSON matching the requested schema.'
+        },
+        {
+          'role': 'user',
+          'content': _launchPhaseEntriesPrompt(trimmedContext, sections, itemsPerSection),
+        },
+      ],
+    });
+
+    try {
+      final response = await _client.post(uri, headers: headers, body: body).timeout(const Duration(seconds: 12));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('OpenAI error ${response.statusCode}: ${response.body}');
+      }
+      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final choices = data['choices'] as List<dynamic>? ?? [];
+      if (choices.isNotEmpty) {
+        final firstMessage = choices.first['message'] as Map<String, dynamic>? ?? {};
+        final content = (firstMessage['content'] as String?)?.trim() ?? '';
+        final parsed = _decodeJsonSafely(content);
+        if (parsed != null) {
+          final entries = _parseLaunchPhaseEntries(parsed, sections, itemsPerSection);
+          if (entries.isNotEmpty) return entries;
+        }
+      }
+    } catch (e) {
+      print('generateLaunchPhaseEntries failed: $e');
+    }
+
+    return _fallbackLaunchEntries(trimmedContext, sections, itemsPerSection);
+  }
+
   String _ssherSummaryPrompt(String context) {
     final escaped = _escape(context);
     return '''
@@ -1689,6 +1807,1039 @@ $escaped
   String _fallbackSsherSummary(String context) {
     final lines = context.split('\n').where((line) => line.trim().isNotEmpty).take(5).join(' ');
     return lines.isEmpty ? 'SSHER plan is in progress.' : 'SSHER plan summary: $lines';
+  }
+
+  String _ssherEntriesPrompt(String context, int itemsPerCategory) {
+    final escaped = _escape(context);
+    return '''
+Using the project inputs below, generate $itemsPerCategory entries for each category (safety, security, health, environment, regulatory).
+Each entry must be realistic and grounded in the project context.
+
+Return ONLY valid JSON with this exact structure:
+{
+  "entries": [
+    {
+      "category": "safety|security|health|environment|regulatory",
+      "department": "Department name",
+      "teamMember": "Role or owner",
+      "concern": "Short, specific concern",
+      "riskLevel": "Low|Medium|High",
+      "mitigation": "Short, specific mitigation action"
+    }
+  ]
+}
+
+Project context:
+"""
+$escaped
+"""
+''';
+  }
+
+  String _launchPhaseEntriesPrompt(String context, Map<String, String> sections, int itemsPerSection) {
+    final escaped = _escape(context);
+    final sectionJson = sections.entries
+        .map((entry) => '"${entry.key}": "${_escape(entry.value)}"')
+        .join(',\n  ');
+    return '''
+Using the project inputs below, generate $itemsPerSection entries for each section key in the sections map.
+Each entry must include a concise title, optional details, and optional status.
+
+Return ONLY valid JSON with this exact structure:
+{
+  "sections": {
+    "section_key": [
+      {
+        "title": "Short item title",
+        "details": "Supporting details",
+        "status": "Optional status"
+      }
+    ]
+  }
+}
+
+Sections:
+{
+  $sectionJson
+}
+
+Project context:
+"""
+$escaped
+"""
+''';
+  }
+
+  List<SsherEntry> _parseSsherEntries(Map<String, dynamic> parsed, int itemsPerCategory) {
+    final entriesRaw = parsed['entries'] ?? parsed['items'] ?? parsed['rows'] ?? parsed['data'];
+    final counts = <String, int>{};
+    final entries = <SsherEntry>[];
+
+    void addEntry(String categoryKey, Map<String, dynamic> item) {
+      final category = _normalizeSsherCategory(categoryKey);
+      if (category.isEmpty) return;
+      final count = counts[category] ?? 0;
+      if (count >= itemsPerCategory) return;
+      final department = (item['department'] ?? '').toString().trim();
+      final teamMember = (item['teamMember'] ?? item['owner'] ?? item['lead'] ?? '').toString().trim();
+      final concern = (item['concern'] ?? item['issue'] ?? item['risk'] ?? '').toString().trim();
+      final riskLevel = _normalizeRiskLevel((item['riskLevel'] ?? item['risk_level'] ?? '').toString().trim());
+      final mitigation = (item['mitigation'] ?? item['response'] ?? item['action'] ?? '').toString().trim();
+      if (department.isEmpty || concern.isEmpty) return;
+      entries.add(SsherEntry(
+        category: category,
+        department: department,
+        teamMember: teamMember.isEmpty ? 'Owner' : teamMember,
+        concern: concern,
+        riskLevel: riskLevel,
+        mitigation: mitigation.isEmpty ? 'Mitigation plan in progress.' : mitigation,
+      ));
+      counts[category] = count + 1;
+    }
+
+    if (entriesRaw is List) {
+      for (final item in entriesRaw) {
+        if (item is Map<String, dynamic>) {
+          final category = (item['category'] ?? '').toString();
+          addEntry(category, item);
+        }
+      }
+    } else if (entriesRaw is Map) {
+      for (final entry in entriesRaw.entries) {
+        final category = entry.key.toString();
+        final value = entry.value;
+        if (value is List) {
+          for (final item in value) {
+            if (item is Map<String, dynamic>) {
+              addEntry(category, item);
+            }
+          }
+        }
+      }
+    }
+
+    return entries;
+  }
+
+  Map<String, List<Map<String, dynamic>>> _parseLaunchPhaseEntries(
+    Map<String, dynamic> parsed,
+    Map<String, String> sections,
+    int itemsPerSection,
+  ) {
+    final sectionsRaw = parsed['sections'] ?? parsed['data'] ?? parsed['items'];
+    if (sectionsRaw is! Map) return {};
+
+    final result = <String, List<Map<String, dynamic>>>{};
+    for (final entry in sections.entries) {
+      result[entry.key] = [];
+    }
+
+    for (final entry in sectionsRaw.entries) {
+      final key = entry.key.toString();
+      if (!result.containsKey(key)) continue;
+      final value = entry.value;
+      if (value is List) {
+        for (final item in value) {
+          if (result[key]!.length >= itemsPerSection) break;
+          if (item is Map) {
+            final mapped = Map<String, dynamic>.from(item as Map);
+            final title = (mapped['title'] ?? mapped['item'] ?? '').toString().trim();
+            if (title.isEmpty) continue;
+            result[key]!.add({
+              'title': title,
+              'details': (mapped['details'] ?? mapped['description'] ?? '').toString().trim(),
+              'status': (mapped['status'] ?? '').toString().trim(),
+            });
+          }
+        }
+      }
+    }
+
+    result.removeWhere((key, value) => value.isEmpty);
+    return result;
+  }
+
+  Map<String, List<Map<String, dynamic>>> _fallbackLaunchEntries(
+    String context,
+    Map<String, String> sections,
+    int itemsPerSection,
+  ) {
+    final projectName = _extractProjectName(context);
+    final assetName = projectName.isEmpty ? 'the project' : projectName;
+    final result = <String, List<Map<String, dynamic>>>{};
+
+    for (final entry in sections.entries) {
+      final key = entry.key;
+      final items = _fallbackLaunchEntriesForSection(key, assetName).take(itemsPerSection).toList();
+      if (items.isNotEmpty) {
+        result[key] = items;
+      }
+    }
+
+    return result;
+  }
+
+  List<Map<String, dynamic>> _fallbackLaunchEntriesForSection(String key, String assetName) {
+    switch (key) {
+      case 'viability_checks':
+        return [
+          {
+            'title': 'Revalidate value drivers for $assetName',
+            'details': 'Confirm the core business case assumptions still hold against current demand.',
+            'status': 'In review',
+          },
+          {
+            'title': 'Validate revenue model alignment',
+            'details': 'Check pricing and adoption signals against target segments.',
+            'status': 'On track',
+          },
+        ];
+      case 'financial_signals':
+        return [
+          {
+            'title': 'Unit economics trend',
+            'details': 'Track margin per transaction and cost-to-serve against baseline.',
+            'status': 'Monitor',
+          },
+          {
+            'title': 'Demand velocity',
+            'details': 'Compare weekly usage against forecasted ramp.',
+            'status': 'At risk',
+          },
+        ];
+      case 'decisions':
+        return [
+          {
+            'title': 'Go / Grow decision checkpoint',
+            'details': 'Proceed with scaled rollout once metrics stabilize.',
+            'status': 'Go',
+          },
+          {
+            'title': 'Risk mitigation action',
+            'details': 'Pause expansion if cost-to-serve exceeds threshold.',
+            'status': 'Guardrail',
+          },
+        ];
+      case 'account_health':
+        return [
+          {
+            'title': 'Launch readiness',
+            'details': 'Delivery completed with minor open items.',
+            'status': 'Healthy',
+          },
+          {
+            'title': 'Stakeholder alignment',
+            'details': 'Weekly cadence in place with sponsors and operations.',
+            'status': 'Stable',
+          },
+        ];
+      case 'highlights':
+        return [
+          {
+            'title': 'Key milestone delivered',
+            'details': 'Core platform capability delivered on schedule.',
+            'status': '',
+          },
+          {
+            'title': 'Strong cross-team collaboration',
+            'details': 'Product and engineering aligned on release criteria.',
+            'status': '',
+          },
+        ];
+      case 'delivery_risks':
+        return [
+          {
+            'title': 'Support coverage risk',
+            'details': 'Ops coverage still staffing for night shifts.',
+            'status': 'At risk',
+          },
+          {
+            'title': 'Vendor dependency',
+            'details': 'Third-party SLA review pending.',
+            'status': 'In review',
+          },
+        ];
+      case 'next_90_days':
+        return [
+          {
+            'title': 'Post-launch optimization',
+            'details': 'Stabilize latency and monitor user feedback.',
+            'status': 'Planned',
+          },
+          {
+            'title': 'Expand reporting',
+            'details': 'Deliver weekly performance dashboards to sponsors.',
+            'status': 'Planned',
+          },
+        ];
+      case 'vendor_snapshot':
+        return [
+          {
+            'title': 'Active vendor close-out items',
+            'details': 'Finalize remaining invoices and service confirmations.',
+            'status': 'In progress',
+          },
+          {
+            'title': 'Access revocation status',
+            'details': 'Remove unused vendor credentials by close-out date.',
+            'status': 'Scheduled',
+          },
+        ];
+      case 'guided_steps':
+        return [
+          {
+            'title': 'Confirm deliverables received',
+            'details': 'Validate all contract deliverables are archived.',
+            'status': 'In review',
+          },
+          {
+            'title': 'Close vendor accounts',
+            'details': 'Execute termination checklist with procurement.',
+            'status': 'Planned',
+          },
+        ];
+      case 'vendors_attention':
+        return [
+          {
+            'title': 'Payment reconciliation',
+            'details': 'Resolve outstanding invoice with key vendor.',
+            'status': 'At risk',
+          },
+          {
+            'title': 'Compliance documentation',
+            'details': 'Collect final compliance certificates.',
+            'status': 'Pending',
+          },
+        ];
+      case 'access_signoff':
+        return [
+          {
+            'title': 'Ops sign-off',
+            'details': 'Confirm access removal and handover completion.',
+            'status': 'Pending',
+          },
+          {
+            'title': 'Security approval',
+            'details': 'Verify all vendor access audit logs are archived.',
+            'status': 'In review',
+          },
+        ];
+      case 'schedule_gaps':
+        return [
+          {
+            'title': 'Milestone slip on core integration',
+            'details': 'Integration testing pushed by 1 sprint due to dependency delays.',
+            'status': 'Investigate',
+          },
+          {
+            'title': 'UAT readiness variance',
+            'details': 'User acceptance testing started later than planned.',
+            'status': 'In progress',
+          },
+        ];
+      case 'cost_gaps':
+        return [
+          {
+            'title': 'Cloud spend over baseline',
+            'details': 'Compute usage exceeded forecast during load testing.',
+            'status': 'At risk',
+          },
+          {
+            'title': 'Vendor cost variance',
+            'details': 'Support contract extension added unplanned cost.',
+            'status': 'Review',
+          },
+        ];
+      case 'scope_gaps':
+        return [
+          {
+            'title': 'Deferred analytics dashboard',
+            'details': 'Advanced reporting moved to post-launch release.',
+            'status': 'Deferred',
+          },
+          {
+            'title': 'Quality remediation',
+            'details': 'Additional QA cycles added for critical workflows.',
+            'status': 'In progress',
+          },
+        ];
+      case 'benefits_causes':
+        return [
+          {
+            'title': 'Efficiency gains behind forecast',
+            'details': 'Operational throughput improved but below target.',
+            'status': 'Monitor',
+          },
+          {
+            'title': 'Root cause: integration rework',
+            'details': 'Rework required due to upstream API changes.',
+            'status': 'Identified',
+          },
+        ];
+      case 'team_ramp_down':
+        return [
+          {
+            'title': 'Release core engineers',
+            'details': 'Transition ownership to ops team after stabilization.',
+            'status': 'Planned',
+          },
+          {
+            'title': 'Reassign QA support',
+            'details': 'Move QA resources to next program after close-out.',
+            'status': 'Scheduled',
+          },
+        ];
+      case 'knowledge_transfer':
+        return [
+          {
+            'title': 'Ops runbook walkthrough',
+            'details': 'Finalize handover session with support leads.',
+            'status': 'Planned',
+          },
+          {
+            'title': 'Architecture deep-dive',
+            'details': 'Record system overview for future maintenance.',
+            'status': 'Scheduled',
+          },
+        ];
+      case 'vendor_offboarding':
+        return [
+          {
+            'title': 'Revoke vendor access',
+            'details': 'Remove all third-party credentials post-contract.',
+            'status': 'Pending',
+          },
+          {
+            'title': 'Close vendor obligations',
+            'details': 'Confirm deliverables and archive documentation.',
+            'status': 'In progress',
+          },
+        ];
+      case 'communications':
+        return [
+          {
+            'title': 'Stakeholder update',
+            'details': 'Communicate close-out timeline to business owners.',
+            'status': '',
+          },
+          {
+            'title': 'Support FAQ refresh',
+            'details': 'Publish knowledge base updates for impacted users.',
+            'status': '',
+          },
+        ];
+      case 'impact_assessment':
+        return [
+          {
+            'title': 'Schedule',
+            'details': 'Critical path recovery improved after scope reprioritization.',
+            'status': 'Medium | Improving',
+          },
+          {
+            'title': 'Cost',
+            'details': 'Budget variance stabilized after vendor renegotiation.',
+            'status': 'Low | Stable',
+          },
+          {
+            'title': 'Quality',
+            'details': 'Regression suite still pending final validation.',
+            'status': 'Medium | Needs attention',
+          },
+        ];
+      case 'reconciliation_workflow':
+        return [
+          {
+            'title': 'Discovery',
+            'details': 'Gap interviews and system scans captured.',
+            'status': 'Complete',
+          },
+          {
+            'title': 'Mitigation backlog',
+            'details': 'Actions scheduled with delivery squads.',
+            'status': 'In progress',
+          },
+          {
+            'title': 'Validation & sign-off',
+            'details': 'Stakeholder review targeted this week.',
+            'status': 'Upcoming',
+          },
+        ];
+      case 'lessons_learned':
+        return [
+          {
+            'title': 'Align ops readiness early to avoid late scope drift.',
+            'details': '',
+            'status': '',
+          },
+          {
+            'title': 'Validate vendor dependencies against launch timelines.',
+            'details': '',
+            'status': '',
+          },
+          {
+            'title': 'Track adoption metrics weekly for early signals.',
+            'details': '',
+            'status': '',
+          },
+        ];
+      case 'close_out_checklist':
+        return [
+          {
+            'title': 'Finalize close-out documentation',
+            'details': 'Compile acceptance notes, metrics, and closure report.',
+            'status': 'In progress',
+          },
+          {
+            'title': 'Confirm stakeholder sign-off',
+            'details': 'Collect final approvals from sponsors and operations.',
+            'status': 'Pending',
+          },
+        ];
+      case 'approvals_signoff':
+        return [
+          {
+            'title': 'Executive sponsor approval',
+            'details': 'Sign-off on project outcomes and benefits.',
+            'status': 'Pending',
+          },
+          {
+            'title': 'Operations acceptance',
+            'details': 'Ops lead confirms handover readiness.',
+            'status': 'In review',
+          },
+        ];
+      case 'archive_access':
+        return [
+          {
+            'title': 'Archive project artifacts',
+            'details': 'Store final deliverables and contracts in repository.',
+            'status': '',
+          },
+          {
+            'title': 'Revoke elevated access',
+            'details': 'Remove temporary permissions and vendor credentials.',
+            'status': '',
+          },
+        ];
+      case 'transition_steps':
+        return [
+          {
+            'title': 'Finalize production readiness checklist',
+            'details': 'Confirm monitoring, alerting, and rollback plans.',
+            'status': 'In review',
+          },
+          {
+            'title': 'Run handover walkthrough',
+            'details': 'Ops team reviews runbooks and escalation paths.',
+            'status': 'Scheduled',
+          },
+        ];
+      case 'handover_artifacts':
+        return [
+          {
+            'title': 'Operational runbook',
+            'details': 'Document SOPs, on-call playbooks, and recovery steps.',
+            'status': '',
+          },
+          {
+            'title': 'Service dashboard',
+            'details': 'Share KPIs and health monitoring links.',
+            'status': '',
+          },
+        ];
+      case 'signoffs':
+        return [
+          {
+            'title': 'Ops lead approval',
+            'details': 'Ops confirms readiness for production handover.',
+            'status': 'Pending',
+          },
+          {
+            'title': 'Security sign-off',
+            'details': 'Security review completed for production release.',
+            'status': 'In review',
+          },
+        ];
+      case 'closeout_summary':
+        return [
+          {
+            'title': 'Close-out summary metric',
+            'details': 'Track key close-out KPIs and status.',
+            'status': 'On track',
+          },
+          {
+            'title': 'Final deliverables status',
+            'details': 'All required outputs verified and archived.',
+            'status': 'Complete',
+          },
+        ];
+      case 'closeout_steps':
+        return [
+          {
+            'title': 'Complete contract checklist',
+            'details': 'Verify obligations and handover evidence.',
+            'status': 'In progress',
+          },
+          {
+            'title': 'Confirm invoice reconciliation',
+            'details': 'Finance validates final billing with vendors.',
+            'status': 'Pending',
+          },
+        ];
+      case 'contracts_attention':
+        return [
+          {
+            'title': 'Outstanding vendor deliverable',
+            'details': 'Awaiting final documentation from vendor.',
+            'status': 'At risk',
+          },
+          {
+            'title': 'SLA reconciliation',
+            'details': 'Confirm SLA credits before closure.',
+            'status': 'In review',
+          },
+        ];
+      case 'closeout_signoff':
+        return [
+          {
+            'title': 'Finance approval',
+            'details': 'Finance validates final spend and closes ledger.',
+            'status': 'Pending',
+          },
+          {
+            'title': 'Compliance approval',
+            'details': 'Compliance confirms regulatory close-out steps.',
+            'status': 'Planned',
+          },
+        ];
+      case 'closure_summary':
+        return [
+          {
+            'title': 'Delivery status',
+            'details': 'All launch deliverables completed.',
+            'status': 'Complete',
+          },
+          {
+            'title': 'Post-launch metrics',
+            'details': 'Stability and adoption tracked for 2 weeks.',
+            'status': 'Monitoring',
+          },
+        ];
+      case 'scope_acceptance':
+        return [
+          {
+            'title': 'Scope acceptance',
+            'details': 'Stakeholders accept final scope outcomes.',
+            'status': 'Approved',
+          },
+          {
+            'title': 'Open scope items',
+            'details': 'Minor backlog moved to next release.',
+            'status': 'Deferred',
+          },
+        ];
+      case 'risks_followups':
+        return [
+          {
+            'title': 'Operational follow-up',
+            'details': 'Monitor incidents during hypercare window.',
+            'status': 'Planned',
+          },
+          {
+            'title': 'Support readiness',
+            'details': 'Ensure 24/7 coverage for first month.',
+            'status': 'In progress',
+          },
+        ];
+      case 'final_checklist':
+        return [
+          {
+            'title': 'Archive project artifacts',
+            'details': 'Ensure all documentation is stored.',
+            'status': 'Pending',
+          },
+          {
+            'title': 'Finalize stakeholder report',
+            'details': 'Send closure summary to sponsors.',
+            'status': 'Planned',
+          },
+        ];
+      case 'contract_quotes':
+        return [
+          {
+            'title': 'Build-ready engineering vendor',
+            'details': 'Structural engineering and inspection coverage for $assetName.',
+            'status': '\$120,000 - \$150,000',
+          },
+          {
+            'title': 'Systems integration partner',
+            'details': 'Integration of platform services and delivery tooling.',
+            'status': '\$60,000 - \$80,000',
+          },
+        ];
+      case 'contract_overview':
+        return [
+          {
+            'title': 'Published Date',
+            'details': 'Aug 12, 2025',
+            'status': '',
+          },
+          {
+            'title': 'Submission Deadline',
+            'details': 'Sep 5, 2025 (5:00 PM)',
+            'status': 'Deadline',
+          },
+        ];
+      case 'contract_description':
+        return [
+          {
+            'title': 'Project Overview',
+            'details': 'Define vendor responsibilities, delivery timelines, and acceptance criteria tied to $assetName.',
+            'status': '',
+          },
+        ];
+      case 'scope_items':
+        return [
+          {
+            'title': 'Define contracting scope and deliverables.',
+            'details': '',
+            'status': '',
+          },
+          {
+            'title': 'Confirm service levels and escalation paths.',
+            'details': '',
+            'status': '',
+          },
+        ];
+      case 'contract_documents':
+        return [
+          {
+            'title': 'Scope of Work',
+            'details': 'PDF, 2.4 MB',
+            'status': 'PDF',
+          },
+          {
+            'title': 'Technical Specifications',
+            'details': 'DOCX, 1.1 MB',
+            'status': 'DOCX',
+          },
+        ];
+      case 'bidder_information':
+        return [
+          {
+            'title': 'Eligibility',
+            'details': 'Vendors must meet compliance and certification requirements.',
+            'status': '',
+          },
+          {
+            'title': 'Evaluation Criteria',
+            'details': 'Weighted scoring across technical fit, delivery plan, and cost.',
+            'status': '',
+          },
+        ];
+      case 'contact_details':
+        return [
+          {
+            'title': 'Procurement Lead',
+            'details': 'Procurement Officer',
+            'status': 'procurement@company.com',
+          },
+        ];
+      case 'prebid_meeting':
+        return [
+          {
+            'title': 'Sep 1, 2025',
+            'details': '10:00 AM',
+            'status': 'Virtual meeting link to follow.',
+          },
+        ];
+      case 'contract_timeline':
+        return [
+          {
+            'title': 'Award approvals',
+            'details': 'Finalize vendor approvals and contract signatures.',
+            'status': 'In progress',
+          },
+          {
+            'title': 'Delivery readiness',
+            'details': 'Ensure contract deliverables are on track.',
+            'status': 'Planned',
+          },
+        ];
+      case 'contract_status_summary':
+        return [
+          {
+            'title': 'Average Bid Value',
+            'details': '\$1,250,000',
+            'status': '',
+          },
+          {
+            'title': 'Total Contractors',
+            'details': '4',
+            'status': '',
+          },
+          {
+            'title': 'Milestone Progress',
+            'details': '2/4 Complete',
+            'status': '',
+          },
+          {
+            'title': 'Status',
+            'details': 'Bid Evaluation',
+            'status': '',
+          },
+        ];
+      case 'contract_recent_activity':
+        return [
+          {
+            'title': 'Vendor shortlist updated',
+            'details': 'Aug 21, 2025',
+            'status': '',
+          },
+          {
+            'title': 'Bid clarifications requested',
+            'details': 'Aug 18, 2025',
+            'status': '',
+          },
+        ];
+      case 'contract_milestones':
+        return [
+          {
+            'title': 'Contract awards complete',
+            'details': 'Sep 15, 2025',
+            'status': 'Complete',
+          },
+          {
+            'title': 'Equipment delivery',
+            'details': 'Oct 10, 2025',
+            'status': 'In progress',
+          },
+        ];
+      case 'contract_execution_steps':
+        return [
+          {
+            'title': 'Request for Quote (RFQ)',
+            'details': 'Distribute RFQ and collect vendor responses.',
+            'status': 'Not scheduled',
+          },
+          {
+            'title': 'Review Quotes',
+            'details': 'Evaluate proposals and document scoring.',
+            'status': 'Pending',
+          },
+        ];
+      case 'contractors_directory':
+        return [
+          {
+            'title': 'BuildTech Engineering',
+            'details': 'General Contractor | New York, NY | \$1,250,000',
+            'status': 'Under Review',
+          },
+          {
+            'title': 'MetroStructural Solutions',
+            'details': 'Structural Engineering | Chicago, IL | \$1,180,000',
+            'status': 'Bid Submitted',
+          },
+        ];
+      case 'summary_rows':
+        return [
+          {
+            'title': 'Core services contract',
+            'details': 'Primary vendor | Bidding / Lump Sum | \$750,000 | 120 days',
+            'status': 'In progress',
+          },
+          {
+            'title': 'Operations support',
+            'details': 'Support partner | Reimbursable / Monthly | \$180,000 | 90 days',
+            'status': 'Planned',
+          },
+        ];
+      case 'budget_impact':
+        return [
+          {
+            'title': 'Original Budget',
+            'details': '\$2,000,000',
+            'status': '',
+          },
+          {
+            'title': 'Current Estimate',
+            'details': '\$1,250,000',
+            'status': '',
+          },
+          {
+            'title': 'Variance',
+            'details': '\$750,000 (under)',
+            'status': '',
+          },
+        ];
+      case 'schedule_impact':
+        return [
+          {
+            'title': 'Project Start',
+            'details': 'Sep 1, 2025',
+            'status': '',
+          },
+          {
+            'title': 'Contracting Finish',
+            'details': 'Dec 15, 2025',
+            'status': '',
+          },
+          {
+            'title': 'Total Duration',
+            'details': '105 days',
+            'status': '',
+          },
+        ];
+      case 'warranty_support':
+        return [
+          {
+            'title': 'Core services contract',
+            'details': '12 months | Standard support | support@vendor.com',
+            'status': 'View',
+          },
+        ];
+      case 'summary_highlights':
+        return [
+          {
+            'title': 'Contract Summary',
+            'details': '3 Contracts Planned\n1 Contract In-Progress\n0 Contracts Completed',
+            'status': '',
+          },
+          {
+            'title': 'Budget Impact',
+            'details': '\$1.25M Total Contract Value\nBudget tracking ongoing\nVariance pending',
+            'status': '',
+          },
+        ];
+      default:
+        return [
+          {
+            'title': 'Launch action item',
+            'details': 'Add details for $assetName.',
+            'status': 'Planned',
+          },
+        ];
+    }
+  }
+
+  List<SsherEntry> _fallbackSsherEntries(String context, int itemsPerCategory) {
+    final projectName = _extractProjectName(context);
+    final assetName = projectName.isEmpty ? 'the project' : projectName;
+    final templates = <String, List<Map<String, String>>>{
+      'safety': [
+        {
+          'department': 'Operations',
+          'teamMember': 'Safety Lead',
+          'concern': 'Inconsistent PPE usage during ${assetName.toLowerCase()} rollout activities.',
+          'riskLevel': 'High',
+          'mitigation': 'Enforce PPE checklists and daily toolbox talks across shifts.',
+        },
+        {
+          'department': 'Facilities',
+          'teamMember': 'Site Supervisor',
+          'concern': 'Limited emergency egress signage in newly activated zones.',
+          'riskLevel': 'Medium',
+          'mitigation': 'Install signage and conduct evacuation drills before go-live.',
+        },
+      ],
+      'security': [
+        {
+          'department': 'IT Security',
+          'teamMember': 'Security Analyst',
+          'concern': 'Incomplete access reviews for vendors supporting ${assetName.toLowerCase()}.',
+          'riskLevel': 'High',
+          'mitigation': 'Complete quarterly access audits and enforce least-privilege roles.',
+        },
+        {
+          'department': 'Facilities',
+          'teamMember': 'Security Manager',
+          'concern': 'Badge access not synchronized with contractor schedules.',
+          'riskLevel': 'Medium',
+          'mitigation': 'Align badge provisioning with approved rosters and auto-expire access.',
+        },
+      ],
+      'health': [
+        {
+          'department': 'HR',
+          'teamMember': 'Wellness Coordinator',
+          'concern': 'Shift fatigue risk during the ${assetName.toLowerCase()} launch window.',
+          'riskLevel': 'Medium',
+          'mitigation': 'Introduce rotation plans and mandatory rest breaks.',
+        },
+        {
+          'department': 'Operations',
+          'teamMember': 'Ops Manager',
+          'concern': 'Ergonomic strain reported at staging workstations.',
+          'riskLevel': 'Low',
+          'mitigation': 'Provide adjustable workstations and ergonomics training.',
+        },
+      ],
+      'environment': [
+        {
+          'department': 'Sustainability',
+          'teamMember': 'Environmental Lead',
+          'concern': 'Waste segregation compliance gaps during ${assetName.toLowerCase()} prep.',
+          'riskLevel': 'Medium',
+          'mitigation': 'Deploy labeled bins and weekly compliance inspections.',
+        },
+        {
+          'department': 'Operations',
+          'teamMember': 'Facilities Lead',
+          'concern': 'Energy spikes expected from temporary equipment usage.',
+          'riskLevel': 'Low',
+          'mitigation': 'Schedule equipment use off-peak and track energy KPIs.',
+        },
+      ],
+      'regulatory': [
+        {
+          'department': 'Compliance',
+          'teamMember': 'Compliance Officer',
+          'concern': 'Incomplete documentation for regulatory reporting milestones.',
+          'riskLevel': 'High',
+          'mitigation': 'Complete audit trail and align reporting calendar with regulators.',
+        },
+        {
+          'department': 'Legal',
+          'teamMember': 'Regulatory Counsel',
+          'concern': 'Pending review of new policy changes impacting ${assetName.toLowerCase()}.',
+          'riskLevel': 'Medium',
+          'mitigation': 'Validate policy updates and secure sign-off before launch.',
+        },
+      ],
+    };
+
+    final entries = <SsherEntry>[];
+    for (final entry in templates.entries) {
+      final category = entry.key;
+      for (final item in entry.value.take(itemsPerCategory)) {
+        entries.add(SsherEntry(
+          category: category,
+          department: item['department'] ?? '',
+          teamMember: item['teamMember'] ?? 'Owner',
+          concern: item['concern'] ?? '',
+          riskLevel: _normalizeRiskLevel(item['riskLevel'] ?? ''),
+          mitigation: item['mitigation'] ?? '',
+        ));
+      }
+    }
+    return entries;
+  }
+
+  String _normalizeSsherCategory(String value) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized.contains('safety')) return 'safety';
+    if (normalized.contains('security')) return 'security';
+    if (normalized.contains('health')) return 'health';
+    if (normalized.contains('environment')) return 'environment';
+    if (normalized.contains('regulatory')) return 'regulatory';
+    return '';
+  }
+
+  String _normalizeRiskLevel(String value) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized.startsWith('high')) return 'High';
+    if (normalized.startsWith('low')) return 'Low';
+    return 'Medium';
   }
 
   Map<String, dynamic>? _decodeJsonSafely(String content) {

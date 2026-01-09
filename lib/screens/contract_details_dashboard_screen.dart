@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/services/contract_service.dart';
+import 'package:ndu_project/screens/front_end_planning_contracts_screen.dart';
 
 import '../theme.dart';
 import '../widgets/responsive.dart';
@@ -6,18 +10,13 @@ import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 
 class ContractDetailsDashboardScreen extends StatelessWidget {
-  const ContractDetailsDashboardScreen({super.key});
-
-  static const _contracts = [
-    _ContractRow('Contract 1', 'Sole Source', 'Reimbursable', 'Bidding', 0, '-'),
-    _ContractRow('Contract 2', 'Sole Source', 'Reimbursable', 'Bidding', 0, '-'),
-    _ContractRow('Contract 3', 'Sole Source', 'Reimbursable', 'Bidding', 0, '-'),
-    _ContractRow('Contract 4', 'Sole Source', 'Reimbursable', 'Bidding', 0, '-'),
-  ];
+  ContractDetailsDashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
+    final provider = ProjectDataInherited.maybeOf(context);
+    final projectId = provider?.projectData.projectId;
     final padding = EdgeInsets.fromLTRB(
       AppBreakpoints.pagePadding(context),
       AppBreakpoints.sectionGap(context) + 8,
@@ -46,11 +45,38 @@ class ContractDetailsDashboardScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _Header(isMobile: isMobile),
+                        _Header(
+                          isMobile: isMobile,
+                          onAddContract: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const CreateContractScreen()),
+                            );
+                          },
+                        ),
                         const SizedBox(height: 32),
                         const _GroupsTabs(),
                         const SizedBox(height: 32),
-                        _ContractList(isMobile: isMobile, contracts: _contracts),
+                        if (projectId == null || projectId.isEmpty)
+                          _ContractList(
+                            isMobile: isMobile,
+                            contracts: const [],
+                            emptyMessage: 'Open or create a project to view contracts.',
+                          )
+                        else
+                          StreamBuilder<List<ContractModel>>(
+                            stream: ContractService.streamContracts(projectId),
+                            builder: (context, snapshot) {
+                              if (snapshot.hasError) {
+                                return _ContractList(
+                                  isMobile: isMobile,
+                                  contracts: const [],
+                                  emptyMessage: 'Unable to load contracts right now.',
+                                );
+                              }
+                              final contracts = snapshot.data ?? const <ContractModel>[];
+                              return _ContractList(isMobile: isMobile, contracts: contracts);
+                            },
+                          ),
                       ],
                     ),
                   ),
@@ -65,9 +91,10 @@ class ContractDetailsDashboardScreen extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.isMobile});
+  const _Header({required this.isMobile, required this.onAddContract});
 
   final bool isMobile;
+  final VoidCallback onAddContract;
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +113,7 @@ class _Header extends StatelessWidget {
     );
 
     final primaryAction = FilledButton.icon(
-      onPressed: () {},
+      onPressed: onAddContract,
       icon: const Icon(Icons.add),
       label: const Text('Add New Contract'),
       style: FilledButton.styleFrom(
@@ -95,10 +122,13 @@ class _Header extends StatelessWidget {
       ),
     );
 
+    final user = FirebaseAuth.instance.currentUser;
+    final displayName = user?.displayName?.trim() ?? '';
+    final email = user?.email?.trim() ?? '';
+    final subtitle = email.isNotEmpty ? email : 'Member';
     final userChip = _UserChip(
-      name: 'John Doe',
-      subtitle: 'Product Manager',
-      avatarUrl: 'https://i.pravatar.cc/150?img=5',
+      name: displayName.isNotEmpty ? displayName : (email.isNotEmpty ? email : 'User'),
+      subtitle: subtitle,
     );
 
     if (isMobile) {
@@ -173,11 +203,10 @@ class _CircularIconButton extends StatelessWidget {
 }
 
 class _UserChip extends StatelessWidget {
-  const _UserChip({required this.name, required this.subtitle, required this.avatarUrl});
+  _UserChip({required this.name, required this.subtitle});
 
   final String name;
   final String subtitle;
-  final String avatarUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -198,7 +227,14 @@ class _UserChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircleAvatar(radius: 20, backgroundImage: NetworkImage(avatarUrl)),
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+            child: Text(
+              _initials(name),
+              style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w700),
+            ),
+          ),
           const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -213,6 +249,14 @@ class _UserChip extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _initials(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return 'U';
+    final parts = trimmed.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
   }
 }
 
@@ -277,10 +321,11 @@ class _GroupsTabs extends StatelessWidget {
 }
 
 class _ContractList extends StatelessWidget {
-  const _ContractList({required this.isMobile, required this.contracts});
+  const _ContractList({required this.isMobile, required this.contracts, this.emptyMessage});
 
   final bool isMobile;
-  final List<_ContractRow> contracts;
+  final List<ContractModel> contracts;
+  final String? emptyMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -333,13 +378,22 @@ class _ContractList extends StatelessWidget {
           const SizedBox(height: 16),
           _TableHeader(isMobile: isMobile),
           const SizedBox(height: 8),
-          ...List.generate(contracts.length, (index) {
-            final row = contracts[index];
-            return Padding(
-              padding: EdgeInsets.only(bottom: index == contracts.length - 1 ? 8 : 20),
-              child: _ContractRowTile(row: row, isMobile: isMobile),
-            );
-          }),
+          if (contracts.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                emptyMessage ?? 'No contracts added yet.',
+                style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+              ),
+            )
+          else
+            ...List.generate(contracts.length, (index) {
+              final row = _ContractRow.fromContract(contracts[index]);
+              return Padding(
+                padding: EdgeInsets.only(bottom: index == contracts.length - 1 ? 8 : 20),
+                child: _ContractRowTile(row: row, isMobile: isMobile),
+              );
+            }),
           const SizedBox(height: 16),
           Text(
             'A list of your contracts.',
@@ -678,4 +732,23 @@ class _ContractRow {
   final String status;
   final int progress;
   final String value;
+
+  factory _ContractRow.fromContract(ContractModel contract) {
+    final status = contract.status.isNotEmpty ? contract.status : 'Pending';
+    final progress = status.toLowerCase().contains('complete')
+        ? 100
+        : status.toLowerCase().contains('progress')
+            ? 60
+            : 20;
+    final estimatedValue = contract.estimatedValue;
+    final formattedValue = estimatedValue > 0 ? '\$${estimatedValue.toStringAsFixed(0)}' : 'TBD';
+    return _ContractRow(
+      contract.name.isNotEmpty ? contract.name : 'Untitled contract',
+      contract.contractType.isNotEmpty ? contract.contractType : 'Not set',
+      contract.paymentType.isNotEmpty ? contract.paymentType : 'Not set',
+      status,
+      progress,
+      formattedValue,
+    );
+  }
 }

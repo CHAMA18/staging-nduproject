@@ -10,6 +10,20 @@ class LaunchEntry {
   final String title;
   final String details;
   final String? status;
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'details': details,
+        'status': status,
+      };
+
+  factory LaunchEntry.fromJson(Map<String, dynamic> json) {
+    return LaunchEntry(
+      title: json['title']?.toString() ?? '',
+      details: json['details']?.toString() ?? '',
+      status: json['status']?.toString(),
+    );
+  }
 }
 
 /// Reusable section that starts empty and is filled through an add dialog.

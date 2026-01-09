@@ -197,13 +197,6 @@ class _IssuesOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (metrics.isEmpty) {
-      return const _SectionEmptyState(
-        title: 'No issue metrics yet',
-        message: 'Capture issues to populate health, status, and resolution metrics.',
-        icon: Icons.insights_outlined,
-      );
-    }
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -225,21 +218,28 @@ class _IssuesOverviewCard extends StatelessWidget {
             style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
           ),
           const SizedBox(height: 22),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isNarrow = constraints.maxWidth < 640;
-              return Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: metrics
-                    .map((metric) => SizedBox(
-                          width: isNarrow ? (constraints.maxWidth - 16) : (constraints.maxWidth - 16 * 2) / 3,
-                          child: _MetricCard(metric: metric),
-                        ))
-                    .toList(),
-              );
-            },
-          ),
+          if (metrics.isEmpty)
+            const _InlineStatusCard(
+              title: 'No issue metrics yet',
+              message: 'Capture issues to populate health, status, and resolution metrics.',
+              icon: Icons.insights_outlined,
+            )
+          else
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 640;
+                return Wrap(
+                  spacing: 16,
+                  runSpacing: 16,
+                  children: metrics
+                      .map((metric) => SizedBox(
+                            width: isNarrow ? (constraints.maxWidth - 16) : (constraints.maxWidth - 16 * 2) / 3,
+                            child: _MetricCard(metric: metric),
+                          ))
+                      .toList(),
+                );
+              },
+            ),
         ],
       ),
     );
@@ -304,13 +304,6 @@ class _IssuesByMilestoneCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (milestones.isEmpty) {
-      return const _SectionEmptyState(
-        title: 'No milestone issues logged',
-        message: 'Add milestone issues to track escalation risk and delivery impact.',
-        icon: Icons.flag_outlined,
-      );
-    }
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -354,55 +347,66 @@ class _IssuesByMilestoneCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 22),
-          Column(
-            children: milestones
-                .map(
-                  (milestone) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF9FAFB),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 16,
-                            height: 16,
-                            decoration: BoxDecoration(color: milestone.indicatorColor, shape: BoxShape.circle),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  milestone.title,
-                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  milestone.issuesCountLabel,
-                                  style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
-                                ),
-                              ],
+          if (milestones.isEmpty)
+            const _InlineStatusCard(
+              title: 'No milestone issues logged',
+              message: 'Add milestone issues to track escalation risk and delivery impact.',
+              icon: Icons.flag_outlined,
+            )
+          else
+            Column(
+              children: milestones
+                  .map(
+                    (milestone) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF9FAFB),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 16,
+                              height: 16,
+                              decoration: BoxDecoration(color: milestone.indicatorColor, shape: BoxShape.circle),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            milestone.dueDate,
-                            style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
-                          ),
-                          const SizedBox(width: 16),
-                          _StatusPill(label: milestone.statusLabel, background: const Color(0xFFE9F7EF), foreground: const Color(0xFF059669)),
-                        ],
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    milestone.title,
+                                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    milestone.issuesCountLabel,
+                                    style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              milestone.dueDate,
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                            ),
+                            const SizedBox(width: 16),
+                            _StatusPill(
+                              label: milestone.statusLabel,
+                              background: const Color(0xFFE9F7EF),
+                              foreground: const Color(0xFF059669),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                )
-                .toList(),
-          ),
+                  )
+                  .toList(),
+            ),
         ],
       ),
     );
@@ -418,13 +422,6 @@ class _ProjectIssuesLogCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (entries.isEmpty) {
-      return const _SectionEmptyState(
-        title: 'Issue log is empty',
-        message: 'Log issues to build a traceable resolution history.',
-        icon: Icons.list_alt_outlined,
-      );
-    }
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -474,34 +471,41 @@ class _ProjectIssuesLogCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 22),
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFF9FAFB),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-                  child: Row(
-                    children: [
-                      _tableHeaderCell('ID', flex: _columnFlex[0]),
-                      _tableHeaderCell('Title', flex: _columnFlex[1]),
-                      _tableHeaderCell('Type', flex: _columnFlex[2]),
-                      _tableHeaderCell('Severity', flex: _columnFlex[3]),
-                      _tableHeaderCell('Status', flex: _columnFlex[4]),
-                      _tableHeaderCell('Assignee', flex: _columnFlex[5]),
-                      _tableHeaderCell('Due Date', flex: _columnFlex[6]),
-                      _tableHeaderCell('Milestone', flex: _columnFlex[7]),
-                      const SizedBox(width: 40),
-                    ],
+          if (entries.isEmpty)
+            const _InlineStatusCard(
+              title: 'Issue log is empty',
+              message: 'Log issues to build a traceable resolution history.',
+              icon: Icons.list_alt_outlined,
+            )
+          else
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+                    child: Row(
+                      children: [
+                        _tableHeaderCell('ID', flex: _columnFlex[0]),
+                        _tableHeaderCell('Title', flex: _columnFlex[1]),
+                        _tableHeaderCell('Type', flex: _columnFlex[2]),
+                        _tableHeaderCell('Severity', flex: _columnFlex[3]),
+                        _tableHeaderCell('Status', flex: _columnFlex[4]),
+                        _tableHeaderCell('Assignee', flex: _columnFlex[5]),
+                        _tableHeaderCell('Due Date', flex: _columnFlex[6]),
+                        _tableHeaderCell('Milestone', flex: _columnFlex[7]),
+                        const SizedBox(width: 40),
+                      ],
+                    ),
                   ),
-                ),
-                const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
-                ...entries.map((entry) => _IssueLogRow(entry: entry, columnFlex: _columnFlex)),
-              ],
+                  const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+                  ...entries.map((entry) => _IssueLogRow(entry: entry, columnFlex: _columnFlex)),
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -620,8 +624,8 @@ class _IssueLogRow extends StatelessWidget {
   }
 }
 
-class _SectionEmptyState extends StatelessWidget {
-  const _SectionEmptyState({required this.title, required this.message, required this.icon});
+class _InlineStatusCard extends StatelessWidget {
+  const _InlineStatusCard({required this.title, required this.message, required this.icon});
 
   final String title;
   final String message;
@@ -631,10 +635,10 @@ class _SectionEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
       child: Row(

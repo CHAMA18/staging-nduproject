@@ -55,9 +55,24 @@ service cloud.firestore {
       match /vendors/{vendorId} {
         allow read, write: if isAuthenticated();
       }
+
+      // Team management subcollection
+      match /team_members/{memberId} {
+        allow read, write: if isAuthenticated();
+      }
       
       // Contract subcollection
       match /contracts/{contractId} {
+        allow read, write: if isAuthenticated();
+      }
+      
+      // Contracting dashboard subcollection
+      match /contracting/{docId} {
+        allow read, write: if isAuthenticated();
+      }
+
+      // Cost estimate subcollection
+      match /cost_estimate_items/{itemId} {
         allow read, write: if isAuthenticated();
       }
       
@@ -67,6 +82,15 @@ service cloud.firestore {
       }
       match /ops_checklist/{itemId} {
         allow read, write: if isAuthenticated();
+      }
+      match /launch_phase/{docId} {
+        allow read, write: if isAuthenticated();
+      }
+      match /opsMaintenance/{docId} {
+        allow read, write: if isAuthenticated();
+        match /{subDoc=**} {
+          allow read, write: if isAuthenticated();
+        }
       }
       
       // Agile subcollection

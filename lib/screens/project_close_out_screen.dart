@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:ndu_project/screens/deliver_project_closure_screen.dart';
 import 'package:ndu_project/screens/demobilize_team_screen.dart';
@@ -7,6 +8,8 @@ import 'package:ndu_project/widgets/launch_editable_section.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
 
 class ProjectCloseOutScreen extends StatefulWidget {
   const ProjectCloseOutScreen({
@@ -42,11 +45,17 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
   final List<LaunchEntry> _approvals = [];
   final List<LaunchEntry> _archive = [];
   late _CloseOutView _selectedView;
+  bool _loadedEntries = false;
+  bool _aiGenerated = false;
+  bool _isGenerating = false;
 
   @override
   void initState() {
     super.initState();
     _selectedView = widget.summarized ? _CloseOutView.summarized : _CloseOutView.longForm;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadEntries();
+    });
   }
 
   @override
@@ -71,21 +80,21 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
                 description: 'Add the tasks you need to finish before the project is closed.',
                 entries: _closeOutChecklist,
                 onAdd: () => _addEntry(_closeOutChecklist, titleLabel: 'Checklist item', includeStatus: true),
-                onRemove: (index) => setState(() => _closeOutChecklist.removeAt(index)),
+                onRemove: (index) => _removeEntry(_closeOutChecklist, index),
               ),
               LaunchEditableSection(
                 title: 'Approvals & sign-off',
                 description: 'Capture approvers, their roles, and confirmation status.',
                 entries: _approvals,
                 onAdd: () => _addEntry(_approvals, titleLabel: 'Approver', includeStatus: true),
-                onRemove: (index) => setState(() => _approvals.removeAt(index)),
+                onRemove: (index) => _removeEntry(_approvals, index),
               ),
               LaunchEditableSection(
                 title: 'Archive & access',
                 description: 'List the repositories, documents, and access changes required.',
                 entries: _archive,
                 onAdd: () => _addEntry(_archive, titleLabel: 'Archive item'),
-                onRemove: (index) => setState(() => _archive.removeAt(index)),
+                onRemove: (index) => _removeEntry(_archive, index),
                 showStatusChip: false,
               ),
             ] else ...[
@@ -172,7 +181,142 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
     );
     if (entry != null && mounted) {
       setState(() => targetList.add(entry));
+      await _persistEntries();
     }
+  }
+
+  void _removeEntry(List<LaunchEntry> targetList, int index) {
+    setState(() => targetList.removeAt(index));
+    _persistEntries();
+  }
+
+  Future<void> _loadEntries() async {
+    if (_loadedEntries) return;
+    final provider = ProjectDataHelper.getProvider(context);
+    final projectId = provider.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('launch_phase')
+          .doc('project_close_out')
+          .get();
+      if (doc.exists) {
+        final data = doc.data() ?? {};
+        final checklist = (data['closeOutChecklist'] as List?)
+                ?.whereType<Map>()
+                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
+                .toList() ??
+            [];
+        final approvals = (data['approvals'] as List?)
+                ?.whereType<Map>()
+                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
+                .toList() ??
+            [];
+        final archive = (data['archive'] as List?)
+                ?.whereType<Map>()
+                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
+                .toList() ??
+            [];
+        if (!mounted) return;
+        setState(() {
+          _closeOutChecklist
+            ..clear()
+            ..addAll(checklist);
+          _approvals
+            ..clear()
+            ..addAll(approvals);
+          _archive
+            ..clear()
+            ..addAll(archive);
+        });
+      }
+      _loadedEntries = true;
+      if (_closeOutChecklist.isEmpty && _approvals.isEmpty && _archive.isEmpty) {
+        await _populateFromAi();
+      }
+    } catch (error) {
+      debugPrint('Failed to load project close-out entries: $error');
+    }
+  }
+
+  Future<void> _populateFromAi() async {
+    if (_aiGenerated || _isGenerating) return;
+    final projectData = ProjectDataHelper.getData(context);
+    final contextText = ProjectDataHelper.buildFepContext(projectData, sectionLabel: 'Project Close Out');
+    if (contextText.trim().isEmpty) return;
+
+    setState(() => _isGenerating = true);
+    Map<String, List<Map<String, dynamic>>> generated = {};
+    try {
+      generated = await OpenAiServiceSecure().generateLaunchPhaseEntries(
+        context: contextText,
+        sections: const {
+          'close_out_checklist': 'Close-out checklist',
+          'approvals_signoff': 'Approvals & sign-off',
+          'archive_access': 'Archive & access',
+        },
+        itemsPerSection: 2,
+      );
+    } catch (error) {
+      debugPrint('Project close-out AI call failed: $error');
+    }
+
+    if (!mounted) return;
+    if (_closeOutChecklist.isNotEmpty || _approvals.isNotEmpty || _archive.isNotEmpty) {
+      setState(() => _isGenerating = false);
+      _aiGenerated = true;
+      return;
+    }
+
+    setState(() {
+      _closeOutChecklist
+        ..clear()
+        ..addAll(_mapEntries(generated['close_out_checklist']));
+      _approvals
+        ..clear()
+        ..addAll(_mapEntries(generated['approvals_signoff']));
+      _archive
+        ..clear()
+        ..addAll(_mapEntries(generated['archive_access']));
+      _isGenerating = false;
+    });
+    _aiGenerated = true;
+    await _persistEntries();
+  }
+
+  List<LaunchEntry> _mapEntries(List<Map<String, dynamic>>? raw) {
+    if (raw == null) return [];
+    return raw
+        .map((item) => LaunchEntry(
+              title: (item['title'] ?? '').toString().trim(),
+              details: (item['details'] ?? '').toString().trim(),
+              status: (item['status'] ?? '').toString().trim().isEmpty ? null : item['status'].toString().trim(),
+            ))
+        .where((entry) => entry.title.isNotEmpty)
+        .toList();
+  }
+
+  Future<void> _persistEntries() async {
+    final provider = ProjectDataHelper.getProvider(context);
+    final projectId = provider.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+
+    final payload = {
+      'closeOutChecklist': _closeOutChecklist.map((e) => e.toJson()).toList(),
+      'approvals': _approvals.map((e) => e.toJson()).toList(),
+      'archive': _archive.map((e) => e.toJson()).toList(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    await FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId)
+        .collection('launch_phase')
+        .doc('project_close_out')
+        .set(payload, SetOptions(merge: true));
   }
 }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:ndu_project/screens/commerce_viability_screen.dart';
 import 'package:ndu_project/screens/vendor_account_close_out_screen.dart';
@@ -8,6 +9,8 @@ import 'package:ndu_project/widgets/launch_editable_section.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
 
 class SummarizeAccountRisksScreen extends StatefulWidget {
   const SummarizeAccountRisksScreen({super.key});
@@ -27,6 +30,17 @@ class _SummarizeAccountRisksScreenState extends State<SummarizeAccountRisksScree
   final List<LaunchEntry> _highlights = [];
   final List<LaunchEntry> _risks = [];
   final List<LaunchEntry> _next90Days = [];
+  bool _loadedEntries = false;
+  bool _aiGenerated = false;
+  bool _isGenerating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadEntries();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,14 +72,14 @@ class _SummarizeAccountRisksScreenState extends State<SummarizeAccountRisksScree
                           description: 'Add your own health assessment and notes—nothing is pre-filled.',
                           entries: _accountHealth,
                           onAdd: () => _addEntry(_accountHealth, titleLabel: 'Health note', includeStatus: true),
-                          onRemove: (index) => setState(() => _accountHealth.removeAt(index)),
+                          onRemove: (index) => _removeEntry(_accountHealth, index),
                         ),
                         LaunchEditableSection(
                           title: 'Highlights / what went well',
                           description: 'Capture strengths, wins, and positives from the account.',
                           entries: _highlights,
                           onAdd: () => _addEntry(_highlights, titleLabel: 'Highlight'),
-                          onRemove: (index) => setState(() => _highlights.removeAt(index)),
+                          onRemove: (index) => _removeEntry(_highlights, index),
                           showStatusChip: false,
                         ),
                         LaunchEditableSection(
@@ -73,14 +87,14 @@ class _SummarizeAccountRisksScreenState extends State<SummarizeAccountRisksScree
                           description: 'Document risks, owners, and mitigation plans via the pop-up.',
                           entries: _risks,
                           onAdd: () => _addEntry(_risks, titleLabel: 'Risk or issue', includeStatus: true),
-                          onRemove: (index) => setState(() => _risks.removeAt(index)),
+                          onRemove: (index) => _removeEntry(_risks, index),
                         ),
                         LaunchEditableSection(
                           title: 'Next 90 days focus',
                           description: 'List the immediate follow-ups to keep the account healthy.',
                           entries: _next90Days,
                           onAdd: () => _addEntry(_next90Days, titleLabel: 'Follow-up', includeStatus: true),
-                          onRemove: (index) => setState(() => _next90Days.removeAt(index)),
+                          onRemove: (index) => _removeEntry(_next90Days, index),
                         ),
                         const SizedBox(height: 24),
                         LaunchPhaseNavigation(
@@ -159,6 +173,154 @@ class _SummarizeAccountRisksScreenState extends State<SummarizeAccountRisksScree
     );
     if (entry != null && mounted) {
       setState(() => targetList.add(entry));
+      await _persistEntries();
     }
+  }
+
+  void _removeEntry(List<LaunchEntry> targetList, int index) {
+    setState(() => targetList.removeAt(index));
+    _persistEntries();
+  }
+
+  Future<void> _loadEntries() async {
+    if (_loadedEntries) return;
+    final provider = ProjectDataHelper.getProvider(context);
+    final projectId = provider.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('launch_phase')
+          .doc('summarize_account_risks')
+          .get();
+      if (doc.exists) {
+        final data = doc.data() ?? {};
+        final health = (data['accountHealth'] as List?)
+                ?.whereType<Map>()
+                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
+                .toList() ??
+            [];
+        final highlights = (data['highlights'] as List?)
+                ?.whereType<Map>()
+                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
+                .toList() ??
+            [];
+        final risks = (data['risks'] as List?)
+                ?.whereType<Map>()
+                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
+                .toList() ??
+            [];
+        final next = (data['next90Days'] as List?)
+                ?.whereType<Map>()
+                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
+                .toList() ??
+            [];
+        if (!mounted) return;
+        setState(() {
+          _accountHealth
+            ..clear()
+            ..addAll(health);
+          _highlights
+            ..clear()
+            ..addAll(highlights);
+          _risks
+            ..clear()
+            ..addAll(risks);
+          _next90Days
+            ..clear()
+            ..addAll(next);
+        });
+      }
+      _loadedEntries = true;
+      if (_accountHealth.isEmpty && _highlights.isEmpty && _risks.isEmpty && _next90Days.isEmpty) {
+        await _populateFromAi();
+      }
+    } catch (error) {
+      debugPrint('Failed to load account risks entries: $error');
+    }
+  }
+
+  Future<void> _populateFromAi() async {
+    if (_aiGenerated || _isGenerating) return;
+    final projectData = ProjectDataHelper.getData(context);
+    final contextText = ProjectDataHelper.buildFepContext(projectData, sectionLabel: 'Project Summary');
+    if (contextText.trim().isEmpty) return;
+
+    setState(() => _isGenerating = true);
+    Map<String, List<Map<String, dynamic>>> generated = {};
+    try {
+      generated = await OpenAiServiceSecure().generateLaunchPhaseEntries(
+        context: contextText,
+        sections: const {
+          'account_health': 'Account health snapshot',
+          'highlights': 'Highlights / what went well',
+          'delivery_risks': 'Key delivery risks & issues',
+          'next_90_days': 'Next 90 days focus',
+        },
+        itemsPerSection: 2,
+      );
+    } catch (error) {
+      debugPrint('Account risks AI call failed: $error');
+    }
+
+    if (!mounted) return;
+    if (_accountHealth.isNotEmpty || _highlights.isNotEmpty || _risks.isNotEmpty || _next90Days.isNotEmpty) {
+      setState(() => _isGenerating = false);
+      _aiGenerated = true;
+      return;
+    }
+
+    setState(() {
+      _accountHealth
+        ..clear()
+        ..addAll(_mapEntries(generated['account_health']));
+      _highlights
+        ..clear()
+        ..addAll(_mapEntries(generated['highlights']));
+      _risks
+        ..clear()
+        ..addAll(_mapEntries(generated['delivery_risks']));
+      _next90Days
+        ..clear()
+        ..addAll(_mapEntries(generated['next_90_days']));
+      _isGenerating = false;
+    });
+    _aiGenerated = true;
+    await _persistEntries();
+  }
+
+  List<LaunchEntry> _mapEntries(List<Map<String, dynamic>>? raw) {
+    if (raw == null) return [];
+    return raw
+        .map((item) => LaunchEntry(
+              title: (item['title'] ?? '').toString().trim(),
+              details: (item['details'] ?? '').toString().trim(),
+              status: (item['status'] ?? '').toString().trim().isEmpty ? null : item['status'].toString().trim(),
+            ))
+        .where((entry) => entry.title.isNotEmpty)
+        .toList();
+  }
+
+  Future<void> _persistEntries() async {
+    final provider = ProjectDataHelper.getProvider(context);
+    final projectId = provider.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+
+    final payload = {
+      'accountHealth': _accountHealth.map((e) => e.toJson()).toList(),
+      'highlights': _highlights.map((e) => e.toJson()).toList(),
+      'risks': _risks.map((e) => e.toJson()).toList(),
+      'next90Days': _next90Days.map((e) => e.toJson()).toList(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    await FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId)
+        .collection('launch_phase')
+        .doc('summarize_account_risks')
+        .set(payload, SetOptions(merge: true));
   }
 }

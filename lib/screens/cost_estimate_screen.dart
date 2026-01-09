@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
@@ -35,6 +36,15 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
 
   _CostView _activeView = _CostView.indirect;
   bool _showIndirectBudget = false;
+  bool _loadedCostItems = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadCostItemsFromFirestore();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -251,6 +261,51 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
     final items = List<CostEstimateItem>.from(provider.projectData.costEstimateItems)..add(selected);
     provider.updateField((data) => data.copyWith(costEstimateItems: items));
     await provider.saveToFirebase(checkpoint: 'cost_estimate');
+    await _persistCostItem(selected);
+  }
+
+  Future<void> _loadCostItemsFromFirestore() async {
+    if (_loadedCostItems) return;
+    final provider = ProjectDataHelper.getProvider(context);
+    final projectId = provider.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+    if (provider.projectData.costEstimateItems.isNotEmpty) {
+      _loadedCostItems = true;
+      return;
+    }
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('cost_estimate_items')
+          .get();
+      if (snapshot.docs.isEmpty) {
+        _loadedCostItems = true;
+        return;
+      }
+
+      final items = snapshot.docs
+          .map((doc) => CostEstimateItem.fromJson(doc.data()))
+          .toList();
+      provider.updateField((data) => data.copyWith(costEstimateItems: items));
+      _loadedCostItems = true;
+    } catch (error) {
+      debugPrint('Failed to load cost estimate items: $error');
+    }
+  }
+
+  Future<void> _persistCostItem(CostEstimateItem item) async {
+    final provider = ProjectDataHelper.getProvider(context);
+    final projectId = provider.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+
+    await FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId)
+        .collection('cost_estimate_items')
+        .doc(item.id)
+        .set(item.toJson(), SetOptions(merge: true));
   }
 }
 

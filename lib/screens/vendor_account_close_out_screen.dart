@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:ndu_project/screens/contract_close_out_screen.dart';
 import 'package:ndu_project/screens/summarize_account_risks_screen.dart';
@@ -8,6 +9,8 @@ import 'package:ndu_project/widgets/launch_editable_section.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
 
 class VendorAccountCloseOutScreen extends StatefulWidget {
   const VendorAccountCloseOutScreen({super.key});
@@ -27,6 +30,17 @@ class _VendorAccountCloseOutScreenState extends State<VendorAccountCloseOutScree
   final List<LaunchEntry> _steps = [];
   final List<LaunchEntry> _vendors = [];
   final List<LaunchEntry> _signOffs = [];
+  bool _loadedEntries = false;
+  bool _aiGenerated = false;
+  bool _isGenerating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadEntries();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,28 +72,28 @@ class _VendorAccountCloseOutScreenState extends State<VendorAccountCloseOutScree
                           description: 'Add counts, notes, or status items that matter to your vendor close-out.',
                           entries: _snapshot,
                           onAdd: () => _addEntry(_snapshot, titleLabel: 'Snapshot item', includeStatus: true),
-                          onRemove: (index) => setState(() => _snapshot.removeAt(index)),
+                          onRemove: (index) => _removeEntry(_snapshot, index),
                         ),
                         LaunchEditableSection(
                           title: 'Guided steps',
                           description: 'Capture the sequence you will run to close vendor accounts.',
                           entries: _steps,
                           onAdd: () => _addEntry(_steps, titleLabel: 'Step', includeStatus: true),
-                          onRemove: (index) => setState(() => _steps.removeAt(index)),
+                          onRemove: (index) => _removeEntry(_steps, index),
                         ),
                         LaunchEditableSection(
                           title: 'Vendors requiring attention',
                           description: 'List vendors with outstanding actions or risks.',
                           entries: _vendors,
                           onAdd: () => _addEntry(_vendors, titleLabel: 'Vendor', includeStatus: true),
-                          onRemove: (index) => setState(() => _vendors.removeAt(index)),
+                          onRemove: (index) => _removeEntry(_vendors, index),
                         ),
                         LaunchEditableSection(
                           title: 'Access & sign-off',
                           description: 'Track access removals, ownership, and required approvals.',
                           entries: _signOffs,
                           onAdd: () => _addEntry(_signOffs, titleLabel: 'Approver or action', includeStatus: true),
-                          onRemove: (index) => setState(() => _signOffs.removeAt(index)),
+                          onRemove: (index) => _removeEntry(_signOffs, index),
                         ),
                         const SizedBox(height: 24),
                         LaunchPhaseNavigation(
@@ -140,6 +154,154 @@ class _VendorAccountCloseOutScreenState extends State<VendorAccountCloseOutScree
     );
     if (entry != null && mounted) {
       setState(() => targetList.add(entry));
+      await _persistEntries();
     }
+  }
+
+  void _removeEntry(List<LaunchEntry> targetList, int index) {
+    setState(() => targetList.removeAt(index));
+    _persistEntries();
+  }
+
+  Future<void> _loadEntries() async {
+    if (_loadedEntries) return;
+    final provider = ProjectDataHelper.getProvider(context);
+    final projectId = provider.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('launch_phase')
+          .doc('vendor_account_close_out')
+          .get();
+      if (doc.exists) {
+        final data = doc.data() ?? {};
+        final snapshot = (data['snapshot'] as List?)
+                ?.whereType<Map>()
+                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
+                .toList() ??
+            [];
+        final steps = (data['steps'] as List?)
+                ?.whereType<Map>()
+                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
+                .toList() ??
+            [];
+        final vendors = (data['vendors'] as List?)
+                ?.whereType<Map>()
+                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
+                .toList() ??
+            [];
+        final signoffs = (data['signOffs'] as List?)
+                ?.whereType<Map>()
+                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
+                .toList() ??
+            [];
+        if (!mounted) return;
+        setState(() {
+          _snapshot
+            ..clear()
+            ..addAll(snapshot);
+          _steps
+            ..clear()
+            ..addAll(steps);
+          _vendors
+            ..clear()
+            ..addAll(vendors);
+          _signOffs
+            ..clear()
+            ..addAll(signoffs);
+        });
+      }
+      _loadedEntries = true;
+      if (_snapshot.isEmpty && _steps.isEmpty && _vendors.isEmpty && _signOffs.isEmpty) {
+        await _populateFromAi();
+      }
+    } catch (error) {
+      debugPrint('Failed to load vendor close-out entries: $error');
+    }
+  }
+
+  Future<void> _populateFromAi() async {
+    if (_aiGenerated || _isGenerating) return;
+    final projectData = ProjectDataHelper.getData(context);
+    final contextText = ProjectDataHelper.buildFepContext(projectData, sectionLabel: 'Vendor Account Close Out');
+    if (contextText.trim().isEmpty) return;
+
+    setState(() => _isGenerating = true);
+    Map<String, List<Map<String, dynamic>>> generated = {};
+    try {
+      generated = await OpenAiServiceSecure().generateLaunchPhaseEntries(
+        context: contextText,
+        sections: const {
+          'vendor_snapshot': 'Vendor close-out snapshot',
+          'guided_steps': 'Guided steps',
+          'vendors_attention': 'Vendors requiring attention',
+          'access_signoff': 'Access & sign-off',
+        },
+        itemsPerSection: 2,
+      );
+    } catch (error) {
+      debugPrint('Vendor close-out AI call failed: $error');
+    }
+
+    if (!mounted) return;
+    if (_snapshot.isNotEmpty || _steps.isNotEmpty || _vendors.isNotEmpty || _signOffs.isNotEmpty) {
+      setState(() => _isGenerating = false);
+      _aiGenerated = true;
+      return;
+    }
+
+    setState(() {
+      _snapshot
+        ..clear()
+        ..addAll(_mapEntries(generated['vendor_snapshot']));
+      _steps
+        ..clear()
+        ..addAll(_mapEntries(generated['guided_steps']));
+      _vendors
+        ..clear()
+        ..addAll(_mapEntries(generated['vendors_attention']));
+      _signOffs
+        ..clear()
+        ..addAll(_mapEntries(generated['access_signoff']));
+      _isGenerating = false;
+    });
+    _aiGenerated = true;
+    await _persistEntries();
+  }
+
+  List<LaunchEntry> _mapEntries(List<Map<String, dynamic>>? raw) {
+    if (raw == null) return [];
+    return raw
+        .map((item) => LaunchEntry(
+              title: (item['title'] ?? '').toString().trim(),
+              details: (item['details'] ?? '').toString().trim(),
+              status: (item['status'] ?? '').toString().trim().isEmpty ? null : item['status'].toString().trim(),
+            ))
+        .where((entry) => entry.title.isNotEmpty)
+        .toList();
+  }
+
+  Future<void> _persistEntries() async {
+    final provider = ProjectDataHelper.getProvider(context);
+    final projectId = provider.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+
+    final payload = {
+      'snapshot': _snapshot.map((e) => e.toJson()).toList(),
+      'steps': _steps.map((e) => e.toJson()).toList(),
+      'vendors': _vendors.map((e) => e.toJson()).toList(),
+      'signOffs': _signOffs.map((e) => e.toJson()).toList(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    await FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId)
+        .collection('launch_phase')
+        .doc('vendor_account_close_out')
+        .set(payload, SetOptions(merge: true));
   }
 }

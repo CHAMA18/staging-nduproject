@@ -900,19 +900,22 @@ class SolutionRisk {
 }
 
 class TeamMember {
+  String id;
   String name;
   String role;
   String email;
   String responsibilities;
 
   TeamMember({
+    String? id,
     this.name = '',
     this.role = '',
     this.email = '',
     this.responsibilities = '',
-  });
+  }) : id = id ?? _generateId();
 
   Map<String, dynamic> toJson() => {
+        'id': id,
         'name': name,
         'role': role,
         'email': email,
@@ -921,12 +924,15 @@ class TeamMember {
 
   factory TeamMember.fromJson(Map<String, dynamic> json) {
     return TeamMember(
+      id: json['id']?.toString(),
       name: json['name'] ?? '',
       role: json['role'] ?? '',
       email: json['email'] ?? '',
       responsibilities: json['responsibilities'] ?? '',
     );
   }
+
+  static String _generateId() => DateTime.now().microsecondsSinceEpoch.toString();
 }
 
 class PreferredSolutionAnalysis {

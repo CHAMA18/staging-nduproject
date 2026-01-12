@@ -40,6 +40,13 @@ import 'package:ndu_project/screens/front_end_planning_summary.dart';
 import 'package:ndu_project/screens/front_end_planning_summary_end.dart';
 import 'package:ndu_project/screens/front_end_planning_security.dart';
 
+// New technology & AI workspace screens
+import 'package:ndu_project/screens/technology_inventory_screen.dart';
+import 'package:ndu_project/screens/ai_integrations_screen.dart';
+import 'package:ndu_project/screens/external_integrations_screen.dart';
+import 'package:ndu_project/screens/technology_definitions_screen.dart';
+import 'package:ndu_project/screens/ai_recommendations_screen.dart';
+
 // Project/Process cluster
 import 'package:ndu_project/screens/project_plan_screen.dart';
 import 'package:ndu_project/screens/project_framework_next_screen.dart';
@@ -210,6 +217,11 @@ class AppRoutes {
   static const longLeadEquipmentOrdering = 'long-lead-equipment-ordering';
   static const technicalDebtManagement = 'technical-debt-management';
   static const riskTracking = 'risk-tracking';
+  static const technologyInventory = 'technology-inventory';
+  static const aiIntegrations = 'ai-integrations';
+  static const externalIntegrations = 'external-integrations';
+  static const technologyDefinitions = 'technology-definitions';
+  static const aiRecommendations = 'ai-recommendations';
   static const identifyStaffOpsTeam = 'identify-staff-ops-team';
   static const contractsTracking = 'contracts-tracking';
   static const vendorTracking = 'vendor-tracking';
@@ -481,6 +493,12 @@ class AppRouter {
       GoRoute(name: AppRoutes.scopeCompletion, path: '/${AppRoutes.scopeCompletion}', builder: (c, s) => const ScopeCompletionScreen()),
       GoRoute(name: AppRoutes.technicalDebtManagement, path: '/${AppRoutes.technicalDebtManagement}', builder: (c, s) => const TechnicalDebtManagementScreen()),
       GoRoute(name: AppRoutes.riskTracking, path: '/${AppRoutes.riskTracking}', builder: (c, s) => const RiskTrackingScreen()),
+  // Technology & AI workspace screens
+  GoRoute(name: AppRoutes.technologyInventory, path: '/${AppRoutes.technologyInventory}', builder: (c, s) => const TechnologyInventoryScreen()),
+  GoRoute(name: AppRoutes.aiIntegrations, path: '/${AppRoutes.aiIntegrations}', builder: (c, s) => const AiIntegrationsScreen()),
+  GoRoute(name: AppRoutes.externalIntegrations, path: '/${AppRoutes.externalIntegrations}', builder: (c, s) => const ExternalIntegrationsScreen()),
+  GoRoute(name: AppRoutes.technologyDefinitions, path: '/${AppRoutes.technologyDefinitions}', builder: (c, s) => const TechnologyDefinitionsScreen()),
+  GoRoute(name: AppRoutes.aiRecommendations, path: '/${AppRoutes.aiRecommendations}', builder: (c, s) => const AiRecommendationsScreen()),
       GoRoute(name: AppRoutes.identifyStaffOpsTeam, path: '/${AppRoutes.identifyStaffOpsTeam}', builder: (c, s) => const IdentifyStaffOpsTeamScreen()),
       GoRoute(name: AppRoutes.contractsTracking, path: '/${AppRoutes.contractsTracking}', builder: (c, s) => const ContractsTrackingScreen()),
       GoRoute(name: AppRoutes.vendorTracking, path: '/${AppRoutes.vendorTracking}', builder: (c, s) => const VendorTrackingScreen()),

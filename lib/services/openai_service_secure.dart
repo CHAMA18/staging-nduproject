@@ -482,6 +482,938 @@ class OpenAiServiceSecure {
     }
   }
 
+  Future<ProcurementWorkspaceData> generateProcurementWorkspaceFromContext(String context) async {
+    final trimmed = context.trim();
+    if (trimmed.isEmpty) throw Exception('No context provided');
+    if (!OpenAiConfig.isConfigured) throw const OpenAiNotConfiguredException();
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': 0.45,
+      'max_tokens': 2000,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content': 'You are a procurement operations lead. Draft realistic procurement tables based on project context. Always return a JSON object only.'
+        },
+        {
+          'role': 'user',
+          'content': _procurementWorkspacePrompt(trimmed),
+        }
+      ],
+    });
+
+    try {
+      final response = await _client.post(uri, headers: headers, body: body).timeout(const Duration(seconds: 18));
+      if (response.statusCode == 401) throw Exception('Invalid API key');
+      if (response.statusCode == 429) throw Exception('API quota exceeded');
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('OpenAI error ${response.statusCode}: ${response.body}');
+      }
+      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content = (data['choices'] as List).first['message']['content'] as String;
+      final parsed = jsonDecode(content) as Map<String, dynamic>;
+      return _parseProcurementWorkspace(parsed);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<LessonsLearnedData> generateLessonsLearnedFromContext(String context) async {
+    final trimmed = context.trim();
+    if (trimmed.isEmpty) throw Exception('No context provided');
+    if (!OpenAiConfig.isConfigured) throw const OpenAiNotConfiguredException();
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': 0.5,
+      'max_tokens': 1400,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content': 'You are a project delivery coach. Generate grounded lessons learned entries and benefits. Always return a JSON object only.'
+        },
+        {
+          'role': 'user',
+          'content': _lessonsLearnedPrompt(trimmed),
+        }
+      ],
+    });
+
+    try {
+      final response = await _client.post(uri, headers: headers, body: body).timeout(const Duration(seconds: 16));
+      if (response.statusCode == 401) throw Exception('Invalid API key');
+      if (response.statusCode == 429) throw Exception('API quota exceeded');
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('OpenAI error ${response.statusCode}: ${response.body}');
+      }
+      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content = (data['choices'] as List).first['message']['content'] as String;
+      final parsed = jsonDecode(content) as Map<String, dynamic>;
+      return _parseLessonsLearned(parsed);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<SecurityManagementData> generateSecurityManagementFromContext(String context) async {
+    final trimmed = context.trim();
+    if (trimmed.isEmpty) throw Exception('No context provided');
+    if (!OpenAiConfig.isConfigured) throw const OpenAiNotConfiguredException();
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': 0.45,
+      'max_tokens': 1500,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content': 'You are a security program manager. Generate a security management dataset from project context. Return only a JSON object.'
+        },
+        {
+          'role': 'user',
+          'content': _securityManagementPrompt(trimmed),
+        }
+      ],
+    });
+
+    try {
+      final response = await _client.post(uri, headers: headers, body: body).timeout(const Duration(seconds: 16));
+      if (response.statusCode == 401) throw Exception('Invalid API key');
+      if (response.statusCode == 429) throw Exception('API quota exceeded');
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('OpenAI error ${response.statusCode}: ${response.body}');
+      }
+      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content = (data['choices'] as List).first['message']['content'] as String;
+      final parsed = jsonDecode(content) as Map<String, dynamic>;
+      return _parseSecurityManagement(parsed);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<QualityManagementData> generateQualityManagementFromContext(String context) async {
+    final trimmed = context.trim();
+    if (trimmed.isEmpty) throw Exception('No context provided');
+    if (!OpenAiConfig.isConfigured) throw const OpenAiNotConfiguredException();
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': 0.5,
+      'max_tokens': 1700,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content': 'You are a quality manager. Generate a quality management dataset from project context. Return only a JSON object.'
+        },
+        {
+          'role': 'user',
+          'content': _qualityManagementPrompt(trimmed),
+        }
+      ],
+    });
+
+    try {
+      final response = await _client.post(uri, headers: headers, body: body).timeout(const Duration(seconds: 16));
+      if (response.statusCode == 401) throw Exception('Invalid API key');
+      if (response.statusCode == 429) throw Exception('API quota exceeded');
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('OpenAI error ${response.statusCode}: ${response.body}');
+      }
+      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content = (data['choices'] as List).first['message']['content'] as String;
+      final parsed = jsonDecode(content) as Map<String, dynamic>;
+      return _parseQualityManagement(parsed);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<TechnicalDebtManagementData> generateTechnicalDebtManagementFromContext(String context) async {
+    final trimmed = context.trim();
+    if (trimmed.isEmpty) throw Exception('No context provided');
+    if (!OpenAiConfig.isConfigured) throw const OpenAiNotConfiguredException();
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': 0.45,
+      'max_tokens': 1400,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content': 'You are a technical program manager. Generate technical debt management data from project context. Return only a JSON object.'
+        },
+        {
+          'role': 'user',
+          'content': _technicalDebtManagementPrompt(trimmed),
+        }
+      ],
+    });
+
+    try {
+      final response = await _client.post(uri, headers: headers, body: body).timeout(const Duration(seconds: 16));
+      if (response.statusCode == 401) throw Exception('Invalid API key');
+      if (response.statusCode == 429) throw Exception('API quota exceeded');
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('OpenAI error ${response.statusCode}: ${response.body}');
+      }
+      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content = (data['choices'] as List).first['message']['content'] as String;
+      final parsed = jsonDecode(content) as Map<String, dynamic>;
+      return _parseTechnicalDebtManagement(parsed);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  LessonsLearnedData _parseLessonsLearned(Map<String, dynamic> parsed) {
+    String parseString(dynamic value) => value?.toString().trim() ?? '';
+    String normalizeType(String value) {
+      final v = value.toLowerCase();
+      if (v.contains('success')) return 'Success';
+      if (v.contains('challenge')) return 'Challenge';
+      return 'Insight';
+    }
+
+    String normalizeImpact(String value) {
+      final v = value.toLowerCase();
+      if (v.contains('high')) return 'High';
+      if (v.contains('low')) return 'Low';
+      return 'Medium';
+    }
+
+    String normalizeDate(dynamic value, {DateTime? fallback}) {
+      final raw = parseString(value);
+      final parsedDate = raw.isNotEmpty ? DateTime.tryParse(raw) : null;
+      final date = parsedDate ?? fallback ?? DateTime.now();
+      return date.toIso8601String().split('T').first;
+    }
+
+    final rawBenefits = parsed['benefits'];
+    final benefits = (rawBenefits is List)
+        ? rawBenefits.map((item) => item.toString().trim()).where((item) => item.isNotEmpty).toList()
+        : <String>[];
+
+    final entries = <LessonsLearnedEntry>[];
+    final rawEntries = parsed['entries'];
+    if (rawEntries is List) {
+      for (var i = 0; i < rawEntries.length; i++) {
+        final item = rawEntries[i];
+        if (item is! Map) continue;
+        final map = Map<String, dynamic>.from(item);
+        entries.add(LessonsLearnedEntry(
+          id: parseString(map['id']),
+          lesson: parseString(map['lesson']),
+          type: normalizeType(parseString(map['type'])),
+          category: parseString(map['category']),
+          phase: parseString(map['phase']),
+          impact: normalizeImpact(parseString(map['impact'])),
+          status: parseString(map['status']),
+          submittedBy: parseString(map['submittedBy'] ?? map['submitted_by']),
+          date: normalizeDate(map['date'], fallback: DateTime.now().subtract(Duration(days: i * 7))),
+          highlight: map['highlight'] ?? false,
+        ));
+      }
+    }
+
+    return LessonsLearnedData(
+      benefits: benefits,
+      entries: entries,
+      aiSeeded: true,
+    );
+  }
+
+  SecurityManagementData _parseSecurityManagement(Map<String, dynamic> parsed) {
+    String parseString(dynamic value) => value?.toString().trim() ?? '';
+    int parseInt(dynamic value, int fallback) {
+      if (value == null) return fallback;
+      if (value is num) return value.toInt();
+      final cleaned = value.toString().replaceAll(RegExp(r'[^0-9\\-]'), '');
+      return int.tryParse(cleaned) ?? fallback;
+    }
+
+    bool parseBool(dynamic value, {bool fallback = false}) {
+      if (value is bool) return value;
+      final v = value?.toString().toLowerCase().trim();
+      if (v == 'true' || v == 'yes') return true;
+      if (v == 'false' || v == 'no') return false;
+      return fallback;
+    }
+
+    String normalizeDate(dynamic value, {DateTime? fallback}) {
+      final raw = parseString(value);
+      final parsedDate = raw.isNotEmpty ? DateTime.tryParse(raw) : null;
+      final date = parsedDate ?? fallback ?? DateTime.now();
+      return date.toIso8601String().split('T').first;
+    }
+
+    final roles = <SecurityRoleData>[];
+    final rawRoles = parsed['roles'];
+    if (rawRoles is List) {
+      for (var i = 0; i < rawRoles.length; i++) {
+        final item = rawRoles[i];
+        if (item is! Map) continue;
+        final map = Map<String, dynamic>.from(item);
+        roles.add(SecurityRoleData(
+          name: parseString(map['name']),
+          tierLabel: parseString(map['tier'] ?? map['tierLabel']),
+          description: parseString(map['description']),
+          createdDate: normalizeDate(map['created'] ?? map['createdDate'], fallback: DateTime.now().subtract(Duration(days: i * 14))),
+        ));
+      }
+    }
+
+    final permissions = <SecurityPermissionData>[];
+    final rawPermissions = parsed['permissions'];
+    if (rawPermissions is List) {
+      for (final item in rawPermissions) {
+        if (item is! Map) continue;
+        final map = Map<String, dynamic>.from(item);
+        permissions.add(SecurityPermissionData(
+          name: parseString(map['name']),
+          resource: parseString(map['resource']),
+          action: parseString(map['action']),
+          description: parseString(map['description']),
+        ));
+      }
+    }
+
+    final accessLogs = <SecurityAccessLogData>[];
+    final rawLogs = parsed['access_logs'] ?? parsed['accessLogs'];
+    if (rawLogs is List) {
+      for (var i = 0; i < rawLogs.length; i++) {
+        final item = rawLogs[i];
+        if (item is! Map) continue;
+        final map = Map<String, dynamic>.from(item);
+        accessLogs.add(SecurityAccessLogData(
+          timestamp: normalizeDate(map['timestamp'] ?? map['time'], fallback: DateTime.now().subtract(Duration(hours: i * 4))),
+          user: parseString(map['user']),
+          action: parseString(map['action']),
+          resource: parseString(map['resource']),
+          status: parseString(map['status']),
+          ipAddress: parseString(map['ip'] ?? map['ipAddress']),
+        ));
+      }
+    }
+
+    final settingsMap = parsed['settings'];
+    final settings = settingsMap is Map
+        ? SecuritySettingsData(
+            sessionTimeoutMinutes: parseInt(settingsMap['sessionTimeoutMinutes'] ?? settingsMap['session_timeout_minutes'], 30),
+            minPasswordLength: parseInt(settingsMap['minPasswordLength'] ?? settingsMap['min_password_length'], 10),
+            requireMfa: parseBool(settingsMap['requireMfa'] ?? settingsMap['require_mfa'], fallback: true),
+            requireUppercase: parseBool(settingsMap['requireUppercase'] ?? settingsMap['require_uppercase'], fallback: true),
+            requireNumbers: parseBool(settingsMap['requireNumbers'] ?? settingsMap['require_numbers'], fallback: true),
+            requireSpecial: parseBool(settingsMap['requireSpecial'] ?? settingsMap['require_special'], fallback: true),
+          )
+        : SecuritySettingsData();
+
+    return SecurityManagementData(
+      roles: roles,
+      permissions: permissions,
+      accessLogs: accessLogs,
+      settings: settings,
+      aiSeeded: true,
+    );
+  }
+
+  QualityManagementData _parseQualityManagement(Map<String, dynamic> parsed) {
+    String parseString(dynamic value) => value?.toString().trim() ?? '';
+
+    List<double> parseDoubleList(dynamic value) {
+      if (value is! List) return [];
+      return value.map((item) {
+        if (item is num) return item.toDouble();
+        return double.tryParse(item.toString()) ?? 0;
+      }).toList();
+    }
+
+    List<String> parseStringList(dynamic value) {
+      if (value is! List) return [];
+      return value.map((item) => item.toString().trim()).where((item) => item.isNotEmpty).toList();
+    }
+
+    String normalizeTargetStatus(String value) {
+      final v = value.toLowerCase();
+      if (v.contains('off')) return 'Off Track';
+      if (v.contains('monitor')) return 'Monitoring';
+      return 'On Track';
+    }
+
+    String normalizeTrend(String value) {
+      final v = value.toLowerCase();
+      if (v.contains('down') || v.contains('decrease')) return 'down';
+      if (v.contains('up') || v.contains('increase')) return 'up';
+      return 'neutral';
+    }
+
+    final plan = parseString(parsed['plan']);
+
+    final targets = <QualityTargetData>[];
+    final rawTargets = parsed['targets'];
+    if (rawTargets is List) {
+      for (final item in rawTargets) {
+        if (item is! Map) continue;
+        final map = Map<String, dynamic>.from(item);
+        targets.add(QualityTargetData(
+          name: parseString(map['name']),
+          metric: parseString(map['metric']),
+          target: parseString(map['target']),
+          current: parseString(map['current']),
+          status: normalizeTargetStatus(parseString(map['status'])),
+        ));
+      }
+    }
+
+    final qaTechniques = <QaTechniqueData>[];
+    final rawQa = parsed['qa_techniques'] ?? parsed['qaTechniques'];
+    if (rawQa is List) {
+      for (final item in rawQa) {
+        if (item is! Map) continue;
+        final map = Map<String, dynamic>.from(item);
+        qaTechniques.add(QaTechniqueData(
+          name: parseString(map['name']),
+          description: parseString(map['description']),
+          frequency: parseString(map['frequency']),
+          standards: parseString(map['standards']),
+        ));
+      }
+    }
+
+    final qcTechniques = <QcTechniqueData>[];
+    final rawQc = parsed['qc_techniques'] ?? parsed['qcTechniques'];
+    if (rawQc is List) {
+      for (final item in rawQc) {
+        if (item is! Map) continue;
+        final map = Map<String, dynamic>.from(item);
+        qcTechniques.add(QcTechniqueData(
+          name: parseString(map['name']),
+          description: parseString(map['description']),
+          frequency: parseString(map['frequency']),
+        ));
+      }
+    }
+
+    final metricSummaries = <QualityMetricSummaryData>[];
+    final rawSummaries = parsed['metric_summaries'] ?? parsed['metricSummaries'];
+    if (rawSummaries is List) {
+      for (final item in rawSummaries) {
+        if (item is! Map) continue;
+        final map = Map<String, dynamic>.from(item);
+        metricSummaries.add(QualityMetricSummaryData(
+          title: parseString(map['title']),
+          value: parseString(map['value']),
+          changeLabel: parseString(map['changeLabel'] ?? map['change_label']),
+          changeContext: parseString(map['changeContext'] ?? map['change_context']),
+          trend: normalizeTrend(parseString(map['trend'])),
+        ));
+      }
+    }
+
+    QualityTrendSeriesData parseTrend(dynamic value, String defaultTitle, String defaultSubtitle) {
+      if (value is! Map) {
+        return QualityTrendSeriesData(title: defaultTitle, subtitle: defaultSubtitle);
+      }
+      final map = Map<String, dynamic>.from(value);
+      return QualityTrendSeriesData(
+        title: parseString(map['title']).isEmpty ? defaultTitle : parseString(map['title']),
+        subtitle: parseString(map['subtitle']).isEmpty ? defaultSubtitle : parseString(map['subtitle']),
+        dataPoints: parseDoubleList(map['dataPoints'] ?? map['data_points']),
+        labels: parseStringList(map['labels']),
+        maxYBuffer: (map['maxYBuffer'] as num?)?.toDouble() ?? 0,
+      );
+    }
+
+    final defectTrend = parseTrend(
+      parsed['defect_trend'] ?? parsed['defectTrend'],
+      'Defect Trend',
+      'Number of defects found over time',
+    );
+    final satisfactionTrend = parseTrend(
+      parsed['satisfaction_trend'] ?? parsed['satisfactionTrend'],
+      'Customer Satisfaction Trend',
+      'Customer satisfaction scores by period',
+    );
+
+    return QualityManagementData(
+      plan: plan,
+      targets: targets,
+      qaTechniques: qaTechniques,
+      qcTechniques: qcTechniques,
+      metricSummaries: metricSummaries,
+      defectTrend: defectTrend,
+      satisfactionTrend: satisfactionTrend,
+      aiSeeded: true,
+    );
+  }
+
+  TechnicalDebtManagementData _parseTechnicalDebtManagement(Map<String, dynamic> parsed) {
+    String parseString(dynamic value) => value?.toString().trim() ?? '';
+
+    double parseDouble(dynamic value, {double fallback = 0}) {
+      if (value == null) return fallback;
+      if (value is num) return value.toDouble();
+      final cleaned = value.toString().replaceAll(RegExp(r'[^0-9.\-]'), '');
+      return double.tryParse(cleaned) ?? fallback;
+    }
+
+    double normalizeProgress(dynamic value) {
+      final raw = parseDouble(value);
+      if (raw == 0) return 0;
+      final ratio = raw > 1 ? raw / 100 : raw;
+      return ratio.clamp(0, 1).toDouble();
+    }
+
+    String normalizeTone(String value) {
+      final v = value.toLowerCase();
+      if (v.contains('critical') || v.contains('danger') || v.contains('risk')) return 'critical';
+      if (v.contains('success') || v.contains('green')) return 'success';
+      if (v.contains('warning') || v.contains('amber') || v.contains('yellow')) return 'warning';
+      if (v.contains('info') || v.contains('blue')) return 'info';
+      return 'neutral';
+    }
+
+    final stats = <TechnicalDebtStatData>[];
+    final rawStats = parsed['stats'];
+    if (rawStats is List) {
+      for (final item in rawStats) {
+        if (item is! Map) continue;
+        final map = Map<String, dynamic>.from(item);
+        stats.add(TechnicalDebtStatData(
+          label: parseString(map['label']),
+          value: parseString(map['value']),
+          supporting: parseString(map['supporting']),
+          tone: normalizeTone(parseString(map['tone'])),
+        ));
+      }
+    }
+
+    final items = <TechnicalDebtItemData>[];
+    final rawItems = parsed['items'];
+    if (rawItems is List) {
+      for (final item in rawItems) {
+        if (item is! Map) continue;
+        final map = Map<String, dynamic>.from(item);
+        items.add(TechnicalDebtItemData(
+          id: parseString(map['id']),
+          title: parseString(map['title']),
+          area: parseString(map['area']),
+          owner: parseString(map['owner']),
+          severity: parseString(map['severity']),
+          status: parseString(map['status']),
+          target: parseString(map['target']),
+        ));
+      }
+    }
+
+    final insights = <TechnicalDebtInsightData>[];
+    final rawInsights = parsed['insights'];
+    if (rawInsights is List) {
+      for (final item in rawInsights) {
+        if (item is! Map) continue;
+        final map = Map<String, dynamic>.from(item);
+        insights.add(TechnicalDebtInsightData(
+          title: parseString(map['title']),
+          subtitle: parseString(map['subtitle']),
+        ));
+      }
+    }
+
+    final tracks = <TechnicalDebtTrackData>[];
+    final rawTracks = parsed['tracks'];
+    if (rawTracks is List) {
+      for (final item in rawTracks) {
+        if (item is! Map) continue;
+        final map = Map<String, dynamic>.from(item);
+        tracks.add(TechnicalDebtTrackData(
+          label: parseString(map['label']),
+          progress: normalizeProgress(map['progress']),
+          tone: normalizeTone(parseString(map['tone'])),
+        ));
+      }
+    }
+
+    final owners = <TechnicalDebtOwnerData>[];
+    final rawOwners = parsed['owners'];
+    if (rawOwners is List) {
+      for (final item in rawOwners) {
+        if (item is! Map) continue;
+        final map = Map<String, dynamic>.from(item);
+        owners.add(TechnicalDebtOwnerData(
+          name: parseString(map['name']),
+          count: parseString(map['count']),
+          note: parseString(map['note']),
+        ));
+      }
+    }
+
+    return TechnicalDebtManagementData(
+      stats: stats,
+      items: items,
+      insights: insights,
+      tracks: tracks,
+      owners: owners,
+      aiSeeded: true,
+    );
+  }
+
+  ProcurementWorkspaceData _parseProcurementWorkspace(Map<String, dynamic> parsed) {
+    String parseString(dynamic value) => value?.toString().trim() ?? '';
+
+    int parseInt(dynamic value) {
+      if (value == null) return 0;
+      if (value is num) return value.toInt();
+      final cleaned = value.toString().replaceAll(RegExp(r'[^0-9\-]'), '');
+      return int.tryParse(cleaned) ?? 0;
+    }
+
+    double parseDouble(dynamic value) {
+      if (value == null) return 0;
+      if (value is num) return value.toDouble();
+      final cleaned = value.toString().replaceAll(RegExp(r'[^0-9\.\-]'), '');
+      return double.tryParse(cleaned) ?? 0;
+    }
+
+    double normalizeRatio(dynamic value, {double fallback = 0}) {
+      final raw = parseDouble(value);
+      if (raw == 0) return fallback;
+      final ratio = raw > 1 ? raw / 100 : raw;
+      if (ratio.isNaN) return fallback;
+      return ratio.clamp(0, 1).toDouble();
+    }
+
+    int normalizePercentInt(dynamic value) {
+      final raw = parseDouble(value);
+      if (raw <= 0) return 0;
+      final percent = raw <= 1 ? raw * 100 : raw;
+      return percent.round().clamp(0, 100);
+    }
+
+    String normalizeDate(dynamic value, {DateTime? fallback}) {
+      final raw = parseString(value);
+      final parsedDate = raw.isNotEmpty ? DateTime.tryParse(raw) : null;
+      final date = parsedDate ?? fallback ?? DateTime.now();
+      return date.toIso8601String().split('T').first;
+    }
+
+    String normalizeItemStatus(String value) {
+      final v = value.toLowerCase();
+      if (v.contains('rfq')) return 'rfq review';
+      if (v.contains('vendor')) return 'vendor selection';
+      if (v.contains('deliver')) return 'delivered';
+      if (v.contains('order')) return 'ordered';
+      return 'planning';
+    }
+
+    String normalizePriority(String value) {
+      final v = value.toLowerCase();
+      if (v.contains('critical')) return 'critical';
+      if (v.contains('high')) return 'high';
+      if (v.contains('low')) return 'low';
+      return 'medium';
+    }
+
+    String normalizeStrategyStatus(String value) {
+      final v = value.toLowerCase();
+      if (v.contains('active')) return 'active';
+      return 'draft';
+    }
+
+    String normalizeVendorTaskStatus(String value) {
+      final v = value.toLowerCase();
+      if (v.contains('review')) return 'in review';
+      if (v.contains('complete') || v.contains('done')) return 'complete';
+      return 'pending';
+    }
+
+    String normalizeRiskSeverity(String value) {
+      final v = value.toLowerCase();
+      if (v.contains('high')) return 'high';
+      if (v.contains('low')) return 'low';
+      return 'medium';
+    }
+
+    String normalizeRfqStatus(String value) {
+      final v = value.toLowerCase();
+      if (v.contains('award')) return 'awarded';
+      if (v.contains('eval')) return 'evaluation';
+      if (v.contains('market')) return 'in market';
+      if (v.contains('review')) return 'review';
+      return 'draft';
+    }
+
+    String normalizePurchaseOrderStatus(String value) {
+      final v = value.toLowerCase();
+      if (v.contains('received')) return 'received';
+      if (v.contains('transit') || v.contains('ship')) return 'in transit';
+      if (v.contains('issued')) return 'issued';
+      return 'awaiting approval';
+    }
+
+    String normalizeTrackableStatus(String value) {
+      final v = value.toLowerCase();
+      if (v.contains('deliver')) return 'delivered';
+      if (v.contains('track')) return 'not tracked';
+      if (v.contains('transit') || v.contains('ship')) return 'in transit';
+      return 'not tracked';
+    }
+
+    List<T> parseList<T>(String key, T Function(Map<String, dynamic>, int) parser) {
+      final list = parsed[key];
+      if (list is! List) return [];
+      final result = <T>[];
+      for (var i = 0; i < list.length; i++) {
+        final item = list[i];
+        if (item is! Map) continue;
+        result.add(parser(Map<String, dynamic>.from(item), i));
+      }
+      return result;
+    }
+
+    final items = parseList('items', (map, index) {
+      final fallbackDate = DateTime.now().add(Duration(days: 21 + (index * 7)));
+      return ProcurementItemData(
+        name: parseString(map['name'] ?? map['item']),
+        description: parseString(map['description']),
+        category: parseString(map['category']),
+        status: normalizeItemStatus(parseString(map['status'])),
+        priority: normalizePriority(parseString(map['priority'])),
+        budget: parseInt(map['budget']),
+        estimatedDelivery: normalizeDate(map['estimated_delivery'] ?? map['estimatedDelivery'], fallback: fallbackDate),
+        progress: normalizeRatio(map['progress']),
+      );
+    });
+
+    final strategies = parseList('strategies', (map, _) {
+      return ProcurementStrategyData(
+        title: parseString(map['title']),
+        status: normalizeStrategyStatus(parseString(map['status'])),
+        itemCount: parseInt(map['item_count'] ?? map['itemCount']),
+        description: parseString(map['description']),
+      );
+    });
+
+    final vendors = parseList('vendors', (map, _) {
+      return ProcurementVendorData(
+        initials: parseString(map['initials']),
+        name: parseString(map['name']),
+        category: parseString(map['category']),
+        rating: parseInt(map['rating']).clamp(1, 5),
+        approved: map['approved'] ?? false,
+        preferred: map['preferred'] ?? false,
+      );
+    });
+
+    final vendorHealthMetrics = parseList('vendor_health_metrics', (map, _) {
+      return ProcurementVendorHealthMetricData(
+        category: parseString(map['category']),
+        score: normalizeRatio(map['score']),
+        change: parseString(map['change']),
+      );
+    });
+
+    final vendorOnboardingTasks = parseList('vendor_onboarding_tasks', (map, index) {
+      final fallbackDate = DateTime.now().add(Duration(days: 10 + (index * 5)));
+      return ProcurementVendorOnboardingTaskData(
+        title: parseString(map['title']),
+        owner: parseString(map['owner']),
+        dueDate: normalizeDate(map['due_date'] ?? map['dueDate'], fallback: fallbackDate),
+        status: normalizeVendorTaskStatus(parseString(map['status'])),
+      );
+    });
+
+    final vendorRiskItems = parseList('vendor_risk_items', (map, index) {
+      final fallbackDate = DateTime.now().subtract(Duration(days: 10 + (index * 8)));
+      return ProcurementVendorRiskData(
+        vendor: parseString(map['vendor']),
+        risk: parseString(map['risk']),
+        severity: normalizeRiskSeverity(parseString(map['severity'])),
+        lastIncident: normalizeDate(map['last_incident'] ?? map['lastIncident'], fallback: fallbackDate),
+      );
+    });
+
+    final rfqs = parseList('rfqs', (map, index) {
+      final fallbackDate = DateTime.now().add(Duration(days: 14 + (index * 6)));
+      return ProcurementRfqData(
+        title: parseString(map['title']),
+        category: parseString(map['category']),
+        owner: parseString(map['owner']),
+        dueDate: normalizeDate(map['due_date'] ?? map['dueDate'], fallback: fallbackDate),
+        invited: parseInt(map['invited']),
+        responses: parseInt(map['responses']),
+        budget: parseInt(map['budget']),
+        status: normalizeRfqStatus(parseString(map['status'])),
+        priority: normalizePriority(parseString(map['priority'])),
+      );
+    });
+
+    final rfqCriteria = parseList('rfq_criteria', (map, _) {
+      return ProcurementRfqCriterionData(
+        label: parseString(map['label']),
+        weight: normalizeRatio(map['weight']),
+      );
+    });
+
+    final purchaseOrders = parseList('purchase_orders', (map, index) {
+      final orderedDate = DateTime.now().subtract(Duration(days: 3 + (index * 2)));
+      final expectedDate = DateTime.now().add(Duration(days: 18 + (index * 4)));
+      return ProcurementPurchaseOrderData(
+        id: parseString(map['id']),
+        vendor: parseString(map['vendor']),
+        category: parseString(map['category']),
+        owner: parseString(map['owner']),
+        orderedDate: normalizeDate(map['ordered_date'] ?? map['orderedDate'], fallback: orderedDate),
+        expectedDate: normalizeDate(map['expected_date'] ?? map['expectedDate'], fallback: expectedDate),
+        amount: parseInt(map['amount']),
+        progress: normalizeRatio(map['progress']),
+        status: normalizePurchaseOrderStatus(parseString(map['status'])),
+      );
+    });
+
+    final trackableItems = parseList('trackable_items', (map, _) {
+      final events = <ProcurementTimelineEventData>[];
+      final rawEvents = map['events'];
+      if (rawEvents is List) {
+        for (var i = 0; i < rawEvents.length; i++) {
+          final event = rawEvents[i];
+          if (event is! Map) continue;
+          final fallbackDate = DateTime.now().add(Duration(days: i * 4));
+          events.add(ProcurementTimelineEventData(
+            title: parseString(event['title']),
+            description: parseString(event['description']),
+            subtext: parseString(event['subtext']),
+            date: normalizeDate(event['date'], fallback: fallbackDate),
+          ));
+        }
+      }
+      return ProcurementTrackableItemData(
+        name: parseString(map['name']),
+        description: parseString(map['description']),
+        orderStatus: parseString(map['order_status'] ?? map['orderStatus']),
+        currentStatus: normalizeTrackableStatus(parseString(map['current_status'] ?? map['currentStatus'])),
+        lastUpdate: parseString(map['last_update'] ?? map['lastUpdate']).isEmpty
+            ? null
+            : normalizeDate(map['last_update'] ?? map['lastUpdate']),
+        events: events,
+      );
+    });
+
+    final trackingAlerts = parseList('tracking_alerts', (map, index) {
+      final fallbackDate = DateTime.now().subtract(Duration(days: index * 3));
+      return ProcurementTrackingAlertData(
+        title: parseString(map['title']),
+        description: parseString(map['description']),
+        severity: normalizeRiskSeverity(parseString(map['severity'])),
+        date: normalizeDate(map['date'], fallback: fallbackDate),
+      );
+    });
+
+    final carrierPerformance = parseList('carrier_performance', (map, _) {
+      return ProcurementCarrierPerformanceData(
+        carrier: parseString(map['carrier']),
+        onTimeRate: normalizePercentInt(map['on_time_rate'] ?? map['onTimeRate']),
+        avgDays: parseInt(map['avg_days'] ?? map['avgDays']),
+      );
+    });
+
+    final reportKpis = parseList('report_kpis', (map, _) {
+      return ProcurementReportKpiData(
+        label: parseString(map['label']),
+        value: parseString(map['value']),
+        delta: parseString(map['delta']),
+        positive: map['positive'] ?? true,
+      );
+    });
+
+    final spendBreakdown = parseList('spend_breakdown', (map, _) {
+      return ProcurementSpendBreakdownData(
+        label: parseString(map['label']),
+        amount: parseInt(map['amount']),
+        percent: normalizeRatio(map['percent']),
+        colorValue: parseInt(map['colorValue'] ?? map['color_value']),
+      );
+    });
+
+    final leadTimeMetrics = parseList('lead_time_metrics', (map, _) {
+      return ProcurementLeadTimeMetricData(
+        label: parseString(map['label']),
+        onTimeRate: normalizeRatio(map['on_time_rate'] ?? map['onTimeRate']),
+      );
+    });
+
+    final savingsOpportunities = parseList('savings_opportunities', (map, _) {
+      return ProcurementSavingsOpportunityData(
+        title: parseString(map['title']),
+        value: parseString(map['value']),
+        owner: parseString(map['owner']),
+      );
+    });
+
+    final complianceMetrics = parseList('compliance_metrics', (map, _) {
+      return ProcurementComplianceMetricData(
+        label: parseString(map['label']),
+        value: normalizeRatio(map['value']),
+      );
+    });
+
+    return ProcurementWorkspaceData(
+      items: items,
+      strategies: strategies,
+      vendors: vendors,
+      vendorHealthMetrics: vendorHealthMetrics,
+      vendorOnboardingTasks: vendorOnboardingTasks,
+      vendorRiskItems: vendorRiskItems,
+      rfqs: rfqs,
+      rfqCriteria: rfqCriteria,
+      purchaseOrders: purchaseOrders,
+      trackableItems: trackableItems,
+      trackingAlerts: trackingAlerts,
+      carrierPerformance: carrierPerformance,
+      reportKpis: reportKpis,
+      spendBreakdown: spendBreakdown,
+      leadTimeMetrics: leadTimeMetrics,
+      savingsOpportunities: savingsOpportunities,
+      complianceMetrics: complianceMetrics,
+      aiSeeded: true,
+    );
+  }
+
   String _opportunitiesPrompt(String context) {
     final c = _escape(context);
     return '''
@@ -504,6 +1436,364 @@ Guidelines:
 - Be specific and actionable (no placeholders).
 - Use concise text; do not add extra fields.
 - 5–12 items is ideal.
+
+Project context:
+"""
+$c
+"""
+''';
+  }
+
+  String _procurementWorkspacePrompt(String context) {
+    final c = _escape(context);
+    return '''
+From the project context below, generate a procurement workspace dataset to populate all procurement tables.
+
+Return ONLY valid JSON using this exact structure:
+{
+  "items": [
+    {
+      "name": "Item name",
+      "description": "Short description",
+      "category": "Category",
+      "status": "planning | rfq review | vendor selection | ordered | delivered",
+      "priority": "critical | high | medium | low",
+      "budget": 85000,
+      "estimated_delivery": "YYYY-MM-DD",
+      "progress": 0.35
+    }
+  ],
+  "strategies": [
+    {
+      "title": "Strategy title",
+      "status": "active | draft",
+      "item_count": 4,
+      "description": "Strategy description"
+    }
+  ],
+  "vendors": [
+    {
+      "name": "Vendor name",
+      "category": "Category",
+      "rating": 4,
+      "approved": true,
+      "preferred": false
+    }
+  ],
+  "vendor_health_metrics": [
+    { "category": "Category", "score": 0.82, "change": "+3% vs last month" }
+  ],
+  "vendor_onboarding_tasks": [
+    { "title": "Task", "owner": "Name", "due_date": "YYYY-MM-DD", "status": "pending | in review | complete" }
+  ],
+  "vendor_risk_items": [
+    { "vendor": "Vendor name", "risk": "Risk summary", "severity": "low | medium | high", "last_incident": "YYYY-MM-DD" }
+  ],
+  "rfqs": [
+    {
+      "title": "RFQ title",
+      "category": "Category",
+      "owner": "Owner name",
+      "due_date": "YYYY-MM-DD",
+      "invited": 6,
+      "responses": 3,
+      "budget": 120000,
+      "status": "draft | review | in market | evaluation | awarded",
+      "priority": "critical | high | medium | low"
+    }
+  ],
+  "rfq_criteria": [
+    { "label": "Criteria label", "weight": 0.25 }
+  ],
+  "purchase_orders": [
+    {
+      "id": "PO-1001",
+      "vendor": "Vendor name",
+      "category": "Category",
+      "owner": "Owner name",
+      "ordered_date": "YYYY-MM-DD",
+      "expected_date": "YYYY-MM-DD",
+      "amount": 72000,
+      "progress": 0.4,
+      "status": "awaiting approval | issued | in transit | received"
+    }
+  ],
+  "trackable_items": [
+    {
+      "name": "Item name",
+      "description": "Tracking description",
+      "order_status": "PO-1001",
+      "current_status": "in transit | not tracked | delivered",
+      "last_update": "YYYY-MM-DD",
+      "events": [
+        { "title": "Milestone", "description": "Details", "subtext": "Location/Owner", "date": "YYYY-MM-DD" }
+      ]
+    }
+  ],
+  "tracking_alerts": [
+    { "title": "Alert title", "description": "Alert details", "severity": "low | medium | high", "date": "YYYY-MM-DD" }
+  ],
+  "carrier_performance": [
+    { "carrier": "Carrier", "on_time_rate": 86, "avg_days": 6 }
+  ],
+  "report_kpis": [
+    { "label": "KPI label", "value": "92%", "delta": "+4% vs last month", "positive": true }
+  ],
+  "spend_breakdown": [
+    { "label": "Category", "amount": 250000, "percent": 0.35 }
+  ],
+  "lead_time_metrics": [
+    { "label": "Category", "on_time_rate": 0.82 }
+  ],
+  "savings_opportunities": [
+    { "title": "Opportunity", "value": "\$45k", "owner": "Owner name" }
+  ],
+  "compliance_metrics": [
+    { "label": "Metric", "value": 0.9 }
+  ]
+}
+
+Guidelines:
+- Use realistic, specific entries tied to the project context (no placeholders).
+- Items: 6-10 rows. Vendors: 4-8. RFQs: 3-6. Purchase orders: 3-6.
+- Trackable items: 3-6 with 3-4 events each.
+- RFQ criteria: 4-6 items; weights should sum to ~1.0.
+- Spend breakdown percents should sum to ~1.0.
+- Dates must be in YYYY-MM-DD format.
+- Budgets and amounts must be numbers (no currency symbols).
+
+Project context:
+"""
+$c
+"""
+''';
+  }
+
+  String _lessonsLearnedPrompt(String context) {
+    final c = _escape(context);
+    return '''
+From the project context below, generate lessons learned entries and benefits.
+
+Return ONLY valid JSON using this exact structure:
+{
+  "benefits": [
+    "Short benefit statement"
+  ],
+  "entries": [
+    {
+      "id": "LL-001",
+      "lesson": "Concise lesson statement",
+      "type": "Success | Challenge | Insight",
+      "category": "Process/People/Technology/etc.",
+      "phase": "Initiation/Planning/Execution/Closeout/etc.",
+      "impact": "High | Medium | Low",
+      "status": "Open/In Review/Closed/etc.",
+      "submittedBy": "Name",
+      "date": "YYYY-MM-DD",
+      "highlight": false
+    }
+  ]
+}
+
+Guidelines:
+- Benefits: 4-7 items.
+- Entries: 6-12 items, grounded in the project context.
+- IDs should be unique and sequential.
+- Keep lesson text concise and actionable.
+- Dates must be in YYYY-MM-DD format.
+
+Project context:
+"""
+$c
+"""
+''';
+  }
+
+  String _securityManagementPrompt(String context) {
+    final c = _escape(context);
+    return '''
+From the project context below, generate security management data.
+
+Return ONLY valid JSON using this exact structure:
+{
+  "roles": [
+    {
+      "name": "Admin",
+      "tier": "Tier 1",
+      "description": "Full system access",
+      "created": "YYYY-MM-DD"
+    }
+  ],
+  "permissions": [
+    {
+      "name": "Create Contract",
+      "resource": "contracts",
+      "action": "create",
+      "description": "Create new contracts"
+    }
+  ],
+  "settings": {
+    "sessionTimeoutMinutes": 30,
+    "minPasswordLength": 10,
+    "requireMfa": true,
+    "requireUppercase": true,
+    "requireNumbers": true,
+    "requireSpecial": true
+  },
+  "access_logs": [
+    {
+      "timestamp": "YYYY-MM-DD",
+      "user": "Name",
+      "action": "Login",
+      "resource": "auth",
+      "status": "Success",
+      "ip": "10.0.0.10"
+    }
+  ]
+}
+
+Guidelines:
+- Roles: 4-8 entries, distinct tiers.
+- Permissions: 10-16 entries across resources and actions.
+- Access logs: 8-14 entries with mixed success/failure.
+- Tie the content to the project context; no placeholders.
+- Dates must be in YYYY-MM-DD format.
+
+Project context:
+"""
+$c
+"""
+''';
+  }
+
+  String _qualityManagementPrompt(String context) {
+    final c = _escape(context);
+    return '''
+From the project context below, generate quality management data.
+
+Return ONLY valid JSON using this exact structure:
+{
+  "plan": "Concise quality plan paragraph",
+  "targets": [
+    {
+      "name": "Defect escape rate",
+      "metric": "% escaped",
+      "target": "<2%",
+      "current": "3%",
+      "status": "On Track | Monitoring | Off Track"
+    }
+  ],
+  "qa_techniques": [
+    {
+      "name": "Peer code reviews",
+      "description": "Structured review of pull requests",
+      "frequency": "Every sprint",
+      "standards": "Checklist v2"
+    }
+  ],
+  "qc_techniques": [
+    {
+      "name": "Regression testing",
+      "description": "Validate core workflows before release",
+      "frequency": "Weekly"
+    }
+  ],
+  "metric_summaries": [
+    {
+      "title": "Defect Density",
+      "value": "0.8",
+      "changeLabel": "-12%",
+      "changeContext": "per 1000 LOC",
+      "trend": "up | down | neutral"
+    }
+  ],
+  "defect_trend": {
+    "title": "Defect Trend",
+    "subtitle": "Number of defects found over time",
+    "dataPoints": [12, 9, 15, 8, 6, 7],
+    "labels": ["Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"],
+    "maxYBuffer": 4
+  },
+  "satisfaction_trend": {
+    "title": "Customer Satisfaction Trend",
+    "subtitle": "Customer satisfaction scores by period",
+    "dataPoints": [4.0, 4.2, 4.3, 4.5, 4.6, 4.6],
+    "labels": ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+    "maxYBuffer": 1
+  }
+}
+
+Guidelines:
+- Plan: 2-4 sentences, grounded in the project context.
+- Targets: 4-8 entries, mix leading and lagging indicators.
+- QA techniques: 4-7 entries with clear frequency/standards.
+- QC techniques: 4-7 entries with clear frequency.
+- Metric summaries: 4 entries.
+- Trends: 6 data points each with matching labels.
+- No placeholders.
+
+Project context:
+"""
+$c
+"""
+''';
+  }
+
+  String _technicalDebtManagementPrompt(String context) {
+    final c = _escape(context);
+    return '''
+From the project context below, generate technical debt management data.
+
+Return ONLY valid JSON using this exact structure:
+{
+  "stats": [
+    {
+      "label": "Open debt items",
+      "value": "18",
+      "supporting": "6 critical",
+      "tone": "critical | warning | info | success | neutral"
+    }
+  ],
+  "items": [
+    {
+      "id": "TD-014",
+      "title": "Auth token refresh gaps",
+      "area": "Security",
+      "owner": "Platform",
+      "severity": "Critical",
+      "status": "In progress",
+      "target": "Oct 10"
+    }
+  ],
+  "tracks": [
+    {
+      "label": "Critical fixes",
+      "progress": 0.72,
+      "tone": "critical | warning | info | success | neutral"
+    }
+  ],
+  "insights": [
+    {
+      "title": "Incomplete handoff docs",
+      "subtitle": "5 items tied to missing runbooks."
+    }
+  ],
+  "owners": [
+    {
+      "name": "Platform team",
+      "count": "4 items",
+      "note": "Coverage solid"
+    }
+  ]
+}
+
+Guidelines:
+- Stats: 4 entries.
+- Items: 6-10 debt register rows tied to project context.
+- Tracks: 4 entries with progress between 0-1.
+- Insights: 3-5 items.
+- Owners: 3-5 items.
+- No placeholders.
 
 Project context:
 """

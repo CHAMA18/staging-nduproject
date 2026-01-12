@@ -1,6 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
@@ -22,17 +26,34 @@ class LessonsLearnedScreen extends StatefulWidget {
 }
 
 class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
-
   final TextEditingController _searchController = TextEditingController();
-  static const List<_LessonEntry> _seedEntries = [];
+  ProjectDataProvider? _provider;
+  bool _isGenerating = false;
+  bool _aiSeeded = false;
+  List<String> _benefits = [];
 
-  late final List<_LessonEntry> _entries;
+  late List<_LessonEntry> _entries;
 
   @override
   void initState() {
     super.initState();
-    _entries = List<_LessonEntry>.of(_seedEntries);
+    _entries = [];
     _searchController.addListener(_handleSearchChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final data = ProjectDataHelper.getData(context);
+      _loadLessonsData(data.lessonsLearnedData);
+      if (_entries.isEmpty && !_aiSeeded) {
+        _generateLessonsFromContext();
+      } else {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _provider ??= ProjectDataInherited.maybeOf(context);
   }
 
   @override
@@ -44,6 +65,102 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
 
   void _handleSearchChanged() {
     setState(() {});
+  }
+
+  void _loadLessonsData(LessonsLearnedData data) {
+    _aiSeeded = data.aiSeeded;
+    _benefits = List<String>.from(data.benefits);
+    _entries = data.entries
+        .map((entry) => _LessonEntry(
+              id: entry.id,
+              lesson: entry.lesson,
+              type: entry.type,
+              category: entry.category,
+              phase: entry.phase,
+              impact: entry.impact,
+              status: entry.status,
+              submittedBy: entry.submittedBy,
+              date: entry.date,
+              highlight: entry.highlight,
+            ))
+        .toList();
+  }
+
+  LessonsLearnedData _buildLessonsData() {
+    return LessonsLearnedData(
+      benefits: List<String>.from(_benefits),
+      entries: _entries
+          .map((entry) => LessonsLearnedEntry(
+                id: entry.id,
+                lesson: entry.lesson,
+                type: entry.type,
+                category: entry.category,
+                phase: entry.phase,
+                impact: entry.impact,
+                status: entry.status,
+                submittedBy: entry.submittedBy,
+                date: entry.date,
+                highlight: entry.highlight,
+              ))
+          .toList(),
+      aiSeeded: _aiSeeded,
+    );
+  }
+
+  Future<void> _saveLessons({bool showSnack = false}) async {
+    final provider = _provider;
+    if (provider == null) return;
+    provider.updateField(
+      (data) => data.copyWith(lessonsLearnedData: _buildLessonsData()),
+    );
+    final success = await provider.saveToFirebase(checkpoint: 'lessons_learned');
+    if (!mounted || !showSnack) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success ? 'Lessons learned saved' : 'Unable to save lessons learned'),
+        backgroundColor: success ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+      ),
+    );
+  }
+
+  Future<void> _generateLessonsFromContext() async {
+    if (_isGenerating) return;
+    setState(() => _isGenerating = true);
+    try {
+      final data = ProjectDataHelper.getData(context);
+      final contextText = ProjectDataHelper.buildExecutivePlanContext(data, sectionLabel: 'Lessons Learned');
+      final fallbackContext = ProjectDataHelper.buildFepContext(data, sectionLabel: 'Lessons Learned');
+      final ai = OpenAiServiceSecure();
+      final generated = await ai.generateLessonsLearnedFromContext(
+        contextText.trim().isEmpty ? fallbackContext : contextText,
+      );
+      if (!mounted) return;
+      setState(() {
+        _aiSeeded = true;
+        _benefits = List<String>.from(generated.benefits);
+        _entries = generated.entries
+            .map((entry) => _LessonEntry(
+                  id: entry.id,
+                  lesson: entry.lesson,
+                  type: entry.type,
+                  category: entry.category,
+                  phase: entry.phase,
+                  impact: entry.impact,
+                  status: entry.status,
+                  submittedBy: entry.submittedBy,
+                  date: entry.date,
+                  highlight: entry.highlight,
+                ))
+            .toList();
+      });
+      await _saveLessons();
+    } catch (e) {
+      debugPrint('AI lessons learned generation failed: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isGenerating = false);
+      }
+    }
   }
 
   Future<void> _openAddLessonDialog() async {
@@ -61,9 +178,7 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
       _entries.insert(0, newEntry);
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Lesson added to Project Tasks.')),
-    );
+    _saveLessons(showSnack: true);
   }
 
   List<_LessonEntry> get _filteredEntries {
@@ -334,6 +449,11 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
   }
 
   Widget _summaryRightColumn() {
+    final successCount = _entries.where((entry) => entry.type.toLowerCase().contains('success')).length;
+    final challengeCount = _entries.where((entry) => entry.type.toLowerCase().contains('challenge')).length;
+    final insightCount = _entries.where((entry) => entry.type.toLowerCase().contains('insight')).length;
+    final benefits = _benefits.where((benefit) => benefit.trim().isNotEmpty).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -342,23 +462,28 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 16),
-        _benefitRow('Prevents repeating the same mistakes'),
-        const SizedBox(height: 10),
-        _benefitRow('Improves future project performance'),
-        const SizedBox(height: 10),
-        _benefitRow('Enhances organizational knowledge'),
-        const SizedBox(height: 10),
-        _benefitRow('Promotes continuous improvement culture'),
-        const SizedBox(height: 10),
-        _benefitRow('Reduces risk in similar future projects'),
+        if (benefits.isEmpty)
+          Text(
+            'Benefits will appear once lessons are captured.',
+            style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.4),
+          )
+        else
+          Column(
+            children: [
+              for (var i = 0; i < benefits.length; i++) ...[
+                _benefitRow(benefits[i]),
+                if (i != benefits.length - 1) const SizedBox(height: 10),
+              ],
+            ],
+          ),
         const SizedBox(height: 24),
         Row(
-          children: const [
-            _SummaryStat(label: 'Successes', value: '4', color: Color(0xFF36C275)),
-            SizedBox(width: 16),
-            _SummaryStat(label: 'Challenges', value: '4', color: Color(0xFFFFB74D)),
-            SizedBox(width: 16),
-            _SummaryStat(label: 'Insights', value: '4', color: Color(0xFF5C6BC0)),
+          children: [
+            _SummaryStat(label: 'Successes', value: '$successCount', color: const Color(0xFF36C275)),
+            const SizedBox(width: 16),
+            _SummaryStat(label: 'Challenges', value: '$challengeCount', color: const Color(0xFFFFB74D)),
+            const SizedBox(width: 16),
+            _SummaryStat(label: 'Insights', value: '$insightCount', color: const Color(0xFF5C6BC0)),
           ],
         ),
       ],
@@ -582,7 +707,6 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
   Widget _buildTasksTable(List<_LessonEntry> entries) {
     const headerStyle = TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87);
     const cellStyle = TextStyle(fontSize: 13, color: Colors.black87);
-    const subStyle = TextStyle(fontSize: 12, color: Colors.black54);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -672,7 +796,6 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(entries[i].submittedBy, style: cellStyle),
-                                    Text('Product manager', style: subStyle),
                                   ],
                                 ),
                               ),

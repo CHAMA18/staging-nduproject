@@ -698,15 +698,15 @@ class _CardRow extends StatelessWidget {
       );
     }
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    // Stack the info cards vertically so Assumptions / Constraints / Risks appear
+    // on top of each other instead of side-by-side.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (int i = 0; i < cards.length; i++)
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(right: i == cards.length - 1 ? 0 : 18),
-              child: _InfoCard(data: cards[i]),
-            ),
+          Padding(
+            padding: EdgeInsets.only(bottom: i == cards.length - 1 ? 0 : 18),
+            child: _InfoCard(data: cards[i]),
           ),
       ],
     );

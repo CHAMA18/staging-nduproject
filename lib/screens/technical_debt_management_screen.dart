@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -18,27 +22,226 @@ class TechnicalDebtManagementScreen extends StatefulWidget {
 
 class _TechnicalDebtManagementScreenState extends State<TechnicalDebtManagementScreen> {
   final Set<String> _selectedFilters = {'All'};
+  ProjectDataProvider? _provider;
+  bool _aiSeeded = false;
+  bool _isGenerating = false;
+  List<TechnicalDebtStatData> _stats = [];
+  List<TechnicalDebtItemData> _debtItems = [];
+  List<TechnicalDebtInsightData> _rootCauses = [];
+  List<TechnicalDebtTrackData> _tracks = [];
+  List<TechnicalDebtOwnerData> _owners = [];
 
-  final List<_DebtItem> _debtItems = const [
-    _DebtItem('TD-014', 'Auth token refresh gaps', 'Security', 'Platform', 'Critical', 'In progress', 'Oct 10'),
-    _DebtItem('TD-021', 'Legacy API throttling', 'Performance', 'Core services', 'High', 'Backlog', 'Oct 18'),
-    _DebtItem('TD-036', 'Uncached reporting queries', 'Analytics', 'Data team', 'Medium', 'Planned', 'Nov 02'),
-    _DebtItem('TD-041', 'Retry policy inconsistencies', 'Reliability', 'Integration', 'High', 'In review', 'Oct 25'),
-    _DebtItem('TD-052', 'Audit log schema drift', 'Compliance', 'Security', 'Medium', 'Planned', 'Nov 12'),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final data = ProjectDataHelper.getData(context);
+      _loadTechnicalDebt(data.technicalDebtManagementData);
+      final hasContent = _debtItems.isNotEmpty || _stats.isNotEmpty || _tracks.isNotEmpty || _rootCauses.isNotEmpty;
+      if (!hasContent && !_aiSeeded) {
+        _generateTechnicalDebt();
+      } else {
+        setState(() {});
+      }
+    });
+  }
 
-  final List<_DebtInsight> _rootCauses = const [
-    _DebtInsight('Incomplete handoff docs', '5 items tied to missing runbooks.'),
-    _DebtInsight('Non-standard error handling', '4 services require alignment.'),
-    _DebtInsight('Deferred infra upgrades', '3 hotspots awaiting capacity swap.'),
-  ];
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _provider ??= ProjectDataInherited.maybeOf(context);
+  }
 
-  final List<_RemediationTrack> _tracks = const [
-    _RemediationTrack('Critical fixes', 0.72, Color(0xFFEF4444)),
-    _RemediationTrack('Security hardening', 0.58, Color(0xFFF97316)),
-    _RemediationTrack('Performance backlog', 0.44, Color(0xFF6366F1)),
-    _RemediationTrack('Reliability guardrails', 0.66, Color(0xFF10B981)),
-  ];
+  void _loadTechnicalDebt(TechnicalDebtManagementData data) {
+    _aiSeeded = data.aiSeeded;
+    _stats = List<TechnicalDebtStatData>.from(data.stats);
+    _debtItems = List<TechnicalDebtItemData>.from(data.items);
+    _rootCauses = List<TechnicalDebtInsightData>.from(data.insights);
+    _tracks = List<TechnicalDebtTrackData>.from(data.tracks);
+    _owners = List<TechnicalDebtOwnerData>.from(data.owners);
+  }
+
+  TechnicalDebtManagementData _buildTechnicalDebt() {
+    return TechnicalDebtManagementData(
+      stats: _stats,
+      items: _debtItems,
+      insights: _rootCauses,
+      tracks: _tracks,
+      owners: _owners,
+      aiSeeded: _aiSeeded,
+    );
+  }
+
+  Future<void> _saveTechnicalDebt() async {
+    final provider = _provider;
+    if (provider == null) return;
+    provider.updateField((data) => data.copyWith(technicalDebtManagementData: _buildTechnicalDebt()));
+    await provider.saveToFirebase(checkpoint: 'technical_debt_management');
+  }
+
+  Future<void> _generateTechnicalDebt() async {
+    if (_isGenerating) return;
+    setState(() => _isGenerating = true);
+    try {
+      final data = ProjectDataHelper.getData(context);
+      final contextText = ProjectDataHelper.buildExecutivePlanContext(data, sectionLabel: 'Technical Debt Management');
+      final fallbackContext = ProjectDataHelper.buildFepContext(data, sectionLabel: 'Technical Debt Management');
+      final ai = OpenAiServiceSecure();
+      final generated = await ai.generateTechnicalDebtManagementFromContext(
+        contextText.trim().isEmpty ? fallbackContext : contextText,
+      );
+      if (!mounted) return;
+      setState(() {
+        _aiSeeded = true;
+        _stats = List<TechnicalDebtStatData>.from(generated.stats);
+        _debtItems = List<TechnicalDebtItemData>.from(generated.items);
+        _rootCauses = List<TechnicalDebtInsightData>.from(generated.insights);
+        _tracks = List<TechnicalDebtTrackData>.from(generated.tracks);
+        _owners = List<TechnicalDebtOwnerData>.from(generated.owners);
+      });
+      await _saveTechnicalDebt();
+    } catch (e) {
+      debugPrint('AI technical debt generation failed: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isGenerating = false);
+      }
+    }
+  }
+
+  Future<void> _showAddDebtDialog() async {
+    final idController = TextEditingController();
+    final titleController = TextEditingController();
+    final areaController = TextEditingController();
+    final ownerController = TextEditingController();
+    final targetController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    String severity = 'Medium';
+    String status = 'Planned';
+
+    final result = await showDialog<TechnicalDebtItemData>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setInnerState) {
+            return AlertDialog(
+              title: const Text('Add Debt Item'),
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: idController,
+                        decoration: const InputDecoration(labelText: 'ID'),
+                        validator: (value) => (value == null || value.trim().isEmpty) ? 'Enter an ID' : null,
+                      ),
+                      TextFormField(
+                        controller: titleController,
+                        decoration: const InputDecoration(labelText: 'Item'),
+                        validator: (value) => (value == null || value.trim().isEmpty) ? 'Enter an item' : null,
+                      ),
+                      TextFormField(
+                        controller: areaController,
+                        decoration: const InputDecoration(labelText: 'Area'),
+                        validator: (value) => (value == null || value.trim().isEmpty) ? 'Enter an area' : null,
+                      ),
+                      TextFormField(
+                        controller: ownerController,
+                        decoration: const InputDecoration(labelText: 'Owner'),
+                        validator: (value) => (value == null || value.trim().isEmpty) ? 'Enter an owner' : null,
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: severity,
+                        decoration: const InputDecoration(labelText: 'Severity'),
+                        items: const [
+                          DropdownMenuItem(value: 'Critical', child: Text('Critical')),
+                          DropdownMenuItem(value: 'High', child: Text('High')),
+                          DropdownMenuItem(value: 'Medium', child: Text('Medium')),
+                          DropdownMenuItem(value: 'Low', child: Text('Low')),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setInnerState(() => severity = value);
+                          }
+                        },
+                      ),
+                      DropdownButtonFormField<String>(
+                        value: status,
+                        decoration: const InputDecoration(labelText: 'Status'),
+                        items: const [
+                          DropdownMenuItem(value: 'In progress', child: Text('In progress')),
+                          DropdownMenuItem(value: 'Backlog', child: Text('Backlog')),
+                          DropdownMenuItem(value: 'Planned', child: Text('Planned')),
+                          DropdownMenuItem(value: 'In review', child: Text('In review')),
+                          DropdownMenuItem(value: 'Blocked', child: Text('Blocked')),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setInnerState(() => status = value);
+                          }
+                        },
+                      ),
+                      TextFormField(
+                        controller: targetController,
+                        decoration: const InputDecoration(labelText: 'Target'),
+                        validator: (value) => (value == null || value.trim().isEmpty) ? 'Enter a target' : null,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (formKey.currentState?.validate() ?? false) {
+                      Navigator.of(dialogContext).pop(
+                        TechnicalDebtItemData(
+                          id: idController.text.trim(),
+                          title: titleController.text.trim(),
+                          area: areaController.text.trim(),
+                          owner: ownerController.text.trim(),
+                          severity: severity,
+                          status: status,
+                          target: targetController.text.trim(),
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Add Item'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    idController.dispose();
+    titleController.dispose();
+    areaController.dispose();
+    ownerController.dispose();
+    targetController.dispose();
+
+    if (result != null) {
+      setState(() => _debtItems.add(result));
+      await _saveTechnicalDebt();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Debt item "${result.id}" added'),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -133,7 +336,7 @@ class _TechnicalDebtManagementScreenState extends State<TechnicalDebtManagementS
       spacing: 10,
       runSpacing: 10,
       children: [
-        _actionButton(Icons.add, 'Add debt item'),
+        _actionButton(Icons.add, 'Add debt item', onPressed: _showAddDebtDialog),
         _actionButton(Icons.tune, 'Prioritize backlog'),
         _actionButton(Icons.description_outlined, 'Generate report'),
         _primaryButton('Launch remediation sprint'),
@@ -141,9 +344,9 @@ class _TechnicalDebtManagementScreenState extends State<TechnicalDebtManagementS
     );
   }
 
-  Widget _actionButton(IconData icon, String label) {
+  Widget _actionButton(IconData icon, String label, {VoidCallback? onPressed}) {
     return OutlinedButton.icon(
-      onPressed: () {},
+      onPressed: onPressed,
       icon: Icon(icon, size: 18, color: const Color(0xFF64748B)),
       label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
       style: OutlinedButton.styleFrom(
@@ -181,6 +384,11 @@ class _TechnicalDebtManagementScreenState extends State<TechnicalDebtManagementS
               if (selected) {
                 _selectedFilters.remove(filter);
               } else {
+                if (filter != 'All') {
+                  _selectedFilters.remove('All');
+                } else {
+                  _selectedFilters.clear();
+                }
                 _selectedFilters.add(filter);
               }
             });
@@ -207,12 +415,21 @@ class _TechnicalDebtManagementScreenState extends State<TechnicalDebtManagementS
   }
 
   Widget _buildStatsRow(bool isNarrow) {
-    final stats = [
-      _StatCardData('Open debt items', '18', '6 critical', const Color(0xFFEF4444)),
-      _StatCardData('In remediation', '7', '2 sprint owners', const Color(0xFF0EA5E9)),
-      _StatCardData('Monthly burn-down', '14%', 'Goal 20%', const Color(0xFF10B981)),
-      _StatCardData('Owner coverage', '92%', '2 gaps', const Color(0xFF6366F1)),
-    ];
+    final stats = _stats;
+    if (stats.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: const Text(
+          'No debt metrics available yet.',
+          style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+        ),
+      );
+    }
 
     if (isNarrow) {
       return Wrap(
@@ -224,15 +441,16 @@ class _TechnicalDebtManagementScreenState extends State<TechnicalDebtManagementS
 
     return Row(
       children: stats.map((stat) => Expanded(
-        child: Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: _buildStatCard(stat),
-        ),
-      )).toList(),
+            child: Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: _buildStatCard(stat),
+            ),
+          )).toList(),
     );
   }
 
-  Widget _buildStatCard(_StatCardData data) {
+  Widget _buildStatCard(TechnicalDebtStatData data) {
+    final color = _toneColor(data.tone);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -243,46 +461,68 @@ class _TechnicalDebtManagementScreenState extends State<TechnicalDebtManagementS
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(data.value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: data.color)),
+          Text(data.value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: color)),
           const SizedBox(height: 6),
           Text(data.label, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
           const SizedBox(height: 6),
-          Text(data.supporting, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: data.color)),
+          Text(data.supporting, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
         ],
       ),
     );
   }
 
   Widget _buildDebtRegister() {
+    final items = _filteredDebtItems();
     return _PanelShell(
       title: 'Debt register',
       subtitle: 'Track high-impact debt items and remediation targets',
       trailing: _actionButton(Icons.filter_list, 'Filter'),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
-          columns: const [
-            DataColumn(label: Text('ID', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Item', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Area', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Owner', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Severity', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(label: Text('Target', style: TextStyle(fontWeight: FontWeight.w600))),
-          ],
-          rows: _debtItems.map((item) {
-            return DataRow(cells: [
-              DataCell(Text(item.id, style: const TextStyle(fontSize: 12, color: Color(0xFF0EA5E9)))),
-              DataCell(Text(item.title, style: const TextStyle(fontSize: 13))),
-              DataCell(_chip(item.area)),
-              DataCell(Text(item.owner, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)))),
-              DataCell(_severityChip(item.severity)),
-              DataCell(_statusChip(item.status)),
-              DataCell(Text(item.target, style: const TextStyle(fontSize: 12))),
-            ]);
-          }).toList(),
-        ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: Column(
+                children: [
+                  DataTable(
+                    headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                    columns: const [
+                      DataColumn(label: Text('ID', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Item', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Area', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Owner', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Severity', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Target', style: TextStyle(fontWeight: FontWeight.w600))),
+                    ],
+                    rows: items.map((item) {
+                      return DataRow(cells: [
+                        DataCell(Text(item.id, style: const TextStyle(fontSize: 12, color: Color(0xFF0EA5E9)))),
+                        DataCell(Text(item.title, style: const TextStyle(fontSize: 13))),
+                        DataCell(_chip(item.area)),
+                        DataCell(Text(item.owner, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)))),
+                        DataCell(_severityChip(item.severity)),
+                        DataCell(_statusChip(item.status)),
+                        DataCell(Text(item.target, style: const TextStyle(fontSize: 12))),
+                      ]);
+                    }).toList(),
+                  ),
+                  if (items.isEmpty)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      alignment: Alignment.center,
+                      child: const Text(
+                        'No debt items available yet.',
+                        style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -294,7 +534,15 @@ class _TechnicalDebtManagementScreenState extends State<TechnicalDebtManagementS
       trailing: _chip('Weekly cadence'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: _tracks.map((track) {
+        children: _tracks.isEmpty
+            ? [
+                const Text(
+                  'No remediation tracks yet.',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                ),
+              ]
+            : _tracks.map((track) {
+          final color = _toneColor(track.tone);
           return Padding(
             padding: const EdgeInsets.only(bottom: 14),
             child: Column(
@@ -313,7 +561,7 @@ class _TechnicalDebtManagementScreenState extends State<TechnicalDebtManagementS
                     value: track.progress,
                     minHeight: 8,
                     backgroundColor: const Color(0xFFE2E8F0),
-                    valueColor: AlwaysStoppedAnimation<Color>(track.color),
+                    valueColor: AlwaysStoppedAnimation<Color>(color),
                   ),
                 ),
               ],
@@ -329,7 +577,14 @@ class _TechnicalDebtManagementScreenState extends State<TechnicalDebtManagementS
       title: 'Root cause signals',
       subtitle: 'Clustered themes driving technical debt',
       child: Column(
-        children: _rootCauses.map((item) {
+        children: _rootCauses.isEmpty
+            ? [
+                const Text(
+                  'No root cause insights yet.',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                ),
+              ]
+            : _rootCauses.map((item) {
           return Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(12),
@@ -356,16 +611,104 @@ class _TechnicalDebtManagementScreenState extends State<TechnicalDebtManagementS
     return _PanelShell(
       title: 'Ownership coverage',
       subtitle: 'Confirm accountable owners and next review',
-      trailing: _chip('Next review: Oct 14'),
+      trailing: _chip(_nextReviewLabel()),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          _OwnerItem('Platform team', '4 items', 'Coverage solid'),
-          _OwnerItem('Security', '3 items', 'Awaiting sign-off'),
-          _OwnerItem('Data team', '2 items', 'Handoff in progress'),
-        ],
+        children: _owners.isEmpty
+            ? [
+                const Text(
+                  'No ownership coverage yet.',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                ),
+              ]
+            : _owners.map((item) {
+                return _OwnerItem(item.name, item.count, item.note);
+              }).toList(),
       ),
     );
+  }
+
+  Color _toneColor(String tone) {
+    final t = tone.toLowerCase();
+    if (t.contains('critical')) return const Color(0xFFEF4444);
+    if (t.contains('warning')) return const Color(0xFFF97316);
+    if (t.contains('success')) return const Color(0xFF10B981);
+    if (t.contains('info')) return const Color(0xFF0EA5E9);
+    return const Color(0xFF6366F1);
+  }
+
+  List<TechnicalDebtItemData> _filteredDebtItems() {
+    final filters = _selectedFilters;
+    if (filters.contains('All') || filters.isEmpty) return _debtItems;
+    final monthLabel = _currentMonthLabel();
+    return _debtItems.where((item) {
+      bool include = false;
+      if (filters.contains('Critical')) {
+        include = include || item.severity.toLowerCase().contains('critical');
+      }
+      if (filters.contains('High impact')) {
+        include = include ||
+            item.severity.toLowerCase().contains('high') ||
+            item.severity.toLowerCase().contains('critical');
+      }
+      if (filters.contains('Due this month')) {
+        include = include || item.target.toLowerCase().contains(monthLabel.toLowerCase());
+      }
+      if (filters.contains('Blocked')) {
+        include = include || item.status.toLowerCase().contains('blocked');
+      }
+      return include;
+    }).toList();
+  }
+
+  String _currentMonthLabel() {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final now = DateTime.now();
+    return months[now.month - 1];
+  }
+
+  String _nextReviewLabel() {
+    final next = _parseNextReviewDate();
+    if (next == null) return 'Next review: TBD';
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return 'Next review: ${months[next.month - 1]} ${next.day.toString().padLeft(2, '0')}';
+  }
+
+  DateTime? _parseNextReviewDate() {
+    if (_debtItems.isEmpty) return null;
+    final now = DateTime.now();
+    DateTime? candidate;
+    for (final item in _debtItems) {
+      final parsed = _parseMonthDay(item.target, year: now.year);
+      if (parsed == null) continue;
+      if (candidate == null || parsed.isBefore(candidate)) {
+        candidate = parsed;
+      }
+    }
+    return candidate;
+  }
+
+  DateTime? _parseMonthDay(String value, {required int year}) {
+    final parts = value.trim().split(RegExp(r'\s+'));
+    if (parts.length < 2) return null;
+    const months = {
+      'jan': 1,
+      'feb': 2,
+      'mar': 3,
+      'apr': 4,
+      'may': 5,
+      'jun': 6,
+      'jul': 7,
+      'aug': 8,
+      'sep': 9,
+      'oct': 10,
+      'nov': 11,
+      'dec': 12,
+    };
+    final month = months[parts[0].toLowerCase()];
+    final day = int.tryParse(parts[1]);
+    if (month == null || day == null) return null;
+    return DateTime(year, month, day);
   }
 
   Widget _chip(String label) {
@@ -509,40 +852,4 @@ class _OwnerItem extends StatelessWidget {
       ),
     );
   }
-}
-
-class _DebtItem {
-  const _DebtItem(this.id, this.title, this.area, this.owner, this.severity, this.status, this.target);
-
-  final String id;
-  final String title;
-  final String area;
-  final String owner;
-  final String severity;
-  final String status;
-  final String target;
-}
-
-class _DebtInsight {
-  const _DebtInsight(this.title, this.subtitle);
-
-  final String title;
-  final String subtitle;
-}
-
-class _RemediationTrack {
-  const _RemediationTrack(this.label, this.progress, this.color);
-
-  final String label;
-  final double progress;
-  final Color color;
-}
-
-class _StatCardData {
-  const _StatCardData(this.label, this.value, this.supporting, this.color);
-
-  final String label;
-  final String value;
-  final String supporting;
-  final Color color;
 }

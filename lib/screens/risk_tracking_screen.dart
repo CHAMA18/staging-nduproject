@@ -5,6 +5,9 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
+import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/models/project_data_model.dart';
 
 class RiskTrackingScreen extends StatefulWidget {
   const RiskTrackingScreen({super.key});
@@ -23,23 +26,158 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
   final Set<String> _selectedFilters = {'All risks'};
 
   final List<_RiskItem> _risks = [];
+  List<_RiskSignal> _signals = [];
+  List<_MitigationPlan> _plans = [];
+  bool _isLoadingData = true;
+  String? _projectId;
 
-  final List<_RiskSignal> _signals = const [
-    _RiskSignal('Critical path dependencies', '2 risks require executive unblock.'),
-    _RiskSignal('Security posture drift', '1 high risk pending penetration retest.'),
-    _RiskSignal('Budget volatility', 'Forecast variance at 6%.'),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _initializeData();
+  }
 
-  final List<_MitigationPlan> _plans = const [
-    _MitigationPlan('Vendor API stability', 'Integrations', 'On track', 0.78, Color(0xFF10B981)),
-    _MitigationPlan('Regulatory review delay', 'Compliance', 'At risk', 0.42, Color(0xFFF97316)),
-    _MitigationPlan('Data quality regression', 'Data team', 'On track', 0.64, Color(0xFF6366F1)),
-  ];
+  Future<void> _initializeData() async {
+    final provider = ProjectDataInherited.maybeOf(context);
+    if (provider == null) {
+      setState(() => _isLoadingData = false);
+      return;
+    }
+
+    _projectId = provider.projectData.projectId;
+    
+    // Load risks from project data
+    final risks = provider.projectData.trackingRisks;
+    setState(() {
+      _risks.clear();
+      _risks.addAll(risks.map((r) => _RiskItem(
+        r['id'] ?? '',
+        r['title'] ?? '',
+        r['owner'] ?? '',
+        r['probability'] ?? '0.5',
+        r['impact'] ?? 'Medium',
+        r['status'] ?? 'Mitigating',
+        r['nextReview'] ?? '',
+      )));
+    });
+
+    // Generate risk signals and mitigation plans from OpenAI
+    try {
+      final ai = OpenAiServiceSecure();
+      final projectData = provider.projectData;
+      
+      // Generate risks context
+      final contextText = _buildRiskContext(projectData);
+      
+      // Generate risk signals
+      try {
+        final signalsText = await ai.generateFepSectionText(
+          section: 'Risk Signals',
+          context: contextText,
+          maxTokens: 500,
+          temperature: 0.7,
+        );
+        final signalsList = _parseSignals(signalsText);
+        
+        // Generate mitigation plans
+        final mitigationText = await ai.generateFepSectionText(
+          section: 'Mitigation Coverage',
+          context: contextText,
+          maxTokens: 500,
+          temperature: 0.7,
+        );
+        final plansList = _parseMitigationPlans(mitigationText);
+        
+        if (mounted) {
+          setState(() {
+            _signals = signalsList;
+            _plans = plansList;
+            _isLoadingData = false;
+          });
+        }
+      } catch (e) {
+        debugPrint('Error generating AI content: $e');
+        if (mounted) {
+          setState(() => _isLoadingData = false);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error initializing data: $e');
+      if (mounted) {
+        setState(() => _isLoadingData = false);
+      }
+    }
+  }
+
+  String _buildRiskContext(ProjectDataModel data) {
+    final buf = StringBuffer();
+    buf.writeln('Project: ${data.projectName}');
+    buf.writeln('Solution: ${data.solutionTitle}');
+    buf.writeln('Objective: ${data.projectObjective}');
+    buf.writeln('Current risks: ${_risks.length}');
+    buf.writeln('Active risks: ${_risks.where((r) => r.status != "Accepted").length}');
+    return buf.toString();
+  }
+
+  List<_RiskSignal> _parseSignals(String text) {
+    final lines = text.split('\n').where((l) => l.trim().isNotEmpty).toList();
+    final signals = <_RiskSignal>[];
+    for (int i = 0; i < lines.length - 1; i += 2) {
+      signals.add(_RiskSignal(lines[i].trim(), lines[i + 1].trim()));
+    }
+    return signals.take(3).toList();
+  }
+
+  List<_MitigationPlan> _parseMitigationPlans(String text) {
+    final lines = text.split('\n').where((l) => l.trim().isNotEmpty).toList();
+    final plans = <_MitigationPlan>[];
+    final colors = [const Color(0xFF10B981), const Color(0xFFF97316), const Color(0xFF6366F1)];
+    for (int i = 0; i < lines.length && plans.length < 3; i += 3) {
+      if (i + 2 < lines.length) {
+        plans.add(_MitigationPlan(
+          lines[i].trim(),
+          lines[i + 1].trim(),
+          'On track',
+          0.65,
+          colors[plans.length % colors.length],
+        ));
+      }
+    }
+    return plans;
+  }
+
+  Future<void> _saveRisksToFirebase() async {
+    if (_projectId == null) return;
+    final provider = ProjectDataInherited.maybeOf(context);
+    if (provider == null) return;
+    
+    final risksList = _risks.map((r) => {
+      'id': r.id,
+      'title': r.title,
+      'owner': r.owner,
+      'probability': r.probability,
+      'impact': r.impact,
+      'status': r.status,
+      'nextReview': r.nextReview,
+    }).toList();
+    
+    provider.updateField((data) {
+      return data.copyWith(trackingRisks: risksList);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final isNarrow = MediaQuery.sizeOf(context).width < 980;
     final padding = AppBreakpoints.pagePadding(context);
+
+    if (_isLoadingData) {
+      return ResponsiveScaffold(
+        activeItemLabel: 'Risk Tracking',
+        backgroundColor: const Color(0xFFF5F7FB),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return ResponsiveScaffold(
       activeItemLabel: 'Risk Tracking',
@@ -61,6 +199,8 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _buildRiskRegister(),
+                    const SizedBox(height: 20),
+                    _buildAddRiskSection(),
                     const SizedBox(height: 20),
                     _buildMitigationPanel(),
                     const SizedBox(height: 20),
@@ -311,41 +451,44 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
     return _PanelShell(
       title: 'Risk register',
       subtitle: 'Live view of probability, impact, and mitigation status',
-      trailing: _actionButton(Icons.filter_list, 'Filter'),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _actionButton(Icons.filter_list, 'Filter'),
+          const SizedBox(width: 12),
+          _actionButton(Icons.add, 'Create Risk', onPressed: _openAddRiskDialog),
+        ],
+      ),
       child: _risks.isEmpty
         ? _buildEmptyRiskState()
-            : LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                      child: DataTable(
-                        headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
-                        columns: const [
-                          DataColumn(label: Text('ID', style: TextStyle(fontWeight: FontWeight.w600))),
-                          DataColumn(label: Text('Risk', style: TextStyle(fontWeight: FontWeight.w600))),
-                          DataColumn(label: Text('Owner', style: TextStyle(fontWeight: FontWeight.w600))),
-                          DataColumn(label: Text('Probability', style: TextStyle(fontWeight: FontWeight.w600))),
-                          DataColumn(label: Text('Impact', style: TextStyle(fontWeight: FontWeight.w600))),
-                          DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
-                          DataColumn(label: Text('Next review', style: TextStyle(fontWeight: FontWeight.w600))),
-                        ],
-                        rows: _risks.map((risk) {
-                          return DataRow(cells: [
-                            DataCell(Text(risk.id, style: const TextStyle(fontSize: 12, color: Color(0xFF0EA5E9)))),
-                            DataCell(Text(risk.title, style: const TextStyle(fontSize: 13))),
-                            DataCell(Text(risk.owner, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)))),
-                            DataCell(_chip('${risk.probability} p')),
-                            DataCell(_impactChip(risk.impact)),
-                            DataCell(_statusChip(risk.status)),
-                            DataCell(Text(risk.nextReview, style: const TextStyle(fontSize: 12))),
-                          ]);
-                        }).toList(),
-                      ),
-                    ),
-                  );
-                },
+            : SizedBox(
+                width: double.infinity,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                    columns: const [
+                      DataColumn(label: Text('ID', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Risk', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Owner', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Probability', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Impact', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
+                      DataColumn(label: Text('Next review', style: TextStyle(fontWeight: FontWeight.w600))),
+                    ],
+                    rows: _risks.map((risk) {
+                      return DataRow(cells: [
+                        DataCell(Text(risk.id, style: const TextStyle(fontSize: 12, color: Color(0xFF0EA5E9)))),
+                        DataCell(Text(risk.title, style: const TextStyle(fontSize: 13))),
+                        DataCell(Text(risk.owner, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)))),
+                        DataCell(_chip('${risk.probability} p')),
+                        DataCell(_impactChip(risk.impact)),
+                        DataCell(_statusChip(risk.status)),
+                        DataCell(Text(risk.nextReview, style: const TextStyle(fontSize: 12))),
+                      ]);
+                    }).toList(),
+                  ),
+                ),
               ),
       );
   }
@@ -476,6 +619,7 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                           ),
                         );
                       });
+                      _saveRisksToFirebase();
                       Navigator.of(context).pop();
                     }
                   },
@@ -493,6 +637,23 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
       probabilityController.dispose();
       nextReviewController.dispose();
     });
+  }
+
+  Widget _buildAddRiskSection() {
+    return _PanelShell(
+      title: 'Add new risk item',
+      subtitle: 'Log a risk to the register and track its mitigation status',
+      trailing: _actionButton(Icons.add, 'Add risk', onPressed: _openAddRiskDialog),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        alignment: Alignment.center,
+        child: Text(
+          'Click "Add risk" above to log a new risk to the register',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+        ),
+      ),
+    );
   }
 
   Widget _buildMitigationPanel() {

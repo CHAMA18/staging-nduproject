@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
@@ -28,6 +32,12 @@ class FrontEndPlanningProcurementScreen extends StatefulWidget {
 
 class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProcurementScreen> {
   final TextEditingController _notes = TextEditingController();
+  Timer? _notesSaveTimer;
+  bool _isGeneratingWorkspace = false;
+  bool _workspaceAiSeeded = false;
+  String _aiSuggestionText = '';
+  bool _aiSuggestionLoading = false;
+  ProjectDataProvider? _provider;
 
   bool _approvedOnly = false;
   bool _preferredOnly = false;
@@ -73,20 +83,42 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
 
   final List<_ComplianceMetric> _complianceMetrics = [];
 
+  final List<Color> _spendPalette = const [
+    Color(0xFF2563EB),
+    Color(0xFF10B981),
+    Color(0xFFF59E0B),
+    Color(0xFF8B5CF6),
+    Color(0xFFEF4444),
+  ];
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final data = ProjectDataHelper.getData(context);
       _notes.text = data.frontEndPlanning.procurement;
+      _workspaceAiSeeded = data.frontEndPlanning.procurementWorkspace.aiSeeded;
+      _loadWorkspaceData(data.frontEndPlanning.procurementWorkspace);
+      _refreshSuggestionText();
       if (_notes.text.trim().isEmpty) {
         _generateAiSuggestion();
+      }
+      if (!_hasWorkspaceData(data.frontEndPlanning.procurementWorkspace) && !_workspaceAiSeeded) {
+        _generateWorkspaceFromContext();
       }
       if (mounted) setState(() {});
     });
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _provider ??= ProjectDataInherited.maybeOf(context);
+  }
+
   Future<void> _generateAiSuggestion() async {
+    if (_aiSuggestionLoading) return;
+    setState(() => _aiSuggestionLoading = true);
     try {
       final data = ProjectDataHelper.getData(context);
       final ctx = ProjectDataHelper.buildFepContext(data, sectionLabel: 'Procurement');
@@ -102,15 +134,574 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
       if (_notes.text.trim().isEmpty && suggestion.trim().isNotEmpty) {
         setState(() {
           _notes.text = suggestion.trim();
+          _aiSuggestionText = _firstSentence(_notes.text);
         });
       }
     } catch (e) {
       debugPrint('AI procurement suggestion failed: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _aiSuggestionLoading = false);
+      }
+    }
+  }
+
+  String _firstSentence(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return '';
+    final parts = trimmed.split(RegExp(r'[\n\.]')).map((part) => part.trim()).where((part) => part.isNotEmpty);
+    return parts.isNotEmpty ? parts.first : trimmed;
+  }
+
+  void _refreshSuggestionText() {
+    final fromNotes = _firstSentence(_notes.text);
+    if (fromNotes.isNotEmpty) {
+      _aiSuggestionText = fromNotes;
+      return;
+    }
+    if (_strategies.isNotEmpty) {
+      _aiSuggestionText = _firstSentence(_strategies.first.description);
+      return;
+    }
+    _aiSuggestionText = '';
+  }
+
+  bool _hasWorkspaceData(ProcurementWorkspaceData workspace) {
+    return workspace.items.isNotEmpty ||
+        workspace.strategies.isNotEmpty ||
+        workspace.vendors.isNotEmpty ||
+        workspace.vendorHealthMetrics.isNotEmpty ||
+        workspace.vendorOnboardingTasks.isNotEmpty ||
+        workspace.vendorRiskItems.isNotEmpty ||
+        workspace.rfqs.isNotEmpty ||
+        workspace.rfqCriteria.isNotEmpty ||
+        workspace.purchaseOrders.isNotEmpty ||
+        workspace.trackableItems.isNotEmpty ||
+        workspace.trackingAlerts.isNotEmpty ||
+        workspace.carrierPerformance.isNotEmpty ||
+        workspace.reportKpis.isNotEmpty ||
+        workspace.spendBreakdown.isNotEmpty ||
+        workspace.leadTimeMetrics.isNotEmpty ||
+        workspace.savingsOpportunities.isNotEmpty ||
+        workspace.complianceMetrics.isNotEmpty;
+  }
+
+  String _normalizeDateString(String value, {DateTime? fallback}) {
+    final parsed = DateTime.tryParse(value);
+    final date = parsed ?? fallback ?? DateTime.now();
+    return DateFormat('yyyy-MM-dd').format(date);
+  }
+
+  _ProcurementItemStatus _parseItemStatus(String value) {
+    final v = value.toLowerCase();
+    if (v.contains('rfq')) return _ProcurementItemStatus.rfqReview;
+    if (v.contains('vendor')) return _ProcurementItemStatus.vendorSelection;
+    if (v.contains('deliver')) return _ProcurementItemStatus.delivered;
+    if (v.contains('order')) return _ProcurementItemStatus.ordered;
+    return _ProcurementItemStatus.planning;
+  }
+
+  _ProcurementPriority _parsePriority(String value) {
+    final v = value.toLowerCase();
+    if (v.contains('critical')) return _ProcurementPriority.critical;
+    if (v.contains('high')) return _ProcurementPriority.high;
+    if (v.contains('low')) return _ProcurementPriority.low;
+    return _ProcurementPriority.medium;
+  }
+
+  _StrategyStatus _parseStrategyStatus(String value) {
+    final v = value.toLowerCase();
+    return v.contains('active') ? _StrategyStatus.active : _StrategyStatus.draft;
+  }
+
+  _VendorTaskStatus _parseVendorTaskStatus(String value) {
+    final v = value.toLowerCase();
+    if (v.contains('review')) return _VendorTaskStatus.inReview;
+    if (v.contains('complete') || v.contains('done')) return _VendorTaskStatus.complete;
+    return _VendorTaskStatus.pending;
+  }
+
+  _RiskSeverity _parseRiskSeverity(String value) {
+    final v = value.toLowerCase();
+    if (v.contains('high')) return _RiskSeverity.high;
+    if (v.contains('low')) return _RiskSeverity.low;
+    return _RiskSeverity.medium;
+  }
+
+  _RfqStatus _parseRfqStatus(String value) {
+    final v = value.toLowerCase();
+    if (v.contains('award')) return _RfqStatus.awarded;
+    if (v.contains('eval')) return _RfqStatus.evaluation;
+    if (v.contains('market')) return _RfqStatus.inMarket;
+    if (v.contains('review')) return _RfqStatus.review;
+    return _RfqStatus.draft;
+  }
+
+  _PurchaseOrderStatus _parsePurchaseOrderStatus(String value) {
+    final v = value.toLowerCase();
+    if (v.contains('received')) return _PurchaseOrderStatus.received;
+    if (v.contains('transit') || v.contains('ship')) return _PurchaseOrderStatus.inTransit;
+    if (v.contains('issued')) return _PurchaseOrderStatus.issued;
+    return _PurchaseOrderStatus.awaitingApproval;
+  }
+
+  _TrackableStatus _parseTrackableStatus(String value) {
+    final v = value.toLowerCase();
+    if (v.contains('deliver')) return _TrackableStatus.delivered;
+    if (v.contains('transit') || v.contains('ship')) return _TrackableStatus.inTransit;
+    if (v.contains('track')) return _TrackableStatus.notTracked;
+    return _TrackableStatus.notTracked;
+  }
+
+  _AlertSeverity _parseAlertSeverity(String value) {
+    final v = value.toLowerCase();
+    if (v.contains('high')) return _AlertSeverity.high;
+    if (v.contains('low')) return _AlertSeverity.low;
+    return _AlertSeverity.medium;
+  }
+
+  Color _resolveSpendColor(int colorValue, int index) {
+    if (colorValue != 0) {
+      return Color(colorValue);
+    }
+    return _spendPalette[index % _spendPalette.length];
+  }
+
+  void _loadWorkspaceData(ProcurementWorkspaceData workspace) {
+    _items
+      ..clear()
+      ..addAll(workspace.items.map((item) {
+        return _ProcurementItem(
+          name: item.name,
+          description: item.description,
+          category: item.category,
+          status: _parseItemStatus(item.status),
+          priority: _parsePriority(item.priority),
+          budget: item.budget,
+          estimatedDelivery: _normalizeDateString(item.estimatedDelivery, fallback: DateTime.now().add(const Duration(days: 21))),
+          progress: item.progress,
+        );
+      }));
+
+    _strategies
+      ..clear()
+      ..addAll(workspace.strategies.map((strategy) {
+        return _ProcurementStrategy(
+          title: strategy.title,
+          status: _parseStrategyStatus(strategy.status),
+          itemCount: strategy.itemCount,
+          description: strategy.description,
+        );
+      }));
+
+    _vendors
+      ..clear()
+      ..addAll(workspace.vendors.map((vendor) {
+        final initials = vendor.initials.trim().isEmpty ? _deriveInitials(vendor.name) : vendor.initials;
+        return _VendorRow(
+          initials: initials,
+          name: vendor.name,
+          category: vendor.category,
+          rating: vendor.rating.clamp(1, 5),
+          approved: vendor.approved,
+          preferred: vendor.preferred,
+        );
+      }));
+
+    _vendorHealthMetrics
+      ..clear()
+      ..addAll(workspace.vendorHealthMetrics.map((metric) {
+        return _VendorHealthMetric(
+          category: metric.category,
+          score: metric.score,
+          change: metric.change,
+        );
+      }));
+
+    _vendorOnboardingTasks
+      ..clear()
+      ..addAll(workspace.vendorOnboardingTasks.map((task) {
+        return _VendorOnboardingTask(
+          title: task.title,
+          owner: task.owner,
+          dueDate: _normalizeDateString(task.dueDate, fallback: DateTime.now().add(const Duration(days: 7))),
+          status: _parseVendorTaskStatus(task.status),
+        );
+      }));
+
+    _vendorRiskItems
+      ..clear()
+      ..addAll(workspace.vendorRiskItems.map((risk) {
+        return _VendorRiskItem(
+          vendor: risk.vendor,
+          risk: risk.risk,
+          severity: _parseRiskSeverity(risk.severity),
+          lastIncident: _normalizeDateString(risk.lastIncident, fallback: DateTime.now().subtract(const Duration(days: 14))),
+        );
+      }));
+
+    _rfqs
+      ..clear()
+      ..addAll(workspace.rfqs.map((rfq) {
+        return _RfqItem(
+          title: rfq.title,
+          category: rfq.category,
+          owner: rfq.owner,
+          dueDate: _normalizeDateString(rfq.dueDate, fallback: DateTime.now().add(const Duration(days: 14))),
+          invited: rfq.invited,
+          responses: rfq.responses,
+          budget: rfq.budget,
+          status: _parseRfqStatus(rfq.status),
+          priority: _parsePriority(rfq.priority),
+        );
+      }));
+
+    _rfqCriteria
+      ..clear()
+      ..addAll(workspace.rfqCriteria.map((criterion) {
+        return _RfqCriterion(label: criterion.label, weight: criterion.weight);
+      }));
+
+    _purchaseOrders
+      ..clear()
+      ..addAll(workspace.purchaseOrders.map((po) {
+        return _PurchaseOrder(
+          id: po.id,
+          vendor: po.vendor,
+          category: po.category,
+          owner: po.owner,
+          orderedDate: _normalizeDateString(po.orderedDate, fallback: DateTime.now().subtract(const Duration(days: 3))),
+          expectedDate: _normalizeDateString(po.expectedDate, fallback: DateTime.now().add(const Duration(days: 21))),
+          amount: po.amount,
+          progress: po.progress,
+          status: _parsePurchaseOrderStatus(po.status),
+        );
+      }));
+
+    _trackableItems
+      ..clear()
+      ..addAll(workspace.trackableItems.map((item) {
+        return _TrackableItem(
+          name: item.name,
+          description: item.description,
+          orderStatus: item.orderStatus,
+          currentStatus: _parseTrackableStatus(item.currentStatus),
+          lastUpdate: item.lastUpdate,
+          events: item.events
+              .map((event) => _TimelineEvent(
+                    title: event.title,
+                    description: event.description,
+                    subtext: event.subtext,
+                    date: _normalizeDateString(event.date, fallback: DateTime.now()),
+                  ))
+              .toList(),
+        );
+      }));
+
+    _trackingAlerts
+      ..clear()
+      ..addAll(workspace.trackingAlerts.map((alert) {
+        return _TrackingAlert(
+          title: alert.title,
+          description: alert.description,
+          severity: _parseAlertSeverity(alert.severity),
+          date: _normalizeDateString(alert.date, fallback: DateTime.now()),
+        );
+      }));
+
+    _carrierPerformance
+      ..clear()
+      ..addAll(workspace.carrierPerformance.map((carrier) {
+        return _CarrierPerformance(
+          carrier: carrier.carrier,
+          onTimeRate: carrier.onTimeRate,
+          avgDays: carrier.avgDays,
+        );
+      }));
+
+    _reportKpis
+      ..clear()
+      ..addAll(workspace.reportKpis.map((kpi) {
+        return _ReportKpi(
+          label: kpi.label,
+          value: kpi.value,
+          delta: kpi.delta,
+          positive: kpi.positive,
+        );
+      }));
+
+    _spendBreakdown
+      ..clear()
+      ..addAll(workspace.spendBreakdown.asMap().entries.map((entry) {
+        final i = entry.key;
+        final breakdown = entry.value;
+        return _SpendBreakdown(
+          label: breakdown.label,
+          amount: breakdown.amount,
+          percent: breakdown.percent,
+          color: _resolveSpendColor(breakdown.colorValue, i),
+        );
+      }));
+
+    _leadTimeMetrics
+      ..clear()
+      ..addAll(workspace.leadTimeMetrics.map((metric) {
+        return _LeadTimeMetric(
+          label: metric.label,
+          onTimeRate: metric.onTimeRate,
+        );
+      }));
+
+    _savingsOpportunities
+      ..clear()
+      ..addAll(workspace.savingsOpportunities.map((item) {
+        return _SavingsOpportunity(
+          title: item.title,
+          value: item.value,
+          owner: item.owner,
+        );
+      }));
+
+    _complianceMetrics
+      ..clear()
+      ..addAll(workspace.complianceMetrics.map((metric) {
+        return _ComplianceMetric(
+          label: metric.label,
+          value: metric.value,
+        );
+      }));
+
+    if (_trackableItems.isEmpty) {
+      _selectedTrackableIndex = 0;
+    } else if (_selectedTrackableIndex >= _trackableItems.length) {
+      _selectedTrackableIndex = 0;
+    }
+  }
+
+  ProcurementWorkspaceData _buildWorkspaceData() {
+    return ProcurementWorkspaceData(
+      items: _items
+          .map((item) => ProcurementItemData(
+                name: item.name,
+                description: item.description,
+                category: item.category,
+                status: item.status.label,
+                priority: item.priority.label,
+                budget: item.budget,
+                estimatedDelivery: item.estimatedDelivery,
+                progress: item.progress,
+              ))
+          .toList(),
+      strategies: _strategies
+          .map((strategy) => ProcurementStrategyData(
+                title: strategy.title,
+                status: strategy.status == _StrategyStatus.active ? 'active' : 'draft',
+                itemCount: strategy.itemCount,
+                description: strategy.description,
+              ))
+          .toList(),
+      vendors: _vendors
+          .map((vendor) => ProcurementVendorData(
+                initials: vendor.initials,
+                name: vendor.name,
+                category: vendor.category,
+                rating: vendor.rating,
+                approved: vendor.approved,
+                preferred: vendor.preferred,
+              ))
+          .toList(),
+      vendorHealthMetrics: _vendorHealthMetrics
+          .map((metric) => ProcurementVendorHealthMetricData(
+                category: metric.category,
+                score: metric.score,
+                change: metric.change,
+              ))
+          .toList(),
+      vendorOnboardingTasks: _vendorOnboardingTasks
+          .map((task) => ProcurementVendorOnboardingTaskData(
+                title: task.title,
+                owner: task.owner,
+                dueDate: task.dueDate,
+                status: task.status.label,
+              ))
+          .toList(),
+      vendorRiskItems: _vendorRiskItems
+          .map((risk) => ProcurementVendorRiskData(
+                vendor: risk.vendor,
+                risk: risk.risk,
+                severity: risk.severity.label,
+                lastIncident: risk.lastIncident,
+              ))
+          .toList(),
+      rfqs: _rfqs
+          .map((rfq) => ProcurementRfqData(
+                title: rfq.title,
+                category: rfq.category,
+                owner: rfq.owner,
+                dueDate: rfq.dueDate,
+                invited: rfq.invited,
+                responses: rfq.responses,
+                budget: rfq.budget,
+                status: rfq.status.label,
+                priority: rfq.priority.label,
+              ))
+          .toList(),
+      rfqCriteria: _rfqCriteria
+          .map((criterion) => ProcurementRfqCriterionData(
+                label: criterion.label,
+                weight: criterion.weight,
+              ))
+          .toList(),
+      purchaseOrders: _purchaseOrders
+          .map((po) => ProcurementPurchaseOrderData(
+                id: po.id,
+                vendor: po.vendor,
+                category: po.category,
+                owner: po.owner,
+                orderedDate: po.orderedDate,
+                expectedDate: po.expectedDate,
+                amount: po.amount,
+                progress: po.progress,
+                status: po.status.label,
+              ))
+          .toList(),
+      trackableItems: _trackableItems
+          .map((item) => ProcurementTrackableItemData(
+                name: item.name,
+                description: item.description,
+                orderStatus: item.orderStatus,
+                currentStatus: item.currentStatus.label,
+                lastUpdate: item.lastUpdate,
+                events: item.events
+                    .map((event) => ProcurementTimelineEventData(
+                          title: event.title,
+                          description: event.description,
+                          subtext: event.subtext,
+                          date: event.date,
+                        ))
+                    .toList(),
+              ))
+          .toList(),
+      trackingAlerts: _trackingAlerts
+          .map((alert) => ProcurementTrackingAlertData(
+                title: alert.title,
+                description: alert.description,
+                severity: alert.severity.label,
+                date: alert.date,
+              ))
+          .toList(),
+      carrierPerformance: _carrierPerformance
+          .map((carrier) => ProcurementCarrierPerformanceData(
+                carrier: carrier.carrier,
+                onTimeRate: carrier.onTimeRate,
+                avgDays: carrier.avgDays,
+              ))
+          .toList(),
+      reportKpis: _reportKpis
+          .map((kpi) => ProcurementReportKpiData(
+                label: kpi.label,
+                value: kpi.value,
+                delta: kpi.delta,
+                positive: kpi.positive,
+              ))
+          .toList(),
+      spendBreakdown: _spendBreakdown
+          .map((breakdown) => ProcurementSpendBreakdownData(
+                label: breakdown.label,
+                amount: breakdown.amount,
+                percent: breakdown.percent,
+                colorValue: breakdown.color.value,
+              ))
+          .toList(),
+      leadTimeMetrics: _leadTimeMetrics
+          .map((metric) => ProcurementLeadTimeMetricData(
+                label: metric.label,
+                onTimeRate: metric.onTimeRate,
+              ))
+          .toList(),
+      savingsOpportunities: _savingsOpportunities
+          .map((item) => ProcurementSavingsOpportunityData(
+                title: item.title,
+                value: item.value,
+                owner: item.owner,
+              ))
+          .toList(),
+      complianceMetrics: _complianceMetrics
+          .map((metric) => ProcurementComplianceMetricData(
+                label: metric.label,
+                value: metric.value,
+              ))
+          .toList(),
+      aiSeeded: _workspaceAiSeeded,
+    );
+  }
+
+  void _syncWorkspaceToProvider() {
+    final provider = _provider;
+    if (provider == null) return;
+    provider.updateField(
+      (data) => data.copyWith(
+        frontEndPlanning: ProjectDataHelper.updateFEPField(
+          current: data.frontEndPlanning,
+          procurementWorkspace: _buildWorkspaceData(),
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _persistWorkspace({bool showConfirmation = false}) async {
+    final provider = _provider;
+    if (provider == null) return false;
+    provider.updateField(
+      (data) => data.copyWith(
+        frontEndPlanning: ProjectDataHelper.updateFEPField(
+          current: data.frontEndPlanning,
+          procurement: _notes.text.trim(),
+          procurementWorkspace: _buildWorkspaceData(),
+        ),
+      ),
+    );
+    final success = await provider.saveToFirebase(checkpoint: 'fep_procurement');
+
+    if (mounted && showConfirmation) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success ? 'Procurement workspace saved' : 'Unable to save procurement workspace'),
+          backgroundColor: success ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+        ),
+      );
+    }
+
+    return success;
+  }
+
+  Future<void> _generateWorkspaceFromContext() async {
+    if (_isGeneratingWorkspace) return;
+    setState(() => _isGeneratingWorkspace = true);
+    try {
+      final data = ProjectDataHelper.getData(context);
+      final ctx = ProjectDataHelper.buildFepContext(data, sectionLabel: 'Procurement Workspace');
+      final ai = OpenAiServiceSecure();
+      final generated = await ai.generateProcurementWorkspaceFromContext(ctx);
+      if (!mounted) return;
+      setState(() {
+        _workspaceAiSeeded = true;
+        _loadWorkspaceData(generated);
+        _refreshSuggestionText();
+      });
+      await _persistWorkspace();
+    } catch (e) {
+      debugPrint('AI procurement workspace generation failed: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isGeneratingWorkspace = false);
+      }
     }
   }
 
   @override
   void dispose() {
+    _notesSaveTimer?.cancel();
     _notes.dispose();
     super.dispose();
   }
@@ -130,29 +721,37 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
   }
 
   void _handleNotesChanged(String value) {
-    final provider = ProjectDataHelper.getProvider(context);
+    final provider = _provider;
+    if (provider == null) return;
     provider.updateField(
       (data) => data.copyWith(
         frontEndPlanning: ProjectDataHelper.updateFEPField(
           current: data.frontEndPlanning,
           procurement: value,
+          procurementWorkspace: _buildWorkspaceData(),
         ),
       ),
     );
+    setState(_refreshSuggestionText);
+    _notesSaveTimer?.cancel();
+    _notesSaveTimer = Timer(const Duration(milliseconds: 600), () {
+      _persistProcurementNotes();
+    });
   }
 
   Future<bool> _persistProcurementNotes({bool showConfirmation = false}) async {
-    final success = await ProjectDataHelper.updateAndSave(
-      context: context,
-      checkpoint: 'fep_procurement',
-      dataUpdater: (data) => data.copyWith(
+    final provider = _provider;
+    if (provider == null) return false;
+    provider.updateField(
+      (data) => data.copyWith(
         frontEndPlanning: ProjectDataHelper.updateFEPField(
           current: data.frontEndPlanning,
           procurement: _notes.text.trim(),
+          procurementWorkspace: _buildWorkspaceData(),
         ),
       ),
-      showSnackbar: false,
     );
+    final success = await provider.saveToFirebase(checkpoint: 'fep_procurement');
 
     if (mounted && showConfirmation) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -211,6 +810,7 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
         frontEndPlanning: ProjectDataHelper.updateFEPField(
           current: data.frontEndPlanning,
           procurement: _notes.text.trim(),
+          procurementWorkspace: _buildWorkspaceData(),
         ),
       ),
     );
@@ -316,11 +916,14 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
       children: [
         _PlanHeader(onItemListTap: _handleItemListTap),
         const SizedBox(height: 16),
-        _AiSuggestionCard(
-          onAccept: _handleAcceptSuggestion,
-          onEdit: _handleEditSuggestion,
-          onReject: _handleRejectSuggestion,
-        ),
+        if (_aiSuggestionLoading || _aiSuggestionText.trim().isNotEmpty)
+          _AiSuggestionCard(
+            suggestion: _aiSuggestionText.trim(),
+            loading: _aiSuggestionLoading,
+            onAccept: _handleAcceptSuggestion,
+            onEdit: _handleEditSuggestion,
+            onReject: _handleRejectSuggestion,
+          ),
         const SizedBox(height: 32),
         _StrategiesSection(
           strategies: _strategies,
@@ -364,6 +967,7 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
   }
 
   void _handleRejectSuggestion() {
+    setState(() => _aiSuggestionText = '');
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Suggestion dismissed.')),
     );
@@ -445,7 +1049,7 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
     final result = await showDialog<_ProcurementItem>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+  barrierColor: Colors.black.withOpacity(0.45),
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
@@ -613,7 +1217,10 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
     budgetCtrl.dispose();
 
     if (result != null) {
+      if (!mounted) return;
       setState(() => _items.add(result));
+      _syncWorkspaceToProvider();
+      await _persistWorkspace();
     }
   }
 
@@ -637,7 +1244,7 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
     final result = await showDialog<_VendorRow>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+  barrierColor: Colors.black.withOpacity(0.45),
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
@@ -751,7 +1358,10 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
     nameCtrl.dispose();
 
     if (result != null) {
+      if (!mounted) return;
       setState(() => _vendors.add(result));
+      _syncWorkspaceToProvider();
+      await _persistWorkspace();
     }
   }
 
@@ -772,7 +1382,7 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
     final result = await showDialog<_RfqItem>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+  barrierColor: Colors.black.withOpacity(0.45),
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
@@ -969,7 +1579,10 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
     responsesCtrl.dispose();
 
     if (result != null) {
+      if (!mounted) return;
       setState(() => _rfqs.add(result));
+      _syncWorkspaceToProvider();
+      await _persistWorkspace();
     }
   }
 
@@ -989,7 +1602,7 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
     final result = await showDialog<_PurchaseOrder>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+  barrierColor: Colors.black.withOpacity(0.45),
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
@@ -1164,7 +1777,10 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
     amountCtrl.dispose();
 
     if (result != null) {
+      if (!mounted) return;
       setState(() => _purchaseOrders.add(result));
+      _syncWorkspaceToProvider();
+      await _persistWorkspace();
     }
   }
 
@@ -1515,8 +2131,16 @@ class _PlanHeader extends StatelessWidget {
 }
 
 class _AiSuggestionCard extends StatelessWidget {
-  const _AiSuggestionCard({required this.onAccept, required this.onEdit, required this.onReject});
+  const _AiSuggestionCard({
+    required this.suggestion,
+    required this.loading,
+    required this.onAccept,
+    required this.onEdit,
+    required this.onReject,
+  });
 
+  final String suggestion;
+  final bool loading;
   final VoidCallback onAccept;
   final VoidCallback onEdit;
   final VoidCallback onReject;
@@ -1545,10 +2169,26 @@ class _AiSuggestionCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          const Text(
-            'Based on your scope, group items by category and delivery window to streamline sourcing and approvals.',
-            style: TextStyle(fontSize: 14, color: Color(0xFF334155)),
-          ),
+          if (loading)
+            Row(
+              children: [
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0EA5E9)),
+                ),
+                const SizedBox(width: 10),
+                const Text(
+                  'Generating procurement insights...',
+                  style: TextStyle(fontSize: 14, color: Color(0xFF334155)),
+                ),
+              ],
+            )
+          else
+            Text(
+              suggestion,
+              style: const TextStyle(fontSize: 14, color: Color(0xFF334155)),
+            ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
@@ -5233,7 +5873,7 @@ class _ProcurementDialogShell extends StatelessWidget {
                       width: 120,
                       height: 120,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFDBEAFE).withValues(alpha: 0.4),
+                        color: const Color(0xFFDBEAFE).withOpacity(0.4),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -5366,7 +6006,7 @@ class _ContextChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.9),
+  color: Colors.white.withOpacity(0.9),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),

@@ -482,6 +482,7 @@ class ProjectDataHelper {
     String? infrastructure,
     String? contracts,
     List<RequirementItem>? requirementItems,
+    ProcurementWorkspaceData? procurementWorkspace,
   }) {
     return FrontEndPlanningData(
       requirements: requirements ?? current.requirements,
@@ -498,6 +499,7 @@ class ProjectDataHelper {
       infrastructure: infrastructure ?? current.infrastructure,
       contracts: contracts ?? current.contracts,
       requirementItems: requirementItems ?? current.requirementItems,
+      procurementWorkspace: procurementWorkspace ?? current.procurementWorkspace,
     );
   }
 }

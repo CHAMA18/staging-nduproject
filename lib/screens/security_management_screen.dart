@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-
+import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
@@ -26,12 +30,203 @@ class SecurityManagementScreen extends StatefulWidget {
 
 class _SecurityManagementScreenState extends State<SecurityManagementScreen> {
   _SecurityTab _selectedTab = _SecurityTab.dashboard;
+  ProjectDataProvider? _provider;
+  bool _isGenerating = false;
+  bool _aiSeeded = false;
+  List<SecurityRoleData> _roles = [];
+  List<SecurityPermissionData> _permissions = [];
+  List<SecurityAccessLogData> _accessLogs = [];
+  late SecuritySettingsData _settings;
+  final TextEditingController _sessionTimeoutController = TextEditingController();
+  final TextEditingController _minPasswordLengthController = TextEditingController();
+  bool _requireMfa = true;
+  bool _requireUppercase = true;
+  bool _requireNumbers = true;
+  bool _requireSpecial = true;
+  Timer? _settingsSaveDebounce;
+  final List<Color> _slicePalette = const [
+    Color(0xFF0EA5E9),
+    Color(0xFF22D3EE),
+    Color(0xFFFBBF24),
+    Color(0xFF6366F1),
+    Color(0xFF34D399),
+    Color(0xFFF97316),
+  ];
+  final List<Color> _resourcePalette = const [
+    Color(0xFF22D3EE),
+    Color(0xFFFB7185),
+    Color(0xFFF97316),
+    Color(0xFF6366F1),
+    Color(0xFF34D399),
+    Color(0xFF0EA5E9),
+  ];
 
   void _handleTabSelected(_SecurityTab tab) {
     if (_selectedTab == tab) return;
     setState(() => _selectedTab = tab);
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _settings = SecuritySettingsData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final data = ProjectDataHelper.getData(context);
+      _loadSecurityData(data.securityManagementData);
+      if (_roles.isEmpty && _permissions.isEmpty && _accessLogs.isEmpty && !_aiSeeded) {
+        _generateSecurityFromContext();
+      } else {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _provider ??= ProjectDataInherited.maybeOf(context);
+  }
+
+  @override
+  void dispose() {
+    _settingsSaveDebounce?.cancel();
+    _sessionTimeoutController.dispose();
+    _minPasswordLengthController.dispose();
+    super.dispose();
+  }
+
+  void _loadSecurityData(SecurityManagementData data) {
+    _aiSeeded = data.aiSeeded;
+    _roles = List<SecurityRoleData>.from(data.roles);
+    _permissions = List<SecurityPermissionData>.from(data.permissions);
+    _accessLogs = List<SecurityAccessLogData>.from(data.accessLogs);
+    _settings = data.settings;
+    _sessionTimeoutController.text = _settings.sessionTimeoutMinutes.toString();
+    _minPasswordLengthController.text = _settings.minPasswordLength.toString();
+    _requireMfa = _settings.requireMfa;
+    _requireUppercase = _settings.requireUppercase;
+    _requireNumbers = _settings.requireNumbers;
+    _requireSpecial = _settings.requireSpecial;
+  }
+
+  SecurityManagementData _buildSecurityData() {
+    return SecurityManagementData(
+      roles: _roles,
+      permissions: _permissions,
+      accessLogs: _accessLogs,
+      settings: SecuritySettingsData(
+        sessionTimeoutMinutes: int.tryParse(_sessionTimeoutController.text.trim()) ?? _settings.sessionTimeoutMinutes,
+        minPasswordLength: int.tryParse(_minPasswordLengthController.text.trim()) ?? _settings.minPasswordLength,
+        requireMfa: _requireMfa,
+        requireUppercase: _requireUppercase,
+        requireNumbers: _requireNumbers,
+        requireSpecial: _requireSpecial,
+      ),
+      aiSeeded: _aiSeeded,
+    );
+  }
+
+  void _queueSettingsSave() {
+    _settingsSaveDebounce?.cancel();
+    _settingsSaveDebounce = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        _saveSecurityData();
+      }
+    });
+  }
+
+  Future<void> _saveSecurityData({bool showSnack = false}) async {
+    final provider = _provider;
+    if (provider == null) return;
+    provider.updateField((data) => data.copyWith(securityManagementData: _buildSecurityData()));
+    final success = await provider.saveToFirebase(checkpoint: 'security_management');
+    if (!mounted || !showSnack) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success ? 'Security management saved' : 'Unable to save security management'),
+        backgroundColor: success ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+      ),
+    );
+  }
+
+  Future<void> _generateSecurityFromContext() async {
+    if (_isGenerating) return;
+    setState(() => _isGenerating = true);
+    try {
+      final data = ProjectDataHelper.getData(context);
+      final contextText = ProjectDataHelper.buildExecutivePlanContext(data, sectionLabel: 'Security Management');
+      final fallbackContext = ProjectDataHelper.buildFepContext(data, sectionLabel: 'Security Management');
+      final ai = OpenAiServiceSecure();
+      final generated = await ai.generateSecurityManagementFromContext(
+        contextText.trim().isEmpty ? fallbackContext : contextText,
+      );
+      if (!mounted) return;
+      setState(() {
+        _aiSeeded = true;
+        _roles = List<SecurityRoleData>.from(generated.roles);
+        _permissions = List<SecurityPermissionData>.from(generated.permissions);
+        _accessLogs = List<SecurityAccessLogData>.from(generated.accessLogs);
+        _settings = generated.settings;
+        _sessionTimeoutController.text = _settings.sessionTimeoutMinutes.toString();
+        _minPasswordLengthController.text = _settings.minPasswordLength.toString();
+        _requireMfa = _settings.requireMfa;
+        _requireUppercase = _settings.requireUppercase;
+        _requireNumbers = _settings.requireNumbers;
+        _requireSpecial = _settings.requireSpecial;
+      });
+      await _saveSecurityData();
+    } catch (e) {
+      debugPrint('AI security management generation failed: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isGenerating = false);
+      }
+    }
+  }
+
+  List<_PieSlice> _buildRoleTierSlices() {
+    if (_roles.isEmpty) return [];
+    final counts = <String, int>{};
+    for (final role in _roles) {
+      final key = role.tierLabel.isEmpty ? 'Tier' : role.tierLabel;
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    final entries = counts.entries.toList();
+    return entries.asMap().entries.map((entry) {
+      final i = entry.key;
+      final label = entry.value.key;
+      final value = entry.value.value.toDouble();
+      return _PieSlice(color: _slicePalette[i % _slicePalette.length], value: value, label: label);
+    }).toList();
+  }
+
+  List<_PieSlice> _buildResourceSlices() {
+    if (_permissions.isEmpty) return [];
+    final counts = <String, int>{};
+    for (final permission in _permissions) {
+      final key = permission.resource.isEmpty ? 'resource' : permission.resource;
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    final entries = counts.entries.toList();
+    return entries.asMap().entries.map((entry) {
+      final i = entry.key;
+      final label = entry.value.key;
+      final value = entry.value.value.toDouble();
+      return _PieSlice(color: _resourcePalette[i % _resourcePalette.length], value: value, label: label);
+    }).toList();
+  }
+
+  List<_StatusTileData> _buildStatusTiles() {
+    final failedCount = _accessLogs.where((log) => log.status.toLowerCase() == 'failure').length;
+    final minLength = int.tryParse(_minPasswordLengthController.text.trim()) ?? _settings.minPasswordLength;
+    final timeoutMinutes = int.tryParse(_sessionTimeoutController.text.trim()) ?? _settings.sessionTimeoutMinutes;
+    return [
+      _StatusTileData(icon: Icons.verified_user_outlined, label: 'MFA Enabled', value: _requireMfa ? 'Enabled' : 'Disabled'),
+      _StatusTileData(icon: Icons.password_outlined, label: 'Password Min Length', value: '$minLength chars'),
+      _StatusTileData(icon: Icons.schedule_outlined, label: 'Session Timeout', value: '$timeoutMinutes min'),
+      _StatusTileData(icon: Icons.warning_amber_outlined, label: 'Failed Logins (24h)', value: '$failedCount'),
+    ];
+  }
   @override
   Widget build(BuildContext context) {
     final double horizontalPadding = AppBreakpoints.isMobile(context) ? 20 : 32;
@@ -66,7 +261,39 @@ class _SecurityManagementScreenState extends State<SecurityManagementScreen> {
                         const SizedBox(height: 24),
                         _TabStrip(selectedTab: _selectedTab, onSelected: _handleTabSelected),
                         const SizedBox(height: 28),
-                        _TabContent(selectedTab: _selectedTab),
+                        _TabContent(
+                          selectedTab: _selectedTab,
+                          roles: _roles,
+                          permissions: _permissions,
+                          accessLogs: _accessLogs,
+                          roleSlices: _buildRoleTierSlices(),
+                          resourceSlices: _buildResourceSlices(),
+                          statusTiles: _buildStatusTiles(),
+                          sessionTimeoutController: _sessionTimeoutController,
+                          minPasswordLengthController: _minPasswordLengthController,
+                          requireMfa: _requireMfa,
+                          requireUppercase: _requireUppercase,
+                          requireNumbers: _requireNumbers,
+                          requireSpecial: _requireSpecial,
+                          onRequireMfaChanged: (value) {
+                            setState(() => _requireMfa = value);
+                            _queueSettingsSave();
+                          },
+                          onRequireUppercaseChanged: (value) {
+                            setState(() => _requireUppercase = value);
+                            _queueSettingsSave();
+                          },
+                          onRequireNumbersChanged: (value) {
+                            setState(() => _requireNumbers = value);
+                            _queueSettingsSave();
+                          },
+                          onRequireSpecialChanged: (value) {
+                            setState(() => _requireSpecial = value);
+                            _queueSettingsSave();
+                          },
+                          onSettingsFieldChanged: _queueSettingsSave,
+                          onSaveSettings: () => _saveSecurityData(showSnack: true),
+                        ),
                         const SizedBox(height: 48),
                       ],
                     ),
@@ -123,11 +350,15 @@ class _TabStrip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        gradient: const LinearGradient(
+          colors: [Color(0xFFF8FAFF), Color(0xFFFFFFFF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 18, offset: const Offset(0, 12)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, 14)),
         ],
       ),
       child: SingleChildScrollView(
@@ -166,7 +397,6 @@ class _TabChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color background = selected ? const Color(0xFFFFC044) : Colors.transparent;
     final Color textColor = selected ? const Color(0xFF1A1D1F) : const Color(0xFF4B5563);
 
     return Material(
@@ -178,8 +408,21 @@ class _TabChip extends StatelessWidget {
           duration: const Duration(milliseconds: 160),
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
           decoration: BoxDecoration(
-            color: background,
+            gradient: selected
+                ? const LinearGradient(
+                    colors: [Color(0xFFFFD166), Color(0xFFFFB020)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+            color: selected ? null : Colors.transparent,
             borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: selected ? const Color(0xFFFDE68A) : Colors.transparent),
+            boxShadow: selected
+                ? [
+                    BoxShadow(color: const Color(0xFFFFB020).withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 6)),
+                  ]
+                : [],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -199,94 +442,101 @@ class _TabChip extends StatelessWidget {
 }
 
 class _TabContent extends StatelessWidget {
-  const _TabContent({required this.selectedTab});
+  const _TabContent({
+    required this.selectedTab,
+    required this.roles,
+    required this.permissions,
+    required this.accessLogs,
+    required this.roleSlices,
+    required this.resourceSlices,
+    required this.statusTiles,
+    required this.sessionTimeoutController,
+    required this.minPasswordLengthController,
+    required this.requireMfa,
+    required this.requireUppercase,
+    required this.requireNumbers,
+    required this.requireSpecial,
+    required this.onRequireMfaChanged,
+    required this.onRequireUppercaseChanged,
+    required this.onRequireNumbersChanged,
+    required this.onRequireSpecialChanged,
+    required this.onSettingsFieldChanged,
+    required this.onSaveSettings,
+  });
 
   final _SecurityTab selectedTab;
+  final List<SecurityRoleData> roles;
+  final List<SecurityPermissionData> permissions;
+  final List<SecurityAccessLogData> accessLogs;
+  final List<_PieSlice> roleSlices;
+  final List<_PieSlice> resourceSlices;
+  final List<_StatusTileData> statusTiles;
+  final TextEditingController sessionTimeoutController;
+  final TextEditingController minPasswordLengthController;
+  final bool requireMfa;
+  final bool requireUppercase;
+  final bool requireNumbers;
+  final bool requireSpecial;
+  final ValueChanged<bool> onRequireMfaChanged;
+  final ValueChanged<bool> onRequireUppercaseChanged;
+  final ValueChanged<bool> onRequireNumbersChanged;
+  final ValueChanged<bool> onRequireSpecialChanged;
+  final VoidCallback onSettingsFieldChanged;
+  final VoidCallback onSaveSettings;
 
   @override
   Widget build(BuildContext context) {
     switch (selectedTab) {
       case _SecurityTab.dashboard:
-        return const _EmptySecurityState(
-          title: 'No security dashboard data yet',
-          message: 'Add security inputs to populate monitoring and alert insights.',
-          icon: Icons.shield_outlined,
+        return _DashboardView(
+          roleSlices: roleSlices,
+          resourceSlices: resourceSlices,
+          statusTiles: statusTiles,
+          totalRoles: roles.length,
+          totalPermissions: permissions.length,
+          accessLogs: accessLogs,
         );
       case _SecurityTab.roles:
-        return const _EmptySecurityState(
-          title: 'No role data yet',
-          message: 'Define security roles to populate access coverage.',
-          icon: Icons.badge_outlined,
-        );
+        return _RolesView(roles: roles);
       case _SecurityTab.permissions:
-        return const _EmptySecurityState(
-          title: 'No permission data yet',
-          message: 'Capture permissions and access scopes to populate this view.',
-          icon: Icons.lock_open_outlined,
-        );
+        return _PermissionsView(permissions: permissions);
       case _SecurityTab.settings:
-        return const _EmptySecurityState(
-          title: 'No security settings yet',
-          message: 'Add configuration details to populate security settings.',
-          icon: Icons.settings_outlined,
+        return _SettingsView(
+          sessionTimeoutController: sessionTimeoutController,
+          minPasswordLengthController: minPasswordLengthController,
+          requireMfa: requireMfa,
+          requireUppercase: requireUppercase,
+          requireNumbers: requireNumbers,
+          requireSpecial: requireSpecial,
+          onRequireMfaChanged: onRequireMfaChanged,
+          onRequireUppercaseChanged: onRequireUppercaseChanged,
+          onRequireNumbersChanged: onRequireNumbersChanged,
+          onRequireSpecialChanged: onRequireSpecialChanged,
+          onSettingsFieldChanged: onSettingsFieldChanged,
+          onSaveSettings: onSaveSettings,
         );
       case _SecurityTab.accessLogs:
-        return const _EmptySecurityState(
-          title: 'No access logs yet',
-          message: 'Log security events to populate access history.',
-          icon: Icons.receipt_long_outlined,
-        );
+        return _AccessLogsView(accessLogs: accessLogs);
     }
   }
 }
 
-class _EmptySecurityState extends StatelessWidget {
-  const _EmptySecurityState({required this.title, required this.message, required this.icon});
-
-  final String title;
-  final String message;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF7ED),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: const Color(0xFFF59E0B)),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
-                const SizedBox(height: 6),
-                Text(message, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _DashboardView extends StatelessWidget {
-  const _DashboardView();
+  const _DashboardView({
+    required this.roleSlices,
+    required this.resourceSlices,
+    required this.statusTiles,
+    required this.totalRoles,
+    required this.totalPermissions,
+    required this.accessLogs,
+  });
+
+  final List<_PieSlice> roleSlices;
+  final List<_PieSlice> resourceSlices;
+  final List<_StatusTileData> statusTiles;
+  final int totalRoles;
+  final int totalPermissions;
+  final List<SecurityAccessLogData> accessLogs;
 
   @override
   Widget build(BuildContext context) {
@@ -309,41 +559,57 @@ class _DashboardView extends StatelessWidget {
               spacing: 16,
               runSpacing: 16,
               children: [
-                SizedBox(width: cardWidth, child: const _RoleTiersCard()),
-                SizedBox(width: cardWidth, child: const _ResourcePermissionsCard()),
-                SizedBox(width: cardWidth, child: const _SecurityStatusCard()),
+                SizedBox(
+                  width: cardWidth,
+                  child: _RoleTiersCard(slices: roleSlices, totalRoles: totalRoles),
+                ),
+                SizedBox(
+                  width: cardWidth,
+                  child: _ResourcePermissionsCard(slices: resourceSlices, totalPermissions: totalPermissions),
+                ),
+                SizedBox(
+                  width: cardWidth,
+                  child: _SecurityStatusCard(statusTiles: statusTiles),
+                ),
               ],
             );
           },
         ),
         const SizedBox(height: 28),
-        const _RecentActivityCard(),
+        _RecentActivityCard(accessLogs: accessLogs),
       ],
     );
   }
 }
 
-class _SettingsView extends StatefulWidget {
-  const _SettingsView();
+class _SettingsView extends StatelessWidget {
+  const _SettingsView({
+    required this.sessionTimeoutController,
+    required this.minPasswordLengthController,
+    required this.requireMfa,
+    required this.requireUppercase,
+    required this.requireNumbers,
+    required this.requireSpecial,
+    required this.onRequireMfaChanged,
+    required this.onRequireUppercaseChanged,
+    required this.onRequireNumbersChanged,
+    required this.onRequireSpecialChanged,
+    required this.onSettingsFieldChanged,
+    required this.onSaveSettings,
+  });
 
-  @override
-  State<_SettingsView> createState() => _SettingsViewState();
-}
-
-class _SettingsViewState extends State<_SettingsView> {
-  final TextEditingController _sessionTimeoutController = TextEditingController(text: '30');
-  final TextEditingController _minPasswordLengthController = TextEditingController(text: '10');
-  bool _requireMfa = true;
-  bool _requireUppercase = true;
-  bool _requireNumbers = true;
-  bool _requireSpecial = true;
-
-  @override
-  void dispose() {
-    _sessionTimeoutController.dispose();
-    _minPasswordLengthController.dispose();
-    super.dispose();
-  }
+  final TextEditingController sessionTimeoutController;
+  final TextEditingController minPasswordLengthController;
+  final bool requireMfa;
+  final bool requireUppercase;
+  final bool requireNumbers;
+  final bool requireSpecial;
+  final ValueChanged<bool> onRequireMfaChanged;
+  final ValueChanged<bool> onRequireUppercaseChanged;
+  final ValueChanged<bool> onRequireNumbersChanged;
+  final ValueChanged<bool> onRequireSpecialChanged;
+  final VoidCallback onSettingsFieldChanged;
+  final VoidCallback onSaveSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -403,13 +669,14 @@ class _SettingsViewState extends State<_SettingsView> {
               _SettingToggleRow(
                 title: 'Require Multi-Factor Authentication',
                 subtitle: 'Enforce MFA for all users when logging in',
-                value: _requireMfa,
-                onChanged: (value) => setState(() => _requireMfa = value),
+                value: requireMfa,
+                onChanged: onRequireMfaChanged,
               ),
               _SettingInputRow(
                 title: 'Session Timeout (minutes)',
                 subtitle: 'How long before an inactive session expires',
-                controller: _sessionTimeoutController,
+                controller: sessionTimeoutController,
+                onChanged: onSettingsFieldChanged,
               ),
             ],
           ),
@@ -426,25 +693,26 @@ class _SettingsViewState extends State<_SettingsView> {
               _SettingInputRow(
                 title: 'Minimum Password Length',
                 subtitle: 'Set the minimum required characters for passwords',
-                controller: _minPasswordLengthController,
+                controller: minPasswordLengthController,
+                onChanged: onSettingsFieldChanged,
               ),
               _SettingToggleRow(
                 title: 'Require Uppercase Characters',
                 subtitle: 'Passwords must contain at least one uppercase letter',
-                value: _requireUppercase,
-                onChanged: (value) => setState(() => _requireUppercase = value),
+                value: requireUppercase,
+                onChanged: onRequireUppercaseChanged,
               ),
               _SettingToggleRow(
                 title: 'Require Numbers',
                 subtitle: 'Passwords must contain at least one number',
-                value: _requireNumbers,
-                onChanged: (value) => setState(() => _requireNumbers = value),
+                value: requireNumbers,
+                onChanged: onRequireNumbersChanged,
               ),
               _SettingToggleRow(
                 title: 'Require Special Characters',
                 subtitle: 'Passwords must contain at least one special character',
-                value: _requireSpecial,
-                onChanged: (value) => setState(() => _requireSpecial = value),
+                value: requireSpecial,
+                onChanged: onRequireSpecialChanged,
               ),
             ],
           ),
@@ -452,7 +720,7 @@ class _SettingsViewState extends State<_SettingsView> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: onSaveSettings,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFFB020),
                 foregroundColor: Colors.white,
@@ -471,7 +739,9 @@ class _SettingsViewState extends State<_SettingsView> {
 }
 
 class _AccessLogsView extends StatefulWidget {
-  const _AccessLogsView();
+  const _AccessLogsView({required this.accessLogs});
+
+  final List<SecurityAccessLogData> accessLogs;
 
   @override
   State<_AccessLogsView> createState() => _AccessLogsViewState();
@@ -482,6 +752,14 @@ class _AccessLogsViewState extends State<_AccessLogsView> {
   String? _statusFilter;
 
   @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -489,6 +767,26 @@ class _AccessLogsViewState extends State<_AccessLogsView> {
 
   @override
   Widget build(BuildContext context) {
+    final query = _searchController.text.trim().toLowerCase();
+    final filteredLogs = widget.accessLogs.where((log) {
+      final matchesStatus = _statusFilter == null
+          ? true
+          : (_statusFilter == 'Success'
+              ? log.status.toLowerCase().contains('success')
+              : log.status.toLowerCase().contains('fail'));
+      if (!matchesStatus) return false;
+      if (query.isEmpty) return true;
+      final haystack = [
+        log.timestamp,
+        log.user,
+        log.action,
+        log.resource,
+        log.status,
+        log.ipAddress,
+      ].join(' ').toLowerCase();
+      return haystack.contains(query);
+    }).toList();
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 30),
@@ -576,7 +874,7 @@ class _AccessLogsViewState extends State<_AccessLogsView> {
               final searchButton = SizedBox(
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () => setState(() {}),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2563EB),
                     foregroundColor: Colors.white,
@@ -641,29 +939,98 @@ class _AccessLogsViewState extends State<_AccessLogsView> {
                       ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 68),
-                    alignment: Alignment.center,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Text(
-                          'No access logs available',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF9CA3AF)),
+                  if (filteredLogs.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 68),
+                      alignment: Alignment.center,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Text(
+                            'No access logs available',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF9CA3AF)),
+                          ),
+                          SizedBox(height: 6),
+                          Text(
+                            'System access history will appear here once recorded',
+                            style: TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    for (int i = 0; i < filteredLogs.length; i++) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                        child: Row(
+                          children: [
+                            _AccessLogCell(text: filteredLogs[i].timestamp, flex: 2),
+                            _AccessLogCell(text: filteredLogs[i].user, flex: 2),
+                            _AccessLogCell(text: filteredLogs[i].action, flex: 2),
+                            _AccessLogCell(text: filteredLogs[i].resource, flex: 2),
+                            Expanded(
+                              flex: 2,
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: _StatusPill(status: filteredLogs[i].status),
+                              ),
+                            ),
+                            _AccessLogCell(text: filteredLogs[i].ipAddress, flex: 2),
+                          ],
                         ),
-                        SizedBox(height: 6),
-                        Text(
-                          'System access history will appear here once recorded',
-                          style: TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
-                        ),
-                      ],
-                    ),
-                  ),
+                      ),
+                      if (i != filteredLogs.length - 1)
+                        const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+                    ],
                 ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AccessLogCell extends StatelessWidget {
+  const _AccessLogCell({required this.text, this.flex = 1});
+
+  final String text;
+  final int flex;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      flex: flex,
+      child: Text(
+        text.isEmpty ? '--' : text,
+        style: const TextStyle(fontSize: 14, color: Color(0xFF4B5563)),
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = status.isEmpty ? 'Unknown' : status;
+    final isFailure = value.toLowerCase().contains('fail');
+    final Color background = isFailure ? const Color(0xFFFEE2E2) : const Color(0xFFDCFCE7);
+    final Color textColor = isFailure ? const Color(0xFFB91C1C) : const Color(0xFF15803D);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        value,
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textColor),
       ),
     );
   }
@@ -774,11 +1141,13 @@ class _SettingInputRow extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.controller,
+    required this.onChanged,
   });
 
   final String title;
   final String subtitle;
   final TextEditingController controller;
+  final VoidCallback onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -800,6 +1169,7 @@ class _SettingInputRow extends StatelessWidget {
           child: TextField(
             controller: controller,
             keyboardType: TextInputType.number,
+            onChanged: (_) => onChanged(),
             decoration: InputDecoration(
               isDense: true,
               filled: true,
@@ -903,34 +1273,19 @@ class _StatusDropdown extends StatelessWidget {
 }
 
 class _RolesView extends StatelessWidget {
-  const _RolesView();
+  const _RolesView({required this.roles});
+
+  final List<SecurityRoleData> roles;
+
+  _TierBadgeVariant _variantForTier(String tier) {
+    final v = tier.toLowerCase();
+    if (v.contains('1') || v.contains('tier 1')) return _TierBadgeVariant.primary;
+    if (v.contains('2') || v.contains('tier 2')) return _TierBadgeVariant.text;
+    return _TierBadgeVariant.neutral;
+  }
 
   @override
   Widget build(BuildContext context) {
-    const roles = [
-      _RoleRowData(
-        name: 'Admin',
-        tierLabel: 'Tier 1',
-        tierVariant: _TierBadgeVariant.primary,
-        description: 'Full system access',
-        created: '4/9/2025',
-      ),
-      _RoleRowData(
-        name: 'Manager',
-        tierLabel: 'Tier 2',
-        tierVariant: _TierBadgeVariant.text,
-        description: 'Contract approvals and team management',
-        created: '4/9/2025',
-      ),
-      _RoleRowData(
-        name: 'Contractor',
-        tierLabel: 'Tier 3',
-        tierVariant: _TierBadgeVariant.neutral,
-        description: 'Basic contract viewing and updates',
-        created: '4/9/2025',
-      ),
-    ];
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 30),
@@ -1012,59 +1367,79 @@ class _RolesView extends StatelessWidget {
                       ],
                     ),
                   ),
-                  for (int i = 0; i < roles.length; i++) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              roles[i].name,
-                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF1F2937)),
-                            ),
+                  if (roles.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 68),
+                      alignment: Alignment.center,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Text(
+                            'No roles configured yet',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF9CA3AF)),
                           ),
-                          Expanded(
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: _RoleTierBadge(
-                                label: roles[i].tierLabel,
-                                variant: roles[i].tierVariant,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 3,
-                            child: Text(
-                              roles[i].description,
-                              style: const TextStyle(fontSize: 14, color: Color(0xFF4B5563)),
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              roles[i].created,
-                              style: const TextStyle(fontSize: 14, color: Color(0xFF4B5563)),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Align(
-                              alignment: Alignment.centerRight,
-                              child: Wrap(
-                                spacing: 10,
-                                children: const [
-                                  _TableActionButton(label: 'Edit'),
-                                  _TableActionButton(label: 'Permissions'),
-                                ],
-                              ),
-                            ),
+                          SizedBox(height: 6),
+                          Text(
+                            'Roles will appear once they are added to the security plan',
+                            style: TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
                           ),
                         ],
                       ),
-                    ),
-                    if (i != roles.length - 1)
-                      const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
-                  ],
+                    )
+                  else
+                    for (int i = 0; i < roles.length; i++) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                roles[i].name,
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF1F2937)),
+                              ),
+                            ),
+                            Expanded(
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: _RoleTierBadge(
+                                  label: roles[i].tierLabel.isEmpty ? 'Tier' : roles[i].tierLabel,
+                                  variant: _variantForTier(roles[i].tierLabel),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 3,
+                              child: Text(
+                                roles[i].description,
+                                style: const TextStyle(fontSize: 14, color: Color(0xFF4B5563)),
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                roles[i].createdDate.isEmpty ? '--' : roles[i].createdDate,
+                                style: const TextStyle(fontSize: 14, color: Color(0xFF4B5563)),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: Wrap(
+                                  spacing: 10,
+                                  children: const [
+                                    _TableActionButton(label: 'Edit'),
+                                    _TableActionButton(label: 'Permissions'),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (i != roles.length - 1)
+                        const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+                    ],
                 ],
               ),
             ),
@@ -1081,7 +1456,9 @@ class _RolesView extends StatelessWidget {
 }
 
 class _PermissionsView extends StatefulWidget {
-  const _PermissionsView();
+  const _PermissionsView({required this.permissions});
+
+  final List<SecurityPermissionData> permissions;
 
   @override
   State<_PermissionsView> createState() => _PermissionsViewState();
@@ -1092,26 +1469,11 @@ class _PermissionsViewState extends State<_PermissionsView> {
 
   @override
   Widget build(BuildContext context) {
-    const permissions = [
-      _PermissionRowData(name: 'Create Contract', resource: 'contracts', action: 'create', description: 'Create new contracts'),
-      _PermissionRowData(name: 'Read Contract', resource: 'contracts', action: 'read', description: 'View contract details'),
-      _PermissionRowData(name: 'Update Contract', resource: 'contracts', action: 'update', description: 'Edit existing contracts'),
-      _PermissionRowData(name: 'Delete Contract', resource: 'contracts', action: 'delete', description: 'Remove contracts from the system'),
-      _PermissionRowData(name: 'Approve Contract', resource: 'contracts', action: 'approve', description: 'Approve contracts for execution'),
-      _PermissionRowData(name: 'Create Bid', resource: 'bids', action: 'create', description: 'Create vendor bids'),
-      _PermissionRowData(name: 'Read Bid', resource: 'bids', action: 'read', description: 'View bid details'),
-      _PermissionRowData(name: 'Select Bid', resource: 'bids', action: 'select', description: 'Select winning bids'),
-      _PermissionRowData(name: 'Access Reports', resource: 'reports', action: 'read', description: 'Access system reports and analytics'),
-      _PermissionRowData(name: 'Manage Users', resource: 'users', action: 'manage', description: 'Create and edit user accounts'),
-      _PermissionRowData(name: 'Manage Roles', resource: 'roles', action: 'manage', description: 'Create and edit roles'),
-      _PermissionRowData(name: 'View Audit Log', resource: 'audit', action: 'read', description: 'Access system audit logs'),
-    ];
-
     final filteredPermissions = _selectedResource == null
-        ? permissions
-        : permissions.where((permission) => permission.resource == _selectedResource).toList();
+        ? widget.permissions
+        : widget.permissions.where((permission) => permission.resource == _selectedResource).toList();
 
-    final resourceFilters = <String>{for (final item in permissions) item.resource}.toList()..sort();
+    final resourceFilters = <String>{for (final item in widget.permissions) item.resource}.toList()..sort();
 
     return Container(
       width: double.infinity,
@@ -1215,7 +1577,12 @@ class _PermissionsViewState extends State<_PermissionsView> {
                     Container(
                       padding: const EdgeInsets.symmetric(vertical: 60),
                       alignment: Alignment.center,
-                      child: const Text('No permissions found for this resource', style: TextStyle(color: Color(0xFF9CA3AF))),
+                      child: Text(
+                        widget.permissions.isEmpty
+                            ? 'No permissions available yet'
+                            : 'No permissions found for this resource',
+                        style: const TextStyle(color: Color(0xFF9CA3AF)),
+                      ),
                     )
                   else
                     for (int i = 0; i < filteredPermissions.length; i++) ...[
@@ -1270,22 +1637,6 @@ class _PermissionsViewState extends State<_PermissionsView> {
   }
 }
 
-class _RoleRowData {
-  const _RoleRowData({
-    required this.name,
-    required this.tierLabel,
-    required this.tierVariant,
-    required this.description,
-    required this.created,
-  });
-
-  final String name;
-  final String tierLabel;
-  final _TierBadgeVariant tierVariant;
-  final String description;
-  final String created;
-}
-
 enum _TierBadgeVariant { primary, neutral, text }
 
 class _RoleTierBadge extends StatelessWidget {
@@ -1319,20 +1670,6 @@ class _RoleTierBadge extends StatelessWidget {
         return Text(label, style: const TextStyle(color: Color(0xFF4B5563), fontSize: 14, fontWeight: FontWeight.w600));
     }
   }
-}
-
-class _PermissionRowData {
-  const _PermissionRowData({
-    required this.name,
-    required this.resource,
-    required this.action,
-    required this.description,
-  });
-
-  final String name;
-  final String resource;
-  final String action;
-  final String description;
 }
 
 class _TableHeaderCell extends StatelessWidget {
@@ -1377,7 +1714,18 @@ class _TableActionButton extends StatelessWidget {
 }
 
 class _RoleTiersCard extends StatelessWidget {
-  const _RoleTiersCard();
+  const _RoleTiersCard({required this.slices, required this.totalRoles});
+
+  final List<_PieSlice> slices;
+  final int totalRoles;
+
+  List<_LegendEntry> _buildEntries() {
+    final total = slices.fold<double>(0, (sum, slice) => sum + slice.value);
+    return slices.map((slice) {
+      final percent = total == 0 ? 0 : ((slice.value / total) * 100).round();
+      return _LegendEntry(label: slice.label, value: '$percent%', color: slice.color);
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1385,37 +1733,41 @@ class _RoleTiersCard extends StatelessWidget {
       headerIcon: Icons.radio_button_checked_outlined,
       headerTitle: 'Role Tiers',
       headerSubtitle: 'Access level distribution',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          _PieChart(
-            slices: [
-              _PieSlice(color: Color(0xFF0EA5E9), value: 33, label: 'Tier 1'),
-              _PieSlice(color: Color(0xFF22D3EE), value: 33, label: 'Tier 3'),
-              _PieSlice(color: Color(0xFFFBBF24), value: 34, label: 'Tier 2'),
-            ],
-          ),
-          SizedBox(height: 18),
-          _PieLegend(
-            entries: [
-              _LegendEntry(label: 'Tier 1', value: '33%', color: Color(0xFF0EA5E9)),
-              _LegendEntry(label: 'Tier 3', value: '33%', color: Color(0xFF22D3EE)),
-              _LegendEntry(label: 'Tier 2', value: '33%', color: Color(0xFFFBBF24)),
-            ],
-          ),
-          SizedBox(height: 18),
-          Text(
-            'Total Roles: 3',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
-          ),
-        ],
-      ),
+      child: slices.isEmpty
+          ? const _EmptyMetricState(
+              icon: Icons.groups_outlined,
+              message: 'Add roles to populate tier distribution',
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _PieChart(slices: slices),
+                const SizedBox(height: 18),
+                _PieLegend(entries: _buildEntries()),
+                const SizedBox(height: 18),
+                Text(
+                  'Total Roles: $totalRoles',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
+                ),
+              ],
+            ),
     );
   }
 }
 
 class _ResourcePermissionsCard extends StatelessWidget {
-  const _ResourcePermissionsCard();
+  const _ResourcePermissionsCard({required this.slices, required this.totalPermissions});
+
+  final List<_PieSlice> slices;
+  final int totalPermissions;
+
+  List<_LegendEntry> _buildEntries() {
+    final total = slices.fold<double>(0, (sum, slice) => sum + slice.value);
+    return slices.map((slice) {
+      final percent = total == 0 ? 0 : ((slice.value / total) * 100).round();
+      return _LegendEntry(label: slice.label, value: '$percent%', color: slice.color);
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1423,42 +1775,32 @@ class _ResourcePermissionsCard extends StatelessWidget {
       headerIcon: Icons.lock_person_outlined,
       headerTitle: 'Resource Permissions',
       headerSubtitle: 'Permissions by resource type',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          _PieChart(
-            slices: [
-              _PieSlice(color: Color(0xFF22D3EE), value: 8, label: 'Users'),
-              _PieSlice(color: Color(0xFFFB7185), value: 8, label: 'Reports'),
-              _PieSlice(color: Color(0xFFF97316), value: 25, label: 'Bids'),
-              _PieSlice(color: Color(0xFF6366F1), value: 8, label: 'Roles'),
-              _PieSlice(color: Color(0xFF34D399), value: 8, label: 'Audits'),
-            ],
-          ),
-          SizedBox(height: 18),
-          _PieLegend(
-            wrap: true,
-            entries: [
-              _LegendEntry(label: 'Users', value: '8%', color: Color(0xFF22D3EE)),
-              _LegendEntry(label: 'Reports', value: '8%', color: Color(0xFFFB7185)),
-              _LegendEntry(label: 'Bids', value: '25%', color: Color(0xFFF97316)),
-              _LegendEntry(label: 'Roles', value: '8%', color: Color(0xFF6366F1)),
-              _LegendEntry(label: 'Audits', value: '8%', color: Color(0xFF34D399)),
-            ],
-          ),
-          SizedBox(height: 18),
-          Text(
-            'Total Permissions: 12',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
-          ),
-        ],
-      ),
+      child: slices.isEmpty
+          ? const _EmptyMetricState(
+              icon: Icons.lock_open_outlined,
+              message: 'Add permissions to populate resource coverage',
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _PieChart(slices: slices),
+                const SizedBox(height: 18),
+                _PieLegend(entries: _buildEntries(), wrap: true),
+                const SizedBox(height: 18),
+                Text(
+                  'Total Permissions: $totalPermissions',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
+                ),
+              ],
+            ),
     );
   }
 }
 
 class _SecurityStatusCard extends StatelessWidget {
-  const _SecurityStatusCard();
+  const _SecurityStatusCard({required this.statusTiles});
+
+  final List<_StatusTileData> statusTiles;
 
   @override
   Widget build(BuildContext context) {
@@ -1466,52 +1808,50 @@ class _SecurityStatusCard extends StatelessWidget {
       headerIcon: Icons.shield_outlined,
       headerTitle: 'Security Status',
       headerSubtitle: 'Critical security settings',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 4),
-          const _StatusTile(
-            icon: Icons.verified_user_outlined,
-            label: 'MFA Enabled',
-            value: 'Enabled',
-          ),
-          const SizedBox(height: 12),
-          const _StatusTile(
-            icon: Icons.password_outlined,
-            label: 'Password Min Length',
-            value: '10 chars',
-          ),
-          const SizedBox(height: 12),
-          const _StatusTile(
-            icon: Icons.schedule_outlined,
-            label: 'Session Timeout',
-            value: '30 min',
-          ),
-          const SizedBox(height: 12),
-          const _StatusTile(
-            icon: Icons.warning_amber_outlined,
-            label: 'Failed Logins (24h)',
-            value: '0',
-          ),
-          const SizedBox(height: 22),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () {},
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                foregroundColor: const Color(0xFF1A1D1F),
-                textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                side: const BorderSide(color: Color(0xFFE5E7EB)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-              child: const Text('Manage Settings'),
+      child: statusTiles.isEmpty
+          ? const _EmptyMetricState(
+              icon: Icons.settings_outlined,
+              message: 'Security settings summary will appear here',
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                for (int i = 0; i < statusTiles.length; i++) ...[
+                  _StatusTile(
+                    icon: statusTiles[i].icon,
+                    label: statusTiles[i].label,
+                    value: statusTiles[i].value,
+                  ),
+                  if (i != statusTiles.length - 1) const SizedBox(height: 12),
+                ],
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () {},
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      foregroundColor: const Color(0xFF1A1D1F),
+                      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      side: const BorderSide(color: Color(0xFFE5E7EB)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: const Text('Manage Settings'),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
   }
+}
+
+class _StatusTileData {
+  const _StatusTileData({required this.icon, required this.label, required this.value});
+
+  final IconData icon;
+  final String label;
+  final String value;
 }
 
 class _StatusTile extends StatelessWidget {
@@ -1562,10 +1902,26 @@ class _StatusTile extends StatelessWidget {
 }
 
 class _RecentActivityCard extends StatelessWidget {
-  const _RecentActivityCard();
+  const _RecentActivityCard({required this.accessLogs});
+
+  final List<SecurityAccessLogData> accessLogs;
+
+  List<SecurityAccessLogData> _recentLogs() {
+    final logs = List<SecurityAccessLogData>.from(accessLogs);
+    logs.sort((a, b) {
+      final aDate = DateTime.tryParse(a.timestamp);
+      final bDate = DateTime.tryParse(b.timestamp);
+      if (aDate == null && bDate == null) return 0;
+      if (aDate == null) return 1;
+      if (bDate == null) return -1;
+      return bDate.compareTo(aDate);
+    });
+    return logs.take(4).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final recent = _recentLogs();
     return _MetricCard(
       padding: const EdgeInsets.all(26),
       headerIcon: Icons.description_outlined,
@@ -1575,28 +1931,38 @@ class _RecentActivityCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 12),
-          SizedBox(
-            height: 200,
-            child: _DashedBorderBox(
-              child: Container(
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  color: const Color(0xFFF9FAFB),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(Icons.timeline_outlined, color: Color(0xFFD1D5DB), size: 42),
-                    SizedBox(height: 12),
-                    Text('No activity yet', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF9CA3AF))),
-                    SizedBox(height: 4),
-                    Text('Security logs will appear here when available', style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
-                  ],
+          if (recent.isEmpty)
+            SizedBox(
+              height: 200,
+              child: _DashedBorderBox(
+                child: Container(
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    color: const Color(0xFFF9FAFB),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(Icons.timeline_outlined, color: Color(0xFFD1D5DB), size: 42),
+                      SizedBox(height: 12),
+                      Text('No activity yet', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF9CA3AF))),
+                      SizedBox(height: 4),
+                      Text('Security logs will appear here when available', style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
+                    ],
+                  ),
                 ),
               ),
+            )
+          else
+            Column(
+              children: [
+                for (int i = 0; i < recent.length; i++) ...[
+                  _RecentActivityRow(log: recent[i]),
+                  if (i != recent.length - 1) const SizedBox(height: 14),
+                ],
+              ],
             ),
-          ),
           const SizedBox(height: 18),
           Wrap(
             spacing: 16,
@@ -1621,6 +1987,56 @@ class _RecentActivityCard extends StatelessWidget {
               child: const Text('View All Logs'),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecentActivityRow extends StatelessWidget {
+  const _RecentActivityRow({required this.log});
+
+  final SecurityAccessLogData log;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = log.status.isEmpty ? 'Unknown' : log.status;
+    final isFailure = status.toLowerCase().contains('fail');
+    final Color dotColor = isFailure ? const Color(0xFFEF4444) : const Color(0xFF10B981);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${log.user} - ${log.action}',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1F2937)),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${log.resource} - ${log.timestamp}',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          _StatusPill(status: status),
         ],
       ),
     );
@@ -1737,6 +2153,42 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
+class _EmptyMetricState extends StatelessWidget {
+  const _EmptyMetricState({required this.icon, required this.message});
+
+  final IconData icon;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7ED),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: const Color(0xFFF59E0B), size: 20),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(message, style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _PieChart extends StatelessWidget {
   const _PieChart({required this.slices});
 
@@ -1744,6 +2196,7 @@ class _PieChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final total = slices.fold<double>(0, (sum, slice) => sum + slice.value);
     return SizedBox(
       height: 160,
       child: CustomPaint(
@@ -1760,9 +2213,9 @@ class _PieChart extends StatelessWidget {
               ],
             ),
             alignment: Alignment.center,
-            child: const Text(
-              '100%',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+            child: Text(
+              total == 0 ? '0%' : '100%',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
             ),
           ),
         ),
@@ -1792,6 +2245,8 @@ class _PieChartPainter extends CustomPainter {
     double startRadian = -math.pi / 2;
 
     final Paint paint = Paint()..style = PaintingStyle.fill;
+
+    if (total <= 0) return;
 
     for (final slice in slices) {
       final double sweepRadian = (slice.value / total) * 2 * math.pi;

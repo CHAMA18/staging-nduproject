@@ -364,7 +364,7 @@ class _StakeholderAlignmentScreenState extends State<StakeholderAlignmentScreen>
       title: 'Decision board',
       subtitle: 'Open decisions and ownership',
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  crossAxisAlignment: CrossAxisAlignment.stretch,
         children: const [
           _DecisionItem('Finalize support model', 'Owner: Ops', 'Due Oct 20'),
           _DecisionItem('Approve risk buffer', 'Owner: Sponsor', 'Due Oct 18'),
@@ -494,8 +494,8 @@ class _DecisionItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
+  margin: const EdgeInsets.only(bottom: 12),
+  padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(12),

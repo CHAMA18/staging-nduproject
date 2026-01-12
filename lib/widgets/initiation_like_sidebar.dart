@@ -59,6 +59,7 @@ import 'package:ndu_project/screens/security_management_screen.dart';
 import '../screens/quality_management_screen.dart';
 import 'package:ndu_project/screens/deliverables_roadmap_screen.dart';
 import 'package:ndu_project/screens/preferred_solution_analysis_screen.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/screens/launch_checklist_screen.dart';
 import 'package:ndu_project/screens/work_breakdown_structure_screen.dart';
 import 'package:ndu_project/screens/project_framework_screen.dart';
@@ -72,6 +73,7 @@ import 'package:ndu_project/screens/vendor_account_close_out_screen.dart';
 import 'package:ndu_project/screens/ui_ux_design_screen.dart';
 import 'package:ndu_project/screens/development_set_up_screen.dart';
 import 'package:ndu_project/screens/project_close_out_screen.dart';
+import 'package:ndu_project/screens/finalize_project_screen.dart';
 import 'package:ndu_project/screens/demobilize_team_screen.dart';
 import 'package:ndu_project/screens/actual_vs_planned_gap_analysis_screen.dart';
 import 'package:ndu_project/screens/commerce_viability_screen.dart';
@@ -606,6 +608,10 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     _navigateWithCheckpoint('salvage_disposal_team', const SalvageDisposalTeamScreen());
   }
 
+  void _openFinalizeProject() {
+    _navigateWithCheckpoint('finalize_project', const FinalizeProjectScreen());
+  }
+
   void _openDeliverProjectClosure() {
     _navigateWithCheckpoint('deliver_project_closure', const DeliverProjectClosureScreen());
   }
@@ -864,7 +870,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
         child: InkWell(
           onTap: isInteractive ? onTap : null,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: isHighlighted ? primary.withOpacity(0.12) : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
@@ -886,12 +892,87 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+                if (title == 'Preferred Solution Analysis')
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8.0),
+                    child: GestureDetector(
+                      onTap: () async {
+                        final selected = await showDialog<Map<String, String>?>(
+                          context: context,
+                          builder: (ctx) {
+                            return AlertDialog(
+                              title: const Text('Select Project'),
+                              content: SingleChildScrollView(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    ListTile(
+                                      title: const Text('Digital Transformation Platform'),
+                                      subtitle: const Text('Modernize infrastructure with cloud-native architecture.'),
+                                      onTap: () => Navigator.of(ctx).pop({'title': 'Digital Transformation Platform', 'desc': 'Modernize infrastructure with cloud-native architecture.'}),
+                                    ),
+                                    ListTile(
+                                      title: const Text('Cloud Migration & Optimization'),
+                                      subtitle: const Text('Move to cloud-based systems for better scalability.'),
+                                      onTap: () => Navigator.of(ctx).pop({'title': 'Cloud Migration & Optimization', 'desc': 'Move to cloud-based systems for better scalability.'}),
+                                    ),
+                                    ListTile(
+                                      title: const Text('AI-Powered Intelligence Layer'),
+                                      subtitle: const Text('Implement ML and AI to automate decision-making.'),
+                                      onTap: () => Navigator.of(ctx).pop({'title': 'AI-Powered Intelligence Layer', 'desc': 'Implement ML and AI to automate decision-making.'}),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(null), child: const Text('Cancel'))],
+                            );
+                          },
+                        );
+
+                        if (selected != null) {
+                          await ProjectDataHelper.updateAndSave(
+                            context: context,
+                            checkpoint: 'potential_solutions',
+                            dataUpdater: (data) {
+                              data.potentialSolutions = [PotentialSolution(title: selected['title'] ?? '', description: selected['desc'] ?? '')];
+                              return data;
+                            },
+                          );
+
+                          await ProjectDataHelper.saveAndNavigate(
+                            context: context,
+                            checkpoint: 'potential_solutions',
+                            nextScreenBuilder: () => PreferredSolutionAnalysisScreen(
+                              notes: '',
+                              solutions: [AiSolutionItem(title: selected['title'] ?? '', description: selected['desc'] ?? '')],
+                              businessCase: ProjectDataHelper.getData(context).businessCase,
+                            ),
+                          );
+                        }
+                      },
+                      child: Container(
+                        width: 36,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [Color(0xFFFFC812), Color(0xFFFFB200)]),
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFFC812).withOpacity(0.25),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: const Center(child: Icon(Icons.playlist_add_check_rounded, size: 16, color: Colors.white)),
+                      ),
+                    ),
+                  ],
+                ), // end Row
+              ), // end Container
+            ), // end InkWell
+          ), // end AbsorbPointer
+        ); // end Padding return
   }
 
   Widget _buildSubMenuItem(String title, {VoidCallback? onTap, bool isActive = false, bool isDisabled = false}) {
@@ -1002,15 +1083,101 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: textColor,
-                    fontWeight: isHighlighted ? FontWeight.w600 : FontWeight.normal,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: textColor,
+                          fontWeight: isHighlighted ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (title == 'Preferred Solution Analysis')
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8.0),
+                        child: Semantics(
+                          label: 'Select Project',
+                          button: true,
+                          child: GestureDetector(
+                            onTap: () async {
+                              final selected = await showDialog<Map<String, String>?>(
+                                context: context,
+                                builder: (ctx) {
+                                  return AlertDialog(
+                                    title: const Text('Select Project'),
+                                    content: SingleChildScrollView(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          ListTile(
+                                            title: const Text('Digital Transformation Platform'),
+                                            subtitle: const Text('Modernize infrastructure with cloud-native architecture.'),
+                                            onTap: () => Navigator.of(ctx).pop({'title': 'Digital Transformation Platform', 'desc': 'Modernize infrastructure with cloud-native architecture.'}),
+                                          ),
+                                          ListTile(
+                                            title: const Text('Cloud Migration & Optimization'),
+                                            subtitle: const Text('Move to cloud-based systems for better scalability.'),
+                                            onTap: () => Navigator.of(ctx).pop({'title': 'Cloud Migration & Optimization', 'desc': 'Move to cloud-based systems for better scalability.'}),
+                                          ),
+                                          ListTile(
+                                            title: const Text('AI-Powered Intelligence Layer'),
+                                            subtitle: const Text('Implement ML and AI to automate decision-making.'),
+                                            onTap: () => Navigator.of(ctx).pop({'title': 'AI-Powered Intelligence Layer', 'desc': 'Implement ML and AI to automate decision-making.'}),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.of(ctx).pop(null), child: const Text('Cancel')),
+                                    ],
+                                  );
+                                },
+                              );
+
+                              if (selected != null) {
+                                await ProjectDataHelper.updateAndSave(
+                                  context: context,
+                                  checkpoint: 'potential_solutions',
+                                  dataUpdater: (data) {
+                                    data.potentialSolutions = [PotentialSolution(title: selected['title'] ?? '', description: selected['desc'] ?? '')];
+                                    return data;
+                                  },
+                                );
+
+                                await ProjectDataHelper.saveAndNavigate(
+                                  context: context,
+                                  checkpoint: 'potential_solutions',
+                                  nextScreenBuilder: () => PreferredSolutionAnalysisScreen(
+                                    notes: '',
+                                    solutions: [AiSolutionItem(title: selected['title'] ?? '', description: selected['desc'] ?? '')],
+                                    businessCase: ProjectDataHelper.getData(context).businessCase,
+                                  ),
+                                );
+                              }
+                            },
+                            child: Container(
+                              width: 36,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(colors: [Color(0xFFFFC812), Color(0xFFFFB200)]),
+                                borderRadius: BorderRadius.circular(8),
+                                boxShadow: [
+                                  BoxShadow(color: const Color(0xFFFFC812).withOpacity(0.25), blurRadius: 8, offset: const Offset(0, 3)),
+                                ],
+                              ),
+                              child: const Center(
+                                child: Icon(Icons.playlist_add_check_rounded, size: 16, color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ],
@@ -1576,7 +1743,11 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
                     isActive: widget.activeItemLabel == 'Salvage and/or Disposal Plan',
                     isDisabled: lockSalvageDisposal,
                   ),
-                  _buildSubMenuItem('Finalize Project', isActive: widget.activeItemLabel == 'Finalize Project'),
+                  _buildSubMenuItem(
+                    'Finalize Project',
+                    onTap: _openFinalizeProject,
+                    isActive: widget.activeItemLabel == 'Finalize Project',
+                  ),
                 ],
                 _buildExpandableHeader(
                   Icons.rocket_launch_outlined,

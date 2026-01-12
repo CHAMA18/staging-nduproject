@@ -34,6 +34,18 @@ class ProjectDataModel {
   
   // Front End Planning Data
   FrontEndPlanningData frontEndPlanning;
+
+  // Lessons Learned Data
+  LessonsLearnedData lessonsLearnedData;
+
+  // Security Management Data
+  SecurityManagementData securityManagementData;
+
+  // Quality Management Data
+  QualityManagementData qualityManagementData;
+
+  // Technical Debt Management Data
+  TechnicalDebtManagementData technicalDebtManagementData;
   
   // SSHER Data
   SSHERData ssherData;
@@ -58,6 +70,16 @@ class ProjectDataModel {
   
   // Core Stakeholders Data
   CoreStakeholdersData? coreStakeholdersData;
+
+  // Risk Tracking Data
+  List<Map<String, dynamic>> trackingRisks;
+  
+  // Technology and Integration Workspaces
+  List<Map<String, dynamic>> technologyInventory;
+  List<Map<String, dynamic>> aiIntegrations;
+  List<Map<String, dynamic>> externalIntegrations;
+  List<Map<String, dynamic>> technologyDefinitions;
+  List<Map<String, dynamic>> aiRecommendations;
   
   // Metadata
   bool isBasicPlanProject;
@@ -89,6 +111,10 @@ class ProjectDataModel {
     List<List<WorkItem>>? goalWorkItems,
     List<IssueLogItem>? issueLogItems,
     FrontEndPlanningData? frontEndPlanning,
+    LessonsLearnedData? lessonsLearnedData,
+    SecurityManagementData? securityManagementData,
+    QualityManagementData? qualityManagementData,
+    TechnicalDebtManagementData? technicalDebtManagementData,
     SSHERData? ssherData,
     List<TeamMember>? teamMembers,
     List<LaunchChecklistItem>? launchChecklistItems,
@@ -97,6 +123,12 @@ class ProjectDataModel {
     this.itConsiderationsData,
     this.infrastructureConsiderationsData,
     this.coreStakeholdersData,
+  List<Map<String, dynamic>>? trackingRisks,
+  List<Map<String, dynamic>>? technologyInventory,
+  List<Map<String, dynamic>>? aiIntegrations,
+  List<Map<String, dynamic>>? externalIntegrations,
+  List<Map<String, dynamic>>? technologyDefinitions,
+  List<Map<String, dynamic>>? aiRecommendations,
     this.isBasicPlanProject = false,
     Map<String, int>? aiUsageCounts,
     this.projectId,
@@ -112,10 +144,20 @@ class ProjectDataModel {
         goalWorkItems = goalWorkItems ?? List.generate(3, (_) => []),
         issueLogItems = issueLogItems ?? [],
         frontEndPlanning = frontEndPlanning ?? FrontEndPlanningData(),
+        lessonsLearnedData = lessonsLearnedData ?? LessonsLearnedData(),
+        securityManagementData = securityManagementData ?? SecurityManagementData(),
+        qualityManagementData = qualityManagementData ?? QualityManagementData(),
+        technicalDebtManagementData = technicalDebtManagementData ?? TechnicalDebtManagementData(),
         ssherData = ssherData ?? SSHERData(),
         teamMembers = teamMembers ?? [],
         launchChecklistItems = launchChecklistItems ?? [],
         costEstimateItems = costEstimateItems ?? [],
+  trackingRisks = trackingRisks ?? [],
+  technologyInventory = technologyInventory ?? [],
+  aiIntegrations = aiIntegrations ?? [],
+  externalIntegrations = externalIntegrations ?? [],
+  technologyDefinitions = technologyDefinitions ?? [],
+  aiRecommendations = aiRecommendations ?? [],
         aiUsageCounts = aiUsageCounts ?? {};
 
   ProjectDataModel copyWith({
@@ -140,6 +182,10 @@ class ProjectDataModel {
     List<List<WorkItem>>? goalWorkItems,
     List<IssueLogItem>? issueLogItems,
     FrontEndPlanningData? frontEndPlanning,
+    LessonsLearnedData? lessonsLearnedData,
+    SecurityManagementData? securityManagementData,
+    QualityManagementData? qualityManagementData,
+    TechnicalDebtManagementData? technicalDebtManagementData,
     SSHERData? ssherData,
     List<TeamMember>? teamMembers,
     List<LaunchChecklistItem>? launchChecklistItems,
@@ -148,6 +194,12 @@ class ProjectDataModel {
     ITConsiderationsData? itConsiderationsData,
     InfrastructureConsiderationsData? infrastructureConsiderationsData,
     CoreStakeholdersData? coreStakeholdersData,
+  List<Map<String, dynamic>>? trackingRisks,
+  List<Map<String, dynamic>>? technologyInventory,
+  List<Map<String, dynamic>>? aiIntegrations,
+  List<Map<String, dynamic>>? externalIntegrations,
+  List<Map<String, dynamic>>? technologyDefinitions,
+  List<Map<String, dynamic>>? aiRecommendations,
     bool? isBasicPlanProject,
     Map<String, int>? aiUsageCounts,
     String? projectId,
@@ -177,6 +229,10 @@ class ProjectDataModel {
       goalWorkItems: goalWorkItems ?? this.goalWorkItems,
       issueLogItems: issueLogItems ?? this.issueLogItems,
       frontEndPlanning: frontEndPlanning ?? this.frontEndPlanning,
+      lessonsLearnedData: lessonsLearnedData ?? this.lessonsLearnedData,
+      securityManagementData: securityManagementData ?? this.securityManagementData,
+      qualityManagementData: qualityManagementData ?? this.qualityManagementData,
+      technicalDebtManagementData: technicalDebtManagementData ?? this.technicalDebtManagementData,
       ssherData: ssherData ?? this.ssherData,
        teamMembers: teamMembers ?? this.teamMembers,
       launchChecklistItems: launchChecklistItems ?? this.launchChecklistItems,
@@ -185,6 +241,12 @@ class ProjectDataModel {
       itConsiderationsData: itConsiderationsData ?? this.itConsiderationsData,
       infrastructureConsiderationsData: infrastructureConsiderationsData ?? this.infrastructureConsiderationsData,
       coreStakeholdersData: coreStakeholdersData ?? this.coreStakeholdersData,
+      trackingRisks: trackingRisks ?? this.trackingRisks,
+  technologyInventory: technologyInventory ?? this.technologyInventory,
+  aiIntegrations: aiIntegrations ?? this.aiIntegrations,
+  externalIntegrations: externalIntegrations ?? this.externalIntegrations,
+  technologyDefinitions: technologyDefinitions ?? this.technologyDefinitions,
+  aiRecommendations: aiRecommendations ?? this.aiRecommendations,
       isBasicPlanProject: isBasicPlanProject ?? this.isBasicPlanProject,
       aiUsageCounts: aiUsageCounts ?? this.aiUsageCounts,
       projectId: projectId ?? this.projectId,
@@ -229,6 +291,10 @@ class ProjectDataModel {
       'goalWorkItems': flattenedWorkItems,
       'issueLogItems': issueLogItems.map((item) => item.toJson()).toList(),
       'frontEndPlanning': frontEndPlanning.toJson(),
+      'lessonsLearnedData': lessonsLearnedData.toJson(),
+      'securityManagementData': securityManagementData.toJson(),
+      'qualityManagementData': qualityManagementData.toJson(),
+      'technicalDebtManagementData': technicalDebtManagementData.toJson(),
       'ssherData': ssherData.toJson(),
       'teamMembers': teamMembers.map((m) => m.toJson()).toList(),
       'launchChecklistItems': launchChecklistItems.map((item) => item.toJson()).toList(),
@@ -237,6 +303,12 @@ class ProjectDataModel {
       if (itConsiderationsData != null) 'itConsiderationsData': itConsiderationsData!.toJson(),
       if (infrastructureConsiderationsData != null) 'infrastructureConsiderationsData': infrastructureConsiderationsData!.toJson(),
       if (coreStakeholdersData != null) 'coreStakeholdersData': coreStakeholdersData!.toJson(),
+  'trackingRisks': trackingRisks,
+  'technologyInventory': technologyInventory,
+  'aiIntegrations': aiIntegrations,
+  'externalIntegrations': externalIntegrations,
+  'technologyDefinitions': technologyDefinitions,
+  'aiRecommendations': aiRecommendations,
       'currentCheckpoint': currentCheckpoint,
       'isBasicPlanProject': isBasicPlanProject,
       'aiUsageCounts': aiUsageCounts,
@@ -350,6 +422,11 @@ class ProjectDataModel {
       goalWorkItems: reconstructedGoalWorkItems,
       issueLogItems: safeParseList('issueLogItems', IssueLogItem.fromJson),
       frontEndPlanning: safeParseSingle('frontEndPlanning', FrontEndPlanningData.fromJson) ?? FrontEndPlanningData(),
+      lessonsLearnedData: safeParseSingle('lessonsLearnedData', LessonsLearnedData.fromJson) ?? LessonsLearnedData(),
+      securityManagementData: safeParseSingle('securityManagementData', SecurityManagementData.fromJson) ?? SecurityManagementData(),
+      qualityManagementData: safeParseSingle('qualityManagementData', QualityManagementData.fromJson) ?? QualityManagementData(),
+      technicalDebtManagementData:
+          safeParseSingle('technicalDebtManagementData', TechnicalDebtManagementData.fromJson) ?? TechnicalDebtManagementData(),
       ssherData: safeParseSingle('ssherData', SSHERData.fromJson) ?? SSHERData(),
       teamMembers: safeParseList('teamMembers', TeamMember.fromJson),
       launchChecklistItems: safeParseList('launchChecklistItems', LaunchChecklistItem.fromJson),
@@ -358,6 +435,12 @@ class ProjectDataModel {
       itConsiderationsData: safeParseSingle('itConsiderationsData', ITConsiderationsData.fromJson),
       infrastructureConsiderationsData: safeParseSingle('infrastructureConsiderationsData', InfrastructureConsiderationsData.fromJson),
       coreStakeholdersData: safeParseSingle('coreStakeholdersData', CoreStakeholdersData.fromJson),
+      trackingRisks: (json['trackingRisks'] is List) ? List<Map<String, dynamic>>.from(json['trackingRisks'] as List) : [],
+  technologyInventory: (json['technologyInventory'] is List) ? List<Map<String, dynamic>>.from(json['technologyInventory'] as List) : [],
+  aiIntegrations: (json['aiIntegrations'] is List) ? List<Map<String, dynamic>>.from(json['aiIntegrations'] as List) : [],
+  externalIntegrations: (json['externalIntegrations'] is List) ? List<Map<String, dynamic>>.from(json['externalIntegrations'] as List) : [],
+  technologyDefinitions: (json['technologyDefinitions'] is List) ? List<Map<String, dynamic>>.from(json['technologyDefinitions'] as List) : [],
+  aiRecommendations: (json['aiRecommendations'] is List) ? List<Map<String, dynamic>>.from(json['aiRecommendations'] as List) : [],
       isBasicPlanProject: json['isBasicPlanProject'] == true,
       aiUsageCounts: (json['aiUsageCounts'] is Map)
           ? Map<String, int>.from(
@@ -656,6 +739,1386 @@ class RequirementItem {
   }
 }
 
+class LessonsLearnedEntry {
+  String id;
+  String lesson;
+  String type;
+  String category;
+  String phase;
+  String impact;
+  String status;
+  String submittedBy;
+  String date;
+  bool highlight;
+
+  LessonsLearnedEntry({
+    this.id = '',
+    this.lesson = '',
+    this.type = '',
+    this.category = '',
+    this.phase = '',
+    this.impact = '',
+    this.status = '',
+    this.submittedBy = '',
+    this.date = '',
+    this.highlight = false,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'lesson': lesson,
+        'type': type,
+        'category': category,
+        'phase': phase,
+        'impact': impact,
+        'status': status,
+        'submittedBy': submittedBy,
+        'date': date,
+        'highlight': highlight,
+      };
+
+  factory LessonsLearnedEntry.fromJson(Map<String, dynamic> json) {
+    return LessonsLearnedEntry(
+      id: json['id'] ?? '',
+      lesson: json['lesson'] ?? '',
+      type: json['type'] ?? '',
+      category: json['category'] ?? '',
+      phase: json['phase'] ?? '',
+      impact: json['impact'] ?? '',
+      status: json['status'] ?? '',
+      submittedBy: json['submittedBy'] ?? '',
+      date: json['date'] ?? '',
+      highlight: json['highlight'] ?? false,
+    );
+  }
+}
+
+class LessonsLearnedData {
+  List<LessonsLearnedEntry> entries;
+  List<String> benefits;
+  bool aiSeeded;
+
+  LessonsLearnedData({
+    List<LessonsLearnedEntry>? entries,
+    List<String>? benefits,
+    this.aiSeeded = false,
+  })  : entries = entries ?? [],
+        benefits = benefits ?? [];
+
+  Map<String, dynamic> toJson() => {
+        'entries': entries.map((entry) => entry.toJson()).toList(),
+        'benefits': benefits,
+        'aiSeeded': aiSeeded,
+      };
+
+  factory LessonsLearnedData.fromJson(Map<String, dynamic> json) {
+    return LessonsLearnedData(
+      entries: (json['entries'] as List?)
+              ?.map((item) => LessonsLearnedEntry.fromJson(item as Map<String, dynamic>))
+              .toList() ??
+          [],
+      benefits: (json['benefits'] as List?)?.map((item) => item.toString()).toList() ?? [],
+      aiSeeded: json['aiSeeded'] ?? false,
+    );
+  }
+}
+
+class SecurityRoleData {
+  String name;
+  String tierLabel;
+  String description;
+  String createdDate;
+
+  SecurityRoleData({
+    this.name = '',
+    this.tierLabel = '',
+    this.description = '',
+    this.createdDate = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'tierLabel': tierLabel,
+        'description': description,
+        'createdDate': createdDate,
+      };
+
+  factory SecurityRoleData.fromJson(Map<String, dynamic> json) {
+    return SecurityRoleData(
+      name: json['name'] ?? '',
+      tierLabel: json['tierLabel'] ?? '',
+      description: json['description'] ?? '',
+      createdDate: json['createdDate'] ?? '',
+    );
+  }
+}
+
+class SecurityPermissionData {
+  String name;
+  String resource;
+  String action;
+  String description;
+
+  SecurityPermissionData({
+    this.name = '',
+    this.resource = '',
+    this.action = '',
+    this.description = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'resource': resource,
+        'action': action,
+        'description': description,
+      };
+
+  factory SecurityPermissionData.fromJson(Map<String, dynamic> json) {
+    return SecurityPermissionData(
+      name: json['name'] ?? '',
+      resource: json['resource'] ?? '',
+      action: json['action'] ?? '',
+      description: json['description'] ?? '',
+    );
+  }
+}
+
+class SecurityAccessLogData {
+  String timestamp;
+  String user;
+  String action;
+  String resource;
+  String status;
+  String ipAddress;
+
+  SecurityAccessLogData({
+    this.timestamp = '',
+    this.user = '',
+    this.action = '',
+    this.resource = '',
+    this.status = '',
+    this.ipAddress = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'timestamp': timestamp,
+        'user': user,
+        'action': action,
+        'resource': resource,
+        'status': status,
+        'ipAddress': ipAddress,
+      };
+
+  factory SecurityAccessLogData.fromJson(Map<String, dynamic> json) {
+    return SecurityAccessLogData(
+      timestamp: json['timestamp'] ?? '',
+      user: json['user'] ?? '',
+      action: json['action'] ?? '',
+      resource: json['resource'] ?? '',
+      status: json['status'] ?? '',
+      ipAddress: json['ipAddress'] ?? '',
+    );
+  }
+}
+
+class SecuritySettingsData {
+  int sessionTimeoutMinutes;
+  int minPasswordLength;
+  bool requireMfa;
+  bool requireUppercase;
+  bool requireNumbers;
+  bool requireSpecial;
+
+  SecuritySettingsData({
+    this.sessionTimeoutMinutes = 30,
+    this.minPasswordLength = 10,
+    this.requireMfa = true,
+    this.requireUppercase = true,
+    this.requireNumbers = true,
+    this.requireSpecial = true,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'sessionTimeoutMinutes': sessionTimeoutMinutes,
+        'minPasswordLength': minPasswordLength,
+        'requireMfa': requireMfa,
+        'requireUppercase': requireUppercase,
+        'requireNumbers': requireNumbers,
+        'requireSpecial': requireSpecial,
+      };
+
+  factory SecuritySettingsData.fromJson(Map<String, dynamic> json) {
+    return SecuritySettingsData(
+      sessionTimeoutMinutes: (json['sessionTimeoutMinutes'] as num?)?.toInt() ?? 30,
+      minPasswordLength: (json['minPasswordLength'] as num?)?.toInt() ?? 10,
+      requireMfa: json['requireMfa'] ?? true,
+      requireUppercase: json['requireUppercase'] ?? true,
+      requireNumbers: json['requireNumbers'] ?? true,
+      requireSpecial: json['requireSpecial'] ?? true,
+    );
+  }
+}
+
+class SecurityManagementData {
+  List<SecurityRoleData> roles;
+  List<SecurityPermissionData> permissions;
+  List<SecurityAccessLogData> accessLogs;
+  SecuritySettingsData settings;
+  bool aiSeeded;
+
+  SecurityManagementData({
+    List<SecurityRoleData>? roles,
+    List<SecurityPermissionData>? permissions,
+    List<SecurityAccessLogData>? accessLogs,
+    SecuritySettingsData? settings,
+    this.aiSeeded = false,
+  })  : roles = roles ?? [],
+        permissions = permissions ?? [],
+        accessLogs = accessLogs ?? [],
+        settings = settings ?? SecuritySettingsData();
+
+  Map<String, dynamic> toJson() => {
+        'roles': roles.map((item) => item.toJson()).toList(),
+        'permissions': permissions.map((item) => item.toJson()).toList(),
+        'accessLogs': accessLogs.map((item) => item.toJson()).toList(),
+        'settings': settings.toJson(),
+        'aiSeeded': aiSeeded,
+      };
+
+  factory SecurityManagementData.fromJson(Map<String, dynamic> json) {
+    return SecurityManagementData(
+      roles: (json['roles'] as List?)?.map((item) => SecurityRoleData.fromJson(item as Map<String, dynamic>)).toList() ?? [],
+      permissions: (json['permissions'] as List?)
+              ?.map((item) => SecurityPermissionData.fromJson(item as Map<String, dynamic>))
+              .toList() ??
+          [],
+      accessLogs: (json['accessLogs'] as List?)
+              ?.map((item) => SecurityAccessLogData.fromJson(item as Map<String, dynamic>))
+              .toList() ??
+          [],
+      settings: json['settings'] is Map ? SecuritySettingsData.fromJson(json['settings'] as Map<String, dynamic>) : SecuritySettingsData(),
+      aiSeeded: json['aiSeeded'] ?? false,
+    );
+  }
+}
+
+class QualityTargetData {
+  String name;
+  String metric;
+  String target;
+  String current;
+  String status;
+
+  QualityTargetData({
+    this.name = '',
+    this.metric = '',
+    this.target = '',
+    this.current = '',
+    this.status = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'metric': metric,
+        'target': target,
+        'current': current,
+        'status': status,
+      };
+
+  factory QualityTargetData.fromJson(Map<String, dynamic> json) {
+    return QualityTargetData(
+      name: json['name'] ?? '',
+      metric: json['metric'] ?? '',
+      target: json['target'] ?? '',
+      current: json['current'] ?? '',
+      status: json['status'] ?? '',
+    );
+  }
+}
+
+class QaTechniqueData {
+  String name;
+  String description;
+  String frequency;
+  String standards;
+
+  QaTechniqueData({
+    this.name = '',
+    this.description = '',
+    this.frequency = '',
+    this.standards = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'description': description,
+        'frequency': frequency,
+        'standards': standards,
+      };
+
+  factory QaTechniqueData.fromJson(Map<String, dynamic> json) {
+    return QaTechniqueData(
+      name: json['name'] ?? '',
+      description: json['description'] ?? '',
+      frequency: json['frequency'] ?? '',
+      standards: json['standards'] ?? '',
+    );
+  }
+}
+
+class QcTechniqueData {
+  String name;
+  String description;
+  String frequency;
+
+  QcTechniqueData({
+    this.name = '',
+    this.description = '',
+    this.frequency = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'description': description,
+        'frequency': frequency,
+      };
+
+  factory QcTechniqueData.fromJson(Map<String, dynamic> json) {
+    return QcTechniqueData(
+      name: json['name'] ?? '',
+      description: json['description'] ?? '',
+      frequency: json['frequency'] ?? '',
+    );
+  }
+}
+
+class QualityMetricSummaryData {
+  String title;
+  String value;
+  String changeLabel;
+  String changeContext;
+  String trend;
+
+  QualityMetricSummaryData({
+    this.title = '',
+    this.value = '',
+    this.changeLabel = '',
+    this.changeContext = '',
+    this.trend = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'value': value,
+        'changeLabel': changeLabel,
+        'changeContext': changeContext,
+        'trend': trend,
+      };
+
+  factory QualityMetricSummaryData.fromJson(Map<String, dynamic> json) {
+    return QualityMetricSummaryData(
+      title: json['title'] ?? '',
+      value: json['value'] ?? '',
+      changeLabel: json['changeLabel'] ?? '',
+      changeContext: json['changeContext'] ?? '',
+      trend: json['trend'] ?? '',
+    );
+  }
+}
+
+class QualityTrendSeriesData {
+  String title;
+  String subtitle;
+  List<double> dataPoints;
+  List<String> labels;
+  double maxYBuffer;
+
+  QualityTrendSeriesData({
+    this.title = '',
+    this.subtitle = '',
+    List<double>? dataPoints,
+    List<String>? labels,
+    this.maxYBuffer = 0,
+  })  : dataPoints = dataPoints ?? [],
+        labels = labels ?? [];
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'subtitle': subtitle,
+        'dataPoints': dataPoints,
+        'labels': labels,
+        'maxYBuffer': maxYBuffer,
+      };
+
+  factory QualityTrendSeriesData.fromJson(Map<String, dynamic> json) {
+    double parseDouble(dynamic value) {
+      if (value is num) return value.toDouble();
+      return double.tryParse(value.toString()) ?? 0;
+    }
+
+    return QualityTrendSeriesData(
+      title: json['title'] ?? '',
+      subtitle: json['subtitle'] ?? '',
+      dataPoints: (json['dataPoints'] as List?)?.map((item) => parseDouble(item)).toList() ?? [],
+      labels: (json['labels'] as List?)?.map((item) => item.toString()).toList() ?? [],
+      maxYBuffer: (json['maxYBuffer'] as num?)?.toDouble() ?? 0,
+    );
+  }
+}
+
+class QualityManagementData {
+  String plan;
+  List<QualityTargetData> targets;
+  List<QaTechniqueData> qaTechniques;
+  List<QcTechniqueData> qcTechniques;
+  List<QualityMetricSummaryData> metricSummaries;
+  QualityTrendSeriesData defectTrend;
+  QualityTrendSeriesData satisfactionTrend;
+  bool aiSeeded;
+
+  QualityManagementData({
+    this.plan = '',
+    List<QualityTargetData>? targets,
+    List<QaTechniqueData>? qaTechniques,
+    List<QcTechniqueData>? qcTechniques,
+    List<QualityMetricSummaryData>? metricSummaries,
+    QualityTrendSeriesData? defectTrend,
+    QualityTrendSeriesData? satisfactionTrend,
+    this.aiSeeded = false,
+  })  : targets = targets ?? [],
+        qaTechniques = qaTechniques ?? [],
+        qcTechniques = qcTechniques ?? [],
+        metricSummaries = metricSummaries ?? [],
+        defectTrend = defectTrend ?? QualityTrendSeriesData(),
+        satisfactionTrend = satisfactionTrend ?? QualityTrendSeriesData();
+
+  Map<String, dynamic> toJson() => {
+        'plan': plan,
+        'targets': targets.map((item) => item.toJson()).toList(),
+        'qaTechniques': qaTechniques.map((item) => item.toJson()).toList(),
+        'qcTechniques': qcTechniques.map((item) => item.toJson()).toList(),
+        'metricSummaries': metricSummaries.map((item) => item.toJson()).toList(),
+        'defectTrend': defectTrend.toJson(),
+        'satisfactionTrend': satisfactionTrend.toJson(),
+        'aiSeeded': aiSeeded,
+      };
+
+  factory QualityManagementData.fromJson(Map<String, dynamic> json) {
+    return QualityManagementData(
+      plan: json['plan'] ?? '',
+      targets: (json['targets'] as List?)?.map((item) => QualityTargetData.fromJson(item as Map<String, dynamic>)).toList() ?? [],
+      qaTechniques:
+          (json['qaTechniques'] as List?)?.map((item) => QaTechniqueData.fromJson(item as Map<String, dynamic>)).toList() ??
+              [],
+      qcTechniques:
+          (json['qcTechniques'] as List?)?.map((item) => QcTechniqueData.fromJson(item as Map<String, dynamic>)).toList() ??
+              [],
+      metricSummaries: (json['metricSummaries'] as List?)
+              ?.map((item) => QualityMetricSummaryData.fromJson(item as Map<String, dynamic>))
+              .toList() ??
+          [],
+      defectTrend: json['defectTrend'] is Map
+          ? QualityTrendSeriesData.fromJson(json['defectTrend'] as Map<String, dynamic>)
+          : QualityTrendSeriesData(),
+      satisfactionTrend: json['satisfactionTrend'] is Map
+          ? QualityTrendSeriesData.fromJson(json['satisfactionTrend'] as Map<String, dynamic>)
+          : QualityTrendSeriesData(),
+      aiSeeded: json['aiSeeded'] ?? false,
+    );
+  }
+}
+
+class TechnicalDebtStatData {
+  String label;
+  String value;
+  String supporting;
+  String tone;
+
+  TechnicalDebtStatData({
+    this.label = '',
+    this.value = '',
+    this.supporting = '',
+    this.tone = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'label': label,
+        'value': value,
+        'supporting': supporting,
+        'tone': tone,
+      };
+
+  factory TechnicalDebtStatData.fromJson(Map<String, dynamic> json) {
+    return TechnicalDebtStatData(
+      label: json['label'] ?? '',
+      value: json['value'] ?? '',
+      supporting: json['supporting'] ?? '',
+      tone: json['tone'] ?? '',
+    );
+  }
+}
+
+class TechnicalDebtItemData {
+  String id;
+  String title;
+  String area;
+  String owner;
+  String severity;
+  String status;
+  String target;
+
+  TechnicalDebtItemData({
+    this.id = '',
+    this.title = '',
+    this.area = '',
+    this.owner = '',
+    this.severity = '',
+    this.status = '',
+    this.target = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'area': area,
+        'owner': owner,
+        'severity': severity,
+        'status': status,
+        'target': target,
+      };
+
+  factory TechnicalDebtItemData.fromJson(Map<String, dynamic> json) {
+    return TechnicalDebtItemData(
+      id: json['id'] ?? '',
+      title: json['title'] ?? '',
+      area: json['area'] ?? '',
+      owner: json['owner'] ?? '',
+      severity: json['severity'] ?? '',
+      status: json['status'] ?? '',
+      target: json['target'] ?? '',
+    );
+  }
+}
+
+class TechnicalDebtInsightData {
+  String title;
+  String subtitle;
+
+  TechnicalDebtInsightData({
+    this.title = '',
+    this.subtitle = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'subtitle': subtitle,
+      };
+
+  factory TechnicalDebtInsightData.fromJson(Map<String, dynamic> json) {
+    return TechnicalDebtInsightData(
+      title: json['title'] ?? '',
+      subtitle: json['subtitle'] ?? '',
+    );
+  }
+}
+
+class TechnicalDebtTrackData {
+  String label;
+  double progress;
+  String tone;
+
+  TechnicalDebtTrackData({
+    this.label = '',
+    this.progress = 0,
+    this.tone = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'label': label,
+        'progress': progress,
+        'tone': tone,
+      };
+
+  factory TechnicalDebtTrackData.fromJson(Map<String, dynamic> json) {
+    return TechnicalDebtTrackData(
+      label: json['label'] ?? '',
+      progress: (json['progress'] as num?)?.toDouble() ?? 0,
+      tone: json['tone'] ?? '',
+    );
+  }
+}
+
+class TechnicalDebtOwnerData {
+  String name;
+  String count;
+  String note;
+
+  TechnicalDebtOwnerData({
+    this.name = '',
+    this.count = '',
+    this.note = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'count': count,
+        'note': note,
+      };
+
+  factory TechnicalDebtOwnerData.fromJson(Map<String, dynamic> json) {
+    return TechnicalDebtOwnerData(
+      name: json['name'] ?? '',
+      count: json['count'] ?? '',
+      note: json['note'] ?? '',
+    );
+  }
+}
+
+class TechnicalDebtManagementData {
+  List<TechnicalDebtStatData> stats;
+  List<TechnicalDebtItemData> items;
+  List<TechnicalDebtInsightData> insights;
+  List<TechnicalDebtTrackData> tracks;
+  List<TechnicalDebtOwnerData> owners;
+  bool aiSeeded;
+
+  TechnicalDebtManagementData({
+    List<TechnicalDebtStatData>? stats,
+    List<TechnicalDebtItemData>? items,
+    List<TechnicalDebtInsightData>? insights,
+    List<TechnicalDebtTrackData>? tracks,
+    List<TechnicalDebtOwnerData>? owners,
+    this.aiSeeded = false,
+  })  : stats = stats ?? [],
+        items = items ?? [],
+        insights = insights ?? [],
+        tracks = tracks ?? [],
+        owners = owners ?? [];
+
+  Map<String, dynamic> toJson() => {
+        'stats': stats.map((item) => item.toJson()).toList(),
+        'items': items.map((item) => item.toJson()).toList(),
+        'insights': insights.map((item) => item.toJson()).toList(),
+        'tracks': tracks.map((item) => item.toJson()).toList(),
+        'owners': owners.map((item) => item.toJson()).toList(),
+        'aiSeeded': aiSeeded,
+      };
+
+  factory TechnicalDebtManagementData.fromJson(Map<String, dynamic> json) {
+    return TechnicalDebtManagementData(
+      stats: (json['stats'] as List?)
+              ?.map((item) => TechnicalDebtStatData.fromJson(item as Map<String, dynamic>))
+              .toList() ??
+          [],
+      items: (json['items'] as List?)
+              ?.map((item) => TechnicalDebtItemData.fromJson(item as Map<String, dynamic>))
+              .toList() ??
+          [],
+      insights: (json['insights'] as List?)
+              ?.map((item) => TechnicalDebtInsightData.fromJson(item as Map<String, dynamic>))
+              .toList() ??
+          [],
+      tracks: (json['tracks'] as List?)
+              ?.map((item) => TechnicalDebtTrackData.fromJson(item as Map<String, dynamic>))
+              .toList() ??
+          [],
+      owners: (json['owners'] as List?)
+              ?.map((item) => TechnicalDebtOwnerData.fromJson(item as Map<String, dynamic>))
+              .toList() ??
+          [],
+      aiSeeded: json['aiSeeded'] ?? false,
+    );
+  }
+}
+
+class ProcurementWorkspaceData {
+  List<ProcurementItemData> items;
+  List<ProcurementStrategyData> strategies;
+  List<ProcurementVendorData> vendors;
+  List<ProcurementVendorHealthMetricData> vendorHealthMetrics;
+  List<ProcurementVendorOnboardingTaskData> vendorOnboardingTasks;
+  List<ProcurementVendorRiskData> vendorRiskItems;
+  List<ProcurementRfqData> rfqs;
+  List<ProcurementRfqCriterionData> rfqCriteria;
+  List<ProcurementPurchaseOrderData> purchaseOrders;
+  List<ProcurementTrackableItemData> trackableItems;
+  List<ProcurementTrackingAlertData> trackingAlerts;
+  List<ProcurementCarrierPerformanceData> carrierPerformance;
+  List<ProcurementReportKpiData> reportKpis;
+  List<ProcurementSpendBreakdownData> spendBreakdown;
+  List<ProcurementLeadTimeMetricData> leadTimeMetrics;
+  List<ProcurementSavingsOpportunityData> savingsOpportunities;
+  List<ProcurementComplianceMetricData> complianceMetrics;
+  bool aiSeeded;
+
+  ProcurementWorkspaceData({
+    List<ProcurementItemData>? items,
+    List<ProcurementStrategyData>? strategies,
+    List<ProcurementVendorData>? vendors,
+    List<ProcurementVendorHealthMetricData>? vendorHealthMetrics,
+    List<ProcurementVendorOnboardingTaskData>? vendorOnboardingTasks,
+    List<ProcurementVendorRiskData>? vendorRiskItems,
+    List<ProcurementRfqData>? rfqs,
+    List<ProcurementRfqCriterionData>? rfqCriteria,
+    List<ProcurementPurchaseOrderData>? purchaseOrders,
+    List<ProcurementTrackableItemData>? trackableItems,
+    List<ProcurementTrackingAlertData>? trackingAlerts,
+    List<ProcurementCarrierPerformanceData>? carrierPerformance,
+    List<ProcurementReportKpiData>? reportKpis,
+    List<ProcurementSpendBreakdownData>? spendBreakdown,
+    List<ProcurementLeadTimeMetricData>? leadTimeMetrics,
+    List<ProcurementSavingsOpportunityData>? savingsOpportunities,
+    List<ProcurementComplianceMetricData>? complianceMetrics,
+    this.aiSeeded = false,
+  })  : items = items ?? [],
+        strategies = strategies ?? [],
+        vendors = vendors ?? [],
+        vendorHealthMetrics = vendorHealthMetrics ?? [],
+        vendorOnboardingTasks = vendorOnboardingTasks ?? [],
+        vendorRiskItems = vendorRiskItems ?? [],
+        rfqs = rfqs ?? [],
+        rfqCriteria = rfqCriteria ?? [],
+        purchaseOrders = purchaseOrders ?? [],
+        trackableItems = trackableItems ?? [],
+        trackingAlerts = trackingAlerts ?? [],
+        carrierPerformance = carrierPerformance ?? [],
+        reportKpis = reportKpis ?? [],
+        spendBreakdown = spendBreakdown ?? [],
+        leadTimeMetrics = leadTimeMetrics ?? [],
+        savingsOpportunities = savingsOpportunities ?? [],
+        complianceMetrics = complianceMetrics ?? [];
+
+  Map<String, dynamic> toJson() => {
+        'items': items.map((item) => item.toJson()).toList(),
+        'strategies': strategies.map((item) => item.toJson()).toList(),
+        'vendors': vendors.map((item) => item.toJson()).toList(),
+        'vendorHealthMetrics': vendorHealthMetrics.map((item) => item.toJson()).toList(),
+        'vendorOnboardingTasks': vendorOnboardingTasks.map((item) => item.toJson()).toList(),
+        'vendorRiskItems': vendorRiskItems.map((item) => item.toJson()).toList(),
+        'rfqs': rfqs.map((item) => item.toJson()).toList(),
+        'rfqCriteria': rfqCriteria.map((item) => item.toJson()).toList(),
+        'purchaseOrders': purchaseOrders.map((item) => item.toJson()).toList(),
+        'trackableItems': trackableItems.map((item) => item.toJson()).toList(),
+        'trackingAlerts': trackingAlerts.map((item) => item.toJson()).toList(),
+        'carrierPerformance': carrierPerformance.map((item) => item.toJson()).toList(),
+        'reportKpis': reportKpis.map((item) => item.toJson()).toList(),
+        'spendBreakdown': spendBreakdown.map((item) => item.toJson()).toList(),
+        'leadTimeMetrics': leadTimeMetrics.map((item) => item.toJson()).toList(),
+        'savingsOpportunities': savingsOpportunities.map((item) => item.toJson()).toList(),
+        'complianceMetrics': complianceMetrics.map((item) => item.toJson()).toList(),
+        'aiSeeded': aiSeeded,
+      };
+
+  factory ProcurementWorkspaceData.fromJson(Map<String, dynamic> json) {
+    List<T> parseList<T>(String key, T Function(Map<String, dynamic>) parser) {
+      try {
+        final list = json[key] as List?;
+        if (list == null) return [];
+        return list.map((item) => parser(item as Map<String, dynamic>)).toList();
+      } catch (_) {
+        return [];
+      }
+    }
+
+    return ProcurementWorkspaceData(
+      items: parseList('items', ProcurementItemData.fromJson),
+      strategies: parseList('strategies', ProcurementStrategyData.fromJson),
+      vendors: parseList('vendors', ProcurementVendorData.fromJson),
+      vendorHealthMetrics: parseList('vendorHealthMetrics', ProcurementVendorHealthMetricData.fromJson),
+      vendorOnboardingTasks: parseList('vendorOnboardingTasks', ProcurementVendorOnboardingTaskData.fromJson),
+      vendorRiskItems: parseList('vendorRiskItems', ProcurementVendorRiskData.fromJson),
+      rfqs: parseList('rfqs', ProcurementRfqData.fromJson),
+      rfqCriteria: parseList('rfqCriteria', ProcurementRfqCriterionData.fromJson),
+      purchaseOrders: parseList('purchaseOrders', ProcurementPurchaseOrderData.fromJson),
+      trackableItems: parseList('trackableItems', ProcurementTrackableItemData.fromJson),
+      trackingAlerts: parseList('trackingAlerts', ProcurementTrackingAlertData.fromJson),
+      carrierPerformance: parseList('carrierPerformance', ProcurementCarrierPerformanceData.fromJson),
+      reportKpis: parseList('reportKpis', ProcurementReportKpiData.fromJson),
+      spendBreakdown: parseList('spendBreakdown', ProcurementSpendBreakdownData.fromJson),
+      leadTimeMetrics: parseList('leadTimeMetrics', ProcurementLeadTimeMetricData.fromJson),
+      savingsOpportunities: parseList('savingsOpportunities', ProcurementSavingsOpportunityData.fromJson),
+      complianceMetrics: parseList('complianceMetrics', ProcurementComplianceMetricData.fromJson),
+      aiSeeded: json['aiSeeded'] ?? false,
+    );
+  }
+}
+
+class ProcurementItemData {
+  String name;
+  String description;
+  String category;
+  String status;
+  String priority;
+  int budget;
+  String estimatedDelivery;
+  double progress;
+
+  ProcurementItemData({
+    this.name = '',
+    this.description = '',
+    this.category = '',
+    this.status = '',
+    this.priority = '',
+    this.budget = 0,
+    this.estimatedDelivery = '',
+    this.progress = 0,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'description': description,
+        'category': category,
+        'status': status,
+        'priority': priority,
+        'budget': budget,
+        'estimatedDelivery': estimatedDelivery,
+        'progress': progress,
+      };
+
+  factory ProcurementItemData.fromJson(Map<String, dynamic> json) {
+    return ProcurementItemData(
+      name: json['name'] ?? '',
+      description: json['description'] ?? '',
+      category: json['category'] ?? '',
+      status: json['status'] ?? '',
+      priority: json['priority'] ?? '',
+      budget: (json['budget'] as num?)?.toInt() ?? 0,
+      estimatedDelivery: json['estimatedDelivery'] ?? '',
+      progress: (json['progress'] as num?)?.toDouble() ?? 0,
+    );
+  }
+}
+
+class ProcurementStrategyData {
+  String title;
+  String status;
+  int itemCount;
+  String description;
+
+  ProcurementStrategyData({
+    this.title = '',
+    this.status = '',
+    this.itemCount = 0,
+    this.description = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'status': status,
+        'itemCount': itemCount,
+        'description': description,
+      };
+
+  factory ProcurementStrategyData.fromJson(Map<String, dynamic> json) {
+    return ProcurementStrategyData(
+      title: json['title'] ?? '',
+      status: json['status'] ?? '',
+      itemCount: (json['itemCount'] as num?)?.toInt() ?? 0,
+      description: json['description'] ?? '',
+    );
+  }
+}
+
+class ProcurementVendorData {
+  String initials;
+  String name;
+  String category;
+  int rating;
+  bool approved;
+  bool preferred;
+
+  ProcurementVendorData({
+    this.initials = '',
+    this.name = '',
+    this.category = '',
+    this.rating = 0,
+    this.approved = false,
+    this.preferred = false,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'initials': initials,
+        'name': name,
+        'category': category,
+        'rating': rating,
+        'approved': approved,
+        'preferred': preferred,
+      };
+
+  factory ProcurementVendorData.fromJson(Map<String, dynamic> json) {
+    return ProcurementVendorData(
+      initials: json['initials'] ?? '',
+      name: json['name'] ?? '',
+      category: json['category'] ?? '',
+      rating: (json['rating'] as num?)?.toInt() ?? 0,
+      approved: json['approved'] ?? false,
+      preferred: json['preferred'] ?? false,
+    );
+  }
+}
+
+class ProcurementVendorHealthMetricData {
+  String category;
+  double score;
+  String change;
+
+  ProcurementVendorHealthMetricData({
+    this.category = '',
+    this.score = 0,
+    this.change = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'category': category,
+        'score': score,
+        'change': change,
+      };
+
+  factory ProcurementVendorHealthMetricData.fromJson(Map<String, dynamic> json) {
+    return ProcurementVendorHealthMetricData(
+      category: json['category'] ?? '',
+      score: (json['score'] as num?)?.toDouble() ?? 0,
+      change: json['change'] ?? '',
+    );
+  }
+}
+
+class ProcurementVendorOnboardingTaskData {
+  String title;
+  String owner;
+  String dueDate;
+  String status;
+
+  ProcurementVendorOnboardingTaskData({
+    this.title = '',
+    this.owner = '',
+    this.dueDate = '',
+    this.status = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'owner': owner,
+        'dueDate': dueDate,
+        'status': status,
+      };
+
+  factory ProcurementVendorOnboardingTaskData.fromJson(Map<String, dynamic> json) {
+    return ProcurementVendorOnboardingTaskData(
+      title: json['title'] ?? '',
+      owner: json['owner'] ?? '',
+      dueDate: json['dueDate'] ?? '',
+      status: json['status'] ?? '',
+    );
+  }
+}
+
+class ProcurementVendorRiskData {
+  String vendor;
+  String risk;
+  String severity;
+  String lastIncident;
+
+  ProcurementVendorRiskData({
+    this.vendor = '',
+    this.risk = '',
+    this.severity = '',
+    this.lastIncident = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'vendor': vendor,
+        'risk': risk,
+        'severity': severity,
+        'lastIncident': lastIncident,
+      };
+
+  factory ProcurementVendorRiskData.fromJson(Map<String, dynamic> json) {
+    return ProcurementVendorRiskData(
+      vendor: json['vendor'] ?? '',
+      risk: json['risk'] ?? '',
+      severity: json['severity'] ?? '',
+      lastIncident: json['lastIncident'] ?? '',
+    );
+  }
+}
+
+class ProcurementRfqData {
+  String title;
+  String category;
+  String owner;
+  String dueDate;
+  int invited;
+  int responses;
+  int budget;
+  String status;
+  String priority;
+
+  ProcurementRfqData({
+    this.title = '',
+    this.category = '',
+    this.owner = '',
+    this.dueDate = '',
+    this.invited = 0,
+    this.responses = 0,
+    this.budget = 0,
+    this.status = '',
+    this.priority = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'category': category,
+        'owner': owner,
+        'dueDate': dueDate,
+        'invited': invited,
+        'responses': responses,
+        'budget': budget,
+        'status': status,
+        'priority': priority,
+      };
+
+  factory ProcurementRfqData.fromJson(Map<String, dynamic> json) {
+    return ProcurementRfqData(
+      title: json['title'] ?? '',
+      category: json['category'] ?? '',
+      owner: json['owner'] ?? '',
+      dueDate: json['dueDate'] ?? '',
+      invited: (json['invited'] as num?)?.toInt() ?? 0,
+      responses: (json['responses'] as num?)?.toInt() ?? 0,
+      budget: (json['budget'] as num?)?.toInt() ?? 0,
+      status: json['status'] ?? '',
+      priority: json['priority'] ?? '',
+    );
+  }
+}
+
+class ProcurementRfqCriterionData {
+  String label;
+  double weight;
+
+  ProcurementRfqCriterionData({
+    this.label = '',
+    this.weight = 0,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'label': label,
+        'weight': weight,
+      };
+
+  factory ProcurementRfqCriterionData.fromJson(Map<String, dynamic> json) {
+    return ProcurementRfqCriterionData(
+      label: json['label'] ?? '',
+      weight: (json['weight'] as num?)?.toDouble() ?? 0,
+    );
+  }
+}
+
+class ProcurementPurchaseOrderData {
+  String id;
+  String vendor;
+  String category;
+  String owner;
+  String orderedDate;
+  String expectedDate;
+  int amount;
+  double progress;
+  String status;
+
+  ProcurementPurchaseOrderData({
+    this.id = '',
+    this.vendor = '',
+    this.category = '',
+    this.owner = '',
+    this.orderedDate = '',
+    this.expectedDate = '',
+    this.amount = 0,
+    this.progress = 0,
+    this.status = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'vendor': vendor,
+        'category': category,
+        'owner': owner,
+        'orderedDate': orderedDate,
+        'expectedDate': expectedDate,
+        'amount': amount,
+        'progress': progress,
+        'status': status,
+      };
+
+  factory ProcurementPurchaseOrderData.fromJson(Map<String, dynamic> json) {
+    return ProcurementPurchaseOrderData(
+      id: json['id'] ?? '',
+      vendor: json['vendor'] ?? '',
+      category: json['category'] ?? '',
+      owner: json['owner'] ?? '',
+      orderedDate: json['orderedDate'] ?? '',
+      expectedDate: json['expectedDate'] ?? '',
+      amount: (json['amount'] as num?)?.toInt() ?? 0,
+      progress: (json['progress'] as num?)?.toDouble() ?? 0,
+      status: json['status'] ?? '',
+    );
+  }
+}
+
+class ProcurementTrackableItemData {
+  String name;
+  String description;
+  String orderStatus;
+  String currentStatus;
+  String? lastUpdate;
+  List<ProcurementTimelineEventData> events;
+
+  ProcurementTrackableItemData({
+    this.name = '',
+    this.description = '',
+    this.orderStatus = '',
+    this.currentStatus = '',
+    this.lastUpdate,
+    List<ProcurementTimelineEventData>? events,
+  }) : events = events ?? [];
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'description': description,
+        'orderStatus': orderStatus,
+        'currentStatus': currentStatus,
+        'lastUpdate': lastUpdate,
+        'events': events.map((event) => event.toJson()).toList(),
+      };
+
+  factory ProcurementTrackableItemData.fromJson(Map<String, dynamic> json) {
+    return ProcurementTrackableItemData(
+      name: json['name'] ?? '',
+      description: json['description'] ?? '',
+      orderStatus: json['orderStatus'] ?? '',
+      currentStatus: json['currentStatus'] ?? '',
+      lastUpdate: json['lastUpdate'],
+      events: (json['events'] as List?)?.map((e) => ProcurementTimelineEventData.fromJson(e)).toList() ?? [],
+    );
+  }
+}
+
+class ProcurementTimelineEventData {
+  String title;
+  String description;
+  String subtext;
+  String date;
+
+  ProcurementTimelineEventData({
+    this.title = '',
+    this.description = '',
+    this.subtext = '',
+    this.date = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'description': description,
+        'subtext': subtext,
+        'date': date,
+      };
+
+  factory ProcurementTimelineEventData.fromJson(Map<String, dynamic> json) {
+    return ProcurementTimelineEventData(
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      subtext: json['subtext'] ?? '',
+      date: json['date'] ?? '',
+    );
+  }
+}
+
+class ProcurementTrackingAlertData {
+  String title;
+  String description;
+  String severity;
+  String date;
+
+  ProcurementTrackingAlertData({
+    this.title = '',
+    this.description = '',
+    this.severity = '',
+    this.date = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'description': description,
+        'severity': severity,
+        'date': date,
+      };
+
+  factory ProcurementTrackingAlertData.fromJson(Map<String, dynamic> json) {
+    return ProcurementTrackingAlertData(
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      severity: json['severity'] ?? '',
+      date: json['date'] ?? '',
+    );
+  }
+}
+
+class ProcurementCarrierPerformanceData {
+  String carrier;
+  int onTimeRate;
+  int avgDays;
+
+  ProcurementCarrierPerformanceData({
+    this.carrier = '',
+    this.onTimeRate = 0,
+    this.avgDays = 0,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'carrier': carrier,
+        'onTimeRate': onTimeRate,
+        'avgDays': avgDays,
+      };
+
+  factory ProcurementCarrierPerformanceData.fromJson(Map<String, dynamic> json) {
+    return ProcurementCarrierPerformanceData(
+      carrier: json['carrier'] ?? '',
+      onTimeRate: (json['onTimeRate'] as num?)?.toInt() ?? 0,
+      avgDays: (json['avgDays'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+class ProcurementReportKpiData {
+  String label;
+  String value;
+  String delta;
+  bool positive;
+
+  ProcurementReportKpiData({
+    this.label = '',
+    this.value = '',
+    this.delta = '',
+    this.positive = true,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'label': label,
+        'value': value,
+        'delta': delta,
+        'positive': positive,
+      };
+
+  factory ProcurementReportKpiData.fromJson(Map<String, dynamic> json) {
+    return ProcurementReportKpiData(
+      label: json['label'] ?? '',
+      value: json['value'] ?? '',
+      delta: json['delta'] ?? '',
+      positive: json['positive'] ?? true,
+    );
+  }
+}
+
+class ProcurementSpendBreakdownData {
+  String label;
+  int amount;
+  double percent;
+  int colorValue;
+
+  ProcurementSpendBreakdownData({
+    this.label = '',
+    this.amount = 0,
+    this.percent = 0,
+    this.colorValue = 0,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'label': label,
+        'amount': amount,
+        'percent': percent,
+        'colorValue': colorValue,
+      };
+
+  factory ProcurementSpendBreakdownData.fromJson(Map<String, dynamic> json) {
+    return ProcurementSpendBreakdownData(
+      label: json['label'] ?? '',
+      amount: (json['amount'] as num?)?.toInt() ?? 0,
+      percent: (json['percent'] as num?)?.toDouble() ?? 0,
+      colorValue: (json['colorValue'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+class ProcurementLeadTimeMetricData {
+  String label;
+  double onTimeRate;
+
+  ProcurementLeadTimeMetricData({
+    this.label = '',
+    this.onTimeRate = 0,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'label': label,
+        'onTimeRate': onTimeRate,
+      };
+
+  factory ProcurementLeadTimeMetricData.fromJson(Map<String, dynamic> json) {
+    return ProcurementLeadTimeMetricData(
+      label: json['label'] ?? '',
+      onTimeRate: (json['onTimeRate'] as num?)?.toDouble() ?? 0,
+    );
+  }
+}
+
+class ProcurementSavingsOpportunityData {
+  String title;
+  String value;
+  String owner;
+
+  ProcurementSavingsOpportunityData({
+    this.title = '',
+    this.value = '',
+    this.owner = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'value': value,
+        'owner': owner,
+      };
+
+  factory ProcurementSavingsOpportunityData.fromJson(Map<String, dynamic> json) {
+    return ProcurementSavingsOpportunityData(
+      title: json['title'] ?? '',
+      value: json['value'] ?? '',
+      owner: json['owner'] ?? '',
+    );
+  }
+}
+
+class ProcurementComplianceMetricData {
+  String label;
+  double value;
+
+  ProcurementComplianceMetricData({
+    this.label = '',
+    this.value = 0,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'label': label,
+        'value': value,
+      };
+
+  factory ProcurementComplianceMetricData.fromJson(Map<String, dynamic> json) {
+    return ProcurementComplianceMetricData(
+      label: json['label'] ?? '',
+      value: (json['value'] as num?)?.toDouble() ?? 0,
+    );
+  }
+}
+
 class FrontEndPlanningData {
   String requirements;
   String requirementsNotes;
@@ -671,6 +2134,7 @@ class FrontEndPlanningData {
   String infrastructure;
   String contracts;
   List<RequirementItem> requirementItems;
+  ProcurementWorkspaceData procurementWorkspace;
 
   FrontEndPlanningData({
     this.requirements = '',
@@ -687,7 +2151,9 @@ class FrontEndPlanningData {
     this.infrastructure = '',
     this.contracts = '',
     List<RequirementItem>? requirementItems,
-  }) : requirementItems = requirementItems ?? [];
+    ProcurementWorkspaceData? procurementWorkspace,
+  })  : requirementItems = requirementItems ?? [],
+        procurementWorkspace = procurementWorkspace ?? ProcurementWorkspaceData();
 
   Map<String, dynamic> toJson() => {
         'requirements': requirements,
@@ -704,6 +2170,7 @@ class FrontEndPlanningData {
         'infrastructure': infrastructure,
         'contracts': contracts,
         'requirementsItems': requirementItems.map((item) => item.toJson()).toList(),
+        'procurementWorkspace': procurementWorkspace.toJson(),
       };
 
   factory FrontEndPlanningData.fromJson(Map<String, dynamic> json) {
@@ -725,6 +2192,9 @@ class FrontEndPlanningData {
               ?.map((item) => RequirementItem.fromJson(item as Map<String, dynamic>))
               .toList() ??
           [],
+      procurementWorkspace: json['procurementWorkspace'] is Map
+          ? ProcurementWorkspaceData.fromJson(json['procurementWorkspace'] as Map<String, dynamic>)
+          : ProcurementWorkspaceData(),
     );
   }
 }

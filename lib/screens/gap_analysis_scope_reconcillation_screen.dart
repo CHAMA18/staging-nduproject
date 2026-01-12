@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'package:ndu_project/screens/actual_vs_planned_gap_analysis_screen.dart';
 import 'package:ndu_project/screens/deliver_project_closure_screen.dart';
-import 'package:ndu_project/screens/demobilize_team_screen.dart';
 import 'package:ndu_project/screens/scope_completion_screen.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';

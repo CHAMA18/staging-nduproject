@@ -3232,7 +3232,7 @@ $escaped
         for (final item in value) {
           if (result[key]!.length >= itemsPerSection) break;
           if (item is Map) {
-            final mapped = Map<String, dynamic>.from(item as Map);
+            final mapped = Map<String, dynamic>.from(item);
             final title = (mapped['title'] ?? mapped['item'] ?? '').toString().trim();
             if (title.isEmpty) continue;
             result[key]!.add({

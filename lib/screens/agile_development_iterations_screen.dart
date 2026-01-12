@@ -421,8 +421,8 @@ class _AgileDevelopmentIterationsScreenState extends State<AgileDevelopmentItera
 
   Widget _buildKanbanColumn(_BoardStatus status, List<AgileStoryModel> stories) {
     return DragTarget<_StoryDragData>(
-      onWillAccept: (data) => data != null && data.from != status,
-      onAccept: (data) => _moveStory(data, status),
+      onWillAcceptWithDetails: (data) => data != null && data.from != status,
+      onAcceptWithDetails: (data) => _moveStory(data, status),
       builder: (context, candidateData, _) {
         final isActive = candidateData.isNotEmpty;
         final header = _statusLabel(status);

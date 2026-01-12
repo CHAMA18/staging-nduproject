@@ -173,7 +173,7 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
         final pendingCount = members.where((m) => m.status == 'Pending').length;
 
         final stats = [
-          _StatCardData('Roles filled', '${activeCount}/${members.length}', '${members.length - activeCount} open roles', const Color(0xFF0EA5E9)),
+          _StatCardData('Roles filled', '$activeCount/${members.length}', '${members.length - activeCount} open roles', const Color(0xFF0EA5E9)),
           _StatCardData('Avg readiness', '${avgReadiness.round()}%', 'Team capability', const Color(0xFF10B981)),
           _StatCardData('Pending', '$pendingCount', pendingCount > 0 ? 'Awaiting assignment' : 'All assigned', const Color(0xFFF59E0B)),
           _StatCardData('Total members', '${members.length}', 'Ops team size', const Color(0xFF6366F1)),
@@ -564,7 +564,7 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
               TextField(controller: responsibilityController, decoration: const InputDecoration(labelText: 'Responsibility *')),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: statusController.text,
+                initialValue: statusController.text,
                 decoration: const InputDecoration(labelText: 'Status *'),
                 items: ['Active', 'Pending', 'Inactive'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                 onChanged: (v) => statusController.text = v ?? 'Active',

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:ndu_project/screens/development_set_up_screen.dart';
 import 'package:ndu_project/screens/ui_ux_design_screen.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';

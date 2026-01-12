@@ -565,7 +565,7 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
-                        value: selectedImpact,
+                        initialValue: selectedImpact,
                         items: const ['Low', 'Medium', 'High']
                             .map((impact) => DropdownMenuItem(value: impact, child: Text(impact)))
                             .toList(),
@@ -578,7 +578,7 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
-                        value: selectedStatus,
+                        initialValue: selectedStatus,
                         items: const ['Mitigating', 'Monitoring', 'Escalated', 'Accepted']
                             .map((status) => DropdownMenuItem(value: status, child: Text(status)))
                             .toList(),

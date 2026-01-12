@@ -1441,7 +1441,7 @@ class _QuoteRowData {
 }
 
 class _LabeledField extends StatelessWidget {
-  const _LabeledField({required this.label, required this.child, this.helper});
+  const _LabeledField({required this.label, required this.child});
 
   final String label;
   final Widget child;
@@ -2759,7 +2759,7 @@ class _ContractDetailsScreenState extends State<ContractDetailsScreen> {
         ),
         _ContractMilestoneData(
           title: 'Bid Opening',
-          value: _formatShortDate(end?.add(const Duration(days: 2))),
+          value: _formatShortDate(end.add(const Duration(days: 2))),
           accentColor: const Color(0xFF2563EB),
         ),
       ];
@@ -3821,7 +3821,7 @@ class _ContractingSummaryScreenState extends State<ContractingSummaryScreen> {
 }
 
 class _ContractingSummaryOverviewCard extends StatelessWidget {
-  _ContractingSummaryOverviewCard({required this.rows});
+  const _ContractingSummaryOverviewCard({required this.rows});
 
   final List<_SummaryTableRowData> rows;
 
@@ -4301,7 +4301,7 @@ class _ScheduleImpactData {
 }
 
 class _ContractingSummaryWarrantyCard extends StatelessWidget {
-  _ContractingSummaryWarrantyCard({required this.rows});
+  const _ContractingSummaryWarrantyCard({required this.rows});
 
   final List<_WarrantyRowData> rows;
 
@@ -4481,7 +4481,7 @@ class _WarrantyRowData {
 }
 
 class _ContractingSummaryHighlightsRow extends StatelessWidget {
-  _ContractingSummaryHighlightsRow({required this.cards});
+  const _ContractingSummaryHighlightsRow({required this.cards});
 
   final List<_SummaryHighlightCardData> cards;
 
@@ -4682,7 +4682,7 @@ class _ContractStatusOverview extends StatelessWidget {
 }
 
 class _ContractStatusTimelineCard extends StatelessWidget {
-  _ContractStatusTimelineCard({
+  const _ContractStatusTimelineCard({
     required this.months,
     required this.rows,
     required this.progress,
@@ -4985,7 +4985,7 @@ class _StatusSummaryData {
 }
 
 class _ContractStatusRecentActivityCard extends StatelessWidget {
-  _ContractStatusRecentActivityCard({required this.activities});
+  const _ContractStatusRecentActivityCard({required this.activities});
 
   final List<_RecentActivityData> activities;
 
@@ -5039,7 +5039,7 @@ class _ContractStatusRecentActivityCard extends StatelessWidget {
 }
 
 class _ContractorsDirectorySection extends StatelessWidget {
-  _ContractorsDirectorySection({
+  const _ContractorsDirectorySection({
     required this.isMobile,
     required this.selectedStatus,
     required this.onStatusChanged,
@@ -5524,7 +5524,7 @@ class _StatusViewPlaceholder extends StatelessWidget {
 }
 
 class _ContractStatusMilestonesCard extends StatelessWidget {
-  _ContractStatusMilestonesCard({required this.milestones});
+  const _ContractStatusMilestonesCard({required this.milestones});
 
   final List<_MilestoneEntry> milestones;
 
@@ -5573,7 +5573,7 @@ class _ContractStatusMilestonesCard extends StatelessWidget {
 }
 
 class _ContractExecutionSection extends StatelessWidget {
-  _ContractExecutionSection({
+  const _ContractExecutionSection({
     required this.selectedContract,
     required this.onContractChanged,
     required this.steps,
@@ -5933,7 +5933,7 @@ class _AdditionalInfoField extends StatelessWidget {
 }
 
 class _ContractOverviewSummaryCard extends StatelessWidget {
-  _ContractOverviewSummaryCard({
+  const _ContractOverviewSummaryCard({
     required this.title,
     required this.contractId,
     required this.statusLabel,
@@ -6379,14 +6379,14 @@ class _DescriptionTabContent extends StatelessWidget {
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
         ),
         const SizedBox(height: 12),
-        ...items.map((item) => _BulletItem(text: item)).toList(),
+        ...items.map((item) => _BulletItem(text: item)),
       ],
     );
   }
 }
 
 class _ContractDocumentsTabContent extends StatelessWidget {
-  _ContractDocumentsTabContent({required this.documents});
+  const _ContractDocumentsTabContent({required this.documents});
 
   final List<_ContractDocumentData> documents;
 
@@ -6435,7 +6435,7 @@ class _ContractDocumentsTabContent extends StatelessWidget {
 }
 
 class _InformationForBiddersTabContent extends StatelessWidget {
-  _InformationForBiddersTabContent({required this.info});
+  const _InformationForBiddersTabContent({required this.info});
 
   final List<_BidderInfoData> info;
 

@@ -633,12 +633,8 @@ class _SolutionOption {
 /// Alias for external use - same as _SolutionOption
 class SolutionOption extends _SolutionOption {
   SolutionOption({
-    required String title,
-    required String description,
-    String? projectName,
-  }) : super(
-    title: title,
-    description: description,
-    projectName: projectName,
-  );
+    required super.title,
+    required super.description,
+    super.projectName,
+  });
 }

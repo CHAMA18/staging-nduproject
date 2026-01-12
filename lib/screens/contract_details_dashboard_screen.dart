@@ -10,7 +10,7 @@ import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 
 class ContractDetailsDashboardScreen extends StatelessWidget {
-  ContractDetailsDashboardScreen({super.key});
+  const ContractDetailsDashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -203,7 +203,7 @@ class _CircularIconButton extends StatelessWidget {
 }
 
 class _UserChip extends StatelessWidget {
-  _UserChip({required this.name, required this.subtitle});
+  const _UserChip({required this.name, required this.subtitle});
 
   final String name;
   final String subtitle;

@@ -406,7 +406,7 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: status,
+                          initialValue: status,
                           items: _planStatuses.map((option) => DropdownMenuItem(value: option, child: Text(option))).toList(),
                           decoration: _dialogDecoration('Status'),
                           onChanged: (value) => setDialogState(() => status = value ?? _planStatuses.first),

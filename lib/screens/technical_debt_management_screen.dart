@@ -154,7 +154,7 @@ class _TechnicalDebtManagementScreenState extends State<TechnicalDebtManagementS
                       ),
                       const SizedBox(height: 8),
                       DropdownButtonFormField<String>(
-                        value: severity,
+                        initialValue: severity,
                         decoration: const InputDecoration(labelText: 'Severity'),
                         items: const [
                           DropdownMenuItem(value: 'Critical', child: Text('Critical')),
@@ -169,7 +169,7 @@ class _TechnicalDebtManagementScreenState extends State<TechnicalDebtManagementS
                         },
                       ),
                       DropdownButtonFormField<String>(
-                        value: status,
+                        initialValue: status,
                         decoration: const InputDecoration(labelText: 'Status'),
                         items: const [
                           DropdownMenuItem(value: 'In progress', child: Text('In progress')),

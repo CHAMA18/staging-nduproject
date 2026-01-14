@@ -5,7 +5,6 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/screens/front_end_planning_screen.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
-import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/front_end_planning_header.dart';
 
@@ -39,28 +38,8 @@ class _FrontEndPlanningAllowanceScreenState extends State<FrontEndPlanningAllowa
       _allowanceNotes.addListener(_syncAllowanceToProvider);
       _isSyncReady = true;
       _syncAllowanceToProvider();
-      if (_allowanceNotes.text.trim().isEmpty) {
-        _generateAiSuggestion();
-      }
       if (mounted) setState(() {});
     });
-  }
-
-  Future<void> _generateAiSuggestion() async {
-    try {
-      final data = ProjectDataHelper.getData(context);
-      final ctx = ProjectDataHelper.buildFepContext(data, sectionLabel: 'Allowance');
-      final ai = OpenAiServiceSecure();
-      final suggestion = await ai.generateFepSectionText(section: 'Allowance', context: ctx, maxTokens: 800, temperature: 0.45);
-      if (!mounted) return;
-      if (_allowanceNotes.text.trim().isEmpty && suggestion.trim().isNotEmpty) {
-        setState(() {
-          _allowanceNotes.text = suggestion.trim();
-        });
-      }
-    } catch (e) {
-      debugPrint('AI allowance suggestion failed: $e');
-    }
   }
 
   @override

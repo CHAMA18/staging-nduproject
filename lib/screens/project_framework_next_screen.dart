@@ -162,7 +162,7 @@ class _ProjectFrameworkNextScreenState extends State<ProjectFrameworkNextScreen>
                     const _HeaderRow(),
                     const SizedBox(height: 32),
                     const PlanningAiNotesCard(
-                      title: 'AI Notes',
+                      title: 'Notes',
                       sectionLabel: 'Project Summary',
                       noteKey: 'planning_project_summary_notes',
                       checkpoint: 'project_framework_next',

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
+import 'package:ndu_project/services/user_service.dart';
 
 /// Standardized header for all Planning Phase screens
 /// Shows user email, role/status, navigation arrows, and action buttons
@@ -98,52 +99,51 @@ class _UserInfo extends StatelessWidget {
     return text.substring(0, 1).toUpperCase();
   }
 
-  String _getRole(User? user) {
-    if (user == null) return 'User';
-    final email = user.email?.toLowerCase() ?? '';
-    if (email.endsWith('@nduproject.com')) {
-      return 'Owner';
-    }
-    return 'Member';
-  }
-
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     final displayName = FirebaseAuthService.displayNameOrEmail(fallback: 'User');
     final email = user?.email ?? '';
     final initials = _getInitials(displayName);
-    final role = _getRole(user);
+    final primaryText = email.isNotEmpty ? email : displayName;
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        CircleAvatar(
-          radius: 20,
-          backgroundColor: const Color(0xFFE5E7EB),
-          child: Text(
-            initials,
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[700]),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return StreamBuilder<bool>(
+      stream: UserService.watchAdminStatus(),
+      builder: (context, snapshot) {
+        final isAdmin = snapshot.data ?? UserService.isAdminEmail(email);
+        final role = isAdmin ? 'Admin' : 'Member';
+
+        return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              email.isNotEmpty ? email : displayName,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: const Color(0xFFE5E7EB),
+              child: Text(
+                initials,
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+              ),
             ),
-            Text(
-              role,
-              style: const TextStyle(fontSize: 10, color: Colors.grey),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  primaryText,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  role,
+                  style: const TextStyle(fontSize: 10, color: Colors.grey),
+                ),
+              ],
             ),
+            const SizedBox(width: 4),
+            const Icon(Icons.keyboard_arrow_down, color: Colors.grey, size: 20),
           ],
-        ),
-        const SizedBox(width: 4),
-        const Icon(Icons.keyboard_arrow_down, color: Colors.grey, size: 20),
-      ],
+        );
+      },
     );
   }
 }

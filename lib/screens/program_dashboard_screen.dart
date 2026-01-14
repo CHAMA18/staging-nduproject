@@ -14,6 +14,9 @@ import '../services/project_navigation_service.dart';
 import '../utils/navigation_route_resolver.dart';
 import '../providers/project_data_provider.dart';
 import '../screens/initiation_phase_screen.dart';
+import '../screens/project_dashboard_screen.dart';
+import '../screens/basic_plan_dashboard_screen.dart';
+import '../screens/portfolio_dashboard_screen.dart';
 import '../widgets/dashboard_stat_card.dart';
 import '../widgets/kaz_ai_chat_bubble.dart';
 
@@ -68,9 +71,12 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
       return;
     }
 
-    _allProjectsSubscription = ProjectService.streamProjects(ownerId: user.uid, limit: 100).listen((projects) {
+    _allProjectsSubscription =
+        ProjectService.streamProjects(ownerId: user.uid, limit: 100).listen(
+            (projects) {
       if (!mounted) return;
-      final basicCount = projects.where((project) => project.isBasicPlanProject).length;
+      final basicCount =
+          projects.where((project) => project.isBasicPlanProject).length;
       setState(() {
         _totalProjects = projects.length;
         _basicProjectCount = basicCount;
@@ -82,9 +88,10 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
     try {
       // Listen to user's programs and get the specified one or first one
       _programSubscription?.cancel();
-      _programSubscription = ProgramService.streamPrograms(ownerId: user.uid).listen((programs) {
+      _programSubscription =
+          ProgramService.streamPrograms(ownerId: user.uid).listen((programs) {
         if (!mounted) return;
-        
+
         if (programs.isEmpty) {
           _projectSubscription?.cancel();
           setState(() {
@@ -125,7 +132,9 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
             });
           }
 
-          _projectSubscription = ProjectService.streamProjectsByIds(program.projectIds).listen((projects) {
+          _projectSubscription =
+              ProjectService.streamProjectsByIds(program.projectIds).listen(
+                  (projects) {
             if (!mounted) return;
             setState(() {
               _projects = projects;
@@ -172,9 +181,11 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    NavigationContextService.instance.setLastClientDashboard(AppRoutes.programDashboard);
+    NavigationContextService.instance
+        .setLastClientDashboard(AppRoutes.programDashboard);
     const background = Color(0xFFF7F8FC);
-    final showEmptyState = !_isLoading && _error == null && _currentProgram == null;
+    final showEmptyState =
+        !_isLoading && _error == null && _currentProgram == null;
 
     return Scaffold(
       backgroundColor: background,
@@ -184,12 +195,14 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final isWide = constraints.maxWidth >= 1180;
-                final horizontalPadding = constraints.maxWidth < 900 ? 20.0 : 32.0;
+                final horizontalPadding =
+                    constraints.maxWidth < 900 ? 20.0 : 32.0;
                 final statsIsStacked = constraints.maxWidth < 920;
                 final isSignedIn = FirebaseAuth.instance.currentUser != null;
 
                 return SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(horizontalPadding, 28, horizontalPadding, 36),
+                  padding: EdgeInsets.fromLTRB(
+                      horizontalPadding, 28, horizontalPadding, 36),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -210,7 +223,8 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
                           onCreate: () => context.go('/${AppRoutes.dashboard}'),
                         )
                       else ...[
-                        _SummaryChips(isWide: isWide, projectCount: _projects.length),
+                        _SummaryChips(
+                            isWide: isWide, projectCount: _projects.length),
                         const SizedBox(height: 24),
                         Column(
                           children: [
@@ -244,18 +258,18 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
     if (!isSignedIn) {
       return const [
         DashboardStatCard(
-          label: 'Single Projects',
-          value: '—',
-          subLabel: 'Sign in to view',
-          icon: Icons.folder_open_rounded,
-          color: Color(0xFF2563EB),
-        ),
-        DashboardStatCard(
           label: 'Basic Projects',
           value: '—',
           subLabel: 'Sign in to view',
           icon: Icons.folder_special_rounded,
           color: Color(0xFF16A34A),
+        ),
+        DashboardStatCard(
+          label: 'Single Projects',
+          value: '—',
+          subLabel: 'Sign in to view',
+          icon: Icons.folder_open_rounded,
+          color: Color(0xFF2563EB),
         ),
         DashboardStatCard(
           label: 'Programs',
@@ -276,18 +290,30 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
 
     return [
       DashboardStatCard(
-        label: 'Single Projects',
-        value: '$_totalProjects',
-        subLabel: 'Active workspaces',
-        icon: Icons.folder_open_rounded,
-        color: Colors.blue.shade600,
-      ),
-      DashboardStatCard(
         label: 'Basic Projects',
         value: '$_basicProjectCount',
         subLabel: 'Basic plan workspaces',
         icon: Icons.folder_special_rounded,
         color: Colors.teal.shade600,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BasicPlanDashboardScreen()),
+          );
+        },
+      ),
+      DashboardStatCard(
+        label: 'Single Projects',
+        value: '$_totalProjects',
+        subLabel: 'Active workspaces',
+        icon: Icons.folder_open_rounded,
+        color: Colors.blue.shade600,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ProjectDashboardScreen()),
+          );
+        },
       ),
       DashboardStatCard(
         label: 'Programs',
@@ -295,13 +321,25 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
         subLabel: 'Grouped projects',
         icon: Icons.layers_outlined,
         color: Colors.purple.shade600,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ProgramDashboardScreen()),
+          );
+        },
       ),
-      const DashboardStatCard(
+      DashboardStatCard(
         label: 'Portfolios',
         value: '0',
         subLabel: 'Executive views',
         icon: Icons.pie_chart_outline_rounded,
-        color: Color(0xFF16A34A),
+        color: const Color(0xFF16A34A),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const PortfolioDashboardScreen()),
+          );
+        },
       ),
     ];
   }
@@ -317,7 +355,9 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final trimmedName = programName?.trim();
-    final title = (trimmedName != null && trimmedName.isNotEmpty) ? trimmedName : 'Program dashboard';
+    final title = (trimmedName != null && trimmedName.isNotEmpty)
+        ? trimmedName
+        : 'Program dashboard';
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -346,7 +386,7 @@ class _Header extends StatelessWidget {
                     ),
                     padding: const EdgeInsets.all(12),
                     child: Image.asset(
-                      'assets/images/Ndu_Logo.png',
+                      'assets/images/Logo.png',
                       fit: BoxFit.contain,
                     ),
                   ),
@@ -367,7 +407,8 @@ class _Header extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFF5D7),
                       borderRadius: BorderRadius.circular(22),
@@ -376,7 +417,8 @@ class _Header extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: const [
-                        Icon(Icons.grid_view_rounded, size: 18, color: Color(0xFF8A5800)),
+                        Icon(Icons.grid_view_rounded,
+                            size: 18, color: Color(0xFF8A5800)),
                         SizedBox(width: 8),
                         Text(
                           'Program workspace overview',
@@ -397,10 +439,13 @@ class _Header extends StatelessWidget {
                         context.go('/${AppRoutes.home}');
                       }
                     },
-                    icon: const Icon(Icons.arrow_back, color: Color(0xFF343741)),
+                    icon:
+                        const Icon(Icons.arrow_back, color: Color(0xFF343741)),
                     label: const Text(
                       'Back',
-                      style: TextStyle(color: Color(0xFF343741), fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                          color: Color(0xFF343741),
+                          fontWeight: FontWeight.w700),
                     ),
                   ),
                 ],
@@ -449,8 +494,14 @@ class _SummaryChips extends StatelessWidget {
   Widget build(BuildContext context) {
     final chips = [
       _InfoChip(label: '$projectCount of 3 projects in this program'),
-      const _InfoChip(label: 'Interface manager assigned', color: Color(0xFFDFF2FF), foreground: Color(0xFF0C4DA2)),
-      const _InfoChip(label: 'Rolled up estimate: \$5.4M', color: Color(0xFFECF8F5), foreground: Color(0xFF0D8A5A)),
+      const _InfoChip(
+          label: 'Interface manager assigned',
+          color: Color(0xFFDFF2FF),
+          foreground: Color(0xFF0C4DA2)),
+      const _InfoChip(
+          label: 'Rolled up estimate: \$5.4M',
+          color: Color(0xFFECF8F5),
+          foreground: Color(0xFF0D8A5A)),
     ];
 
     if (isWide) {
@@ -488,11 +539,14 @@ class _EmptyStateCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('No programs yet', style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+          Text('No programs yet',
+              style:
+                  textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           Text(
             'Create a program from three projects to see a live program dashboard here.',
-            style: textTheme.bodyMedium?.copyWith(color: const Color(0xFF565970), height: 1.45),
+            style: textTheme.bodyMedium
+                ?.copyWith(color: const Color(0xFF565970), height: 1.45),
           ),
           const SizedBox(height: 16),
           ElevatedButton(
@@ -501,7 +555,8 @@ class _EmptyStateCard extends StatelessWidget {
               backgroundColor: const Color(0xFF111111),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24)),
               textStyle: const TextStyle(fontWeight: FontWeight.w700),
             ),
             child: const Text('Go to project dashboard'),
@@ -553,7 +608,11 @@ class _ProjectsCard extends StatelessWidget {
       const Color(0xFF4B61D1), // P2 - Dependent (blue)
       const Color(0xFF17A673), // P3 - Support (green)
     ];
-    final priorityLabels = ['P1 · Primary driver', 'P2 · Dependent', 'P3 · Support'];
+    final priorityLabels = [
+      'P1 · Primary driver',
+      'P2 · Dependent',
+      'P3 · Support'
+    ];
 
     // Extract category from tags or use default
     String category = 'General';
@@ -562,7 +621,8 @@ class _ProjectsCard extends StatelessWidget {
     }
 
     // Generate project code
-    final projectCode = 'PRJ-${(index + 1).toString().padLeft(3, '0')} · $category';
+    final projectCode =
+        'PRJ-${(index + 1).toString().padLeft(3, '0')} · $category';
 
     return _ProjectInfo(
       title: record.name.isEmpty ? 'Untitled Project' : record.name,
@@ -592,17 +652,22 @@ class _ProjectsCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Projects in this program', style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+                    Text('Projects in this program',
+                        style: textTheme.titleLarge
+                            ?.copyWith(fontWeight: FontWeight.w700)),
                     const SizedBox(height: 6),
                     Text(
                       'Review selection, prioritize work, and manage shared outcomes before rolling up to portfolio.',
-                      style: textTheme.bodyMedium?.copyWith(color: const Color(0xFF565970), height: 1.45),
+                      style: textTheme.bodyMedium?.copyWith(
+                          color: const Color(0xFF565970), height: 1.45),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 12),
-              const _SoftButton(label: 'Up to 3 related projects', icon: Icons.layers_outlined),
+              const _SoftButton(
+                  label: 'Up to 3 related projects',
+                  icon: Icons.layers_outlined),
             ],
           ),
           const SizedBox(height: 18),
@@ -617,7 +682,9 @@ class _ProjectsCard extends StatelessWidget {
                       Expanded(flex: 2, child: _HeaderLabel('Stage')),
                       Expanded(flex: 2, child: _HeaderLabel('Priority')),
                       Expanded(flex: 2, child: _HeaderLabel('Owner')),
-                      SizedBox(width: 64, child: Center(child: _HeaderLabel('Actions'))),
+                      SizedBox(
+                          width: 64,
+                          child: Center(child: _HeaderLabel('Actions'))),
                     ],
                   ),
                 ),
@@ -633,7 +700,8 @@ class _ProjectsCard extends StatelessWidget {
                     child: Center(
                       child: Text(
                         error!,
-                        style: textTheme.bodyMedium?.copyWith(color: Colors.red),
+                        style:
+                            textTheme.bodyMedium?.copyWith(color: Colors.red),
                       ),
                     ),
                   )
@@ -643,14 +711,18 @@ class _ProjectsCard extends StatelessWidget {
                     child: Center(
                       child: Text(
                         'No projects in this program yet. Add a project to get started.',
-                        style: textTheme.bodyMedium?.copyWith(color: const Color(0xFF565970)),
+                        style: textTheme.bodyMedium
+                            ?.copyWith(color: const Color(0xFF565970)),
                       ),
                     ),
                   )
                 else
                   for (int i = 0; i < projects.length; i++) ...[
-                    _ProjectRow(projectId: projects[i].id, info: _toProjectInfo(projects[i], i)),
-                    if (i != projects.length - 1) const Divider(height: 1, color: Color(0xFFE6E7EE)),
+                    _ProjectRow(
+                        projectId: projects[i].id,
+                        info: _toProjectInfo(projects[i], i)),
+                    if (i != projects.length - 1)
+                      const Divider(height: 1, color: Color(0xFFE6E7EE)),
                   ],
               ],
             ),
@@ -685,13 +757,15 @@ class _ProgramActionsCard extends StatelessWidget {
     final actions = [
       _ProgramAction(
         title: 'Gate approvals',
-        description: 'Use the same approval path for all projects in this program.',
+        description:
+            'Use the same approval path for all projects in this program.',
         appliesTo: 'Applies to all',
         isOn: true,
       ),
       _ProgramAction(
         title: 'Shared risk register',
-        description: 'Surface program-level risks and mitigation once across all work.',
+        description:
+            'Surface program-level risks and mitigation once across all work.',
         appliesTo: 'Applies to all',
         isOn: true,
       ),
@@ -709,11 +783,14 @@ class _ProgramActionsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Program-level actions', style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+          Text('Program-level actions',
+              style:
+                  textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
           Text(
             'Choose which governance, risks, and costs apply to the entire program.',
-            style: textTheme.bodyMedium?.copyWith(color: const Color(0xFF565970), height: 1.45),
+            style: textTheme.bodyMedium
+                ?.copyWith(color: const Color(0xFF565970), height: 1.45),
           ),
           const SizedBox(height: 18),
           _InsetCard(
@@ -721,7 +798,8 @@ class _ProgramActionsCard extends StatelessWidget {
               children: [
                 for (int i = 0; i < actions.length; i++) ...[
                   _ProgramActionRow(action: actions[i]),
-                  if (i != actions.length - 1) const Divider(height: 1, color: Color(0xFFE6E7EE)),
+                  if (i != actions.length - 1)
+                    const Divider(height: 1, color: Color(0xFFE6E7EE)),
                 ],
               ],
             ),
@@ -734,8 +812,10 @@ class _ProgramActionsCard extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0E1017),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(26)),
                 textStyle: const TextStyle(fontWeight: FontWeight.w700),
               ),
               child: const Text('Apply selections'),
@@ -765,11 +845,14 @@ class _InterfaceCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Interface management', style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+                    Text('Interface management',
+                        style: textTheme.titleLarge
+                            ?.copyWith(fontWeight: FontWeight.w700)),
                     const SizedBox(height: 6),
                     Text(
                       'Track dependencies and shared interfaces across all projects in this program.',
-                      style: textTheme.bodyMedium?.copyWith(color: const Color(0xFF565970), height: 1.45),
+                      style: textTheme.bodyMedium?.copyWith(
+                          color: const Color(0xFF565970), height: 1.45),
                     ),
                   ],
                 ),
@@ -789,7 +872,8 @@ class _InterfaceCard extends StatelessWidget {
               children: [
                 for (int i = 0; i < items.length; i++) ...[
                   _InterfaceRow(item: items[i]),
-                  if (i != items.length - 1) const Divider(height: 1, color: Color(0xFFE6E7EE)),
+                  if (i != items.length - 1)
+                    const Divider(height: 1, color: Color(0xFFE6E7EE)),
                 ],
               ],
             ),
@@ -802,8 +886,10 @@ class _InterfaceCard extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0E1017),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(26)),
                 textStyle: const TextStyle(fontWeight: FontWeight.w700),
               ),
               child: const Text('Update interfaces for all'),
@@ -822,20 +908,35 @@ class _RollupCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final schedules = [
-      _ScheduleItem(label: 'Goal 1', startMonths: 0, endMonths: 11, color: const Color(0xFF00B69A)),
-      _ScheduleItem(label: 'Goal 2', startMonths: 3, endMonths: 18, color: const Color(0xFF3E8BFF)),
-      _ScheduleItem(label: 'Goal 3', startMonths: 6, endMonths: 12, color: const Color(0xFFF5A524)),
+      _ScheduleItem(
+          label: 'Goal 1',
+          startMonths: 0,
+          endMonths: 11,
+          color: const Color(0xFF00B69A)),
+      _ScheduleItem(
+          label: 'Goal 2',
+          startMonths: 3,
+          endMonths: 18,
+          color: const Color(0xFF3E8BFF)),
+      _ScheduleItem(
+          label: 'Goal 3',
+          startMonths: 6,
+          endMonths: 12,
+          color: const Color(0xFFF5A524)),
     ];
 
     return _Surface(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Rolled up estimates', style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+          Text('Rolled up estimates',
+              style:
+                  textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           Text(
             'See combined cost, schedule, and risk posture for the entire program.',
-            style: textTheme.bodyMedium?.copyWith(color: const Color(0xFF565970), height: 1.45),
+            style: textTheme.bodyMedium
+                ?.copyWith(color: const Color(0xFF565970), height: 1.45),
           ),
           const SizedBox(height: 18),
           _InsetCard(
@@ -845,7 +946,7 @@ class _RollupCard extends StatelessWidget {
                 return isStacked
                     ? Column(
                         children: [
-                        _RollupSummary(slices: _demoSlices),
+                          _RollupSummary(slices: _demoSlices),
                           const SizedBox(height: 16),
                           _ScheduleList(items: schedules),
                         ],
@@ -862,7 +963,8 @@ class _RollupCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _BadgePill(
-            text: 'Risk posture: Medium · 3 open high risks across all goals · Aligned to program critical path',
+            text:
+                'Risk posture: Medium · 3 open high risks across all goals · Aligned to program critical path',
             color: const Color(0xFFFFF0C2),
             textColor: const Color(0xFF8A5800),
             icon: Icons.shield_moon_outlined,
@@ -877,8 +979,10 @@ class _RollupCard extends StatelessWidget {
                     backgroundColor: Colors.white,
                     foregroundColor: const Color(0xFF0E1017),
                     side: const BorderSide(color: Color(0xFFE6E7EE)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(26)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
                     textStyle: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                   child: const Text('Export program dashboard'),
@@ -891,8 +995,10 @@ class _RollupCard extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFFC812),
                     foregroundColor: const Color(0xFF0E1017),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(26)),
                     textStyle: const TextStyle(fontWeight: FontWeight.w700),
                     elevation: 4,
                     shadowColor: const Color(0xFFFFC812).withOpacity(0.45),
@@ -935,16 +1041,28 @@ class _RollupSummary extends StatelessWidget {
                         children: [
                           _Dot(color: slice.color),
                           const SizedBox(width: 8),
-                          Text(slice.label, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+                          Text(slice.label,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(fontWeight: FontWeight.w700)),
                           const Spacer(),
-                          Text('\$${slice.amount.toStringAsFixed(1)}M · ${(slice.percent * 100).round()}%',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF565970))),
+                          Text(
+                              '\$${slice.amount.toStringAsFixed(1)}M · ${(slice.percent * 100).round()}%',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(color: const Color(0xFF565970))),
                         ],
                       ),
                     ),
                   const SizedBox(height: 8),
-                  Text('Total cost by Program estimate: \$${total.toStringAsFixed(1)}M',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF565970))),
+                  Text(
+                      'Total cost by Program estimate: \$${total.toStringAsFixed(1)}M',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: const Color(0xFF565970))),
                 ],
               ),
             ),
@@ -965,7 +1083,11 @@ class _ScheduleList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Schedule by goal (Gantt)', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+        Text('Schedule by goal (Gantt)',
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 10),
         for (final item in items) ...[
           _ScheduleRow(item: item),
@@ -991,10 +1113,17 @@ class _ScheduleRow extends StatelessWidget {
           children: [
             _Dot(color: item.color),
             const SizedBox(width: 8),
-            Text(item.label, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+            Text(item.label,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.w700)),
             const Spacer(),
             Text('${item.startMonths.toInt()}–${item.endMonths.toInt()} months',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF565970))),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: const Color(0xFF565970))),
           ],
         ),
         const SizedBox(height: 6),
@@ -1002,7 +1131,8 @@ class _ScheduleRow extends StatelessWidget {
           builder: (context, constraints) {
             final totalWidth = constraints.maxWidth;
             final left = (item.startMonths / maxMonths) * totalWidth;
-            final width = ((item.endMonths - item.startMonths) / maxMonths) * totalWidth;
+            final width =
+                ((item.endMonths - item.startMonths) / maxMonths) * totalWidth;
             return Stack(
               children: [
                 Container(
@@ -1056,22 +1186,37 @@ class _ProjectRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(info.title, style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  Text(info.title,
+                      style: textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 4),
-                  Text(info.code, style: textTheme.bodySmall?.copyWith(color: const Color(0xFF6B6D80))),
+                  Text(info.code,
+                      style: textTheme.bodySmall
+                          ?.copyWith(color: const Color(0xFF6B6D80))),
                 ],
               ),
             ),
-            Expanded(flex: 2, child: _Pill(label: info.stage, color: info.stageColor)),
-            Expanded(flex: 2, child: _Pill(label: info.priority, color: info.priorityColor, foreground: Colors.white)),
+            Expanded(
+                flex: 2,
+                child: _Pill(label: info.stage, color: info.stageColor)),
+            Expanded(
+                flex: 2,
+                child: _Pill(
+                    label: info.priority,
+                    color: info.priorityColor,
+                    foreground: Colors.white)),
             Expanded(
               flex: 2,
-              child: Text(info.owner, style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+              child: Text(info.owner,
+                  style: textTheme.bodyMedium
+                      ?.copyWith(fontWeight: FontWeight.w700)),
             ),
             SizedBox(
               width: 64,
               child: Center(
-                child: Text(info.status, style: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700)),
+                child: Text(info.status,
+                    style: textTheme.labelLarge
+                        ?.copyWith(fontWeight: FontWeight.w700)),
               ),
             ),
           ],
@@ -1109,7 +1254,7 @@ class _ProjectRow extends StatelessWidget {
     try {
       final provider = ProjectDataInherited.of(context);
       debugPrint('📥 Calling loadFromFirebase for project: $projectId');
-      
+
       final success = await provider.loadFromFirebase(projectId);
 
       debugPrint('📤 Load result: $success, error: ${provider.lastError}');
@@ -1121,27 +1266,32 @@ class _ProjectRow extends StatelessWidget {
       if (success) {
         // Get checkpoint from Firestore (primary source) or fallback to SharedPreferences
         final projectRecord = await ProjectService.getProjectById(projectId);
-        final checkpointRoute = projectRecord?.checkpointRoute.isNotEmpty == true
+        final checkpointRoute = projectRecord?.checkpointRoute.isNotEmpty ==
+                true
             ? projectRecord!.checkpointRoute
             : await ProjectNavigationService.instance.getLastPage(projectId);
-        debugPrint('✅ Project loaded successfully, navigating to checkpoint: $checkpointRoute');
-        
+        debugPrint(
+            '✅ Project loaded successfully, navigating to checkpoint: $checkpointRoute');
+
         // Resolve checkpoint to screen widget
         final screen = NavigationRouteResolver.resolveCheckpointToScreen(
           checkpointRoute.isEmpty ? 'initiation' : checkpointRoute,
           context,
         );
-        
+
         // Navigate to the resolved screen
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => screen ?? const InitiationPhaseScreen()),
+          MaterialPageRoute(
+              builder: (_) => screen ?? const InitiationPhaseScreen()),
         );
       } else {
         debugPrint('❌ Failed to load project: ${provider.lastError}');
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to load project: ${provider.lastError ?? "Unknown error"}')),
+            SnackBar(
+                content: Text(
+                    'Failed to load project: ${provider.lastError ?? "Unknown error"}')),
           );
         }
       }
@@ -1175,15 +1325,23 @@ class _InterfaceRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.title, style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                Text(item.title,
+                    style: textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 6),
-                _BadgePill(text: item.appliesTo, color: const Color(0xFFEFF3FF), textColor: const Color(0xFF0C4DA2)),
+                _BadgePill(
+                    text: item.appliesTo,
+                    color: const Color(0xFFEFF3FF),
+                    textColor: const Color(0xFF0C4DA2)),
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: item.tags
-                      .map((tag) => _BadgePill(text: tag, color: const Color(0xFFF3F4FA), textColor: const Color(0xFF2F3045)))
+                      .map((tag) => _BadgePill(
+                          text: tag,
+                          color: const Color(0xFFF3F4FA),
+                          textColor: const Color(0xFF2F3045)))
                       .toList(),
                 ),
               ],
@@ -1193,7 +1351,10 @@ class _InterfaceRow extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              _BadgePill(text: item.riskLabel, color: item.riskColor.withOpacity(0.18), textColor: item.riskColor),
+              _BadgePill(
+                  text: item.riskLabel,
+                  color: item.riskColor.withOpacity(0.18),
+                  textColor: item.riskColor),
               const SizedBox(height: 12),
               IconButton(onPressed: () {}, icon: const Icon(Icons.more_horiz)),
             ],
@@ -1223,9 +1384,13 @@ class _ProgramActionRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(action.title, style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                Text(action.title,
+                    style: textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 6),
-                Text(action.description, style: textTheme.bodyMedium?.copyWith(color: const Color(0xFF565970), height: 1.4)),
+                Text(action.description,
+                    style: textTheme.bodyMedium?.copyWith(
+                        color: const Color(0xFF565970), height: 1.4)),
               ],
             ),
           ),
@@ -1268,19 +1433,23 @@ class _PieChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2;
-    final paint = Paint()..style = PaintingStyle.stroke..strokeWidth = 18;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 18;
     double start = -math.pi / 2;
 
     for (final slice in slices) {
       final sweep = slice.percent * 2 * math.pi;
       paint.color = slice.color;
-      canvas.drawArc(Rect.fromCircle(center: center, radius: radius - 6), start, sweep, false, paint);
+      canvas.drawArc(Rect.fromCircle(center: center, radius: radius - 6), start,
+          sweep, false, paint);
       start += sweep;
     }
   }
 
   @override
-  bool shouldRepaint(covariant _PieChartPainter oldDelegate) => oldDelegate.slices != slices;
+  bool shouldRepaint(covariant _PieChartPainter oldDelegate) =>
+      oldDelegate.slices != slices;
 }
 
 class _Surface extends StatelessWidget {
@@ -1295,7 +1464,10 @@ class _Surface extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 22, offset: const Offset(0, 12)),
+          BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 22,
+              offset: const Offset(0, 12)),
         ],
       ),
       padding: const EdgeInsets.all(22),
@@ -1324,7 +1496,8 @@ class _InsetCard extends StatelessWidget {
 }
 
 class _Banner extends StatelessWidget {
-  const _Banner({required this.message, required this.actionLabel, required this.onTap});
+  const _Banner(
+      {required this.message, required this.actionLabel, required this.onTap});
 
   final String message;
   final String actionLabel;
@@ -1343,14 +1516,19 @@ class _Banner extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF8A5800)),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: const Color(0xFF8A5800)),
             ),
           ),
           const SizedBox(width: 10),
           TextButton.icon(
             onPressed: onTap,
             icon: const Icon(Icons.add, color: Color(0xFF8A5800)),
-            label: Text(actionLabel, style: const TextStyle(color: Color(0xFF8A5800), fontWeight: FontWeight.w700)),
+            label: Text(actionLabel,
+                style: const TextStyle(
+                    color: Color(0xFF8A5800), fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -1403,7 +1581,11 @@ class _Pill extends StatelessWidget {
 }
 
 class _BadgePill extends StatelessWidget {
-  const _BadgePill({required this.text, required this.color, required this.textColor, this.icon});
+  const _BadgePill(
+      {required this.text,
+      required this.color,
+      required this.textColor,
+      this.icon});
 
   final String text;
   final Color color;
@@ -1414,7 +1596,8 @@ class _BadgePill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(18)),
+      decoration:
+          BoxDecoration(color: color, borderRadius: BorderRadius.circular(18)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1424,7 +1607,10 @@ class _BadgePill extends StatelessWidget {
           ],
           Text(
             text,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700, color: textColor),
+            style: Theme.of(context)
+                .textTheme
+                .labelMedium
+                ?.copyWith(fontWeight: FontWeight.w700, color: textColor),
           ),
         ],
       ),
@@ -1433,7 +1619,10 @@ class _BadgePill extends StatelessWidget {
 }
 
 class _InfoChip extends StatelessWidget {
-  const _InfoChip({required this.label, this.color = const Color(0xFFE7F0FF), this.foreground = const Color(0xFF0C4DA2)});
+  const _InfoChip(
+      {required this.label,
+      this.color = const Color(0xFFE7F0FF),
+      this.foreground = const Color(0xFF0C4DA2)});
 
   final String label;
   final Color color;
@@ -1456,7 +1645,10 @@ class _InfoChip extends StatelessWidget {
           Flexible(
             child: Text(
               label,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700, color: foreground),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(fontWeight: FontWeight.w700, color: foreground),
             ),
           ),
         ],
@@ -1528,7 +1720,9 @@ class _SoftButton extends StatelessWidget {
         children: [
           Icon(icon, size: 18, color: const Color(0xFF0E1017)),
           const SizedBox(width: 8),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF0E1017))),
+          Text(label,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w700, color: Color(0xFF0E1017))),
         ],
       ),
     );
@@ -1607,7 +1801,11 @@ class _ProgramAction {
 }
 
 class _RollupSlice {
-  const _RollupSlice({required this.label, required this.amount, required this.percent, required this.color});
+  const _RollupSlice(
+      {required this.label,
+      required this.amount,
+      required this.percent,
+      required this.color});
 
   final String label;
   final double amount;
@@ -1616,7 +1814,11 @@ class _RollupSlice {
 }
 
 class _ScheduleItem {
-  const _ScheduleItem({required this.label, required this.startMonths, required this.endMonths, required this.color});
+  const _ScheduleItem(
+      {required this.label,
+      required this.startMonths,
+      required this.endMonths,
+      required this.color});
 
   final String label;
   final double startMonths;
@@ -1649,7 +1851,10 @@ const _demoInterfaces = [
 ];
 
 const _demoSlices = [
-  _RollupSlice(label: 'Goal 1', amount: 2.1, percent: 0.40, color: Color(0xFF00B69A)),
-  _RollupSlice(label: 'Goal 2', amount: 1.9, percent: 0.35, color: Color(0xFF3E8BFF)),
-  _RollupSlice(label: 'Goal 3', amount: 1.4, percent: 0.25, color: Color(0xFFF5A524)),
+  _RollupSlice(
+      label: 'Goal 1', amount: 2.1, percent: 0.40, color: Color(0xFF00B69A)),
+  _RollupSlice(
+      label: 'Goal 2', amount: 1.9, percent: 0.35, color: Color(0xFF3E8BFF)),
+  _RollupSlice(
+      label: 'Goal 3', amount: 1.4, percent: 0.25, color: Color(0xFFF5A524)),
 ];

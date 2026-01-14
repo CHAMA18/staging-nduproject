@@ -395,7 +395,7 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
       padding: padding,
       child: Column(children: [
         const PlanningAiNotesCard(
-          title: 'AI Notes',
+          title: 'Notes',
           sectionLabel: 'SSHER',
           noteKey: 'planning_ssher_notes',
           checkpoint: 'ssher',

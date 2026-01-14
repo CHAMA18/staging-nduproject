@@ -120,28 +120,16 @@ class _TechnicalDevelopmentScreenState extends State<TechnicalDevelopmentScreen>
                       ),
                       const SizedBox(height: 24),
 
-                      // Three Cards - responsive layout
-                      if (isMobile)
-                        Column(
-                          children: [
-                            _buildBuildStrategyCard(),
-                            const SizedBox(height: 16),
-                            _buildWorkstreamsCard(),
-                            const SizedBox(height: 16),
-                            _buildReadinessChecklistCard(),
-                          ],
-                        )
-                      else
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(child: _buildBuildStrategyCard()),
-                            const SizedBox(width: 16),
-                            Expanded(child: _buildWorkstreamsCard()),
-                            const SizedBox(width: 16),
-                            Expanded(child: _buildReadinessChecklistCard()),
-                          ],
-                        ),
+                      // Three Cards - stacked vertically on all screen sizes
+                      Column(
+                        children: [
+                          _buildBuildStrategyCard(),
+                          const SizedBox(height: 16),
+                          _buildWorkstreamsCard(),
+                          const SizedBox(height: 16),
+                          _buildReadinessChecklistCard(),
+                        ],
+                      ),
                       const SizedBox(height: 32),
 
                       // Bottom Navigation
@@ -160,6 +148,7 @@ class _TechnicalDevelopmentScreenState extends State<TechnicalDevelopmentScreen>
 
   Widget _buildBuildStrategyCard() {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,

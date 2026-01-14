@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
 
 /// A world-class "Select Project" button styled with KAZ AI chat bubble theme.
 /// Features smooth animations, gradient backgrounds, and exceptional visual design.
 class SelectProjectKazButton extends StatefulWidget {
-  final List<_SolutionOption> solutions;
-  final ValueChanged<_SolutionOption>? onSolutionSelected;
+  final List<SolutionOption> solutions;
+  final ValueChanged<SolutionOption>? onSolutionSelected;
   final VoidCallback? onClosed;
   final String title;
   final String subtitle;
@@ -183,10 +184,10 @@ class _SelectProjectKazButtonState extends State<SelectProjectKazButton> with Si
 }
 
 class _SelectProjectDialog extends StatefulWidget {
-  final List<_SolutionOption> solutions;
+  final List<SolutionOption> solutions;
   final String title;
   final String subtitle;
-  final ValueChanged<_SolutionOption> onSolutionSelected;
+  final ValueChanged<SolutionOption> onSolutionSelected;
 
   const _SelectProjectDialog({
     required this.solutions,
@@ -213,6 +214,21 @@ class _SelectProjectDialogState extends State<_SelectProjectDialog> with SingleT
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Prefill project name if the project already has a name in the current data
+    try {
+      final data = ProjectDataHelper.getData(context);
+  final existing = data.projectName;
+      if (existing.isNotEmpty && _projectNameController.text.isEmpty) {
+        _projectNameController.text = existing;
+      }
+    } catch (_) {
+      // ignore if provider not available in this context
+    }
+  }
+
+  @override
   void dispose() {
     _projectNameController.dispose();
     _tabController.dispose();
@@ -234,7 +250,7 @@ class _SelectProjectDialogState extends State<_SelectProjectDialog> with SingleT
     }
 
     final selected = widget.solutions[_selectedIndex!];
-    widget.onSolutionSelected(_SolutionOption(
+    widget.onSolutionSelected(SolutionOption(
       title: selected.title,
       description: selected.description,
       projectName: projectName,

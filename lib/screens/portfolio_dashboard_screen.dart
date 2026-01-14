@@ -23,7 +23,8 @@ class PortfolioDashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    NavigationContextService.instance.setLastClientDashboard(AppRoutes.portfolioDashboard);
+    NavigationContextService.instance
+        .setLastClientDashboard(AppRoutes.portfolioDashboard);
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FB),
       body: Stack(
@@ -71,18 +72,12 @@ class _PortfolioRollUpContent extends StatelessWidget {
     );
   }
 
-  List<DashboardStatCard> _buildPortfolioStatsCards(BuildContext context, _PortfolioMetrics metrics) {
-    final basicProjectCount = metrics.projects.where((project) => project.isBasicPlanProject).length;
+  List<DashboardStatCard> _buildPortfolioStatsCards(
+      BuildContext context, _PortfolioMetrics metrics) {
+    final basicProjectCount =
+        metrics.projects.where((project) => project.isBasicPlanProject).length;
 
     return [
-      DashboardStatCard(
-        label: 'Single Projects',
-        value: '${metrics.projectCount}',
-        subLabel: 'Active workspaces',
-        icon: Icons.folder_open_rounded,
-        color: Colors.blue.shade600,
-        onTap: () => _openProjectDashboard(context),
-      ),
       DashboardStatCard(
         label: 'Basic Projects',
         value: '$basicProjectCount',
@@ -90,6 +85,14 @@ class _PortfolioRollUpContent extends StatelessWidget {
         icon: Icons.folder_special_rounded,
         color: Colors.teal.shade600,
         onTap: () => _openBasicProjectDashboard(context),
+      ),
+      DashboardStatCard(
+        label: 'Single Projects',
+        value: '${metrics.projectCount}',
+        subLabel: 'Active workspaces',
+        icon: Icons.folder_open_rounded,
+        color: Colors.blue.shade600,
+        onTap: () => _openProjectDashboard(context),
       ),
       DashboardStatCard(
         label: 'Programs',
@@ -113,8 +116,12 @@ class _PortfolioRollUpContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final projectStream = user == null ? Stream.value(const <ProjectRecord>[]) : ProjectService.streamProjects(ownerId: user.uid);
-    final programStream = user == null ? Stream.value(const <ProgramModel>[]) : ProgramService.streamPrograms(ownerId: user.uid);
+    final projectStream = user == null
+        ? Stream.value(const <ProjectRecord>[])
+        : ProjectService.streamProjects(ownerId: user.uid);
+    final programStream = user == null
+        ? Stream.value(const <ProgramModel>[])
+        : ProgramService.streamPrograms(ownerId: user.uid);
 
     return StreamBuilder<List<ProjectRecord>>(
       stream: projectStream,
@@ -124,37 +131,38 @@ class _PortfolioRollUpContent extends StatelessWidget {
           stream: programStream,
           builder: (context, programSnapshot) {
             final programs = programSnapshot.data ?? const <ProgramModel>[];
-            final metrics = _PortfolioMetrics.fromData(projects: projects, programs: programs);
+            final metrics = _PortfolioMetrics.fromData(
+                projects: projects, programs: programs);
 
             return LayoutBuilder(
-        builder: (context, constraints) {
-          final isNarrow = constraints.maxWidth < 1000;
-          final statsIsStacked = constraints.maxWidth < 920;
-          final statCards = _buildPortfolioStatsCards(context, metrics);
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _HeaderSection(metrics: metrics),
-                const SizedBox(height: 24),
-                DashboardStatLayout(
-                  cards: statCards,
-                  isStacked: statsIsStacked,
-                  horizontalSpacing: 20,
-                  verticalSpacing: 16,
-                ),
-                const SizedBox(height: 24),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _ProgramsProjectsCard(metrics: metrics),
-                    const SizedBox(height: 24),
-                    const _GovernanceReportingCard(),
-                    const SizedBox(height: 24),
-                    _IndependentProjectsCard(metrics: metrics),
-                  ],
-                ),
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 1000;
+                final statsIsStacked = constraints.maxWidth < 920;
+                final statCards = _buildPortfolioStatsCards(context, metrics);
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _HeaderSection(metrics: metrics),
+                      const SizedBox(height: 24),
+                      DashboardStatLayout(
+                        cards: statCards,
+                        isStacked: statsIsStacked,
+                        horizontalSpacing: 20,
+                        verticalSpacing: 16,
+                      ),
+                      const SizedBox(height: 24),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _ProgramsProjectsCard(metrics: metrics),
+                          const SizedBox(height: 24),
+                          const _GovernanceReportingCard(),
+                          const SizedBox(height: 24),
+                          _IndependentProjectsCard(metrics: metrics),
+                        ],
+                      ),
                       const SizedBox(height: 24),
                       _CostScheduleRiskSection(metrics: metrics),
                       const SizedBox(height: 24),
@@ -178,8 +186,10 @@ class _HeaderSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final programLabel = '${metrics.programCount} ${metrics.programCount == 1 ? 'program' : 'programs'}';
-    final projectLabel = '${metrics.projectCount} ${metrics.projectCount == 1 ? 'project' : 'projects'} included';
+    final programLabel =
+        '${metrics.programCount} ${metrics.programCount == 1 ? 'program' : 'programs'}';
+    final projectLabel =
+        '${metrics.projectCount} ${metrics.projectCount == 1 ? 'project' : 'projects'} included';
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,7 +218,7 @@ class _HeaderSection extends StatelessWidget {
                       ],
                     ),
                     child: Image.asset(
-                      'assets/images/Ndu_Logo.png',
+                      'assets/images/Logo.png',
                       fit: BoxFit.contain,
                     ),
                   ),
@@ -218,7 +228,8 @@ class _HeaderSection extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
                             color: const Color(0xFFFFF8E6),
                             borderRadius: BorderRadius.circular(16),
@@ -227,18 +238,33 @@ class _HeaderSection extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.auto_awesome, size: 14, color: Colors.amber.shade700),
+                              Icon(Icons.auto_awesome,
+                                  size: 14, color: Colors.amber.shade700),
                               const SizedBox(width: 6),
-                              Text('Roll-up preview', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.amber.shade800)),
+                              Text('Roll-up preview',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.amber.shade800)),
                             ],
                           ),
                         ),
                         const SizedBox(height: 12),
-                        Text('Confirm portfolio roll-up', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800, color: const Color(0xFF1A1D21))),
+                        Text('Confirm portfolio roll-up',
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineSmall
+                                ?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: const Color(0xFF1A1D21))),
                         const SizedBox(height: 8),
                         Text(
                           'Review which programs, projects, governance rules, and risks will be rolled up into this portfolio view before publishing it for executives and steering committees.',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: const Color(0xFF6B7280), height: 1.5),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(
+                                  color: const Color(0xFF6B7280), height: 1.5),
                         ),
                       ],
                     ),
@@ -252,8 +278,13 @@ class _HeaderSection extends StatelessWidget {
                 children: [
                   _InfoChip(label: programLabel, icon: Icons.layers_outlined),
                   _InfoChip(label: projectLabel, icon: Icons.folder_outlined),
-                  _InfoChip(label: 'Total portfolio value: ${metrics.formattedTotalValue}', icon: Icons.attach_money),
-                  _InfoChip(label: 'Risk posture: ${metrics.riskPostureLabel}', icon: Icons.shield_outlined),
+                  _InfoChip(
+                      label:
+                          'Total portfolio value: ${metrics.formattedTotalValue}',
+                      icon: Icons.attach_money),
+                  _InfoChip(
+                      label: 'Risk posture: ${metrics.riskPostureLabel}',
+                      icon: Icons.shield_outlined),
                 ],
               ),
             ],
@@ -270,12 +301,18 @@ class _HeaderSection extends StatelessWidget {
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFF374151),
                 side: const BorderSide(color: Color(0xFFE5E7EB)),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
               ),
             ),
             const SizedBox(height: 8),
-            Text('Adjust selection of programs, projects, or independent work', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF9CA3AF))),
+            Text('Adjust selection of programs, projects, or independent work',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: const Color(0xFF9CA3AF))),
           ],
         ),
       ],
@@ -292,13 +329,19 @@ class _InfoChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(6)),
+      decoration: BoxDecoration(
+          color: const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(6)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: const Color(0xFF6B7280)),
           const SizedBox(width: 6),
-          Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF4B5563), fontWeight: FontWeight.w500)),
+          Text(label,
+              style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF4B5563),
+                  fontWeight: FontWeight.w500)),
         ],
       ),
     );
@@ -335,15 +378,31 @@ class _ProgramsProjectsCard extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Programs & projects in this roll-up', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                    Text('Programs & projects in this roll-up',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
-                    Text('Verify which programs and projects will contribute cost, schedule, and risk into the rolled-up portfolio.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B7280))),
+                    Text(
+                        'Verify which programs and projects will contribute cost, schedule, and risk into the rolled-up portfolio.',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: const Color(0xFF6B7280))),
                   ],
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(6)),
-                  child: Text(programScopeLabel, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF2563EB))),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(6)),
+                  child: Text(programScopeLabel,
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF2563EB))),
                 ),
               ],
             ),
@@ -354,7 +413,10 @@ class _ProgramsProjectsCard extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               child: Text(
                 'No programs created yet. Group projects into programs to see a roll-up here.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B7280)),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: const Color(0xFF6B7280)),
               ),
             )
           else ...[
@@ -363,10 +425,34 @@ class _ProgramsProjectsCard extends StatelessWidget {
               color: const Color(0xFFF9FAFB),
               child: const Row(
                 children: [
-                  Expanded(flex: 3, child: Text('Program', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF6B7280)))),
-                  Expanded(flex: 2, child: Text('Projects in scope', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF6B7280)))),
-                  Expanded(flex: 1, child: Text('Value', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF6B7280)))),
-                  Expanded(flex: 1, child: Text('Priority', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF6B7280)))),
+                  Expanded(
+                      flex: 3,
+                      child: Text('Program',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF6B7280)))),
+                  Expanded(
+                      flex: 2,
+                      child: Text('Projects in scope',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF6B7280)))),
+                  Expanded(
+                      flex: 1,
+                      child: Text('Value',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF6B7280)))),
+                  Expanded(
+                      flex: 1,
+                      child: Text('Priority',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF6B7280)))),
                 ],
               ),
             ),
@@ -414,7 +500,8 @@ class _ProgramRow extends StatelessWidget {
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6)))),
+        decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6)))),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -423,9 +510,17 @@ class _ProgramRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF111827))),
+                  Text(title,
+                      style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF111827))),
                   const SizedBox(height: 4),
-                  Text(description, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  Text(description,
+                      style: const TextStyle(
+                          fontSize: 12, color: Color(0xFF6B7280)),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
                 ],
               ),
             ),
@@ -433,12 +528,36 @@ class _ProgramRow extends StatelessWidget {
               flex: 2,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: const Color(0xFFFEF3C7), borderRadius: BorderRadius.circular(4)),
-                child: Text(projectScopeLabel, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF92400E))),
+                decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(4)),
+                child: Text(projectScopeLabel,
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF92400E))),
               ),
             ),
-            Expanded(flex: 1, child: Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF111827)))),
-            Expanded(flex: 1, child: Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: priorityColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)), child: Text(priority, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: priorityColor)))),
+            Expanded(
+                flex: 1,
+                child: Text(value,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF111827)))),
+            Expanded(
+                flex: 1,
+                child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                        color: priorityColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4)),
+                    child: Text(priority,
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: priorityColor)))),
           ],
         ),
       ),
@@ -462,7 +581,10 @@ class _IndependentProjectsCard extends StatelessWidget {
             : '${metrics.independentProjectCount} standalone projects';
 
     return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFE5E7EB))),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE5E7EB))),
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -470,26 +592,44 @@ class _IndependentProjectsCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Independent projects in roll-up', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+              Text('Independent projects in roll-up',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600)),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(4)),
-                child: Text(chipLabel, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(4)),
+                child: Text(chipLabel,
+                    style: const TextStyle(
+                        fontSize: 11, color: Color(0xFF6B7280))),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text('Decide which independent projects should be reflected in this portfolio\'s value and reporting.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B7280))),
+          Text(
+              'Decide which independent projects should be reflected in this portfolio\'s value and reporting.',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: const Color(0xFF6B7280))),
           const SizedBox(height: 16),
           if (previewProjects.isEmpty)
             Text(
               'All projects are grouped into programs right now.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B7280)),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: const Color(0xFF6B7280)),
             )
           else ...[
             for (int i = 0; i < previewProjects.length; i++) ...[
               _IndependentProjectRow(
-                title: previewProjects[i].name.isEmpty ? 'Untitled project' : previewProjects[i].name,
+                title: previewProjects[i].name.isEmpty
+                    ? 'Untitled project'
+                    : previewProjects[i].name,
                 subtitle: _projectSubtitle(previewProjects[i]),
                 phase: _projectPhase(previewProjects[i]),
               ),
@@ -499,7 +639,10 @@ class _IndependentProjectsCard extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 '+${independentProjects.length - previewProjects.length} more independent project${independentProjects.length - previewProjects.length == 1 ? '' : 's'}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF9CA3AF)),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: const Color(0xFF9CA3AF)),
               ),
             ],
           ],
@@ -508,7 +651,11 @@ class _IndependentProjectsCard extends StatelessWidget {
             children: [
               Icon(Icons.info_outline, size: 14, color: Colors.grey.shade500),
               const SizedBox(width: 8),
-              Expanded(child: Text('Use the related/unrelated flag to control which independent work influences portfolio value and dashboards.', style: TextStyle(fontSize: 11, color: Colors.grey.shade500))),
+              Expanded(
+                  child: Text(
+                      'Use the related/unrelated flag to control which independent work influences portfolio value and dashboards.',
+                      style: TextStyle(
+                          fontSize: 11, color: Colors.grey.shade500))),
             ],
           ),
         ],
@@ -518,7 +665,8 @@ class _IndependentProjectsCard extends StatelessWidget {
 }
 
 class _IndependentProjectRow extends StatelessWidget {
-  const _IndependentProjectRow({required this.title, required this.subtitle, required this.phase});
+  const _IndependentProjectRow(
+      {required this.title, required this.subtitle, required this.phase});
   final String title;
   final String subtitle;
   final String phase;
@@ -527,20 +675,38 @@ class _IndependentProjectRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE5E7EB))),
+      decoration: BoxDecoration(
+          color: const Color(0xFFF9FAFB),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFE5E7EB))),
       child: Row(
         children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827))),
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF111827))),
                 const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                Text(subtitle,
+                    style: const TextStyle(
+                        fontSize: 11, color: Color(0xFF6B7280))),
               ],
             ),
           ),
-          Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: const Color(0xFFDDD6FE), borderRadius: BorderRadius.circular(4)), child: Text(phase, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF7C3AED)))),
+          Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                  color: const Color(0xFFDDD6FE),
+                  borderRadius: BorderRadius.circular(4)),
+              child: Text(phase,
+                  style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF7C3AED)))),
         ],
       ),
     );
@@ -553,7 +719,10 @@ class _GovernanceReportingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFE5E7EB))),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE5E7EB))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -562,30 +731,74 @@ class _GovernanceReportingCard extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Governance & reporting', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                Text('Governance & reporting',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w600)),
                 TextButton(
                   onPressed: () {},
-                  style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), backgroundColor: const Color(0xFFF3F4F6), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
-                  child: const Text('Portfolio-wide settings', style: TextStyle(fontSize: 12, color: Color(0xFF374151))),
+                  style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      backgroundColor: const Color(0xFFF3F4F6),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6))),
+                  child: const Text('Portfolio-wide settings',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF374151))),
                 ),
               ],
             ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Text('Confirm which approvals, risk registers, and reports will play in-sync across the portfolio.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B7280))),
+            child: Text(
+                'Confirm which approvals, risk registers, and reports will play in-sync across the portfolio.',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: const Color(0xFF6B7280))),
           ),
           const SizedBox(height: 16),
-          const _GovernanceItem(title: 'Gate approvals', description: 'Use the same approval path for all included projects and stages.', trailing: 'Applies to entire portfolio', isEnabled: true),
-          const _GovernanceItem(title: 'Shared risk register', description: 'Surface portfolio-level risks across all work in this roll-up.', trailing: 'Applies to entire portfolio', isEnabled: true),
-          const _GovernanceItem(title: 'Common change control', description: 'Route change requests through a single portfolio change board.', trailing: 'Program-specific', isEnabled: false),
+          const _GovernanceItem(
+              title: 'Gate approvals',
+              description:
+                  'Use the same approval path for all included projects and stages.',
+              trailing: 'Applies to entire portfolio',
+              isEnabled: true),
+          const _GovernanceItem(
+              title: 'Shared risk register',
+              description:
+                  'Surface portfolio-level risks across all work in this roll-up.',
+              trailing: 'Applies to entire portfolio',
+              isEnabled: true),
+          const _GovernanceItem(
+              title: 'Common change control',
+              description:
+                  'Route change requests through a single portfolio change board.',
+              trailing: 'Program-specific',
+              isEnabled: false),
           const SizedBox(height: 8),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Text('Reporting cadence', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF9CA3AF))),
+            child: Text('Reporting cadence',
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF9CA3AF))),
           ),
-          const _GovernanceItem(title: 'Executive portfolio summary', description: 'Costs, schedule, risk, and key decisions rolled up.', trailing: 'Weekly', isEnabled: true),
-          const _GovernanceItem(title: 'Benefits realization tracker', description: 'Tracks realized vs. planned benefits across all programs.', trailing: 'Monthly', isEnabled: true),
+          const _GovernanceItem(
+              title: 'Executive portfolio summary',
+              description:
+                  'Costs, schedule, risk, and key decisions rolled up.',
+              trailing: 'Weekly',
+              isEnabled: true),
+          const _GovernanceItem(
+              title: 'Benefits realization tracker',
+              description:
+                  'Tracks realized vs. planned benefits across all programs.',
+              trailing: 'Monthly',
+              isEnabled: true),
           const SizedBox(height: 16),
         ],
       ),
@@ -594,7 +807,11 @@ class _GovernanceReportingCard extends StatelessWidget {
 }
 
 class _GovernanceItem extends StatelessWidget {
-  const _GovernanceItem({required this.title, required this.description, required this.trailing, required this.isEnabled});
+  const _GovernanceItem(
+      {required this.title,
+      required this.description,
+      required this.trailing,
+      required this.isEnabled});
   final String title, description, trailing;
   final bool isEnabled;
 
@@ -610,26 +827,38 @@ class _GovernanceItem extends StatelessWidget {
             width: 16,
             height: 16,
             decoration: BoxDecoration(
-              color: isEnabled ? const Color(0xFF10B981) : const Color(0xFFE5E7EB),
+              color:
+                  isEnabled ? const Color(0xFF10B981) : const Color(0xFFE5E7EB),
               borderRadius: BorderRadius.circular(4),
             ),
-            child: isEnabled ? const Icon(Icons.check, size: 12, color: Colors.white) : null,
+            child: isEnabled
+                ? const Icon(Icons.check, size: 12, color: Colors.white)
+                : null,
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF111827))),
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF111827))),
                 const SizedBox(height: 2),
-                Text(description, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                Text(description,
+                    style: const TextStyle(
+                        fontSize: 11, color: Color(0xFF6B7280))),
               ],
             ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(4)),
-            child: Text(trailing, style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280))),
+            decoration: BoxDecoration(
+                color: const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(4)),
+            child: Text(trailing,
+                style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280))),
           ),
         ],
       ),
@@ -645,14 +874,26 @@ class _CostScheduleRiskSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFE5E7EB))),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE5E7EB))),
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Cost, schedule & risk snapshot', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+          Text('Cost, schedule & risk snapshot',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w600)),
           const SizedBox(height: 4),
-          Text('Preview how this roll-up will appear to executives in the live portfolio view, with cost, schedule, and risk broken down by program.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: const Color(0xFF6B7280))),
+          Text(
+              'Preview how this roll-up will appear to executives in the live portfolio view, with cost, schedule, and risk broken down by program.',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: const Color(0xFF6B7280))),
           const SizedBox(height: 24),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -697,23 +938,35 @@ class _PortfolioValueCard extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(
+          color: const Color(0xFFF9FAFB),
+          borderRadius: BorderRadius.circular(8)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Total portfolio value', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+          const Text('Total portfolio value',
+              style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
           const SizedBox(height: 8),
-          Text(metrics.formattedTotalValue, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+          Text(metrics.formattedTotalValue,
+              style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827))),
           const SizedBox(height: 4),
-          Text('${metrics.projectCount} projects in scope', style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
+          Text('${metrics.projectCount} projects in scope',
+              style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
           const SizedBox(height: 12),
           if (breakdowns.isEmpty)
-            const Text('No value breakdowns yet.', style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)))
+            const Text('No value breakdowns yet.',
+                style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)))
           else
             Row(
               children: [
                 for (int i = 0; i < breakdowns.length; i++) ...[
-                  _ValueBreakdown(label: breakdowns[i].label, value: breakdowns[i].value, color: breakdowns[i].color),
+                  _ValueBreakdown(
+                      label: breakdowns[i].label,
+                      value: breakdowns[i].value,
+                      color: breakdowns[i].color),
                   if (i != breakdowns.length - 1) const SizedBox(width: 12),
                 ],
               ],
@@ -725,7 +978,8 @@ class _PortfolioValueCard extends StatelessWidget {
 }
 
 class _ValueBreakdown extends StatelessWidget {
-  const _ValueBreakdown({required this.label, required this.value, required this.color});
+  const _ValueBreakdown(
+      {required this.label, required this.value, required this.color});
   final String label, value;
   final Color color;
 
@@ -733,10 +987,19 @@ class _ValueBreakdown extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+        Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+                color: color, borderRadius: BorderRadius.circular(2))),
         const SizedBox(width: 6),
-        Text('$label: ', style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
-        Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF111827))),
+        Text('$label: ',
+            style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+        Text(value,
+            style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF111827))),
       ],
     );
   }
@@ -756,28 +1019,43 @@ class _AggregateScheduleCard extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(
+          color: const Color(0xFFF9FAFB),
+          borderRadius: BorderRadius.circular(8)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Aggregate progress', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+          const Text('Aggregate progress',
+              style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
           const SizedBox(height: 8),
-          Text(averageLabel, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+          Text(averageLabel,
+              style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827))),
           const SizedBox(height: 4),
-          Text('${metrics.projectCount} projects in scope', style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
+          Text('${metrics.projectCount} projects in scope',
+              style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
           const SizedBox(height: 12),
-          const Text('Progress by program', style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
+          const Text('Progress by program',
+              style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
           const SizedBox(height: 12),
           if (rollups.isEmpty)
-            const Text('No programs yet.', style: TextStyle(fontSize: 11, color: Color(0xFF6B7280)))
+            const Text('No programs yet.',
+                style: TextStyle(fontSize: 11, color: Color(0xFF6B7280)))
           else ...[
             for (int i = 0; i < rollups.length; i++) ...[
-              _ScheduleBar(label: rollups[i].name, detail: rollups[i].progressLabel, progress: rollups[i].averageProgress, color: rollups[i].priorityColor),
+              _ScheduleBar(
+                  label: rollups[i].name,
+                  detail: rollups[i].progressLabel,
+                  progress: rollups[i].averageProgress,
+                  color: rollups[i].priorityColor),
               if (i != rollups.length - 1) const SizedBox(height: 8),
             ],
           ],
           const SizedBox(height: 12),
-          Text('Earliest start: $earliestLabel · Latest update: $latestLabel', style: const TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
+          Text('Earliest start: $earliestLabel · Latest update: $latestLabel',
+              style: const TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
         ],
       ),
     );
@@ -785,7 +1063,11 @@ class _AggregateScheduleCard extends StatelessWidget {
 }
 
 class _ScheduleBar extends StatelessWidget {
-  const _ScheduleBar({required this.label, required this.detail, required this.progress, required this.color});
+  const _ScheduleBar(
+      {required this.label,
+      required this.detail,
+      required this.progress,
+      required this.color});
   final String label;
   final String detail;
   final double progress;
@@ -799,18 +1081,27 @@ class _ScheduleBar extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Flexible(child: Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF374151)), overflow: TextOverflow.ellipsis)),
-            Text(detail, style: const TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
+            Flexible(
+                child: Text(label,
+                    style:
+                        const TextStyle(fontSize: 11, color: Color(0xFF374151)),
+                    overflow: TextOverflow.ellipsis)),
+            Text(detail,
+                style: const TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
           ],
         ),
         const SizedBox(height: 4),
         Container(
           height: 6,
-          decoration: BoxDecoration(color: const Color(0xFFE5E7EB), borderRadius: BorderRadius.circular(3)),
+          decoration: BoxDecoration(
+              color: const Color(0xFFE5E7EB),
+              borderRadius: BorderRadius.circular(3)),
           child: FractionallySizedBox(
             alignment: Alignment.centerLeft,
             widthFactor: progress,
-            child: Container(decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3))),
+            child: Container(
+                decoration: BoxDecoration(
+                    color: color, borderRadius: BorderRadius.circular(3))),
           ),
         ),
       ],
@@ -827,7 +1118,8 @@ class _RiskPostureSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final tags = metrics.riskTags.isEmpty
         ? [
-            _RiskTagData(label: 'No risk tags yet', severity: _RiskSeverity.low),
+            _RiskTagData(
+                label: 'No risk tags yet', severity: _RiskSeverity.low),
           ]
         : metrics.riskTags;
 
@@ -844,11 +1136,18 @@ class _RiskPostureSection extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Risk posture', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF111827))),
+              const Text('Risk posture',
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF111827))),
               const SizedBox(height: 8),
               Text(
                 metrics.riskPostureLabel,
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: metrics.riskPostureColor),
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: metrics.riskPostureColor),
               ),
               const SizedBox(height: 4),
               Text(
@@ -859,11 +1158,16 @@ class _RiskPostureSection extends StatelessWidget {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: tags.map((tag) => _RiskTag(label: tag.label, severity: tag.severity)).toList(),
+                children: tags
+                    .map((tag) =>
+                        _RiskTag(label: tag.label, severity: tag.severity))
+                    .toList(),
               ),
               const SizedBox(height: 12),
               Text(
-                metrics.projects.isEmpty ? 'No projects in scope yet' : 'Based on ${metrics.projects.length} projects',
+                metrics.projects.isEmpty
+                    ? 'No projects in scope yet'
+                    : 'Based on ${metrics.projects.length} projects',
                 style: const TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)),
               ),
             ],
@@ -874,13 +1178,23 @@ class _RiskPostureSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             for (int i = 0; i < buckets.length; i++) ...[
-              Text(buckets[i].label, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+              Text(buckets[i].label,
+                  style:
+                      const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
               const SizedBox(height: 8),
               Row(
                 children: [
-                  _RiskLevel(level: '${buckets[i].high} high', color: buckets[i].high > 0 ? const Color(0xFFEF4444) : const Color(0xFF9CA3AF)),
+                  _RiskLevel(
+                      level: '${buckets[i].high} high',
+                      color: buckets[i].high > 0
+                          ? const Color(0xFFEF4444)
+                          : const Color(0xFF9CA3AF)),
                   const SizedBox(width: 8),
-                  _RiskLevel(level: '${buckets[i].medium} medium', color: buckets[i].medium > 0 ? const Color(0xFFF59E0B) : const Color(0xFF9CA3AF)),
+                  _RiskLevel(
+                      level: '${buckets[i].medium} medium',
+                      color: buckets[i].medium > 0
+                          ? const Color(0xFFF59E0B)
+                          : const Color(0xFF9CA3AF)),
                 ],
               ),
               if (i != buckets.length - 1) const SizedBox(height: 16),
@@ -902,8 +1216,13 @@ class _RiskTag extends StatelessWidget {
     final color = _riskColor(severity);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4), border: Border.all(color: color.withValues(alpha: 0.3))),
-      child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: color)),
+      decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: color.withValues(alpha: 0.3))),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w500, color: color)),
     );
   }
 }
@@ -917,8 +1236,12 @@ class _RiskLevel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
-      child: Text(level, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: color)),
+      decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(4)),
+      child: Text(level,
+          style: TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w500, color: color)),
     );
   }
 }
@@ -934,17 +1257,23 @@ class _ProjectCostComparison extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Project cost comparison', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF111827))),
+        const Text('Project cost comparison',
+            style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF111827))),
         const SizedBox(height: 16),
         if (items.isEmpty)
-          const Text('No projects available yet.', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)))
+          const Text('No projects available yet.',
+              style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)))
         else
           LayoutBuilder(
             builder: (context, constraints) {
               final double spacing = 12.0;
               final int count = math.max(1, items.length);
               final double totalSpacing = (count - 1) * spacing;
-              final double usableWidth = math.max(0, constraints.maxWidth - totalSpacing);
+              final double usableWidth =
+                  math.max(0, constraints.maxWidth - totalSpacing);
               final double candidateWidth = usableWidth / count;
               final double barWidth = math.max(110, candidateWidth).toDouble();
               return Row(
@@ -990,14 +1319,19 @@ class _RiskTagData {
 }
 
 class _RiskBucketData {
-  const _RiskBucketData({required this.label, required this.high, required this.medium});
+  const _RiskBucketData(
+      {required this.label, required this.high, required this.medium});
   final String label;
   final int high;
   final int medium;
 }
 
 class _CostBarData {
-  const _CostBarData({required this.label, required this.formattedValue, required this.height, required this.color});
+  const _CostBarData(
+      {required this.label,
+      required this.formattedValue,
+      required this.height,
+      required this.color});
   final String label;
   final String formattedValue;
   final double height;
@@ -1005,7 +1339,8 @@ class _CostBarData {
 }
 
 class _ValueBreakdownData {
-  const _ValueBreakdownData({required this.label, required this.value, required this.color});
+  const _ValueBreakdownData(
+      {required this.label, required this.value, required this.color});
   final String label;
   final String value;
   final Color color;
@@ -1106,7 +1441,8 @@ class _PortfolioMetrics {
     required List<ProjectRecord> projects,
     required List<ProgramModel> programs,
   }) {
-    final totalValue = projects.fold<double>(0, (sum, project) => sum + project.investmentMillions);
+    final totalValue = projects.fold<double>(
+        0, (sum, project) => sum + project.investmentMillions);
     final formattedTotalValue = _formatMillions(totalValue);
 
     final projectById = {for (final project in projects) project.id: project};
@@ -1114,17 +1450,27 @@ class _PortfolioMetrics {
     final rollups = <_ProgramRollupData>[];
 
     for (final program in programs) {
-      final name = program.name.trim().isEmpty ? 'Untitled program' : program.name.trim();
+      final name = program.name.trim().isEmpty
+          ? 'Untitled program'
+          : program.name.trim();
       final projectIds = program.projectIds;
       allProgramProjectIds.addAll(projectIds);
-      final programProjects = projectIds.map((id) => projectById[id]).whereType<ProjectRecord>().toList();
+      final programProjects = projectIds
+          .map((id) => projectById[id])
+          .whereType<ProjectRecord>()
+          .toList();
       final inScopeCount = programProjects.length;
       final totalCount = projectIds.length;
-      final programValue = programProjects.fold<double>(0, (sum, project) => sum + project.investmentMillions);
+      final programValue = programProjects.fold<double>(
+          0, (sum, project) => sum + project.investmentMillions);
       final double averageProgress = programProjects.isEmpty
           ? 0.0
-          : programProjects.fold<double>(0.0, (sum, project) => sum + project.progress) / programProjects.length;
-      final scopeLabel = totalCount == 0 ? 'No projects yet' : '$inScopeCount of $totalCount projects';
+          : programProjects.fold<double>(
+                  0.0, (sum, project) => sum + project.progress) /
+              programProjects.length;
+      final scopeLabel = totalCount == 0
+          ? 'No projects yet'
+          : '$inScopeCount of $totalCount projects';
       final description = programProjects.isEmpty
           ? 'No projects assigned yet.'
           : 'Avg progress ${_formatPercent(averageProgress)} · $inScopeCount ${inScopeCount == 1 ? 'project' : 'projects'}';
@@ -1137,17 +1483,21 @@ class _PortfolioMetrics {
         totalValue: programValue,
         formattedValue: _formatMillions(programValue),
         averageProgress: averageProgress,
-        progressLabel: programProjects.isEmpty ? '—' : '${_formatPercent(averageProgress)} avg',
+        progressLabel: programProjects.isEmpty
+            ? '—'
+            : '${_formatPercent(averageProgress)} avg',
         priorityLabel: 'Rank —',
         priorityColor: const Color(0xFF6B7280),
       ));
     }
 
     if (rollups.isNotEmpty) {
-      final sortedByValue = [...rollups]..sort((a, b) => b.totalValue.compareTo(a.totalValue));
+      final sortedByValue = [...rollups]
+        ..sort((a, b) => b.totalValue.compareTo(a.totalValue));
       for (int i = 0; i < sortedByValue.length; i++) {
         final rank = i + 1;
-        final index = rollups.indexWhere((rollup) => rollup.id == sortedByValue[i].id);
+        final index =
+            rollups.indexWhere((rollup) => rollup.id == sortedByValue[i].id);
         if (index == -1) continue;
         rollups[index] = rollups[index].copyWith(
           priorityLabel: 'Rank $rank · ${_priorityDescriptor(rank)}',
@@ -1157,19 +1507,25 @@ class _PortfolioMetrics {
       rollups.sort((a, b) => b.totalValue.compareTo(a.totalValue));
     }
 
-    final independentProjects = projects.where((project) => !allProgramProjectIds.contains(project.id)).toList(growable: false);
-    final inProgramProjectCount = projects.where((project) => allProgramProjectIds.contains(project.id)).length;
+    final independentProjects = projects
+        .where((project) => !allProgramProjectIds.contains(project.id))
+        .toList(growable: false);
+    final inProgramProjectCount = projects
+        .where((project) => allProgramProjectIds.contains(project.id))
+        .length;
     final independentProjectCount = independentProjects.length;
 
     final double averageProgress = projects.isEmpty
         ? 0.0
-        : projects.fold<double>(0.0, (sum, project) => sum + project.progress) / projects.length;
+        : projects.fold<double>(0.0, (sum, project) => sum + project.progress) /
+            projects.length;
 
     DateTime? earliestStartAt;
     DateTime? lastUpdatedAt;
     for (final project in projects) {
       if (project.createdAt.millisecondsSinceEpoch > 0) {
-        if (earliestStartAt == null || project.createdAt.isBefore(earliestStartAt)) {
+        if (earliestStartAt == null ||
+            project.createdAt.isBefore(earliestStartAt)) {
           earliestStartAt = project.createdAt;
         }
       }
@@ -1223,7 +1579,8 @@ class _PortfolioMetrics {
 
     final riskBuckets = sortedTags.take(3).map((entry) {
       final highs = entry.value.where((s) => s == _RiskSeverity.high).length;
-      final mediums = entry.value.where((s) => s == _RiskSeverity.medium).length;
+      final mediums =
+          entry.value.where((s) => s == _RiskSeverity.medium).length;
       return _RiskBucketData(label: entry.key, high: highs, medium: mediums);
     }).toList(growable: false);
 
@@ -1262,7 +1619,8 @@ class _RiskPosture {
   final Color color;
 }
 
-_RiskPosture _overallRiskPosture({required int high, required int medium, required int low}) {
+_RiskPosture _overallRiskPosture(
+    {required int high, required int medium, required int low}) {
   if (high >= medium && high >= low) {
     return const _RiskPosture(label: 'High', color: Color(0xFFEF4444));
   }
@@ -1290,14 +1648,19 @@ _RiskSeverity _dominantSeverity(List<_RiskSeverity> severities) {
 List<_CostBarData> _buildCostBars(List<ProjectRecord> projects) {
   if (projects.isEmpty) return const [];
 
-  final sorted = [...projects]..sort((a, b) => b.investmentMillions.compareTo(a.investmentMillions));
+  final sorted = [...projects]
+    ..sort((a, b) => b.investmentMillions.compareTo(a.investmentMillions));
   final top = sorted.take(8).toList(growable: false);
-  final maxValue = top.fold<double>(0, (max, project) => project.investmentMillions > max ? project.investmentMillions : max);
+  final maxValue = top.fold<double>(
+      0,
+      (max, project) =>
+          project.investmentMillions > max ? project.investmentMillions : max);
 
   return top.map((project) {
     final value = project.investmentMillions;
     final height = _scaleHeight(value, maxValue);
-    final label = _shortenLabel(project.name.isEmpty ? 'Untitled project' : project.name);
+    final label =
+        _shortenLabel(project.name.isEmpty ? 'Untitled project' : project.name);
     final color = _statusColor(project.status);
     return _CostBarData(
       label: label,
@@ -1378,10 +1741,12 @@ List<_ValueBreakdownData> _buildValueBreakdowns(List<ProjectRecord> projects) {
   if (projects.isEmpty) return const [];
   final totals = <String, double>{};
   for (final project in projects) {
-    final status = project.status.trim().isEmpty ? 'Unspecified' : project.status.trim();
+    final status =
+        project.status.trim().isEmpty ? 'Unspecified' : project.status.trim();
     totals[status] = (totals[status] ?? 0) + project.investmentMillions;
   }
-  final sorted = totals.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+  final sorted = totals.entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
   return sorted.take(3).map((entry) {
     return _ValueBreakdownData(
       label: entry.key,
@@ -1403,12 +1768,15 @@ String _scopeSummary(_PortfolioMetrics metrics) {
   if (metrics.programCount == 0 && metrics.independentProjectCount > 0) {
     return '${metrics.independentProjectCount} standalone project${metrics.independentProjectCount == 1 ? '' : 's'}';
   }
-  final programLabel = '${metrics.programCount} ${metrics.programCount == 1 ? 'program' : 'programs'}';
-  final programProjectLabel = '${metrics.inProgramProjectCount} program project${metrics.inProgramProjectCount == 1 ? '' : 's'}';
+  final programLabel =
+      '${metrics.programCount} ${metrics.programCount == 1 ? 'program' : 'programs'}';
+  final programProjectLabel =
+      '${metrics.inProgramProjectCount} program project${metrics.inProgramProjectCount == 1 ? '' : 's'}';
   if (metrics.independentProjectCount == 0) {
     return '$programLabel · $programProjectLabel';
   }
-  final independentLabel = '${metrics.independentProjectCount} standalone project${metrics.independentProjectCount == 1 ? '' : 's'}';
+  final independentLabel =
+      '${metrics.independentProjectCount} standalone project${metrics.independentProjectCount == 1 ? '' : 's'}';
   return '$programLabel · $programProjectLabel + $independentLabel';
 }
 
@@ -1431,7 +1799,11 @@ String _projectPhase(ProjectRecord project) {
 }
 
 class _CostBar extends StatelessWidget {
-  const _CostBar({required this.label, required this.value, required this.height, required this.color});
+  const _CostBar(
+      {required this.label,
+      required this.value,
+      required this.height,
+      required this.color});
   final String label, value;
   final double height;
   final Color color;
@@ -1441,11 +1813,23 @@ class _CostBar extends StatelessWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        Text(value, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
+        Text(value,
+            style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF374151))),
         const SizedBox(height: 4),
-        Container(width: 50, height: height, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4))),
+        Container(
+            width: 50,
+            height: height,
+            decoration: BoxDecoration(
+                color: color, borderRadius: BorderRadius.circular(4))),
         const SizedBox(height: 8),
-        SizedBox(width: 50, child: Text(label, style: const TextStyle(fontSize: 9, color: Color(0xFF6B7280)), textAlign: TextAlign.center)),
+        SizedBox(
+            width: 50,
+            child: Text(label,
+                style: const TextStyle(fontSize: 9, color: Color(0xFF6B7280)),
+                textAlign: TextAlign.center)),
       ],
     );
   }
@@ -1464,7 +1848,10 @@ class _RollUpUpdateSection extends StatelessWidget {
     final scopeLabel = _scopeSummary(metrics);
 
     return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFE5E7EB))),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE5E7EB))),
       padding: const EdgeInsets.all(20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1473,31 +1860,53 @@ class _RollUpUpdateSection extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('This roll-up will update', style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
+                const Text('This roll-up will update',
+                    style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
                 const SizedBox(height: 8),
-                const Text('Executive dashboards & governance reports', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF111827))),
+                const Text('Executive dashboards & governance reports',
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF111827))),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey.shade500),
+                    Icon(Icons.calendar_today_outlined,
+                        size: 14, color: Colors.grey.shade500),
                     const SizedBox(width: 6),
-                    const Text('Latest refresh', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                    const Text('Latest refresh',
+                        style:
+                            TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(lastUpdatedLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF111827))),
+                Text(lastUpdatedLabel,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF111827))),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Icon(Icons.folder_outlined, size: 14, color: Colors.grey.shade500),
+                    Icon(Icons.folder_outlined,
+                        size: 14, color: Colors.grey.shade500),
                     const SizedBox(width: 6),
-                    const Text('Included scope', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                    const Text('Included scope',
+                        style:
+                            TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(scopeLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF111827))),
+                Text(scopeLabel,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF111827))),
                 const SizedBox(height: 12),
-                Text('Once published, this roll-up becomes the live portfolio view used in steering committees, executive dashboards, and downstream project scorecards.', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                Text(
+                    'Once published, this roll-up becomes the live portfolio view used in steering committees, executive dashboards, and downstream project scorecards.',
+                    style:
+                        TextStyle(fontSize: 11, color: Colors.grey.shade500)),
               ],
             ),
           ),
@@ -1506,13 +1915,26 @@ class _RollUpUpdateSection extends StatelessWidget {
             children: [
               OutlinedButton(
                 onPressed: () {},
-                style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF374151), side: const BorderSide(color: Color(0xFFE5E7EB)), padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF374151),
+                    side: const BorderSide(color: Color(0xFFE5E7EB)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8))),
                 child: const Text('Cancel roll-up'),
               ),
               const SizedBox(height: 12),
               ElevatedButton(
                 onPressed: () {},
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), elevation: 0),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                    elevation: 0),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: const [

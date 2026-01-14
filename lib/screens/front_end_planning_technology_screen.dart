@@ -171,7 +171,7 @@ class _FrontEndPlanningTechnologyScreenState extends State<FrontEndPlanningTechn
                             children: [
                               const SizedBox(height: 12),
                               const PlanningAiNotesCard(
-                                title: 'AI Notes',
+                                title: 'Notes',
                                 sectionLabel: 'Technology',
                                 noteKey: 'planning_technology_notes',
                                 checkpoint: 'technology',

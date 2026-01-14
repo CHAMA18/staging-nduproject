@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:ndu_project/screens/contracts_tracking_screen.dart';
 import 'package:ndu_project/screens/detailed_design_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -281,9 +280,9 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
     if (vendors.isEmpty) return 'N/A';
     int total = 0;
     for (var vendor in vendors) {
-      if (vendor.rating == 'A')
+      if (vendor.rating == 'A') {
         total += 4;
-      else if (vendor.rating == 'B')
+      } else if (vendor.rating == 'B')
         total += 3;
       else if (vendor.rating == 'C')
         total += 2;
@@ -475,14 +474,18 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
   List<VendorModel> _filterVendors(List<VendorModel> vendors) {
     if (_selectedFilters.contains('All vendors')) return vendors;
     return vendors.where((v) {
-      if (_selectedFilters.contains('At risk') && v.status == 'At risk')
+      if (_selectedFilters.contains('At risk') && v.status == 'At risk') {
         return true;
-      if (_selectedFilters.contains('Watchlist') && v.status == 'Watch')
+      }
+      if (_selectedFilters.contains('Watchlist') && v.status == 'Watch') {
         return true;
-      if (_selectedFilters.contains('Strategic') && v.rating == 'A')
+      }
+      if (_selectedFilters.contains('Strategic') && v.rating == 'A') {
         return true;
-      if (_selectedFilters.contains('New') && v.status == 'Onboard')
+      }
+      if (_selectedFilters.contains('New') && v.status == 'Onboard') {
         return true;
+      }
       return false;
     }).toList();
   }
@@ -804,7 +807,7 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                       labelText: 'SLA % *', hintText: 'e.g., 92%')),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: ratingController.text,
+                initialValue: ratingController.text,
                 decoration: const InputDecoration(labelText: 'Rating *'),
                 items: ['A', 'B', 'C', 'D']
                     .map((r) => DropdownMenuItem(value: r, child: Text(r)))
@@ -813,7 +816,7 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: statusController.text,
+                initialValue: statusController.text,
                 decoration: const InputDecoration(labelText: 'Status *'),
                 items: ['Active', 'Watch', 'At risk', 'Onboard']
                     .map((s) => DropdownMenuItem(value: s, child: Text(s)))
@@ -876,7 +879,7 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                 final quality = double.tryParse(qualityController.text) ?? 0.0;
                 final cost = double.tryParse(costController.text) ?? 0.0;
 
-                if (isEdit && vendor != null) {
+                if (isEdit) {
                   await VendorService.updateVendor(
                     projectId: projectId,
                     vendorId: vendor.id,

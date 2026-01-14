@@ -252,7 +252,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const PlanningAiNotesCard(
-                    title: 'AI Notes',
+                    title: 'Notes',
                     sectionLabel: 'Design',
                     noteKey: 'planning_design_notes',
                     checkpoint: 'design',

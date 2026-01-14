@@ -9,6 +9,8 @@ import 'package:ndu_project/widgets/content_text.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/services/project_service.dart';
 import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/widgets/draggable_sidebar.dart';
+import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 
 class ProjectDecisionSummaryScreen extends StatefulWidget {
   final String projectName;
@@ -121,28 +123,41 @@ class _ProjectDecisionSummaryScreenState extends State<ProjectDecisionSummaryScr
     final isMobile = AppBreakpoints.isMobile(context);
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              _Header(projectName: _safeProjectName),
-              Expanded(
-                child: _MainContent(
-                  projectName: _safeProjectName,
-                  businessCase: widget.businessCase.trim(),
-                  notes: widget.notes.trim(),
-                  selectedSolution: widget.selectedSolution,
-                  allSolutions: widget.allSolutions,
-                  selectedSolutionTitle: _selectedSolutionTitle,
-                  onSelectSolution: _handleSelectSolution,
-                  onNext: _handleNextNavigation,
-                ),
+      body: SafeArea(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DraggableSidebar(
+              openWidth: AppBreakpoints.sidebarWidth(context),
+              child: const InitiationLikeSidebar(activeItemLabel: 'Preferred Solutions'),
+            ),
+            Expanded(
+              child: Stack(
+                children: [
+                  Column(
+                    children: [
+                      _Header(projectName: _safeProjectName),
+                      Expanded(
+                        child: _MainContent(
+                          projectName: _safeProjectName,
+                          businessCase: widget.businessCase.trim(),
+                          notes: widget.notes.trim(),
+                          selectedSolution: widget.selectedSolution,
+                          allSolutions: widget.allSolutions,
+                          selectedSolutionTitle: _selectedSolutionTitle,
+                          onSelectSolution: _handleSelectSolution,
+                          onNext: _handleNextNavigation,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const KazAiChatBubble(),
+                  const AdminEditToggle(),
+                ],
               ),
-            ],
-          ),
-          const KazAiChatBubble(),
-          const AdminEditToggle(),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }

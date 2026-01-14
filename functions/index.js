@@ -1,4 +1,4 @@
-const functions = require('firebase-functions');
+const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 
 // Initialize admin only if not already initialized
@@ -36,6 +36,8 @@ function getCorsAllowedOrigins() {
     /\.firebaseapp\.com$/,
     /^https:\/\/staging\.admin\.nduproject\.com$/,
     /^https:\/\/.*\.nduproject\.com$/, // Allow all nduproject.com subdomains
+    /^https:\/\/nduproject\.com$/, // Allow bare domain
+    /^https:\/\/www\.nduproject\.com$/, // Allow www
     APP_BASE_URL,
     ...EXTRA_ALLOWED_ORIGINS
   ];

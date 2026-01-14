@@ -62,7 +62,7 @@ class TeamTrainingAndBuildingScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
             const PlanningAiNotesCard(
-              title: 'AI Notes',
+              title: 'Notes',
               sectionLabel: 'Team Training and Team Building',
               noteKey: 'planning_team_training_notes',
               checkpoint: 'team_training',

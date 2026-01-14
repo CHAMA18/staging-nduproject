@@ -21,7 +21,6 @@ import 'package:ndu_project/screens/it_considerations_screen.dart';
 import 'package:ndu_project/screens/infrastructure_considerations_screen.dart';
 import 'package:ndu_project/screens/core_stakeholders_screen.dart';
 import 'package:ndu_project/screens/cost_analysis_screen.dart';
-import 'package:ndu_project/screens/project_framework_screen.dart';
 import 'package:ndu_project/screens/front_end_planning_summary.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
@@ -29,6 +28,10 @@ import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/business_case_header.dart';
 import 'package:ndu_project/widgets/business_case_navigation_buttons.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/widgets/select_project_kaz_button.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:ndu_project/services/firebase_auth_service.dart';
+import 'package:ndu_project/services/project_service.dart';
 
 class InitiationPhaseScreen extends StatefulWidget {
   final bool scrollToBusinessCase;
@@ -164,7 +167,6 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     if (_notesInvalid && _meetsNotesMinimum(value)) {
       setState(() => _notesInvalid = false);
     }
-    _scheduleNotesSuggestions(value);
   }
 
   void _onBusinessChanged(String value) {
@@ -613,7 +615,133 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     }
 
     if (!mounted) return;
-    // Navigate to Front End Planning Summary
+
+    // Show Select Project dialog on Scope Statement page so user can pick a solution
+    final options = projectData.potentialSolutions
+        .map((s) => SolutionOption(title: s.title, description: s.description, projectName: null))
+        .toList(growable: false);
+
+    final selection = await showDialog<SolutionOption?>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogCtx) {
+        String? projectName;
+        int? selectedIndex;
+        String? nameError;
+        return StatefulBuilder(builder: (ctx, setState) {
+          return Dialog(
+            insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 640),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(28, 28, 28, 24),
+                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    const Expanded(child: Text('Choose a project to progress', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700))),
+                    IconButton(onPressed: () => Navigator.of(ctx).pop(null), icon: const Icon(Icons.close)),
+                  ]),
+                  const SizedBox(height: 12),
+                  const Text('Pick the solution you want to advance and give your project a memorable name.', style: TextStyle(fontSize: 14, color: Colors.black54)),
+                  const SizedBox(height: 20),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: options.length >= 3 ? 360 : 240),
+                    child: SingleChildScrollView(
+                      child: Column(children: [
+                        for (var i = 0; i < options.length; i++)
+                          ListTile(
+                            leading: Radio<int?>(value: i, groupValue: selectedIndex, onChanged: (v) => setState(() => selectedIndex = v)),
+                            title: Text(options[i].title.isNotEmpty ? options[i].title : 'Untitled Solution', style: const TextStyle(fontWeight: FontWeight.w700)),
+                            subtitle: Text(options[i].description, maxLines: 2, overflow: TextOverflow.ellipsis),
+                            onTap: () {
+                              setState(() {
+                                selectedIndex = i;
+                                if (projectName == null || projectName!.trim().isEmpty) projectName = options[i].title;
+                              });
+                            },
+                          ),
+                      ]),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    decoration: InputDecoration(labelText: 'Project name', errorText: nameError, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+                    controller: TextEditingController(text: projectName),
+                    onChanged: (v) => projectName = v,
+                  ),
+                  const SizedBox(height: 20),
+                  Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                    TextButton(onPressed: () => Navigator.of(ctx).pop(null), child: const Text('Cancel')),
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      onPressed: () {
+                        if (selectedIndex == null) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Select a project first.')));
+                          return;
+                        }
+                        final name = (projectName ?? '').trim();
+                        if (name.isEmpty) {
+                          setState(() => nameError = 'Give your project a name to continue.');
+                          return;
+                        }
+                        Navigator.of(ctx).pop(SolutionOption(title: options[selectedIndex!].title, description: options[selectedIndex!].description, projectName: name));
+                      },
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFD700), foregroundColor: Colors.black),
+                      child: const Text('Save & Continue'),
+                    ),
+                  ])
+                ]),
+              ),
+            ),
+          );
+        });
+      },
+    );
+
+    if (selection == null) return;
+
+    // Create project using selection (mirror of PreferredSolutionAnalysisScreen flow)
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sign in to save your project.')));
+      return;
+    }
+
+    final ownerName = FirebaseAuthService.displayNameOrEmail(fallback: 'Leader');
+    final trimmedNotes = _notesController.text.trim();
+    final trimmedBusinessCase = _businessCaseController.text.trim();
+    final tags = ['Initiation', if (selection.title.trim().isNotEmpty) selection.title.trim()];
+
+    bool dialogShown = false;
+    if (mounted) {
+      dialogShown = true;
+      showDialog<void>(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
+    }
+
+    try {
+      await ProjectService.createProject(
+        ownerId: user.uid,
+        ownerName: ownerName,
+        name: selection.projectName ?? selection.title,
+        solutionTitle: selection.title.trim(),
+        solutionDescription: selection.description.trim(),
+        businessCase: trimmedBusinessCase,
+        notes: trimmedNotes,
+        ownerEmail: user.email,
+        tags: tags,
+        checkpointRoute: 'project_decision_summary',
+      );
+    } catch (e) {
+      if (dialogShown && mounted) Navigator.of(context, rootNavigator: true).pop();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to save project. Try again.')));
+      return;
+    }
+
+    if (dialogShown && mounted) Navigator.of(context, rootNavigator: true).pop();
+
+    if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => const FrontEndPlanningSummaryScreen(),
@@ -1288,36 +1416,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
                 ),
               ),
             ),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            child: _buildSuggestionPanel(
-              show: _notesFocusNode.hasFocus,
-              loading: _notesSuggestLoading,
-              suggestions: _notesSuggestions,
-              error: _notesSuggestionError,
-              label: 'AI suggestions for notes',
-              onRefresh: _retryNotesSuggestions,
-              onUndo: _notesUndoStack.isEmpty
-                  ? null
-                  : () => _undoSuggestion(
-                        _notesController,
-                        isNotes: true,
-                      ),
-              canUndo: _notesUndoStack.isNotEmpty,
-              onSelect: (value) => _applySuggestion(
-                _notesController,
-                value,
-                isNotes: true,
-              ),
-              onInsert: (value) => _insertSuggestion(
-                _notesController,
-                value,
-                isNotes: true,
-              ),
-              onCopy: _copySuggestion,
-            ),
-          ),
+          const SizedBox(height: 8),
           SizedBox(height: AppBreakpoints.sectionGap(context)),
           // Business Case section
           EditableContentText(

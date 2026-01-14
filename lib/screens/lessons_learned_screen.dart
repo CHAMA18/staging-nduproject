@@ -6,6 +6,8 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/models/project_data_model.dart';
 
 class LessonsLearnedScreen extends StatefulWidget {
   const LessonsLearnedScreen({super.key});
@@ -24,14 +26,9 @@ class LessonsLearnedScreen extends StatefulWidget {
 class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
 
   final TextEditingController _searchController = TextEditingController();
-  static const List<_LessonEntry> _seedEntries = [];
-
-  late final List<_LessonEntry> _entries;
-
   @override
   void initState() {
     super.initState();
-    _entries = List<_LessonEntry>.of(_seedEntries);
     _searchController.addListener(_handleSearchChanged);
   }
 
@@ -53,26 +50,55 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
       builder: (dialogContext) => const _AddLessonDialog(),
     );
 
-    if (newEntry == null || !mounted) {
-      return;
-    }
+    if (newEntry == null || !mounted) return;
 
-    setState(() {
-      _entries.insert(0, newEntry);
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Lesson added to Project Tasks.')),
+    // Convert to LessonRecord and persist
+    final lesson = LessonRecord(
+      lesson: newEntry.lesson,
+      category: newEntry.category,
+      type: newEntry.type,
+      phase: newEntry.phase,
+      status: newEntry.status,
+      submittedBy: newEntry.submittedBy,
+      notes: '',
+      dateSubmitted: DateTime.now(),
     );
+
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'lessons_learned',
+      dataUpdater: (current) => current.copyWith(
+        lessonsLearned: [lesson, ...current.lessonsLearned],
+      ),
+    );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lesson added to Project Tasks.')));
   }
 
   List<_LessonEntry> get _filteredEntries {
     final query = _searchController.text.trim().toLowerCase();
-    if (query.isEmpty) {
-      return List<_LessonEntry>.unmodifiable(_entries);
-    }
 
-    return _entries
+    final data = ProjectDataHelper.getData(context);
+    final lessons = data.lessonsLearned;
+
+    final mapped = lessons.map((l) => _LessonEntry(
+          id: l.id,
+          lesson: l.lesson,
+          type: l.type,
+          category: l.category,
+          phase: l.phase,
+          impact: '',
+          status: l.status,
+          submittedBy: l.submittedBy,
+          date: l.dateSubmitted != null ? '${l.dateSubmitted!.year.toString().padLeft(4,'0')}-${l.dateSubmitted!.month.toString().padLeft(2,'0')}-${l.dateSubmitted!.day.toString().padLeft(2,'0')}' : '',
+          highlight: false,
+        ))
+        .toList();
+
+    if (query.isEmpty) return mapped;
+
+    return mapped
         .where((entry) => entry.id.toLowerCase().contains(query) ||
             entry.lesson.toLowerCase().contains(query) ||
             entry.type.toLowerCase().contains(query) ||
@@ -118,7 +144,7 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
           _buildHeader(isMobile),
           const SizedBox(height: 24),
           const PlanningAiNotesCard(
-            title: 'AI Notes',
+            title: 'Notes',
             sectionLabel: 'Lessons Learned',
             noteKey: 'planning_lessons_learned_notes',
             checkpoint: 'lessons_learned',
@@ -681,14 +707,36 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
                                 flex: 10,
                                 child: Align(
                                   alignment: Alignment.centerRight,
-                                  child: IconButton(
-                                    onPressed: () {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('Edit ${entries[i].id} coming soon.')),
-                                      );
-                                    },
-                                    icon: const Icon(Icons.edit_outlined, size: 20, color: Colors.grey),
-                                    tooltip: 'Edit lesson',
+                                      child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        onPressed: () {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(content: Text('Edit ${entries[i].id} coming soon.')),
+                                          );
+                                        },
+                                        icon: const Icon(Icons.edit_outlined, size: 20, color: Colors.grey),
+                                        tooltip: 'Edit lesson',
+                                      ),
+                                      IconButton(
+                                        onPressed: () async {
+                                          // Delete the lesson from persisted store
+                                          final id = entries[i].id;
+                                          await ProjectDataHelper.updateAndSave(
+                                            context: context,
+                                            checkpoint: 'lessons_learned',
+                                            dataUpdater: (current) => current.copyWith(
+                                              lessonsLearned: current.lessonsLearned.where((l) => l.id != id).toList(),
+                                            ),
+                                          );
+                                          if (!mounted) return;
+                                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lesson deleted.')));
+                                        },
+                                        icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                                        tooltip: 'Delete lesson',
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),

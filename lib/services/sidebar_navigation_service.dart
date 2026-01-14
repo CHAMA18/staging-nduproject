@@ -172,6 +172,17 @@ class SidebarNavigationService {
     return _sidebarOrder[currentIndex + 1];
   }
 
+  /// Find a sidebar item by its display label (case-insensitive).
+  SidebarItem? findItemByLabel(String label) {
+    final normalized = label.trim().toLowerCase();
+    for (final item in _sidebarOrder) {
+      if (item.label.trim().toLowerCase() == normalized) {
+        return item;
+      }
+    }
+    return null;
+  }
+
   /// Get the previous item in the sidebar order before the current checkpoint
   SidebarItem? getPreviousItem(String? currentCheckpoint) {
     if (currentCheckpoint == null || currentCheckpoint.isEmpty) {

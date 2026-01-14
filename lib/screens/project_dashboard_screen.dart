@@ -273,50 +273,7 @@ class _ProjectDashboardScreenState extends State<ProjectDashboardScreen> {
 
   Future<void> _processDuplicateCheck(
       String trimmed, BuildContext dialogContext) async {
-    showDialog(
-      context: dialogContext,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
-
-    final duplicate = await _isProjectNameDuplicate(trimmed);
-
-    if (Navigator.canPop(dialogContext)) {
-      Navigator.of(dialogContext).pop();
-    }
-
-    if (duplicate) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              'A project named "$trimmed" already exists. Please choose another.'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 4),
-        ),
-      );
-    } else {
-      Navigator.of(dialogContext).pop(trimmed);
-    }
-  }
-
-  Future<bool> _isProjectNameDuplicate(String projectName) async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return false;
-
-      final snapshot = await FirebaseFirestore.instance
-          .collection('projects')
-          .where('ownerId', isEqualTo: user.uid)
-          .where('projectName', isEqualTo: projectName.trim())
-          .limit(1)
-          .get();
-
-      return snapshot.docs.isNotEmpty;
-    } catch (e) {
-      return false;
-    }
+    Navigator.of(dialogContext).pop(trimmed);
   }
 
   @override
@@ -1505,10 +1462,12 @@ class _GroupProjectsCardState extends State<_GroupProjectsCard> {
                         scheme.surfaceContainerHighest.withValues(alpha: 0.3),
                   ),
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty)
+                    if (value == null || value.trim().isEmpty) {
                       return 'Please enter a name';
-                    if (value.trim().length < 3)
+                    }
+                    if (value.trim().length < 3) {
                       return 'Name must be at least 3 characters';
+                    }
                     return null;
                   },
                 ),
@@ -1852,7 +1811,7 @@ class _GroupProjectsCardState extends State<_GroupProjectsCard> {
                         : firebaseProjects.length);
 
                 // Use ValueListenableBuilder to react to selection changes
-                if (widget.selectedIdsListenable != null)
+                if (widget.selectedIdsListenable != null) {
                   return ValueListenableBuilder<Set<String>>(
                     valueListenable: widget.selectedIdsListenable!,
                     builder: (context, selectedIds, _) {
@@ -1902,6 +1861,7 @@ class _GroupProjectsCardState extends State<_GroupProjectsCard> {
                       );
                     },
                   );
+                }
 
                 // Fallback if no ValueListenable provided
                 return Column(
@@ -2317,8 +2277,9 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
     if (normalized.contains('execution')) return const Color(0xFFE6FAF1);
     if (normalized.contains('planning')) return const Color(0xFFFFF1CC);
     if (normalized.contains('design')) return const Color(0xFFE8E6FF);
-    if (normalized.contains('initiation') || normalized.contains('idea'))
+    if (normalized.contains('initiation') || normalized.contains('idea')) {
       return const Color(0xFFF3F4F8);
+    }
     return const Color(0xFFF3F4F8);
   }
 
@@ -2327,8 +2288,9 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
     if (normalized.contains('execution')) return const Color(0xFF14734E);
     if (normalized.contains('planning')) return const Color(0xFF875900);
     if (normalized.contains('design')) return const Color(0xFF5941C6);
-    if (normalized.contains('initiation') || normalized.contains('idea'))
+    if (normalized.contains('initiation') || normalized.contains('idea')) {
       return const Color(0xFF4A4D57);
+    }
     return const Color(0xFF4A4D57);
   }
 

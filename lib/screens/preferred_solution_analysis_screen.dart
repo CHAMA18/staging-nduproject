@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:ndu_project/widgets/header_banner_image.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
@@ -30,6 +29,7 @@ import 'package:ndu_project/screens/core_stakeholders_screen.dart';
 import 'package:ndu_project/screens/cost_analysis_screen.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/widgets/select_project_kaz_button.dart';
 
 class PreferredSolutionAnalysisScreen extends StatefulWidget {
   final String notes;
@@ -815,7 +815,10 @@ class _PreferredSolutionAnalysisScreenState extends State<PreferredSolutionAnaly
         ],
         if (!_isLoading) ...[
           _buildComparativeView(),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+          // Select Project button (KAZ)
+          _buildSelectProjectButton(),
+          const SizedBox(height: 12),
           BusinessCaseNavigationButtons(
             currentScreen: 'Preferred Solution Analysis',
             padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 24),
@@ -1322,6 +1325,26 @@ class _PreferredSolutionAnalysisScreenState extends State<PreferredSolutionAnaly
             ],
           )
         ],
+      ),
+    );
+  }
+
+  // Add KAZ Select Project button below the inline selection container
+  Widget _buildSelectProjectButton() {
+    final options = _analysis
+        .map((d) => SolutionOption(title: d.solution.title, description: d.solution.description, projectName: null))
+        .toList(growable: false);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: SelectProjectKazButton(
+        solutions: options,
+        onSolutionSelected: (selected) async {
+          await _createProjectAndNavigate(
+            selectedSolution: AiSolutionItem(title: selected.title, description: selected.description),
+            projectName: selected.projectName ?? selected.title,
+          );
+        },
       ),
     );
   }

@@ -8,7 +8,6 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
-import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/screens/front_end_planning_security.dart';
 
 /// Front End Planning – Procurement screen
@@ -79,34 +78,8 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final data = ProjectDataHelper.getData(context);
       _notes.text = data.frontEndPlanning.procurement;
-      if (_notes.text.trim().isEmpty) {
-        _generateAiSuggestion();
-      }
       if (mounted) setState(() {});
     });
-  }
-
-  Future<void> _generateAiSuggestion() async {
-    try {
-      final data = ProjectDataHelper.getData(context);
-      final ctx = ProjectDataHelper.buildFepContext(data, sectionLabel: 'Procurement');
-      final ai = OpenAiServiceSecure();
-      // Increase token budget for richer guidance specific to Procurement
-      final suggestion = await ai.generateFepSectionText(
-        section: 'Procurement',
-        context: ctx,
-        maxTokens: 1400,
-        temperature: 0.5,
-      );
-      if (!mounted) return;
-      if (_notes.text.trim().isEmpty && suggestion.trim().isNotEmpty) {
-        setState(() {
-          _notes.text = suggestion.trim();
-        });
-      }
-    } catch (e) {
-      debugPrint('AI procurement suggestion failed: $e');
-    }
   }
 
   @override
@@ -343,12 +316,7 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
       children: [
         _PlanHeader(onItemListTap: _handleItemListTap),
         const SizedBox(height: 16),
-        _AiSuggestionCard(
-          onAccept: _handleAcceptSuggestion,
-          onEdit: _handleEditSuggestion,
-          onReject: _handleRejectSuggestion,
-        ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 8),
         _StrategiesSection(
           strategies: _strategies,
           expandedStrategies: _expandedStrategies,
@@ -370,29 +338,6 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
           onViewModeChanged: (value) => setState(() => _listView = value),
         ),
       ],
-    );
-  }
-
-  Future<void> _handleAcceptSuggestion() async {
-    final success = await _persistProcurementNotes();
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(success ? 'AI suggestion accepted and saved.' : 'Unable to save procurement notes.'),
-        backgroundColor: success ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
-      ),
-    );
-  }
-
-  void _handleEditSuggestion() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Edit suggestion to customize the procurement plan.')),
-    );
-  }
-
-  void _handleRejectSuggestion() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Suggestion dismissed.')),
     );
   }
 
@@ -1245,7 +1190,7 @@ class _FrontEndPlanningProcurementScreenState extends State<FrontEndPlanningProc
                                 ),
                                 const SizedBox(height: 24),
                                 const PlanningAiNotesCard(
-                                  title: 'AI Notes',
+                                  title: 'Notes',
                                   sectionLabel: 'Procurement',
                                   noteKey: 'planning_procurement_notes',
                                   checkpoint: 'fep_procurement',

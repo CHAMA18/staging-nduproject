@@ -53,7 +53,7 @@ class AgileProjectBaselineScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 20),
                             const PlanningAiNotesCard(
-                              title: 'AI Notes',
+                              title: 'Notes',
                               sectionLabel: 'Agile Project Baseline',
                               noteKey: 'planning_agile_project_baseline_notes',
                               checkpoint: 'agile_project_baseline',

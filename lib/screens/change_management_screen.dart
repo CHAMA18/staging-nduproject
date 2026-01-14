@@ -268,7 +268,7 @@ class _ChangeManagementScreenState extends State<ChangeManagementScreen> {
       );
     }
     return const PlanningAiNotesCard(
-      title: 'AI Notes',
+  title: 'Notes',
       sectionLabel: 'Change Management',
       noteKey: 'planning_change_management_notes',
       checkpoint: 'change_management',
@@ -715,7 +715,7 @@ class _TableRow extends StatelessWidget {
   final ChangeRequest? request;
   final void Function(ChangeRequest)? onEdit;
 
-  _TableRow({
+  const _TableRow({
     required this.cells,
     required this.isHeader,
     this.request,

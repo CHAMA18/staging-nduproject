@@ -555,6 +555,16 @@ class ProjectDataHelper {
     String? infrastructure,
     String? contracts,
     List<RequirementItem>? requirementItems,
+    // Added optional list fields so screens can update persisted lists centrally
+    List<ScenarioRecord>? scenarioMatrixItems,
+    List<RoleItem>? securityRoles,
+    List<PermissionItem>? securityPermissions,
+    List<SecuritySetting>? securitySettings,
+    List<AccessLogItem>? securityAccessLogs,
+    List<DebtItem>? technicalDebtItems,
+    List<DebtInsight>? technicalDebtRootCauses,
+    List<RemediationTrack>? technicalDebtTracks,
+    List<OwnerItem>? technicalDebtOwners,
   }) {
     return FrontEndPlanningData(
       requirements: requirements ?? current.requirements,
@@ -571,6 +581,16 @@ class ProjectDataHelper {
       infrastructure: infrastructure ?? current.infrastructure,
       contracts: contracts ?? current.contracts,
       requirementItems: requirementItems ?? current.requirementItems,
+      // Preserve or replace list fields
+      scenarioMatrixItems: scenarioMatrixItems ?? current.scenarioMatrixItems,
+      securityRoles: securityRoles ?? current.securityRoles,
+      securityPermissions: securityPermissions ?? current.securityPermissions,
+      securitySettings: securitySettings ?? current.securitySettings,
+      securityAccessLogs: securityAccessLogs ?? current.securityAccessLogs,
+      technicalDebtItems: technicalDebtItems ?? current.technicalDebtItems,
+      technicalDebtRootCauses: technicalDebtRootCauses ?? current.technicalDebtRootCauses,
+      technicalDebtTracks: technicalDebtTracks ?? current.technicalDebtTracks,
+      technicalDebtOwners: technicalDebtOwners ?? current.technicalDebtOwners,
     );
   }
 }

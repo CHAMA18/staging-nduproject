@@ -72,7 +72,7 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
                         _buildHeader(isMobile),
                         const SizedBox(height: 24),
                         const PlanningAiNotesCard(
-                          title: 'AI Notes',
+                          title: 'Notes',
                           sectionLabel: 'Project Plan',
                           noteKey: 'planning_project_plan_notes',
                           checkpoint: 'project_plan',

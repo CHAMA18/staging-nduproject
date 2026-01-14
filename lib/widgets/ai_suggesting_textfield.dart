@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:ndu_project/openai/openai_config.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/utils/text_sanitizer.dart';
 
 /// Debouncer utility to limit API calls while typing
 class _Debouncer {
@@ -105,7 +106,7 @@ class _AiSuggestingTextFieldState extends State<AiSuggestingTextField> {
   void initState() {
     super.initState();
     if ((widget.initialText ?? '').isNotEmpty) {
-      _controller.text = widget.initialText!;
+  _controller.text = TextSanitizer.sanitizeAiText(widget.initialText);
     }
     _controller.addListener(_onTextChanged);
     if (widget.autoGenerate) {
@@ -157,7 +158,7 @@ class _AiSuggestingTextFieldState extends State<AiSuggestingTextField> {
       if (!mounted) return;
       _recordAiUsage();
       if (_controller.text.trim().isEmpty && text.trim().isNotEmpty) {
-        _controller.text = text.trim();
+  _controller.text = TextSanitizer.sanitizeAiText(text);
         _controller.selection = TextSelection.fromPosition(
           TextPosition(offset: _controller.text.length),
         );
@@ -206,7 +207,7 @@ class _AiSuggestingTextFieldState extends State<AiSuggestingTextField> {
       );
       if (!mounted) return;
       setState(() {
-        _suggestions = items;
+        _suggestions = items.map((s) => TextSanitizer.sanitizeAiText(s)).toList();
         _loading = false;
       });
       _recordAiUsage();
@@ -228,8 +229,8 @@ class _AiSuggestingTextFieldState extends State<AiSuggestingTextField> {
   void _applySuggestion(String suggestion) {
     final current = _controller.text.trimRight();
     final needsSpace = current.isNotEmpty && !current.endsWith('\n') && !current.endsWith(' ');
-    final next = current + (needsSpace ? ' ' : '') + suggestion;
-    _controller.text = next;
+  final next = current + (needsSpace ? ' ' : '') + TextSanitizer.sanitizeAiText(suggestion);
+  _controller.text = next;
     _controller.selection = TextSelection.fromPosition(TextPosition(offset: _controller.text.length));
     widget.onChanged?.call(_controller.text);
   }
@@ -348,12 +349,11 @@ class _AiSuggestingTextFieldState extends State<AiSuggestingTextField> {
 
 class _AiLimitBanner extends StatelessWidget {
   const _AiLimitBanner({
-    Key? key,
     required this.message,
     required this.background,
     required this.border,
     required this.textColor,
-  }) : super(key: key);
+  });
 
   final String message;
   final Color background;

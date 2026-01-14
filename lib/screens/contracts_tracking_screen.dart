@@ -673,7 +673,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                 TextField(controller: paymentTypeController, decoration: const InputDecoration(labelText: 'Payment Type *')),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: statusController.text,
+                  initialValue: statusController.text,
                   decoration: const InputDecoration(labelText: 'Status *'),
                   items: ['Active', 'Renewal due', 'At risk', 'Pending sign-off', 'Archived'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                   onChanged: (v) => setDialogState(() => statusController.text = v ?? 'Active'),

@@ -54,7 +54,7 @@ class InterfaceManagementScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 20),
                             const PlanningAiNotesCard(
-                              title: 'AI Notes',
+                              title: 'Notes',
                               sectionLabel: 'Interface Management',
                               noteKey: 'planning_interface_management_notes',
                               checkpoint: 'interface_management',

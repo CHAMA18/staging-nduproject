@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
-import 'package:ndu_project/widgets/ai_suggesting_textfield.dart';
 
 class PlanningAiNotesCard extends StatefulWidget {
   const PlanningAiNotesCard({
@@ -33,6 +32,7 @@ class PlanningAiNotesCard extends StatefulWidget {
 class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
   final _saveDebounce = _Debouncer();
   String _currentText = '';
+  late TextEditingController _controller;
   bool _didInit = false;
   bool _saving = false;
   DateTime? _lastSavedAt;
@@ -43,6 +43,7 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
     if (_didInit) return;
     final data = ProjectDataHelper.getData(context);
     _currentText = data.planningNotes[widget.noteKey] ?? '';
+  _controller = TextEditingController(text: _currentText);
     _didInit = true;
   }
 
@@ -64,6 +65,8 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
         },
       ),
     );
+  // Keep controller in sync
+  if (_controller.text != value) _controller.text = value;
     _scheduleSave();
   }
 
@@ -125,12 +128,12 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
                 child: const Icon(Icons.auto_awesome, color: Color(0xFFF59E0B), size: 18),
               ),
               const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  widget.title,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                Expanded(
+                  child: Text(
+                    'Notes',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                  ),
                 ),
-              ),
               if (_saving)
                 _StatusChip(label: 'Saving...', color: const Color(0xFF64748B))
               else if (savedAt != null)
@@ -149,17 +152,18 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
             ),
           ],
           const SizedBox(height: 16),
-          AiSuggestingTextField(
-            fieldLabel: widget.title,
-            hintText: widget.hintText,
-            sectionLabel: widget.sectionLabel,
-            showLabel: false,
-            initialText: _currentText,
-            autoGenerate: true,
-            autoGenerateSection: widget.sectionLabel,
-            autoGenerateMaxTokens: widget.autoGenerateMaxTokens,
-            autoGenerateTemperature: widget.autoGenerateTemperature,
+          TextField(
+            controller: _controller,
             onChanged: _handleChanged,
+            maxLines: 6,
+            decoration: InputDecoration(
+              hintText: widget.hintText,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+              filled: true,
+              fillColor: const Color(0xFFF8FAFC),
+              contentPadding: const EdgeInsets.all(12),
+            ),
+            style: const TextStyle(fontSize: 14),
           ),
         ],
       ),

@@ -54,7 +54,7 @@ class StartUpPlanningScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 20),
                             const PlanningAiNotesCard(
-                              title: 'AI Notes',
+                              title: 'Notes',
                               sectionLabel: 'Start-Up Planning',
                               noteKey: 'planning_startup_planning_notes',
                               checkpoint: 'startup_planning',

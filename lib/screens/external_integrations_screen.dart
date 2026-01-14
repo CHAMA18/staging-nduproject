@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/utils/text_sanitizer.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
 class ExternalIntegrationsScreen extends StatefulWidget {
@@ -46,9 +47,10 @@ class _ExternalIntegrationsScreenState extends State<ExternalIntegrationsScreen>
     final ai = OpenAiServiceSecure();
     final ctx = '${provider.projectData.projectName} - ${provider.projectData.solutionTitle}';
     try {
-      final text = await ai.generateFepSectionText(section: 'External Integrations', context: ctx, maxTokens: 600);
-      final lines = text.split('\n').where((l) => l.trim().isNotEmpty).toList();
-      setState(() => _items..clear()..addAll(lines.map((l) => {'name': l.trim()})));
+  final text = await ai.generateFepSectionText(section: 'External Integrations', context: ctx, maxTokens: 600);
+  final sanitized = TextSanitizer.sanitizeAiText(text);
+  final lines = sanitized.split('\n').where((l) => l.trim().isNotEmpty).toList();
+  setState(() => _items..clear()..addAll(lines.map((l) => {'name': l.trim()})));
       await _save();
     } catch (e) {
       debugPrint('AI seed failed: $e');

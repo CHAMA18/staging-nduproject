@@ -54,7 +54,7 @@ class _QualityManagementScreenState extends State<QualityManagementScreen> {
                         const _PageHeader(),
                         const SizedBox(height: 24),
                         const PlanningAiNotesCard(
-                          title: 'AI Notes',
+                          title: 'Notes',
                           sectionLabel: 'Quality Management',
                           noteKey: 'planning_quality_management_notes',
                           checkpoint: 'quality_management',

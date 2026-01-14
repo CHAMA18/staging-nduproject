@@ -65,7 +65,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
                         _buildHeader(context),
                         const SizedBox(height: 24),
                         const PlanningAiNotesCard(
-                          title: 'AI Notes',
+                          title: 'Notes',
                           sectionLabel: 'Project Baseline',
                           noteKey: 'planning_project_baseline_notes',
                           checkpoint: 'project_baseline',

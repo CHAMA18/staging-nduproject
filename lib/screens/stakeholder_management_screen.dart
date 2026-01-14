@@ -55,7 +55,7 @@ class _StakeholderManagementScreenState extends State<StakeholderManagementScree
                         ),
                         const SizedBox(height: 24),
                         const PlanningAiNotesCard(
-                          title: 'AI Notes',
+                          title: 'Notes',
                           sectionLabel: 'Stakeholder Management',
                           noteKey: 'planning_stakeholder_management_notes',
                           checkpoint: 'stakeholder_management',

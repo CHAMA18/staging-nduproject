@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/models/project_data_model.dart';
 
 class TechnicalDebtManagementScreen extends StatefulWidget {
   const TechnicalDebtManagementScreen({super.key});
@@ -19,29 +22,22 @@ class TechnicalDebtManagementScreen extends StatefulWidget {
 class _TechnicalDebtManagementScreenState extends State<TechnicalDebtManagementScreen> {
   final Set<String> _selectedFilters = {'All'};
 
-  final List<_DebtItem> _debtItems = const [
-    _DebtItem('TD-014', 'Auth token refresh gaps', 'Security', 'Platform', 'Critical', 'In progress', 'Oct 10'),
-    _DebtItem('TD-021', 'Legacy API throttling', 'Performance', 'Core services', 'High', 'Backlog', 'Oct 18'),
-    _DebtItem('TD-036', 'Uncached reporting queries', 'Analytics', 'Data team', 'Medium', 'Planned', 'Nov 02'),
-    _DebtItem('TD-041', 'Retry policy inconsistencies', 'Reliability', 'Integration', 'High', 'In review', 'Oct 25'),
-    _DebtItem('TD-052', 'Audit log schema drift', 'Compliance', 'Security', 'Medium', 'Planned', 'Nov 12'),
-  ];
+  // Local copies updated from provider
+  List<DebtItem> _debtItems = [];
+  List<DebtInsight> _rootCauses = [];
+  List<RemediationTrack> _tracks = [];
+  List<OwnerItem> _owners = [];
 
-  final List<_DebtInsight> _rootCauses = const [
-    _DebtInsight('Incomplete handoff docs', '5 items tied to missing runbooks.'),
-    _DebtInsight('Non-standard error handling', '4 services require alignment.'),
-    _DebtInsight('Deferred infra upgrades', '3 hotspots awaiting capacity swap.'),
-  ];
-
-  final List<_RemediationTrack> _tracks = const [
-    _RemediationTrack('Critical fixes', 0.72, Color(0xFFEF4444)),
-    _RemediationTrack('Security hardening', 0.58, Color(0xFFF97316)),
-    _RemediationTrack('Performance backlog', 0.44, Color(0xFF6366F1)),
-    _RemediationTrack('Reliability guardrails', 0.66, Color(0xFF10B981)),
-  ];
+  final _ai = OpenAiServiceSecure();
 
   @override
   Widget build(BuildContext context) {
+  final data = ProjectDataHelper.getData(context).frontEndPlanning;
+  // sync local view lists from persisted project data
+  _debtItems = data.technicalDebtItems;
+  _rootCauses = data.technicalDebtRootCauses;
+  _tracks = data.technicalDebtTracks;
+  _owners = data.technicalDebtOwners;
     final isNarrow = MediaQuery.sizeOf(context).width < 980;
     final padding = AppBreakpoints.pagePadding(context);
 
@@ -133,7 +129,7 @@ class _TechnicalDebtManagementScreenState extends State<TechnicalDebtManagementS
       spacing: 10,
       runSpacing: 10,
       children: [
-        _actionButton(Icons.add, 'Add debt item'),
+  _actionButton(Icons.add, 'Add debt item'),
         _actionButton(Icons.tune, 'Prioritize backlog'),
         _actionButton(Icons.description_outlined, 'Generate report'),
         _primaryButton('Launch remediation sprint'),
@@ -257,7 +253,51 @@ class _TechnicalDebtManagementScreenState extends State<TechnicalDebtManagementS
     return _PanelShell(
       title: 'Debt register',
       subtitle: 'Track high-impact debt items and remediation targets',
-      trailing: _actionButton(Icons.filter_list, 'Filter'),
+      trailing: Row(children: [
+        _actionButton(Icons.filter_list, 'Filter'),
+        const SizedBox(width: 8),
+        OutlinedButton.icon(
+          onPressed: () async {
+            // Call AI to seed debt items and persist via ProjectDataHelper
+            final ctx = ProjectDataHelper.buildFepContext(ProjectDataHelper.getData(context));
+            final text = await _ai.generateFepSectionText(section: 'Technical Debt', context: ctx, maxTokens: 600);
+            // naive parse: split lines and create DebtItem titles
+            final lines = text.split('\n').map((s) => s.replaceAll('*', '').trim()).where((s) => s.isNotEmpty).toList();
+            final newItems = lines.map((l) => DebtItem(id: DateTime.now().microsecondsSinceEpoch.toString(), title: l)).toList();
+
+            await ProjectDataHelper.updateAndSave(
+              context: context,
+              checkpoint: 'technical_debt_management',
+              dataUpdater: (current) {
+                final fep = current.frontEndPlanning;
+                final updated = FrontEndPlanningData(
+                  requirements: fep.requirements,
+                  requirementsNotes: fep.requirementsNotes,
+                  risks: fep.risks,
+                  opportunities: fep.opportunities,
+                  contractVendorQuotes: fep.contractVendorQuotes,
+                  procurement: fep.procurement,
+                  security: fep.security,
+                  allowance: fep.allowance,
+                  summary: fep.summary,
+                  technology: fep.technology,
+                  personnel: fep.personnel,
+                  infrastructure: fep.infrastructure,
+                  contracts: fep.contracts,
+                  requirementItems: fep.requirementItems,
+                  technicalDebtItems: [...fep.technicalDebtItems, ...newItems],
+                  technicalDebtRootCauses: fep.technicalDebtRootCauses,
+                  technicalDebtTracks: fep.technicalDebtTracks,
+                  technicalDebtOwners: fep.technicalDebtOwners,
+                );
+                return current.copyWith(frontEndPlanning: updated);
+              },
+            );
+          },
+          icon: const Icon(Icons.auto_fix_high, size: 16),
+          label: const Text('Auto-populate (AI)'),
+        ),
+      ]),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
@@ -313,7 +353,7 @@ class _TechnicalDebtManagementScreenState extends State<TechnicalDebtManagementS
                     value: track.progress,
                     minHeight: 8,
                     backgroundColor: const Color(0xFFE2E8F0),
-                    valueColor: AlwaysStoppedAnimation<Color>(track.color),
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(track.colorValue)),
                   ),
                 ),
               ],
@@ -359,11 +399,7 @@ class _TechnicalDebtManagementScreenState extends State<TechnicalDebtManagementS
       trailing: _chip('Next review: Oct 14'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          _OwnerItem('Platform team', '4 items', 'Coverage solid'),
-          _OwnerItem('Security', '3 items', 'Awaiting sign-off'),
-          _OwnerItem('Data team', '2 items', 'Handoff in progress'),
-        ],
+        children: _owners.map((o) => _OwnerItem(o.name, o.count, o.note)).toList(),
       ),
     );
   }
@@ -510,33 +546,7 @@ class _OwnerItem extends StatelessWidget {
     );
   }
 }
-
-class _DebtItem {
-  const _DebtItem(this.id, this.title, this.area, this.owner, this.severity, this.status, this.target);
-
-  final String id;
-  final String title;
-  final String area;
-  final String owner;
-  final String severity;
-  final String status;
-  final String target;
-}
-
-class _DebtInsight {
-  const _DebtInsight(this.title, this.subtitle);
-
-  final String title;
-  final String subtitle;
-}
-
-class _RemediationTrack {
-  const _RemediationTrack(this.label, this.progress, this.color);
-
-  final String label;
-  final double progress;
-  final Color color;
-}
+// Legacy private data classes removed; using persisted models from project_data_model.dart
 
 class _StatCardData {
   const _StatCardData(this.label, this.value, this.supporting, this.color);

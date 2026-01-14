@@ -48,7 +48,7 @@ class RiskAssessmentScreen extends StatelessWidget {
                         const _PageHeading(),
                         const SizedBox(height: 20),
                         const PlanningAiNotesCard(
-                          title: 'AI Notes',
+                          title: 'Notes',
                           sectionLabel: 'Risk Assessment',
                           noteKey: 'planning_risk_assessment_notes',
                           checkpoint: 'risk_assessment',
@@ -320,8 +320,8 @@ class _MetricCard extends StatelessWidget {
   const _MetricCard({
     required this.title,
     required this.subtitle,
-    this.height,
     this.badges = const [],
+    this.height,
     this.progress,
     this.footer,
     this.footerIcon,

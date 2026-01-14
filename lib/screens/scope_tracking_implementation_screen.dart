@@ -668,7 +668,7 @@ class _ScopeTrackingImplementationScreenState extends State<ScopeTrackingImpleme
                     decoration: const InputDecoration(labelText: 'Scope item'),
                   ),
                   DropdownButtonFormField<String>(
-                    value: status,
+                    initialValue: status,
                     decoration: const InputDecoration(labelText: 'Status'),
                     items: _scopeStatusOptions
                         .map((option) => DropdownMenuItem(value: option, child: Text(option)))
@@ -819,7 +819,7 @@ class _ScopeTrackingImplementationScreenState extends State<ScopeTrackingImpleme
                     decoration: const InputDecoration(labelText: 'Title'),
                   ),
                   DropdownButtonFormField<String>(
-                    value: status,
+                    initialValue: status,
                     decoration: const InputDecoration(labelText: 'Status'),
                     items: _changeStatusOptions
                         .map((option) => DropdownMenuItem(value: option, child: Text(option)))
@@ -982,7 +982,7 @@ class _ScopeTrackingImplementationScreenState extends State<ScopeTrackingImpleme
                     decoration: const InputDecoration(labelText: 'Supporting text'),
                   ),
                   DropdownButtonFormField<String>(
-                    value: selectedColorName,
+                    initialValue: selectedColorName,
                     decoration: const InputDecoration(labelText: 'Accent color'),
                     items: _statColors.keys
                         .map((name) => DropdownMenuItem(value: name, child: Text(name)))

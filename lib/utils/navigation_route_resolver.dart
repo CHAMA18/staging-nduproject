@@ -81,7 +81,6 @@ import 'package:ndu_project/screens/team_training_building_screen.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
-import 'package:flutter/foundation.dart';
 
 /// Utility that maps checkpoint strings to screen widgets for dynamic routing
 class NavigationRouteResolver {
@@ -98,7 +97,7 @@ class NavigationRouteResolver {
     final projectData = provider?.projectData;
 
     // Helper to build solution items
-    List<AiSolutionItem> _buildSolutionItems(ProjectDataModel? data) {
+    List<AiSolutionItem> buildSolutionItems(ProjectDataModel? data) {
       if (data == null) return [];
       final potential = data.potentialSolutions
           .map((s) => AiSolutionItem(title: s.title.trim(), description: s.description.trim()))
@@ -131,33 +130,33 @@ class NavigationRouteResolver {
       case 'risk_identification':
         return RiskIdentificationScreen(
           notes: projectData?.notes ?? '',
-          solutions: _buildSolutionItems(projectData),
+          solutions: buildSolutionItems(projectData),
           businessCase: projectData?.businessCase ?? '',
         );
       case 'it_considerations':
         return ITConsiderationsScreen(
           notes: projectData?.itConsiderationsData?.notes ?? projectData?.notes ?? '',
-          solutions: _buildSolutionItems(projectData),
+          solutions: buildSolutionItems(projectData),
         );
       case 'infrastructure_considerations':
         return InfrastructureConsiderationsScreen(
           notes: projectData?.infrastructureConsiderationsData?.notes ?? projectData?.notes ?? '',
-          solutions: _buildSolutionItems(projectData),
+          solutions: buildSolutionItems(projectData),
         );
       case 'core_stakeholders':
         return CoreStakeholdersScreen(
           notes: projectData?.coreStakeholdersData?.notes ?? projectData?.notes ?? '',
-          solutions: _buildSolutionItems(projectData),
+          solutions: buildSolutionItems(projectData),
         );
       case 'cost_analysis':
         return CostAnalysisScreen(
           notes: projectData?.notes ?? '',
-          solutions: _buildSolutionItems(projectData),
+          solutions: buildSolutionItems(projectData),
         );
       case 'preferred_solution_analysis':
         return PreferredSolutionAnalysisScreen(
           notes: projectData?.preferredSolutionAnalysis?.workingNotes ?? '',
-          solutions: _buildSolutionItems(projectData),
+          solutions: buildSolutionItems(projectData),
           businessCase: projectData?.businessCase ?? '',
         );
 

@@ -5,7 +5,6 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/screens/front_end_planning_requirements_screen.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
-import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/front_end_planning_header.dart';
 
@@ -39,29 +38,8 @@ class _FrontEndPlanningSummaryScreenState extends State<FrontEndPlanningSummaryS
       final data = ProjectDataHelper.getData(context);
       _summaryNotes.text = data.frontEndPlanning.summary;
       _syncSummaryToProvider();
-      // On first load, if empty, generate AI suggestion from prior inputs
-      if (_summaryNotes.text.trim().isEmpty) {
-        _generateAiSuggestion();
-      }
       if (mounted) setState(() {});
     });
-  }
-
-  Future<void> _generateAiSuggestion() async {
-    try {
-      final data = ProjectDataHelper.getData(context);
-      final ctx = ProjectDataHelper.buildFepContext(data, sectionLabel: 'Summary');
-      final ai = OpenAiServiceSecure();
-      final suggestion = await ai.generateFepSectionText(section: 'Front End Planning Summary', context: ctx, maxTokens: 750, temperature: 0.45);
-      if (!mounted) return;
-      if (_summaryNotes.text.trim().isEmpty && suggestion.trim().isNotEmpty) {
-        setState(() {
-          _summaryNotes.text = suggestion.trim();
-        });
-      }
-    } catch (e) {
-      debugPrint('AI summary suggestion failed: $e');
-    }
   }
 
   @override

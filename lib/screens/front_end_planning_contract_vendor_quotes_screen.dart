@@ -9,6 +9,7 @@ import 'package:ndu_project/widgets/content_text.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/utils/text_sanitizer.dart';
 
 /// Front End Planning – Contract and Vendor Quotes screen.
 /// Mirrors the provided mock with the shared workspace chrome,
@@ -57,7 +58,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState extends State<FrontEndPla
       if (!mounted) return;
       if (_contractsController.text.trim().isEmpty && suggestion.trim().isNotEmpty) {
         setState(() {
-          _contractsController.text = suggestion.trim();
+          _contractsController.text = TextSanitizer.sanitizeAiText(suggestion);
         });
       }
     } catch (e) {

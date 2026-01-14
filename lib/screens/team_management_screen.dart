@@ -325,7 +325,7 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
                         ),
                         const SizedBox(height: 24),
                         const PlanningAiNotesCard(
-                          title: 'AI Notes',
+                          title: 'Notes',
                           sectionLabel: 'Team Management',
                           noteKey: 'planning_team_management_notes',
                           checkpoint: 'team_management',

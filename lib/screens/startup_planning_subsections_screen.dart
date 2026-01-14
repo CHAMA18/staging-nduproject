@@ -25,6 +25,172 @@ class StartUpPlanningOperationsScreen extends StatelessWidget {
   }
 }
 
+/// World-class Operations Plan editor used when the section is empty.
+class _WorldClassOpsEditor extends StatefulWidget {
+  const _WorldClassOpsEditor({this.sectionTitle});
+
+  final String? sectionTitle;
+
+  @override
+  State<_WorldClassOpsEditor> createState() => _WorldClassOpsEditorState();
+}
+
+class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
+  final TextEditingController _editorCtrl = TextEditingController();
+  final TextEditingController _titleCtrl = TextEditingController();
+  late final List<String> _roles;
+  final Set<String> _selectedRoles = {'Ops Lead'};
+  late final List<String> _templates;
+  String? _selectedTemplate;
+
+  @override
+  void dispose() {
+    _editorCtrl.dispose();
+    _titleCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final title = widget.sectionTitle ?? '';
+    if (title.toLowerCase().contains('hypercare')) {
+      _templates = ['Hypercare checklist', 'Monitoring rota', 'Incident response', 'Handover notes'];
+      _roles = ['Hypercare Lead', 'Support', 'Monitoring', 'QA', 'Product'];
+    } else {
+      _templates = ['Runbook', 'On-call rota', 'Escalation steps', 'Monitoring checklist'];
+      _roles = ['Ops Lead', 'SRE', 'Support', 'QA', 'Product'];
+    }
+  }
+
+  void _applyTemplate(String template) {
+    setState(() {
+      _selectedTemplate = template;
+      // lightweight template content - expand as needed
+      _editorCtrl.text = switch (template) {
+        'Runbook' => 'Objective:\n\nScope:\n\nStep 1: ...\nStep 2: ...\n\nContact: Ops Lead',
+        'On-call rota' => 'Week 1: Alice\nWeek 2: Bob\n\nEscalation: ...',
+        'Escalation steps' => '1. Triage\n2. Notify\n3. Escalate to vendor',
+        'Monitoring checklist' => '1. Metrics to watch\n2. Alert thresholds\n3. Runbook link',
+        _ => _editorCtrl.text,
+      };
+    });
+  }
+
+  Future<void> _attachFile() async {
+    // placeholder - integrate file picker where required
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Attach file feature coming soon.')));
+  }
+
+  Future<void> _saveDraft() async {
+    // lightweight save feedback
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Draft saved.')));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 6))],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(
+            child: TextField(
+              controller: _titleCtrl,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              decoration: InputDecoration(hintText: 'Title (e.g. Operations Plan & Manual)', border: InputBorder.none),
+            ),
+          ),
+          const SizedBox(width: 12),
+          ElevatedButton.icon(
+            onPressed: _attachFile,
+            icon: const Icon(Icons.attach_file, size: 18),
+            label: const Text('Attach'),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF3F4F6), foregroundColor: Colors.black),
+          ),
+        ]),
+        const SizedBox(height: 12),
+
+        // Template chips
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          for (final t in _templates)
+            ChoiceChip(
+              label: Text(t),
+              selected: _selectedTemplate == t,
+              onSelected: (_) => _applyTemplate(t),
+              selectedColor: const Color(0xFFFFF8DC),
+              backgroundColor: const Color(0xFFF8FAFC),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+        ]),
+        const SizedBox(height: 12),
+
+        // Role selectors
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: const Color(0xFFF8F9FB), borderRadius: BorderRadius.circular(10)),
+          child: Wrap(spacing: 8, children: [
+            const Text('Assign roles: ', style: TextStyle(fontWeight: FontWeight.w700)),
+            for (final r in _roles)
+              FilterChip(
+                label: Text(r),
+                selected: _selectedRoles.contains(r),
+                onSelected: (v) => setState(() => v ? _selectedRoles.add(r) : _selectedRoles.remove(r)),
+              ),
+          ]),
+        ),
+        const SizedBox(height: 12),
+
+        // Rich editor area (simple multiline TextField styled)
+        Container(
+          constraints: const BoxConstraints(minHeight: 220),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE5E7EB))),
+          child: TextField(
+            controller: _editorCtrl,
+            maxLines: null,
+            style: const TextStyle(fontSize: 14, height: 1.6),
+            decoration: const InputDecoration(border: InputBorder.none, hintText: 'Start writing your operations plan — use templates above to get started.'),
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // Action bar
+        Row(children: [
+          ElevatedButton.icon(
+            onPressed: _saveDraft,
+            icon: const Icon(Icons.save_outlined),
+            label: const Text('Save draft'),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEFF6FF), foregroundColor: const Color(0xFF2563EB)),
+          ),
+          const SizedBox(width: 12),
+          OutlinedButton.icon(
+            onPressed: () => setState(() => _editorCtrl.clear()),
+            icon: const Icon(Icons.cleaning_services_outlined),
+            label: const Text('Clear'),
+          ),
+          const Spacer(),
+          ElevatedButton(
+            onPressed: () {
+              // lightweight publish flow
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Operations Plan published.')));
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFD700), foregroundColor: Colors.black),
+            child: const Text('Publish', style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ])
+      ]),
+    );
+  }
+}
+
 class StartUpPlanningHypercareScreen extends StatelessWidget {
   const StartUpPlanningHypercareScreen({super.key});
 
@@ -125,7 +291,7 @@ class _StartUpPlanningSectionScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 20),
                             PlanningAiNotesCard(
-                              title: 'AI Notes',
+                              title: 'Notes',
                               sectionLabel: config.title,
                               noteKey: config.noteKey,
                               checkpoint: config.checkpoint,
@@ -143,11 +309,7 @@ class _StartUpPlanningSectionScreen extends StatelessWidget {
                                     .toList(),
                               ),
                             ] else
-                              const _SectionEmptyState(
-                                title: 'No launch readiness details yet',
-                                message: 'Add operational plans and readiness notes to populate this view.',
-                                icon: Icons.checklist_outlined,
-                              ),
+                              _WorldClassOpsEditor(sectionTitle: config.title),
                             const SizedBox(height: 40),
                           ],
                         );
@@ -342,9 +504,8 @@ class _SectionData {
   const _SectionData({
     required this.title,
     required this.subtitle,
-    this.bullets = const [],
-    this.statusRows = const [],
-  });
+  })  : bullets = const [],
+        statusRows = const [];
 
   final String title;
   final String subtitle;

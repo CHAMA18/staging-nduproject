@@ -9,7 +9,6 @@ import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
-import 'package:ndu_project/services/openai_service_secure.dart';
 
 /// Schedule screen recreated to match the provided mockup with
 class ScheduleScreen extends StatefulWidget {
@@ -38,28 +37,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final data = ProjectDataHelper.getData(context);
       _notesController.text = data.planningNotes['planning_schedule_notes'] ?? '';
-      if (_notesController.text.trim().isEmpty) {
-        _generateInitialNotes();
-      }
       _notesController.addListener(_handleNotesChanged);
     });
-  }
-
-  Future<void> _generateInitialNotes() async {
-    final data = ProjectDataHelper.getData(context);
-    final contextText = ProjectDataHelper.buildFepContext(data, sectionLabel: 'Schedule');
-    if (contextText.trim().isEmpty) return;
-    final ai = OpenAiServiceSecure();
-    final suggestion = await ai.generateFepSectionText(
-      section: 'Schedule',
-      context: contextText,
-      maxTokens: 700,
-      temperature: 0.45,
-    );
-    if (!mounted) return;
-    if (_notesController.text.trim().isEmpty && suggestion.trim().isNotEmpty) {
-      _notesController.text = suggestion.trim();
-    }
   }
 
   void _handleNotesChanged() {
@@ -1524,7 +1503,7 @@ class _TimelineItem {
     required this.startWeek,
     required this.durationWeeks,
     required this.color,
-    this.progress = 0.0,
+    this.progress = 0,
     this.isCritical = false,
     this.isMilestone = false,
   });

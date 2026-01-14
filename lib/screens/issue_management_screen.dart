@@ -26,8 +26,8 @@ class IssueManagementScreen extends StatefulWidget {
 class _IssueManagementScreenState extends State<IssueManagementScreen> {
   String _selectedFilter = 'All Issues';
 
-  final List<_IssueMetric> _metrics = const [];
-  final List<_MilestoneIssues> _milestones = const [];
+  List<_IssueMetric> _metrics = [];
+  List<_MilestoneIssues> _milestones = [];
 
   Future<void> _handleNewIssue() async {
     final entry = await showDialog<IssueLogItem>(
@@ -49,6 +49,22 @@ class _IssueManagementScreenState extends State<IssueManagementScreen> {
     final bool isMobile = AppBreakpoints.isMobile(context);
     final double horizontalPadding = isMobile ? 20 : 36;
     final issueItems = ProjectDataHelper.getData(context).issueLogItems;
+
+    // Build metrics and milestones from persisted issue items
+    _metrics = [
+      _IssueMetric(label: 'Open', value: issueItems.where((i) => i.status == 'Open').length.toString(), icon: Icons.report_problem_outlined, color: Colors.orange),
+      _IssueMetric(label: 'In Progress', value: issueItems.where((i) => i.status == 'In Progress').length.toString(), icon: Icons.autorenew, color: Colors.blue),
+      _IssueMetric(label: 'Resolved', value: issueItems.where((i) => i.status == 'Resolved' || i.status == 'Closed').length.toString(), icon: Icons.check_circle_outline, color: Colors.green),
+    ];
+
+    final byMilestone = <String, List<IssueLogItem>>{};
+    for (final it in issueItems) {
+      final key = it.milestone.isEmpty ? 'Unassigned' : it.milestone;
+      byMilestone.putIfAbsent(key, () => []).add(it);
+    }
+    _milestones = byMilestone.entries
+        .map((e) => _MilestoneIssues(title: e.key, issuesCountLabel: '${e.value.length} issues', dueDate: '', statusLabel: 'Open', indicatorColor: Colors.orange))
+        .toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -74,7 +90,7 @@ class _IssueManagementScreenState extends State<IssueManagementScreen> {
                         ),
                         const SizedBox(height: 24),
                         const PlanningAiNotesCard(
-                          title: 'AI Notes',
+                          title: 'Notes',
                           sectionLabel: 'Issue Management',
                           noteKey: 'planning_issue_management_notes',
                           checkpoint: 'issue_management',
@@ -502,7 +518,14 @@ class _ProjectIssuesLogCard extends StatelessWidget {
                     ),
                   ),
                   const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
-                  ...entries.map((entry) => _IssueLogRow(entry: entry, columnFlex: _columnFlex)),
+                  ...entries.map((entry) => _IssueLogRow(entry: entry, columnFlex: _columnFlex, onDelete: () async {
+                        final confirmed = await showDialog<bool>(context: context, builder: (_) => AlertDialog(title: const Text('Delete issue?'), content: const Text('This will permanently remove the issue.'), actions: [TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')), ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete'))]));
+                        if (confirmed == true) {
+                          await ProjectDataHelper.updateAndSave(context: context, checkpoint: 'issue_management', dataUpdater: (data) => data.copyWith(issueLogItems: data.issueLogItems.where((i) => i.id != entry.id).toList()));
+                          // force rebuild
+                          (context as Element).markNeedsBuild();
+                        }
+                      })),
                 ],
               ),
             ),
@@ -523,10 +546,11 @@ class _ProjectIssuesLogCard extends StatelessWidget {
 }
 
 class _IssueLogRow extends StatelessWidget {
-  const _IssueLogRow({required this.entry, required this.columnFlex});
+  const _IssueLogRow({required this.entry, required this.columnFlex, this.onDelete});
 
   final IssueLogItem entry;
   final List<int> columnFlex;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -614,8 +638,8 @@ class _IssueLogRow extends StatelessWidget {
             ),
           ),
           IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.edit_outlined, size: 20, color: Color(0xFF4B5563)),
+            onPressed: onDelete,
+            icon: const Icon(Icons.delete_outline, size: 20, color: Color(0xFFEF4444)),
             splashRadius: 20,
           ),
         ],

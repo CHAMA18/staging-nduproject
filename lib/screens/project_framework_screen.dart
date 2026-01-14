@@ -211,7 +211,7 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const PlanningAiNotesCard(
-                                title: 'AI Notes',
+                                title: 'Notes',
                                 sectionLabel: 'Project Management Framework',
                                 noteKey: 'planning_framework_notes',
                                 checkpoint: 'project_framework',

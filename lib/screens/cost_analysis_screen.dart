@@ -2241,8 +2241,9 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       final text = _projectValueBenefitControllers[field.key]!.text.trim();
       final categoryLabel = field.value;
       final metrics = _benefitMetrics[field.key] ?? '';
-      if (text.isNotEmpty)
+      if (text.isNotEmpty) {
         definedBenefitLabels.add(categoryLabel.split('&').first.trim());
+      }
       benefitTiles.add(Container(
         width: 400,
         constraints: const BoxConstraints(minHeight: 72),
@@ -5386,20 +5387,27 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       // Add Front End Planning data
       final fepData = projectData.frontEndPlanning;
       final fepNotes = <String>[];
-      if (fepData.requirements.isNotEmpty)
+      if (fepData.requirements.isNotEmpty) {
         fepNotes.add('Requirements: ${fepData.requirements}');
-      if (fepData.risks.isNotEmpty)
+      }
+      if (fepData.risks.isNotEmpty) {
         fepNotes.add('Planning risks: ${fepData.risks}');
-      if (fepData.opportunities.isNotEmpty)
+      }
+      if (fepData.opportunities.isNotEmpty) {
         fepNotes.add('Opportunities: ${fepData.opportunities}');
-      if (fepData.technology.isNotEmpty)
+      }
+      if (fepData.technology.isNotEmpty) {
         fepNotes.add('Technology: ${fepData.technology}');
-      if (fepData.infrastructure.isNotEmpty)
+      }
+      if (fepData.infrastructure.isNotEmpty) {
         fepNotes.add('Infrastructure: ${fepData.infrastructure}');
-      if (fepData.contracts.isNotEmpty)
+      }
+      if (fepData.contracts.isNotEmpty) {
         fepNotes.add('Contracts: ${fepData.contracts}');
-      if (fepData.procurement.isNotEmpty)
+      }
+      if (fepData.procurement.isNotEmpty) {
         fepNotes.add('Procurement: ${fepData.procurement}');
+      }
       if (fepNotes.isNotEmpty) {
         buffer.write('Front-end planning: ${fepNotes.take(5).join('; ')}. ');
       }
@@ -5584,8 +5592,9 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
 
   void _applyCategoryEstimatesFromItems(
       int solutionIndex, List<AiCostItem> items) {
-    if (solutionIndex < 0 || solutionIndex >= _categoryCostsPerSolution.length)
+    if (solutionIndex < 0 || solutionIndex >= _categoryCostsPerSolution.length) {
       return;
+    }
     final map = _categoryCostsPerSolution[solutionIndex];
     // reset existing estimates only if empty to not clobber user edits
     final totals = <String, double>{
@@ -5617,9 +5626,6 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       final t = (totals[key] ?? 0);
       if (!hasUserCost && t > 0) {
         costCtrl.text = t.toStringAsFixed(t % 1 == 0 ? 0 : 2);
-      }
-      if (!hasUserNotes && (notes[key]?.isNotEmpty ?? false)) {
-        noteCtrl.text = 'AI-seeded items: ${notes[key]!.take(6).join(', ')}';
       }
     }
     setState(() {});

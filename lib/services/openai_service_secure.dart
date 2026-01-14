@@ -4,6 +4,9 @@ import 'package:http/http.dart' as http;
 import 'package:ndu_project/openai/openai_config.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 
+// Remove markdown bold markers commonly produced by the model (e.g. *text* or **text**)
+String _stripAsterisks(String s) => s.replaceAll('*', '');
+
 class AiSolutionItem {
   final String title;
   final String description;
@@ -11,8 +14,8 @@ class AiSolutionItem {
   AiSolutionItem({required this.title, required this.description});
 
   factory AiSolutionItem.fromMap(Map<String, dynamic> map) => AiSolutionItem(
-        title: (map['title'] ?? '').toString().trim(),
-        description: (map['description'] ?? '').toString().trim(),
+  title: _stripAsterisks((map['title'] ?? '').toString().trim()),
+  description: _stripAsterisks((map['description'] ?? '').toString().trim()),
       );
 }
 
@@ -101,16 +104,16 @@ class AiProjectValueInsights {
 
     final estimated = toD(map['estimated_value'] ?? map['project_value']);
     final benefitsRaw = map['benefits'];
-    final parsedBenefits = <String, String>{};
+  final parsedBenefits = <String, String>{};
     if (benefitsRaw is Map) {
       for (final entry in benefitsRaw.entries) {
-        parsedBenefits[entry.key.toString()] = entry.value.toString();
+    parsedBenefits[entry.key.toString()] = _stripAsterisks(entry.value.toString());
       }
     } else if (benefitsRaw is List) {
       for (final item in benefitsRaw) {
         if (item is Map && item.containsKey('category')) {
-          parsedBenefits[item['category'].toString()] =
-              (item['details'] ?? item['value'] ?? '').toString();
+      parsedBenefits[item['category'].toString()] =
+        _stripAsterisks((item['details'] ?? item['value'] ?? '').toString());
         }
       }
     }
@@ -135,13 +138,13 @@ class AiProjectGoalRecommendation {
     final rawDesc = map['description'] ?? map['details'] ?? map['text'] ?? '';
     final rawFramework =
         map['framework'] ?? map['methodology'] ?? map['approach'] ?? '';
-    final name = rawName.toString().trim();
-    final description = rawDesc.toString().trim();
-    final framework = rawFramework?.toString().trim();
+  final name = _stripAsterisks(rawName.toString().trim());
+  final description = _stripAsterisks(rawDesc.toString().trim());
+  final framework = _stripAsterisks(rawFramework?.toString().trim() ?? '');
     return AiProjectGoalRecommendation(
       name: name,
       description: description,
-      framework: (framework?.isEmpty ?? true) ? null : framework,
+  framework: (framework.isEmpty) ? null : framework,
     );
   }
 
@@ -170,7 +173,7 @@ class AiProjectFrameworkAndGoals {
   factory AiProjectFrameworkAndGoals.fromMap(Map<String, dynamic> map) {
     final rawFramework =
         map['framework'] ?? map['overallFramework'] ?? map['methodology'] ?? '';
-    final framework = rawFramework.toString().trim();
+    final framework = _stripAsterisks(rawFramework.toString().trim());
     final rawGoals = map['goals'];
     final parsedGoals = <AiProjectGoalRecommendation>[];
     if (rawGoals is List) {
@@ -180,7 +183,7 @@ class AiProjectFrameworkAndGoals {
         } else if (entry is String) {
           parsedGoals.add(AiProjectGoalRecommendation(
             name: '',
-            description: entry.trim(),
+            description: _stripAsterisks(entry.trim()),
             framework: framework.isEmpty ? null : framework,
           ));
         }
@@ -281,19 +284,19 @@ class AiBenefitSavingsSuggestion {
 
     String parseString(dynamic value) => value?.toString().trim() ?? '';
 
-    return AiBenefitSavingsSuggestion(
-      lever: parseString(map['lever'] ?? map['title'] ?? map['scenario']),
-      recommendation: parseString(
-          map['recommendation'] ?? map['action'] ?? map['strategy']),
-      projectedSavings: parseDouble(
-          map['projected_savings'] ?? map['savings'] ?? map['projected_value']),
-      timeframe:
-          parseString(map['timeframe'] ?? map['horizon'] ?? map['period']),
-      confidence: parseString(
-          map['confidence'] ?? map['certainty'] ?? map['confidence_level']),
-      rationale:
-          parseString(map['rationale'] ?? map['notes'] ?? map['summary']),
-    );
+  return AiBenefitSavingsSuggestion(
+    lever: _stripAsterisks(parseString(map['lever'] ?? map['title'] ?? map['scenario'])),
+    recommendation: _stripAsterisks(parseString(
+      map['recommendation'] ?? map['action'] ?? map['strategy'])),
+    projectedSavings: parseDouble(
+      map['projected_savings'] ?? map['savings'] ?? map['projected_value']),
+    timeframe:
+      _stripAsterisks(parseString(map['timeframe'] ?? map['horizon'] ?? map['period'])),
+    confidence: _stripAsterisks(parseString(
+      map['confidence'] ?? map['certainty'] ?? map['confidence_level'])),
+    rationale:
+      _stripAsterisks(parseString(map['rationale'] ?? map['notes'] ?? map['summary'])),
+  );
   }
 }
 
@@ -364,16 +367,177 @@ class OpenAiServiceSecure {
           (parsed['text'] ?? parsed['section'] ?? parsed['content'] ?? '')
               .toString()
               .trim();
-      if (text.isNotEmpty) return text;
+  final cleanText = _stripAsterisks(text);
+  if (cleanText.isNotEmpty) return cleanText;
       // If missing expected key, try to flatten other fields to text
       if (parsed.isNotEmpty) {
-        return parsed.values.map((v) => v.toString()).join('\n').trim();
+        return parsed.values.map((v) => _stripAsterisks(v.toString())).join('\n').trim();
       }
       return '';
     } catch (e) {
       // Surface the error to callers so the UI can show a clear failure state
       rethrow;
     }
+  }
+
+  Future<DesignDeliverablesData> generateDesignDeliverables({
+    required String context,
+    int maxTokens = 1200,
+    double temperature = 0.4,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) {
+      return const DesignDeliverablesData();
+    }
+    if (!OpenAiConfig.isConfigured) {
+      return _designDeliverablesFallback(trimmedContext);
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final prompt = '''
+You are drafting the Design Deliverables workspace for a project. Using the context below, return ONLY a JSON object with the exact keys:
+metrics: {active, in_review, approved, at_risk}
+pipeline: [{label, status}]
+approvals: [string]
+register: [{name, owner, status, due, risk}]
+dependencies: [string]
+handoff: [string]
+
+Rules:
+- Provide 4-6 items for pipeline, approvals, register, dependencies, and handoff.
+- Use realistic owners, dates, and statuses (Approved, In Review, In Progress, Pending).
+- Use risks: Low, Medium, High.
+- Keep each string under 90 characters.
+
+Context:
+$trimmedContext
+''';
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a design delivery coordinator. Return only a JSON object that matches the requested schema.'
+        },
+        {'role': 'user', 'content': prompt}
+      ],
+    });
+
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 16));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('OpenAI error ${response.statusCode}: ${response.body}');
+      }
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content =
+          (data['choices'] as List).first['message']['content'] as String;
+      final parsed = jsonDecode(content) as Map<String, dynamic>;
+      return _parseDesignDeliverables(parsed);
+    } catch (_) {
+      return _designDeliverablesFallback(trimmedContext);
+    }
+  }
+
+  DesignDeliverablesData _parseDesignDeliverables(Map<String, dynamic> json) {
+    List<String> toStringList(dynamic value) {
+      if (value is List) {
+        return value.map((e) => _stripAsterisks(e.toString().trim())).where((e) => e.isNotEmpty).toList();
+      }
+      return const [];
+    }
+
+    List<DesignDeliverablePipelineItem> parsePipeline(dynamic value) {
+      if (value is List) {
+        return value.map((item) {
+          final map = Map<String, dynamic>.from(item as Map);
+          return DesignDeliverablePipelineItem(
+            label: _stripAsterisks((map['label'] ?? '').toString().trim()),
+            status: _stripAsterisks((map['status'] ?? '').toString().trim()),
+          );
+        }).where((item) => item.label.isNotEmpty).toList();
+      }
+      return const [];
+    }
+
+    List<DesignDeliverableRegisterItem> parseRegister(dynamic value) {
+      if (value is List) {
+        return value.map((item) {
+          final map = Map<String, dynamic>.from(item as Map);
+          return DesignDeliverableRegisterItem(
+            name: _stripAsterisks((map['name'] ?? '').toString().trim()),
+            owner: _stripAsterisks((map['owner'] ?? '').toString().trim()),
+            status: _stripAsterisks((map['status'] ?? '').toString().trim()),
+            due: _stripAsterisks((map['due'] ?? '').toString().trim()),
+            risk: _stripAsterisks((map['risk'] ?? '').toString().trim()),
+          );
+        }).where((item) => item.name.isNotEmpty).toList();
+      }
+      return const [];
+    }
+
+    final metricsMap = json['metrics'] is Map
+        ? Map<String, dynamic>.from(json['metrics'] as Map)
+        : <String, dynamic>{};
+    final metrics = DesignDeliverablesMetrics.fromJson(metricsMap);
+
+    return DesignDeliverablesData(
+      metrics: metrics,
+      pipeline: parsePipeline(json['pipeline']),
+      approvals: toStringList(json['approvals']),
+      register: parseRegister(json['register']),
+      dependencies: toStringList(json['dependencies']),
+      handoffChecklist: toStringList(json['handoff']),
+    );
+  }
+
+  DesignDeliverablesData _designDeliverablesFallback(String context) {
+    final project = _extractProjectName(context);
+    final name = project.isNotEmpty ? project : 'Project';
+    return DesignDeliverablesData(
+      metrics: const DesignDeliverablesMetrics(active: 6, inReview: 3, approved: 2, atRisk: 1),
+      pipeline: const [
+        DesignDeliverablePipelineItem(label: 'Discovery & Research', status: 'In Review'),
+        DesignDeliverablePipelineItem(label: 'Wireframes', status: 'In Progress'),
+        DesignDeliverablePipelineItem(label: 'UI Design', status: 'Pending'),
+        DesignDeliverablePipelineItem(label: 'Prototype', status: 'Pending'),
+      ],
+      approvals: [
+        'Product sign-off aligned for $name',
+        'Engineering review scheduled',
+        'Accessibility review pending',
+        'Brand compliance check queued',
+      ],
+      register: const [
+        DesignDeliverableRegisterItem(name: 'Wireframe Pack', owner: 'UX Team', status: 'In Review', due: 'TBD', risk: 'Medium'),
+        DesignDeliverableRegisterItem(name: 'UI Kit', owner: 'Design Ops', status: 'In Progress', due: 'TBD', risk: 'Low'),
+        DesignDeliverableRegisterItem(name: 'Prototype', owner: 'Product', status: 'Pending', due: 'TBD', risk: 'High'),
+        DesignDeliverableRegisterItem(name: 'Journey Maps', owner: 'Research', status: 'In Progress', due: 'TBD', risk: 'Medium'),
+      ],
+      dependencies: const [
+        'Finalize IA and navigation taxonomy',
+        'Confirm content strategy inputs',
+        'Align analytics tracking requirements',
+      ],
+      handoffChecklist: const [
+        'Component specs documented',
+        'Accessibility annotations included',
+        'Figma files shared with dev team',
+        'Interaction guidelines attached',
+      ],
+    );
   }
 
   Future<AiProjectFrameworkAndGoals> suggestProjectFrameworkGoals({
@@ -498,8 +662,7 @@ class OpenAiServiceSecure {
       for (final item in list) {
         if (item is! Map) continue;
         final map = item as Map<String, dynamic>;
-        final opp =
-            (map['opportunity'] ?? map['title'] ?? '').toString().trim();
+  final opp = _stripAsterisks((map['opportunity'] ?? map['title'] ?? '').toString().trim());
         if (opp.isEmpty) continue;
         result.add({
           'opportunity': opp,
@@ -730,10 +893,12 @@ Additional context: "$notes"
     final response = await _client
         .post(uri, headers: headers, body: body)
         .timeout(const Duration(seconds: 12));
-    if (response.statusCode == 429)
+    if (response.statusCode == 429) {
       throw Exception('API quota exceeded. Please check your OpenAI billing.');
-    if (response.statusCode == 401)
+    }
+    if (response.statusCode == 401) {
       throw Exception('Invalid API key. Please check your OpenAI API key.');
+    }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(
           'OpenAI API error ${response.statusCode}: ${response.body}');
@@ -744,10 +909,10 @@ Additional context: "$notes"
     final content =
         (data['choices'] as List).first['message']['content'] as String;
     final parsed = jsonDecode(content) as Map<String, dynamic>;
-    final items = (parsed['solutions'] as List? ?? [])
-        .map((e) => AiSolutionItem.fromMap(e as Map<String, dynamic>))
-        .where((e) => e.title.isNotEmpty && e.description.isNotEmpty)
-        .toList();
+  final items = (parsed['solutions'] as List? ?? [])
+    .map((e) => AiSolutionItem.fromMap(e as Map<String, dynamic>))
+    .where((e) => e.title.isNotEmpty && e.description.isNotEmpty)
+    .toList();
     return _normalizeSolutions(items);
   }
 
@@ -796,12 +961,12 @@ Additional context: "$notes"
       final Map<String, List<String>> result = {};
       for (final item in list) {
         final map = item as Map<String, dynamic>;
-        final title = (map['solution'] ?? '').toString();
-        final items = (map['items'] as List? ?? [])
-            .map((e) => e.toString())
-            .where((e) => e.trim().isNotEmpty)
-            .take(3)
-            .toList();
+    final title = _stripAsterisks((map['solution'] ?? '').toString());
+    final items = (map['items'] as List? ?? [])
+      .map((e) => _stripAsterisks(e.toString()))
+      .where((e) => e.trim().isNotEmpty)
+      .take(3)
+      .toList();
         if (title.isNotEmpty && items.isNotEmpty) result[title] = items;
       }
       return _mergeWithFallbackRisks(solutions, result);
@@ -905,10 +1070,12 @@ Additional context: "$notes"
     final response = await _client
         .post(uri, headers: headers, body: body)
         .timeout(const Duration(seconds: 15));
-    if (response.statusCode == 429)
+    if (response.statusCode == 429) {
       throw Exception('API quota exceeded. Please check your OpenAI billing.');
-    if (response.statusCode == 401)
+    }
+    if (response.statusCode == 401) {
       throw Exception('Invalid API key. Please check your OpenAI API key.');
+    }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(
           'OpenAI API error ${response.statusCode}: ${response.body}');
@@ -923,12 +1090,12 @@ Additional context: "$notes"
         .map((e) {
           final item = e as Map<String, dynamic>;
           return {
-            'requirement': (item['requirement'] ?? '').toString().trim(),
-            'requirementType': (item['requirementType'] ??
+            'requirement': _stripAsterisks((item['requirement'] ?? '').toString().trim()),
+            'requirementType': _stripAsterisks((item['requirementType'] ??
                     item['requirement_type'] ??
                     'Functional')
                 .toString()
-                .trim(),
+                .trim()),
           };
         })
         .where((e) => e['requirement']!.isNotEmpty)
@@ -988,12 +1155,12 @@ Additional context: "$notes"
       final Map<String, List<String>> result = {};
       for (final item in list) {
         final map = item as Map<String, dynamic>;
-        final title = (map['solution'] ?? '').toString();
-        final items = (map['items'] as List? ?? [])
-            .map((e) => e.toString())
-            .where((e) => e.trim().isNotEmpty)
-            .take(6)
-            .toList();
+    final title = _stripAsterisks((map['solution'] ?? '').toString());
+    final items = (map['items'] as List? ?? [])
+      .map((e) => _stripAsterisks(e.toString()))
+      .where((e) => e.trim().isNotEmpty)
+      .take(6)
+      .toList();
         if (title.isNotEmpty && items.isNotEmpty) result[title] = items;
       }
       return _mergeWithFallbackTech(solutions, result);
@@ -1070,7 +1237,7 @@ Additional context: "$notes"
       final Map<String, List<AiCostItem>> result = {};
       for (final entry in list) {
         final map = entry as Map<String, dynamic>;
-        final title = (map['solution'] ?? '').toString();
+  final title = _stripAsterisks((map['solution'] ?? '').toString());
         final itemsRaw = (map['items'] as List? ?? []);
         final items = itemsRaw
             .map((e) => AiCostItem.fromMap(e as Map<String, dynamic>))
@@ -1157,8 +1324,9 @@ Context notes (optional): $notes
     List<AiSolutionItem> solutions, {
     String contextNotes = '',
   }) async {
-    if (!OpenAiConfig.isConfigured)
+    if (!OpenAiConfig.isConfigured) {
       return _fallbackProjectValueInsights(solutions);
+    }
 
     final uri = OpenAiConfig.chatUri();
     final headers = {

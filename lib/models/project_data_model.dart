@@ -31,9 +31,14 @@ class ProjectDataModel {
 
   // Issue Management Data
   List<IssueLogItem> issueLogItems;
+  // Lessons learned
+  List<LessonRecord> lessonsLearned;
   
   // Front End Planning Data
   FrontEndPlanningData frontEndPlanning;
+  // Technology/IT Data
+  List<Map<String, dynamic>> technologyDefinitions;
+  List<Map<String, dynamic>> technologyInventory;
   
   // SSHER Data
   SSHERData ssherData;
@@ -58,6 +63,9 @@ class ProjectDataModel {
   
   // Core Stakeholders Data
   CoreStakeholdersData? coreStakeholdersData;
+
+  // Design Deliverables Data
+  DesignDeliverablesData designDeliverablesData;
   
   // Metadata
   bool isBasicPlanProject;
@@ -88,6 +96,9 @@ class ProjectDataModel {
     this.wbsCriteriaB,
     List<List<WorkItem>>? goalWorkItems,
     List<IssueLogItem>? issueLogItems,
+  List<LessonRecord>? lessonsLearned,
+  List<Map<String, dynamic>>? technologyDefinitions,
+  List<Map<String, dynamic>>? technologyInventory,
     FrontEndPlanningData? frontEndPlanning,
     SSHERData? ssherData,
     List<TeamMember>? teamMembers,
@@ -97,6 +108,7 @@ class ProjectDataModel {
     this.itConsiderationsData,
     this.infrastructureConsiderationsData,
     this.coreStakeholdersData,
+    DesignDeliverablesData? designDeliverablesData,
     this.isBasicPlanProject = false,
     Map<String, int>? aiUsageCounts,
     this.projectId,
@@ -110,13 +122,18 @@ class ProjectDataModel {
         keyMilestones = keyMilestones ?? [],
         planningNotes = planningNotes ?? {},
         goalWorkItems = goalWorkItems ?? List.generate(3, (_) => []),
-        issueLogItems = issueLogItems ?? [],
+  issueLogItems = issueLogItems ?? [],
+  lessonsLearned = lessonsLearned ?? [],
+  technologyDefinitions = technologyDefinitions ?? [],
+  technologyInventory = technologyInventory ?? [],
         frontEndPlanning = frontEndPlanning ?? FrontEndPlanningData(),
         ssherData = ssherData ?? SSHERData(),
         teamMembers = teamMembers ?? [],
         launchChecklistItems = launchChecklistItems ?? [],
         costEstimateItems = costEstimateItems ?? [],
+        designDeliverablesData = designDeliverablesData ?? DesignDeliverablesData(),
         aiUsageCounts = aiUsageCounts ?? {};
+
 
   ProjectDataModel copyWith({
     String? projectName,
@@ -139,6 +156,9 @@ class ProjectDataModel {
     String? wbsCriteriaB,
     List<List<WorkItem>>? goalWorkItems,
     List<IssueLogItem>? issueLogItems,
+  List<LessonRecord>? lessonsLearned,
+  List<Map<String, dynamic>>? technologyDefinitions,
+  List<Map<String, dynamic>>? technologyInventory,
     FrontEndPlanningData? frontEndPlanning,
     SSHERData? ssherData,
     List<TeamMember>? teamMembers,
@@ -148,6 +168,7 @@ class ProjectDataModel {
     ITConsiderationsData? itConsiderationsData,
     InfrastructureConsiderationsData? infrastructureConsiderationsData,
     CoreStakeholdersData? coreStakeholdersData,
+    DesignDeliverablesData? designDeliverablesData,
     bool? isBasicPlanProject,
     Map<String, int>? aiUsageCounts,
     String? projectId,
@@ -176,6 +197,9 @@ class ProjectDataModel {
       wbsCriteriaB: wbsCriteriaB ?? this.wbsCriteriaB,
       goalWorkItems: goalWorkItems ?? this.goalWorkItems,
       issueLogItems: issueLogItems ?? this.issueLogItems,
+  lessonsLearned: lessonsLearned ?? this.lessonsLearned,
+  technologyDefinitions: technologyDefinitions ?? this.technologyDefinitions,
+  technologyInventory: technologyInventory ?? this.technologyInventory,
       frontEndPlanning: frontEndPlanning ?? this.frontEndPlanning,
       ssherData: ssherData ?? this.ssherData,
        teamMembers: teamMembers ?? this.teamMembers,
@@ -185,6 +209,7 @@ class ProjectDataModel {
       itConsiderationsData: itConsiderationsData ?? this.itConsiderationsData,
       infrastructureConsiderationsData: infrastructureConsiderationsData ?? this.infrastructureConsiderationsData,
       coreStakeholdersData: coreStakeholdersData ?? this.coreStakeholdersData,
+      designDeliverablesData: designDeliverablesData ?? this.designDeliverablesData,
       isBasicPlanProject: isBasicPlanProject ?? this.isBasicPlanProject,
       aiUsageCounts: aiUsageCounts ?? this.aiUsageCounts,
       projectId: projectId ?? this.projectId,
@@ -227,7 +252,10 @@ class ProjectDataModel {
       'wbsCriteriaA': wbsCriteriaA,
       'wbsCriteriaB': wbsCriteriaB,
       'goalWorkItems': flattenedWorkItems,
-      'issueLogItems': issueLogItems.map((item) => item.toJson()).toList(),
+    'issueLogItems': issueLogItems.map((item) => item.toJson()).toList(),
+  'lessonsLearned': lessonsLearned.map((l) => l.toJson()).toList(),
+    'technologyDefinitions': technologyDefinitions,
+    'technologyInventory': technologyInventory,
       'frontEndPlanning': frontEndPlanning.toJson(),
       'ssherData': ssherData.toJson(),
       'teamMembers': teamMembers.map((m) => m.toJson()).toList(),
@@ -237,6 +265,7 @@ class ProjectDataModel {
       if (itConsiderationsData != null) 'itConsiderationsData': itConsiderationsData!.toJson(),
       if (infrastructureConsiderationsData != null) 'infrastructureConsiderationsData': infrastructureConsiderationsData!.toJson(),
       if (coreStakeholdersData != null) 'coreStakeholdersData': coreStakeholdersData!.toJson(),
+      'designDeliverables': designDeliverablesData.toJson(),
       'currentCheckpoint': currentCheckpoint,
       'isBasicPlanProject': isBasicPlanProject,
       'aiUsageCounts': aiUsageCounts,
@@ -351,7 +380,10 @@ class ProjectDataModel {
       wbsCriteriaA: json['wbsCriteriaA']?.toString(),
       wbsCriteriaB: json['wbsCriteriaB']?.toString(),
       goalWorkItems: reconstructedGoalWorkItems,
-      issueLogItems: safeParseList('issueLogItems', IssueLogItem.fromJson),
+    issueLogItems: safeParseList('issueLogItems', IssueLogItem.fromJson),
+  lessonsLearned: safeParseList('lessonsLearned', LessonRecord.fromJson),
+    technologyDefinitions: (json['technologyDefinitions'] as List?)?.map((e) => Map<String, dynamic>.from(e as Map)).toList() ?? [],
+    technologyInventory: (json['technologyInventory'] as List?)?.map((e) => Map<String, dynamic>.from(e as Map)).toList() ?? [],
       frontEndPlanning: safeParseSingle('frontEndPlanning', FrontEndPlanningData.fromJson) ?? FrontEndPlanningData(),
       ssherData: safeParseSingle('ssherData', SSHERData.fromJson) ?? SSHERData(),
       teamMembers: safeParseList('teamMembers', TeamMember.fromJson),
@@ -361,6 +393,7 @@ class ProjectDataModel {
       itConsiderationsData: safeParseSingle('itConsiderationsData', ITConsiderationsData.fromJson),
       infrastructureConsiderationsData: safeParseSingle('infrastructureConsiderationsData', InfrastructureConsiderationsData.fromJson),
       coreStakeholdersData: safeParseSingle('coreStakeholdersData', CoreStakeholdersData.fromJson),
+      designDeliverablesData: safeParseSingle('designDeliverables', DesignDeliverablesData.fromJson) ?? DesignDeliverablesData(),
       isBasicPlanProject: json['isBasicPlanProject'] == true,
       aiUsageCounts: (json['aiUsageCounts'] is Map)
           ? Map<String, int>.from(
@@ -674,6 +707,18 @@ class FrontEndPlanningData {
   String infrastructure;
   String contracts;
   List<RequirementItem> requirementItems;
+  // Persisted scenario matrix items
+  List<ScenarioRecord> scenarioMatrixItems;
+  // Security management items
+  List<RoleItem> securityRoles;
+  List<PermissionItem> securityPermissions;
+  List<SecuritySetting> securitySettings;
+  List<AccessLogItem> securityAccessLogs;
+  // Technical debt related fields
+  List<DebtItem> technicalDebtItems;
+  List<DebtInsight> technicalDebtRootCauses;
+  List<RemediationTrack> technicalDebtTracks;
+  List<OwnerItem> technicalDebtOwners;
 
   FrontEndPlanningData({
     this.requirements = '',
@@ -690,7 +735,26 @@ class FrontEndPlanningData {
     this.infrastructure = '',
     this.contracts = '',
     List<RequirementItem>? requirementItems,
-  }) : requirementItems = requirementItems ?? [];
+  List<ScenarioRecord>? scenarioMatrixItems,
+    List<RoleItem>? securityRoles,
+    List<PermissionItem>? securityPermissions,
+    List<SecuritySetting>? securitySettings,
+    List<AccessLogItem>? securityAccessLogs,
+    List<DebtItem>? technicalDebtItems,
+    List<DebtInsight>? technicalDebtRootCauses,
+    List<RemediationTrack>? technicalDebtTracks,
+    List<OwnerItem>? technicalDebtOwners,
+  }) :
+    requirementItems = requirementItems ?? [],
+    technicalDebtItems = technicalDebtItems ?? [],
+    technicalDebtRootCauses = technicalDebtRootCauses ?? [],
+    technicalDebtTracks = technicalDebtTracks ?? [],
+  technicalDebtOwners = technicalDebtOwners ?? [],
+  scenarioMatrixItems = scenarioMatrixItems ?? [],
+  securityRoles = securityRoles ?? [],
+  securityPermissions = securityPermissions ?? [],
+  securitySettings = securitySettings ?? [],
+  securityAccessLogs = securityAccessLogs ?? [];
 
   Map<String, dynamic> toJson() => {
         'requirements': requirements,
@@ -706,7 +770,16 @@ class FrontEndPlanningData {
         'personnel': personnel,
         'infrastructure': infrastructure,
         'contracts': contracts,
-        'requirementsItems': requirementItems.map((item) => item.toJson()).toList(),
+      'requirementsItems': requirementItems.map((item) => item.toJson()).toList(),
+      'technicalDebtItems': technicalDebtItems.map((d) => d.toJson()).toList(),
+      'technicalDebtRootCauses': technicalDebtRootCauses.map((r) => r.toJson()).toList(),
+      'technicalDebtTracks': technicalDebtTracks.map((t) => t.toJson()).toList(),
+    'technicalDebtOwners': technicalDebtOwners.map((o) => o.toJson()).toList(),
+    'scenarioMatrixItems': scenarioMatrixItems.map((s) => s.toJson()).toList(),
+    'securityRoles': securityRoles.map((r) => r.toJson()).toList(),
+    'securityPermissions': securityPermissions.map((p) => p.toJson()).toList(),
+    'securitySettings': securitySettings.map((s) => s.toJson()).toList(),
+    'securityAccessLogs': securityAccessLogs.map((a) => a.toJson()).toList(),
       };
 
   factory FrontEndPlanningData.fromJson(Map<String, dynamic> json) {
@@ -728,6 +801,103 @@ class FrontEndPlanningData {
               ?.map((item) => RequirementItem.fromJson(item as Map<String, dynamic>))
               .toList() ??
           [],
+    technicalDebtItems: (json['technicalDebtItems'] as List?)
+        ?.map((item) => DebtItem.fromJson(item as Map<String, dynamic>))
+        .toList() ??
+      [],
+    technicalDebtRootCauses: (json['technicalDebtRootCauses'] as List?)
+        ?.map((item) => DebtInsight.fromJson(item as Map<String, dynamic>))
+        .toList() ??
+      [],
+    technicalDebtTracks: (json['technicalDebtTracks'] as List?)
+        ?.map((item) => RemediationTrack.fromJson(item as Map<String, dynamic>))
+        .toList() ??
+      [],
+    technicalDebtOwners: (json['technicalDebtOwners'] as List?)
+        ?.map((item) => OwnerItem.fromJson(item as Map<String, dynamic>))
+        .toList() ??
+      [],
+    scenarioMatrixItems: (json['scenarioMatrixItems'] as List?)
+        ?.map((item) => ScenarioRecord.fromJson(item as Map<String, dynamic>))
+        .toList() ??
+      [],
+    securityRoles: (json['securityRoles'] as List?)
+        ?.map((item) => RoleItem.fromJson(item as Map<String, dynamic>))
+        .toList() ??
+      [],
+    securityPermissions: (json['securityPermissions'] as List?)
+        ?.map((item) => PermissionItem.fromJson(item as Map<String, dynamic>))
+        .toList() ??
+      [],
+    securitySettings: (json['securitySettings'] as List?)
+        ?.map((item) => SecuritySetting.fromJson(item as Map<String, dynamic>))
+        .toList() ??
+      [],
+    securityAccessLogs: (json['securityAccessLogs'] as List?)
+        ?.map((item) => AccessLogItem.fromJson(item as Map<String, dynamic>))
+        .toList() ??
+      [],
+    );
+  }
+}
+
+class RoleItem {
+  String id;
+  String name;
+  String description;
+
+  RoleItem({String? id, this.name = '', this.description = ''}) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+
+  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'description': description};
+
+  factory RoleItem.fromJson(Map<String, dynamic> json) {
+    return RoleItem(id: json['id']?.toString(), name: json['name'] ?? '', description: json['description'] ?? '');
+  }
+}
+
+class PermissionItem {
+  String id;
+  String resource;
+  String scope;
+
+  PermissionItem({String? id, this.resource = '', this.scope = ''}) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+
+  Map<String, dynamic> toJson() => {'id': id, 'resource': resource, 'scope': scope};
+
+  factory PermissionItem.fromJson(Map<String, dynamic> json) {
+    return PermissionItem(id: json['id']?.toString(), resource: json['resource'] ?? '', scope: json['scope'] ?? '');
+  }
+}
+
+class SecuritySetting {
+  String key;
+  String value;
+
+  SecuritySetting({this.key = '', this.value = ''});
+
+  Map<String, dynamic> toJson() => {'key': key, 'value': value};
+
+  factory SecuritySetting.fromJson(Map<String, dynamic> json) {
+    return SecuritySetting(key: json['key'] ?? '', value: json['value'] ?? '');
+  }
+}
+
+class AccessLogItem {
+  String id;
+  String user;
+  String action;
+  String timestamp;
+
+  AccessLogItem({String? id, this.user = '', this.action = '', this.timestamp = ''}) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+
+  Map<String, dynamic> toJson() => {'id': id, 'user': user, 'action': action, 'timestamp': timestamp};
+
+  factory AccessLogItem.fromJson(Map<String, dynamic> json) {
+    return AccessLogItem(
+      id: json['id']?.toString(),
+      user: json['user'] ?? '',
+      action: json['action'] ?? '',
+      timestamp: json['timestamp'] ?? '',
     );
   }
 }
@@ -871,6 +1041,60 @@ class PotentialSolution {
     return PotentialSolution(
       title: json['title'] ?? '',
       description: json['description'] ?? '',
+    );
+  }
+}
+
+class LessonRecord {
+  String id;
+  String lesson;
+  String category;
+  String type;
+  String phase;
+  String status;
+  String submittedBy;
+  String notes;
+  DateTime? dateSubmitted;
+
+  LessonRecord({
+    String? id,
+    this.lesson = '',
+    this.category = '',
+    this.type = '',
+    this.phase = '',
+    this.status = '',
+    this.submittedBy = '',
+    this.notes = '',
+    this.dateSubmitted,
+  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'lesson': lesson,
+        'category': category,
+        'type': type,
+        'phase': phase,
+        'status': status,
+        'submittedBy': submittedBy,
+        'notes': notes,
+        'dateSubmitted': dateSubmitted?.toIso8601String(),
+      };
+
+  factory LessonRecord.fromJson(Map<String, dynamic> json) {
+    DateTime? parsed;
+    try {
+      if (json['dateSubmitted'] is String) parsed = DateTime.parse(json['dateSubmitted']);
+    } catch (_) {}
+    return LessonRecord(
+      id: json['id']?.toString(),
+      lesson: json['lesson'] ?? '',
+      category: json['category'] ?? '',
+      type: json['type'] ?? '',
+      phase: json['phase'] ?? '',
+      status: json['status'] ?? '',
+      submittedBy: json['submittedBy'] ?? '',
+      notes: json['notes'] ?? '',
+      dateSubmitted: parsed,
     );
   }
 }
@@ -1353,6 +1577,296 @@ class SolutionStakeholderData {
     return SolutionStakeholderData(
       solutionTitle: json['solutionTitle'] ?? '',
       notableStakeholders: json['notableStakeholders'] ?? '',
+    );
+  }
+}
+
+// Technical debt models (top-level)
+class DebtItem {
+  String id;
+  String title;
+  String area;
+  String owner;
+  String severity;
+  String status;
+  String target;
+
+  DebtItem({
+    this.id = '',
+    this.title = '',
+    this.area = '',
+    this.owner = '',
+    this.severity = '',
+    this.status = '',
+    this.target = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'area': area,
+        'owner': owner,
+        'severity': severity,
+        'status': status,
+        'target': target,
+      };
+
+  factory DebtItem.fromJson(Map<String, dynamic> json) => DebtItem(
+        id: json['id'] ?? '',
+        title: json['title'] ?? '',
+        area: json['area'] ?? '',
+        owner: json['owner'] ?? '',
+        severity: json['severity'] ?? '',
+        status: json['status'] ?? '',
+        target: json['target'] ?? '',
+      );
+}
+
+class DebtInsight {
+  String title;
+  String subtitle;
+
+  DebtInsight({this.title = '', this.subtitle = ''});
+
+  Map<String, dynamic> toJson() => {'title': title, 'subtitle': subtitle};
+
+  factory DebtInsight.fromJson(Map<String, dynamic> json) => DebtInsight(
+        title: json['title'] ?? '',
+        subtitle: json['subtitle'] ?? '',
+      );
+}
+
+class RemediationTrack {
+  String label;
+  double progress;
+  int colorValue;
+
+  RemediationTrack({this.label = '', this.progress = 0.0, this.colorValue = 0xFF6366F1});
+
+  Map<String, dynamic> toJson() => {'label': label, 'progress': progress, 'colorValue': colorValue};
+
+  factory RemediationTrack.fromJson(Map<String, dynamic> json) => RemediationTrack(
+        label: json['label'] ?? '',
+        progress: (json['progress'] is num) ? (json['progress'] as num).toDouble() : 0.0,
+        colorValue: json['colorValue'] ?? 0xFF6366F1,
+      );
+}
+
+class OwnerItem {
+  String name;
+  String count;
+  String note;
+
+  OwnerItem({this.name = '', this.count = '', this.note = ''});
+
+  Map<String, dynamic> toJson() => {'name': name, 'count': count, 'note': note};
+
+  factory OwnerItem.fromJson(Map<String, dynamic> json) => OwnerItem(
+        name: json['name'] ?? '',
+        count: json['count'] ?? '',
+        note: json['note'] ?? '',
+      );
+}
+
+// Scenario matrix record persisted in project data
+class ScenarioRecord {
+  String id;
+  String title;
+  String detail;
+  String category; // Impact / Gap / Plan / Custom
+  String owner;
+  int severity; // 1..3
+  int likelihood; // 1..3
+
+  ScenarioRecord({
+    this.id = '',
+    this.title = '',
+    this.detail = '',
+    this.category = 'Custom',
+    this.owner = '',
+    this.severity = 2,
+    this.likelihood = 2,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'detail': detail,
+        'category': category,
+        'owner': owner,
+        'severity': severity,
+        'likelihood': likelihood,
+      };
+
+  factory ScenarioRecord.fromJson(Map<String, dynamic> json) => ScenarioRecord(
+        id: json['id'] ?? '',
+        title: json['title'] ?? '',
+        detail: json['detail'] ?? '',
+        category: json['category'] ?? 'Custom',
+        owner: json['owner'] ?? '',
+        severity: (json['severity'] is num) ? (json['severity'] as num).toInt() : 2,
+        likelihood: (json['likelihood'] is num) ? (json['likelihood'] as num).toInt() : 2,
+      );
+}
+
+class DesignDeliverablesData {
+  final DesignDeliverablesMetrics metrics;
+  final List<DesignDeliverablePipelineItem> pipeline;
+  final List<String> approvals;
+  final List<DesignDeliverableRegisterItem> register;
+  final List<String> dependencies;
+  final List<String> handoffChecklist;
+
+  const DesignDeliverablesData({
+    this.metrics = const DesignDeliverablesMetrics(),
+    this.pipeline = const [],
+    this.approvals = const [],
+    this.register = const [],
+    this.dependencies = const [],
+    this.handoffChecklist = const [],
+  });
+
+  bool get isEmpty =>
+      pipeline.isEmpty &&
+      approvals.isEmpty &&
+      register.isEmpty &&
+      dependencies.isEmpty &&
+      handoffChecklist.isEmpty;
+
+  DesignDeliverablesData copyWith({
+    DesignDeliverablesMetrics? metrics,
+    List<DesignDeliverablePipelineItem>? pipeline,
+    List<String>? approvals,
+    List<DesignDeliverableRegisterItem>? register,
+    List<String>? dependencies,
+    List<String>? handoffChecklist,
+  }) {
+    return DesignDeliverablesData(
+      metrics: metrics ?? this.metrics,
+      pipeline: pipeline ?? this.pipeline,
+      approvals: approvals ?? this.approvals,
+      register: register ?? this.register,
+      dependencies: dependencies ?? this.dependencies,
+      handoffChecklist: handoffChecklist ?? this.handoffChecklist,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'metrics': metrics.toJson(),
+        'pipeline': pipeline.map((item) => item.toJson()).toList(),
+        'approvals': approvals,
+        'register': register.map((item) => item.toJson()).toList(),
+        'dependencies': dependencies,
+        'handoffChecklist': handoffChecklist,
+      };
+
+  factory DesignDeliverablesData.fromJson(Map<String, dynamic> json) {
+    return DesignDeliverablesData(
+      metrics: json['metrics'] is Map<String, dynamic>
+          ? DesignDeliverablesMetrics.fromJson(json['metrics'] as Map<String, dynamic>)
+          : const DesignDeliverablesMetrics(),
+      pipeline: (json['pipeline'] as List?)
+              ?.map((item) => DesignDeliverablePipelineItem.fromJson(Map<String, dynamic>.from(item as Map)))
+              .toList() ??
+          const [],
+      approvals: (json['approvals'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      register: (json['register'] as List?)
+              ?.map((item) => DesignDeliverableRegisterItem.fromJson(Map<String, dynamic>.from(item as Map)))
+              .toList() ??
+          const [],
+      dependencies: (json['dependencies'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      handoffChecklist: (json['handoffChecklist'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+    );
+  }
+}
+
+class DesignDeliverablesMetrics {
+  final int active;
+  final int inReview;
+  final int approved;
+  final int atRisk;
+
+  const DesignDeliverablesMetrics({
+    this.active = 0,
+    this.inReview = 0,
+    this.approved = 0,
+    this.atRisk = 0,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'active': active,
+        'inReview': inReview,
+        'approved': approved,
+        'atRisk': atRisk,
+      };
+
+  factory DesignDeliverablesMetrics.fromJson(Map<String, dynamic> json) {
+    int toInt(dynamic value) {
+      if (value is int) return value;
+      return int.tryParse(value?.toString() ?? '') ?? 0;
+    }
+
+    return DesignDeliverablesMetrics(
+      active: toInt(json['active']),
+      inReview: toInt(json['inReview'] ?? json['in_review']),
+      approved: toInt(json['approved']),
+      atRisk: toInt(json['atRisk'] ?? json['at_risk']),
+    );
+  }
+}
+
+class DesignDeliverablePipelineItem {
+  final String label;
+  final String status;
+
+  const DesignDeliverablePipelineItem({
+    this.label = '',
+    this.status = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'label': label,
+        'status': status,
+      };
+
+  factory DesignDeliverablePipelineItem.fromJson(Map<String, dynamic> json) {
+    return DesignDeliverablePipelineItem(
+      label: json['label']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
+    );
+  }
+}
+
+class DesignDeliverableRegisterItem {
+  final String name;
+  final String owner;
+  final String status;
+  final String due;
+  final String risk;
+
+  const DesignDeliverableRegisterItem({
+    this.name = '',
+    this.owner = '',
+    this.status = '',
+    this.due = '',
+    this.risk = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'owner': owner,
+        'status': status,
+        'due': due,
+        'risk': risk,
+      };
+
+  factory DesignDeliverableRegisterItem.fromJson(Map<String, dynamic> json) {
+    return DesignDeliverableRegisterItem(
+      name: json['name']?.toString() ?? '',
+      owner: json['owner']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
+      due: json['due']?.toString() ?? '',
+      risk: json['risk']?.toString() ?? '',
     );
   }
 }

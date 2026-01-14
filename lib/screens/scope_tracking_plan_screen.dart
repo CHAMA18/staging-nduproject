@@ -53,7 +53,7 @@ class ScopeTrackingPlanScreen extends StatelessWidget {
                             _ScopeTrackingHeader(onBack: () => Navigator.maybePop(context)),
                             const SizedBox(height: 20),
                             const PlanningAiNotesCard(
-                              title: 'AI Notes',
+                              title: 'Notes',
                               sectionLabel: 'Scope Tracking Plan',
                               noteKey: 'planning_scope_tracking_notes',
                               checkpoint: 'scope_tracking_plan',

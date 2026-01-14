@@ -24,6 +24,7 @@ import 'package:ndu_project/widgets/business_case_navigation_buttons.dart';
 // Removed AppLogo from header per request
 import 'package:ndu_project/screens/settings_screen.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/utils/text_sanitizer.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 
 class RiskIdentificationScreen extends StatefulWidget {
@@ -1060,7 +1061,7 @@ _buildKazAiButton(controller, solutionIndex, riskIndex, solutionTitle),
                   padding: const EdgeInsets.only(bottom: 8),
                   child: InkWell(
                     onTap: () {
-                      controller.text = suggestion;
+                      controller.text = TextSanitizer.sanitizeAiText(suggestion);
                       _onDataChanged();
                       Navigator.of(ctx).pop();
                     },

@@ -50,31 +50,30 @@ class BusinessCaseNavigationButtons extends StatelessWidget {
           else
             const SizedBox(width: 120),
 
-          if (hasSkip)
-            OutlinedButton.icon(
-              onPressed: handleSkip,
-              style: OutlinedButton.styleFrom(
-                backgroundColor: const Color(0xFFF8FAFC),
-                foregroundColor: const Color(0xFF475569),
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                side: const BorderSide(color: Color(0xFFE2E8F0)),
-                textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-              ),
-              icon: const Icon(Icons.skip_next_rounded, size: 18),
-              label: Text(skipLabel),
-            ),
-
-          // Forward button
-          if (hasNext)
-            _NavigationButton(
-              icon: Icons.arrow_forward_ios,
-              label: 'Next',
-              onPressed: handleNext,
-              isForward: true,
-            )
-          else
-            const SizedBox(width: 120),
+          Row(
+            children: [
+              if (hasSkip)
+                _NavigationButton(
+                  icon: Icons.skip_next_rounded,
+                  label: skipLabel,
+                  onPressed: handleSkip!,
+                  isForward: true,
+                  minWidth: 120,
+                ),
+              if (hasSkip && hasNext) const SizedBox(width: 12),
+              // Forward button
+              if (hasNext)
+                _NavigationButton(
+                  icon: Icons.arrow_forward_ios,
+                  label: 'Next',
+                  onPressed: handleNext,
+                  isForward: true,
+                  minWidth: 120,
+                )
+              else
+                const SizedBox(width: 120),
+            ],
+          ),
         ],
       ),
     );
@@ -86,12 +85,14 @@ class _NavigationButton extends StatelessWidget {
   final String label;
   final VoidCallback onPressed;
   final bool isForward;
+  final double? minWidth;
 
   const _NavigationButton({
     required this.icon,
     required this.label,
     required this.onPressed,
     required this.isForward,
+    this.minWidth,
   });
 
   @override
@@ -108,6 +109,7 @@ class _NavigationButton extends StatelessWidget {
         elevation: 2,
         shadowColor: Colors.black.withOpacity(0.1),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        minimumSize: minWidth == null ? null : Size(minWidth!, 48),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: BorderSide(

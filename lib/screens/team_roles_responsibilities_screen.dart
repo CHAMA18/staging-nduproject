@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:ndu_project/widgets/draggable_sidebar.dart';
+import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
+import 'package:ndu_project/widgets/responsive.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class TeamRolesResponsibilitiesScreen extends StatefulWidget {
   const TeamRolesResponsibilitiesScreen({super.key});
@@ -67,83 +73,100 @@ class _TeamRolesResponsibilitiesScreenState extends State<TeamRolesResponsibilit
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isMobile = AppBreakpoints.isMobile(context);
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Stack(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
-              child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+            DraggableSidebar(
+              openWidth: AppBreakpoints.sidebarWidth(context),
+              child: const InitiationLikeSidebar(
+                activeItemLabel: 'Roles & Responsibilities',
+              ),
+            ),
+            Expanded(
+              child: Stack(
                 children: [
-                  // Back navigation placed before the title text
-                  IconButton(
-                    tooltip: 'Back',
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF1F1F1F)),
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      'Manage Roles & Responsibilites',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF1F1F1F),
-                          ) ??
-                          const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1F1F1F),
-                          ),
+                  SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isMobile ? 20 : 32,
+                      vertical: 32,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // Back navigation placed before the title text
+                            IconButton(
+                              tooltip: 'Back',
+                              onPressed: () => Navigator.of(context).maybePop(),
+                              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF1F1F1F)),
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                'Manage Roles & Responsibilites',
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFF1F1F1F),
+                                    ) ??
+                                    const TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF1F1F1F),
+                                    ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            _YellowActionButton(
+                              label: 'Add New Member',
+                              icon: Icons.add,
+                              onPressed: () => _showMemberDialog(),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 32),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final maxWidth = constraints.maxWidth;
+                            const spacing = 24.0;
+                            final cardWidth = maxWidth >= 1080
+                                ? (maxWidth - spacing * 2) / 3
+                                : maxWidth >= 720
+                                    ? (maxWidth - spacing) / 2
+                                    : maxWidth;
+
+                            return Wrap(
+                              spacing: spacing,
+                              runSpacing: spacing,
+                              children: _members.asMap().entries.map((entry) {
+                                final index = entry.key;
+                                final data = entry.value;
+                                return SizedBox(
+                                  width: cardWidth,
+                                  child: _RoleCard(
+                                    data: data,
+                                    onEdit: () => _showMemberDialog(editIndex: index),
+                                    onDelete: () => _confirmDeleteMember(index),
+                                  ),
+                                );
+                              }).toList(),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 24),
+                      ],
                     ),
                   ),
-                   const SizedBox(width: 16),
-                   _YellowActionButton(
-                     label: 'Add New Member',
-                     icon: Icons.add,
-                     onPressed: () => _showMemberDialog(),
-                   ),
+                  const KazAiChatBubble(),
                 ],
               ),
-              const SizedBox(height: 32),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final maxWidth = constraints.maxWidth;
-                  const spacing = 24.0;
-                  final cardWidth = maxWidth >= 1080
-                      ? (maxWidth - spacing * 2) / 3
-                      : maxWidth >= 720
-                          ? (maxWidth - spacing) / 2
-                          : maxWidth;
-
-                   return Wrap(
-                     spacing: spacing,
-                     runSpacing: spacing,
-                     children: _members.asMap().entries.map((entry) {
-                       final index = entry.key;
-                       final data = entry.value;
-                       return SizedBox(
-                         width: cardWidth,
-                         child: _RoleCard(
-                           data: data,
-                           onEdit: () => _showMemberDialog(editIndex: index),
-                           onDelete: () => _confirmDeleteMember(index),
-                         ),
-                       );
-                     }).toList(),
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
-        const KazAiChatBubble(),
+            ),
           ],
         ),
       ),
@@ -690,6 +713,240 @@ class _TeamMemberDialog extends StatefulWidget {
 }
 
 class _TeamMemberDialogState extends State<_TeamMemberDialog> {
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final title = _isEditing ? 'Edit team member' : 'Add team member';
+    final subtitle = _isEditing
+        ? 'Update role ownership and responsibilities.'
+        : 'Define role ownership and responsibilities.';
+
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            const gap = 16.0;
+            final width = constraints.maxWidth;
+            final twoCol = width >= 640;
+            final fieldWidth = twoCol ? (width - gap) / 2 : width;
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: colors.primary.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(Icons.group_add_outlined, color: colors.primary),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: colors.onSurface,
+                                  ) ??
+                                  TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: colors.onSurface,
+                                  ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              subtitle,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colors.onSurfaceVariant,
+                                  ) ??
+                                  TextStyle(
+                                    fontSize: 12,
+                                    color: colors.onSurfaceVariant,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: Icon(Icons.close, color: colors.outline),
+                        splashRadius: 20,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  const _SectionLabel(label: 'Identity'),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: gap,
+                    runSpacing: gap,
+                    children: [
+                      SizedBox(
+                        width: fieldWidth,
+                        child: _DialogTextField(
+                          controller: _nameController,
+                          label: 'Full name',
+                          hint: 'e.g. Ama Kwame',
+                          icon: Icons.person_outline,
+                        ),
+                      ),
+                      SizedBox(
+                        width: fieldWidth,
+                        child: _DialogTextField(
+                          controller: _roleController,
+                          label: 'Role title',
+                          hint: 'e.g. Project Manager',
+                          icon: Icons.work_outline,
+                        ),
+                      ),
+                      SizedBox(
+                        width: fieldWidth,
+                        child: _DialogTextField(
+                          controller: _emailController,
+                          label: 'Work email',
+                          hint: 'name@company.com',
+                          icon: Icons.mail_outline,
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                      ),
+                      SizedBox(
+                        width: fieldWidth,
+                        child: _DialogTextField(
+                          controller: _phoneController,
+                          label: 'Phone number',
+                          hint: 'e.g. +233 24 000 0000',
+                          icon: Icons.phone_outlined,
+                          keyboardType: TextInputType.phone,
+                        ),
+                      ),
+                      SizedBox(
+                        width: fieldWidth,
+                        child: _DialogTextField(
+                          controller: _departmentController,
+                          label: 'Department',
+                          hint: 'e.g. Product',
+                          icon: Icons.apartment_outlined,
+                        ),
+                      ),
+                      SizedBox(
+                        width: fieldWidth,
+                        child: _DialogTextField(
+                          controller: _locationController,
+                          label: 'Location',
+                          hint: 'e.g. Accra (GMT)',
+                          icon: Icons.place_outlined,
+                        ),
+                      ),
+                      SizedBox(
+                        width: fieldWidth,
+                        child: _DateSelector(
+                          label: 'Start date',
+                          hint: 'Select date',
+                          value: _startDate,
+                          onSelect: (date) => setState(() => _startDate = date),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  _ChoicePills(
+                    label: 'Team placement',
+                    options: const ['Core team', 'Extended team', 'External partner'],
+                    selectedValue: _teamPlacement,
+                    onChanged: (value) => setState(() => _teamPlacement = value),
+                  ),
+                  const SizedBox(height: 20),
+                  _ChoicePills(
+                    label: 'Access level',
+                    options: const ['Full access', 'Limited access', 'View only'],
+                    selectedValue: _accessLevel,
+                    onChanged: (value) => setState(() => _accessLevel = value),
+                  ),
+                  const SizedBox(height: 20),
+                  const _SectionLabel(label: 'Responsibilities'),
+                  const SizedBox(height: 12),
+                  _DialogTextField(
+                    controller: _responsibilitiesController,
+                    label: 'Key responsibilities',
+                    hint: 'Add key responsibilities, one per line',
+                    icon: Icons.list_alt_outlined,
+                    maxLines: 4,
+                  ),
+                  const SizedBox(height: 20),
+                  const _SectionLabel(label: 'Work progress'),
+                  const SizedBox(height: 12),
+                  ..._workProgressEntries.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final draft = entry.value;
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        bottom: index == _workProgressEntries.length - 1 ? 0 : 12,
+                      ),
+                      child: _WorkProgressEntryEditor(
+                        index: index,
+                        draft: draft,
+                        statusOptions: _statusOptions,
+                        onStatusChanged: (value) => setState(() => draft.status = value),
+                        onRemove: _workProgressEntries.length > 1
+                            ? () => _removeWorkProgressEntry(index)
+                            : null,
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    onPressed: _addWorkProgressEntry,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add work item'),
+                  ),
+                  const SizedBox(height: 20),
+                  const _SectionLabel(label: 'Notes'),
+                  const SizedBox(height: 12),
+                  _DialogTextField(
+                    controller: _notesController,
+                    label: 'Additional notes',
+                    hint: 'Optional notes about this team member',
+                    icon: Icons.note_outlined,
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Cancel'),
+                      ),
+                      const Spacer(),
+                      _YellowActionButton(
+                        label: _isEditing ? 'Save changes' : 'Add member',
+                        icon: Icons.check_circle_outline,
+                        onPressed: _handleSaveMember,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
   final _nameController = TextEditingController();
   final _roleController = TextEditingController();
   final _emailController = TextEditingController();
@@ -875,332 +1132,57 @@ class _TeamMemberDialogState extends State<_TeamMemberDialog> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final textTheme = theme.textTheme;
-    final screenHeight = MediaQuery.of(context).size.height;
-    final double maxDialogHeight = screenHeight.isFinite && screenHeight > 0
-        ? (screenHeight * 0.85).clamp(420.0, 800.0).toDouble()
-        : 720.0;
+  // --- AI Suggestion Helper (now in dialog state) ---
+  Future<String> fetchOpenAiSuggestion(String field) async {
+    // Replace with your actual OpenAI API key and endpoint
+    const apiKey = 'YOUR_OPENAI_API_KEY';
+    const endpoint = 'https://api.openai.com/v1/chat/completions';
 
-    return Dialog(
-      backgroundColor: colors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: 760, maxHeight: maxDialogHeight),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(28, 28, 28, 0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: colors.primaryContainer,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: colors.primary.withOpacity(0.08)),
-                    ),
-                    child: Icon(Icons.group_add_outlined, size: 32, color: colors.onPrimaryContainer),
-                  ),
-                  const SizedBox(width: 18),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _isEditing ? 'Update Team Member' : 'Add New Team Member',
-                          style: textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: colors.onSurface,
-                              ) ??
-                              TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w700,
-                                color: colors.onSurface,
-                              ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Capture the essentials so teammates can jump in with clarity and the right level of access.',
-                          style: textTheme.bodyMedium?.copyWith(
-                                height: 1.5,
-                                color: colors.onSurfaceVariant,
-                              ) ??
-                              TextStyle(
-                                fontSize: 14,
-                                height: 1.5,
-                                color: colors.onSurfaceVariant,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    splashRadius: 24,
-                    icon: Icon(Icons.close, color: colors.onSurfaceVariant),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            Divider(height: 1, color: colors.surfaceContainerHighest.withOpacity(0.6)),
-            Flexible(
-              fit: FlexFit.loose,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(28, 24, 28, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _SectionLabel(label: 'Profile Details'),
-                    const SizedBox(height: 18),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final maxWidth = constraints.maxWidth;
-                        final double fieldWidth;
-                        if (maxWidth >= 640) {
-                          fieldWidth = (maxWidth - 20) / 2;
-                        } else {
-                          fieldWidth = maxWidth;
-                        }
-
-                        return Wrap(
-                          spacing: 20,
-                          runSpacing: 18,
-                          children: [
-                            SizedBox(
-                              width: fieldWidth,
-                              child: _DialogTextField(
-                                controller: _nameController,
-                                label: 'Full name',
-                                hint: 'e.g. Ama Kwame',
-                                icon: Icons.person_outline,
-                              ),
-                            ),
-                            SizedBox(
-                              width: fieldWidth,
-                              child: _DialogTextField(
-                                controller: _roleController,
-                                label: 'Role / Title',
-                                hint: 'Project Manager, QA Lead...',
-                                icon: Icons.badge_outlined,
-                              ),
-                            ),
-                            SizedBox(
-                              width: fieldWidth,
-                              child: _DialogTextField(
-                                controller: _emailController,
-                                label: 'Work email',
-                                hint: 'name@company.com',
-                                keyboardType: TextInputType.emailAddress,
-                                icon: Icons.alternate_email,
-                              ),
-                            ),
-                            SizedBox(
-                              width: fieldWidth,
-                              child: _DialogTextField(
-                                controller: _phoneController,
-                                label: 'Phone number',
-                                hint: '+233 555 123 456',
-                                keyboardType: TextInputType.phone,
-                                icon: Icons.call_outlined,
-                              ),
-                            ),
-                            SizedBox(
-                              width: fieldWidth,
-                              child: _DialogTextField(
-                                controller: _departmentController,
-                                label: 'Department',
-                                hint: 'IT, Finance, Operations...',
-                                icon: Icons.apartment_outlined,
-                              ),
-                            ),
-                            SizedBox(
-                              width: fieldWidth,
-                              child: _DialogTextField(
-                                controller: _locationController,
-                                label: 'Location / Time zone',
-                                hint: 'Accra (GMT), Remote...',
-                                icon: Icons.public_outlined,
-                              ),
-                            ),
-                            SizedBox(
-                              width: fieldWidth,
-                              child: _DateSelector(
-                                label: 'Joining date',
-                                hint: 'Select date',
-                                value: _startDate,
-                                onSelect: (date) => setState(() => _startDate = date),
-                              ),
-                            ),
-                            SizedBox(
-                              width: fieldWidth,
-                              child: _ChoicePills(
-                                label: 'Team placement',
-                                options: const ['Core team', 'Extended support', 'Stakeholder'],
-                                selectedValue: _teamPlacement,
-                                onChanged: (value) => setState(() => _teamPlacement = value),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 32),
-                    _SectionLabel(label: 'Responsibilities & Access'),
-                    const SizedBox(height: 18),
-                    Container(
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: colors.surfaceContainerHighest.withOpacity(0.35),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: colors.outlineVariant),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Outline the tasks this teammate owns and set the right permissions for project data.',
-                            style: textTheme.bodySmall?.copyWith(
-                                  height: 1.6,
-                                  color: colors.onSurfaceVariant,
-                                ) ??
-                                TextStyle(
-                                  fontSize: 13,
-                                  height: 1.6,
-                                  color: colors.onSurfaceVariant,
-                                ),
-                          ),
-                          const SizedBox(height: 18),
-                          _DialogTextField(
-                            controller: _responsibilitiesController,
-                            label: 'Key responsibilities',
-                            hint: 'List primary outcomes, deliverables, or focus areas (one per line).',
-                            maxLines: 4,
-                            icon: Icons.check_circle_outline,
-                          ),
-                          const SizedBox(height: 18),
-                          _ChoicePills(
-                            label: 'Access level',
-                            options: const ['Full access', 'Edit only', 'View only'],
-                            selectedValue: _accessLevel,
-                            onChanged: (value) => setState(() => _accessLevel = value),
-                            pillColor: colors.surfaceContainerHighest,
-                            selectedColor: colors.primary,
-                          ),
-                          const SizedBox(height: 18),
-                          _DialogTextField(
-                            controller: _notesController,
-                            label: 'Collaboration notes',
-                            hint: 'Share onboarding context, preferred communication channels, availability, etc.',
-                            maxLines: 3,
-                            icon: Icons.sticky_note_2_outlined,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    _SectionLabel(label: 'Work Progress'),
-                    const SizedBox(height: 18),
-                    Container(
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: colors.surfaceContainerHighest.withOpacity(0.35),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: colors.outlineVariant),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Document active deliverables or checkpoints this teammate is responsible for and their latest status.',
-                            style: textTheme.bodySmall?.copyWith(
-                                  height: 1.6,
-                                  color: colors.onSurfaceVariant,
-                                ) ??
-                                TextStyle(
-                                  fontSize: 13,
-                                  height: 1.6,
-                                  color: colors.onSurfaceVariant,
-                                ),
-                          ),
-                          const SizedBox(height: 18),
-                          ..._workProgressEntries.asMap().entries.map((entry) {
-                            final index = entry.key;
-                            final draft = entry.value;
-                            final showRemove = _workProgressEntries.length > 1;
-                            return Padding(
-                              padding: EdgeInsets.only(bottom: index == _workProgressEntries.length - 1 ? 0 : 18),
-                              child: _WorkProgressEntryEditor(
-                                index: index,
-                                draft: draft,
-                                statusOptions: _statusOptions,
-                                onStatusChanged: (value) => setState(() => draft.status = value),
-                                onRemove: showRemove ? () => _removeWorkProgressEntry(index) : null,
-                              ),
-                            );
-                          }),
-                          const SizedBox(height: 18),
-                          OutlinedButton.icon(
-                            onPressed: _addWorkProgressEntry,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: colors.primary,
-                              side: BorderSide(color: colors.primary.withOpacity(0.4)),
-                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                              backgroundColor: colors.surface,
-                            ),
-                            icon: const Icon(Icons.add),
-                            label: const Text('Add work item'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Divider(height: 1, color: colors.surfaceContainerHighest.withOpacity(0.6)),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(28, 20, 28, 28),
-              child: Row(
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-                      foregroundColor: colors.onSurfaceVariant,
-                    ),
-                    child: const Text('Cancel'),
-                  ),
-                  const Spacer(),
-                   ElevatedButton(
-                     onPressed: _handleSaveMember,
-                     style: ElevatedButton.styleFrom(
-                       elevation: 0,
-                       padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-                       backgroundColor: colors.primary,
-                       foregroundColor: colors.onPrimary,
-                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                     ),
-                     child: Text(
-                       _isEditing ? 'Update Member' : 'Save Member',
-                       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                     ),
-                   ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+    final prompt = _buildPromptForField(field);
+    final response = await http.post(
+      Uri.parse(endpoint),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $apiKey',
+      },
+      body: jsonEncode({
+        'model': 'gpt-4',
+        'messages': [
+          {'role': 'system', 'content': 'You are an expert HR assistant for software teams.'},
+          {'role': 'user', 'content': prompt},
+        ],
+        'max_tokens': 60,
+        'temperature': 0.7,
+      }),
     );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final suggestion = data['choices'][0]['message']['content']?.trim();
+      return suggestion ?? '';
+    } else {
+      return '';
+    }
+  }
+
+  String _buildPromptForField(String field) {
+    switch (field) {
+      case 'full_name':
+        return 'Suggest a realistic full name for a software project team member.';
+      case 'role_title':
+        return 'Suggest a world-class role/title for a software project team (e.g., Project Manager, QA Lead, DevOps Engineer).';
+      case 'work_email':
+        return 'Suggest a professional work email address for a team member named Ama Kwame.';
+      case 'phone_number':
+        return 'Suggest a realistic phone number for a team member in Ghana.';
+      case 'department':
+        return 'Suggest a department for a software project team member (e.g., IT, Engineering, Product).';
+      case 'location':
+        return 'Suggest a location or time zone for a remote software team member.';
+      case 'responsibilities':
+        return 'Suggest 3-5 key responsibilities for a world-class software project team member.';
+      default:
+        return 'Suggest a value for $field.';
+    }
   }
 }
 
@@ -1228,6 +1210,15 @@ class _SectionLabel extends StatelessWidget {
 }
 
 class _DialogTextField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final IconData? icon;
+  final TextInputType? keyboardType;
+  final int maxLines;
+  final ValueChanged<String>? onChanged;
+  final Widget? suffixIcon;
+
   const _DialogTextField({
     required this.controller,
     required this.label,
@@ -1236,15 +1227,8 @@ class _DialogTextField extends StatelessWidget {
     this.keyboardType,
     this.maxLines = 1,
     this.onChanged,
+    this.suffixIcon,
   });
-
-  final TextEditingController controller;
-  final String label;
-  final String hint;
-  final IconData? icon;
-  final TextInputType? keyboardType;
-  final int maxLines;
-  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -1264,6 +1248,7 @@ class _DialogTextField extends StatelessWidget {
         labelText: label,
         hintText: hint,
         prefixIcon: icon == null ? null : Icon(icon, color: colors.primary),
+        suffixIcon: suffixIcon,
         alignLabelWithHint: maxLines > 1,
         filled: true,
         fillColor: colors.surfaceContainerHighest.withOpacity(0.4),
@@ -1456,4 +1441,20 @@ class _DateSelector extends StatelessWidget {
     ];
     return months[month - 1];
   }
+}
+
+// --- Firestore CRUD for Roles & Responsibilities ---
+final _rolesCollection = FirebaseFirestore.instance.collection('organization_roles');
+
+Future<void> addOrUpdateRole(String docId, Map<String, dynamic> data) async {
+  await _rolesCollection.doc(docId).set(data, SetOptions(merge: true));
+}
+
+Future<void> deleteRole(String docId) async {
+  await _rolesCollection.doc(docId).delete();
+}
+
+Stream<List<Map<String, dynamic>>> getRolesStream() {
+  return _rolesCollection.snapshots().map((snapshot) =>
+      snapshot.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList());
 }

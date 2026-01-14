@@ -597,7 +597,7 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
     return SizedBox(
       width: 360,
       child: const PlanningAiNotesCard(
-        title: 'AI Notes',
+  title: 'Notes',
         sectionLabel: 'Work Breakdown Structure',
         noteKey: 'planning_wbs_notes',
         checkpoint: 'wbs',

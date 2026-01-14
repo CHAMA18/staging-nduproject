@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/utils/text_sanitizer.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
 class AiRecommendationsScreen extends StatefulWidget {
@@ -43,8 +44,9 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
     final ai = OpenAiServiceSecure();
     final ctx = '${p.projectData.projectName}\n${p.projectData.solutionTitle}\n${p.projectData.projectObjective}';
     try {
-      final text = await ai.generateFepSectionText(section: 'AI Recommendations', context: ctx, maxTokens: 800);
-      final lines = text.split('\n').where((l) => l.trim().isNotEmpty).toList();
+  final text = await ai.generateFepSectionText(section: 'AI Recommendations', context: ctx, maxTokens: 800);
+  final sanitized = TextSanitizer.sanitizeAiText(text);
+  final lines = sanitized.split('\n').where((l) => l.trim().isNotEmpty).toList();
       setState(() => _items..clear()..addAll(lines.map((l) => {'recommendation': l.trim()})));
       await _save();
     } catch (e) {

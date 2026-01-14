@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'package:ndu_project/screens/actual_vs_planned_gap_analysis_screen.dart';
 import 'package:ndu_project/screens/deliver_project_closure_screen.dart';
-import 'package:ndu_project/screens/demobilize_team_screen.dart';
 import 'package:ndu_project/screens/scope_completion_screen.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
@@ -12,6 +10,7 @@ import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/models/project_data_model.dart';
 
 class GapAnalysisScopeReconcillationScreen extends StatefulWidget {
   const GapAnalysisScopeReconcillationScreen({
@@ -772,10 +771,10 @@ class _GapRegisterCard extends StatelessWidget {
                   ),
                   child: Row(
                     children: const [
-                      _TableHeaderCell(flex: 2, label: 'Gap'),
-                      _TableHeaderCell(label: 'Priority'),
-                      _TableHeaderCell(label: 'Owner'),
-                      _TableHeaderCell(flex: 2, label: 'Next step'),
+                      _TableHeaderCell(flex: 3, label: 'Gap'),
+                      _TableHeaderCell(flex: 1, label: 'Priority'),
+                      _TableHeaderCell(flex: 1, label: 'Owner'),
+                      _TableHeaderCell(flex: 3, label: 'Next step'),
                     ],
                   ),
                 ),
@@ -787,16 +786,23 @@ class _GapRegisterCard extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        Expanded(flex: 2, child: _GapTitleCell(entry: entry)),
-                        _PriorityBadge(label: entry.stage),
+                        Expanded(flex: 3, child: _GapTitleCell(entry: entry)),
                         Expanded(
+                          flex: 1,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: _PriorityBadge(label: entry.stage),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 1,
                           child: Text(
                             entry.owner,
                             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1F2937)),
                           ),
                         ),
                         Expanded(
-                          flex: 2,
+                          flex: 3,
                           child: Text(
                             entry.nextStep,
                             style: const TextStyle(fontSize: 13, color: Color(0xFF4B5563), fontWeight: FontWeight.w500),
@@ -1102,7 +1108,7 @@ class _ScenarioMatrixDialogState extends State<_ScenarioMatrixDialog> {
             ],
           ),
         ),
-        Container(
+  Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: const Color(0xFFF8FAFC),
@@ -1113,11 +1119,93 @@ class _ScenarioMatrixDialogState extends State<_ScenarioMatrixDialog> {
         ),
         const SizedBox(width: 8),
         IconButton(
+          tooltip: 'Add scenario',
+          onPressed: () {
+            final fep = ProjectDataHelper.getData(context).frontEndPlanning;
+            _openEditDialog(context, currentList: fep.scenarioMatrixItems);
+          },
+          icon: const Icon(Icons.add, color: Color(0xFF94A3B8)),
+        ),
+        IconButton(
           tooltip: 'Close',
           onPressed: () => Navigator.of(context).pop(),
           icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
         ),
       ],
+    );
+  }
+
+  Future<void> _openEditDialog(BuildContext context, {ScenarioRecord? record, List<ScenarioRecord>? currentList}) async {
+    final id = record?.id ?? DateTime.now().microsecondsSinceEpoch.toString();
+    final titleCtrl = TextEditingController(text: record?.title ?? '');
+    final detailCtrl = TextEditingController(text: record?.detail ?? '');
+    var category = record?.category ?? 'Custom';
+    var owner = record?.owner ?? '';
+    var severity = record?.severity ?? 2;
+    var likelihood = record?.likelihood ?? 2;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(record == null ? 'Add scenario' : 'Edit scenario'),
+        content: SingleChildScrollView(
+          child: Column(
+            children: [
+              TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Title')),
+              const SizedBox(height: 8),
+              TextField(controller: detailCtrl, decoration: const InputDecoration(labelText: 'Detail')),
+              const SizedBox(height: 8),
+              TextField(onChanged: (v) => owner = v, controller: TextEditingController(text: owner), decoration: const InputDecoration(labelText: 'Owner')),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(initialValue: category, items: ['Custom', 'Impact', 'Gap', 'Plan'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(), onChanged: (v) => category = v ?? 'Custom', decoration: const InputDecoration(labelText: 'Category')),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(child: DropdownButtonFormField<int>(initialValue: severity, items: [1, 2, 3].map((i) => DropdownMenuItem(value: i, child: Text('Severity $i'))).toList(), onChanged: (v) => severity = v ?? 2, decoration: const InputDecoration(labelText: 'Severity'))),
+                const SizedBox(width: 8),
+                Expanded(child: DropdownButtonFormField<int>(initialValue: likelihood, items: [1, 2, 3].map((i) => DropdownMenuItem(value: i, child: Text('Likelihood $i'))).toList(), onChanged: (v) => likelihood = v ?? 2, decoration: const InputDecoration(labelText: 'Likelihood'))),
+              ])
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Save')),
+        ],
+      ),
+    );
+
+    if (saved != true) return;
+
+    final newRecord = ScenarioRecord(id: id, title: titleCtrl.text.trim(), detail: detailCtrl.text.trim(), category: category, owner: owner, severity: severity, likelihood: likelihood);
+    // update provider
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'gap_analysis_scope_reconcillation',
+      dataUpdater: (current) {
+        final fep = current.frontEndPlanning;
+        final updated = FrontEndPlanningData(
+          requirements: fep.requirements,
+          requirementsNotes: fep.requirementsNotes,
+          risks: fep.risks,
+          opportunities: fep.opportunities,
+          contractVendorQuotes: fep.contractVendorQuotes,
+          procurement: fep.procurement,
+          security: fep.security,
+          allowance: fep.allowance,
+          summary: fep.summary,
+          technology: fep.technology,
+          personnel: fep.personnel,
+          infrastructure: fep.infrastructure,
+          contracts: fep.contracts,
+          requirementItems: fep.requirementItems,
+          technicalDebtItems: fep.technicalDebtItems,
+          technicalDebtRootCauses: fep.technicalDebtRootCauses,
+          technicalDebtTracks: fep.technicalDebtTracks,
+          technicalDebtOwners: fep.technicalDebtOwners,
+          scenarioMatrixItems: [...fep.scenarioMatrixItems.where((s) => s.id != id), newRecord],
+        );
+        return current.copyWith(frontEndPlanning: updated);
+      },
     );
   }
 
@@ -1225,7 +1313,12 @@ class _ScenarioMatrixDialogState extends State<_ScenarioMatrixDialog> {
   }
 
   Widget _buildInsightsPanel(List<_ScenarioPoint> scenarios) {
-    final sorted = [...scenarios]..sort((a, b) => b.score.compareTo(a.score));
+  final persisted = ProjectDataHelper.getData(context).frontEndPlanning.scenarioMatrixItems.map((r) {
+      return _ScenarioPoint(title: r.title, detail: r.detail, category: r.category, owner: r.owner, severity: r.severity, likelihood: r.likelihood);
+    }).toList();
+
+    final merged = [...scenarios, ...persisted];
+    final sorted = [...merged]..sort((a, b) => b.score.compareTo(a.score));
     final topThree = sorted.take(3).toList();
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1245,8 +1338,11 @@ class _ScenarioMatrixDialogState extends State<_ScenarioMatrixDialog> {
           if (topThree.isEmpty)
             const Text('No scenarios match the current filters.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B)))
           else
-            ...topThree.map(
-              (scenario) => Container(
+            ...topThree.map((scenario) {
+              // locate persisted record id if any
+              final match = ProjectDataHelper.getData(context).frontEndPlanning.scenarioMatrixItems.firstWhere((r) => r.title == scenario.title && r.detail == scenario.detail, orElse: () => ScenarioRecord(id: '', title: '', detail: '', category: '', owner: '', severity: 2, likelihood: 2));
+              final isPersisted = match.id.isNotEmpty;
+              return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -1263,6 +1359,52 @@ class _ScenarioMatrixDialogState extends State<_ScenarioMatrixDialog> {
                           child: Text(scenario.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                         ),
                         _ScorePill(score: scenario.score),
+                        const SizedBox(width: 8),
+                        if (isPersisted)
+                          IconButton(
+                            tooltip: 'Edit',
+                            onPressed: () {
+                              final rec = ProjectDataHelper.getData(context).frontEndPlanning.scenarioMatrixItems.firstWhere((r) => r.id == match.id);
+                              _openEditDialog(context, record: rec);
+                            },
+                            icon: const Icon(Icons.edit, size: 18),
+                          ),
+                        if (isPersisted)
+                          IconButton(
+                            tooltip: 'Delete',
+                            onPressed: () async {
+                              final confirmed = await showDialog<bool>(context: context, builder: (_) => AlertDialog(title: const Text('Delete scenario?'), content: const Text('This will remove the scenario from the project.'), actions: [TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')), ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete'))]));
+                              if (confirmed == true) {
+                                await ProjectDataHelper.updateAndSave(context: context, checkpoint: 'gap_analysis_scope_reconcillation', dataUpdater: (current) {
+                                  final fep = current.frontEndPlanning;
+                                  final updated = FrontEndPlanningData(
+                                    requirements: fep.requirements,
+                                    requirementsNotes: fep.requirementsNotes,
+                                    risks: fep.risks,
+                                    opportunities: fep.opportunities,
+                                    contractVendorQuotes: fep.contractVendorQuotes,
+                                    procurement: fep.procurement,
+                                    security: fep.security,
+                                    allowance: fep.allowance,
+                                    summary: fep.summary,
+                                    technology: fep.technology,
+                                    personnel: fep.personnel,
+                                    infrastructure: fep.infrastructure,
+                                    contracts: fep.contracts,
+                                    requirementItems: fep.requirementItems,
+                                    technicalDebtItems: fep.technicalDebtItems,
+                                    technicalDebtRootCauses: fep.technicalDebtRootCauses,
+                                    technicalDebtTracks: fep.technicalDebtTracks,
+                                    technicalDebtOwners: fep.technicalDebtOwners,
+                                    scenarioMatrixItems: fep.scenarioMatrixItems.where((s) => s.id != match.id).toList(),
+                                  );
+                                  return current.copyWith(frontEndPlanning: updated);
+                                });
+                                setState(() {});
+                              }
+                            },
+                            icon: const Icon(Icons.delete_outline, size: 18),
+                          ),
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -1277,8 +1419,8 @@ class _ScenarioMatrixDialogState extends State<_ScenarioMatrixDialog> {
                     ),
                   ],
                 ),
-              ),
-            ),
+              );
+            }),
           const Spacer(),
           OutlinedButton.icon(
             onPressed: () {},
@@ -1898,7 +2040,6 @@ class _PriorityBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(right: 12),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(color: _badgeColor(), borderRadius: BorderRadius.circular(30)),
       child: Text(

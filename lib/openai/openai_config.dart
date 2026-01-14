@@ -208,7 +208,7 @@ class OpenAiAutocompleteService {
           buffer.write(entry);
         }
       }
-      if (buffer.isNotEmpty) return buffer.toString();
+  if (buffer.isNotEmpty) return buffer.toString().replaceAll('*', '');
     }
 
     final choices = payload['choices'];
@@ -218,17 +218,18 @@ class OpenAiAutocompleteService {
         final message = first['message'];
         if (message is Map<String, dynamic>) {
           final content = message['content'];
-          if (content is String) return content;
+          if (content is String) return content.replaceAll('*', '');
           if (content is List) {
             return content
-                .map((e) => e is Map<String, dynamic> ? e['text'] ?? '' : e ?? '')
-                .join();
+                .map((e) => e is Map<String, dynamic> ? (e['text'] ?? '') : (e ?? ''))
+                .join()
+                .replaceAll('*', '');
           }
         }
         final text = first['text'];
-        if (text is String) return text;
+  if (text is String) return text.replaceAll('*', '');
       } else if (first is String) {
-        return first;
+  return first.toString().replaceAll('*', '');
       }
     }
 

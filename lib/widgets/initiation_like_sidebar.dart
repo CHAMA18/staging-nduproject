@@ -219,6 +219,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     return !_isCheckpointReached(checkpointName);
   }
 
+
   @override
   void initState() {
     super.initState();
@@ -990,6 +991,47 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     }
   }
 
+  void _openPreferredSolutionsComparison() {
+    try {
+      final provider = ProjectDataInherited.maybeOf(context);
+      final projectData = provider?.projectData;
+      final potentialSolutions = projectData?.potentialSolutions ?? [];
+      final solutions = potentialSolutions
+          .map((s) => AiSolutionItem(title: s.title, description: s.description))
+          .toList();
+      final safeSolutions = solutions.isNotEmpty
+          ? solutions
+          : [
+              AiSolutionItem(
+                title: projectData?.projectName ?? 'Preferred Solution',
+                description: projectData?.businessCase ?? '',
+              ),
+            ];
+      final preferredAnalysis = projectData?.preferredSolutionAnalysis;
+      final selectedSolution = (preferredAnalysis?.selectedSolutionTitle != null)
+          ? safeSolutions.firstWhere(
+              (s) => s.title == preferredAnalysis!.selectedSolutionTitle,
+              orElse: () => safeSolutions.first,
+            )
+          : safeSolutions.first;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ProjectDecisionSummaryScreen(
+            projectName: projectData?.projectName ?? 'Untitled Project',
+            selectedSolution: selectedSolution,
+            allSolutions: safeSolutions,
+            businessCase: projectData?.businessCase ?? '',
+            notes: preferredAnalysis?.workingNotes ?? '',
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Navigation error (Preferred Solutions): $e');
+    }
+  }
+
   void _openWorkBreakdownStructure() {
     _navigateWithCheckpoint('work_breakdown_structure', const WorkBreakdownStructureScreen());
   }
@@ -1370,6 +1412,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
                     ),
                     if (_executiveSummaryExpanded) ...[
                       _buildSubSubMenuItem('Preferred Solution Analysis', onTap: _openPreferredSolutionAnalysis, isActive: widget.activeItemLabel == 'Preferred Solution Analysis'),
+                      _buildSubSubMenuItem('Preferred Solutions', onTap: _openPreferredSolutionsComparison, isActive: widget.activeItemLabel == 'Preferred Solutions'),
                     ],
                   ],
                   _buildSubExpandableHeader(
@@ -1865,6 +1908,9 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     }
     if ('preferred solution analysis'.contains(query) || 'preferred'.contains(query)) {
       results.add(_buildMenuItem(Icons.fact_check_outlined, 'Preferred Solution Analysis', onTap: _openPreferredSolutionAnalysis, isActive: widget.activeItemLabel == 'Preferred Solution Analysis'));
+    }
+    if ('preferred solutions'.contains(query) || 'preferred comparison'.contains(query)) {
+      results.add(_buildMenuItem(Icons.fact_check_outlined, 'Preferred Solutions', onTap: _openPreferredSolutionsComparison, isActive: widget.activeItemLabel == 'Preferred Solutions'));
     }
     if ('work breakdown structure'.contains(query) || 'wbs'.contains(query) || 'breakdown'.contains(query)) {
       results.add(

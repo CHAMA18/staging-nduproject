@@ -141,7 +141,11 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
         children: [
           Column(
             children: [
-              const PlanningPhaseHeader(title: 'Design Phase'),
+              const PlanningPhaseHeader(
+                title: 'Design Phase',
+                showImportButton: false,
+                showContentButton: false,
+              ),
               Expanded(
                 child: SingleChildScrollView(
                   padding: EdgeInsets.all(padding),
@@ -180,7 +184,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                         decoration: BoxDecoration(
                           color: const Color(0xFF2A3441),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.grey.withOpacity(0.2), width: 1),
+                          border: Border.all(color: Colors.transparent, width: 0),
                         ),
                         child: TextField(
                           controller: _notesController,

@@ -85,7 +85,7 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
                         _TopUtilityBar(onBack: () => Navigator.maybePop(context)),
                         const SizedBox(height: 24),
                         const PlanningAiNotesCard(
-                          title: 'AI Notes',
+                          title: 'Notes',
                           sectionLabel: 'Cost Estimate',
                           noteKey: 'planning_cost_estimate_notes',
                           checkpoint: 'cost_estimate',

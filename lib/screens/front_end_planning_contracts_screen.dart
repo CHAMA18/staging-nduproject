@@ -180,7 +180,7 @@ class _FrontEndPlanningContractsScreenState
                               ),
                               const SizedBox(height: 20),
                               const PlanningAiNotesCard(
-                                title: 'AI Notes',
+                                title: 'Notes',
                                 sectionLabel: 'Contract',
                                 noteKey: 'planning_contract_notes',
                                 checkpoint: 'contracts',
@@ -669,8 +669,9 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
                                         validator: (v) {
                                           final t = v?.trim() ?? '';
                                           final d = double.tryParse(t);
-                                          if (d == null || d <= 0)
+                                          if (d == null || d <= 0) {
                                             return 'Enter a valid amount';
+                                          }
                                           return null;
                                         },
                                       ),
@@ -1725,7 +1726,11 @@ class _QuoteRowData {
 }
 
 class _LabeledField extends StatelessWidget {
-  const _LabeledField({required this.label, required this.child, this.helper});
+  const _LabeledField({
+    required this.label,
+    required this.child,
+    this.helper,
+  });
 
   final String label;
   final Widget child;
@@ -6672,8 +6677,9 @@ class _StatusTimelineCellData {
   static _TimelineStatusState _statusFromText(String statusText) {
     final text = statusText.toLowerCase();
     if (text.contains('complete')) return _TimelineStatusState.complete;
-    if (text.contains('behind') || text.contains('risk'))
+    if (text.contains('behind') || text.contains('risk')) {
       return _TimelineStatusState.behindSchedule;
+    }
     if (text.contains('progress')) return _TimelineStatusState.inProgress;
     return _TimelineStatusState.notStarted;
   }

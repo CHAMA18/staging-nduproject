@@ -75,7 +75,7 @@ class _PlanningSubsectionScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 20),
                             PlanningAiNotesCard(
-                              title: 'AI Notes',
+                              title: 'Notes',
                               sectionLabel: config.title,
                               noteKey: config.noteKey,
                               checkpoint: config.checkpoint,
@@ -313,9 +313,8 @@ class _SectionData {
   const _SectionData({
     required this.title,
     required this.subtitle,
-    this.bullets = const [],
-    this.statusRows = const [],
-  });
+  })  : bullets = const [],
+        statusRows = const [];
 
   final String title;
   final String subtitle;

@@ -645,7 +645,7 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
           _buildHeader(context),
           const SizedBox(height: 32),
           const PlanningAiNotesCard(
-            title: 'AI Notes',
+            title: 'Notes',
             sectionLabel: 'Deliverable Roadmap',
             noteKey: 'planning_deliverable_roadmap_notes',
             checkpoint: 'deliverable_roadmap',

@@ -425,12 +425,6 @@ class _ControlButtons extends StatelessWidget {
           label: 'Compare Contractors',
           onPressed: () {},
         ),
-        _GhostButton(
-          icon: Icons.file_upload_outlined,
-          label: 'Export',
-          onPressed: () {},
-          isSecondary: true,
-        ),
       ],
     );
   }

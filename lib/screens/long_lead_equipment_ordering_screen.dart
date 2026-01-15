@@ -1,8 +1,12 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/theme.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
 
 class LongLeadEquipmentOrderingScreen extends StatefulWidget {
   const LongLeadEquipmentOrderingScreen({super.key});
@@ -13,32 +17,94 @@ class LongLeadEquipmentOrderingScreen extends StatefulWidget {
 
 class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrderingScreen> {
   final TextEditingController _notesController = TextEditingController();
+  final _Debouncer _saveDebounce = _Debouncer();
+  bool _isLoading = false;
+  bool _suspendNotesSave = false;
 
-  // Equipment categories data
-  final List<_EquipmentCategory> _categories = [
-    _EquipmentCategory('Critical path equipment', 'Items that must arrive before key milestones can begin.'),
-    _EquipmentCategory('Long-lead manufacturing', 'Custom or specialized items with extended production times.'),
-    _EquipmentCategory('Import & logistics-dependent', 'Equipment requiring customs clearance or complex shipping.'),
-  ];
+  final List<_EquipmentCategory> _categories = [];
+  final List<_EquipmentItem> _equipmentItems = [];
+  final List<_ProcurementAction> _actions = [];
 
-  // Equipment tracking data
-  final List<_EquipmentItem> _equipmentItems = [
-    _EquipmentItem('Primary processing unit', 'Vendor A', '12 weeks', 'Ordered'),
-    _EquipmentItem('Control system modules', 'Vendor B', '8 weeks', 'In production'),
-    _EquipmentItem('Safety interlock system', 'Vendor C', '16 weeks', 'Pending approval'),
-  ];
+  final List<String> _criticalityOptions = const ['High', 'Medium', 'Low'];
+  final List<String> _equipmentStatusOptions = const ['Planned', 'Ordered', 'In production', 'In transit', 'Delivered', 'On hold'];
+  final List<String> _actionStatusOptions = const ['Planned', 'Active', 'Blocked', 'Completed'];
 
-  // Procurement actions data
-  final List<_ProcurementAction> _actions = [
-    _ProcurementAction('Pre-order specifications', 'Finalize technical specs and delivery requirements early.'),
-    _ProcurementAction('Vendor coordination', 'Confirm production schedules and staging requirements.'),
-    _ProcurementAction('Contingency planning', 'Identify alternate sources and expedite options if needed.'),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _notesController.addListener(() {
+      if (_suspendNotesSave) return;
+      _scheduleSave();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadFromFirestore());
+  }
 
   @override
   void dispose() {
     _notesController.dispose();
+    _saveDebounce.dispose();
     super.dispose();
+  }
+
+  String? _projectId() => ProjectDataHelper.getData(context).projectId;
+
+  Future<void> _loadFromFirestore() async {
+    final projectId = _projectId();
+    if (projectId == null || projectId.isEmpty) return;
+    setState(() => _isLoading = true);
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('design_phase_sections')
+          .doc('long_lead_equipment_ordering')
+          .get();
+      final data = doc.data() ?? {};
+      _suspendNotesSave = true;
+      _notesController.text = data['notes']?.toString() ?? '';
+      _suspendNotesSave = false;
+      final categories = _EquipmentCategory.fromList(data['categories']);
+      final equipmentItems = _EquipmentItem.fromList(data['equipmentItems']);
+      final actions = _ProcurementAction.fromList(data['actions']);
+      if (!mounted) return;
+      setState(() {
+        _categories
+          ..clear()
+          ..addAll(categories);
+        _equipmentItems
+          ..clear()
+          ..addAll(equipmentItems);
+        _actions
+          ..clear()
+          ..addAll(actions);
+      });
+    } catch (error) {
+      debugPrint('Failed to load long lead equipment ordering data: $error');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _scheduleSave() {
+    _saveDebounce.run(_saveToFirestore);
+  }
+
+  Future<void> _saveToFirestore() async {
+    final projectId = _projectId();
+    if (projectId == null || projectId.isEmpty) return;
+    final payload = {
+      'notes': _notesController.text.trim(),
+      'categories': _categories.map((entry) => entry.toJson()).toList(),
+      'equipmentItems': _equipmentItems.map((entry) => entry.toJson()).toList(),
+      'actions': _actions.map((entry) => entry.toJson()).toList(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+    await FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId)
+        .collection('design_phase_sections')
+        .doc('long_lead_equipment_ordering')
+        .set(payload, SetOptions(merge: true));
   }
 
   @override
@@ -50,13 +116,19 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
       activeItemLabel: 'Long Lead Equipment Ordering',
       body: Column(
         children: [
-          const PlanningPhaseHeader(title: 'Design Phase'),
+          const PlanningPhaseHeader(
+            title: 'Design Phase',
+            showImportButton: false,
+            showContentButton: false,
+          ),
           Expanded(
             child: SingleChildScrollView(
               padding: EdgeInsets.all(padding),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (_isLoading) const LinearProgressIndicator(minHeight: 2),
+                  if (_isLoading) const SizedBox(height: 16),
                   // Page Title
                   Text(
                     'Long Lead Equipment Ordering',
@@ -82,26 +154,7 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
                   ),
                   const SizedBox(height: 24),
 
-                  // Notes Input
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppSemanticColors.border),
-                    ),
-                    child: TextField(
-                      controller: _notesController,
-                      maxLines: 2,
-                      decoration: InputDecoration(
-                        hintText: 'Input your notes here (equipment lead times, vendor contacts, critical dates)',
-                        hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
-                        border: InputBorder.none,
-                        isDense: true,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                  ),
+                  _buildNotesCard(),
                   const SizedBox(height: 16),
 
                   // Helper Text
@@ -135,146 +188,26 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
   }
 
   Widget _buildCategoriesCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppSemanticColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text('Equipment categories', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-              ),
-              TextButton.icon(
-                onPressed: _showCreateCategoryDialog,
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('Create Item'),
-                style: TextButton.styleFrom(
-                  foregroundColor: LightModeColors.accent,
-                  padding: EdgeInsets.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  minimumSize: const Size(0, 32),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text('Types of items requiring early procurement', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-          const SizedBox(height: 16),
-          ...List.generate(
-            _categories.length,
-            (index) => _buildCategoryItem(
-              _categories[index],
-              onModify: () => _showEditCategoryDialog(index),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryItem(_EquipmentCategory item, {required VoidCallback onModify}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            margin: const EdgeInsets.only(top: 5),
-            decoration: BoxDecoration(
-              color: LightModeColors.accent,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Text(item.description, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: onModify,
-            style: TextButton.styleFrom(
-              foregroundColor: LightModeColors.accent,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              minimumSize: const Size(0, 32),
-            ),
-            child: const Text('Modify', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
+    return _SectionCard(
+      title: 'Equipment categories',
+      subtitle: 'Types of items requiring early procurement.',
+      actionLabel: 'Create item',
+      onAction: _addCategory,
+      child: _buildCategoriesTable(),
     );
   }
 
   Widget _buildEquipmentTrackingCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppSemanticColors.border),
-      ),
+    return _SectionCard(
+      title: 'Equipment tracking',
+      subtitle: 'Current status of long-lead items.',
+      actionLabel: 'Create item',
+      onAction: _addEquipmentItem,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text('Equipment tracking', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-              ),
-              TextButton.icon(
-                onPressed: _showCreateEquipmentDialog,
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('Create Item'),
-                style: TextButton.styleFrom(
-                  foregroundColor: LightModeColors.accent,
-                  padding: EdgeInsets.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  minimumSize: const Size(0, 32),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text('Current status of long-lead items', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-          const SizedBox(height: 16),
-          // Table Header
-          Row(
-            children: [
-              Expanded(flex: 2, child: Text('Item', style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500))),
-              Expanded(flex: 2, child: Text('Vendor', style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500))),
-              Expanded(flex: 1, child: Text('Lead time', style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500))),
-              Expanded(flex: 1, child: Text('Status', style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500))),
-              Expanded(flex: 1, child: Text('Modify', style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500))),
-            ],
-          ),
-          const Divider(height: 16),
-          ...List.generate(
-            _equipmentItems.length,
-            (index) => _buildEquipmentRow(
-              _equipmentItems[index],
-              onModify: () => _showEditEquipmentDialog(index),
-            ),
-          ),
-          const SizedBox(height: 16),
+          _buildEquipmentTable(),
+          const SizedBox(height: 12),
           Text(
             'Track all equipment with lead times exceeding 4 weeks to ensure timely delivery.',
             style: TextStyle(fontSize: 12, color: Colors.grey[600]),
@@ -284,89 +217,16 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
     );
   }
 
-  Widget _buildEquipmentRow(_EquipmentItem item, {required VoidCallback onModify}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(flex: 2, child: Text(item.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
-          Expanded(flex: 2, child: Text(item.vendor, style: TextStyle(fontSize: 12, color: Colors.grey[700]))),
-          Expanded(flex: 1, child: Text(item.leadTime, style: TextStyle(fontSize: 12, color: Colors.grey[700]))),
-          Expanded(
-            flex: 1,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: Colors.grey[300]!),
-              ),
-              child: Text(item.status, style: TextStyle(fontSize: 11, color: Colors.grey[700]), textAlign: TextAlign.center),
-            ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: onModify,
-                style: TextButton.styleFrom(
-                  foregroundColor: LightModeColors.accent,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  minimumSize: const Size(0, 32),
-                ),
-                child: const Text('Modify', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildProcurementActionsCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppSemanticColors.border),
-      ),
+    return _SectionCard(
+      title: 'Procurement actions',
+      subtitle: 'Steps to manage long-lead procurement.',
+      actionLabel: 'Create item',
+      onAction: _addAction,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text('Procurement actions', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-              ),
-              TextButton.icon(
-                onPressed: _showCreateActionDialog,
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('Create Item'),
-                style: TextButton.styleFrom(
-                  foregroundColor: LightModeColors.accent,
-                  padding: EdgeInsets.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  minimumSize: const Size(0, 32),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text('Steps to manage long-lead procurement', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          _buildActionsTable(),
           const SizedBox(height: 16),
-          ...List.generate(
-            _actions.length,
-            (index) => _buildActionItem(
-              _actions[index],
-              onModify: () => _showEditActionDialog(index),
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Export button
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -380,52 +240,6 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionItem(_ProcurementAction item, {required VoidCallback onModify}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            margin: const EdgeInsets.only(top: 5),
-            decoration: BoxDecoration(
-              color: LightModeColors.accent,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Text(item.description, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: onModify,
-            style: TextButton.styleFrom(
-              foregroundColor: LightModeColors.accent,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              minimumSize: const Size(0, 32),
-            ),
-            child: const Text('Modify', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -517,405 +331,788 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
     );
   }
 
-  Future<void> _showCreateCategoryDialog() async {
-    final titleController = TextEditingController();
-    final descriptionController = TextEditingController();
-
-    final result = await showDialog<_EquipmentCategory>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Create Category'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(labelText: 'Title'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: descriptionController,
-              decoration: const InputDecoration(labelText: 'Description'),
-            ),
-          ],
+  Widget _buildNotesCard() {
+    return _SectionCard(
+      title: 'Notes',
+      subtitle: 'Capture lead times, vendor constraints, and critical dates.',
+      child: TextField(
+        controller: _notesController,
+        maxLines: 3,
+        decoration: InputDecoration(
+          hintText: 'Document key ordering considerations, vendor contacts, and escalation triggers.',
+          hintStyle: TextStyle(color: Colors.grey[500], fontSize: 13),
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final title = titleController.text.trim();
-              if (title.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Title is required.')),
-                );
-                return;
-              }
-              final description = descriptionController.text.trim();
-              Navigator.of(dialogContext).pop(_EquipmentCategory(title, description));
-            },
-            child: const Text('Create'),
-          ),
-        ],
       ),
     );
-
-    if (result != null) {
-      setState(() => _categories.add(result));
-    }
   }
 
-  Future<void> _showEditCategoryDialog(int index) async {
-    final current = _categories[index];
-    final titleController = TextEditingController(text: current.title);
-    final descriptionController = TextEditingController(text: current.description);
-
-    final result = await showDialog<_EditResult<_EquipmentCategory>>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Modify Category'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(labelText: 'Title'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: descriptionController,
-              decoration: const InputDecoration(labelText: 'Description'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(const _EditResult.delete()),
-            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-            child: const Text('Delete'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final title = titleController.text.trim();
-              if (title.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Title is required.')),
-                );
-                return;
-              }
-              final description = descriptionController.text.trim();
-              Navigator.of(dialogContext).pop(
-                _EditResult.save(_EquipmentCategory(title, description)),
-              );
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-
-    if (result == null) return;
-    if (result.action == _EditAction.delete) {
-      setState(() => _categories.removeAt(index));
-      return;
-    }
-    if (result.item != null) {
-      setState(() => _categories[index] = result.item!);
-    }
+  void _addCategory() {
+    setState(() => _categories.add(_EquipmentCategory.empty()));
+    _scheduleSave();
   }
 
-  Future<void> _showCreateEquipmentDialog() async {
-    final nameController = TextEditingController();
-    final vendorController = TextEditingController();
-    final leadTimeController = TextEditingController();
-    final statusController = TextEditingController();
-
-    final result = await showDialog<_EquipmentItem>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Create Equipment Item'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(labelText: 'Item'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: vendorController,
-              decoration: const InputDecoration(labelText: 'Vendor'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: leadTimeController,
-              decoration: const InputDecoration(labelText: 'Lead time'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: statusController,
-              decoration: const InputDecoration(labelText: 'Status'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final name = nameController.text.trim();
-              if (name.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Item name is required.')),
-                );
-                return;
-              }
-              final vendor = vendorController.text.trim();
-              final leadTime = leadTimeController.text.trim();
-              final status = statusController.text.trim();
-              Navigator.of(dialogContext).pop(_EquipmentItem(name, vendor, leadTime, status));
-            },
-            child: const Text('Create'),
-          ),
-        ],
-      ),
-    );
-
-    if (result != null) {
-      setState(() => _equipmentItems.add(result));
-    }
+  void _updateCategory(_EquipmentCategory updated) {
+    final index = _categories.indexWhere((entry) => entry.id == updated.id);
+    if (index == -1) return;
+    setState(() => _categories[index] = updated);
+    _scheduleSave();
   }
 
-  Future<void> _showEditEquipmentDialog(int index) async {
-    final current = _equipmentItems[index];
-    final nameController = TextEditingController(text: current.name);
-    final vendorController = TextEditingController(text: current.vendor);
-    final leadTimeController = TextEditingController(text: current.leadTime);
-    final statusController = TextEditingController(text: current.status);
-
-    final result = await showDialog<_EditResult<_EquipmentItem>>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Modify Equipment Item'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(labelText: 'Item'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: vendorController,
-              decoration: const InputDecoration(labelText: 'Vendor'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: leadTimeController,
-              decoration: const InputDecoration(labelText: 'Lead time'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: statusController,
-              decoration: const InputDecoration(labelText: 'Status'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(const _EditResult.delete()),
-            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-            child: const Text('Delete'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final name = nameController.text.trim();
-              if (name.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Item name is required.')),
-                );
-                return;
-              }
-              final vendor = vendorController.text.trim();
-              final leadTime = leadTimeController.text.trim();
-              final status = statusController.text.trim();
-              Navigator.of(dialogContext).pop(
-                _EditResult.save(_EquipmentItem(name, vendor, leadTime, status)),
-              );
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-
-    if (result == null) return;
-    if (result.action == _EditAction.delete) {
-      setState(() => _equipmentItems.removeAt(index));
-      return;
-    }
-    if (result.item != null) {
-      setState(() => _equipmentItems[index] = result.item!);
-    }
+  void _deleteCategory(String id) {
+    setState(() => _categories.removeWhere((entry) => entry.id == id));
+    _scheduleSave();
   }
 
-  Future<void> _showCreateActionDialog() async {
-    final titleController = TextEditingController();
-    final descriptionController = TextEditingController();
-
-    final result = await showDialog<_ProcurementAction>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Create Procurement Action'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(labelText: 'Title'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: descriptionController,
-              decoration: const InputDecoration(labelText: 'Description'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final title = titleController.text.trim();
-              if (title.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Title is required.')),
-                );
-                return;
-              }
-              final description = descriptionController.text.trim();
-              Navigator.of(dialogContext).pop(_ProcurementAction(title, description));
-            },
-            child: const Text('Create'),
-          ),
-        ],
-      ),
-    );
-
-    if (result != null) {
-      setState(() => _actions.add(result));
-    }
+  void _addEquipmentItem() {
+    setState(() => _equipmentItems.add(_EquipmentItem.empty()));
+    _scheduleSave();
   }
 
-  Future<void> _showEditActionDialog(int index) async {
-    final current = _actions[index];
-    final titleController = TextEditingController(text: current.title);
-    final descriptionController = TextEditingController(text: current.description);
+  void _updateEquipmentItem(_EquipmentItem updated) {
+    final index = _equipmentItems.indexWhere((entry) => entry.id == updated.id);
+    if (index == -1) return;
+    setState(() => _equipmentItems[index] = updated);
+    _scheduleSave();
+  }
 
-    final result = await showDialog<_EditResult<_ProcurementAction>>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Modify Procurement Action'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(labelText: 'Title'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: descriptionController,
-              decoration: const InputDecoration(labelText: 'Description'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(const _EditResult.delete()),
-            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-            child: const Text('Delete'),
+  void _deleteEquipmentItem(String id) {
+    setState(() => _equipmentItems.removeWhere((entry) => entry.id == id));
+    _scheduleSave();
+  }
+
+  void _addAction() {
+    setState(() => _actions.add(_ProcurementAction.empty()));
+    _scheduleSave();
+  }
+
+  void _updateAction(_ProcurementAction updated) {
+    final index = _actions.indexWhere((entry) => entry.id == updated.id);
+    if (index == -1) return;
+    setState(() => _actions[index] = updated);
+    _scheduleSave();
+  }
+
+  void _deleteAction(String id) {
+    setState(() => _actions.removeWhere((entry) => entry.id == id));
+    _scheduleSave();
+  }
+
+  Widget _buildCategoriesTable() {
+    final columns = [
+      const _TableColumnDef('Category', 200),
+      const _TableColumnDef('Description', 260),
+      const _TableColumnDef('Criticality', 140),
+      const _TableColumnDef('Lead time threshold', 180),
+      const _TableColumnDef('Owner', 160),
+      const _TableColumnDef('', 60),
+    ];
+
+    if (_categories.isEmpty) {
+      return const _InlineEmptyState(
+        title: 'No categories yet',
+        message: 'Add categories to classify long-lead items.',
+      );
+    }
+
+    return _EditableTable(
+      columns: columns,
+      rows: [
+        for (final entry in _categories)
+          _EditableRow(
+            key: ValueKey(entry.id),
+            columns: columns,
+            cells: [
+              _TextCell(
+                value: entry.title,
+                fieldKey: '${entry.id}_title',
+                hintText: 'Category',
+                onChanged: (value) => _updateCategory(entry.copyWith(title: value)),
+              ),
+              _TextCell(
+                value: entry.description,
+                fieldKey: '${entry.id}_desc',
+                hintText: 'Description',
+                maxLines: 2,
+                onChanged: (value) => _updateCategory(entry.copyWith(description: value)),
+              ),
+              _DropdownCell(
+                value: entry.criticality,
+                fieldKey: '${entry.id}_criticality',
+                options: _criticalityOptions,
+                onChanged: (value) => _updateCategory(entry.copyWith(criticality: value)),
+              ),
+              _TextCell(
+                value: entry.leadTimeThreshold,
+                fieldKey: '${entry.id}_threshold',
+                hintText: 'e.g., 6 weeks',
+                onChanged: (value) => _updateCategory(entry.copyWith(leadTimeThreshold: value)),
+              ),
+              _TextCell(
+                value: entry.owner,
+                fieldKey: '${entry.id}_owner',
+                hintText: 'Owner',
+                onChanged: (value) => _updateCategory(entry.copyWith(owner: value)),
+              ),
+              _DeleteCell(onPressed: () => _deleteCategory(entry.id)),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final title = titleController.text.trim();
-              if (title.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Title is required.')),
-                );
-                return;
-              }
-              final description = descriptionController.text.trim();
-              Navigator.of(dialogContext).pop(
-                _EditResult.save(_ProcurementAction(title, description)),
-              );
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+      ],
     );
+  }
 
-    if (result == null) return;
-    if (result.action == _EditAction.delete) {
-      setState(() => _actions.removeAt(index));
-      return;
+  Widget _buildEquipmentTable() {
+    final columns = [
+      const _TableColumnDef('Item', 220),
+      const _TableColumnDef('Category', 180),
+      const _TableColumnDef('Vendor', 180),
+      const _TableColumnDef('Lead time', 140),
+      const _TableColumnDef('Expected delivery', 160),
+      const _TableColumnDef('Status', 160),
+      const _TableColumnDef('Owner', 160),
+      const _TableColumnDef('', 60),
+    ];
+
+    if (_equipmentItems.isEmpty) {
+      return const _InlineEmptyState(
+        title: 'No equipment items yet',
+        message: 'Add equipment to track procurement status.',
+      );
     }
-    if (result.item != null) {
-      setState(() => _actions[index] = result.item!);
+
+    return _EditableTable(
+      columns: columns,
+      rows: [
+        for (final entry in _equipmentItems)
+          _EditableRow(
+            key: ValueKey(entry.id),
+            columns: columns,
+            cells: [
+              _TextCell(
+                value: entry.name,
+                fieldKey: '${entry.id}_name',
+                hintText: 'Item',
+                onChanged: (value) => _updateEquipmentItem(entry.copyWith(name: value)),
+              ),
+              _TextCell(
+                value: entry.category,
+                fieldKey: '${entry.id}_category',
+                hintText: 'Category',
+                onChanged: (value) => _updateEquipmentItem(entry.copyWith(category: value)),
+              ),
+              _TextCell(
+                value: entry.vendor,
+                fieldKey: '${entry.id}_vendor',
+                hintText: 'Vendor',
+                onChanged: (value) => _updateEquipmentItem(entry.copyWith(vendor: value)),
+              ),
+              _TextCell(
+                value: entry.leadTime,
+                fieldKey: '${entry.id}_lead',
+                hintText: 'e.g., 12 weeks',
+                onChanged: (value) => _updateEquipmentItem(entry.copyWith(leadTime: value)),
+              ),
+              _TextCell(
+                value: entry.expectedDelivery,
+                fieldKey: '${entry.id}_delivery',
+                hintText: 'YYYY-MM-DD',
+                onChanged: (value) => _updateEquipmentItem(entry.copyWith(expectedDelivery: value)),
+              ),
+              _DropdownCell(
+                value: entry.status,
+                fieldKey: '${entry.id}_status',
+                options: _equipmentStatusOptions,
+                onChanged: (value) => _updateEquipmentItem(entry.copyWith(status: value)),
+              ),
+              _TextCell(
+                value: entry.owner,
+                fieldKey: '${entry.id}_owner',
+                hintText: 'Owner',
+                onChanged: (value) => _updateEquipmentItem(entry.copyWith(owner: value)),
+              ),
+              _DeleteCell(onPressed: () => _deleteEquipmentItem(entry.id)),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Widget _buildActionsTable() {
+    final columns = [
+      const _TableColumnDef('Action', 240),
+      const _TableColumnDef('Owner', 180),
+      const _TableColumnDef('Due date', 140),
+      const _TableColumnDef('Status', 160),
+      const _TableColumnDef('Notes', 240),
+      const _TableColumnDef('', 60),
+    ];
+
+    if (_actions.isEmpty) {
+      return const _InlineEmptyState(
+        title: 'No actions yet',
+        message: 'Add procurement actions and owners.',
+      );
     }
+
+    return _EditableTable(
+      columns: columns,
+      rows: [
+        for (final entry in _actions)
+          _EditableRow(
+            key: ValueKey(entry.id),
+            columns: columns,
+            cells: [
+              _TextCell(
+                value: entry.title,
+                fieldKey: '${entry.id}_title',
+                hintText: 'Action',
+                onChanged: (value) => _updateAction(entry.copyWith(title: value)),
+              ),
+              _TextCell(
+                value: entry.owner,
+                fieldKey: '${entry.id}_owner',
+                hintText: 'Owner',
+                onChanged: (value) => _updateAction(entry.copyWith(owner: value)),
+              ),
+              _TextCell(
+                value: entry.dueDate,
+                fieldKey: '${entry.id}_due',
+                hintText: 'YYYY-MM-DD',
+                onChanged: (value) => _updateAction(entry.copyWith(dueDate: value)),
+              ),
+              _DropdownCell(
+                value: entry.status,
+                fieldKey: '${entry.id}_status',
+                options: _actionStatusOptions,
+                onChanged: (value) => _updateAction(entry.copyWith(status: value)),
+              ),
+              _TextCell(
+                value: entry.notes,
+                fieldKey: '${entry.id}_notes',
+                hintText: 'Notes',
+                maxLines: 2,
+                onChanged: (value) => _updateAction(entry.copyWith(notes: value)),
+              ),
+              _DeleteCell(onPressed: () => _deleteAction(entry.id)),
+            ],
+          ),
+      ],
+    );
   }
 }
 
-enum _EditAction { save, delete }
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({
+    required this.title,
+    required this.subtitle,
+    required this.child,
+    this.actionLabel,
+    this.onAction,
+  });
 
-class _EditResult<T> {
-  const _EditResult.save(this.item) : action = _EditAction.save;
-  const _EditResult.delete()
-      : action = _EditAction.delete,
-        item = null;
+  final String title;
+  final String subtitle;
+  final Widget child;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
-  final _EditAction action;
-  final T? item;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppSemanticColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                  ],
+                ),
+              ),
+              if (actionLabel != null && onAction != null)
+                TextButton.icon(
+                  onPressed: onAction,
+                  icon: const Icon(Icons.add, size: 16),
+                  label: Text(actionLabel!),
+                  style: TextButton.styleFrom(
+                    foregroundColor: LightModeColors.accent,
+                    padding: EdgeInsets.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    minimumSize: const Size(0, 32),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _EditableTable extends StatelessWidget {
+  const _EditableTable({required this.columns, required this.rows});
+
+  final List<_TableColumnDef> columns;
+  final List<_EditableRow> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final header = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F4F6),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: columns
+            .map((column) => SizedBox(
+                  width: column.width,
+                  child: Text(
+                    column.label.toUpperCase(),
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.7, color: Color(0xFF6B7280)),
+                  ),
+                ))
+            .toList(),
+      ),
+    );
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minWidth: columns.fold<double>(0, (sum, col) => sum + col.width)),
+        child: Column(
+          children: [
+            header,
+            const SizedBox(height: 8),
+            for (int i = 0; i < rows.length; i++)
+              Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: i.isEven ? Colors.white : const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                ),
+                child: rows[i],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EditableRow extends StatelessWidget {
+  const _EditableRow({super.key, required this.columns, required this.cells});
+
+  final List<_TableColumnDef> columns;
+  final List<Widget> cells;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: List.generate(
+        cells.length,
+        (index) => SizedBox(width: columns[index].width, child: cells[index]),
+      ),
+    );
+  }
+}
+
+class _TableColumnDef {
+  const _TableColumnDef(this.label, this.width);
+
+  final String label;
+  final double width;
+}
+
+class _TextCell extends StatelessWidget {
+  const _TextCell({
+    required this.value,
+    required this.fieldKey,
+    required this.onChanged,
+    this.hintText,
+    this.maxLines = 1,
+  });
+
+  final String value;
+  final String fieldKey;
+  final ValueChanged<String> onChanged;
+  final String? hintText;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      key: ValueKey(fieldKey),
+      initialValue: value,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        hintText: hintText,
+        isDense: true,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      ),
+      style: const TextStyle(fontSize: 12, color: Color(0xFF111827)),
+      onChanged: onChanged,
+    );
+  }
+}
+
+class _DropdownCell extends StatelessWidget {
+  const _DropdownCell({
+    required this.value,
+    required this.fieldKey,
+    required this.options,
+    required this.onChanged,
+  });
+
+  final String value;
+  final String fieldKey;
+  final List<String> options;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final resolvedValue = options.contains(value) ? value : options.first;
+    return DropdownButtonFormField<String>(
+      key: ValueKey(fieldKey),
+      value: resolvedValue,
+      items: options.map((option) => DropdownMenuItem(value: option, child: Text(option))).toList(),
+      onChanged: (value) {
+        if (value != null) onChanged(value);
+      },
+      decoration: InputDecoration(
+        isDense: true,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      ),
+      style: const TextStyle(fontSize: 12, color: Color(0xFF111827)),
+    );
+  }
+}
+
+class _DeleteCell extends StatelessWidget {
+  const _DeleteCell({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onPressed,
+      icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
+      tooltip: 'Delete',
+    );
+  }
+}
+
+class _InlineEmptyState extends StatelessWidget {
+  const _InlineEmptyState({required this.title, required this.message});
+
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7ED),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.info_outline, size: 18, color: Color(0xFFF59E0B)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                const SizedBox(height: 4),
+                Text(message, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _EquipmentCategory {
+  const _EquipmentCategory({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.criticality,
+    required this.leadTimeThreshold,
+    required this.owner,
+  });
+
+  final String id;
   final String title;
   final String description;
+  final String criticality;
+  final String leadTimeThreshold;
+  final String owner;
 
-  _EquipmentCategory(this.title, this.description);
+  factory _EquipmentCategory.empty() {
+    return _EquipmentCategory(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      title: '',
+      description: '',
+      criticality: 'Medium',
+      leadTimeThreshold: '',
+      owner: '',
+    );
+  }
+
+  _EquipmentCategory copyWith({
+    String? title,
+    String? description,
+    String? criticality,
+    String? leadTimeThreshold,
+    String? owner,
+  }) {
+    return _EquipmentCategory(
+      id: id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      criticality: criticality ?? this.criticality,
+      leadTimeThreshold: leadTimeThreshold ?? this.leadTimeThreshold,
+      owner: owner ?? this.owner,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'criticality': criticality,
+      'leadTimeThreshold': leadTimeThreshold,
+      'owner': owner,
+    };
+  }
+
+  static List<_EquipmentCategory> fromList(dynamic raw) {
+    if (raw is! List) return [];
+    return raw.whereType<Map>().map((item) {
+      final data = Map<String, dynamic>.from(item);
+      return _EquipmentCategory(
+        id: data['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        title: data['title']?.toString() ?? '',
+        description: data['description']?.toString() ?? '',
+        criticality: data['criticality']?.toString() ?? 'Medium',
+        leadTimeThreshold: data['leadTimeThreshold']?.toString() ?? '',
+        owner: data['owner']?.toString() ?? '',
+      );
+    }).toList();
+  }
 }
 
 class _EquipmentItem {
+  const _EquipmentItem({
+    required this.id,
+    required this.name,
+    required this.category,
+    required this.vendor,
+    required this.leadTime,
+    required this.expectedDelivery,
+    required this.status,
+    required this.owner,
+  });
+
+  final String id;
   final String name;
+  final String category;
   final String vendor;
   final String leadTime;
+  final String expectedDelivery;
   final String status;
+  final String owner;
 
-  _EquipmentItem(this.name, this.vendor, this.leadTime, this.status);
+  factory _EquipmentItem.empty() {
+    return _EquipmentItem(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      name: '',
+      category: '',
+      vendor: '',
+      leadTime: '',
+      expectedDelivery: '',
+      status: 'Planned',
+      owner: '',
+    );
+  }
+
+  _EquipmentItem copyWith({
+    String? name,
+    String? category,
+    String? vendor,
+    String? leadTime,
+    String? expectedDelivery,
+    String? status,
+    String? owner,
+  }) {
+    return _EquipmentItem(
+      id: id,
+      name: name ?? this.name,
+      category: category ?? this.category,
+      vendor: vendor ?? this.vendor,
+      leadTime: leadTime ?? this.leadTime,
+      expectedDelivery: expectedDelivery ?? this.expectedDelivery,
+      status: status ?? this.status,
+      owner: owner ?? this.owner,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'category': category,
+      'vendor': vendor,
+      'leadTime': leadTime,
+      'expectedDelivery': expectedDelivery,
+      'status': status,
+      'owner': owner,
+    };
+  }
+
+  static List<_EquipmentItem> fromList(dynamic raw) {
+    if (raw is! List) return [];
+    return raw.whereType<Map>().map((item) {
+      final data = Map<String, dynamic>.from(item);
+      return _EquipmentItem(
+        id: data['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        name: data['name']?.toString() ?? '',
+        category: data['category']?.toString() ?? '',
+        vendor: data['vendor']?.toString() ?? '',
+        leadTime: data['leadTime']?.toString() ?? '',
+        expectedDelivery: data['expectedDelivery']?.toString() ?? '',
+        status: data['status']?.toString() ?? 'Planned',
+        owner: data['owner']?.toString() ?? '',
+      );
+    }).toList();
+  }
 }
 
 class _ProcurementAction {
-  final String title;
-  final String description;
+  const _ProcurementAction({
+    required this.id,
+    required this.title,
+    required this.owner,
+    required this.dueDate,
+    required this.status,
+    required this.notes,
+  });
 
-  _ProcurementAction(this.title, this.description);
+  final String id;
+  final String title;
+  final String owner;
+  final String dueDate;
+  final String status;
+  final String notes;
+
+  factory _ProcurementAction.empty() {
+    return _ProcurementAction(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      title: '',
+      owner: '',
+      dueDate: '',
+      status: 'Planned',
+      notes: '',
+    );
+  }
+
+  _ProcurementAction copyWith({
+    String? title,
+    String? owner,
+    String? dueDate,
+    String? status,
+    String? notes,
+  }) {
+    return _ProcurementAction(
+      id: id,
+      title: title ?? this.title,
+      owner: owner ?? this.owner,
+      dueDate: dueDate ?? this.dueDate,
+      status: status ?? this.status,
+      notes: notes ?? this.notes,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'owner': owner,
+      'dueDate': dueDate,
+      'status': status,
+      'notes': notes,
+    };
+  }
+
+  static List<_ProcurementAction> fromList(dynamic raw) {
+    if (raw is! List) return [];
+    return raw.whereType<Map>().map((item) {
+      final data = Map<String, dynamic>.from(item);
+      return _ProcurementAction(
+        id: data['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        title: data['title']?.toString() ?? '',
+        owner: data['owner']?.toString() ?? '',
+        dueDate: data['dueDate']?.toString() ?? '',
+        status: data['status']?.toString() ?? 'Planned',
+        notes: data['notes']?.toString() ?? '',
+      );
+    }).toList();
+  }
+}
+
+class _Debouncer {
+  _Debouncer({Duration? delay}) : delay = delay ?? const Duration(milliseconds: 600);
+
+  final Duration delay;
+  Timer? _timer;
+
+  void run(void Function() action) {
+    _timer?.cancel();
+    _timer = Timer(delay, action);
+  }
+
+  void dispose() {
+    _timer?.cancel();
+  }
 }

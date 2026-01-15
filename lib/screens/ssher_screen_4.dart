@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/widgets/app_logo.dart';
 import 'package:ndu_project/screens/ssher_components.dart';
 import 'package:ndu_project/screens/team_management_screen.dart';
@@ -6,6 +7,8 @@ import 'package:ndu_project/screens/change_management_screen.dart';
 import 'package:ndu_project/screens/home_screen.dart';
 import 'package:ndu_project/screens/lessons_learned_screen.dart';
 import 'package:ndu_project/services/auth_nav.dart';
+import 'package:ndu_project/services/firebase_auth_service.dart';
+import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/screens/settings_screen.dart';
 
 class SsherScreen4 extends StatelessWidget {
@@ -85,16 +88,45 @@ class _Header extends StatelessWidget {
         const Spacer(),
         Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
         const Spacer(),
-        Row(children: [
-          Container(width: 40, height: 40, decoration: const BoxDecoration(color: Colors.blue, shape: BoxShape.circle), child: const Icon(Icons.person, color: Colors.white, size: 20)),
-          const SizedBox(width: 12),
-          const Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text('Samuel kamanga', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-            Text('Owner', style: TextStyle(fontSize: 10, color: Colors.grey)),
-          ]),
-          const SizedBox(width: 6),
-          const Icon(Icons.keyboard_arrow_down, color: Colors.grey, size: 18),
-        ]),
+        StreamBuilder<bool>(
+          stream: UserService.watchAdminStatus(),
+          builder: (context, snapshot) {
+            final user = FirebaseAuth.instance.currentUser;
+            final displayName = FirebaseAuthService.displayNameOrEmail(fallback: 'User');
+            final email = user?.email ?? '';
+            final name = displayName.isNotEmpty ? displayName : (email.isNotEmpty ? email : 'User');
+            final photoUrl = user?.photoURL ?? '';
+            final isAdmin = snapshot.data ?? UserService.isAdminEmail(email);
+            final role = isAdmin ? 'Admin' : 'Member';
+
+            return Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.blue,
+                  backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                  child: photoUrl.isEmpty
+                      ? Text(
+                          name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                    Text(role, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                  ],
+                ),
+                const SizedBox(width: 6),
+                const Icon(Icons.keyboard_arrow_down, color: Colors.grey, size: 18),
+              ],
+            );
+          },
+        ),
       ]),
     );
   }

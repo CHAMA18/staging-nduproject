@@ -5,6 +5,7 @@ import 'package:ndu_project/widgets/content_text.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/widgets/program_workspace_scaffold.dart';
+import 'package:ndu_project/widgets/user_access_chip.dart';
 
 /// Front End Planning – Project Personnel page
 /// Mirrors the provided screenshot with:
@@ -315,25 +316,7 @@ class _TopBar extends StatelessWidget {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.black87),
           ),
           const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
-            ),
-            child: Row(
-              children: const [
-                CircleAvatar(radius: 14, backgroundColor: Color(0xFFE5E7EB), child: Icon(Icons.person, color: Colors.black54, size: 16)),
-                SizedBox(width: 8),
-                Text('Samuel kamanga', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87)),
-                SizedBox(width: 8),
-                Text('Product manager', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
-                SizedBox(width: 6),
-                Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF9CA3AF)),
-              ],
-            ),
-          ),
+          const UserAccessChip(),
         ],
       ),
     );

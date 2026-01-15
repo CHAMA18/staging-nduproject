@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/widgets/new_change_request_dialog.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
@@ -7,10 +8,10 @@ import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
-import 'package:ndu_project/utils/download_helper.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/screens/project_framework_screen.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/services/user_service.dart';
 
 class ChangeManagementScreen extends StatefulWidget {
   const ChangeManagementScreen({super.key});
@@ -68,10 +69,6 @@ class _ChangeManagementScreenState extends State<ChangeManagementScreen> {
                               ),
                               const Spacer(),
                               _UserChip(userName: userName),
-                              const SizedBox(width: 12),
-                              _OutlinedButton(label: 'Export', onPressed: () {}),
-                              const SizedBox(width: 10),
-                              _YellowButton(label: 'New Project', onPressed: () {}),
                             ],
                           ),
                         ),
@@ -92,29 +89,6 @@ class _ChangeManagementScreenState extends State<ChangeManagementScreen> {
                         Row(
                           children: [
                             const Spacer(),
-                            _smallButton(context, icon: Icons.ios_share_outlined, label: 'Export'),
-                            const SizedBox(width: 12),
-                            ElevatedButton(
-                              onPressed: () async {
-                                final result = await showDialog(
-                                  context: context,
-                                builder: (ctx) => NewChangeRequestDialog(),
-                                );
-                                if (result != null) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Change request created')),
-                                  );
-                                }
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFFFD700),
-                                foregroundColor: Colors.black,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              ),
-                              child: const Text('New Project', style: TextStyle(fontWeight: FontWeight.w600)),
-                            )
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -177,13 +151,6 @@ class _ChangeManagementScreenState extends State<ChangeManagementScreen> {
                               icon: Icons.filter_list,
                               label: 'Filter',
                               onPressed: () => _tableKey.currentState?.openFilterDialog(context),
-                            ),
-                            const SizedBox(width: 8),
-                            _smallButton(
-                              context,
-                              icon: Icons.ios_share_outlined,
-                              label: 'Export',
-                              onPressed: () => _tableKey.currentState?.exportCurrentSnapshot(context),
                             ),
                             const SizedBox(width: 8),
                             ElevatedButton(
@@ -301,40 +268,52 @@ class _UserChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: Colors.blue[400],
-            child: Text(
-              userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-            ),
+    final user = FirebaseAuth.instance.currentUser;
+    final email = user?.email ?? '';
+    final name = userName.isNotEmpty ? userName : FirebaseAuthService.displayNameOrEmail(fallback: 'User');
+
+    return StreamBuilder<bool>(
+      stream: UserService.watchAdminStatus(),
+      builder: (context, snapshot) {
+        final isAdmin = snapshot.data ?? UserService.isAdminEmail(email);
+        final role = isAdmin ? 'Admin' : 'Member';
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
           ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                userName,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: Colors.blue[400],
+                child: Text(
+                  name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                ),
               ),
-              const Text(
-                'Owner',
-                style: TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+                  ),
+                  Text(
+                    role,
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -569,30 +548,6 @@ class _ChangeRequestsTableState extends State<_ChangeRequestsTable> {
         ),
       ),
     );
-  }
-
-  Future<void> exportCurrentSnapshot(BuildContext context) async {
-    if (_latestItems.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No change requests to export')));
-      return;
-    }
-    final buffer = StringBuffer();
-    buffer.writeln('ID,Title,Request Date,Type,Impact,Status,Requester');
-    for (final request in _latestItems) {
-      buffer.writeln(
-        [
-          request.displayId,
-          _escapeCsv(request.title),
-          _formatDate(request.requestDate),
-          request.type,
-          request.impact,
-          request.status,
-          request.requester,
-        ].join(','),
-      );
-    }
-    downloadTextFile('change_requests.csv', buffer.toString());
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Export prepared')));
   }
 
   Future<void> _openEditDialog(ChangeRequest request) async {

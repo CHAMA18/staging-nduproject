@@ -3937,16 +3937,6 @@ class _PurchaseOrdersView extends StatelessWidget {
               spacing: 12,
               runSpacing: 8,
               children: [
-                OutlinedButton(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF0F172A),
-                    side: const BorderSide(color: Color(0xFFCBD5E1)),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('Export'),
-                ),
                 ElevatedButton.icon(
                   onPressed: onCreatePo,
                   icon: const Icon(Icons.add_rounded, size: 18),

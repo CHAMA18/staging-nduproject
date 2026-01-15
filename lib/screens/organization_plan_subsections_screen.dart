@@ -5,6 +5,8 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
+import 'package:ndu_project/services/firebase_auth_service.dart';
+import 'package:ndu_project/services/user_service.dart';
 
 class OrganizationRolesResponsibilitiesScreen extends StatelessWidget {
   const OrganizationRolesResponsibilitiesScreen({super.key});
@@ -247,16 +249,22 @@ class _UserChip extends StatelessWidget {
                 : null,
           ),
           const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(displayName,
-                  style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w600)),
-              const Text('Product manager',
-                  style: TextStyle(fontSize: 10, color: Color(0xFF6B7280))),
-            ],
+          StreamBuilder<bool>(
+            stream: UserService.watchAdminStatus(),
+            builder: (context, snapshot) {
+              final email = user?.email ?? '';
+              final isAdmin = snapshot.data ?? UserService.isAdminEmail(email);
+              final role = isAdmin ? 'Admin' : 'Member';
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(displayName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  Text(role, style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280))),
+                ],
+              );
+            },
           ),
           const SizedBox(width: 6),
           const Icon(Icons.keyboard_arrow_down,

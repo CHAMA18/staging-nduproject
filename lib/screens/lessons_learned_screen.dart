@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
@@ -8,6 +9,8 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/services/firebase_auth_service.dart';
+import 'package:ndu_project/services/user_service.dart';
 
 class LessonsLearnedScreen extends StatefulWidget {
   const LessonsLearnedScreen({super.key});
@@ -200,80 +203,10 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
                 ),
               ),
             ),
-            if (!isMobile) ...[
-              OutlinedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Export coming soon.')),
-                  );
-                },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.grey[800],
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('Export'),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('New project action coming soon.')),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFD700),
-                  foregroundColor: Colors.black,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('New Project'),
-              ),
-            ],
+            if (!isMobile) const SizedBox.shrink(),
           ],
         ),
-        if (isMobile)
-          Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Export coming soon.')),
-                      );
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.grey[800],
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Export'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('New project action coming soon.')),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFFD700),
-                      foregroundColor: Colors.black,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('New Project'),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        if (isMobile) const SizedBox.shrink(),
       ],
     );
   }
@@ -698,7 +631,6 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(entries[i].submittedBy, style: cellStyle),
-                                    Text('Product manager', style: subStyle),
                                   ],
                                 ),
                               ),
@@ -824,37 +756,53 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
           BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 6, offset: const Offset(0, 2)),
         ],
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: Colors.grey.withValues(alpha: 0.2),
-            child: Text(
-              'S',
-              style: TextStyle(
-                color: Colors.grey[800],
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      child: StreamBuilder<bool>(
+        stream: UserService.watchAdminStatus(),
+        builder: (context, snapshot) {
+          final user = FirebaseAuth.instance.currentUser;
+          final displayName = FirebaseAuthService.displayNameOrEmail(fallback: 'User');
+          final email = user?.email ?? '';
+          final name = displayName.isNotEmpty ? displayName : (email.isNotEmpty ? email : 'User');
+          final photoUrl = user?.photoURL ?? '';
+          final isAdmin = snapshot.data ?? UserService.isAdminEmail(email);
+          final role = isAdmin ? 'Admin' : 'Member';
+
+          return Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Samuel kamanga',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: Colors.grey.withValues(alpha: 0.2),
+                backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                child: photoUrl.isEmpty
+                    ? Text(
+                        name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                        style: TextStyle(
+                          color: Colors.grey[800],
+                          fontWeight: FontWeight.w600,
+                        ),
+                      )
+                    : null,
               ),
-              Text(
-                'Product manager',
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    role,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                ],
               ),
+              const SizedBox(width: 6),
+              Icon(Icons.keyboard_arrow_down, color: Colors.grey[700], size: 18),
             ],
-          ),
-          const SizedBox(width: 6),
-          Icon(Icons.keyboard_arrow_down, color: Colors.grey[700], size: 18),
-        ],
+          );
+        },
       ),
     );
   }

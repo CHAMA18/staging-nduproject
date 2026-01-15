@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/widgets/app_logo.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/services/auth_nav.dart';
+import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
@@ -162,10 +164,25 @@ class _InfrastructureConsiderationsScreenState extends State<InfrastructureConsi
           Container(width: 40, height: 40, decoration: const BoxDecoration(color: Colors.blue, shape: BoxShape.circle), child: const Icon(Icons.person, color: Colors.white, size: 20)),
           if (!isMobile) ...[
             const SizedBox(width: 12),
-            Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(FirebaseAuthService.displayNameOrEmail(fallback: 'User'), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black)),
-              const Text('Product manager', style: TextStyle(fontSize: 12, color: Colors.grey)),
-            ]),
+            StreamBuilder<bool>(
+              stream: UserService.watchAdminStatus(),
+              builder: (context, snapshot) {
+                final email = FirebaseAuth.instance.currentUser?.email ?? '';
+                final isAdmin = snapshot.data ?? UserService.isAdminEmail(email);
+                final role = isAdmin ? 'Admin' : 'Member';
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      FirebaseAuthService.displayNameOrEmail(fallback: 'User'),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black),
+                    ),
+                    Text(role, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  ],
+                );
+              },
+            ),
             const SizedBox(width: 8),
             const Icon(Icons.keyboard_arrow_down, color: Colors.grey, size: 20),
           ],

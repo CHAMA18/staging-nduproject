@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
@@ -6,6 +7,8 @@ import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/services/firebase_auth_service.dart';
+import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/screens/change_management_screen.dart';
@@ -156,9 +159,7 @@ class _TopUtilityBar extends StatelessWidget {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
           ),
           const Spacer(),
-          const _UserChip(name: 'Samuel kamanga', role: 'Product manager'),
-          const SizedBox(width: 12),
-          _OutlinedButton(label: 'Export', onPressed: () {}),
+          const _UserChip(name: '', role: ''),
           const SizedBox(width: 12),
           _YellowButton(label: 'New Issue', onPressed: onAddIssue),
         ],
@@ -483,7 +484,6 @@ class _ProjectIssuesLogCard extends StatelessWidget {
               const SizedBox(width: 12),
               _OutlinedButton(label: 'Filter', onPressed: () {}),
               const SizedBox(width: 12),
-              _OutlinedButton(label: 'Export', onPressed: () {}),
             ],
           ),
           const SizedBox(height: 22),
@@ -873,37 +873,58 @@ class _UserChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const CircleAvatar(
-            radius: 16,
-            backgroundColor: Color(0xFFE5E7EB),
-            child: Icon(Icons.person, size: 18, color: Color(0xFF374151)),
+    final user = FirebaseAuth.instance.currentUser;
+    final displayName = FirebaseAuthService.displayNameOrEmail(fallback: name.isNotEmpty ? name : 'User');
+    final email = user?.email ?? '';
+    final primary = displayName.isNotEmpty ? displayName : (email.isNotEmpty ? email : name);
+    final photoUrl = user?.photoURL ?? '';
+
+    return StreamBuilder<bool>(
+      stream: UserService.watchAdminStatus(),
+      builder: (context, snapshot) {
+        final isAdmin = snapshot.data ?? UserService.isAdminEmail(email);
+        final resolvedRole = isAdmin ? 'Admin' : 'Member';
+        final roleText = role.isNotEmpty ? role : resolvedRole;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
           ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                name,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: const Color(0xFFE5E7EB),
+                backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                child: photoUrl.isEmpty
+                    ? Text(
+                        primary.isNotEmpty ? primary[0].toUpperCase() : 'U',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+                      )
+                    : null,
               ),
-              Text(
-                role,
-                style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    primary,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+                  ),
+                  Text(
+                    roleText,
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

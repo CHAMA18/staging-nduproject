@@ -8,6 +8,7 @@ import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
+import 'package:ndu_project/services/user_service.dart';
 
 const Color _kAccentColor = Color(0xFFFFC812);
 const Color _kPrimaryText = Color(0xFF1F2933);
@@ -209,7 +210,7 @@ class _HeaderRow extends StatelessWidget {
     final user = FirebaseAuth.instance.currentUser;
     final displayName = FirebaseAuthService.displayNameOrEmail(fallback: 'User');
     final userInitial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
-    const userRole = 'Product manager';
+    final email = user?.email ?? '';
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -240,7 +241,14 @@ class _HeaderRow extends StatelessWidget {
               const SizedBox(width: 10),
               Text(displayName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _kPrimaryText)),
               const SizedBox(width: 6),
-              const Text(userRole, style: TextStyle(fontSize: 12, color: _kSecondaryText)),
+              StreamBuilder<bool>(
+                stream: UserService.watchAdminStatus(),
+                builder: (context, snapshot) {
+                  final isAdmin = snapshot.data ?? UserService.isAdminEmail(email);
+                  final role = isAdmin ? 'Admin' : 'Member';
+                  return Text(role, style: const TextStyle(fontSize: 12, color: _kSecondaryText));
+                },
+              ),
             ],
           ),
         ),

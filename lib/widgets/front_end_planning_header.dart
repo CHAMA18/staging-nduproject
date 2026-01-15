@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/services/user_service.dart';
 
 /// Standardized header for all Front End Planning pages
 /// Displays: back button, title, and user profile with email and role
@@ -119,12 +120,19 @@ class FrontEndPlanningHeader extends StatelessWidget {
                     color: Colors.grey,
                   ),
                 ),
-              const Text(
-                'Owner',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                ),
+              StreamBuilder<bool>(
+                stream: UserService.watchAdminStatus(),
+                builder: (context, snapshot) {
+                  final isAdmin = snapshot.data ?? UserService.isAdminEmail(email);
+                  final role = isAdmin ? 'Admin' : 'Member';
+                  return Text(
+                    role,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
+                  );
+                },
               ),
             ],
           ),

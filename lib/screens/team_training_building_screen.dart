@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:ndu_project/screens/training_project_tasks_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
+import 'package:ndu_project/services/firebase_auth_service.dart';
+import 'package:ndu_project/services/user_service.dart';
+import 'package:ndu_project/screens/training_project_tasks_screen.dart';
 
 class TeamTrainingAndBuildingScreen extends StatelessWidget {
   const TeamTrainingAndBuildingScreen({super.key});
@@ -215,60 +218,57 @@ class TeamTrainingAndBuildingScreen extends StatelessWidget {
   }
 
   Widget _profileCluster(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final displayName = FirebaseAuthService.displayNameOrEmail(fallback: 'User');
+    final email = user?.email ?? '';
+    final name = displayName.isNotEmpty ? displayName : (email.isNotEmpty ? email : 'User');
+    final photoUrl = user?.photoURL ?? '';
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(26),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 2))],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircleAvatar(radius: 16, backgroundColor: Colors.blue[400], child: const Text('S', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14))),
-              const SizedBox(width: 8),
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        StreamBuilder<bool>(
+          stream: UserService.watchAdminStatus(),
+          builder: (context, snapshot) {
+            final isAdmin = snapshot.data ?? UserService.isAdminEmail(email);
+            final role = isAdmin ? 'Admin' : 'Member';
+
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(26),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 2))],
+              ),
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Samuel kamanga', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                  Text('Owner', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: Colors.blue[400],
+                    backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                    child: photoUrl.isEmpty
+                        ? Text(
+                            name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      Text(role, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                    ],
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(Icons.keyboard_arrow_down, color: Colors.grey[700], size: 18),
                 ],
               ),
-              const SizedBox(width: 8),
-              Icon(Icons.keyboard_arrow_down, color: Colors.grey[700], size: 18),
-            ],
-          ),
-        ),
-        const SizedBox(width: 12),
-        OutlinedButton(
-          onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const TrainingProjectTasksScreen()),
             );
           },
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            side: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
-            foregroundColor: Colors.black,
-            backgroundColor: Colors.white,
-          ),
-          child: const Text('Export'),
-        ),
-        const SizedBox(width: 10),
-        ElevatedButton(
-          onPressed: () {},
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFFFD700),
-            foregroundColor: Colors.black,
-            elevation: 0,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-          child: const Text('New Project'),
         ),
       ],
     );

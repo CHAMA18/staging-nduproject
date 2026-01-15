@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 
@@ -12,6 +13,7 @@ import 'package:ndu_project/widgets/ai_diagram_panel.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
 import 'package:ndu_project/services/execution_service.dart';
+import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 
 class ExecutionPlanScreen extends StatefulWidget {
@@ -143,24 +145,7 @@ class _ExecutionPlanHeader extends StatelessWidget {
               const _CurrentUserProfileChip(),
             ],
           ),
-          const SizedBox(height: 20),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            alignment: WrapAlignment.end,
-            children: [
-              _GhostActionButton(
-                icon: Icons.file_download_outlined,
-                label: 'Import',
-                onPressed: () {},
-              ),
-              _GhostActionButton(
-                icon: Icons.description_outlined,
-                label: 'Content',
-                onPressed: () {},
-              ),
-            ],
-          ),
+          const SizedBox(height: 8),
         ],
       ),
     );
@@ -207,99 +192,70 @@ class _CurrentUserProfileChip extends StatelessWidget {
     return trimmed.substring(0, 1).toUpperCase();
   }
 
-  String _roleFor(User? user) {
-    if (user == null) return 'Guest';
-    final email = user.email?.toLowerCase() ?? '';
-    // Basic role mapping; can be enhanced to read Firestore role if available
-    if (email.endsWith('@nduproject.com')) return 'Owner';
-    return 'Member';
-  }
-
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     final displayName =
         FirebaseAuthService.displayNameOrEmail(fallback: 'User');
-    final role = _roleFor(user);
     final photoUrl = user?.photoURL;
+    final email = user?.email ?? '';
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: const Color(0xFFE5E7EB),
-            backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
-                ? NetworkImage(photoUrl)
-                : null,
-            child: (photoUrl == null || photoUrl.isEmpty)
-                ? Text(
-                    _initials(displayName),
+    return StreamBuilder<bool>(
+      stream: UserService.watchAdminStatus(),
+      builder: (context, snapshot) {
+        final isAdmin = snapshot.data ?? UserService.isAdminEmail(email);
+        final role = isAdmin ? 'Admin' : 'Member';
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: const Color(0xFFE5E7EB),
+                backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                    ? NetworkImage(photoUrl)
+                    : null,
+                child: (photoUrl == null || photoUrl.isEmpty)
+                    ? Text(
+                        _initials(displayName),
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF4B5563)),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    displayName,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF111827)),
+                  ),
+                  Text(
+                    role,
                     style: const TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF4B5563)),
-                  )
-                : null,
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                displayName,
-                style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF111827)),
-              ),
-              Text(
-                role,
-                style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF6B7280)),
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF6B7280)),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GhostActionButton extends StatelessWidget {
-  const _GhostActionButton(
-      {required this.icon, required this.label, required this.onPressed});
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 20, color: const Color(0xFF111827)),
-      label: Text(
-        label,
-        style: const TextStyle(
-            color: Color(0xFF111827), fontWeight: FontWeight.w600),
-      ),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        foregroundColor: const Color(0xFF111827),
-        backgroundColor: Colors.white,
-        side: const BorderSide(color: Color(0xFFE5E7EB)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
+        );
+      },
     );
   }
 }
@@ -342,11 +298,13 @@ class _ExecutionPlanForm extends StatefulWidget {
     this.title = 'Executive Plan Outline',
     required this.hintText,
     this.noteKey,
+    this.showDiagram = true,
   });
 
   final String title;
   final String hintText;
   final String? noteKey;
+  final bool showDiagram;
 
   @override
   State<_ExecutionPlanForm> createState() => _ExecutionPlanFormState();
@@ -421,11 +379,12 @@ class _ExecutionPlanFormState extends State<_ExecutionPlanForm> {
               style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
             ),
           ),
-        AiDiagramPanel(
-          sectionLabel: widget.title,
-          currentTextProvider: () => _currentText,
-          title: 'Generate ${widget.title} Diagram',
-        ),
+        if (widget.showDiagram)
+          AiDiagramPanel(
+            sectionLabel: widget.title,
+            currentTextProvider: () => _currentText,
+            title: 'Generate ${widget.title} Diagram',
+          ),
       ],
     );
   }
@@ -3763,6 +3722,7 @@ class ExecutionPlanConstructionPlanScreen extends StatelessWidget {
                       hintText:
                           'Summarize construction sequencing, logistics, and safety constraints.',
                       noteKey: 'execution_construction_plan',
+                      showDiagram: false,
                     ),
                     const SizedBox(height: 32),
                     const _ConstructionPlanSection(),
@@ -3796,112 +3756,66 @@ class _ConstructionPlanSection extends StatelessWidget {
             color: Color(0xFF111827),
           ),
         ),
-        const SizedBox(height: 28),
-        const _ConstructionPlanCard(),
+        const SizedBox(height: 24),
+        const _PlanDecisionSection(
+          question: 'Will construction work be done by this project?',
+          planKeyPrefix: 'execution_construction_plan',
+          formTitle: 'Construction Plan Inputs',
+          formSubtitle: 'Capture the sequencing, resources, and controls needed to deliver construction work safely.',
+          fields: [
+            _PlanFieldConfig(
+              keyName: 'scope',
+              label: 'Scope & work packages',
+              hint: 'Define in-scope components, exclusions, and deliverables.',
+              minLines: 2,
+              maxLines: 4,
+              fullWidth: true,
+            ),
+            _PlanFieldConfig(
+              keyName: 'sequencing',
+              label: 'Sequencing & milestones',
+              hint: 'Outline phases, key handoffs, and milestone dates.',
+              minLines: 2,
+              maxLines: 4,
+            ),
+            _PlanFieldConfig(
+              keyName: 'resources',
+              label: 'Resources & contractors',
+              hint: 'List crews, vendors, and specialist roles.',
+              minLines: 2,
+              maxLines: 4,
+            ),
+            _PlanFieldConfig(
+              keyName: 'logistics',
+              label: 'Site logistics & access',
+              hint: 'Access, staging, equipment, and material flow.',
+              minLines: 2,
+              maxLines: 4,
+            ),
+            _PlanFieldConfig(
+              keyName: 'safety',
+              label: 'Safety, compliance & QA/QC',
+              hint: 'HSE controls, permits, inspections, and quality checks.',
+              minLines: 2,
+              maxLines: 4,
+              fullWidth: true,
+            ),
+            _PlanFieldConfig(
+              keyName: 'risks',
+              label: 'Risks & contingencies',
+              hint: 'Key risks, dependencies, and mitigation actions.',
+              minLines: 2,
+              maxLines: 4,
+              fullWidth: true,
+            ),
+          ],
+        ),
         const SizedBox(height: 44),
         if (isMobile)
           _MobileConstructionPlanActions()
         else
           const _DesktopConstructionPlanActions(),
       ],
-    );
-  }
-}
-
-class _ConstructionPlanCard extends StatelessWidget {
-  const _ConstructionPlanCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 48),
-      decoration: BoxDecoration(
-        color: const Color(0xFFBBBBBB),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        children: [
-          const Text(
-            'Will construction work be done by this project?',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 32),
-          Wrap(
-            spacing: 20,
-            runSpacing: 20,
-            alignment: WrapAlignment.center,
-            children: [
-              _ConstructionOptionButton(
-                label: 'YES',
-                color: const Color(0xFF22C55E),
-                onPressed: () {},
-              ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _ConstructionOptionButton(
-                    label: 'NO',
-                    color: const Color(0xFFF59E0B),
-                    onPressed: () {},
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'No, but managed externally',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-              _ConstructionOptionButton(
-                label: 'NO',
-                color: const Color(0xFFEF4444),
-                onPressed: () {},
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ConstructionOptionButton extends StatelessWidget {
-  const _ConstructionOptionButton({
-    required this.label,
-    required this.color,
-    required this.onPressed,
-  });
-
-  final String label;
-  final Color color;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        elevation: 0,
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
     );
   }
 }
@@ -4005,6 +3919,7 @@ class ExecutionPlanInfrastructurePlanScreen extends StatelessWidget {
                       hintText:
                           'Outline infrastructure dependencies, scope, and delivery approach.',
                       noteKey: 'execution_infrastructure_plan',
+                      showDiagram: false,
                     ),
                     const SizedBox(height: 32),
                     const _InfrastructurePlanSection(),
@@ -4038,79 +3953,73 @@ class _InfrastructurePlanSection extends StatelessWidget {
             color: Color(0xFF111827),
           ),
         ),
-        const SizedBox(height: 28),
-        const _InfrastructurePlanCard(),
+        const SizedBox(height: 24),
+        const _PlanDecisionSection(
+          question: 'Will infrastructure work be done by this project?',
+          planKeyPrefix: 'execution_infrastructure_plan',
+          formTitle: 'Infrastructure Plan Inputs',
+          formSubtitle: 'Define the environments, capacity, and operational readiness needed for delivery.',
+          fields: [
+            _PlanFieldConfig(
+              keyName: 'scope',
+              label: 'Infrastructure scope & components',
+              hint: 'List core platforms, environments, and services in scope.',
+              minLines: 2,
+              maxLines: 4,
+              fullWidth: true,
+            ),
+            _PlanFieldConfig(
+              keyName: 'environment',
+              label: 'Environment strategy',
+              hint: 'Dev/test/stage/prod topology and parity goals.',
+              minLines: 2,
+              maxLines: 4,
+            ),
+            _PlanFieldConfig(
+              keyName: 'capacity',
+              label: 'Capacity & performance targets',
+              hint: 'Sizing assumptions, scalability targets, and SLAs.',
+              minLines: 2,
+              maxLines: 4,
+            ),
+            _PlanFieldConfig(
+              keyName: 'security',
+              label: 'Security, compliance & DR',
+              hint: 'Security controls, data protection, backup/restore, RTO/RPO.',
+              minLines: 2,
+              maxLines: 4,
+              fullWidth: true,
+            ),
+            _PlanFieldConfig(
+              keyName: 'dependencies',
+              label: 'Dependencies & vendors',
+              hint: 'Third-party services, contracts, and lead times.',
+              minLines: 2,
+              maxLines: 4,
+            ),
+            _PlanFieldConfig(
+              keyName: 'cutover',
+              label: 'Migration & cutover plan',
+              hint: 'Data migration steps, cutover windows, rollback.',
+              minLines: 2,
+              maxLines: 4,
+            ),
+            _PlanFieldConfig(
+              keyName: 'monitoring',
+              label: 'Operations & monitoring',
+              hint: 'Monitoring, alerting, and on-call ownership.',
+              minLines: 2,
+              maxLines: 4,
+              fullWidth: true,
+            ),
+          ],
+        ),
         const SizedBox(height: 44),
         if (isMobile)
           _MobileInfrastructurePlanActions()
         else
           const _DesktopInfrastructurePlanActions(),
       ],
-    );
-  }
-}
-
-class _InfrastructurePlanCard extends StatelessWidget {
-  const _InfrastructurePlanCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 48),
-      decoration: BoxDecoration(
-        color: const Color(0xFFBBBBBB),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        children: [
-          const Text(
-            'Will Infrastructure work be done by this project?',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 32),
-          Wrap(
-            spacing: 20,
-            runSpacing: 20,
-            alignment: WrapAlignment.center,
-            children: [
-              _ConstructionOptionButton(
-                label: 'YES',
-                color: const Color(0xFF22C55E),
-                onPressed: () {},
-              ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _ConstructionOptionButton(
-                    label: 'NO',
-                    color: const Color(0xFFF59E0B),
-                    onPressed: () {},
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'No, but managed externally',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-              _ConstructionOptionButton(
-                label: 'NO',
-                color: const Color(0xFFEF4444),
-                onPressed: () {},
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }
@@ -4216,6 +4125,7 @@ class ExecutionPlanAgileDeliveryPlanScreen extends StatelessWidget {
                       hintText:
                           'Outline sprint cadence, release waves, and backlog governance.',
                       noteKey: 'execution_agile_delivery_plan',
+                      showDiagram: false,
                     ),
                     const SizedBox(height: 32),
                     const _AgileDeliveryPlanSection(),
@@ -4249,55 +4159,66 @@ class _AgileDeliveryPlanSection extends StatelessWidget {
             color: Color(0xFF111827),
           ),
         ),
-        const SizedBox(height: 20),
-        Wrap(
-          spacing: 16,
-          runSpacing: 16,
-          children: const [
-            _AgileDeliveryMetricCard(title: 'Cadence', value: '2-week sprints'),
-            _AgileDeliveryMetricCard(
-                title: 'Release Waves', value: '4 major drops'),
-            _AgileDeliveryMetricCard(
-                title: 'Backlog Health', value: '78% ready'),
-            _AgileDeliveryMetricCard(title: 'Sprint Goals', value: '12 mapped'),
+        const SizedBox(height: 24),
+        const _PlanDecisionSection(
+          question: 'Will agile delivery be used for this project?',
+          planKeyPrefix: 'execution_agile_delivery_plan',
+          formTitle: 'Agile Delivery Plan Inputs',
+          formSubtitle: 'Define cadence, governance, and delivery guardrails for agile execution.',
+          fields: [
+            _PlanFieldConfig(
+              keyName: 'model',
+              label: 'Delivery model',
+              hint: 'Scrum, Kanban, or hybrid approach and rationale.',
+              minLines: 2,
+              maxLines: 4,
+              fullWidth: true,
+            ),
+            _PlanFieldConfig(
+              keyName: 'cadence',
+              label: 'Sprint cadence & calendar',
+              hint: 'Sprint length, ceremonies, and planning calendar.',
+              minLines: 2,
+              maxLines: 4,
+            ),
+            _PlanFieldConfig(
+              keyName: 'release',
+              label: 'Release strategy',
+              hint: 'Release waves, branching, and approval gates.',
+              minLines: 2,
+              maxLines: 4,
+            ),
+            _PlanFieldConfig(
+              keyName: 'backlog',
+              label: 'Backlog governance',
+              hint: 'Definition of Ready/Done, prioritization, and grooming cadence.',
+              minLines: 2,
+              maxLines: 4,
+              fullWidth: true,
+            ),
+            _PlanFieldConfig(
+              keyName: 'team',
+              label: 'Team structure & roles',
+              hint: 'Squad ownership, product roles, and cross-functional coverage.',
+              minLines: 2,
+              maxLines: 4,
+            ),
+            _PlanFieldConfig(
+              keyName: 'metrics',
+              label: 'Metrics & reporting',
+              hint: 'Velocity, throughput, predictability, and quality measures.',
+              minLines: 2,
+              maxLines: 4,
+            ),
+            _PlanFieldConfig(
+              keyName: 'risks',
+              label: 'Impediment & risk handling',
+              hint: 'Escalation process, dependency tracking, and blockers removal.',
+              minLines: 2,
+              maxLines: 4,
+              fullWidth: true,
+            ),
           ],
-        ),
-        const SizedBox(height: 28),
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE5E7EB)),
-            boxShadow: const [
-              BoxShadow(
-                  color: Color(0x0F000000),
-                  blurRadius: 10,
-                  offset: Offset(0, 6)),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Delivery Guardrails',
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF111827)),
-              ),
-              const SizedBox(height: 12),
-              const _AgileDeliveryBullet(
-                  text: 'Definition of Done enforced across all squads.'),
-              const _AgileDeliveryBullet(
-                  text: 'Release criteria reviewed in weekly governance.'),
-              const _AgileDeliveryBullet(
-                  text:
-                      'Scope change requests prioritized in backlog grooming.'),
-              const _AgileDeliveryBullet(
-                  text: 'Velocity trends monitored to protect milestones.'),
-            ],
-          ),
         ),
         const SizedBox(height: 24),
         Align(
@@ -4309,34 +4230,264 @@ class _AgileDeliveryPlanSection extends StatelessWidget {
   }
 }
 
-class _AgileDeliveryMetricCard extends StatelessWidget {
-  const _AgileDeliveryMetricCard({required this.title, required this.value});
+class _PlanDecisionSection extends StatefulWidget {
+  const _PlanDecisionSection({
+    required this.question,
+    required this.planKeyPrefix,
+    required this.formTitle,
+    required this.formSubtitle,
+    required this.fields,
+  });
 
-  final String title;
-  final String value;
+  final String question;
+  final String planKeyPrefix;
+  final String formTitle;
+  final String formSubtitle;
+  final List<_PlanFieldConfig> fields;
+
+  @override
+  State<_PlanDecisionSection> createState() => _PlanDecisionSectionState();
+}
+
+class _PlanDecisionSectionState extends State<_PlanDecisionSection> {
+  final Map<String, TextEditingController> _controllers = {};
+  Timer? _saveDebounce;
+  bool? _decision;
+  bool _didInit = false;
+  bool _isLoading = true;
+  bool _hasFirestoreDoc = false;
+  DateTime? _lastSavedAt;
+
+  @override
+  void initState() {
+    super.initState();
+    for (final field in widget.fields) {
+      _controllers[field.keyName] = TextEditingController();
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadFromFirestore());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didInit) return;
+    final notes = ProjectDataHelper.getData(context).planningNotes;
+    final savedDecision = notes['${widget.planKeyPrefix}_decision'] ?? '';
+    if (savedDecision == 'yes') {
+      _decision = true;
+    } else if (savedDecision == 'no') {
+      _decision = false;
+    }
+    for (final field in widget.fields) {
+      final key = '${widget.planKeyPrefix}_${field.keyName}';
+      _controllers[field.keyName]?.text = notes[key] ?? '';
+    }
+    _didInit = true;
+  }
+
+  @override
+  void dispose() {
+    _saveDebounce?.cancel();
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  void _handleDecision(bool value) {
+    setState(() => _decision = value);
+    _scheduleSave();
+  }
+
+  void _scheduleSave() {
+    _saveDebounce?.cancel();
+    _saveDebounce = Timer(const Duration(milliseconds: 700), _saveNow);
+  }
+
+  Future<void> _loadFromFirestore() async {
+    final projectId = ProjectDataHelper.getData(context).projectId;
+    if (projectId == null || projectId.isEmpty) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
+    try {
+      final doc = await _docRef(projectId).get();
+      if (doc.exists) {
+        final data = doc.data() ?? {};
+        final decision = (data['decision'] as String?) ?? '';
+        final fields = data['fields'];
+        if (decision == 'yes') {
+          _decision = true;
+        } else if (decision == 'no') {
+          _decision = false;
+        }
+        if (fields is Map) {
+          for (final field in widget.fields) {
+            final value = fields[field.keyName];
+            if (value is String) {
+              _controllers[field.keyName]?.text = value;
+            }
+          }
+        }
+        _lastSavedAt = _readTimestamp(data['updatedAt']);
+        _hasFirestoreDoc = true;
+      }
+    } catch (error) {
+      debugPrint('Failed to load execution plan section: $error');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _saveNow() async {
+    final updates = <String, String>{
+      '${widget.planKeyPrefix}_decision': _decision == null ? '' : (_decision! ? 'yes' : 'no'),
+    };
+    for (final field in widget.fields) {
+      updates['${widget.planKeyPrefix}_${field.keyName}'] = _controllers[field.keyName]?.text.trim() ?? '';
+    }
+    final success = await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'planning_${widget.planKeyPrefix}',
+      dataUpdater: (data) => data.copyWith(
+        planningNotes: {
+          ...data.planningNotes,
+          ...updates,
+        },
+      ),
+        showSnackbar: false,
+      );
+    final firestoreSaved = await _saveToFirestore(updates);
+    if (mounted && success && firestoreSaved) {
+      setState(() => _lastSavedAt = DateTime.now());
+    }
+  }
+
+  Future<bool> _saveToFirestore(Map<String, String> updates) async {
+    final projectId = ProjectDataHelper.getData(context).projectId;
+    if (projectId == null || projectId.isEmpty) return false;
+    final payload = <String, dynamic>{
+      'decision': updates['${widget.planKeyPrefix}_decision'] ?? '',
+      'fields': {
+        for (final field in widget.fields)
+          field.keyName: updates['${widget.planKeyPrefix}_${field.keyName}'] ?? '',
+      },
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+    if (!_hasFirestoreDoc) {
+      payload['createdAt'] = FieldValue.serverTimestamp();
+    }
+    try {
+      await _docRef(projectId).set(payload, SetOptions(merge: true));
+      _hasFirestoreDoc = true;
+      return true;
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save plan data: $error')),
+        );
+      }
+      return false;
+    }
+  }
+
+  DocumentReference<Map<String, dynamic>> _docRef(String projectId) {
+    return FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId)
+        .collection('execution_plan_sections')
+        .doc(widget.planKeyPrefix);
+  }
+
+  DateTime? _readTimestamp(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 860),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_isLoading) const LinearProgressIndicator(minHeight: 2),
+            _PlanDecisionCard(
+              question: widget.question,
+              decision: _decision,
+              onChanged: _handleDecision,
+            ),
+            if (_decision == true) ...[
+              const SizedBox(height: 20),
+              _PlanInputCard(
+                title: widget.formTitle,
+                subtitle: widget.formSubtitle,
+                fields: widget.fields,
+                controllers: _controllers,
+                onChanged: _scheduleSave,
+                lastSavedAt: _lastSavedAt,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PlanDecisionCard extends StatelessWidget {
+  const _PlanDecisionCard({
+    required this.question,
+    required this.decision,
+    required this.onChanged,
+  });
+
+  final String question;
+  final bool? decision;
+  final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 200,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 36),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        color: const Color(0xFFBDBDBD),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
-          const SizedBox(height: 8),
           Text(
-            value,
+            question,
+            textAlign: TextAlign.center,
             style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF111827)),
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _PlanDecisionButton(
+                label: 'Yes',
+                color: const Color(0xFF22C55E),
+                isSelected: decision == true,
+                onPressed: () => onChanged(true),
+              ),
+              const SizedBox(width: 18),
+              _PlanDecisionButton(
+                label: 'No',
+                color: const Color(0xFFEF4444),
+                isSelected: decision == false,
+                onPressed: () => onChanged(false),
+              ),
+            ],
           ),
         ],
       ),
@@ -4344,32 +4495,170 @@ class _AgileDeliveryMetricCard extends StatelessWidget {
   }
 }
 
-class _AgileDeliveryBullet extends StatelessWidget {
-  const _AgileDeliveryBullet({required this.text});
+class _PlanDecisionButton extends StatelessWidget {
+  const _PlanDecisionButton({
+    required this.label,
+    required this.color,
+    required this.isSelected,
+    required this.onPressed,
+  });
 
-  final String text;
+  final String label;
+  final Color color;
+  final bool isSelected;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.check_circle_outline,
-              size: 16, color: Color(0xFF10B981)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                  fontSize: 13, color: Color(0xFF374151), height: 1.4),
-            ),
-          ),
-        ],
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isSelected ? color : Colors.white,
+        foregroundColor: isSelected ? Colors.white : color,
+        padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        side: BorderSide(color: color, width: 1.4),
+        elevation: 0,
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
       ),
     );
   }
+}
+
+class _PlanInputCard extends StatelessWidget {
+  const _PlanInputCard({
+    required this.title,
+    required this.subtitle,
+    required this.fields,
+    required this.controllers,
+    required this.onChanged,
+    required this.lastSavedAt,
+  });
+
+  final String title;
+  final String subtitle;
+  final List<_PlanFieldConfig> fields;
+  final Map<String, TextEditingController> controllers;
+  final VoidCallback onChanged;
+  final DateTime? lastSavedAt;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0F000000), blurRadius: 12, offset: Offset(0, 6)),
+        ],
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final gap = 16.0;
+          final bool twoCol = width >= 760;
+          final double halfWidth = twoCol ? (width - gap) / 2 : width;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+              const SizedBox(height: 6),
+              Text(
+                subtitle,
+                style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280), height: 1.4),
+              ),
+              const SizedBox(height: 18),
+              Wrap(
+                spacing: gap,
+                runSpacing: gap,
+                children: fields.map((field) {
+                  final fieldWidth = field.fullWidth ? width : halfWidth;
+                  return SizedBox(
+                    width: fieldWidth,
+                    child: _PlanTextField(
+                      label: field.label,
+                      hint: field.hint,
+                      minLines: field.minLines,
+                      maxLines: field.maxLines,
+                      controller: controllers[field.keyName]!,
+                      onChanged: (_) => onChanged(),
+                    ),
+                  );
+                }).toList(),
+              ),
+              if (lastSavedAt != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Saved ${TimeOfDay.fromDateTime(lastSavedAt!).format(context)}',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                ),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _PlanTextField extends StatelessWidget {
+  const _PlanTextField({
+    required this.label,
+    required this.hint,
+    required this.minLines,
+    required this.maxLines,
+    required this.controller,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String hint;
+  final int minLines;
+  final int maxLines;
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      minLines: minLines,
+      maxLines: maxLines,
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        alignLabelWithHint: true,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        filled: true,
+        fillColor: const Color(0xFFF9FAFB),
+      ),
+    );
+  }
+}
+
+class _PlanFieldConfig {
+  const _PlanFieldConfig({
+    required this.keyName,
+    required this.label,
+    required this.hint,
+    required this.minLines,
+    required this.maxLines,
+    this.fullWidth = false,
+  });
+
+  final String keyName;
+  final String label;
+  final String hint;
+  final int minLines;
+  final int maxLines;
+  final bool fullWidth;
 }
 
 class ExecutionPlanStakeholderIdentificationScreen extends StatelessWidget {

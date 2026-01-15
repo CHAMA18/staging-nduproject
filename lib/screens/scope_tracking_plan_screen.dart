@@ -155,18 +155,6 @@ class _ScopeTrackingHeader extends StatelessWidget {
           ),
           const _StatusPill(label: 'Active'),
           const SizedBox(width: 12),
-          OutlinedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.file_download_outlined, size: 18),
-            label: const Text('Export'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF111827),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              side: const BorderSide(color: Color(0xFFE5E7EB)),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          ),
-          const SizedBox(width: 10),
           ElevatedButton.icon(
             onPressed: () {},
             icon: const Icon(Icons.check_circle_outline, size: 18),

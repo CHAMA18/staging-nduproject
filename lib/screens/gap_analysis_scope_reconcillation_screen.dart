@@ -98,14 +98,20 @@ class _GapAnalysisScopeReconcillationScreenState extends State<GapAnalysisScopeR
                           },
                         ),
                         const SizedBox(height: 28),
-                        const _SummaryGrid(),
-                        const SizedBox(height: 28),
                         const _PrimarySections(),
                         const SizedBox(height: 24),
                         _SecondarySections(
                           impacts: _impactRows,
                           workflowSteps: _workflowSteps,
                           lessons: _lessonsLearned,
+                          onWorkflowUpdated: (updated) {
+                            setState(() {
+                              _workflowSteps
+                                ..clear()
+                                ..addAll(updated);
+                            });
+                            _persistEntries();
+                          },
                         ),
                         const SizedBox(height: 24),
                         LaunchPhaseNavigation(
@@ -668,11 +674,13 @@ class _SecondarySections extends StatelessWidget {
     required this.impacts,
     required this.workflowSteps,
     required this.lessons,
+    required this.onWorkflowUpdated,
   });
 
   final List<_ImpactRow> impacts;
   final List<_WorkflowStep> workflowSteps;
   final List<String> lessons;
+  final ValueChanged<List<_WorkflowStep>> onWorkflowUpdated;
 
   @override
   Widget build(BuildContext context) {
@@ -685,7 +693,11 @@ class _SecondarySections extends StatelessWidget {
           children: [
             _ImpactAssessmentCard(width: sectionWidth, impacts: impacts),
             const SizedBox(height: 20),
-            _ReconciliationWorkflowCard(width: sectionWidth, steps: workflowSteps),
+            _ReconciliationWorkflowCard(
+              width: sectionWidth,
+              steps: workflowSteps,
+              onWorkflowUpdated: onWorkflowUpdated,
+            ),
             const SizedBox(height: 20),
             _LessonsLearnedCard(width: sectionWidth, lessons: lessons),
           ],
@@ -969,12 +981,45 @@ class _ImpactAssessmentCard extends StatelessWidget {
             ),
             child: Column(
               children: [
-                Row(
-                  children: const [
-                    Expanded(child: _TableHeaderCell(label: 'Impact area')),
-                    _TableHeaderCell(label: 'Rating'),
-                    _TableHeaderCell(label: 'Trend'),
-                  ],
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  child: Row(
+                    children: const [
+                      Expanded(
+                        child: Text(
+                          'Impact area',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF6B7280),
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          'Rating',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF6B7280),
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          'Trend',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF6B7280),
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const Divider(height: 1, color: Color(0xFFE5E7EB)),
                 if (impacts.isEmpty)
@@ -1005,8 +1050,18 @@ class _ImpactAssessmentCard extends StatelessWidget {
                               ],
                             ),
                           ),
-                          SizedBox(width: 120, child: _StatusBadge(label: impact.rating)),
-                          SizedBox(width: 120, child: _TrendPill(label: impact.trend)),
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: _StatusBadge(label: impact.rating),
+                            ),
+                          ),
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: _TrendPill(label: impact.trend),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -1735,16 +1790,174 @@ class _Tag extends StatelessWidget {
   }
 }
 
-class _ReconciliationWorkflowCard extends StatelessWidget {
-  const _ReconciliationWorkflowCard({required this.width, required this.steps});
+class _ReconciliationWorkflowCard extends StatefulWidget {
+  const _ReconciliationWorkflowCard({
+    required this.width,
+    required this.steps,
+    required this.onWorkflowUpdated,
+  });
 
   final double width;
   final List<_WorkflowStep> steps;
+  final ValueChanged<List<_WorkflowStep>> onWorkflowUpdated;
+
+  @override
+  State<_ReconciliationWorkflowCard> createState() => _ReconciliationWorkflowCardState();
+}
+
+class _ReconciliationWorkflowCardState extends State<_ReconciliationWorkflowCard> {
+  static const _columns = [
+    _WorkflowBoardColumnConfig(
+      keyName: 'planned',
+      label: 'Planned',
+      accent: Color(0xFF94A3B8),
+    ),
+    _WorkflowBoardColumnConfig(
+      keyName: 'active',
+      label: 'Active',
+      accent: Color(0xFF2563EB),
+    ),
+    _WorkflowBoardColumnConfig(
+      keyName: 'in_progress',
+      label: 'In Progress',
+      accent: Color(0xFFF59E0B),
+    ),
+    _WorkflowBoardColumnConfig(
+      keyName: 'ongoing',
+      label: 'Ongoing',
+      accent: Color(0xFF10B981),
+    ),
+    _WorkflowBoardColumnConfig(
+      keyName: 'complete',
+      label: 'Complete',
+      accent: Color(0xFF16A34A),
+    ),
+  ];
+
+  late Map<String, List<_WorkflowStep>> _grouped;
+
+  @override
+  void initState() {
+    super.initState();
+    _grouped = _buildGrouped(widget.steps);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ReconciliationWorkflowCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.steps != widget.steps) {
+      _grouped = _buildGrouped(widget.steps);
+    }
+  }
+
+  String _statusKey(String status) {
+    final value = status.toLowerCase();
+    if (value.contains('ongoing')) return 'ongoing';
+    if (value.contains('active')) return 'active';
+    if (value.contains('progress')) return 'in_progress';
+    if (value.contains('complete') || value.contains('done')) return 'complete';
+    if (value.contains('review')) return 'review';
+    return 'planned';
+  }
+
+  Map<String, List<_WorkflowStep>> _buildGrouped(List<_WorkflowStep> steps) {
+    final grouped = <String, List<_WorkflowStep>>{};
+    for (final step in steps) {
+      final key = _statusKey(step.status);
+      grouped.putIfAbsent(key, () => []).add(step);
+    }
+    return grouped;
+  }
+
+  Future<void> _openAddWorkflowItem() async {
+    final titleController = TextEditingController();
+    final descController = TextEditingController();
+    String status = _columns.first.label;
+
+    final result = await showDialog<_WorkflowStep>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Add workflow item'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(labelText: 'Title'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(labelText: 'Description'),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: status,
+                  items: _columns
+                      .map((col) => DropdownMenuItem<String>(
+                            value: col.label,
+                            child: Text(col.label),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      status = value;
+                    }
+                  },
+                  decoration: const InputDecoration(labelText: 'Status'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final title = titleController.text.trim();
+                if (title.isEmpty) {
+                  return;
+                }
+                Navigator.of(context).pop(
+                  _WorkflowStep(
+                    label: title,
+                    status: status,
+                    description: descController.text.trim().isEmpty
+                        ? 'Define workflow details.'
+                        : descController.text.trim(),
+                  ),
+                );
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == null) return;
+    setState(() {
+      _grouped = _buildGrouped([..._grouped.values.expand((e) => e), result]);
+    });
+    final updatedList = <_WorkflowStep>[];
+    for (final column in _columns) {
+      updatedList.addAll(_grouped[column.keyName] ?? const []);
+    }
+    widget.onWorkflowUpdated(updatedList);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = AppBreakpoints.isMobile(context);
+
     return _SectionShell(
-      width: width,
+      width: widget.width,
       title: 'Reconciliation workflow & backlog',
       subtitle: 'Track the lifecycle of gap discovery through launch readiness.',
       trailing: TextButton.icon(
@@ -1753,44 +1966,274 @@ class _ReconciliationWorkflowCard extends StatelessWidget {
         label: const Text('Open workflow board'),
       ),
       child: Column(
-        children: steps.isEmpty
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: widget.steps.isEmpty
             ? const [
                 _EmptyPanel(label: 'No workflow items yet.'),
               ]
-            : steps
-                .map(
-                  (step) => Container(
-                    margin: const EdgeInsets.symmetric(vertical: 6),
-                    padding: const EdgeInsets.all(16),
+            : [
+                const Text(
+                  'Open workflow board',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 16,
+                  children: _columns.map((column) {
+                    final items = _grouped[column.keyName] ?? const <_WorkflowStep>[];
+                    return SizedBox(
+                      width: isMobile ? double.infinity : 260,
+                      child: _WorkflowBoardColumn(
+                        label: column.label,
+                        accent: column.accent,
+                        items: items,
+                        onAccept: (step) {
+                          setState(() {
+                            for (final list in _grouped.values) {
+                              list.removeWhere((item) =>
+                                  item.label == step.label &&
+                                  item.description == step.description);
+                            }
+                            final updated = _WorkflowStep(
+                              label: step.label,
+                              status: column.label,
+                              description: step.description,
+                            );
+                            _grouped.putIfAbsent(column.keyName, () => []).add(updated);
+                          });
+                          final updatedList = <_WorkflowStep>[];
+                          for (final column in _columns) {
+                            updatedList.addAll(_grouped[column.keyName] ?? const []);
+                          }
+                          widget.onWorkflowUpdated(updatedList);
+                        },
+                        onDelete: (step) {
+                          setState(() {
+                            for (final list in _grouped.values) {
+                              list.removeWhere((item) =>
+                                  item.label == step.label &&
+                                  item.description == step.description);
+                            }
+                          });
+                          final updatedList = <_WorkflowStep>[];
+                          for (final column in _columns) {
+                            updatedList.addAll(_grouped[column.keyName] ?? const []);
+                          }
+                          widget.onWorkflowUpdated(updatedList);
+                        },
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _openAddWorkflowItem,
+                    icon: const Icon(Icons.add_circle_outline),
+                    label: const Text('Add workflow item'),
+                  ),
+                ),
+              ],
+      ),
+    );
+  }
+}
+
+class _WorkflowBoardColumnConfig {
+  const _WorkflowBoardColumnConfig({
+    required this.keyName,
+    required this.label,
+    required this.accent,
+  });
+
+  final String keyName;
+  final String label;
+  final Color accent;
+}
+
+class _WorkflowBoardColumn extends StatelessWidget {
+  const _WorkflowBoardColumn({
+    required this.label,
+    required this.accent,
+    required this.items,
+    required this.onAccept,
+    required this.onDelete,
+  });
+
+  final String label;
+  final Color accent;
+  final List<_WorkflowStep> items;
+  final ValueChanged<_WorkflowStep> onAccept;
+  final ValueChanged<_WorkflowStep> onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return DragTarget<_WorkflowStep>(
+      onWillAccept: (data) => data != null,
+      onAccept: onAccept,
+      builder: (context, candidateData, rejectedData) {
+        final isActive = candidateData.isNotEmpty;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: isActive ? accent.withValues(alpha: 0.08) : const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: isActive ? accent : const Color(0xFFE5E7EB)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    label,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF3F4F6),
-                      borderRadius: BorderRadius.circular(16),
+                      color: accent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
                     ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                step.label,
-                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                step.description,
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF4B5563)),
-                              ),
-                            ],
-                          ),
-                        ),
-                        _StatusBadge(label: step.status),
-                      ],
+                    child: Text(
+                      '${items.length}',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: accent),
                     ),
                   ),
-                )
-                .toList(),
+                ],
+              ),
+              const SizedBox(height: 10),
+              if (items.isEmpty && !isActive)
+                const Text(
+                  'No items yet',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
+                ),
+              if (items.isEmpty && isActive)
+                const Text(
+                  'Drop here',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                ),
+              if (items.isNotEmpty)
+                ...items.map(
+                  (item) => _DraggableWorkflowCard(
+                    step: item,
+                    accent: accent,
+                    onDelete: onDelete,
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _DraggableWorkflowCard extends StatelessWidget {
+  const _DraggableWorkflowCard({
+    required this.step,
+    required this.accent,
+    required this.onDelete,
+  });
+
+  final _WorkflowStep step;
+  final Color accent;
+  final ValueChanged<_WorkflowStep> onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final card = _WorkflowBoardCard(
+      label: step.label,
+      description: step.description,
+      accent: accent,
+      onDelete: () => onDelete(step),
+    );
+    return LongPressDraggable<_WorkflowStep>(
+      data: step,
+      feedback: Material(
+        color: Colors.transparent,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 240),
+          child: card,
+        ),
+      ),
+      childWhenDragging: Opacity(opacity: 0.4, child: card),
+      child: card,
+    );
+  }
+}
+
+class _WorkflowBoardCard extends StatelessWidget {
+  const _WorkflowBoardCard({
+    required this.label,
+    required this.description,
+    required this.accent,
+    required this.onDelete,
+  });
+
+  final String label;
+  final String description;
+  final Color accent;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0A000000), blurRadius: 6, offset: Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                ),
+              ),
+              IconButton(
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline, size: 16, color: Color(0xFFEF4444)),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                splashRadius: 18,
+                tooltip: 'Delete card',
+              ),
+              Container(
+                width: 6,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            description,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF4B5563), height: 1.35),
+          ),
+        ],
       ),
     );
   }

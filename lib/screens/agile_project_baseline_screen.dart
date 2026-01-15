@@ -6,6 +6,8 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/screens/project_baseline_screen.dart';
+import 'package:ndu_project/services/firebase_auth_service.dart';
+import 'package:ndu_project/services/user_service.dart';
 
 class AgileProjectBaselineScreen extends StatelessWidget {
   const AgileProjectBaselineScreen({super.key});
@@ -173,42 +175,51 @@ class _UserChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final displayName = user?.displayName ?? user?.email ?? 'User';
+    final displayName = FirebaseAuthService.displayNameOrEmail(fallback: 'User');
+    final email = user?.email ?? '';
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: const Color(0xFFE5E7EB),
-            backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
-            child: user?.photoURL == null
-                ? Text(
-                    displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
-                  )
-                : null,
+    return StreamBuilder<bool>(
+      stream: UserService.watchAdminStatus(),
+      builder: (context, snapshot) {
+        final isAdmin = snapshot.data ?? UserService.isAdminEmail(email);
+        final role = isAdmin ? 'Admin' : 'Member';
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
           ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(displayName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-              const Text('Product manager', style: TextStyle(fontSize: 10, color: Color(0xFF6B7280))),
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: const Color(0xFFE5E7EB),
+                backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
+                child: user?.photoURL == null
+                    ? Text(
+                        displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(displayName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  Text(role, style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280))),
+                ],
+              ),
+              const SizedBox(width: 6),
+              const Icon(Icons.keyboard_arrow_down, size: 18, color: Color(0xFF9CA3AF)),
             ],
           ),
-          const SizedBox(width: 6),
-          const Icon(Icons.keyboard_arrow_down, size: 18, color: Color(0xFF9CA3AF)),
-        ],
-      ),
+        );
+      },
     );
   }
 }

@@ -1,14 +1,19 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/services/firebase_auth_service.dart';
+import 'package:ndu_project/services/user_service.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:provider/provider.dart';
-import 'package:ndu_project/providers/project_data_provider.dart';
-import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 
-class RiskAssessmentScreen extends StatelessWidget {
+class RiskAssessmentScreen extends StatefulWidget {
   const RiskAssessmentScreen({super.key});
 
   static void open(BuildContext context) {
@@ -17,13 +22,253 @@ class RiskAssessmentScreen extends StatelessWidget {
     );
   }
 
-  // No default register entries – we want a clean slate by default.
-  static const List<_RiskEntry> _entries = [];
+  @override
+  State<RiskAssessmentScreen> createState() => _RiskAssessmentScreenState();
+}
+
+class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
+  final List<_RiskEntry> _entries = [];
+  final TextEditingController _searchController = TextEditingController();
+  String? _statusFilter;
+  bool _loadingEntries = false;
+
+  final TextEditingController _notesController = TextEditingController();
+  final _Debouncer _notesDebounce = _Debouncer();
+  bool _notesSaving = false;
+  DateTime? _notesSavedAt;
+  bool _didInitNotes = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() => setState(() {}));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadEntries());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didInitNotes) return;
+    final data = ProjectDataHelper.getData(context);
+    _notesController.text = data.planningNotes['planning_risk_assessment_notes'] ?? '';
+    _didInitNotes = true;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _notesController.dispose();
+    _notesDebounce.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadEntries() async {
+    final projectId = ProjectDataHelper.getData(context).projectId;
+    if (projectId == null || projectId.isEmpty) return;
+    setState(() => _loadingEntries = true);
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('risk_assessment_entries')
+          .orderBy('createdAt', descending: true)
+          .get();
+      final entries = snapshot.docs.map((doc) => _RiskEntry.fromFirestore(doc)).toList();
+      if (!mounted) return;
+      setState(() {
+        _entries
+          ..clear()
+          ..addAll(entries);
+      });
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to load risk register data')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loadingEntries = false);
+    }
+  }
+
+  Future<void> _persistEntry(_RiskEntry entry, {required bool isNew}) async {
+    final projectId = ProjectDataHelper.getData(context).projectId;
+    if (projectId == null || projectId.isEmpty) return;
+    final docRef = FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId)
+        .collection('risk_assessment_entries')
+        .doc(entry.docId);
+    await docRef.set(entry.toFirestore(isNew: isNew), SetOptions(merge: true));
+  }
+
+  void _handleNotesChanged(String value) {
+    final trimmed = value.trim();
+    final provider = ProjectDataHelper.getProvider(context);
+    provider.updateField(
+      (data) => data.copyWith(
+        planningNotes: {
+          ...data.planningNotes,
+          'planning_risk_assessment_notes': trimmed,
+        },
+      ),
+    );
+    _notesDebounce.run(() async {
+      if (!mounted) return;
+      setState(() => _notesSaving = true);
+      final success = await ProjectDataHelper.updateAndSave(
+        context: context,
+        checkpoint: 'risk_assessment',
+        dataUpdater: (data) => data.copyWith(
+          planningNotes: {
+            ...data.planningNotes,
+            'planning_risk_assessment_notes': trimmed,
+          },
+        ),
+        showSnackbar: false,
+      );
+      if (!mounted) return;
+      setState(() {
+        _notesSaving = false;
+        if (success) _notesSavedAt = DateTime.now();
+      });
+    });
+  }
+
+  Future<void> _openEntryDialog({_RiskEntry? entry, bool readOnly = false}) async {
+    final idController = TextEditingController(text: entry?.id ?? '');
+    final descriptionController = TextEditingController(text: entry?.description ?? '');
+    final categoryController = TextEditingController(text: entry?.category ?? '');
+    final probabilityController = TextEditingController(text: entry?.probability ?? '');
+    final impactController = TextEditingController(text: entry?.impact ?? '');
+    final scoreController = TextEditingController(text: entry?.score ?? '');
+    final ownerController = TextEditingController(text: entry?.owner ?? '');
+    final statusController = TextEditingController(text: entry?.status ?? '');
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        final bool isEditing = entry != null;
+        return AlertDialog(
+          title: Text(readOnly ? 'View risk' : (isEditing ? 'Edit risk' : 'Add risk')),
+          content: SizedBox(
+            width: 440,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _dialogField(controller: idController, label: 'Risk ID', readOnly: readOnly),
+                  _dialogField(controller: descriptionController, label: 'Description', readOnly: readOnly, maxLines: 2),
+                  _dialogField(controller: categoryController, label: 'Category', readOnly: readOnly),
+                  _dialogField(controller: probabilityController, label: 'Probability', readOnly: readOnly),
+                  _dialogField(controller: impactController, label: 'Impact', readOnly: readOnly),
+                  _dialogField(controller: scoreController, label: 'Risk Score', readOnly: readOnly),
+                  _dialogField(controller: ownerController, label: 'Owner', readOnly: readOnly),
+                  _dialogField(controller: statusController, label: 'Status', readOnly: readOnly),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Close')),
+            if (!readOnly)
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text(isEditing ? 'Save' : 'Add'),
+              ),
+          ],
+        );
+      },
+    );
+
+    if (result != true || readOnly) return;
+    final newEntry = _RiskEntry(
+      docId: entry?.docId ?? _newEntryId(),
+      id: idController.text.trim().isEmpty ? 'R-${DateTime.now().millisecondsSinceEpoch}' : idController.text.trim(),
+      description: descriptionController.text.trim(),
+      category: categoryController.text.trim(),
+      probability: probabilityController.text.trim(),
+      impact: impactController.text.trim(),
+      score: scoreController.text.trim(),
+      owner: ownerController.text.trim(),
+      status: statusController.text.trim().isEmpty ? 'Open' : statusController.text.trim(),
+      createdAt: entry?.createdAt ?? DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
+    setState(() {
+      final index = _entries.indexWhere((item) => item.docId == newEntry.docId);
+      if (index == -1) {
+        _entries.insert(0, newEntry);
+      } else {
+        _entries[index] = newEntry;
+      }
+    });
+    await _persistEntry(newEntry, isNew: entry == null);
+  }
+
+  String _newEntryId() {
+    final projectId = ProjectDataHelper.getData(context).projectId;
+    if (projectId == null || projectId.isEmpty) {
+      return DateTime.now().millisecondsSinceEpoch.toString();
+    }
+    return FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId)
+        .collection('risk_assessment_entries')
+        .doc()
+        .id;
+  }
+
+  List<_RiskEntry> _filteredEntries() {
+    final query = _searchController.text.trim().toLowerCase();
+    return _entries.where((entry) {
+      final matchesStatus = _statusFilter == null || entry.status == _statusFilter;
+      if (!matchesStatus) return false;
+      if (query.isEmpty) return true;
+      final haystack = [
+        entry.id,
+        entry.description,
+        entry.category,
+        entry.owner,
+        entry.status,
+      ].join(' ').toLowerCase();
+      return haystack.contains(query);
+    }).toList();
+  }
+
+  Future<void> _openFilterDialog() async {
+    final current = _statusFilter;
+    final options = ['All', 'Open', 'In Progress', 'Monitoring', 'Closed'];
+    final result = await showDialog<String?>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Filter by status'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final option in options)
+                RadioListTile<String?>(
+                  title: Text(option),
+                  value: option == 'All' ? null : option,
+                  groupValue: current,
+                  onChanged: (value) => Navigator.of(context).pop(value),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+    if (result == null && current == null) return;
+    setState(() => _statusFilter = result);
+  }
 
   @override
   Widget build(BuildContext context) {
     final bool isMobile = AppBreakpoints.isMobile(context);
     final double horizontalPadding = isMobile ? 20 : 36;
+    final entries = _filteredEntries();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -47,19 +292,27 @@ class RiskAssessmentScreen extends StatelessWidget {
                         const SizedBox(height: 24),
                         const _PageHeading(),
                         const SizedBox(height: 20),
-                        const PlanningAiNotesCard(
-                          title: 'Notes',
-                          sectionLabel: 'Risk Assessment',
-                          noteKey: 'planning_risk_assessment_notes',
-                          checkpoint: 'risk_assessment',
-                          description: 'Summarize key risks, probability/impact themes, and mitigation focus.',
+                        _RiskNotesCard(
+                          controller: _notesController,
+                          saving: _notesSaving,
+                          savedAt: _notesSavedAt,
+                          onChanged: _handleNotesChanged,
                         ),
                         const SizedBox(height: 24),
                         _MetricsWrap(isMobile: isMobile),
                         const SizedBox(height: 28),
                         const _RiskMatrixCard(),
                         const SizedBox(height: 28),
-                        _RiskRegister(entries: _entries, isMobile: isMobile),
+                        _RiskRegister(
+                          entries: entries,
+                          isMobile: isMobile,
+                          loading: _loadingEntries,
+                          searchController: _searchController,
+                          onAdd: () => _openEntryDialog(),
+                          onFilter: _openFilterDialog,
+                          onView: (entry) => _openEntryDialog(entry: entry, readOnly: true),
+                          onEdit: (entry) => _openEntryDialog(entry: entry),
+                        ),
                         const SizedBox(height: 80),
                       ],
                     ),
@@ -82,6 +335,11 @@ class _TopUtilityBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final displayName = FirebaseAuthService.displayNameOrEmail(fallback: 'User');
+    final email = user?.email ?? '';
+    final primaryText = email.isNotEmpty ? email : displayName;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
       decoration: BoxDecoration(
@@ -100,11 +358,14 @@ class _TopUtilityBar extends StatelessWidget {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
           ),
           const Spacer(),
-          const _UserChip(name: 'Samuel kamanga', role: 'Product manager'),
-          const SizedBox(width: 12),
-          _OutlinedButton(label: 'Export', onPressed: () {}),
-          const SizedBox(width: 10),
-          _YellowButton(label: 'New Project', onPressed: () {}),
+          StreamBuilder<bool>(
+            stream: UserService.watchAdminStatus(),
+            builder: (context, snapshot) {
+              final isAdmin = snapshot.data ?? UserService.isAdminEmail(email);
+              final role = isAdmin ? 'Admin' : 'Member';
+              return _UserChip(name: primaryText, role: role);
+            },
+          ),
         ],
       ),
     );
@@ -123,6 +384,110 @@ class _TopUtilityBar extends StatelessWidget {
           border: Border.all(color: const Color(0xFFE5E7EB)),
         ),
         child: Icon(icon, size: 18, color: const Color(0xFF6B7280)),
+      ),
+    );
+  }
+}
+
+class _RiskNotesCard extends StatelessWidget {
+  const _RiskNotesCard({
+    required this.controller,
+    required this.saving,
+    required this.savedAt,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final bool saving;
+  final DateTime? savedAt;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.note_outlined, color: Color(0xFF475569), size: 18),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Notes',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                ),
+              ),
+              if (saving)
+                const _StatusChip(label: 'Saving...', color: Color(0xFF64748B))
+              else if (savedAt != null)
+                _StatusChip(
+                  label: 'Saved ${TimeOfDay.fromDateTime(savedAt!).format(context)}',
+                  color: const Color(0xFF16A34A),
+                  background: const Color(0xFFECFDF3),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Summarize key risks, probability/impact themes, and mitigation focus.',
+            style: TextStyle(fontSize: 13, color: Color(0xFF6B7280), height: 1.4),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: controller,
+            onChanged: onChanged,
+            maxLines: 6,
+            decoration: InputDecoration(
+              hintText: 'Capture risk assessment notes here...',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+              ),
+              filled: true,
+              fillColor: const Color(0xFFF8FAFC),
+              contentPadding: const EdgeInsets.all(12),
+            ),
+            style: const TextStyle(fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.label, required this.color, this.background});
+
+  final String label;
+  final Color color;
+  final Color? background;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: background ?? color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
       ),
     );
   }
@@ -600,10 +965,25 @@ class _MatrixRow extends StatelessWidget {
 }
 
 class _RiskRegister extends StatelessWidget {
-  const _RiskRegister({required this.entries, required this.isMobile});
+  const _RiskRegister({
+    required this.entries,
+    required this.isMobile,
+    required this.loading,
+    required this.searchController,
+    required this.onAdd,
+    required this.onFilter,
+    required this.onView,
+    required this.onEdit,
+  });
 
   final List<_RiskEntry> entries;
   final bool isMobile;
+  final bool loading;
+  final TextEditingController searchController;
+  final VoidCallback onAdd;
+  final VoidCallback onFilter;
+  final ValueChanged<_RiskEntry> onView;
+  final ValueChanged<_RiskEntry> onEdit;
 
   static const List<int> _columnFlex = [2, 3, 2, 2, 3, 2, 2, 2];
 
@@ -638,6 +1018,7 @@ class _RiskRegister extends StatelessWidget {
               SizedBox(
                 width: isMobile ? double.infinity : 280,
                 child: TextField(
+                  controller: searchController,
                   decoration: InputDecoration(
                     hintText: 'Search...',
                     prefixIcon: const Icon(Icons.search, size: 18),
@@ -662,15 +1043,22 @@ class _RiskRegister extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _OutlinedButton(label: 'Filter', onPressed: () {}),
+                  _OutlinedButton(label: 'Filter', onPressed: onFilter),
                   const SizedBox(width: 10),
-                  _OutlinedButton(label: 'Export', onPressed: () {}),
+                  _YellowButton(label: 'Add Risk', onPressed: onAdd),
                 ],
               ),
             ],
           ),
           const SizedBox(height: 22),
-          if (entries.isEmpty) ...[
+          if (loading) ...[
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 32),
+                child: CircularProgressIndicator(),
+              ),
+            ),
+          ] else if (entries.isEmpty) ...[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 28),
@@ -704,7 +1092,12 @@ class _RiskRegister extends StatelessWidget {
               final bool isLast = index == entries.length - 1;
               return Column(
                 children: [
-                  _RegisterRow(entry: entry, columnFlex: _columnFlex),
+                  _RegisterRow(
+                    entry: entry,
+                    columnFlex: _columnFlex,
+                    onView: () => onView(entry),
+                    onEdit: () => onEdit(entry),
+                  ),
                   if (!isLast) const Divider(height: 26, thickness: 1, color: Color(0xFFF3F4F6)),
                 ],
               );
@@ -756,10 +1149,17 @@ class _RegisterHeader extends StatelessWidget {
 }
 
 class _RegisterRow extends StatelessWidget {
-  const _RegisterRow({required this.entry, required this.columnFlex});
+  const _RegisterRow({
+    required this.entry,
+    required this.columnFlex,
+    required this.onView,
+    required this.onEdit,
+  });
 
   final _RiskEntry entry;
   final List<int> columnFlex;
+  final VoidCallback onView;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -846,12 +1246,12 @@ class _RegisterRow extends StatelessWidget {
             children: [
               IconButton(
                 icon: const Icon(Icons.visibility_outlined, size: 18, color: Color(0xFF6B7280)),
-                onPressed: () {},
+                onPressed: onView,
                 tooltip: 'View',
               ),
               IconButton(
                 icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF6B7280)),
-                onPressed: () {},
+                onPressed: onEdit,
                 tooltip: 'Edit',
               ),
             ],
@@ -898,6 +1298,7 @@ class _RiskTag extends StatelessWidget {
 
 class _RiskEntry {
   const _RiskEntry({
+    required this.docId,
     required this.id,
     required this.description,
     required this.category,
@@ -906,8 +1307,11 @@ class _RiskEntry {
     required this.score,
     required this.owner,
     required this.status,
+    required this.createdAt,
+    required this.updatedAt,
   });
 
+  final String docId;
   final String id;
   final String description;
   final String category;
@@ -916,4 +1320,75 @@ class _RiskEntry {
   final String score;
   final String owner;
   final String status;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  factory _RiskEntry.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? {};
+    return _RiskEntry(
+      docId: doc.id,
+      id: data['id']?.toString() ?? '',
+      description: data['description']?.toString() ?? '',
+      category: data['category']?.toString() ?? '',
+      probability: data['probability']?.toString() ?? '',
+      impact: data['impact']?.toString() ?? '',
+      score: data['score']?.toString() ?? '',
+      owner: data['owner']?.toString() ?? '',
+      status: data['status']?.toString() ?? '',
+      createdAt: _readTimestamp(data['createdAt']),
+      updatedAt: _readTimestamp(data['updatedAt']),
+    );
+  }
+
+  Map<String, dynamic> toFirestore({required bool isNew}) {
+    return {
+      'id': id,
+      'description': description,
+      'category': category,
+      'probability': probability,
+      'impact': impact,
+      'score': score,
+      'owner': owner,
+      'status': status,
+      if (isNew) 'createdAt': Timestamp.now(),
+      'updatedAt': Timestamp.now(),
+    };
+  }
+}
+
+DateTime _readTimestamp(dynamic value) {
+  if (value is Timestamp) return value.toDate();
+  if (value is DateTime) return value;
+  return DateTime.now();
+}
+
+Widget _dialogField({
+  required TextEditingController controller,
+  required String label,
+  bool readOnly = false,
+  int maxLines = 1,
+}) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: TextField(
+      controller: controller,
+      readOnly: readOnly,
+      maxLines: maxLines,
+      decoration: InputDecoration(labelText: label),
+    ),
+  );
+}
+
+class _Debouncer {
+  _Debouncer({Duration? delay}) : delay = delay ?? const Duration(milliseconds: 700);
+
+  final Duration delay;
+  Timer? _timer;
+
+  void run(void Function() action) {
+    _timer?.cancel();
+    _timer = Timer(delay, action);
+  }
+
+  void dispose() => _timer?.cancel();
 }

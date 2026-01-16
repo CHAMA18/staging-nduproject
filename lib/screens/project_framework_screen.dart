@@ -28,8 +28,6 @@ class ProjectFrameworkScreen extends StatefulWidget {
 class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
   String? _selectedOverallFramework;
   final List<_Goal> _goals = [_Goal(id: 1, name: 'Goal 1', framework: null)];
-  bool _isAiPopulating = false;
-  bool _aiPopulated = false;
 
   @override
   void initState() {
@@ -51,7 +49,16 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
         }
         setState(() {});
       }
-      await _maybePopulateAi(projectData);
+
+      // Cleanup: If specific auto-generated text is present in notes, clear it.
+      final fwNotes = projectData.planningNotes['planning_framework_notes'] ?? '';
+      if (fwNotes.startsWith('The Project Management Framework for the Ndu tests project is designed')) {
+        ProjectDataHelper.getProvider(context).updateField((d) {
+           final newNotes = Map<String, String>.from(d.planningNotes);
+           newNotes['planning_framework_notes'] = '';
+           return d.copyWith(planningNotes: newNotes);
+        });
+      }
     });
   }
 
@@ -74,7 +81,21 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
       return;
     }
     setState(() {
-      _goals.add(_Goal(id: _goals.length + 1, name: 'Goal ${_goals.length + 1}', framework: null));
+      String initialFramework;
+      if (_selectedOverallFramework == 'Waterfall' || _selectedOverallFramework == 'Agile') {
+        initialFramework = _selectedOverallFramework!;
+      } else {
+        initialFramework = 'Agile'; // or null, but the UI expects a value often?
+        // Actually, logic: if Hybrid, user can select. If W/A, user cannot. 
+        // When adding new goal, if locked, it MUST start as locked value.
+      }
+      _goals.add(_Goal(
+        id: _goals.length + 1, 
+        name: 'Goal ${_goals.length + 1}', 
+        framework: (_selectedOverallFramework == 'Waterfall' || _selectedOverallFramework == 'Agile') 
+            ? _selectedOverallFramework 
+            : null
+      ));
     });
   }
 
@@ -86,63 +107,6 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
     });
   }
 
-  Future<void> _maybePopulateAi(ProjectDataModel projectData) async {
-    if (_aiPopulated) return;
-    final needsFramework = (projectData.overallFramework ?? '').trim().isEmpty;
-    final filledGoals = projectData.projectGoals.where((g) => g.description.trim().isNotEmpty).length;
-    final needsGoals = filledGoals < 3;
-    if (!needsFramework && !needsGoals) return;
-
-    final contextText = ProjectDataHelper.buildFepContext(
-      projectData,
-      sectionLabel: 'Project Management Framework',
-    );
-    if (contextText.trim().isEmpty) return;
-
-    setState(() => _isAiPopulating = true);
-    try {
-      final aiResult = await OpenAiServiceSecure().suggestProjectFrameworkGoals(context: contextText);
-      if (!mounted) return;
-      _applyAiResult(aiResult);
-    } catch (e) {
-      // Surface a clear error state to the user and do not populate dummy data
-      if (!mounted) return;
-      setState(() => _isAiPopulating = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('AI generation failed: ${e.toString()}')));
-    }
-  }
-
-  void _applyAiResult(AiProjectFrameworkAndGoals aiResult) {
-    final suggestions = aiResult.goals.isNotEmpty
-        ? aiResult.goals
-        : AiProjectFrameworkAndGoals.fallback('').goals;
-    setState(() {
-      _aiPopulated = true;
-      _isAiPopulating = false;
-      if ((_selectedOverallFramework ?? '').trim().isEmpty && aiResult.framework.isNotEmpty) {
-        _selectedOverallFramework = aiResult.framework;
-      }
-      for (final goal in _goals) {
-        goal.dispose();
-      }
-      _goals
-        ..clear()
-        ..addAll(List.generate(3, (index) {
-          final suggestion = index < suggestions.length ? suggestions[index] : suggestions.last;
-          const fallbackFrameworks = ['Agile', 'Waterfall', 'Hybrid'];
-          final fallbackFramework = fallbackFrameworks[index % fallbackFrameworks.length];
-          final frameworkCandidate = (suggestion.framework?.trim().isNotEmpty == true)
-              ? suggestion.framework!.trim()
-              : fallbackFramework;
-          return _Goal(
-            id: index + 1,
-            name: suggestion.name.isNotEmpty ? suggestion.name : 'Goal ${index + 1}',
-            framework: frameworkCandidate.isNotEmpty ? frameworkCandidate : null,
-            description: suggestion.description,
-          );
-        }));
-    });
-  }
 
   Future<void> _handleNextPressed() async {
     // Validate required fields before proceeding
@@ -221,7 +185,15 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
                               _MainContentCard(
                                 selectedOverallFramework: _selectedOverallFramework,
                                 onOverallFrameworkChanged: (value) {
-                                  setState(() => _selectedOverallFramework = value);
+                                  setState(() {
+                                    _selectedOverallFramework = value;
+                                    // If Waterfall or Agile is selected, enforce it on all goals
+                                    if (value == 'Waterfall' || value == 'Agile') {
+                                      for (var goal in _goals) {
+                                        goal.framework = value;
+                                      }
+                                    }
+                                  });
                                 },
                                 goals: _goals,
                                 onGoalFrameworkChanged: (goalId, framework) {
@@ -231,7 +203,6 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
                                 },
                                 onAddGoal: _addGoal,
                                 onDeleteGoal: _deleteGoal,
-                                isAiPopulating: _isAiPopulating,
                               ),
                               const SizedBox(height: 24),
                               LaunchPhaseNavigation(
@@ -279,7 +250,6 @@ class _MainContentCard extends StatelessWidget {
     required this.onGoalFrameworkChanged,
     required this.onAddGoal,
     required this.onDeleteGoal,
-    required this.isAiPopulating,
   });
 
   final String? selectedOverallFramework;
@@ -288,7 +258,6 @@ class _MainContentCard extends StatelessWidget {
   final void Function(int goalId, String? framework) onGoalFrameworkChanged;
   final VoidCallback onAddGoal;
   final void Function(int goalId) onDeleteGoal;
-  final bool isAiPopulating;
 
   @override
   Widget build(BuildContext context) {
@@ -311,18 +280,6 @@ class _MainContentCard extends StatelessWidget {
             'Select a framework for the overall project and individual goals .',
             style: TextStyle(fontSize: 15, color: Color(0xFF6B7280)),
           ),
-          if (isAiPopulating) ...[
-            const SizedBox(height: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: const LinearProgressIndicator(minHeight: 6),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'AI is drafting framework and goal suggestions...',
-              style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
-            ),
-          ],
           const SizedBox(height: 48),
           _OverallFrameworkSection(
             selectedFramework: selectedOverallFramework,
@@ -331,6 +288,7 @@ class _MainContentCard extends StatelessWidget {
           const SizedBox(height: 48),
           _GoalsSection(
             goals: goals,
+            overallFramework: selectedOverallFramework,
             onGoalFrameworkChanged: onGoalFrameworkChanged,
             onAddGoal: onAddGoal,
             onDeleteGoal: onDeleteGoal,
@@ -394,12 +352,14 @@ class _OverallFrameworkSection extends StatelessWidget {
 class _GoalsSection extends StatelessWidget {
   const _GoalsSection({
     required this.goals,
+    required this.overallFramework,
     required this.onGoalFrameworkChanged,
     required this.onAddGoal,
     required this.onDeleteGoal,
   });
 
   final List<_Goal> goals;
+  final String? overallFramework;
   final void Function(int goalId, String? framework) onGoalFrameworkChanged;
   final VoidCallback onAddGoal;
   final void Function(int goalId) onDeleteGoal;
@@ -434,6 +394,7 @@ class _GoalsSection extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: 16),
           child: _GoalCard(
             goal: goal,
+            isLocked: overallFramework == 'Waterfall' || overallFramework == 'Agile',
             onFrameworkChanged: (framework) => onGoalFrameworkChanged(goal.id, framework),
             onDelete: () => onDeleteGoal(goal.id),
           ),
@@ -446,11 +407,13 @@ class _GoalsSection extends StatelessWidget {
 class _GoalCard extends StatelessWidget {
   const _GoalCard({
     required this.goal,
+    required this.isLocked,
     required this.onFrameworkChanged,
     required this.onDelete,
   });
 
   final _Goal goal;
+  final bool isLocked;
   final ValueChanged<String?> onFrameworkChanged;
   final VoidCallback onDelete;
 
@@ -512,7 +475,7 @@ class _GoalCard extends StatelessWidget {
                     items: ['Waterfall', 'Agile', 'Hybrid'].map((framework) {
                       return DropdownMenuItem<String>(value: framework, child: Text(framework, style: const TextStyle(fontSize: 14)));
                     }).toList(),
-                    onChanged: onFrameworkChanged,
+                    onChanged: isLocked ? null : onFrameworkChanged,
                   ),
                 ),
               ),

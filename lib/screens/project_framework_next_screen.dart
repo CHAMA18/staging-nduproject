@@ -36,6 +36,11 @@ class _ProjectFrameworkNextScreenState extends State<ProjectFrameworkNextScreen>
   final List<TextEditingController> _goalDescControllers = List.generate(3, (_) => TextEditingController());
   final List<TextEditingController> _goalYearControllers = List.generate(3, (_) => TextEditingController());
   final List<List<_Milestone>> _goalMilestones = List.generate(3, (_) => [_Milestone()]);
+  final List<bool> _isHighPriority = [false, false, false];
+  
+  String _potentialSolution = '';
+  String _projectObjective = '';
+  String _currentFilter = 'View All';
 
   @override
   void initState() {
@@ -62,6 +67,7 @@ class _ProjectFrameworkNextScreenState extends State<ProjectFrameworkNextScreen>
           _goalDescControllers[i].text = planningGoal.description;
         }
         _goalYearControllers[i].text = planningGoal.targetYear;
+        _isHighPriority[i] = planningGoal.isHighPriority;
         
         // Populate milestones
         _goalMilestones[i].clear();
@@ -69,6 +75,7 @@ class _ProjectFrameworkNextScreenState extends State<ProjectFrameworkNextScreen>
           final m = _Milestone();
           m.titleController.text = milestone.title;
           m.deadlineController.text = milestone.deadline;
+          m.status = milestone.status;
           _goalMilestones[i].add(m);
         }
         if (_goalMilestones[i].isEmpty) {
@@ -76,7 +83,69 @@ class _ProjectFrameworkNextScreenState extends State<ProjectFrameworkNextScreen>
         }
       }
       
+      
+      // Fetch context data
+      final analysis = projectData.preferredSolutionAnalysis;
+      // Heuristic: If selectedSolutionTitle exists, use it. Else first potential solution.
+      if (analysis?.selectedSolutionTitle != null && analysis!.selectedSolutionTitle!.isNotEmpty) {
+        _potentialSolution = analysis?.selectedSolutionTitle ?? '';
+      } else if (projectData.potentialSolutions.isNotEmpty) {
+        _potentialSolution = projectData.potentialSolutions.first.title;
+      }
+      
+      // Fetch Objective (from Business Case Scope or similar if specialized field missing)
+      // Assuming 'projectObjective' might not be a direct string on ProjectData yet based on imports.
+      // Looking at usage in other screens, Scope Statement often serves as objective.
+      _projectObjective = projectData.businessCase.isNotEmpty ? projectData.businessCase : '';
+
       setState(() {});
+    });
+  }
+
+  void _clearGoal(int index) {
+    setState(() {
+      _goalTitleControllers[index].clear();
+      _goalDescControllers[index].clear();
+      _goalYearControllers[index].clear();
+      _goalMilestones[index] = [_Milestone()];
+      _isHighPriority[index] = false;
+    });
+  }
+
+  void _copyGoal(int index) {
+    // Find first empty slot
+    int? targetIndex;
+    for (int i = 0; i < 3; i++) {
+      if (i != index && _goalTitleControllers[i].text.isEmpty && _goalDescControllers[i].text.isEmpty) {
+        targetIndex = i;
+        break;
+      }
+    }
+
+    if (targetIndex != null) {
+      setState(() {
+        _goalTitleControllers[targetIndex!].text = _goalTitleControllers[index].text;
+        _goalDescControllers[targetIndex!].text = _goalDescControllers[index].text;
+        _goalYearControllers[targetIndex!].text = _goalYearControllers[index].text;
+        _isHighPriority[targetIndex!] = _isHighPriority[index];
+        _goalMilestones[targetIndex!] = _goalMilestones[index].map((m) {
+          final newM = _Milestone();
+          newM.titleController.text = m.titleController.text;
+          newM.deadlineController.text = m.deadlineController.text;
+          newM.status = m.status;
+          return newM;
+        }).toList();
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No empty goal slots available to copy to.')),
+      );
+    }
+  }
+
+  void _togglePriority(int index) {
+    setState(() {
+      _isHighPriority[index] = !_isHighPriority[index];
     });
   }
 
@@ -129,9 +198,11 @@ class _ProjectFrameworkNextScreenState extends State<ProjectFrameworkNextScreen>
         title: _goalTitleControllers[i].text.trim(),
         description: _goalDescControllers[i].text.trim(),
         targetYear: _goalYearControllers[i].text.trim(),
+        isHighPriority: _isHighPriority[i],
         milestones: _goalMilestones[i].map((m) => PlanningMilestone(
           title: m.titleController.text.trim(),
           deadline: m.deadlineController.text.trim(),
+          status: m.status,
         )).toList(),
       );
     });
@@ -184,25 +255,43 @@ class _ProjectFrameworkNextScreenState extends State<ProjectFrameworkNextScreen>
                       description: 'Summarize planning goals, milestones, and delivery themes.',
                     ),
                     const SizedBox(height: 24),
-                    const _LabeledField(label: 'Potential Solution', value: 'Refactor Homepage Logic'),
                     const SizedBox(height: 24),
-                    const _LabeledField(label: 'Project Objective  (Detailed aim of the project.)', value: 'Refactor Homepage Logic'),
+                    _LabeledField(label: 'Potential Solution', value: _potentialSolution.isNotEmpty ? _potentialSolution : 'Not selected'),
+                    const SizedBox(height: 24),
+                    _LabeledField(label: 'Project Objective  (Detailed aim of the project.)', value: _projectObjective.isNotEmpty ? _projectObjective : 'Pending input'),
                     const SizedBox(height: 40),
                     _GoalsSection(
                       titleControllers: _goalTitleControllers,
                       descControllers: _goalDescControllers,
                       yearControllers: _goalYearControllers,
                       goalMilestones: _goalMilestones,
+                      isHighPriority: _isHighPriority,
+                      currentFilter: _currentFilter,
                       onAddMilestone: (goalIndex) {
                         setState(() {
                           _goalMilestones[goalIndex].add(_Milestone());
                         });
                       },
+                      onClear: _clearGoal,
+                      onCopy: _copyGoal,
+                      onTogglePriority: _togglePriority,
+                      onDeleteMilestone: (goalIndex, milestoneIndex) {
+                        setState(() {
+                          _goalMilestones[goalIndex].removeAt(milestoneIndex);
+                        });
+                      },
                     ),
                     const SizedBox(height: 48),
-                    const _MilestonesSection(),
+                    _MilestonesSection(
+                      goalMilestones: _goalMilestones,
+                      goalTitles: _goalTitleControllers.map((c) => c.text).toList(),
+                      currentFilter: _currentFilter,
+                    ),
                     const SizedBox(height: 32),
-                    const _GoalFilters(),
+                    _GoalFilters(
+                      currentFilter: _currentFilter,
+                      onSelect: (val) => setState(() => _currentFilter = val),
+                    ),
                     const SizedBox(height: 24),
                     _BottomGuidance(onNext: _navigateToNext),
                   ],
@@ -337,14 +426,26 @@ class _GoalsSection extends StatelessWidget {
     required this.descControllers,
     required this.yearControllers,
     required this.goalMilestones,
+    required this.isHighPriority,
+    required this.currentFilter,
     required this.onAddMilestone,
+    required this.onClear,
+    required this.onCopy,
+    required this.onTogglePriority,
+    required this.onDeleteMilestone,
   });
 
   final List<TextEditingController> titleControllers;
   final List<TextEditingController> descControllers;
   final List<TextEditingController> yearControllers;
   final List<List<_Milestone>> goalMilestones;
+  final List<bool> isHighPriority;
+  final String currentFilter;
   final void Function(int goalIndex) onAddMilestone;
+  final void Function(int index) onClear;
+  final void Function(int index) onCopy;
+  final void Function(int index) onTogglePriority;
+  final void Function(int goalIndex, int milestoneIndex) onDeleteMilestone;
 
   @override
   Widget build(BuildContext context) {
@@ -364,19 +465,27 @@ class _GoalsSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             for (int i = 0; i < 3; i++)
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 18),
-                  child: _GoalCard(
-                    goalNumber: i + 1,
-                    titleController: titleControllers[i],
-                    descController: descControllers[i],
-                    yearController: yearControllers[i],
-                    milestones: goalMilestones[i],
-                    onAddMilestone: () => onAddMilestone(i),
+              if (currentFilter == 'View All' || currentFilter == 'Goal ${i + 1}')
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 18),
+                    child: _GoalCard(
+                      goalNumber: i + 1,
+                      titleController: titleControllers[i],
+                      descController: descControllers[i],
+                      yearController: yearControllers[i],
+                      milestones: goalMilestones[i],
+                      isHighPriority: isHighPriority[i],
+                      onAddMilestone: () => onAddMilestone(i),
+                      onClear: () => onClear(i),
+                      onCopy: () => onCopy(i),
+                      onTogglePriority: () => onTogglePriority(i),
+                      onDeleteMilestone: (mIndex) => onDeleteMilestone(i, mIndex),
+                    ),
                   ),
-                ),
-              ),
+                )
+              else
+                const Expanded(child: SizedBox()), // Placeholder to keep layout alignment if using Row
           ],
         ),
       ],
@@ -388,6 +497,7 @@ class _Milestone {
   _Milestone() : titleController = TextEditingController(), deadlineController = TextEditingController();
   final TextEditingController titleController;
   final TextEditingController deadlineController;
+  String status = 'In Progress'; // Default status
 
   void dispose() {
     titleController.dispose();
@@ -402,7 +512,12 @@ class _GoalCard extends StatelessWidget {
     required this.descController,
     required this.yearController,
     required this.milestones,
+    required this.isHighPriority,
     required this.onAddMilestone,
+    required this.onClear,
+    required this.onCopy,
+    required this.onTogglePriority,
+    required this.onDeleteMilestone,
   });
 
   final int goalNumber;
@@ -410,7 +525,12 @@ class _GoalCard extends StatelessWidget {
   final TextEditingController descController;
   final TextEditingController yearController;
   final List<_Milestone> milestones;
+  final bool isHighPriority;
   final VoidCallback onAddMilestone;
+  final VoidCallback onClear;
+  final VoidCallback onCopy;
+  final VoidCallback onTogglePriority;
+  final void Function(int) onDeleteMilestone;
 
   @override
   Widget build(BuildContext context) {
@@ -439,15 +559,34 @@ class _GoalCard extends StatelessWidget {
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _kPrimaryText),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: const Color(0xFFFEE2E2), borderRadius: BorderRadius.circular(999)),
-                child: const Text('High priority', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFDC2626))),
+              GestureDetector(
+                onTap: onTogglePriority,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isHighPriority ? const Color(0xFFFEE2E2) : Colors.grey[100], 
+                    borderRadius: BorderRadius.circular(999)
+                  ),
+                  child: Text(
+                    'High priority', 
+                    style: TextStyle(
+                      fontSize: 11, 
+                      fontWeight: FontWeight.w700, 
+                      color: isHighPriority ? const Color(0xFFDC2626) : Colors.grey[500]
+                    )
+                  ),
+                ),
               ),
               const SizedBox(width: 12),
-              const Icon(Icons.content_copy_outlined, size: 18, color: _kSecondaryText),
+              GestureDetector(
+                onTap: onCopy,
+                child: const Icon(Icons.content_copy_outlined, size: 18, color: _kSecondaryText),
+              ),
               const SizedBox(width: 10),
-              const Icon(Icons.delete_outline_rounded, size: 18, color: _kSecondaryText),
+              GestureDetector(
+                onTap: onClear,
+                child: const Icon(Icons.delete_outline_rounded, size: 18, color: _kSecondaryText),
+              ),
             ],
           ),
           const SizedBox(height: 18),
@@ -497,57 +636,84 @@ class _GoalCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          ...milestones.map((milestone) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF7E6),
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: const Color(0xFFFFE0A3)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
-                    child: const Icon(Icons.sync_rounded, size: 22, color: Color(0xFFF59E0B)),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        TextField(
-                          controller: milestone.titleController,
-                          decoration: const InputDecoration(
-                            hintText: 'Milestone title',
-                            border: InputBorder.none,
-                            isDense: true,
-                            contentPadding: EdgeInsets.zero,
-                          ),
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _kPrimaryText),
-                        ),
-                        const SizedBox(height: 4),
-                        TextField(
-                          controller: milestone.deadlineController,
-                          decoration: const InputDecoration(
-                            hintText: 'Deadline (e.g., July 15, 2025)',
-                            border: InputBorder.none,
-                            isDense: true,
-                            contentPadding: EdgeInsets.zero,
-                          ),
-                          style: const TextStyle(fontSize: 12, color: _kSecondaryText, fontWeight: FontWeight.w500),
-                        ),
-                      ],
+          ...milestones.asMap().entries.map((entry) {
+            final index = entry.key;
+            final milestone = entry.value;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7E6),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: const Color(0xFFFFE0A3)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+                      child: const Icon(Icons.sync_rounded, size: 22, color: Color(0xFFF59E0B)),
                     ),
-                  ),
-                  const Text('in progress', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFEF4444))),
-                ],
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextField(
+                            controller: milestone.titleController,
+                            decoration: const InputDecoration(
+                              hintText: 'Milestone title',
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _kPrimaryText),
+                          ),
+                          const SizedBox(height: 4),
+                          TextField(
+                            controller: milestone.deadlineController,
+                            decoration: const InputDecoration(
+                              hintText: 'Deadline (e.g., July 15, 2025)',
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                            style: const TextStyle(fontSize: 12, color: _kSecondaryText, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ),
+                    StatefulBuilder(
+                      builder: (context, setState) {
+                        return PopupMenuButton<String>(
+                          initialValue: milestone.status,
+                          onSelected: (val) {
+                            setState(() => milestone.status = val);
+                          },
+                          child: Text(
+                            milestone.status,
+                            style: TextStyle(
+                              fontSize: 12, 
+                              fontWeight: FontWeight.w700, 
+                              color: milestone.status == 'Completed' ? const Color(0xFF10B981) 
+                               : (milestone.status == 'In Progress' ? const Color(0xFFEF4444) : Colors.grey)
+                            )
+                          ),
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(value: 'Not Started', child: Text('Not Started')),
+                            const PopupMenuItem(value: 'In Progress', child: Text('In Progress')),
+                            const PopupMenuItem(value: 'Completed', child: Text('Completed')),
+                          ],
+                        );
+                      }
+                    ),
+                  ],
+                ),
               ),
-            ),
-          )),
+            );
+          }),
           const SizedBox(height: 18),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -556,8 +722,11 @@ class _GoalCard extends StatelessWidget {
                 onTap: onAddMilestone,
                 child: const Text('+ Add Milestone', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kAccentColor)),
               ),
-              const Text('Edit', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kPrimaryText)),
-              const Text('Delete', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFEF4444))),
+              GestureDetector(
+                onTap: onClear, // Originally 'Edit' - change to clear/edit actions if needed. Using Clear as requested.
+                child: const Text('Clear', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kPrimaryText)),
+              ),
+              // Delete just clears it for now as per functionality
             ],
           ),
         ],
@@ -567,39 +736,46 @@ class _GoalCard extends StatelessWidget {
 }
 
 class _MilestonesSection extends StatelessWidget {
-  const _MilestonesSection();
+  const _MilestonesSection({
+    required this.goalMilestones,
+    required this.goalTitles,
+    required this.currentFilter,
+  });
+
+  final List<List<_Milestone>> goalMilestones;
+  final List<String> goalTitles;
+  final String currentFilter;
 
   static const List<String> _headers = [
     'No',
     'Milestones',
-    'No',
-    'Discipline',
-    'No',
+    'Status',
     'Due Date',
-    'No',
-    'References (paste)',
-    'No',
-    'Comments',
   ];
-
-  static final List<List<String>> _rows = List.generate(
-    4,
-    (_) => const [
-      '1',
-      'Edit Column 2',
-      '1',
-      'Edit Column 2',
-      '1',
-      'Edit Column 2',
-      '1',
-      'Edit Column 2',
-      '1',
-      'Edit Column 2',
-    ],
-  );
 
   @override
   Widget build(BuildContext context) {
+    // Flatten rows based on filter
+    final List<List<String>> rows = [];
+    for (int i = 0; i < 3; i++) {
+       if (currentFilter != 'View All' && currentFilter != 'Goal ${i + 1}') continue;
+       
+       for (final m in goalMilestones[i]) {
+         if (m.titleController.text.isNotEmpty || m.deadlineController.text.isNotEmpty) {
+           rows.add([
+             '${i + 1}',
+             m.titleController.text.isEmpty ? 'Untitled Milestone' : m.titleController.text,
+             m.status,
+             m.deadlineController.text.isEmpty ? 'No Deadline' : m.deadlineController.text,
+           ]);
+         }
+       }
+    }
+
+    if (rows.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -614,7 +790,7 @@ class _MilestonesSection extends StatelessWidget {
         const SizedBox(height: 22),
         Container(
           width: double.infinity,
-          constraints: const BoxConstraints(minHeight: 280),
+          constraints: const BoxConstraints(minHeight: 100), // Adjusted
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(22),
@@ -633,26 +809,26 @@ class _MilestonesSection extends StatelessWidget {
                   children: [
                     for (int i = 0; i < _headers.length; i++)
                       Expanded(
-                        flex: i.isEven ? 1 : 3,
+                        flex: i == 1 ? 3 : 1,
                         child: _HeaderCell(label: _headers[i]),
                       ),
                   ],
                 ),
               ),
-              for (int index = 0; index < _rows.length; index++)
+              for (int index = 0; index < rows.length; index++)
                 Container(
                   decoration: BoxDecoration(
                     border: Border(
-                      bottom: BorderSide(color: _kBorderColor.withOpacity(index == _rows.length - 1 ? 0 : 0.6)),
+                      bottom: BorderSide(color: _kBorderColor.withOpacity(index == rows.length - 1 ? 0 : 0.6)),
                     ),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                   child: Row(
                     children: [
-                      for (int cell = 0; cell < _rows[index].length; cell++)
+                      for (int cell = 0; cell < rows[index].length; cell++)
                         Expanded(
-                          flex: cell.isEven ? 1 : 3,
-                          child: _DataCell(text: _rows[index][cell]),
+                          flex: cell == 1 ? 3 : 1,
+                          child: _DataCell(text: rows[index][cell]),
                         ),
                     ],
                   ),
@@ -694,7 +870,13 @@ class _DataCell extends StatelessWidget {
 }
 
 class _GoalFilters extends StatelessWidget {
-  const _GoalFilters();
+  const _GoalFilters({
+    required this.currentFilter,
+    required this.onSelect,
+  });
+
+  final String currentFilter;
+  final ValueChanged<String> onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -708,7 +890,13 @@ class _GoalFilters extends StatelessWidget {
     return Wrap(
       spacing: 16,
       runSpacing: 12,
-      children: filters.map((chip) => _GoalFilterChip(data: chip)).toList(),
+      children: filters.map((chip) => GestureDetector(
+        onTap: () => onSelect(chip.label),
+        child: _GoalFilterChip(
+          data: chip, 
+          isSelected: currentFilter == chip.label,
+        ),
+      )).toList(),
     );
   }
 }
@@ -721,19 +909,31 @@ class _FilterChipData {
 }
 
 class _GoalFilterChip extends StatelessWidget {
-  const _GoalFilterChip({required this.data});
+  const _GoalFilterChip({
+    required this.data,
+    required this.isSelected,
+  });
 
   final _FilterChipData data;
+  final bool isSelected;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
       decoration: BoxDecoration(
-        color: data.color.withOpacity(0.18),
+        color: isSelected ? data.color : data.color.withOpacity(0.18),
         borderRadius: BorderRadius.circular(22),
+        border: isSelected ? null : Border.all(color: data.color.withOpacity(0.3)),
       ),
-      child: Text(data.label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: data.color.darken())),
+      child: Text(
+        data.label, 
+        style: TextStyle(
+          fontSize: 13, 
+          fontWeight: FontWeight.w700, 
+          color: isSelected ? Colors.white : data.color.darken()
+        )
+      ),
     );
   }
 }

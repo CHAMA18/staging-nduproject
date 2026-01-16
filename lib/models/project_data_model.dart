@@ -464,6 +464,7 @@ class PlanningGoal {
   String title;
   String description;
   String targetYear;
+  bool isHighPriority;
   List<PlanningMilestone> milestones;
 
   PlanningGoal({
@@ -471,6 +472,7 @@ class PlanningGoal {
     this.title = '',
     this.description = '',
     this.targetYear = '',
+    this.isHighPriority = false,
     List<PlanningMilestone>? milestones,
   }) : milestones = milestones ?? [PlanningMilestone()];
 
@@ -479,6 +481,7 @@ class PlanningGoal {
         'title': title,
         'description': description,
         'targetYear': targetYear,
+        'isHighPriority': isHighPriority,
         'milestones': milestones.map((m) => m.toJson()).toList(),
       };
 
@@ -488,6 +491,7 @@ class PlanningGoal {
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       targetYear: json['targetYear'] ?? '',
+      isHighPriority: json['isHighPriority'] == true,
       milestones: (json['milestones'] as List?)?.map((m) => PlanningMilestone.fromJson(m)).toList() ?? [PlanningMilestone()],
     );
   }
@@ -496,21 +500,25 @@ class PlanningGoal {
 class PlanningMilestone {
   String title;
   String deadline;
+  String status;
 
   PlanningMilestone({
     this.title = '',
     this.deadline = '',
+    this.status = 'In Progress',
   });
 
   Map<String, dynamic> toJson() => {
         'title': title,
         'deadline': deadline,
+        'status': status,
       };
 
   factory PlanningMilestone.fromJson(Map<String, dynamic> json) {
     return PlanningMilestone(
       title: json['title'] ?? '',
       deadline: json['deadline'] ?? '',
+      status: json['status'] ?? 'In Progress',
     );
   }
 }

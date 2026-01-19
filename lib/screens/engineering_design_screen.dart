@@ -529,7 +529,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                   Expanded(
                     flex: 1,
                     child: DropdownButtonFormField<String>(
-                      value: _statusOptions.contains(component.statusLabel)
+                      initialValue: _statusOptions.contains(component.statusLabel)
                           ? component.statusLabel
                           : _statusOptions.first,
                       decoration: _inlineInputDecoration('Status'),

@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
@@ -5,6 +8,10 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/theme.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/screens/backend_design_screen.dart';
+import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 class UiUxDesignScreen extends StatefulWidget {
   const UiUxDesignScreen({super.key});
@@ -15,43 +22,273 @@ class UiUxDesignScreen extends StatefulWidget {
 
 class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
   final TextEditingController _notesController = TextEditingController();
+  final _Debouncer _saveDebouncer = _Debouncer();
+  bool _isLoading = false;
+  bool _suspendSave = false;
+  bool _didSeedDefaults = false;
 
   // Primary user journeys data
-  final List<_JourneyItem> _journeys = [
-    _JourneyItem('Onboard & first value', 'From sign-up to experiencing the first meaningful outcome.', 'Mapped'),
-    _JourneyItem('Core task completion', 'Critical path to complete the main job-to-be-done.', 'Draft'),
-    _JourneyItem('Support & recovery', 'Error states, help entry points, and escalation paths.', 'Planned'),
-  ];
+  List<_JourneyItem> _journeys = [];
 
   // Interface structure data
-  final List<_InterfaceItem> _interfaces = [
-    _InterfaceItem('Dashboard', 'One-glance status and key shortcuts into primary actions.', 'Wireframe'),
-    _InterfaceItem('Workflows', 'Step-by-step guidance for complex, multi-screen tasks.', 'User flow map'),
-    _InterfaceItem('Settings & admin', 'Configuration, access management, and audit history.', 'To define'),
-  ];
+  List<_InterfaceItem> _interfaces = [];
 
   // Design system elements data
-  final List<_DesignElement> _coreTokens = [
-    _DesignElement('Color & typography', 'Brand palette, semantic roles, hierarchy, spacing scale.', 'Ready'),
-    _DesignElement('Interactions & feedback', 'Loading, success, warning, error, and empty states.', 'Draft'),
+  List<_DesignElement> _coreTokens = [];
+  List<_DesignElement> _keyComponents = [];
+
+  static const List<String> _journeyStatusOptions = [
+    'Mapped',
+    'Draft',
+    'Planned',
+    'In progress',
+  ];
+
+  static const List<String> _interfaceStateOptions = [
+    'Wireframe',
+    'User flow map',
+    'To define',
+    'Prototype',
+    'Final',
+  ];
+
+  static const List<String> _elementStatusOptions = [
+    'Ready',
+    'Draft',
+    'In review',
+    'Planned',
   ];
 
   @override
   void dispose() {
     _notesController.dispose();
+    _saveDebouncer.dispose();
     super.dispose();
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _journeys = _defaultJourneys();
+    _interfaces = _defaultInterfaces();
+    _coreTokens = _defaultCoreTokens();
+    _keyComponents = _defaultKeyComponents();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadFromFirestore());
+    _notesController.addListener(_scheduleSave);
+  }
+
+  DocumentReference<Map<String, dynamic>> _docFor(String projectId) {
+    return FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId)
+        .collection('design_phase_sections')
+        .doc('ui_ux_design');
+  }
+
+  void _scheduleSave() {
+    if (_suspendSave) return;
+    _saveDebouncer.run(_saveToFirestore);
+  }
+
+  Future<void> _loadFromFirestore() async {
+    final provider = ProjectDataInherited.maybeOf(context);
+    final projectId = provider?.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      final doc = await _docFor(projectId).get();
+      final data = doc.data() ?? {};
+      _suspendSave = true;
+      if (!mounted) return;
+      setState(() {
+        _notesController.text = data['notes']?.toString() ?? '';
+        final journeys = _JourneyItem.fromList(data['journeys']);
+        final interfaces = _InterfaceItem.fromList(data['interfaces']);
+        final coreTokens = _DesignElement.fromList(data['coreTokens']);
+        final keyComponents = _DesignElement.fromList(data['keyComponents']);
+        _journeys = journeys.isEmpty ? _defaultJourneys() : journeys;
+        _interfaces = interfaces.isEmpty ? _defaultInterfaces() : interfaces;
+        _coreTokens = coreTokens.isEmpty ? _defaultCoreTokens() : coreTokens;
+        _keyComponents = keyComponents.isEmpty ? _defaultKeyComponents() : keyComponents;
+      });
+    } catch (error) {
+      debugPrint('UI/UX design load error: $error');
+    } finally {
+      _suspendSave = false;
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _saveToFirestore() async {
+    final provider = ProjectDataInherited.maybeOf(context);
+    final projectId = provider?.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+    try {
+      await _docFor(projectId).set({
+        'notes': _notesController.text.trim(),
+        'journeys': _journeys.map((e) => e.toMap()).toList(),
+        'interfaces': _interfaces.map((e) => e.toMap()).toList(),
+        'coreTokens': _coreTokens.map((e) => e.toMap()).toList(),
+        'keyComponents': _keyComponents.map((e) => e.toMap()).toList(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (error) {
+      debugPrint('UI/UX design save error: $error');
+    }
+  }
+
+  List<_JourneyItem> _defaultJourneys() {
+    return [
+      _JourneyItem(
+        id: _newId(),
+        title: 'Onboard & first value',
+        description: 'From sign-up to experiencing the first meaningful outcome.',
+        status: 'Mapped',
+      ),
+      _JourneyItem(
+        id: _newId(),
+        title: 'Core task completion',
+        description: 'Critical path to complete the main job-to-be-done.',
+        status: 'Draft',
+      ),
+      _JourneyItem(
+        id: _newId(),
+        title: 'Support & recovery',
+        description: 'Error states, help entry points, and escalation paths.',
+        status: 'Planned',
+      ),
+    ];
+  }
+
+  List<_InterfaceItem> _defaultInterfaces() {
+    return [
+      _InterfaceItem(
+        id: _newId(),
+        area: 'Dashboard',
+        purpose: 'One-glance status and key shortcuts into primary actions.',
+        state: 'Wireframe',
+      ),
+      _InterfaceItem(
+        id: _newId(),
+        area: 'Workflows',
+        purpose: 'Step-by-step guidance for complex, multi-screen tasks.',
+        state: 'User flow map',
+      ),
+      _InterfaceItem(
+        id: _newId(),
+        area: 'Settings & admin',
+        purpose: 'Configuration, access management, and audit history.',
+        state: 'To define',
+      ),
+    ];
+  }
+
+  List<_DesignElement> _defaultCoreTokens() {
+    return [
+      _DesignElement(
+        id: _newId(),
+        title: 'Color & typography',
+        description: 'Brand palette, semantic roles, hierarchy, spacing scale.',
+        status: 'Ready',
+      ),
+      _DesignElement(
+        id: _newId(),
+        title: 'Interactions & feedback',
+        description: 'Loading, success, warning, error, and empty states.',
+        status: 'Draft',
+      ),
+    ];
+  }
+
+  List<_DesignElement> _defaultKeyComponents() {
+    return [
+      _DesignElement(
+        id: _newId(),
+        title: 'Navigation system',
+        description: 'Primary, secondary, and breadcrumb navigation patterns.',
+        status: 'Planned',
+      ),
+    ];
+  }
+
+  String _newId() => DateTime.now().microsecondsSinceEpoch.toString();
+
+  Future<void> _exportPdf() async {
+    final doc = pw.Document();
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        build: (context) => [
+          pw.Text('UI/UX Specification', style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 12),
+          pw.Text('Notes', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+          pw.Text(_notesController.text.trim().isEmpty ? 'No notes provided.' : _notesController.text.trim()),
+          pw.SizedBox(height: 16),
+          _pdfSection('Primary user journeys', _journeys.map((j) => '${j.title} — ${j.description} (${j.status})').toList()),
+          _pdfSection('Interface structure', _interfaces.map((i) => '${i.area} — ${i.purpose} (${i.state})').toList()),
+          _pdfSection('Core tokens', _coreTokens.map((e) => '${e.title} — ${e.description} (${e.status})').toList()),
+          _pdfSection('Key components', _keyComponents.map((e) => '${e.title} — ${e.description} (${e.status})').toList()),
+        ],
+      ),
+    );
+    await Printing.layoutPdf(
+      onLayout: (format) async => doc.save(),
+      name: 'ui-ux-specification.pdf',
+    );
+  }
+
+  pw.Widget _pdfSection(String title, List<String> items) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(title, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 6),
+        if (items.isEmpty)
+          pw.Text('No entries.', style: const pw.TextStyle(fontSize: 12))
+        else
+          pw.Column(
+            children: items.map((item) => pw.Bullet(text: item)).toList(),
+          ),
+        pw.SizedBox(height: 12),
+      ],
+    );
+  }
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
     final padding = AppBreakpoints.pagePadding(context);
 
+    if (!_isLoading &&
+        !_suspendSave &&
+        !_didSeedDefaults &&
+        _journeys.isEmpty &&
+        _interfaces.isEmpty &&
+        _coreTokens.isEmpty &&
+        _keyComponents.isEmpty) {
+      _didSeedDefaults = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _journeys = _defaultJourneys();
+          _interfaces = _defaultInterfaces();
+          _coreTokens = _defaultCoreTokens();
+          _keyComponents = _defaultKeyComponents();
+        });
+        _scheduleSave();
+      });
+    }
+
     return ResponsiveScaffold(
       activeItemLabel: 'UI/UX Design',
       body: Column(
         children: [
-          const PlanningPhaseHeader(title: 'Design Phase'),
+          const PlanningPhaseHeader(
+            title: 'Design Phase',
+            showImportButton: false,
+            showContentButton: false,
+          ),
           Expanded(
             child: SingleChildScrollView(
               padding: EdgeInsets.all(padding),
@@ -94,6 +331,20 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
                       ),
                     ),
                   ),
+                  if (_isLoading) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        const SizedBox(width: 8),
+                        Text('Loading UI/UX data...', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 16),
 
                   // Helper Text
@@ -148,7 +399,12 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
           ..._journeys.map((j) => _buildJourneyItem(j)),
           const SizedBox(height: 12),
           OutlinedButton(
-            onPressed: () {},
+            onPressed: () {
+              setState(() {
+                _journeys.add(_JourneyItem(id: _newId(), title: '', description: '', status: _journeyStatusOptions.first));
+              });
+              _scheduleSave();
+            },
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               side: BorderSide(color: Colors.grey[300]!),
@@ -162,21 +418,6 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
   }
 
   Widget _buildJourneyItem(_JourneyItem journey) {
-    Color statusColor;
-    switch (journey.status) {
-      case 'Mapped':
-        statusColor = AppSemanticColors.success;
-        break;
-      case 'Draft':
-        statusColor = Colors.grey;
-        break;
-      case 'Planned':
-        statusColor = AppSemanticColors.info;
-        break;
-      default:
-        statusColor = Colors.grey;
-    }
-
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
@@ -188,19 +429,58 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(journey.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                TextFormField(
+                  key: ValueKey('journey-title-${journey.id}'),
+                  initialValue: journey.title,
+                  decoration: _inlineInputDecoration('Journey title'),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  onChanged: (value) {
+                    journey.title = value;
+                    _scheduleSave();
+                  },
+                ),
                 const SizedBox(height: 2),
-                Text(journey.description, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                TextFormField(
+                  key: ValueKey('journey-desc-${journey.id}'),
+                  initialValue: journey.description,
+                  minLines: 1,
+                  maxLines: null,
+                  decoration: _inlineInputDecoration('Describe the journey'),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  onChanged: (value) {
+                    journey.description = value;
+                    _scheduleSave();
+                  },
+                ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          Row(
+          Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 8, height: 8, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
-              const SizedBox(width: 6),
-              Text(journey.status, style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+              DropdownButtonFormField<String>(
+                initialValue: _journeyStatusOptions.contains(journey.status)
+                    ? journey.status
+                    : _journeyStatusOptions.first,
+                items: _journeyStatusOptions
+                    .map((status) => DropdownMenuItem(value: status, child: Text(status)))
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() => journey.status = value);
+                  _scheduleSave();
+                },
+                decoration: _inlineInputDecoration('Status'),
+              ),
+              const SizedBox(height: 8),
+              IconButton(
+                onPressed: () {
+                  setState(() => _journeys.removeWhere((item) => item.id == journey.id));
+                  _scheduleSave();
+                },
+                icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)),
+              ),
             ],
           ),
         ],
@@ -226,16 +506,30 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
           // Table Header
           Row(
             children: [
-              Expanded(flex: 2, child: Text('Area', style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500))),
-              Expanded(flex: 3, child: Text('Purpose', style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500))),
-              Expanded(flex: 2, child: Text('State', style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500))),
+              Expanded(
+                flex: 2,
+                child: Text('Area', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500)),
+              ),
+              Expanded(
+                flex: 3,
+                child: Text('Purpose', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500)),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text('State', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500)),
+              ),
             ],
           ),
           const Divider(height: 16),
           ..._interfaces.map((i) => _buildInterfaceRow(i)),
           const SizedBox(height: 12),
           OutlinedButton(
-            onPressed: () {},
+            onPressed: () {
+              setState(() {
+                _interfaces.add(_InterfaceItem(id: _newId(), area: '', purpose: '', state: _interfaceStateOptions.first));
+              });
+              _scheduleSave();
+            },
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               side: BorderSide(color: Colors.grey[300]!),
@@ -254,19 +548,55 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(flex: 2, child: Text(item.area, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
-          Expanded(flex: 3, child: Text(item.purpose, style: TextStyle(fontSize: 12, color: Colors.grey[700]))),
           Expanded(
             flex: 2,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: Colors.grey[300]!),
-              ),
-              child: Text(item.state, style: TextStyle(fontSize: 11, color: Colors.grey[700]), textAlign: TextAlign.center),
+            child: TextFormField(
+              key: ValueKey('interface-area-${item.id}'),
+              initialValue: item.area,
+              decoration: _inlineInputDecoration('Area'),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              onChanged: (value) {
+                item.area = value;
+                _scheduleSave();
+              },
             ),
+          ),
+          Expanded(
+            flex: 3,
+            child: TextFormField(
+              key: ValueKey('interface-purpose-${item.id}'),
+              initialValue: item.purpose,
+              minLines: 1,
+              maxLines: null,
+              decoration: _inlineInputDecoration('Purpose'),
+              style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+              onChanged: (value) {
+                item.purpose = value;
+                _scheduleSave();
+              },
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: DropdownButtonFormField<String>(
+              initialValue: _interfaceStateOptions.contains(item.state) ? item.state : _interfaceStateOptions.first,
+              items: _interfaceStateOptions
+                  .map((state) => DropdownMenuItem(value: state, child: Text(state)))
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => item.state = value);
+                _scheduleSave();
+              },
+              decoration: _inlineInputDecoration('State'),
+            ),
+          ),
+          IconButton(
+            onPressed: () {
+              setState(() => _interfaces.removeWhere((entry) => entry.id == item.id));
+              _scheduleSave();
+            },
+            icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)),
           ),
         ],
       ),
@@ -292,7 +622,7 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
           // Core tokens section
           Text('Core tokens', style: TextStyle(fontSize: 13, color: Colors.grey[700], fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
-          ..._coreTokens.map((e) => _buildDesignElementItem(e)),
+          ..._coreTokens.map((e) => _buildDesignElementItem(e, list: _coreTokens)),
           const SizedBox(height: 16),
 
           // Key components section
@@ -303,8 +633,15 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
             style: TextStyle(fontSize: 12, color: Colors.grey[600]),
           ),
           const SizedBox(height: 12),
+          ..._keyComponents.map((e) => _buildDesignElementItem(e, list: _keyComponents)),
+          const SizedBox(height: 12),
           OutlinedButton(
-            onPressed: () {},
+            onPressed: () {
+              setState(() {
+                _keyComponents.add(_DesignElement(id: _newId(), title: '', description: '', status: _elementStatusOptions.first));
+              });
+              _scheduleSave();
+            },
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               side: BorderSide(color: Colors.grey[300]!),
@@ -318,7 +655,7 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () {},
+              onPressed: _exportPdf,
               icon: const Icon(Icons.download, size: 18),
               label: const Text('Export UI/UX specification'),
               style: ElevatedButton.styleFrom(
@@ -334,7 +671,7 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
     );
   }
 
-  Widget _buildDesignElementItem(_DesignElement element) {
+  Widget _buildDesignElementItem(_DesignElement element, {required List<_DesignElement> list}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -346,21 +683,59 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(element.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                TextFormField(
+                  key: ValueKey('element-title-${element.id}'),
+                  initialValue: element.title,
+                  decoration: _inlineInputDecoration('Element'),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  onChanged: (value) {
+                    element.title = value;
+                    _scheduleSave();
+                  },
+                ),
                 const SizedBox(height: 2),
-                Text(element.description, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                TextFormField(
+                  key: ValueKey('element-desc-${element.id}'),
+                  initialValue: element.description,
+                  minLines: 1,
+                  maxLines: null,
+                  decoration: _inlineInputDecoration('Description'),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  onChanged: (value) {
+                    element.description = value;
+                    _scheduleSave();
+                  },
+                ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: Text(element.status, style: TextStyle(fontSize: 11, color: Colors.grey[700])),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                initialValue: _elementStatusOptions.contains(element.status)
+                    ? element.status
+                    : _elementStatusOptions.first,
+                items: _elementStatusOptions
+                    .map((status) => DropdownMenuItem(value: status, child: Text(status)))
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() => element.status = value);
+                  _scheduleSave();
+                },
+                decoration: _inlineInputDecoration('Status'),
+              ),
+              const SizedBox(height: 8),
+              IconButton(
+                onPressed: () {
+                  setState(() => list.removeWhere((entry) => entry.id == element.id));
+                  _scheduleSave();
+                },
+                icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)),
+              ),
+            ],
           ),
         ],
       ),
@@ -370,23 +745,142 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
   // _buildBottomNavigation removed — replaced by the shared LaunchPhaseNavigation in the main build.
 }
 
+InputDecoration _inlineInputDecoration(String hint) {
+  return InputDecoration(
+    isDense: true,
+    hintText: hint,
+    filled: true,
+    fillColor: Colors.white,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: const BorderSide(color: Color(0xFF1D4ED8), width: 2),
+    ),
+  );
+}
+
+class _Debouncer {
+  _Debouncer({Duration? delay}) : delay = delay ?? const Duration(milliseconds: 600);
+
+  final Duration delay;
+  Timer? _timer;
+
+  void run(void Function() action) {
+    _timer?.cancel();
+    _timer = Timer(delay, action);
+  }
+
+  void dispose() {
+    _timer?.cancel();
+  }
+}
+
 class _JourneyItem {
-  final String title;
-  final String description;
-  final String status;
-  _JourneyItem(this.title, this.description, this.status);
+  final String id;
+  String title;
+  String description;
+  String status;
+
+  _JourneyItem({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.status,
+  });
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'title': title,
+        'description': description,
+        'status': status,
+      };
+
+  static List<_JourneyItem> fromList(dynamic data) {
+    if (data is! List) return [];
+    return data.map((item) {
+      final map = Map<String, dynamic>.from(item as Map? ?? {});
+      return _JourneyItem(
+        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        title: map['title']?.toString() ?? '',
+        description: map['description']?.toString() ?? '',
+        status: map['status']?.toString() ?? 'Draft',
+      );
+    }).toList();
+  }
 }
 
 class _InterfaceItem {
-  final String area;
-  final String purpose;
-  final String state;
-  _InterfaceItem(this.area, this.purpose, this.state);
+  final String id;
+  String area;
+  String purpose;
+  String state;
+
+  _InterfaceItem({
+    required this.id,
+    required this.area,
+    required this.purpose,
+    required this.state,
+  });
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'area': area,
+        'purpose': purpose,
+        'state': state,
+      };
+
+  static List<_InterfaceItem> fromList(dynamic data) {
+    if (data is! List) return [];
+    return data.map((item) {
+      final map = Map<String, dynamic>.from(item as Map? ?? {});
+      return _InterfaceItem(
+        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        area: map['area']?.toString() ?? '',
+        purpose: map['purpose']?.toString() ?? '',
+        state: map['state']?.toString() ?? 'To define',
+      );
+    }).toList();
+  }
 }
 
 class _DesignElement {
-  final String title;
-  final String description;
-  final String status;
-  _DesignElement(this.title, this.description, this.status);
+  final String id;
+  String title;
+  String description;
+  String status;
+
+  _DesignElement({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.status,
+  });
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'title': title,
+        'description': description,
+        'status': status,
+      };
+
+  static List<_DesignElement> fromList(dynamic data) {
+    if (data is! List) return [];
+    return data.map((item) {
+      final map = Map<String, dynamic>.from(item as Map? ?? {});
+      return _DesignElement(
+        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        title: map['title']?.toString() ?? '',
+        description: map['description']?.toString() ?? '',
+        status: map['status']?.toString() ?? 'Draft',
+      );
+    }).toList();
+  }
 }

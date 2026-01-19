@@ -28,6 +28,8 @@ dependencies:
   flutter_appauth: ^6.0.0
   flutter_secure_storage: ^9.0.0
   flutter_markdown: ^0.7.2
+  pdf: ^3.10.8
+  printing: ^5.13.4
   # Firebase dependencies temporarily disabled due to platform channel issues
   # firebase_core: ^3.6.0
   # firebase_auth: ^5.3.3

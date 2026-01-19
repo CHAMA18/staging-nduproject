@@ -769,7 +769,7 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
         ? options
         : [normalized, ...options];
     return DropdownButtonFormField<String>(
-      value: items.first,
+      initialValue: items.first,
       alignment: Alignment.center,
       items: items.map((owner) => DropdownMenuItem(value: owner, child: Text(owner))).toList(),
       onChanged: (newValue) {
@@ -920,6 +920,5 @@ class _ChecklistItem {
     required this.title,
     required this.description,
     required this.status,
-    this.owner,
   });
 }

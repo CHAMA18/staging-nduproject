@@ -364,23 +364,6 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildBrandMark(),
-        const SizedBox(height: 16),
-        // Phase tabs and search row
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            _buildPhaseTabs(),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: isNarrow ? double.infinity : 280,
-              child: _buildSearchBar(),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
           decoration: BoxDecoration(

@@ -817,7 +817,7 @@ class _EditablePipelineRow extends StatelessWidget {
           Expanded(
             flex: 2,
             child: DropdownButtonFormField<String>(
-              value: options.first,
+              initialValue: options.first,
               decoration: _inlineInputDecoration('Status'),
               items: options
                   .map((option) => DropdownMenuItem(value: option, child: Text(option)))
@@ -1047,7 +1047,7 @@ class _EditableRegisterRow extends StatelessWidget {
           Expanded(
             flex: 2,
             child: DropdownButtonFormField<String>(
-              value: statusOptions.first,
+              initialValue: statusOptions.first,
               decoration: _inlineInputDecoration('Status'),
               items: statusOptions
                   .map((option) => DropdownMenuItem(value: option, child: Text(option)))
@@ -1074,7 +1074,7 @@ class _EditableRegisterRow extends StatelessWidget {
           Expanded(
             flex: 2,
             child: DropdownButtonFormField<String>(
-              value: riskOptions.first,
+              initialValue: riskOptions.first,
               decoration: _inlineInputDecoration('Risk'),
               items: riskOptions
                   .map((option) => DropdownMenuItem(value: option, child: Text(option)))

@@ -932,7 +932,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
         ? options
         : [normalized, ...options];
     return DropdownButtonFormField<String>(
-      value: items.first,
+      initialValue: items.first,
       alignment: Alignment.center,
       items: items.map((owner) => DropdownMenuItem(value: owner, child: Text(owner))).toList(),
       onChanged: (newValue) {

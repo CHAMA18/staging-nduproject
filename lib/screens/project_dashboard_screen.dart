@@ -639,7 +639,10 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.arrow_back),
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      if (context.canPop()) context.pop();
+                      else context.go('/');
+                    },
                     color: const Color(0xFF2D3A4B),
                     tooltip: 'Back',
                   ),
@@ -652,7 +655,10 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.arrow_back),
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      if (context.canPop()) context.pop();
+                      else context.go('/');
+                    },
                     color: const Color(0xFF2D3A4B),
                     tooltip: 'Back',
                   ),

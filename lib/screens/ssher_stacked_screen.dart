@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/screens/ssher_components.dart';
 import 'package:ndu_project/screens/ssher_add_safety_item_dialog.dart';
-import 'package:ndu_project/screens/ssher_safety_full_view.dart';
+import 'package:ndu_project/screens/ssher_category_full_view.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -14,6 +14,7 @@ import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/screens/change_management_screen.dart';
+import 'package:ndu_project/utils/ssher_export_helper.dart';
 
 enum _SsherCategory { safety, security, health, environment, regulatory }
 
@@ -49,8 +50,6 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize all SSHER sections with NO default data.
-    // Users can add items via the "Add ... Item" actions.
     _safetyEntries = [];
     _securityEntries = [];
     _healthEntries = [];
@@ -136,16 +135,6 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
       }
     }
 
-    if (safety.isEmpty &&
-        security.isEmpty &&
-        health.isEmpty &&
-        environment.isEmpty &&
-        regulatory.isEmpty) {
-      setState(() => _isGeneratingEntries = false);
-      _entriesGenerated = true;
-      return;
-    }
-
     setState(() {
       _safetyEntries = safety;
       _securityEntries = security;
@@ -176,9 +165,7 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
       return;
     }
 
-    setState(() {
-      _isGeneratingSummary = true;
-    });
+    setState(() => _isGeneratingSummary = true);
 
     String summary = '';
     try {
@@ -205,37 +192,6 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
         ssherData: data.ssherData.copyWith(screen1Data: trimmedSummary),
       ),
     );
-  }
-
-  List<Widget> _buildRow({required int index, required SsherEntry entry}) {
-    Widget risk;
-    switch (entry.riskLevel) {
-      case 'Low':
-        risk = const RiskBadge.low();
-        break;
-      case 'Medium':
-        risk = const RiskBadge.medium();
-        break;
-      default:
-        risk = const RiskBadge.high();
-    }
-
-    return [
-      Text('$index', style: const TextStyle(fontSize: 12)),
-      Text(entry.department, style: const TextStyle(fontSize: 13)),
-      Text(entry.teamMember, style: const TextStyle(fontSize: 13)),
-      Text(entry.concern, style: const TextStyle(fontSize: 13, color: Colors.black87), overflow: TextOverflow.ellipsis),
-      risk,
-      Text(entry.mitigation, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
-      const ActionButtons(),
-    ];
-  }
-
-  List<List<Widget>> _rowsFor(List<SsherEntry> entries) {
-    return entries.asMap().entries.map((entry) {
-      final index = entry.key + 1;
-      return _buildRow(index: index, entry: entry.value);
-    }).toList();
   }
 
   List<SsherEntry> _entriesForCategory(_SsherCategory category) {
@@ -274,6 +230,109 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
     );
   }
 
+  Future<void> _deleteEntry(SsherEntry entry) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Item'),
+        content: const Text('Are you sure you want to delete this item?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() {
+        if (entry.category == 'safety') _safetyEntries.removeWhere((e) => e.id == entry.id);
+        if (entry.category == 'security') _securityEntries.removeWhere((e) => e.id == entry.id);
+        if (entry.category == 'health') _healthEntries.removeWhere((e) => e.id == entry.id);
+        if (entry.category == 'environment') _environmentEntries.removeWhere((e) => e.id == entry.id);
+        if (entry.category == 'regulatory') _regulatoryEntries.removeWhere((e) => e.id == entry.id);
+      });
+      await _saveEntries();
+    }
+  }
+
+  Future<void> _editEntry(SsherEntry entry) async {
+    Color accentColor;
+    IconData icon;
+    String heading;
+    String blurb;
+    String concernLabel;
+
+    switch (entry.category) {
+      case 'safety':
+        accentColor = _safetyAccent;
+        icon = Icons.health_and_safety;
+        heading = 'Edit Safety Item';
+        blurb = 'Update details for the safety record.';
+        concernLabel = 'Safety Concern';
+        break;
+      case 'security':
+        accentColor = _securityAccent;
+        icon = Icons.shield_outlined;
+        heading = 'Edit Security Item';
+        blurb = 'Update the security exposure details.';
+        concernLabel = 'Security Concern';
+        break;
+      case 'health':
+        accentColor = _healthAccent;
+        icon = Icons.volunteer_activism_outlined;
+        heading = 'Edit Health Item';
+        blurb = 'Update the health-related concern.';
+        concernLabel = 'Health Concern';
+        break;
+      case 'environment':
+        accentColor = _environmentAccent;
+        icon = Icons.eco_outlined;
+        heading = 'Edit Environment Item';
+        blurb = 'Update log of environmental impact.';
+        concernLabel = 'Environmental Concern';
+        break;
+      case 'regulatory':
+        accentColor = _regulatoryAccent;
+        icon = Icons.gavel_outlined;
+        heading = 'Edit Regulatory Item';
+        blurb = 'Update compliance requirement details.';
+        concernLabel = 'Regulatory Requirement';
+        break;
+      default:
+        return;
+    }
+
+    final input = await showDialog<SsherItemInput>(
+      context: context,
+      builder: (ctx) => AddSsherItemDialog(
+        accentColor: accentColor,
+        icon: icon,
+        heading: heading,
+        blurb: blurb,
+        concernLabel: concernLabel,
+        saveButtonLabel: 'Save Changes',
+        initialData: SsherItemInput(
+          department: entry.department,
+          teamMember: entry.teamMember,
+          concern: entry.concern,
+          riskLevel: entry.riskLevel,
+          mitigation: entry.mitigation,
+        ),
+      ),
+    );
+
+    if (input == null) return;
+
+    setState(() {
+      entry.department = input.department;
+      entry.teamMember = input.teamMember;
+      entry.concern = input.concern;
+      entry.riskLevel = input.riskLevel;
+      entry.mitigation = input.mitigation;
+    });
+    await _saveEntries();
+  }
+
   Future<void> _addEntry(_SsherCategory category, SsherItemInput input) async {
     final entry = SsherEntry(
       category: _categoryKey(category),
@@ -287,79 +346,22 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
     await _saveEntries();
   }
 
-  Future<void> _onAddSafetyItem() async {
-    final input = await showDialog<SsherItemInput>(
-      context: context,
-      builder: (ctx) => AddSsherItemDialog(
-        accentColor: _safetyAccent,
-        icon: Icons.health_and_safety,
-        heading: 'Add Safety Item',
-        blurb: 'Provide details for the new safety record. Make sure risk level and mitigation strategy are accurate.',
-        concernLabel: 'Safety Concern',
-      ),
-    );
-    if (input == null) return;
-    await _addEntry(_SsherCategory.safety, input);
+  Future<void> _downloadCategory(_SsherCategory category) async {
+    final entries = _entriesForCategory(category);
+    final csv = SsherExportHelper.entriesToCsv(entries, categoryTitle: category.name.toUpperCase());
+    await SsherExportHelper.downloadCsv(csv, 'ssher_${category.name}.csv');
   }
 
-  Future<void> _onAddSecurityItem() async {
-    final input = await showDialog<SsherItemInput>(
-      context: context,
-      builder: (ctx) => AddSsherItemDialog(
-        accentColor: _securityAccent,
-        icon: Icons.shield_outlined,
-        heading: 'Add Security Item',
-        blurb: 'Capture the security exposure along with responsible contact and mitigation plan.',
-        concernLabel: 'Security Concern',
-      ),
-    );
-    if (input == null) return;
-    await _addEntry(_SsherCategory.security, input);
-  }
-
-  Future<void> _onAddHealthItem() async {
-    final input = await showDialog<SsherItemInput>(
-      context: context,
-      builder: (ctx) => AddSsherItemDialog(
-        accentColor: _healthAccent,
-        icon: Icons.volunteer_activism_outlined,
-        heading: 'Add Health Item',
-        blurb: 'Document the health-related concern and identify mitigation steps for your team.',
-        concernLabel: 'Health Concern',
-      ),
-    );
-    if (input == null) return;
-    await _addEntry(_SsherCategory.health, input);
-  }
-
-  Future<void> _onAddEnvironmentItem() async {
-    final input = await showDialog<SsherItemInput>(
-      context: context,
-      builder: (ctx) => AddSsherItemDialog(
-        accentColor: _environmentAccent,
-        icon: Icons.eco_outlined,
-        heading: 'Add Environment Item',
-        blurb: 'Log environmental impacts or sustainability risks to keep compliance in check.',
-        concernLabel: 'Environmental Concern',
-      ),
-    );
-    if (input == null) return;
-    await _addEntry(_SsherCategory.environment, input);
-  }
-
-  Future<void> _onAddRegulatoryItem() async {
-    final input = await showDialog<SsherItemInput>(
-      context: context,
-      builder: (ctx) => AddSsherItemDialog(
-        accentColor: _regulatoryAccent,
-        icon: Icons.gavel_outlined,
-        heading: 'Add Regulatory Item',
-        blurb: 'Detail the compliance requirement and note the mitigation strategy.',
-        concernLabel: 'Regulatory Requirement',
-      ),
-    );
-    if (input == null) return;
-    await _addEntry(_SsherCategory.regulatory, input);
+  Future<void> _downloadAll() async {
+    final map = {
+      'SAFETY': _safetyEntries,
+      'SECURITY': _securityEntries,
+      'HEALTH': _healthEntries,
+      'ENVIRONMENT': _environmentEntries,
+      'REGULATORY': _regulatoryEntries,
+    };
+    final csv = SsherExportHelper.allEntriesToCsv(map);
+    await SsherExportHelper.downloadCsv(csv, 'ssher_all_categories.csv');
   }
 
   @override
@@ -378,7 +380,10 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
                   child: const InitiationLikeSidebar(activeItemLabel: 'SSHER'),
                 ),
                 Expanded(
-                  child: _buildMainContent(const EdgeInsets.all(24)),
+                  child: DefaultTabController(
+                    length: 5,
+                    child: _buildMainContent(const EdgeInsets.all(24)),
+                  ),
                 ),
               ],
             ),
@@ -391,216 +396,216 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
   }
 
   Widget _buildMainContent(EdgeInsetsGeometry padding) {
-    return SingleChildScrollView(
-      padding: padding,
-      child: Column(children: [
-        const PlanningAiNotesCard(
-          title: 'Notes',
-          sectionLabel: 'SSHER',
-          noteKey: 'planning_ssher_notes',
-          checkpoint: 'ssher',
-          description: 'Summarize key SSHER risks, mitigation plans, and compliance requirements.',
-        ),
-        const SizedBox(height: 20),
-        // Plan Summary (from page 1)
-        Container(
-          margin: const EdgeInsets.only(bottom: 20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-          ),
-          child: Column(children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.08),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              ),
-              child: Row(children: [
+    return NestedScrollView(
+      headerSliverBuilder: (context, innerBoxIsScrolled) {
+        return [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+              child: Column(children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('SSHER Planning', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                    ElevatedButton.icon(
+                      onPressed: _downloadAll,
+                      icon: const Icon(Icons.download_for_offline),
+                      label: const Text('Download All (CSV)'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue[700],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const PlanningAiNotesCard(
+                  title: 'Notes',
+                  sectionLabel: 'SSHER',
+                  noteKey: 'planning_ssher_notes',
+                  checkpoint: 'ssher',
+                  description: 'Summarize key SSHER risks, mitigation plans, and compliance requirements.',
+                ),
+                const SizedBox(height: 20),
+                // Plan Summary
                 Container(
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.15), shape: BoxShape.circle),
-                  child: const Icon(Icons.receipt_long, size: 18, color: Colors.blue),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: EditableContentText(
-                    contentKey: 'ssher_plan_summary_title',
-                    fallback: 'SSHER Plan Summary',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                    category: 'ssher',
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
                   ),
+                  child: Column(children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.08),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                      ),
+                      child: Row(children: [
+                        Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.15), shape: BoxShape.circle),
+                          child: const Icon(Icons.receipt_long, size: 18, color: Colors.blue),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: EditableContentText(
+                            contentKey: 'ssher_plan_summary_title',
+                            fallback: 'SSHER Plan Summary',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                            category: 'ssher',
+                          ),
+                        ),
+                      ]),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      margin: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+                      ),
+                      child: EditableContentText(
+                        contentKey: 'ssher_plan_summary_description',
+                        fallback: 'This SSHER plan encompasses comprehensive risk management across all operational domains.',
+                        style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                        category: 'ssher',
+                      ),
+                    ),
+                  ]),
                 ),
+
+                if (_isGeneratingSummary)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                    ),
+                    child: const Row(
+                      children: [
+                        SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                        SizedBox(width: 12),
+                        Expanded(child: Text('AI is preparing a tailored SSHER summary...', style: TextStyle(color: Colors.blue, fontSize: 13))),
+                      ],
+                    ),
+                  )
+                else if (_aiPlanSummary.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('AI-generated SSHER Summary', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 8),
+                        Text(_aiPlanSummary, style: TextStyle(color: Colors.grey[800], fontSize: 14, height: 1.5)),
+                      ],
+                    ),
+                  ),
               ]),
             ),
-            Container(
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+          ),
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _SliverAppBarDelegate(
+              const TabBar(
+                labelColor: Colors.blue,
+                unselectedLabelColor: Colors.grey,
+                indicatorSize: TabBarIndicatorSize.tab,
+                tabs: [
+                  Tab(text: 'Safety', icon: Icon(Icons.health_and_safety)),
+                  Tab(text: 'Security', icon: Icon(Icons.shield_outlined)),
+                  Tab(text: 'Health', icon: Icon(Icons.volunteer_activism_outlined)),
+                  Tab(text: 'Environment', icon: Icon(Icons.eco_outlined)),
+                  Tab(text: 'Regulatory', icon: Icon(Icons.gavel_outlined)),
+                ],
               ),
-              child: EditableContentText(
-                contentKey: 'ssher_plan_summary_description',
-                fallback: 'This SSHER plan encompasses comprehensive risk management across all operational domains. Safety protocols focus on workplace injury prevention and emergency response procedures. Security measures address both physical and cyber threats with multi-layered protection strategies. Health initiatives promote employee wellbeing and occupational health standards. Environmental considerations ensure sustainable practices and regulatory compliance. Regulatory frameworks maintain adherence to industry standards and legal requirements.',
-                style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-                category: 'ssher',
-              ),
             ),
-          ]),
-        ),
-
-        if (_isGeneratingSummary)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            margin: const EdgeInsets.only(bottom: 20),
-            decoration: BoxDecoration(
-              color: Colors.blue.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
-            ),
-            child: Row(
+          ),
+        ];
+      },
+      body: Column(
+        children: [
+          Expanded(
+            child: TabBarView(
               children: [
-                const SizedBox(
-                  height: 16,
-                  width: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'AI is preparing a tailored SSHER summary using your prior section inputs. This will be saved automatically to your project.',
-                    style: TextStyle(color: Colors.blue[900], fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-          )
-        else if (_aiPlanSummary.isNotEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-            margin: const EdgeInsets.only(bottom: 20),
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('AI-generated SSHER Summary', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                Text(
-                  _aiPlanSummary,
-                  style: TextStyle(color: Colors.grey[800], fontSize: 14, height: 1.5),
-                ),
+                _buildTab(_SsherCategory.safety, 'Safety', 'Workplace safety protocols', _safetyAccent, Icons.health_and_safety, 'Comprehensive safety protocols including personal protective equipment requirements, emergency evacuation procedures, incident reporting systems, and regular safety training programs for all personnel.'),
+                _buildTab(_SsherCategory.security, 'Security', 'Physical and cyber security', _securityAccent, Icons.shield_outlined, 'Multi-layered security approach including physical access controls, cybersecurity measures, surveillance systems, and incident response.'),
+                _buildTab(_SsherCategory.health, 'Health', 'Occupational health programs', _healthAccent, Icons.volunteer_activism_outlined, 'Occupational health standards including ergonomic assessments, wellness programs, medical surveillance, and mental health support initiatives.'),
+                _buildTab(_SsherCategory.environment, 'Environment', 'Environmental sustainability', _environmentAccent, Icons.eco_outlined, 'Environmental stewardship program including waste reduction initiatives, energy efficiency measures, carbon footprint monitoring, and sustainable resource management.'),
+                _buildTab(_SsherCategory.regulatory, 'Regulatory', 'Compliance requirements', _regulatoryAccent, Icons.gavel_outlined, 'Comprehensive regulatory compliance framework ensuring adherence to industry standards, legal requirements, and best practices.'),
               ],
             ),
           ),
-
-        // Safety (from page 1)
-        SsherSectionCard(
-          leadingIcon: Icons.health_and_safety,
-          accentColor: _safetyAccent,
-          title: 'Safety',
-          subtitle: 'Workplace safety protocols and risk management',
-          detailsPlaceholder:
-              'Comprehensive safety protocols including personal protective equipment requirements, emergency evacuation procedures, incident reporting systems , and regular safety training programs for all personnel .',
-          itemsLabel: '${_safetyEntries.length} items',
-          addButtonLabel: 'Add Safety Item',
-          columns: const ['#', 'Department', 'Team Member', 'Safety Concern', 'Risk Level', 'Mitigation Strategy', 'Actions'],
-          rows: _rowsFor(_safetyEntries),
-          onFullView: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => SafetyFullViewScreen(
-                  columns: const ['#', 'Department', 'Team Member', 'Safety Concern', 'Risk Level', 'Mitigation Strategy', 'Actions'],
-                  initialRows: _rowsFor(_safetyEntries),
-                  accentColor: _safetyAccent,
-                  detailsText: 'Comprehensive safety protocols including personal protective equipment requirements, emergency evacuation procedures, incident reporting systems , and regular safety training programs for all personnel .',
-                  onAddItem: (input) {
-                    _addEntry(_SsherCategory.safety, input);
-                  },
-                ),
-              ),
-            );
-          },
-          onAdd: _onAddSafetyItem,
-        ),
-
-        // Security (full table from page 2)
-        SsherSectionCard(
-          leadingIcon: Icons.shield_outlined,
-          accentColor: _securityAccent,
-          title: 'Security',
-          subtitle: 'Physical and cyber security measures',
-          detailsPlaceholder:
-              'Multi- layered security approach including physical access controls, cybersecurity measures, surveillance systems, and incident response',
-          itemsLabel: '${_securityEntries.length} items',
-          addButtonLabel: 'Add Security Item',
-          columns: const ['#', 'Department', 'Team Member', 'Security Concern', 'Risk Level', 'Mitigation Strategy', 'Actions'],
-          rows: _rowsFor(_securityEntries),
-          onAdd: _onAddSecurityItem,
-        ),
-
-        // Health (from page 2/3)
-        SsherSectionCard(
-          leadingIcon: Icons.volunteer_activism_outlined,
-          accentColor: _healthAccent,
-          title: 'Health',
-          subtitle: 'Occupational health and wellness programs',
-          detailsPlaceholder:
-              'Multi- layered security approach including physical access controls, cybersecurity measures, surveillance systems, and incident response',
-          itemsLabel: '${_healthEntries.length} items',
-          addButtonLabel: 'Add Health Item',
-          columns: const ['#', 'Department', 'Team Member', 'Health Concern', 'Risk Level', 'Mitigation Strategy', 'Actions'],
-          rows: _rowsFor(_healthEntries),
-          onAdd: _onAddHealthItem,
-        ),
-
-        // Environment (from page 3)
-        SsherSectionCard(
-          leadingIcon: Icons.eco_outlined,
-          accentColor: _environmentAccent,
-          title: 'Environment',
-          subtitle: 'Environmental sustainability and compliance',
-          detailsPlaceholder:
-              'Environmental stewardship program including waste reduction initiatives, energy efficiency measures, carbon footprint monitoring, and sustainable resource management. Regular environmental impact assessments ensure compliance with regulations .',
-          itemsLabel: '${_environmentEntries.length} items',
-          addButtonLabel: 'Add Environment Item',
-          columns: const ['#', 'Department', 'Team Member', 'Environmental Concern', 'Risk Level', 'Mitigation Strategy', 'Actions'],
-          rows: _rowsFor(_environmentEntries),
-          onAdd: _onAddEnvironmentItem,
-        ),
-
-        // Regulatory (from page 4)
-        SsherSectionCard(
-          leadingIcon: Icons.gavel_outlined,
-          accentColor: _regulatoryAccent,
-          title: 'Regulatory',
-          subtitle: 'Compliance and regulatory requirements',
-          detailsPlaceholder:
-              'EComprehensive regulatory compliance framework ensuring adherence to industry standards, legal requirements, and best practices. Regular audits documentation',
-          itemsLabel: '${_regulatoryEntries.length} items',
-          addButtonLabel: 'Add Regulatory Item',
-          columns: const ['#', 'Department', 'Team Member', 'Regulatory Requirement', 'Risk Level', 'Mitigation Strategy', 'Actions'],
-          rows: _rowsFor(_regulatoryEntries),
-          onAdd: _onAddRegulatoryItem,
-        ),
-
-        const SizedBox(height: 16),
-        LaunchPhaseNavigation(
-          backLabel: 'Back: Project Management Framework',
-          nextLabel: 'Next: Change Management',
-          onBack: () => Navigator.of(context).maybePop(),
-          onNext: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ChangeManagementScreen())),
-        ),
-      ]),
+          // Navigation
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: LaunchPhaseNavigation(
+              backLabel: 'Back: Project Goals & Milestones',
+              nextLabel: 'Next: Change Management',
+              onBack: () => Navigator.of(context).maybePop(),
+              onNext: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ChangeManagementScreen())),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  Widget _buildTab(_SsherCategory category, String title, String subtitle, Color accent, IconData icon, String details) {
+    return SsherCategoryFullView(
+      title: title,
+      subtitle: subtitle,
+      icon: icon,
+      accentColor: accent,
+      detailsText: details,
+      columns: const ['#', 'Department', 'Team Member', 'Concern', 'Risk Level', 'Mitigation Strategy', 'Actions'],
+      entries: _entriesForCategory(category),
+      addButtonLabel: 'Add $title Item',
+      concernLabel: '$title Concern',
+      onAddItem: (input) => _addEntry(category, input),
+      onEditItem: _editEntry,
+      onDeleteItem: _deleteEntry,
+      onDownload: () => _downloadCategory(category),
+    );
+  }
+}
+
+class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
+  _SliverAppBarDelegate(this._tabBar);
+
+  final TabBar _tabBar;
+
+  @override
+  double get minExtent => _tabBar.preferredSize.height;
+  @override
+  double get maxExtent => _tabBar.preferredSize.height;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: Colors.white,
+      child: _tabBar,
+    );
+  }
+
+  @override
+  bool shouldRebuild(_SliverAppBarDelegate oldDelegate) {
+    return false;
   }
 }

@@ -303,14 +303,30 @@ class RiskBadge extends StatelessWidget {
 }
 
 class ActionButtons extends StatelessWidget {
-  const ActionButtons({super.key});
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+  
+  const ActionButtons({super.key, this.onEdit, this.onDelete});
+  
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: const [
-        Icon(Icons.edit_outlined, color: Colors.blue, size: 20),
-        SizedBox(width: 10),
-        Icon(Icons.delete_outline, color: Colors.red, size: 20),
+      children: [
+        InkWell(
+          onTap: onEdit,
+          child: const Padding(
+            padding: EdgeInsets.all(4.0),
+            child: Icon(Icons.edit_outlined, color: Colors.blue, size: 20),
+          ),
+        ),
+        const SizedBox(width: 6),
+        InkWell(
+          onTap: onDelete,
+          child: const Padding(
+            padding: EdgeInsets.all(4.0),
+            child: Icon(Icons.delete_outline, color: Colors.red, size: 20),
+          ),
+        ),
       ],
     );
   }

@@ -81,7 +81,13 @@ class _ProjectFrameworkNextScreenState extends State<ProjectFrameworkNextScreen>
           _goalMilestones[i].add(_Milestone());
         }
       }
-      
+
+      // Add listeners for real-time title updates in filters
+      for (var controller in _goalTitleControllers) {
+        controller.addListener(() {
+          if (mounted) setState(() {});
+        });
+      }
       
       // Fetch context data
       final analysis = projectData.preferredSolutionAnalysis;
@@ -95,7 +101,9 @@ class _ProjectFrameworkNextScreenState extends State<ProjectFrameworkNextScreen>
       // Fetch Objective (from Business Case Scope or similar if specialized field missing)
       // Assuming 'projectObjective' might not be a direct string on ProjectData yet based on imports.
       // Looking at usage in other screens, Scope Statement often serves as objective.
-      _projectObjective = projectData.businessCase.isNotEmpty ? projectData.businessCase : '';
+      _projectObjective = projectData.projectObjective.isNotEmpty 
+          ? projectData.projectObjective 
+          : (projectData.businessCase.isNotEmpty ? projectData.businessCase : '');
 
       setState(() {});
     });
@@ -255,7 +263,7 @@ class _ProjectFrameworkNextScreenState extends State<ProjectFrameworkNextScreen>
                     ),
                     const SizedBox(height: 24),
                     const SizedBox(height: 24),
-                    _LabeledField(label: 'Potential Solution', value: _potentialSolution.isNotEmpty ? _potentialSolution : 'Not selected'),
+                    _LabeledField(label: '', value: _potentialSolution.isNotEmpty ? _potentialSolution : 'Not selected'),
                     const SizedBox(height: 24),
                     _LabeledField(label: 'Project Objective  (Detailed aim of the project.)', value: _projectObjective.isNotEmpty ? _projectObjective : 'Pending input'),
                     const SizedBox(height: 40),
@@ -289,6 +297,7 @@ class _ProjectFrameworkNextScreenState extends State<ProjectFrameworkNextScreen>
                     const SizedBox(height: 32),
                     _GoalFilters(
                       currentFilter: _currentFilter,
+                      goalTitles: _goalTitleControllers.map((c) => c.text).toList(),
                       onSelect: (val) => setState(() => _currentFilter = val),
                     ),
                     const SizedBox(height: 24),
@@ -871,29 +880,43 @@ class _DataCell extends StatelessWidget {
 class _GoalFilters extends StatelessWidget {
   const _GoalFilters({
     required this.currentFilter,
+    required this.goalTitles,
     required this.onSelect,
   });
 
   final String currentFilter;
+  final List<String> goalTitles;
   final ValueChanged<String> onSelect;
 
   @override
   Widget build(BuildContext context) {
     final filters = [
-      _FilterChipData(label: 'Goal 1', color: const Color(0xFFFFC107)),
-      _FilterChipData(label: 'Goal 2', color: const Color(0xFF0EA5E9)),
-      _FilterChipData(label: 'Goal 3', color: const Color(0xFFFB923C)),
-      _FilterChipData(label: 'View All', color: const Color(0xFF10B981)),
+      _FilterChipData(
+        label: goalTitles.length > 0 && goalTitles[0].trim().isNotEmpty ? goalTitles[0] : 'Goal 1', 
+        value: 'Goal 1',
+        color: const Color(0xFFFFC107)
+      ),
+      _FilterChipData(
+        label: goalTitles.length > 1 && goalTitles[1].trim().isNotEmpty ? goalTitles[1] : 'Goal 2', 
+        value: 'Goal 2',
+        color: const Color(0xFF0EA5E9)
+      ),
+      _FilterChipData(
+        label: goalTitles.length > 2 && goalTitles[2].trim().isNotEmpty ? goalTitles[2] : 'Goal 3', 
+        value: 'Goal 3',
+        color: const Color(0xFFFB923C)
+      ),
+      _FilterChipData(label: 'View All', value: 'View All', color: const Color(0xFF10B981)),
     ];
 
     return Wrap(
       spacing: 16,
       runSpacing: 12,
       children: filters.map((chip) => GestureDetector(
-        onTap: () => onSelect(chip.label),
+        onTap: () => onSelect(chip.value),
         child: _GoalFilterChip(
           data: chip, 
-          isSelected: currentFilter == chip.label,
+          isSelected: currentFilter == chip.value,
         ),
       )).toList(),
     );
@@ -901,9 +924,10 @@ class _GoalFilters extends StatelessWidget {
 }
 
 class _FilterChipData {
-  const _FilterChipData({required this.label, required this.color});
+  const _FilterChipData({required this.label, required this.value, required this.color});
 
   final String label;
+  final String value;
   final Color color;
 }
 

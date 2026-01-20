@@ -23,6 +23,8 @@ class AddSsherItemDialog extends StatefulWidget {
   final String saveButtonLabel;
   final List<String> departmentOptions;
 
+  final SsherItemInput? initialData;
+
   const AddSsherItemDialog({
     super.key,
     required this.accentColor,
@@ -48,6 +50,7 @@ class AddSsherItemDialog extends StatefulWidget {
       'Energy',
       'Data Governance',
     ],
+    this.initialData,
   });
 
   @override
@@ -56,11 +59,25 @@ class AddSsherItemDialog extends StatefulWidget {
 
 class _AddSsherItemDialogState extends State<AddSsherItemDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _memberCtrl = TextEditingController();
-  final _concernCtrl = TextEditingController();
-  final _mitigationCtrl = TextEditingController();
-  String _department = 'Operations';
-  String _riskLevel = 'High';
+  late TextEditingController _memberCtrl;
+  late TextEditingController _concernCtrl;
+  late TextEditingController _mitigationCtrl;
+  late String _department;
+  late String _riskLevel;
+
+  @override
+  void initState() {
+    super.initState();
+    _memberCtrl = TextEditingController(text: widget.initialData?.teamMember ?? '');
+    _concernCtrl = TextEditingController(text: widget.initialData?.concern ?? '');
+    _mitigationCtrl = TextEditingController(text: widget.initialData?.mitigation ?? '');
+    _department = widget.initialData?.department ?? 'Operations';
+    _riskLevel = widget.initialData?.riskLevel ?? 'High';
+
+    if (!widget.departmentOptions.contains(_department)) {
+      _department = widget.departmentOptions.first;
+    }
+  }
 
   @override
   void dispose() {

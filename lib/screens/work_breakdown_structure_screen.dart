@@ -12,6 +12,7 @@ import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'project_framework_next_screen.dart';
 import 'package:ndu_project/screens/ssher_stacked_screen.dart';
 import 'package:ndu_project/services/sidebar_navigation_service.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
 
 const Color _kSurfaceBackground = Color(0xFFF7F8FC);
 const Color _kAccentColor = Color(0xFFFFC812);
@@ -69,8 +70,8 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
   ];
 
   String? _selectedCriteriaA;
-  String? _selectedCriteriaB;
-  final List<List<_GoalItem>> _goalItems = [[], [], []];
+  bool _isAiLoading = false;
+  List<WorkItem> _wbsItems = [];
   final List<String> _goalTitles = List.filled(3, '');
   final List<String> _goalDescriptions = List.filled(3, '');
 
@@ -81,40 +82,59 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
       if (!mounted) return;
       final projectData = ProjectDataHelper.getData(context);
       _selectedCriteriaA = projectData.wbsCriteriaA;
-      _selectedCriteriaB = projectData.wbsCriteriaB;
       _syncGoalContext(projectData);
-      _hydrateGoalItems(projectData.goalWorkItems);
+      
+      _wbsItems = projectData.wbsTree;
+      if (_wbsItems.isEmpty && projectData.goalWorkItems.any((list) => list.isNotEmpty)) {
+        _migrateFromGoalsToTree(projectData.goalWorkItems);
+      }
+      
       setState(() {});
     });
   }
 
-  Future<void> _handleAddGoalItem(int goalIndex) async {
-    final newItem = await _openAddGoalItemDialog();
-    if (newItem == null) {
-      return;
+  void _migrateFromGoalsToTree(List<List<WorkItem>> goalWorkItems) {
+    for (int i = 0; i < goalWorkItems.length; i++) {
+      if (goalWorkItems[i].isNotEmpty) {
+        final goalTitle = _goalTitles[i].isNotEmpty ? _goalTitles[i] : 'Goal ${i + 1}';
+        final goalNode = WorkItem(title: goalTitle, description: _goalDescriptions[i]);
+        goalNode.children.addAll(goalWorkItems[i]);
+        _wbsItems.add(goalNode);
+      }
     }
+  }
+
+  Future<void> _handleAddNode({WorkItem? parent}) async {
+    final newNode = await _openAddNodeDialog(parentId: parent?.id ?? '');
+    if (newNode == null) return;
 
     setState(() {
-      _goalItems[goalIndex].add(newItem);
+      if (parent == null) {
+        _wbsItems.add(newNode);
+      } else {
+        parent.children.add(newNode);
+      }
     });
   }
 
-  Future<_GoalItem?> _openAddGoalItemDialog() async {
-    final titleController = TextEditingController();
-    final descriptionController = TextEditingController();
+  Future<WorkItem?> _openAddNodeDialog({String parentId = '', WorkItem? existingNode}) async {
+    final titleController = TextEditingController(text: existingNode?.title);
+    final descriptionController = TextEditingController(text: existingNode?.description);
     final formKey = GlobalKey<FormState>();
-    var selectedStatus = _GoalStatus.inProgress;
-    _GoalItem? result;
+    var selectedStatus = existingNode?.status ?? 'not_started';
+    WorkItem? result;
 
-    await showDialog<_GoalItem>(
+    await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-          title: const Text(
-            'Create Goal Deliverable',
-            style: TextStyle(fontWeight: FontWeight.w800, color: _kPrimaryText),
+          title: Text(
+            existingNode != null 
+                ? 'Edit Item' 
+                : (parentId.isEmpty ? 'Create Main Segment' : 'Create Sub-Deliverable'),
+            style: const TextStyle(fontWeight: FontWeight.w800, color: _kPrimaryText),
           ),
           content: StatefulBuilder(
             builder: (context, setStateDialog) {
@@ -129,47 +149,28 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
                       children: [
                         TextFormField(
                           controller: titleController,
-                          decoration: const InputDecoration(labelText: 'Deliverable Title'),
+                          decoration: const InputDecoration(labelText: 'Title'),
                           textCapitalization: TextCapitalization.sentences,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Please enter a title';
-                            }
-                            return null;
-                          },
+                          validator: (value) => (value == null || value.trim().isEmpty) ? 'Please enter a title' : null,
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: descriptionController,
                           decoration: const InputDecoration(labelText: 'Description'),
-                          minLines: 4,
-                          maxLines: 8,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Please enter a description';
-                            }
-                            return null;
-                          },
+                          minLines: 3,
+                          maxLines: 5,
                         ),
                         const SizedBox(height: 16),
-                        DropdownButtonFormField<_GoalStatus>(
-                          initialValue: selectedStatus,
-                          decoration: const InputDecoration(labelText: 'Status'),
-                          items: _GoalStatus.values
-                              .map(
-                                (status) => DropdownMenuItem(
-                                  value: status,
-                                  child: Text(_goalStatusLabel(status)),
-                                ),
-                              )
-                              .toList(),
+                        DropdownButtonFormField<String>(
+                          value: selectedStatus,
+                          decoration: const InputDecoration(labelText: 'Initial Status'),
+                          items: const [
+                            DropdownMenuItem(value: 'not_started', child: Text('Not Started')),
+                            DropdownMenuItem(value: 'in_progress', child: Text('In Progress')),
+                            DropdownMenuItem(value: 'completed', child: Text('Completed')),
+                          ],
                           onChanged: (value) {
-                            if (value == null) {
-                              return;
-                            }
-                            setStateDialog(() {
-                              selectedStatus = value;
-                            });
+                            if (value != null) setStateDialog(() => selectedStatus = value);
                           },
                         ),
                       ],
@@ -179,32 +180,36 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
               );
             },
           ),
-          actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-              },
+              onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: () {
-                if (!(formKey.currentState?.validate() ?? false)) {
-                  return;
+                if (!(formKey.currentState?.validate() ?? false)) return;
+                
+                if (existingNode != null) {
+                  existingNode.title = titleController.text.trim();
+                  existingNode.description = descriptionController.text.trim();
+                  existingNode.status = selectedStatus;
+                  result = existingNode;
+                } else {
+                  result = WorkItem(
+                    parentId: parentId,
+                    title: titleController.text.trim(),
+                    description: descriptionController.text.trim(),
+                    status: selectedStatus,
+                  );
                 }
-                result = _GoalItem(
-                  title: titleController.text.trim(),
-                  description: descriptionController.text.trim(),
-                  status: selectedStatus,
-                );
-                Navigator.of(dialogContext).pop(result);
+                Navigator.of(dialogContext).pop();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: _kAccentColor,
                 foregroundColor: _kPrimaryText,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: const Text('Create'),
+              child: Text(existingNode != null ? 'Update' : 'Create'),
             ),
           ],
         );
@@ -212,6 +217,69 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
     );
 
     return result;
+  }
+
+  Future<void> _handleEditNode(WorkItem node) async {
+    final updated = await _openAddNodeDialog(existingNode: node);
+    if (updated != null) {
+      setState(() {});
+    }
+  }
+
+  void _handleDeleteNode(WorkItem node) {
+    setState(() {
+      if (node.parentId.isEmpty) {
+        _wbsItems.remove(node);
+      } else {
+        _removeNodeFromChildren(_wbsItems, node);
+      }
+    });
+  }
+
+  void _removeNodeFromChildren(List<WorkItem> items, WorkItem nodeToRemove) {
+    for (var item in items) {
+      if (item.children.contains(nodeToRemove)) {
+        item.children.remove(nodeToRemove);
+        return;
+      }
+      _removeNodeFromChildren(item.children, nodeToRemove);
+    }
+  }
+
+  Future<void> _handleGenerateWbsAi() async {
+    final projectData = ProjectDataHelper.getData(context);
+    final dimension = _selectedCriteriaA ?? 'Discipline';
+    
+    // Show loading
+    setState(() {
+      _isAiLoading = true;
+    });
+
+    try {
+      final generatedItems = await OpenAiServiceSecure().generateWbsStructure(
+        projectName: projectData.projectName,
+        projectObjective: projectData.projectObjective,
+        dimension: dimension,
+      );
+
+      if (generatedItems.isNotEmpty) {
+        setState(() {
+          _wbsItems.addAll(generatedItems);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to generate suggest structure: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAiLoading = false;
+        });
+      }
+    }
   }
 
   void _syncGoalContext(ProjectDataModel data) {
@@ -245,42 +313,6 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
     }
   }
 
-  void _hydrateGoalItems(List<List<WorkItem>> savedGoals) {
-    for (final items in _goalItems) {
-      items.clear();
-    }
-
-    for (var goalIndex = 0; goalIndex < _goalItems.length; goalIndex++) {
-      if (goalIndex >= savedGoals.length) continue;
-      for (final item in savedGoals[goalIndex]) {
-        final title = item.title.trim();
-        final description = item.description.trim();
-        if (title.isEmpty && description.isEmpty) continue;
-        _goalItems[goalIndex].add(
-          _GoalItem(
-            title: title.isEmpty ? 'Untitled deliverable' : title,
-            description: description,
-            status: _goalStatusFromString(item.status),
-          ),
-        );
-      }
-    }
-  }
-
-  _GoalStatus _goalStatusFromString(String status) {
-    final normalized = status.trim().toLowerCase().replaceAll(' ', '_');
-    switch (normalized) {
-      case 'in_progress':
-      case 'inprogress':
-        return _GoalStatus.inProgress;
-      case 'completed':
-      case 'complete':
-      case 'done':
-        return _GoalStatus.completed;
-      default:
-        return _GoalStatus.notStarted;
-    }
-  }
 
   Widget _buildCriteriaDropdown({required String hint, required String? value, required ValueChanged<String?> onChanged}) {
     return SizedBox(
@@ -315,292 +347,270 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
 
   Widget _buildCriteriaRow() {
     return Wrap(
-      spacing: 16,
-      runSpacing: 16,
+      alignment: WrapAlignment.start,
       crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 24,
+      runSpacing: 16,
       children: [
         const Text(
-          'Select Breakdown Criteria:',
+          'Breakdown Dimension:',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _kPrimaryText),
         ),
         _buildCriteriaDropdown(
-          hint: 'Select...',
+          hint: 'Select',
           value: _selectedCriteriaA,
           onChanged: (value) => setState(() => _selectedCriteriaA = value),
         ),
-        _buildCriteriaDropdown(
-          hint: 'Select...',
-          value: _selectedCriteriaB,
-          onChanged: (value) => setState(() => _selectedCriteriaB = value),
+        if (_isAiLoading)
+          const SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 3, color: _kAccentColor),
+          ),
+        ElevatedButton.icon(
+          onPressed: _isAiLoading ? null : _handleGenerateWbsAi,
+          icon: _isAiLoading
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+              : const Icon(Icons.auto_awesome, size: 18),
+          label: Text(_isAiLoading ? 'Generating...' : 'Suggest Structure'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _kAccentColor,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildAddGoalButton(int goalIndex) {
-    return GestureDetector(
-      onTap: () => _handleAddGoalItem(goalIndex),
-      child: Container(
-        width: 28,
-        height: 28,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: _kCardBorder),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
+  Widget _buildWbsTreeView() {
+    if (_wbsItems.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.account_tree_outlined, size: 64, color: _kSecondaryText),
+            const SizedBox(height: 16),
+            const Text(
+              'No WBS items yet',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _kSecondaryText),
             ),
+            const SizedBox(height: 24),
+            _buildAddTopLevelButton(),
           ],
         ),
-        child: const Icon(Icons.add, size: 18, color: _kPrimaryText),
+      );
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(0, 0, 48, 48),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var item in _wbsItems) ...[
+              _buildWbsNodeRecursive(item, level: 0),
+              const SizedBox(width: 32),
+            ],
+            _buildAddTopLevelButton(),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildGoalHeading(int goalIndex) {
-    final goalTitle = _goalTitles[goalIndex];
-    final goalDescription = _goalDescriptions[goalIndex];
-    return Row(
+  Widget _buildWbsNodeRecursive(WorkItem item, {required int level}) {
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Goal ${goalIndex + 1}',
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _kPrimaryText),
-              ),
-              if (goalTitle.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  goalTitle,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kPrimaryText),
-                ),
+        _buildWbsNodeCard(item, level: level),
+        if (item.children.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Padding(
+            padding: const EdgeInsets.only(left: 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = 0; i < item.children.length; i++) ...[
+                  _buildWbsNodeRecursive(item.children[i], level: level + 1),
+                  if (i != item.children.length - 1) const SizedBox(height: 16),
+                ],
               ],
-              if (goalDescription.isNotEmpty) ...[
-                const SizedBox(height: 2),
-                Text(
-                  goalDescription,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kSecondaryText),
-                ),
-              ],
-            ],
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
-        _buildAddGoalButton(goalIndex),
+        ],
       ],
     );
   }
 
-  Widget _buildGoalCard({required _GoalItem item, required VoidCallback onDelete}) {
-    final bool isExpanded = item.isExpanded;
+  Widget _buildWbsNodeCard(WorkItem item, {required int level}) {
+    final nodeColor = _getNodeColor(level);
     return Container(
-      decoration: const BoxDecoration(),
+      width: 280,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: _kCardBorder),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
+            height: 6,
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(26),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 14, offset: const Offset(0, 8))],
+              color: nodeColor,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
             ),
-            child: Stack(
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  child: Container(
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      borderRadius: BorderRadius.only(topLeft: Radius.circular(26), topRight: Radius.circular(26)),
-                      gradient: LinearGradient(colors: [Color(0xFFFFD149), Color(0xFFFFA904)]),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.title,
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _kPrimaryText),
+                      ),
                     ),
-                  ),
+                    _buildStatusIcon(item.status),
+                  ],
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 32, 24, 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              item.title,
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _kPrimaryText),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          GestureDetector(
-                            onTap: onDelete,
-                            child: Container(
-                              width: 30,
-                              height: 30,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: _kCardBorder),
-                                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6, offset: const Offset(0, 2))],
-                              ),
-                              child: const Icon(Icons.delete_outline, size: 18, color: _kSecondaryText),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          _buildStatusChip(item.status),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        item.description,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _kSecondaryText),
-                      ),
-                      const SizedBox(height: 18),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: GestureDetector(
-                          onTap: () => setState(() => item.isExpanded = !isExpanded),
-                          child: Text(
-                            isExpanded ? 'Collapse' : 'Expand',
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFFFFA904)),
-                          ),
-                        ),
-                      ),
-                    ],
+                if (item.description.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    item.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: _kSecondaryText),
                   ),
+                ],
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    GestureDetector(
+                      onTap: () => _handleEditNode(item),
+                      child: const Icon(Icons.edit_outlined, size: 18, color: Colors.grey),
+                    ),
+                    const SizedBox(width: 12),
+                    GestureDetector(
+                      onTap: () => _handleDeleteNode(item),
+                      child: const Icon(Icons.delete_outline, size: 18, color: Colors.grey),
+                    ),
+                    const SizedBox(width: 12),
+                    GestureDetector(
+                      onTap: () => _handleAddNode(parent: item),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: _kAccentColor.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Icon(Icons.add, size: 18, color: _kPrimaryText),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ),
-          AnimatedCrossFade(
-            firstChild: const SizedBox.shrink(),
-            secondChild: _buildSubScopePanel(),
-            crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 200),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildGoalsSection(double maxWidth) {
-    const double gap = 22;
-    const double minColumnWidth = 240;
-    final bool showColumns = maxWidth >= (minColumnWidth * 3) + (gap * 2);
-
-    if (!showColumns) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (var goalIndex = 0; goalIndex < _goalItems.length; goalIndex++) ...[
-            _buildGoalHeading(goalIndex),
-            const SizedBox(height: 12),
-            for (var i = 0; i < _goalItems[goalIndex].length; i++) ...[
-              _buildGoalCard(
-                item: _goalItems[goalIndex][i],
-                onDelete: () => _confirmDeleteGoalItem(goalIndex, i),
-              ),
-              if (i != _goalItems[goalIndex].length - 1) const SizedBox(height: 20),
-            ],
-            const SizedBox(height: 24),
-          ],
-        ],
-      );
-    }
-
-    final double columnWidth = (maxWidth - (gap * 2)) / 3;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (var goalIndex = 0; goalIndex < _goalItems.length; goalIndex++) ...[
-              SizedBox(
-                width: columnWidth,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildGoalHeading(goalIndex),
-                    const SizedBox(height: 12),
-                    for (var i = 0; i < _goalItems[goalIndex].length; i++) ...[
-                      _buildGoalCard(
-                        item: _goalItems[goalIndex][i],
-                        onDelete: () => _confirmDeleteGoalItem(goalIndex, i),
-                      ),
-                      if (i != _goalItems[goalIndex].length - 1) const SizedBox(height: 20),
-                    ],
-                  ],
-                ),
-              ),
-              if (goalIndex != _goalItems.length - 1) const SizedBox(width: gap),
-            ],
-          ],
+  Widget _buildAddTopLevelButton() {
+    return GestureDetector(
+      onTap: () => _handleAddNode(),
+      child: Container(
+        width: 280,
+        height: 100,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.4),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _kCardBorder, style: BorderStyle.none),
         ),
-      ],
+        child: _DottedBorder(
+          color: _kCardBorder,
+          strokeWidth: 2,
+          dashPattern: const [8, 4],
+          borderType: BorderType.rRect,
+          radius: const Radius.circular(16),
+          child: const Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.add_circle_outline, color: _kSecondaryText),
+                SizedBox(height: 4),
+                Text(
+                  'Add Main Segment',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kSecondaryText),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
-  Future<void> _confirmDeleteGoalItem(int goalIndex, int itemIndex) async {
-    final shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-          title: const Text(
-            'Delete Deliverable',
-            style: TextStyle(fontWeight: FontWeight.w800, color: _kPrimaryText),
-          ),
-          content: const Text(
-            'Are you sure you want to delete this deliverable card? This action cannot be undone.',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _kSecondaryText),
-          ),
-          actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent.withOpacity(0.12),
-                foregroundColor: Colors.redAccent,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (shouldDelete != true) {
-      return;
+  Color _getNodeColor(int level) {
+    switch (level) {
+      case 0:
+        return const Color(0xFFFF5252); // Red
+      case 1:
+        return const Color(0xFF00BFA5); // Cyan (teal-ish)
+      case 2:
+        return const Color(0xFFFFD54F); // Yellow
+      default:
+        return Colors.blueGrey.shade100;
     }
-
-    setState(() {
-      _goalItems[goalIndex].removeAt(itemIndex);
-    });
   }
+
+  Widget _buildStatusIcon(String status) {
+    IconData icon;
+    Color color;
+    switch (status) {
+      case 'completed':
+        icon = Icons.check_circle;
+        color = const Color(0xFF059669);
+        break;
+      case 'in_progress':
+        icon = Icons.pending;
+        color = const Color(0xFF2563EB);
+        break;
+      default:
+        icon = Icons.radio_button_unchecked;
+        color = Colors.grey;
+    }
+    return Icon(icon, size: 16, color: color);
+  }
+
 
   Widget _buildNotesCard() {
-    return SizedBox(
-      width: 360,
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 400),
       child: const PlanningAiNotesCard(
-  title: 'Notes',
+        title: 'Notes',
         sectionLabel: 'Work Breakdown Structure',
         noteKey: 'planning_wbs_notes',
         checkpoint: 'wbs',
@@ -625,14 +635,6 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
   }
 
   Future<void> _handleNextPressed() async {
-    final goalWorkItems = _goalItems.map((items) => 
-      items.map((item) => WorkItem(
-        title: item.title,
-        description: item.description,
-        status: item.status.name,
-      )).toList()
-    ).toList();
-
     final isBasicPlan = ProjectDataHelper.getData(context).isBasicPlanProject;
     final nextItem = SidebarNavigationService.instance.getNextAccessibleItem('work_breakdown_structure', isBasicPlan);
 
@@ -651,82 +653,16 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
       nextScreenBuilder: () => nextScreen,
       dataUpdater: (data) => data.copyWith(
         wbsCriteriaA: _selectedCriteriaA,
-        wbsCriteriaB: _selectedCriteriaB,
-        goalWorkItems: goalWorkItems,
-      ),
-    );
-  }
-
-  Widget _buildNextButton() {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: GestureDetector(
-        onTap: _handleNextPressed,
-        child: Container(
-          width: 102,
-          height: 46,
-          decoration: BoxDecoration(
-            color: _kAccentColor,
-            borderRadius: BorderRadius.circular(18),
-          ),
-          alignment: Alignment.center,
-          child: const Text(
-            'Next',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _kPrimaryText),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSubScopePanel() {
-    const bulletColor = Color(0xFF4B5563);
-    const borderColor = Color(0xFFE5B100);
-    return Container(
-      margin: const EdgeInsets.only(top: 14),
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-      decoration: BoxDecoration(
-        color: _kAccentColor,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: borderColor),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 6))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: const Text(
-              'Add Sub-scope',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _kPrimaryText),
-            ),
-          ),
-          const SizedBox(height: 18),
-          for (var i = 0; i < 4; i++)
-            Padding(
-              padding: EdgeInsets.only(bottom: i == 3 ? 0 : 12),
-              child: Row(
-                children: const [
-                  CircleAvatar(radius: 6, backgroundColor: bulletColor),
-                  SizedBox(width: 12),
-                  Text(
-                    'Sub-scope (discipline) 1',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _kPrimaryText),
-                  ),
-                ],
-              ),
-            ),
-        ],
+        wbsTree: _wbsItems,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final padding = AppBreakpoints.pagePadding(context);
+    final isMobile = AppBreakpoints.isMobile(context);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
       color: _kSurfaceBackground,
@@ -736,7 +672,10 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
           const FrontEndPlanningHeader(title: 'Work Breakdown Structure'),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 36),
+              padding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 16 : padding * 1.5,
+                vertical: 24,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -749,7 +688,7 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
                             children: [
                               _buildCriteriaRow(),
                               const SizedBox(height: 32),
-                              _buildGoalsSection(constraints.maxWidth),
+                              _buildWbsTreeView(),
                               const SizedBox(height: 28),
                               Align(
                                 alignment: Alignment.centerRight,
@@ -766,7 +705,7 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
                   ),
                   const SizedBox(height: 24),
                   LaunchPhaseNavigation(
-                    backLabel: 'Back: Project Management Framework',
+                    backLabel: 'Back: Project Details',
                     nextLabel: 'Next: Goals & Milestones',
                     onBack: () => ProjectFrameworkScreen.open(context),
                     onNext: _handleNextPressed,
@@ -781,50 +720,108 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
   }
 }
 
-enum _GoalStatus { notStarted, inProgress, completed }
+class _DottedBorder extends StatelessWidget {
+  final Widget child;
+  final Color color;
+  final double strokeWidth;
+  final List<double> dashPattern;
+  final BorderType borderType;
+  final Radius radius;
 
-class _GoalItem {
-  _GoalItem({required this.title, required this.description, required this.status});
+  const _DottedBorder({
+    required this.child,
+    this.color = Colors.black,
+    this.strokeWidth = 1,
+    this.dashPattern = const [3, 1],
+    this.borderType = BorderType.rRect,
+    this.radius = Radius.zero,
+  });
 
-  final String title;
-  final String description;
-  final _GoalStatus status;
-  bool isExpanded = false;
-}
-
-String _goalStatusLabel(_GoalStatus status) {
-  switch (status) {
-    case _GoalStatus.notStarted:
-      return 'Not Started';
-    case _GoalStatus.inProgress:
-      return 'In Progress';
-    case _GoalStatus.completed:
-      return 'Completed';
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _DottedBorderPainter(
+        color: color,
+        strokeWidth: strokeWidth,
+        dashPattern: dashPattern,
+        borderType: borderType,
+        radius: radius,
+      ),
+      child: child,
+    );
   }
 }
 
-Color _goalStatusColor(_GoalStatus status) {
-  switch (status) {
-    case _GoalStatus.notStarted:
-      return const Color(0xFF6B7280);
-    case _GoalStatus.inProgress:
-      return const Color(0xFF2563EB);
-    case _GoalStatus.completed:
-      return const Color(0xFF059669);
-  }
+enum BorderType {
+  rRect,
+  rect,
+  circle,
 }
 
-Widget _buildStatusChip(_GoalStatus status) {
-  final color = _goalStatusColor(status);
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-    decoration: BoxDecoration(
-      color: color.withOpacity(0.12),
-      borderRadius: BorderRadius.circular(14),
-    ),
-    child: Text(
-      _goalStatusLabel(status),
-      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color),
-    ),
-  );
+class _DottedBorderPainter extends CustomPainter {
+  final Color color;
+  final double strokeWidth;
+  final List<double> dashPattern;
+  final BorderType borderType;
+  final Radius radius;
+
+  _DottedBorderPainter({
+    required this.color,
+    required this.strokeWidth,
+    required this.dashPattern,
+    required this.borderType,
+    required this.radius,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke;
+
+    Path path;
+    switch (borderType) {
+      case BorderType.rRect:
+        path = Path()
+          ..addRRect(RRect.fromRectAndRadius(
+            Offset.zero & size,
+            radius,
+          ));
+        break;
+      case BorderType.rect:
+        path = Path()
+          ..addRect(Offset.zero & size);
+        break;
+      case BorderType.circle:
+        path = Path()
+          ..addOval(Offset.zero & size);
+        break;
+    }
+
+    final dashPath = _dashPath(path, dashPattern);
+    canvas.drawPath(dashPath, paint);
+  }
+
+  Path _dashPath(Path source, List<double> dashPattern) {
+    final dest = Path();
+    for (final metric in source.computeMetrics()) {
+      double distance = 0;
+      bool draw = true;
+      int i = 0;
+      while (distance < metric.length) {
+        final double len = dashPattern[i];
+        if (draw) {
+          dest.addPath(metric.extractPath(distance, distance + len), Offset.zero);
+        }
+        distance += len;
+        draw = !draw;
+        i = (i + 1) % dashPattern.length;
+      }
+    }
+    return dest;
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

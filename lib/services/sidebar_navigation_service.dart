@@ -88,7 +88,7 @@ class SidebarNavigationService {
 
     // Planning Phase
     SidebarItem(
-        checkpoint: 'project_framework', label: 'Project Management Framework'),
+        checkpoint: 'project_framework', label: 'Project Details'),
     SidebarItem(
         checkpoint: 'work_breakdown_structure',
         label: 'Work Breakdown Structure'),

@@ -42,6 +42,7 @@ import 'package:ndu_project/screens/front_end_planning_security.dart';
 
 // Project/Process cluster
 import 'package:ndu_project/screens/project_plan_screen.dart';
+import 'package:ndu_project/screens/project_framework_screen.dart';
 import 'package:ndu_project/screens/project_framework_next_screen.dart';
 import 'package:ndu_project/screens/project_charter_screen.dart';
 import 'package:ndu_project/screens/project_decision_summary_screen.dart';
@@ -395,7 +396,7 @@ class AppRouter {
 
       // Process cluster
       GoRoute(name: AppRoutes.projectPlan, path: '/${AppRoutes.projectPlan}', builder: (c, s) => const ProjectPlanScreen()),
-      GoRoute(name: AppRoutes.projectFramework, path: '/${AppRoutes.projectFramework}', builder: (c, s) => const ProjectManagementFrameworkScreen()),
+      GoRoute(name: AppRoutes.projectFramework, path: '/${AppRoutes.projectFramework}', builder: (c, s) => const ProjectFrameworkScreen()),
       GoRoute(name: AppRoutes.projectFrameworkNext, path: '/${AppRoutes.projectFrameworkNext}', builder: (c, s) => const ProjectFrameworkNextScreen()),
       GoRoute(name: AppRoutes.projectCharter, path: '/${AppRoutes.projectCharter}', builder: (c, s) => const ProjectCharterScreen()),
       GoRoute(

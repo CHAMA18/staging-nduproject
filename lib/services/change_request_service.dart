@@ -9,8 +9,11 @@ class ChangeRequest {
   final String impact;
   final String status;
   final String requester;
+  final String? projectId;
   final String? description;
   final String? justification;
+  final String? attachmentUrl;
+  final String? attachmentName;
   final DateTime requestDate;
   final DateTime createdAt;
 
@@ -24,8 +27,11 @@ class ChangeRequest {
     required this.requester,
     required this.requestDate,
     required this.createdAt,
+    this.projectId,
     this.description,
     this.justification,
+    this.attachmentUrl,
+    this.attachmentName,
   });
 
   static ChangeRequest fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -83,8 +89,11 @@ class ChangeRequest {
       impact: data['impact'] as String? ?? '',
       status: data['status'] as String? ?? 'Pending',
       requester: data['requester'] as String? ?? '',
+      projectId: data['projectId'] as String?,
       description: data['description'] as String?,
       justification: data['justification'] as String?,
+      attachmentUrl: data['attachmentUrl'] as String?,
+      attachmentName: data['attachmentName'] as String?,
       requestDate: requestDate,
       createdAt: createdAt,
     );
@@ -98,8 +107,11 @@ class ChangeRequest {
       'impact': impact,
       'status': status,
       'requester': requester,
+      'projectId': projectId,
       'description': description,
       'justification': justification,
+      'attachmentUrl': attachmentUrl,
+      'attachmentName': attachmentName,
       'requestDate': Timestamp.fromDate(requestDate),
       'createdAt': FieldValue.serverTimestamp(),
     };
@@ -125,8 +137,14 @@ class ChangeRequestService {
   }
 
   // Generates a displayId like CR-001 based on current count; not transaction-safe but fine for demo.
-  static Future<String> _generateDisplayId() async {
-    final snapshot = await _requireCollection().count().get();
+  static Future<String> _generateDisplayId(String? projectId) async {
+    // If filtering by project, we might want count per project, but for now simple global count or random is easier.
+    // Or just query count.
+    Query query = _requireCollection();
+    if (projectId != null) {
+      query = query.where('projectId', isEqualTo: projectId);
+    }
+    final snapshot = await query.count().get();
     final next = (snapshot.count ?? 0) + 1;
     String pad(int n) => n.toString().padLeft(3, '0');
     return 'CR-${pad(next)}';
@@ -139,10 +157,13 @@ class ChangeRequestService {
     required String status,
     required String requester,
     required DateTime requestDate,
+    String? projectId,
     String? description,
     String? justification,
+    String? attachmentUrl,
+    String? attachmentName,
   }) async {
-    final displayId = await _generateDisplayId();
+    final displayId = await _generateDisplayId(projectId);
     final data = {
       'displayId': displayId,
       'title': title,
@@ -150,8 +171,11 @@ class ChangeRequestService {
       'impact': impact,
       'status': status,
       'requester': requester,
+      'projectId': projectId,
       'description': description,
       'justification': justification,
+      'attachmentUrl': attachmentUrl,
+      'attachmentName': attachmentName,
       'requestDate': Timestamp.fromDate(requestDate),
       'createdAt': FieldValue.serverTimestamp(),
     };
@@ -159,16 +183,28 @@ class ChangeRequestService {
     return ref.id;
   }
 
-  static Stream<List<ChangeRequest>> streamChangeRequests() {
+  static Stream<List<ChangeRequest>> streamChangeRequests({String? projectId}) {
     final col = _tryCollection();
     if (col == null) {
       return Stream<List<ChangeRequest>>.value(const []);
     }
     try {
-      return col
-          .orderBy('createdAt', descending: true)
+      Query<Map<String, dynamic>> query = col;
+      if (projectId != null && projectId.isNotEmpty) {
+        query = query.where('projectId', isEqualTo: projectId);
+      }
+      
+      // Note: We avoid .orderBy('createdAt') here if filtering by projectId to avoid needing a composite index immediately.
+      // We sort on the client side instead.
+      
+      return query
           .snapshots()
-          .map((s) => s.docs.map((d) => ChangeRequest.fromDoc(d)).toList());
+          .map((s) {
+            final list = s.docs.map((d) => ChangeRequest.fromDoc(d)).toList();
+            // Sort by createdAt descending
+            list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+            return list;
+          });
     } catch (e, st) {
       debugPrint('ChangeRequestService: stream failure ($e)\n$st');
       return Stream<List<ChangeRequest>>.value(const []);
@@ -177,7 +213,7 @@ class ChangeRequestService {
 
   static Future<void> updateChangeRequest(ChangeRequest request) async {
     try {
-      await _requireCollection().doc(request.id).update({
+      final data = {
         'title': request.title,
         'type': request.type,
         'impact': request.impact,
@@ -185,8 +221,12 @@ class ChangeRequestService {
         'requester': request.requester,
         'description': request.description,
         'justification': request.justification,
+        'attachmentUrl': request.attachmentUrl,
+        'attachmentName': request.attachmentName,
         'requestDate': Timestamp.fromDate(request.requestDate),
-      });
+      };
+      
+      await _requireCollection().doc(request.id).update(data);
     } catch (e) {
       debugPrint('Failed to update change request (${request.id}): $e');
       rethrow;

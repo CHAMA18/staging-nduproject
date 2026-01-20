@@ -25,7 +25,7 @@ class BusinessCaseNavigation {
     _BusinessCaseScreen('Cost Benefit Analysis & Financial Metrics', 6),
     _BusinessCaseScreen('Preferred Solution Analysis', 7),
     _BusinessCaseScreen('Work Breakdown Structure', 8),
-    _BusinessCaseScreen('Project Management Framework', 9),
+    _BusinessCaseScreen('Project Details', 9),
   ];
 
   /// Get the index of a screen by its label

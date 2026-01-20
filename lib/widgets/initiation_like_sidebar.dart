@@ -1452,7 +1452,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
                   isActive: widget.activeItemLabel == 'Planning Phase',
                 ),
                 if (_planningPhaseExpanded) ...[
-                  _buildSubMenuItem('Project Management Framework', onTap: _openProjectFramework, isActive: widget.activeItemLabel == 'Project Management Framework'),
+                  _buildSubMenuItem('Project Details', onTap: _openProjectFramework, isActive: widget.activeItemLabel == 'Project Details'),
                   _buildSubMenuItem(
                     'Work Breakdown Structure',
                     onTap: lockWorkBreakdown ? null : _openWorkBreakdownStructure,
@@ -1914,8 +1914,8 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
         ),
       );
     }
-    if ('project management framework'.contains(query) || 'framework'.contains(query) || 'management framework'.contains(query)) {
-      results.add(_buildMenuItem(Icons.widgets_outlined, 'Project Management Framework', onTap: _openProjectFramework, isActive: widget.activeItemLabel == 'Project Management Framework'));
+    if ('project details'.contains(query) || 'project management framework'.contains(query) || 'framework'.contains(query) || 'details'.contains(query)) {
+      results.add(_buildMenuItem(Icons.widgets_outlined, 'Project Details', onTap: _openProjectFramework, isActive: widget.activeItemLabel == 'Project Details'));
     }
     if ('summary'.contains(query) || 'front end'.contains(query)) {
       results.add(_buildMenuItem(Icons.summarize_outlined, 'Summary', onTap: _openSummary, isActive: widget.activeItemLabel == 'Summary'));

@@ -33,6 +33,7 @@ class ProjectDataModel {
   String? wbsCriteriaA;
   String? wbsCriteriaB;
   List<List<WorkItem>> goalWorkItems;
+  List<WorkItem> wbsTree;
 
   // Issue Management Data
   List<IssueLogItem> issueLogItems;
@@ -110,6 +111,7 @@ class ProjectDataModel {
     this.wbsCriteriaA,
     this.wbsCriteriaB,
     List<List<WorkItem>>? goalWorkItems,
+    List<WorkItem>? wbsTree,
     List<IssueLogItem>? issueLogItems,
     List<LessonRecord>? lessonsLearned,
     List<Map<String, dynamic>>? technologyDefinitions,
@@ -141,6 +143,7 @@ class ProjectDataModel {
         keyMilestones = keyMilestones ?? [],
         planningNotes = planningNotes ?? {},
         goalWorkItems = goalWorkItems ?? List.generate(3, (_) => []),
+        wbsTree = wbsTree ?? [],
         issueLogItems = issueLogItems ?? [],
         lessonsLearned = lessonsLearned ?? [],
         technologyDefinitions = technologyDefinitions ?? [],
@@ -181,6 +184,7 @@ class ProjectDataModel {
     String? wbsCriteriaA,
     String? wbsCriteriaB,
     List<List<WorkItem>>? goalWorkItems,
+    List<WorkItem>? wbsTree,
     List<IssueLogItem>? issueLogItems,
     List<LessonRecord>? lessonsLearned,
     List<Map<String, dynamic>>? technologyDefinitions,
@@ -232,6 +236,7 @@ class ProjectDataModel {
       wbsCriteriaA: wbsCriteriaA ?? this.wbsCriteriaA,
       wbsCriteriaB: wbsCriteriaB ?? this.wbsCriteriaB,
       goalWorkItems: goalWorkItems ?? this.goalWorkItems,
+      wbsTree: wbsTree ?? this.wbsTree,
       issueLogItems: issueLogItems ?? this.issueLogItems,
       lessonsLearned: lessonsLearned ?? this.lessonsLearned,
       technologyDefinitions:
@@ -298,6 +303,7 @@ class ProjectDataModel {
       'wbsCriteriaA': wbsCriteriaA,
       'wbsCriteriaB': wbsCriteriaB,
       'goalWorkItems': flattenedWorkItems,
+      'wbsTree': wbsTree.map((item) => item.toJson()).toList(),
       'issueLogItems': issueLogItems.map((item) => item.toJson()).toList(),
       'lessonsLearned': lessonsLearned.map((l) => l.toJson()).toList(),
       'technologyDefinitions': technologyDefinitions,
@@ -455,6 +461,7 @@ class ProjectDataModel {
       wbsCriteriaA: json['wbsCriteriaA']?.toString(),
       wbsCriteriaB: json['wbsCriteriaB']?.toString(),
       goalWorkItems: reconstructedGoalWorkItems,
+      wbsTree: safeParseList('wbsTree', WorkItem.fromJson),
       issueLogItems: safeParseList('issueLogItems', IssueLogItem.fromJson),
       lessonsLearned: safeParseList('lessonsLearned', LessonRecord.fromJson),
       technologyDefinitions: (json['technologyDefinitions'] as List?)
@@ -709,27 +716,51 @@ class Milestone {
 }
 
 class WorkItem {
+  String id;
+  String parentId;
   String title;
   String description;
   String status;
+  List<WorkItem> children;
+  List<String> dependencies;
 
   WorkItem({
+    String? id,
+    this.parentId = '',
     this.title = '',
     this.description = '',
     this.status = 'not_started',
-  });
+    List<WorkItem>? children,
+    List<String>? dependencies,
+  })  : id = id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        children = children ?? [],
+        dependencies = dependencies ?? [];
 
   Map<String, dynamic> toJson() => {
+        'id': id,
+        'parentId': parentId,
         'title': title,
         'description': description,
         'status': status,
+        'children': children.map((c) => c.toJson()).toList(),
+        'dependencies': dependencies,
       };
 
   factory WorkItem.fromJson(Map<String, dynamic> json) {
     return WorkItem(
+      id: json['id']?.toString(),
+      parentId: json['parentId']?.toString() ?? '',
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       status: json['status'] ?? 'not_started',
+      children: (json['children'] as List?)
+              ?.map((c) => WorkItem.fromJson(c as Map<String, dynamic>))
+              .toList() ??
+          [],
+      dependencies: (json['dependencies'] as List?)
+              ?.map((d) => d.toString())
+              .toList() ??
+          [],
     );
   }
 }
@@ -1148,6 +1179,7 @@ class SSHERData {
 }
 
 class SsherEntry {
+  String id;
   String category;
   String department;
   String teamMember;
@@ -1156,15 +1188,17 @@ class SsherEntry {
   String mitigation;
 
   SsherEntry({
+    String? id,
     this.category = '',
     this.department = '',
     this.teamMember = '',
     this.concern = '',
     this.riskLevel = '',
     this.mitigation = '',
-  });
+  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
 
   Map<String, dynamic> toJson() => {
+        'id': id,
         'category': category,
         'department': department,
         'teamMember': teamMember,
@@ -1175,6 +1209,7 @@ class SsherEntry {
 
   factory SsherEntry.fromJson(Map<String, dynamic> json) {
     return SsherEntry(
+      id: json['id'] ?? DateTime.now().microsecondsSinceEpoch.toString(),
       category: json['category'] ?? '',
       department: json['department'] ?? '',
       teamMember: json['teamMember'] ?? '',

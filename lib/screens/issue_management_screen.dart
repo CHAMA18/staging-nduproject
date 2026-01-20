@@ -12,6 +12,7 @@ import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/screens/change_management_screen.dart';
+import 'package:ndu_project/screens/cost_estimate_screen.dart';
 
 class IssueManagementScreen extends StatefulWidget {
   const IssueManagementScreen({super.key});
@@ -27,10 +28,12 @@ class IssueManagementScreen extends StatefulWidget {
 }
 
 class _IssueManagementScreenState extends State<IssueManagementScreen> {
-  String _selectedFilter = 'All Issues';
+  String _selectedFilter = 'All';
+  String _selectedTypeFilter = 'All';
+  String _selectedSeverityFilter = 'All';
+  String _searchQuery = '';
 
   List<_IssueMetric> _metrics = [];
-  List<_MilestoneIssues> _milestones = [];
 
   Future<void> _handleNewIssue() async {
     final entry = await showDialog<IssueLogItem>(
@@ -47,27 +50,84 @@ class _IssueManagementScreenState extends State<IssueManagementScreen> {
     );
   }
 
+  Future<void> _handleEditIssue(IssueLogItem existing) async {
+    final updated = await showDialog<IssueLogItem>(
+      context: context,
+      builder: (dialogContext) => _NewIssueDialog(existingIssue: existing),
+    );
+    if (updated == null) return;
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'issue_management',
+      dataUpdater: (data) => data.copyWith(
+        issueLogItems: data.issueLogItems.map((i) => i.id == existing.id ? updated : i).toList(),
+      ),
+    );
+  }
+
+  List<IssueLogItem> _filterIssues(List<IssueLogItem> items) {
+    return items.where((i) {
+      // Filter by status
+      if (_selectedFilter != 'All') {
+        if (_selectedFilter == 'Resolved' && i.status != 'Resolved' && i.status != 'Closed') return false;
+        if (_selectedFilter != 'Resolved' && i.status != _selectedFilter) return false;
+      }
+      // Filter by type
+      if (_selectedTypeFilter != 'All' && i.type != _selectedTypeFilter) return false;
+      // Filter by severity
+      if (_selectedSeverityFilter != 'All' && i.severity != _selectedSeverityFilter) return false;
+      return true;
+    }).toList();
+  }
+
+  List<IssueLogItem> _searchIssues(List<IssueLogItem> items) {
+    if (_searchQuery.isEmpty) return items;
+    final query = _searchQuery.toLowerCase();
+    return items.where((i) {
+      return i.id.toLowerCase().contains(query) ||
+          i.title.toLowerCase().contains(query) ||
+          i.description.toLowerCase().contains(query) ||
+          i.assignee.toLowerCase().contains(query) ||
+          i.milestone.toLowerCase().contains(query) ||
+          i.type.toLowerCase().contains(query) ||
+          i.severity.toLowerCase().contains(query) ||
+          i.status.toLowerCase().contains(query);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isMobile = AppBreakpoints.isMobile(context);
     final double horizontalPadding = isMobile ? 20 : 36;
     final issueItems = ProjectDataHelper.getData(context).issueLogItems;
 
-    // Build metrics and milestones from persisted issue items
+    // Build metrics from all issue items (not filtered)
     _metrics = [
       _IssueMetric(label: 'Open', value: issueItems.where((i) => i.status == 'Open').length.toString(), icon: Icons.report_problem_outlined, color: Colors.orange),
       _IssueMetric(label: 'In Progress', value: issueItems.where((i) => i.status == 'In Progress').length.toString(), icon: Icons.autorenew, color: Colors.blue),
       _IssueMetric(label: 'Resolved', value: issueItems.where((i) => i.status == 'Resolved' || i.status == 'Closed').length.toString(), icon: Icons.check_circle_outline, color: Colors.green),
     ];
 
+    // Apply filters for milestone section
+    final filteredIssues = _filterIssues(issueItems);
+    
+    // Build milestones from filtered issues
     final byMilestone = <String, List<IssueLogItem>>{};
-    for (final it in issueItems) {
+    for (final it in filteredIssues) {
       final key = it.milestone.isEmpty ? 'Unassigned' : it.milestone;
       byMilestone.putIfAbsent(key, () => []).add(it);
     }
-    _milestones = byMilestone.entries
-        .map((e) => _MilestoneIssues(title: e.key, issuesCountLabel: '${e.value.length} issues', dueDate: '', statusLabel: 'Open', indicatorColor: Colors.orange))
+    final milestones = byMilestone.entries
+        .map((e) => _MilestoneIssues(
+            title: e.key,
+            issuesCountLabel: '${e.value.length} issues',
+            dueDate: '',
+            statusLabel: e.value.any((x) => x.status == 'Open') ? 'Open' : 'Resolved',
+            indicatorColor: e.value.any((x) => x.status == 'Open') ? Colors.orange : Colors.green))
         .toList();
+
+    // Apply search for log section
+    final searchedIssues = _searchIssues(issueItems);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -105,18 +165,27 @@ class _IssueManagementScreenState extends State<IssueManagementScreen> {
                         _IssuesOverviewCard(metrics: _metrics),
                         const SizedBox(height: 24),
                         _IssuesByMilestoneCard(
-                          milestones: _milestones,
-                          selectedFilter: _selectedFilter,
-                          onFilterChanged: (value) => setState(() => _selectedFilter = value),
+                          milestones: milestones,
+                          selectedStatusFilter: _selectedFilter,
+                          selectedTypeFilter: _selectedTypeFilter,
+                          selectedSeverityFilter: _selectedSeverityFilter,
+                          onStatusFilterChanged: (value) => setState(() => _selectedFilter = value),
+                          onTypeFilterChanged: (value) => setState(() => _selectedTypeFilter = value),
+                          onSeverityFilterChanged: (value) => setState(() => _selectedSeverityFilter = value),
                         ),
                         const SizedBox(height: 24),
-                        _ProjectIssuesLogCard(entries: issueItems),
+                        _ProjectIssuesLogCard(
+                          entries: searchedIssues,
+                          searchQuery: _searchQuery,
+                          onSearchChanged: (value) => setState(() => _searchQuery = value),
+                          onEdit: _handleEditIssue,
+                        ),
                         const SizedBox(height: 16),
                         LaunchPhaseNavigation(
-                          backLabel: 'Back: SSHER',
-                          nextLabel: 'Next: Change Management',
-                          onBack: () => Navigator.of(context).maybePop(),
-                          onNext: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ChangeManagementScreen())),
+                          backLabel: 'Back: Change Management',
+                          nextLabel: 'Next: Cost Estimate',
+                          onBack: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ChangeManagementScreen())),
+                          onNext: () => CostEstimateScreen.open(context),
                         ),
                         const SizedBox(height: 80),
                       ],
@@ -199,7 +268,7 @@ class _PageTitle extends StatelessWidget {
         ),
         SizedBox(height: 8),
         Text(
-          'Traci, manage, and resolve project issues',
+          'Trace, manage, and resolve project issues',
           style: TextStyle(fontSize: 15, color: Color(0xFF6B7280)),
         ),
       ],
@@ -313,11 +382,27 @@ class _MetricCard extends StatelessWidget {
 }
 
 class _IssuesByMilestoneCard extends StatelessWidget {
-  const _IssuesByMilestoneCard({required this.milestones, required this.selectedFilter, required this.onFilterChanged});
+  const _IssuesByMilestoneCard({
+    required this.milestones,
+    required this.selectedStatusFilter,
+    required this.selectedTypeFilter,
+    required this.selectedSeverityFilter,
+    required this.onStatusFilterChanged,
+    required this.onTypeFilterChanged,
+    required this.onSeverityFilterChanged,
+  });
 
   final List<_MilestoneIssues> milestones;
-  final String selectedFilter;
-  final ValueChanged<String> onFilterChanged;
+  final String selectedStatusFilter;
+  final String selectedTypeFilter;
+  final String selectedSeverityFilter;
+  final ValueChanged<String> onStatusFilterChanged;
+  final ValueChanged<String> onTypeFilterChanged;
+  final ValueChanged<String> onSeverityFilterChanged;
+
+  static const List<String> _statusOptions = ['All', 'Open', 'In Progress', 'Resolved', 'Closed'];
+  static const List<String> _typeOptions = ['All', 'Scope', 'Schedule', 'Cost', 'Quality', 'Risk', 'Other'];
+  static const List<String> _severityOptions = ['All', 'Low', 'Medium', 'High', 'Critical'];
 
   @override
   Widget build(BuildContext context) {
@@ -330,37 +415,21 @@ class _IssuesByMilestoneCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               const Text(
                 'Issues by Milestone',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
               ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF9FAFB),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: selectedFilter,
-                    alignment: Alignment.centerRight,
-                    icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF6B7280)),
-                    items: const [
-                      DropdownMenuItem(value: 'All Issues', child: Text('All Issues')),
-                      DropdownMenuItem(value: 'Open', child: Text('Open')),
-                      DropdownMenuItem(value: 'Resolved', child: Text('Resolved')),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) onFilterChanged(value);
-                    },
-                  ),
-                ),
-              ),
+              const SizedBox(width: 12),
+              _filterDropdown('Status', selectedStatusFilter, _statusOptions, onStatusFilterChanged),
+              _filterDropdown('Type', selectedTypeFilter, _typeOptions, onTypeFilterChanged),
+              _filterDropdown('Severity', selectedSeverityFilter, _severityOptions, onSeverityFilterChanged),
             ],
           ),
           const SizedBox(height: 22),
@@ -428,12 +497,42 @@ class _IssuesByMilestoneCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _filterDropdown(String label, String value, List<String> options, ValueChanged<String> onChanged) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: Color(0xFF6B7280)),
+          style: const TextStyle(fontSize: 13, color: Color(0xFF374151)),
+          items: options.map((opt) => DropdownMenuItem(value: opt, child: Text('$label: $opt'))).toList(),
+          onChanged: (v) {
+            if (v != null) onChanged(v);
+          },
+        ),
+      ),
+    );
+  }
 }
 
 class _ProjectIssuesLogCard extends StatelessWidget {
-  const _ProjectIssuesLogCard({required this.entries});
+  const _ProjectIssuesLogCard({
+    required this.entries,
+    required this.searchQuery,
+    required this.onSearchChanged,
+    required this.onEdit,
+  });
 
   final List<IssueLogItem> entries;
+  final String searchQuery;
+  final ValueChanged<String> onSearchChanged;
+  final void Function(IssueLogItem) onEdit;
 
   static const List<int> _columnFlex = [2, 3, 2, 2, 2, 2, 2, 2];
 
@@ -458,10 +557,11 @@ class _ProjectIssuesLogCard extends StatelessWidget {
               ),
               const Spacer(),
               SizedBox(
-                width: 220,
+                width: 260,
                 child: TextField(
+                  onChanged: onSearchChanged,
                   decoration: InputDecoration(
-                    hintText: 'Search...',
+                    hintText: 'Search issues...',
                     prefixIcon: const Icon(Icons.search, size: 18),
                     filled: true,
                     fillColor: const Color(0xFFF9FAFB),
@@ -481,9 +581,6 @@ class _ProjectIssuesLogCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-              _OutlinedButton(label: 'Filter', onPressed: () {}),
-              const SizedBox(width: 12),
             ],
           ),
           const SizedBox(height: 22),
@@ -513,19 +610,34 @@ class _ProjectIssuesLogCard extends StatelessWidget {
                         _tableHeaderCell('Assignee', flex: _columnFlex[5]),
                         _tableHeaderCell('Due Date', flex: _columnFlex[6]),
                         _tableHeaderCell('Milestone', flex: _columnFlex[7]),
-                        const SizedBox(width: 40),
+                        const SizedBox(width: 80, child: Text('Actions', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)))),
                       ],
                     ),
                   ),
                   const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
-                  ...entries.map((entry) => _IssueLogRow(entry: entry, columnFlex: _columnFlex, onDelete: () async {
-                        final confirmed = await showDialog<bool>(context: context, builder: (_) => AlertDialog(title: const Text('Delete issue?'), content: const Text('This will permanently remove the issue.'), actions: [TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')), ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete'))]));
-                        if (confirmed == true) {
-                          await ProjectDataHelper.updateAndSave(context: context, checkpoint: 'issue_management', dataUpdater: (data) => data.copyWith(issueLogItems: data.issueLogItems.where((i) => i.id != entry.id).toList()));
-                          // force rebuild
-                          (context as Element).markNeedsBuild();
-                        }
-                      })),
+                  ...entries.map((entry) => _IssueLogRow(
+                        entry: entry,
+                        columnFlex: _columnFlex,
+                        onEdit: () => onEdit(entry),
+                        onDelete: () async {
+                          final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                    title: const Text('Delete issue?'),
+                                    content: const Text('This will permanently remove the issue.'),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+                                      ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
+                                    ],
+                                  ));
+                          if (confirmed == true) {
+                            await ProjectDataHelper.updateAndSave(
+                                context: context,
+                                checkpoint: 'issue_management',
+                                dataUpdater: (data) => data.copyWith(issueLogItems: data.issueLogItems.where((i) => i.id != entry.id).toList()));
+                          }
+                        },
+                      )),
                 ],
               ),
             ),
@@ -546,10 +658,11 @@ class _ProjectIssuesLogCard extends StatelessWidget {
 }
 
 class _IssueLogRow extends StatelessWidget {
-  const _IssueLogRow({required this.entry, required this.columnFlex, this.onDelete});
+  const _IssueLogRow({required this.entry, required this.columnFlex, this.onEdit, this.onDelete});
 
   final IssueLogItem entry;
   final List<int> columnFlex;
+  final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
   @override
@@ -637,10 +750,25 @@ class _IssueLogRow extends StatelessWidget {
               style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
             ),
           ),
-          IconButton(
-            onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline, size: 20, color: Color(0xFFEF4444)),
-            splashRadius: 20,
+          SizedBox(
+            width: 80,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  onPressed: onEdit,
+                  icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF6B7280)),
+                  splashRadius: 18,
+                  tooltip: 'Edit',
+                ),
+                IconButton(
+                  onPressed: onDelete,
+                  icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)),
+                  splashRadius: 18,
+                  tooltip: 'Delete',
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -694,7 +822,9 @@ class _InlineStatusCard extends StatelessWidget {
 }
 
 class _NewIssueDialog extends StatefulWidget {
-  const _NewIssueDialog();
+  const _NewIssueDialog({this.existingIssue});
+
+  final IssueLogItem? existingIssue;
 
   @override
   State<_NewIssueDialog> createState() => _NewIssueDialogState();
@@ -716,6 +846,24 @@ class _NewIssueDialogState extends State<_NewIssueDialog> {
   String _selectedSeverity = 'Medium';
   String _selectedStatus = 'Open';
   DateTime? _selectedDate;
+
+  bool get _isEditing => widget.existingIssue != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = widget.existingIssue;
+    if (existing != null) {
+      _titleCtrl.text = existing.title;
+      _descriptionCtrl.text = existing.description;
+      _assigneeCtrl.text = existing.assignee;
+      _dueDateCtrl.text = existing.dueDate;
+      _milestoneCtrl.text = existing.milestone;
+      _selectedType = existing.type.isEmpty ? 'Scope' : existing.type;
+      _selectedSeverity = existing.severity.isEmpty ? 'Medium' : existing.severity;
+      _selectedStatus = existing.status.isEmpty ? 'Open' : existing.status;
+    }
+  }
 
   @override
   void dispose() {
@@ -756,7 +904,7 @@ class _NewIssueDialogState extends State<_NewIssueDialog> {
   void _submit() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     final entry = IssueLogItem(
-      id: _generateId(),
+      id: _isEditing ? widget.existingIssue!.id : _generateId(),
       title: _titleCtrl.text.trim(),
       description: _descriptionCtrl.text.trim(),
       type: _selectedType,
@@ -786,7 +934,7 @@ class _NewIssueDialogState extends State<_NewIssueDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('New Issue'),
+      title: Text(_isEditing ? 'Edit Issue' : 'New Issue'),
       content: SizedBox(
         width: 520,
         child: Form(

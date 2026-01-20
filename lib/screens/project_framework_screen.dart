@@ -30,13 +30,22 @@ class ProjectFrameworkScreen extends StatefulWidget {
 class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
   String? _selectedOverallFramework;
   final List<_Goal> _goals = [_Goal(id: 1, name: 'Goal 1', framework: null)];
+  late TextEditingController _projectNameController;
+  late TextEditingController _projectObjectiveController;
 
   @override
   void initState() {
     super.initState();
+    _projectNameController = TextEditingController();
+    _projectObjectiveController = TextEditingController();
+    
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final projectData = ProjectDataHelper.getData(context);
       _selectedOverallFramework = projectData.overallFramework;
+      _projectNameController.text = projectData.projectName;
+      _projectObjectiveController.text = projectData.projectObjective.isNotEmpty 
+          ? projectData.projectObjective 
+          : projectData.businessCase;
       
       if (projectData.projectGoals.isNotEmpty) {
         _goals.clear();
@@ -48,6 +57,24 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
             framework: goal.framework,
             description: goal.description,
           ));
+        }
+        setState(() {});
+      } else if (projectData.planningGoals.isNotEmpty && projectData.planningGoals.any((g) => g.title.isNotEmpty)) {
+        // Fallback: Populate from Planning Goals (Charter) if Project Goals are empty
+        _goals.clear();
+        int idCounter = 1;
+        for (final planGoal in projectData.planningGoals) {
+          if (planGoal.title.isNotEmpty) {
+            _goals.add(_Goal(
+              id: idCounter++,
+              name: planGoal.title,
+              description: planGoal.description.isNotEmpty ? planGoal.description : null,
+              framework: null)); // Framework is not available in PlanningGoal
+          }
+        }
+        if (_goals.isEmpty) {
+           // Ensure at least one empty goal if filtering resulted in none
+           _goals.add(_Goal(id: 1, name: 'Goal 1', framework: null));
         }
         setState(() {});
       }
@@ -66,6 +93,8 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
 
   @override
   void dispose() {
+    _projectNameController.dispose();
+    _projectObjectiveController.dispose();
     for (var goal in _goals) {
       goal.dispose();
     }
@@ -162,6 +191,8 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
       checkpoint: 'project_framework',
       nextScreenBuilder: () => nextScreen,
       dataUpdater: (data) => data.copyWith(
+        projectName: _projectNameController.text.trim(),
+        projectObjective: _projectObjectiveController.text.trim(),
         overallFramework: _selectedOverallFramework,
         projectGoals: projectGoals,
       ),
@@ -178,7 +209,7 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
           children: [
             DraggableSidebar(
               openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(activeItemLabel: 'Project Management Framework'),
+              child: const InitiationLikeSidebar(activeItemLabel: 'Project Details'),
             ),
             Expanded(
               child: Stack(
@@ -186,7 +217,7 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const FrontEndPlanningHeader(title: 'Project Management Framework'),
+                      const FrontEndPlanningHeader(title: 'Project Details'),
                       Expanded(
                         child: SingleChildScrollView(
                           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
@@ -195,13 +226,15 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
                             children: [
                               const PlanningAiNotesCard(
                                 title: 'Notes',
-                                sectionLabel: 'Project Management Framework',
+                                sectionLabel: 'Project Details',
                                 noteKey: 'planning_framework_notes',
                                 checkpoint: 'project_framework',
                                 description: 'Capture the framework approach, governance model, and key objectives.',
                               ),
                               const SizedBox(height: 40),
                               _MainContentCard(
+                                projectNameController: _projectNameController,
+                                projectObjectiveController: _projectObjectiveController,
                                 selectedOverallFramework: _selectedOverallFramework,
                                 onOverallFrameworkChanged: (value) {
                                   setState(() {
@@ -262,6 +295,8 @@ class _Goal {
 
 class _MainContentCard extends StatelessWidget {
   const _MainContentCard({
+    required this.projectNameController,
+    required this.projectObjectiveController,
     required this.selectedOverallFramework,
     required this.onOverallFrameworkChanged,
     required this.goals,
@@ -270,6 +305,8 @@ class _MainContentCard extends StatelessWidget {
     required this.onDeleteGoal,
   });
 
+  final TextEditingController projectNameController;
+  final TextEditingController projectObjectiveController;
   final String? selectedOverallFramework;
   final ValueChanged<String?> onOverallFrameworkChanged;
   final List<_Goal> goals;
@@ -288,17 +325,34 @@ class _MainContentCard extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(40),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Project Management Framework',
+            'Project Details',
             style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
           ),
           const SizedBox(height: 12),
           const Text(
-            'Select a framework for the overall project and individual goals .',
+            'Manage your project details, objectives, and overall framework structure.',
             style: TextStyle(fontSize: 15, color: Color(0xFF6B7280)),
           ),
+          const SizedBox(height: 40),
+          
+          // Project Name
+          const Text('Project Name', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
+          const SizedBox(height: 8),
+          _roundedField(controller: projectNameController, hint: 'Enter project name...'),
+          const SizedBox(height: 24),
+
+          // Project Objective
+          const Text('Project Objective', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
+          const SizedBox(height: 8),
+          _roundedField(controller: projectObjectiveController, hint: 'What is the main objective of this project?', minLines: 4),
           const SizedBox(height: 48),
+
+          const Divider(height: 1, color: Color(0xFFE5E7EB)),
+          const SizedBox(height: 48),
+
           _OverallFrameworkSection(
             selectedFramework: selectedOverallFramework,
             onChanged: onOverallFrameworkChanged,

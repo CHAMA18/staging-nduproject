@@ -3909,7 +3909,7 @@ Context notes (optional): $notes
 ''';
   }
 
-  // FEP RISKS GENERATION - Generate risks with all fields (Title, Category, Probability, Impact)
+  // FEP RISKS GENERATION - Generate risks with all fields (Title, Category, Probability, Impact, Mitigation)
   Future<List<Map<String, String>>> generateFepRisks(String context,
       {int? minCount}) async {
     if (context.trim().isEmpty) return [];
@@ -3933,7 +3933,7 @@ Context notes (optional): $notes
         {
           'role': 'system',
           'content':
-              'You are a risk analyst. Generate project risks with Title, Category, Probability (Low/Medium/High), and Impact (Low/Medium/High). Return strict JSON only.'
+              'You are a risk analyst. Generate project risks with Title, Category, Probability (Low/Medium/High), Impact (Low/Medium/High), and a short Mitigation Strategy. Return strict JSON only.'
         },
         {
           'role': 'user',
@@ -3949,7 +3949,8 @@ Return JSON in this format:
       "title": "Risk title",
       "category": "Technical/Financial/Operational/Schedule/Resource",
       "probability": "Low/Medium/High",
-      "impact": "Low/Medium/High"
+      "impact": "Low/Medium/High",
+      "mitigationStrategy": "Short mitigation plan"
     }
   ]
 }'''
@@ -3979,6 +3980,8 @@ Return JSON in this format:
               'probability':
                   (item['probability'] ?? 'Medium').toString().trim(),
               'impact': (item['impact'] ?? 'Medium').toString().trim(),
+              'mitigationStrategy':
+                  (item['mitigationStrategy'] ?? '').toString().trim(),
             };
           })
           .where((r) => r['title']!.isNotEmpty)
@@ -4005,48 +4008,64 @@ Return JSON in this format:
         'category': 'Schedule',
         'probability': 'Medium',
         'impact': 'High',
+        'mitigationStrategy':
+            'Define scope boundaries early, require change control, and track scope impacts weekly.',
       },
       {
         'title': 'Resource availability constraints',
         'category': 'Resource',
         'probability': 'Medium',
         'impact': 'Medium',
+        'mitigationStrategy':
+            'Confirm resourcing plan, assign backups, and maintain a rolling 2–4 week staffing forecast.',
       },
       {
         'title': 'Technical integration challenges',
         'category': 'Technical',
         'probability': 'High',
         'impact': 'High',
+        'mitigationStrategy':
+            'Run early integration spikes, define interface contracts, and schedule staged integration testing.',
       },
       {
         'title': 'Budget overruns due to unforeseen costs',
         'category': 'Financial',
         'probability': 'Medium',
         'impact': 'Medium',
+        'mitigationStrategy':
+            'Add contingency, validate vendor quotes, and monitor burn rate against milestones.',
       },
       {
         'title': 'Stakeholder alignment and approval delays',
         'category': 'Operational',
         'probability': 'Medium',
         'impact': 'Medium',
+        'mitigationStrategy':
+            'Set a decision cadence, clarify owners, and pre-align with stakeholders before approvals.',
       },
       {
         'title': 'Data security and compliance requirements',
         'category': 'Technical',
         'probability': 'Low',
         'impact': 'High',
+        'mitigationStrategy':
+            'Perform security review early, implement least-privilege access, and validate compliance controls.',
       },
       {
         'title': 'Vendor delivery delays',
         'category': 'Schedule',
         'probability': 'Medium',
         'impact': 'Medium',
+        'mitigationStrategy':
+            'Confirm lead times, include schedule buffers, and establish escalation paths with vendors.',
       },
       {
         'title': 'Change management resistance',
         'category': 'Operational',
         'probability': 'Low',
         'impact': 'Medium',
+        'mitigationStrategy':
+            'Create a change plan, deliver training, and communicate benefits with stakeholder champions.',
       },
     ];
 

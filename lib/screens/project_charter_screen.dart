@@ -32,6 +32,11 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
   ProjectDataModel? _projectData;
   bool _isGenerating = false;
   late final OpenAiServiceSecure _openAi;
+  final TextEditingController _projectManagerController =
+      TextEditingController();
+  final TextEditingController _projectSponsorController =
+      TextEditingController();
+  bool _isSavingNames = false;
 
   @override
   void initState() {
@@ -44,6 +49,10 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
         setState(() {
           _projectData = provider.projectData;
         });
+        _projectManagerController.text =
+            provider.projectData.charterProjectManagerName;
+        _projectSponsorController.text =
+            provider.projectData.charterProjectSponsorName;
 
         // Auto-generate charter content if needed
         if (_projectData != null) {
@@ -51,6 +60,13 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
         }
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _projectManagerController.dispose();
+    _projectSponsorController.dispose();
+    super.dispose();
   }
 
   Future<void> _ensureCharterContent() async {
@@ -61,8 +77,11 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
         _projectData!.solutionDescription.trim().isEmpty;
     final needsGoals = _projectData!.projectGoals.isEmpty &&
         _projectData!.planningGoals.isEmpty;
+    final needsAssumptions = _projectData!.charterAssumptions.trim().isEmpty;
+    final needsConstraints = _projectData!.charterConstraints.trim().isEmpty;
 
-    if (!needsOverview && !needsGoals) return;
+    if (!needsOverview && !needsGoals && !needsAssumptions && !needsConstraints)
+      return;
 
     setState(() => _isGenerating = true);
 
@@ -145,6 +164,46 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
             debugPrint('Error generating charter goals: $e');
           }
         }
+
+        // Generate assumptions/constraints if needed (read-only in UI)
+        if (needsAssumptions || needsConstraints) {
+          final provider = ProjectDataInherited.of(context);
+          if (needsAssumptions) {
+            try {
+              final assumptions = await _openAi.generateFepSectionText(
+                section: 'Assumptions',
+                context: projectContext,
+                maxTokens: 320,
+              );
+              if (mounted && assumptions.trim().isNotEmpty) {
+                provider.updateField((data) =>
+                    data.copyWith(charterAssumptions: assumptions.trim()));
+              }
+            } catch (e) {
+              debugPrint('Error generating charter assumptions: $e');
+            }
+          }
+          if (needsConstraints) {
+            try {
+              final constraints = await _openAi.generateFepSectionText(
+                section: 'Constraints',
+                context: projectContext,
+                maxTokens: 320,
+              );
+              if (mounted && constraints.trim().isNotEmpty) {
+                provider.updateField((data) =>
+                    data.copyWith(charterConstraints: constraints.trim()));
+              }
+            } catch (e) {
+              debugPrint('Error generating charter constraints: $e');
+            }
+          }
+          if (mounted) {
+            setState(() {
+              _projectData = provider.projectData;
+            });
+          }
+        }
       }
     } catch (e) {
       debugPrint('Error ensuring charter content: $e');
@@ -211,7 +270,33 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
                       ],
                     ),
                     child: _CharterContent(
-                        isStacked: isMobile, projectData: _projectData),
+                      isStacked: isMobile,
+                      projectData: _projectData,
+                      projectManagerController: _projectManagerController,
+                      projectSponsorController: _projectSponsorController,
+                      isSavingNames: _isSavingNames,
+                      onSaveNames: () async {
+                        if (!mounted) return;
+                        setState(() => _isSavingNames = true);
+                        final provider = ProjectDataInherited.of(context);
+                        provider.updateField(
+                          (data) => data.copyWith(
+                            charterProjectManagerName:
+                                _projectManagerController.text.trim(),
+                            charterProjectSponsorName:
+                                _projectSponsorController.text.trim(),
+                          ),
+                        );
+                        await provider.saveToFirebase(
+                            checkpoint: 'project_charter');
+                        if (mounted) {
+                          setState(() {
+                            _isSavingNames = false;
+                            _projectData = provider.projectData;
+                          });
+                        }
+                      },
+                    ),
                   ),
                   const SizedBox(height: 32),
                   LaunchPhaseNavigation(
@@ -228,10 +313,21 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
 }
 
 class _CharterContent extends StatelessWidget {
-  const _CharterContent({required this.isStacked, required this.projectData});
+  const _CharterContent({
+    required this.isStacked,
+    required this.projectData,
+    required this.projectManagerController,
+    required this.projectSponsorController,
+    required this.isSavingNames,
+    required this.onSaveNames,
+  });
 
   final bool isStacked;
   final ProjectDataModel? projectData;
+  final TextEditingController projectManagerController;
+  final TextEditingController projectSponsorController;
+  final bool isSavingNames;
+  final Future<void> Function() onSaveNames;
 
   @override
   Widget build(BuildContext context) {
@@ -239,9 +335,19 @@ class _CharterContent extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _CharterSummaryPanel(isStacked: true, projectData: projectData),
+          _CharterSummaryPanel(
+            isStacked: true,
+            projectData: projectData,
+            projectManagerController: projectManagerController,
+            projectSponsorController: projectSponsorController,
+            isSavingNames: isSavingNames,
+            onSaveNames: onSaveNames,
+          ),
           const Divider(height: 1, color: AppSemanticColors.border),
-          _CharterDetailsPanel(isStacked: true, projectData: projectData),
+          _CharterDetailsPanel(
+            isStacked: true,
+            projectData: projectData,
+          ),
         ],
       );
     }
@@ -249,10 +355,19 @@ class _CharterContent extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _CharterSummaryPanel(isStacked: false, projectData: projectData),
+        _CharterSummaryPanel(
+          isStacked: false,
+          projectData: projectData,
+          projectManagerController: projectManagerController,
+          projectSponsorController: projectSponsorController,
+          isSavingNames: isSavingNames,
+          onSaveNames: onSaveNames,
+        ),
         Expanded(
             child: _CharterDetailsPanel(
-                isStacked: false, projectData: projectData)),
+          isStacked: false,
+          projectData: projectData,
+        )),
       ],
     );
   }
@@ -260,10 +375,19 @@ class _CharterContent extends StatelessWidget {
 
 class _CharterSummaryPanel extends StatelessWidget {
   const _CharterSummaryPanel(
-      {required this.isStacked, required this.projectData});
+      {required this.isStacked,
+      required this.projectData,
+      required this.projectManagerController,
+      required this.projectSponsorController,
+      required this.isSavingNames,
+      required this.onSaveNames});
 
   final bool isStacked;
   final ProjectDataModel? projectData;
+  final TextEditingController projectManagerController;
+  final TextEditingController projectSponsorController;
+  final bool isSavingNames;
+  final Future<void> Function() onSaveNames;
 
   @override
   Widget build(BuildContext context) {
@@ -293,14 +417,27 @@ class _CharterSummaryPanel extends StatelessWidget {
                 ),
           ),
           const SizedBox(height: 24),
-          _SummaryRow(
+          _EditableSummaryField(
             label: 'Project Manager',
-            value: _extractProjectManager(projectData),
+            controller: projectManagerController,
+            placeholder: _extractProjectManager(projectData),
+            onChanged: (_) => onSaveNames(),
           ),
-          _SummaryRow(
+          _EditableSummaryField(
             label: 'Project Sponsor',
-            value: _extractProjectSponsor(projectData),
+            controller: projectSponsorController,
+            placeholder: _extractProjectSponsor(projectData),
+            onChanged: (_) => onSaveNames(),
           ),
+          if (isSavingNames) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Saving…',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
+            ),
+          ],
           _SummaryRow(
             label: 'Start Date',
             value: _formatDate(projectData?.createdAt) ?? 'Not specified',
@@ -333,6 +470,9 @@ class _CharterSummaryPanel extends StatelessWidget {
 
   static String _extractProjectManager(ProjectDataModel? data) {
     if (data == null) return 'Add Name Here';
+    if (data.charterProjectManagerName.trim().isNotEmpty) {
+      return data.charterProjectManagerName.trim();
+    }
 
     // Try to find Project Manager from team members
     final manager = data.teamMembers.firstWhere(
@@ -348,6 +488,9 @@ class _CharterSummaryPanel extends StatelessWidget {
 
   static String _extractProjectSponsor(ProjectDataModel? data) {
     if (data == null) return 'Add Name Here';
+    if (data.charterProjectSponsorName.trim().isNotEmpty) {
+      return data.charterProjectSponsorName.trim();
+    }
 
     // Try to find Project Sponsor from team members
     final sponsor = data.teamMembers.firstWhere(
@@ -454,6 +597,80 @@ class _SummaryRow extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             value,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontSize: 14,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Container(height: 1, color: AppSemanticColors.border),
+        ],
+      ),
+    );
+  }
+}
+
+class _EditableSummaryField extends StatelessWidget {
+  const _EditableSummaryField({
+    required this.label,
+    required this.controller,
+    required this.placeholder,
+    this.onChanged,
+  });
+
+  final String label;
+  final TextEditingController controller;
+  final String placeholder;
+  final ValueChanged<String>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: controller,
+            onChanged: onChanged,
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: placeholder,
+              hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontSize: 14,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onPrimaryContainer
+                        .withValues(alpha: 0.7),
+                  ),
+              filled: true,
+              fillColor:
+                  Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppSemanticColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppSemanticColors.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.primary, width: 1.4),
+              ),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            ),
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontSize: 14,
                   color: Theme.of(context).colorScheme.onSurface,
@@ -708,7 +925,9 @@ class _CharterDetailsPanel extends StatelessWidget {
           const SizedBox(height: 12),
           _BulletList(items: _extractGoals(projectData)),
           const SizedBox(height: 32),
-          _CardRow(projectData: projectData),
+          _AssumptionsConstraintsRisksTable(
+            projectData: projectData,
+          ),
           const SizedBox(height: 32),
           const _SectionHeading(title: 'Project Milestones'),
           const SizedBox(height: 16),
@@ -877,130 +1096,27 @@ class _BulletList extends StatelessWidget {
   }
 }
 
-class _CardRow extends StatelessWidget {
-  const _CardRow({required this.projectData});
+class _AssumptionsConstraintsRisksTable extends StatelessWidget {
+  const _AssumptionsConstraintsRisksTable({
+    required this.projectData,
+  });
 
   final ProjectDataModel? projectData;
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = AppBreakpoints.isMobile(context);
-    final cards = _extractCardData(projectData);
+    final labelStyle = Theme.of(context).textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: Theme.of(context).colorScheme.onSurface,
+        );
+    final border = BorderSide(color: Theme.of(context).dividerColor);
 
-    if (isMobile) {
-      return Column(
-        children: [
-          for (final data in cards)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 18),
-              child: _InfoCard(data: data),
-            ),
-        ],
-      );
-    }
+    final topRisks = _extractTopRisks(projectData);
+    final assumptions = (projectData?.charterAssumptions ?? '').trim();
+    final constraints = (projectData?.charterConstraints ?? '').trim();
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (int i = 0; i < cards.length; i++)
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(right: i == cards.length - 1 ? 0 : 18),
-              child: _InfoCard(data: cards[i]),
-            ),
-          ),
-      ],
-    );
-  }
-
-  static List<_CardData> _extractCardData(ProjectDataModel? data) {
-    if (data == null) {
-      return const [
-        _CardData(
-            title: 'Assumptions',
-            bullets: ['Complete business case to populate']),
-        _CardData(
-            title: 'Constraints',
-            bullets: ['Complete business case to populate']),
-        _CardData(
-            title: 'Risks', bullets: ['Complete business case to populate']),
-      ];
-    }
-
-    // Extract assumptions (from cost analysis or notes)
-    final assumptions = <String>[];
-    if (data.costAnalysisData != null) {
-      for (final solution in data.costAnalysisData!.solutionCosts) {
-        for (final row in solution.costRows) {
-          if (row.assumptions.isNotEmpty) {
-            assumptions.add(row.assumptions);
-          }
-        }
-      }
-    }
-    if (assumptions.isEmpty) {
-      assumptions.add('No specific assumptions documented');
-    }
-
-    // Extract constraints (from infrastructure, IT, or general notes)
-    final constraints = <String>[];
-    if (data.infrastructureConsiderationsData != null) {
-      for (final infra in data
-          .infrastructureConsiderationsData!.solutionInfrastructureData) {
-        if (infra.majorInfrastructure.isNotEmpty) {
-          constraints.add('Infrastructure: ${infra.majorInfrastructure}');
-        }
-      }
-    }
-    if (data.itConsiderationsData != null) {
-      for (final it in data.itConsiderationsData!.solutionITData) {
-        if (it.coreTechnology.isNotEmpty) {
-          constraints.add('Technology: ${it.coreTechnology}');
-        }
-      }
-    }
-    if (constraints.isEmpty) {
-      constraints.add('No specific constraints documented');
-    }
-
-    // Extract risks
-    final risks = <String>[];
-    if (data.preferredSolutionAnalysis != null) {
-      for (final analysis in data.preferredSolutionAnalysis!.solutionAnalyses) {
-        risks.addAll(analysis.risks.where((r) => r.isNotEmpty));
-      }
-    }
-    for (final risk in data.solutionRisks) {
-      risks.addAll(risk.risks.where((r) => r.isNotEmpty));
-    }
-    if (risks.isEmpty) {
-      risks.add('No specific risks identified');
-    }
-
-    return [
-      _CardData(title: 'Assumptions', bullets: assumptions.take(5).toList()),
-      _CardData(title: 'Constraints', bullets: constraints.take(5).toList()),
-      _CardData(title: 'Risks', bullets: risks.take(5).toList()),
-    ];
-  }
-}
-
-class _CardData {
-  const _CardData({required this.title, required this.bullets});
-
-  final String title;
-  final List<String> bullets;
-}
-
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.data});
-
-  final _CardData data;
-
-  @override
-  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppSemanticColors.subtle,
         borderRadius: BorderRadius.circular(18),
@@ -1009,19 +1125,195 @@ class _InfoCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            data.title,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
+          _simpleSectionHeading(context, 'Assumptions'),
+          const SizedBox(height: 10),
+          Table(
+            columnWidths: const {
+              0: FixedColumnWidth(140),
+              1: FlexColumnWidth(),
+            },
+            defaultVerticalAlignment: TableCellVerticalAlignment.top,
+            border: TableBorder(
+              horizontalInside: border,
+              verticalInside: border,
+            ),
+            children: [
+              TableRow(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text('Category', style: labelStyle),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text('Description / Detail', style: labelStyle),
+                  ),
+                ],
+              ),
+              TableRow(
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Text('Assumptions'),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(assumptions.isEmpty ? '—' : assumptions),
+                  ),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          _BulletList(items: data.bullets),
+          const SizedBox(height: 18),
+          _simpleSectionHeading(context, 'Constraints'),
+          const SizedBox(height: 10),
+          Table(
+            columnWidths: const {
+              0: FixedColumnWidth(140),
+              1: FlexColumnWidth(),
+            },
+            defaultVerticalAlignment: TableCellVerticalAlignment.top,
+            border: TableBorder(
+              horizontalInside: border,
+              verticalInside: border,
+            ),
+            children: [
+              TableRow(
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Text('Constraints'),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(constraints.isEmpty ? '—' : constraints),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          _simpleSectionHeading(context, 'Risks'),
+          const Divider(height: 18),
+          Table(
+            columnWidths: const {
+              0: FixedColumnWidth(240),
+              1: FixedColumnWidth(140),
+              2: FlexColumnWidth(),
+            },
+            defaultVerticalAlignment: TableCellVerticalAlignment.top,
+            border: TableBorder(
+              horizontalInside: border,
+              verticalInside: border,
+            ),
+            children: [
+              TableRow(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text('Risk Name', style: labelStyle),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text('Impact Level', style: labelStyle),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text('Mitigation Strategy', style: labelStyle),
+                  ),
+                ],
+              ),
+              ...topRisks.map((r) {
+                return TableRow(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Text(r.riskName.isEmpty ? '—' : r.riskName),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child:
+                          Text(r.impactLevel.isEmpty ? '—' : r.impactLevel),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Text(r.mitigationStrategy.isEmpty
+                          ? '—'
+                          : r.mitigationStrategy),
+                    ),
+                  ],
+                );
+              }),
+            ],
+          ),
         ],
       ),
     );
+  }
+
+  Widget _simpleSectionHeading(BuildContext context, String title) {
+    return Text(
+      title,
+      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+    );
+  }
+
+  static List<RiskRegisterItem> _extractTopRisks(ProjectDataModel? data) {
+    if (data == null) return const <RiskRegisterItem>[];
+
+    // Prefer risks for the selected solution (keeps Charter concise and relevant).
+    final selected = data.preferredSolutionAnalysis?.selectedSolutionTitle ?? '';
+    final desired = <String>[];
+    if (selected.trim().isNotEmpty) {
+      final match = data.solutionRisks.cast<SolutionRisk?>().firstWhere(
+            (r) =>
+                (r?.solutionTitle ?? '').trim().toLowerCase() ==
+                selected.trim().toLowerCase(),
+            orElse: () => null,
+          );
+      if (match != null) {
+        desired.addAll(
+            match.risks.map((e) => e.trim()).where((e) => e.isNotEmpty));
+      }
+    }
+    if (desired.isEmpty) {
+      for (final sr in data.solutionRisks) {
+        desired.addAll(sr.risks.map((e) => e.trim()).where((e) => e.isNotEmpty));
+      }
+    }
+
+    final distinct = <String>[];
+    for (final r in desired) {
+      if (distinct.length >= 3) break;
+      final k = r.toLowerCase();
+      if (distinct.any((e) => e.toLowerCase() == k)) continue;
+      distinct.add(r);
+    }
+
+    // Enrich from structured risk register if present.
+    final register = data.frontEndPlanning.riskRegisterItems;
+    return distinct.map((name) {
+      final found = register.cast<RiskRegisterItem?>().firstWhere(
+            (item) => (item?.riskName ?? '')
+                .trim()
+                .toLowerCase()
+                .contains(name.trim().toLowerCase()),
+            orElse: () => null,
+          );
+      return RiskRegisterItem(
+        riskName: name,
+        impactLevel: (found?.impactLevel ?? '').trim().isNotEmpty
+            ? found!.impactLevel.trim()
+            : 'Medium',
+        mitigationStrategy: (found?.mitigationStrategy ?? '').trim().isNotEmpty
+            ? found!.mitigationStrategy.trim()
+            : 'Define mitigation plan, assign an owner, and monitor triggers.',
+      );
+    }).toList();
   }
 }
 

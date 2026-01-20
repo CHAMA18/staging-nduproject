@@ -1,7 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:ndu_project/services/api_key_manager.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/utils/text_sanitizer.dart';
 
 class PlanningAiNotesCard extends StatefulWidget {
   const PlanningAiNotesCard({
@@ -36,14 +39,17 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
   bool _didInit = false;
   bool _saving = false;
   DateTime? _lastSavedAt;
+  String? _undoBeforeAi;
+  bool _generating = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_didInit) return;
+    ApiKeyManager.initializeApiKey();
     final data = ProjectDataHelper.getData(context);
     _currentText = data.planningNotes[widget.noteKey] ?? '';
-  _controller = TextEditingController(text: _currentText);
+    _controller = TextEditingController(text: _currentText);
     _didInit = true;
   }
 
@@ -65,8 +71,8 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
         },
       ),
     );
-  // Keep controller in sync
-  if (_controller.text != value) _controller.text = value;
+    // Keep controller in sync
+    if (_controller.text != value) _controller.text = value;
     _scheduleSave();
   }
 
@@ -75,6 +81,54 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
       if (!mounted) return;
       await _saveNow();
     });
+  }
+
+  Future<void> _regenerate() async {
+    if (_generating) return;
+    final data = ProjectDataHelper.getData(context);
+    final section = widget.sectionLabel.trim();
+    final sectionLower = section.toLowerCase();
+    final useExecutiveContext = sectionLower.contains('executive') ||
+        sectionLower.contains('execution');
+    final contextText = useExecutiveContext
+        ? ProjectDataHelper.buildExecutivePlanContext(data,
+            sectionLabel: section)
+        : ProjectDataHelper.buildFepContext(data, sectionLabel: section);
+    if (contextText.trim().isEmpty) return;
+
+    setState(() => _generating = true);
+    _undoBeforeAi = _controller.text;
+    try {
+      final ai = OpenAiServiceSecure();
+      final text = await ai.generateFepSectionText(
+        section: section,
+        context: contextText,
+        maxTokens: widget.autoGenerateMaxTokens,
+        temperature: widget.autoGenerateTemperature,
+      );
+      if (!mounted) return;
+      final cleaned = TextSanitizer.sanitizeAiText(text).trim();
+      if (cleaned.isEmpty) return;
+      _controller.text = cleaned;
+      _handleChanged(cleaned);
+      await _saveNow();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Regenerate failed: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) setState(() => _generating = false);
+    }
+  }
+
+  void _undo() {
+    final prev = _undoBeforeAi;
+    if (prev == null) return;
+    _undoBeforeAi = null;
+    _controller.text = prev;
+    _handleChanged(prev);
+    _saveNow();
   }
 
   Future<void> _saveNow() async {
@@ -110,7 +164,8 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: const [
-          BoxShadow(color: Color(0x0F000000), blurRadius: 18, offset: Offset(0, 12)),
+          BoxShadow(
+              color: Color(0x0F000000), blurRadius: 18, offset: Offset(0, 12)),
         ],
       ),
       child: Column(
@@ -125,20 +180,43 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
                   color: const Color(0xFFFFF4CC),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.auto_awesome, color: Color(0xFFF59E0B), size: 18),
+                child: const Icon(Icons.auto_awesome,
+                    color: Color(0xFFF59E0B), size: 18),
               ),
               const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Notes',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
-                  ),
+              Expanded(
+                child: Text(
+                  'Notes',
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF111827)),
                 ),
+              ),
+              IconButton(
+                tooltip: 'Regenerate (AI)',
+                onPressed: _generating ? null : _regenerate,
+                icon: _generating
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh,
+                        size: 18, color: Color(0xFF2563EB)),
+              ),
+              IconButton(
+                tooltip: 'Undo last AI regenerate',
+                onPressed: _undoBeforeAi == null ? null : _undo,
+                icon:
+                    const Icon(Icons.undo, size: 18, color: Color(0xFF6B7280)),
+              ),
               if (_saving)
                 _StatusChip(label: 'Saving...', color: const Color(0xFF64748B))
               else if (savedAt != null)
                 _StatusChip(
-                  label: 'Saved ${TimeOfDay.fromDateTime(savedAt).format(context)}',
+                  label:
+                      'Saved ${TimeOfDay.fromDateTime(savedAt).format(context)}',
                   color: const Color(0xFF16A34A),
                   background: const Color(0xFFECFDF3),
                 ),
@@ -148,7 +226,8 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
             const SizedBox(height: 10),
             Text(
               widget.description!,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280), height: 1.4),
+              style: const TextStyle(
+                  fontSize: 13, color: Color(0xFF6B7280), height: 1.4),
             ),
           ],
           const SizedBox(height: 16),
@@ -158,7 +237,10 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
             maxLines: 6,
             decoration: InputDecoration(
               hintText: widget.hintText,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
               filled: true,
               fillColor: const Color(0xFFF8FAFC),
               contentPadding: const EdgeInsets.all(12),
@@ -172,7 +254,8 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
 }
 
 class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.label, required this.color, this.background});
+  const _StatusChip(
+      {required this.label, required this.color, this.background});
 
   final String label;
   final Color color;
@@ -188,14 +271,16 @@ class _StatusChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+        style:
+            TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
       ),
     );
   }
 }
 
 class _Debouncer {
-  _Debouncer({Duration? delay}) : delay = delay ?? const Duration(milliseconds: 700);
+  _Debouncer({Duration? delay})
+      : delay = delay ?? const Duration(milliseconds: 700);
 
   final Duration delay;
   Timer? _timer;

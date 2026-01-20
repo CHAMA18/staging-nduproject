@@ -8,6 +8,11 @@ class ProjectDataModel {
   String solutionDescription;
   String businessCase;
   String notes;
+  // Project Charter (editable in Project Charter screen)
+  String charterAssumptions;
+  String charterConstraints;
+  String charterProjectManagerName;
+  String charterProjectSponsorName;
   List<String> tags;
   List<PotentialSolution> potentialSolutions;
   List<SolutionRisk> solutionRisks;
@@ -87,6 +92,10 @@ class ProjectDataModel {
     this.solutionDescription = '',
     this.businessCase = '',
     this.notes = '',
+    this.charterAssumptions = '',
+    this.charterConstraints = '',
+    this.charterProjectManagerName = '',
+    this.charterProjectSponsorName = '',
     this.tags = const [],
     List<PotentialSolution>? potentialSolutions,
     List<SolutionRisk>? solutionRisks,
@@ -154,6 +163,10 @@ class ProjectDataModel {
     String? solutionDescription,
     String? businessCase,
     String? notes,
+    String? charterAssumptions,
+    String? charterConstraints,
+    String? charterProjectManagerName,
+    String? charterProjectSponsorName,
     List<String>? tags,
     List<PotentialSolution>? potentialSolutions,
     List<SolutionRisk>? solutionRisks,
@@ -198,6 +211,12 @@ class ProjectDataModel {
       solutionDescription: solutionDescription ?? this.solutionDescription,
       businessCase: businessCase ?? this.businessCase,
       notes: notes ?? this.notes,
+      charterAssumptions: charterAssumptions ?? this.charterAssumptions,
+      charterConstraints: charterConstraints ?? this.charterConstraints,
+      charterProjectManagerName:
+          charterProjectManagerName ?? this.charterProjectManagerName,
+      charterProjectSponsorName:
+          charterProjectSponsorName ?? this.charterProjectSponsorName,
       tags: tags ?? this.tags,
       potentialSolutions: potentialSolutions ?? this.potentialSolutions,
       solutionRisks: solutionRisks ?? this.solutionRisks,
@@ -261,6 +280,10 @@ class ProjectDataModel {
       'solutionDescription': solutionDescription,
       'businessCase': businessCase,
       'notes': notes,
+      'charterAssumptions': charterAssumptions,
+      'charterConstraints': charterConstraints,
+      'charterProjectManagerName': charterProjectManagerName,
+      'charterProjectSponsorName': charterProjectSponsorName,
       'tags': tags,
       'potentialSolutions': potentialSolutions.map((s) => s.toJson()).toList(),
       'solutionRisks': solutionRisks.map((r) => r.toJson()).toList(),
@@ -400,6 +423,12 @@ class ProjectDataModel {
       solutionDescription: json['solutionDescription']?.toString() ?? '',
       businessCase: json['businessCase']?.toString() ?? '',
       notes: json['notes']?.toString() ?? '',
+      charterAssumptions: json['charterAssumptions']?.toString() ?? '',
+      charterConstraints: json['charterConstraints']?.toString() ?? '',
+      charterProjectManagerName:
+          json['charterProjectManagerName']?.toString() ?? '',
+      charterProjectSponsorName:
+          json['charterProjectSponsorName']?.toString() ?? '',
       tags: (json['tags'] as List?)?.map((e) => e.toString()).toList() ?? [],
       potentialSolutions:
           safeParseList('potentialSolutions', PotentialSolution.fromJson),
@@ -808,6 +837,8 @@ class FrontEndPlanningData {
   List<DebtInsight> technicalDebtRootCauses;
   List<RemediationTrack> technicalDebtTracks;
   List<OwnerItem> technicalDebtOwners;
+  // Structured risk register items (used for charter/summary tables)
+  List<RiskRegisterItem> riskRegisterItems;
 
   FrontEndPlanningData({
     this.requirements = '',
@@ -833,11 +864,13 @@ class FrontEndPlanningData {
     List<DebtInsight>? technicalDebtRootCauses,
     List<RemediationTrack>? technicalDebtTracks,
     List<OwnerItem>? technicalDebtOwners,
+    List<RiskRegisterItem>? riskRegisterItems,
   })  : requirementItems = requirementItems ?? [],
         technicalDebtItems = technicalDebtItems ?? [],
         technicalDebtRootCauses = technicalDebtRootCauses ?? [],
         technicalDebtTracks = technicalDebtTracks ?? [],
         technicalDebtOwners = technicalDebtOwners ?? [],
+        riskRegisterItems = riskRegisterItems ?? [],
         scenarioMatrixItems = scenarioMatrixItems ?? [],
         securityRoles = securityRoles ?? [],
         securityPermissions = securityPermissions ?? [],
@@ -860,6 +893,8 @@ class FrontEndPlanningData {
         'contracts': contracts,
         'requirementsItems':
             requirementItems.map((item) => item.toJson()).toList(),
+        'riskRegisterItems':
+            riskRegisterItems.map((item) => item.toJson()).toList(),
         'technicalDebtItems':
             technicalDebtItems.map((d) => d.toJson()).toList(),
         'technicalDebtRootCauses':
@@ -896,6 +931,11 @@ class FrontEndPlanningData {
       requirementItems: (json['requirementsItems'] as List?)
               ?.map((item) =>
                   RequirementItem.fromJson(item as Map<String, dynamic>))
+              .toList() ??
+          [],
+      riskRegisterItems: (json['riskRegisterItems'] as List?)
+              ?.map((item) =>
+                  RiskRegisterItem.fromJson(item as Map<String, dynamic>))
               .toList() ??
           [],
       technicalDebtItems: (json['technicalDebtItems'] as List?)
@@ -940,6 +980,32 @@ class FrontEndPlanningData {
                   AccessLogItem.fromJson(item as Map<String, dynamic>))
               .toList() ??
           [],
+    );
+  }
+}
+
+class RiskRegisterItem {
+  String riskName;
+  String impactLevel;
+  String mitigationStrategy;
+
+  RiskRegisterItem({
+    this.riskName = '',
+    this.impactLevel = '',
+    this.mitigationStrategy = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'riskName': riskName,
+        'impactLevel': impactLevel,
+        'mitigationStrategy': mitigationStrategy,
+      };
+
+  factory RiskRegisterItem.fromJson(Map<String, dynamic> json) {
+    return RiskRegisterItem(
+      riskName: json['riskName'] ?? '',
+      impactLevel: json['impactLevel'] ?? '',
+      mitigationStrategy: json['mitigationStrategy'] ?? '',
     );
   }
 }

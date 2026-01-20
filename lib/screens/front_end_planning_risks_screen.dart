@@ -109,7 +109,7 @@ class _FrontEndPlanningRisksScreenState
           sectionLabel: 'Project Risks');
       final aiService = OpenAiServiceSecure();
 
-      // Generate risks with all fields (Title, Category, Probability, Impact)
+      // Generate risks with all fields (Title, Category, Probability, Impact, Mitigation)
       // Request enough risks to match the number of requirements (or at least 8)
       final riskCount = requirements.isNotEmpty ? requirements.length : 8;
       final risks = await aiService.generateFepRisks(ctx, minCount: riskCount);
@@ -158,7 +158,12 @@ class _FrontEndPlanningRisksScreenState
               impact: riskData['impact'] ?? '',
               riskValue: '', // Can be calculated later if needed
               riskLevel: riskLevel,
-              mitigation: '', // Can be filled by user or AI later
+              mitigation: (riskData['mitigationStrategy'] ?? '')
+                      .toString()
+                      .trim()
+                      .isNotEmpty
+                  ? (riskData['mitigationStrategy'] ?? '').toString().trim()
+                  : 'Assign an owner, define mitigation actions, and monitor early warning indicators.',
               discipline: '', // Can be filled by user later
               owner: '', // Can be filled by user later
               status: 'Identified',
@@ -194,7 +199,12 @@ class _FrontEndPlanningRisksScreenState
               impact: riskData['impact'] ?? '',
               riskValue: '',
               riskLevel: riskLevel,
-              mitigation: '',
+              mitigation: (riskData['mitigationStrategy'] ?? '')
+                      .toString()
+                      .trim()
+                      .isNotEmpty
+                  ? (riskData['mitigationStrategy'] ?? '').toString().trim()
+                  : 'Assign an owner, define mitigation actions, and monitor early warning indicators.',
               discipline: '',
               owner: '',
               status: 'Identified',
@@ -602,12 +612,30 @@ class _FrontEndPlanningRisksScreenState
         .join('\n');
     final value =
         risksText.isNotEmpty ? risksText : _notesController.text.trim();
+    final riskRegisterItems = _rows
+        .map((r) => RiskRegisterItem(
+              riskName: r.risk.trim(),
+              impactLevel: (r.impact.trim().isNotEmpty
+                          ? r.impact.trim()
+                          : r.riskLevel.trim())
+                      .isNotEmpty
+                  ? (r.impact.trim().isNotEmpty
+                      ? r.impact.trim()
+                      : r.riskLevel.trim())
+                  : 'Medium',
+              mitigationStrategy: r.mitigation.trim().isNotEmpty
+                  ? r.mitigation.trim()
+                  : 'Assign an owner, define mitigation actions, and monitor early warning indicators.',
+            ))
+        .where((r) => r.riskName.isNotEmpty)
+        .toList();
     final provider = ProjectDataHelper.getProvider(context);
     provider.updateField(
       (data) => data.copyWith(
         frontEndPlanning: ProjectDataHelper.updateFEPField(
           current: data.frontEndPlanning,
           risks: value,
+          riskRegisterItems: riskRegisterItems,
         ),
       ),
     );
@@ -900,24 +928,6 @@ class _FrontEndPlanningRisksScreenState
     );
   }
 
-  Widget _subtleStack(String top, String bottom, TextStyle style) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(top, style: style),
-          const SizedBox(height: 4),
-          Text(
-            bottom,
-            style: const TextStyle(
-                fontSize: 12, color: Color(0xFF9CA3AF), height: 1.15),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _th(String text, TextStyle style) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -1113,13 +1123,11 @@ Widget _roundedField(
 class _LabeledField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
-  final String? hintText;
   final bool autofocus;
   final bool enabled;
   const _LabeledField({
     required this.label,
     required this.controller,
-    this.hintText,
     this.autofocus = false,
     this.enabled = true,
   });
@@ -1147,7 +1155,6 @@ class _LabeledField extends StatelessWidget {
             autofocus: autofocus,
             enabled: enabled,
             decoration: InputDecoration(
-              hintText: hintText,
               border: InputBorder.none,
             ),
           ),

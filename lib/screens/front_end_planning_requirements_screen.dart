@@ -11,6 +11,7 @@ import 'package:ndu_project/widgets/content_text.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 
 /// Front End Planning – Project Requirements page
@@ -25,17 +26,22 @@ class FrontEndPlanningRequirementsScreen extends StatefulWidget {
 
   static void open(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const FrontEndPlanningRequirementsScreen()),
+      MaterialPageRoute(
+          builder: (_) => const FrontEndPlanningRequirementsScreen()),
     );
   }
 
   @override
-  State<FrontEndPlanningRequirementsScreen> createState() => _FrontEndPlanningRequirementsScreenState();
+  State<FrontEndPlanningRequirementsScreen> createState() =>
+      _FrontEndPlanningRequirementsScreenState();
 }
 
-class _FrontEndPlanningRequirementsScreenState extends State<FrontEndPlanningRequirementsScreen> {
+class _FrontEndPlanningRequirementsScreenState
+    extends State<FrontEndPlanningRequirementsScreen> {
   final TextEditingController _notesController = TextEditingController();
   bool _isGeneratingRequirements = false;
+  bool _isRegeneratingRow = false;
+  int? _regeneratingRowIndex;
   Timer? _autoSaveTimer;
   DateTime? _lastAutoSaveSnackAt;
 
@@ -45,6 +51,8 @@ class _FrontEndPlanningRequirementsScreenState extends State<FrontEndPlanningReq
   @override
   void initState() {
     super.initState();
+    // Ensure OpenAI key/env is loaded for per-row regenerate.
+    ApiKeyManager.initializeApiKey();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_rows.isEmpty) {
         _rows.add(_createRow(1));
@@ -54,7 +62,9 @@ class _FrontEndPlanningRequirementsScreenState extends State<FrontEndPlanningReq
       _notesController.addListener(_handleNotesChanged);
       _loadSavedRequirements(projectData);
       // Seed requirement rows from AI if empty
-      if (_rows.isEmpty || (_rows.length == 1 && _rows.first.descriptionController.text.trim().isEmpty)) {
+      if (_rows.isEmpty ||
+          (_rows.length == 1 &&
+              _rows.first.descriptionController.text.trim().isEmpty)) {
         _generateRequirementsFromContext();
       }
       if (mounted) setState(() {});
@@ -104,7 +114,8 @@ class _FrontEndPlanningRequirementsScreenState extends State<FrontEndPlanningReq
     setState(() => _isGeneratingRequirements = true);
     try {
       final data = ProjectDataHelper.getData(context);
-      final ctx = ProjectDataHelper.buildFepContext(data, sectionLabel: 'Project Requirements');
+      final ctx = ProjectDataHelper.buildFepContext(data,
+          sectionLabel: 'Project Requirements');
       final ai = OpenAiServiceSecure();
       final reqs = await ai.generateRequirementsFromBusinessCase(ctx);
       if (!mounted) return;
@@ -114,7 +125,8 @@ class _FrontEndPlanningRequirementsScreenState extends State<FrontEndPlanningReq
             ..clear()
             ..addAll(reqs.asMap().entries.map((e) {
               final r = _createRow(e.key + 1);
-              r.descriptionController.text = (e.value['requirement'] ?? '').toString();
+              r.descriptionController.text =
+                  (e.value['requirement'] ?? '').toString();
               r.commentsController.text = '';
               r.selectedType = (e.value['requirementType'] ?? '').toString();
               return r;
@@ -130,6 +142,73 @@ class _FrontEndPlanningRequirementsScreenState extends State<FrontEndPlanningReq
     if (mounted) {
       setState(() => _isGeneratingRequirements = false);
     }
+  }
+
+  Future<void> _regenerateRequirementRow(int index) async {
+    if (index < 0 || index >= _rows.length) return;
+    if (_isGeneratingRequirements || _isRegeneratingRow) return;
+    setState(() {
+      _isRegeneratingRow = true;
+      _regeneratingRowIndex = index;
+    });
+
+    try {
+      final data = ProjectDataHelper.getData(context);
+      final ctx = ProjectDataHelper.buildFepContext(data,
+          sectionLabel: 'Project Requirements');
+      final ai = OpenAiServiceSecure();
+      final reqs = await ai.generateRequirementsFromBusinessCase(ctx);
+      if (!mounted) return;
+
+      final pickedIndex = reqs.isNotEmpty ? (index % reqs.length) : null;
+      final nextText = pickedIndex == null
+          ? ''
+          : (reqs[pickedIndex]['requirement'] ?? '').toString().trim();
+      if (nextText.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('AI returned no requirement text.')),
+          );
+        }
+        return;
+      }
+      final row = _rows[index];
+      row.aiUndoText = row.descriptionController.text;
+      row.descriptionController.text = nextText;
+      _commitAutoSave(showSnack: false);
+      // Persist so the regenerated version is what Firestore gets.
+      await ProjectDataHelper.getProvider(context)
+          .saveToFirebase(checkpoint: 'fep_requirements');
+      if (mounted) setState(() {}); // refresh undo enabled state
+    } catch (e) {
+      debugPrint('Row requirement regenerate failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Regenerate failed: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRegeneratingRow = false;
+          _regeneratingRowIndex = null;
+        });
+      }
+    }
+  }
+
+  void _undoRequirementRow(int index) {
+    if (index < 0 || index >= _rows.length) return;
+    final row = _rows[index];
+    final previous = row.aiUndoText;
+    if (previous == null) return;
+    row.descriptionController.text = previous;
+    row.aiUndoText = null;
+    _commitAutoSave(showSnack: false);
+    // Persist so the undone version is what Firestore gets.
+    ProjectDataHelper.getProvider(context)
+        .saveToFirebase(checkpoint: 'fep_requirements');
+    setState(() {}); // refresh undo enabled state
   }
 
   @override
@@ -155,7 +234,8 @@ class _FrontEndPlanningRequirementsScreenState extends State<FrontEndPlanningReq
             // Use the exact same sidebar style as PreferredSolutionAnalysisScreen
             DraggableSidebar(
               openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(activeItemLabel: 'Project Requirements'),
+              child: const InitiationLikeSidebar(
+                  activeItemLabel: 'Project Requirements'),
             ),
             Expanded(
               child: Stack(
@@ -166,59 +246,75 @@ class _FrontEndPlanningRequirementsScreenState extends State<FrontEndPlanningReq
                       const FrontEndPlanningHeader(),
                       Expanded(
                         child: SingleChildScrollView(
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 32, vertical: 24),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                        _roundedField(
-                          controller: _notesController,
-                          hint: 'Input your notes here…',
-                          minLines: 3,
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
+                              _roundedField(
+                                controller: _notesController,
+                                hint: 'Input your notes here…',
+                                minLines: 3,
+                              ),
+                              const SizedBox(height: 20),
+                              Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const EditableContentText(
-                                    contentKey: 'fep_requirements_title',
-                                    fallback: 'Project Requirements',
-                                    category: 'front_end_planning',
-                                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const EditableContentText(
+                                          contentKey: 'fep_requirements_title',
+                                          fallback: 'Project Requirements',
+                                          category: 'front_end_planning',
+                                          style: TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF111827)),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        const EditableContentText(
+                                          contentKey:
+                                              'fep_requirements_subtitle',
+                                          fallback:
+                                              'Identify actual needs, conditions, or capabilities that this project must meet to be\nconsidered successful',
+                                          category: 'front_end_planning',
+                                          style: TextStyle(
+                                              fontSize: 13,
+                                              color: Color(0xFF6B7280),
+                                              height: 1.2),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                  const SizedBox(height: 6),
-                                  const EditableContentText(
-                                    contentKey: 'fep_requirements_subtitle',
-                                    fallback: 'Identify actual needs, conditions, or capabilities that this project must meet to be\nconsidered successful',
-                                    category: 'front_end_planning',
-                                    style: TextStyle(fontSize: 13, color: Color(0xFF6B7280), height: 1.2),
+                                  // Refresh icon in top-right of card header
+                                  IconButton(
+                                    icon: _isGeneratingRequirements
+                                        ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Color(0xFF2563EB)),
+                                          )
+                                        : const Icon(Icons.refresh,
+                                            size: 20, color: Color(0xFF2563EB)),
+                                    onPressed: _isGeneratingRequirements
+                                        ? null
+                                        : _confirmRegenerate,
+                                    tooltip: 'Regenerate requirements',
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(
+                                        minWidth: 40, minHeight: 40),
                                   ),
                                 ],
                               ),
-                            ),
-                            // Refresh icon in top-right of card header
-                            IconButton(
-                              icon: _isGeneratingRequirements
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF2563EB)),
-                                    )
-                                  : const Icon(Icons.refresh, size: 20, color: Color(0xFF2563EB)),
-                              onPressed: _isGeneratingRequirements ? null : _confirmRegenerate,
-                              tooltip: 'Regenerate requirements',
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        _buildRequirementsTable(context),
-                        const SizedBox(height: 16),
-                        _buildActionButtons(),
+                              const SizedBox(height: 14),
+                              _buildRequirementsTable(context),
+                              const SizedBox(height: 16),
+                              _buildActionButtons(),
                               const SizedBox(height: 140),
                             ],
                           ),
@@ -242,7 +338,8 @@ class _FrontEndPlanningRequirementsScreenState extends State<FrontEndPlanningReq
   }
 
   Widget _buildRequirementsTable(BuildContext context) {
-    final headerStyle = const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF4B5563));
+    final headerStyle = const TextStyle(
+        fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF4B5563));
     final border = const BorderSide(color: Color(0xFFE5E7EB));
 
     return Container(
@@ -282,16 +379,25 @@ class _FrontEndPlanningRequirementsScreenState extends State<FrontEndPlanningReq
           ..._rows.asMap().entries.map((entry) {
             final index = entry.key;
             final row = entry.value;
-            return row.buildRow(context, index, _deleteRow);
+            final isRowLoading =
+                _isRegeneratingRow && _regeneratingRowIndex == index;
+            return row.buildRow(
+              context,
+              index,
+              _deleteRow,
+              isRegenerating: isRowLoading,
+              onRegenerate: () => _regenerateRequirementRow(index),
+              onUndo: () => _undoRequirementRow(index),
+            );
           }),
         ],
       ),
     );
   }
-  
+
   void _deleteRow(int index) {
     if (index < 0 || index >= _rows.length) return;
-    
+
     setState(() {
       _rows[index].dispose();
       _rows.removeAt(index);
@@ -300,7 +406,7 @@ class _FrontEndPlanningRequirementsScreenState extends State<FrontEndPlanningReq
         _rows[i].number = i + 1;
       }
     });
-    
+
     // Update provider state and Firebase
     _commitAutoSave(showSnack: false);
   }
@@ -332,10 +438,12 @@ class _FrontEndPlanningRequirementsScreenState extends State<FrontEndPlanningReq
               backgroundColor: const Color(0xFFF2F4F7),
               foregroundColor: const Color(0xFF111827),
               side: const BorderSide(color: Color(0xFFE5E7EB)),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
             ),
-            child: const Text('Add another', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+            child: const Text('Add another',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
           ),
         ),
       ],
@@ -344,9 +452,12 @@ class _FrontEndPlanningRequirementsScreenState extends State<FrontEndPlanningReq
 
   void _handleSubmit() async {
     final requirementItems = _buildRequirementItems();
-    final requirementsText = requirementItems.map((item) => item.description.trim()).where((t) => t.isNotEmpty).join('\n');
+    final requirementsText = requirementItems
+        .map((item) => item.description.trim())
+        .where((t) => t.isNotEmpty)
+        .join('\n');
     final requirementsNotes = _notesController.text.trim();
-    
+
     await ProjectDataHelper.saveAndNavigate(
       context: context,
       checkpoint: 'fep_requirements',
@@ -390,7 +501,10 @@ class _FrontEndPlanningRequirementsScreenState extends State<FrontEndPlanningReq
   void _commitAutoSave({bool showSnack = true}) {
     if (!mounted) return;
     final items = _buildRequirementItems();
-    final requirementsText = items.map((item) => item.description.trim()).where((t) => t.isNotEmpty).join('\n');
+    final requirementsText = items
+        .map((item) => item.description.trim())
+        .where((t) => t.isNotEmpty)
+        .join('\n');
     final requirementsNotes = _notesController.text.trim();
     final provider = ProjectDataHelper.getProvider(context);
     provider.updateField(
@@ -411,7 +525,8 @@ class _FrontEndPlanningRequirementsScreenState extends State<FrontEndPlanningReq
 
   void _showAutoSaveSnack() {
     final now = DateTime.now();
-    if (_lastAutoSaveSnackAt != null && now.difference(_lastAutoSaveSnackAt!) < const Duration(seconds: 4)) {
+    if (_lastAutoSaveSnackAt != null &&
+        now.difference(_lastAutoSaveSnackAt!) < const Duration(seconds: 4)) {
       return;
     }
     _lastAutoSaveSnackAt = now;
@@ -450,7 +565,8 @@ class _FrontEndPlanningRequirementsScreenState extends State<FrontEndPlanningReq
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Regenerate requirements?'),
-          content: const Text('This will replace your current requirements. Continue?'),
+          content: const Text(
+              'This will replace your current requirements. Continue?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -480,23 +596,32 @@ class _RequirementRow {
   int _number;
   int get number => _number;
   set number(int value) => _number = value;
-  
+
   final TextEditingController descriptionController;
   final TextEditingController commentsController;
   String? selectedType;
   final VoidCallback? onChanged;
+  String? aiUndoText;
 
   void dispose() {
     descriptionController.dispose();
     commentsController.dispose();
   }
 
-  TableRow buildRow(BuildContext context, int index, void Function(int) onDelete) {
+  TableRow buildRow(
+    BuildContext context,
+    int index,
+    void Function(int) onDelete, {
+    required bool isRegenerating,
+    required VoidCallback onRegenerate,
+    required VoidCallback onUndo,
+  }) {
     return TableRow(
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Text('$number', style: const TextStyle(fontSize: 14, color: Color(0xFF111827))),
+          child: Text('$number',
+              style: const TextStyle(fontSize: 14, color: Color(0xFF111827))),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -505,11 +630,48 @@ class _RequirementRow {
             minLines: 2,
             maxLines: null,
             onChanged: (_) => onChanged?.call(),
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: 'Requirement description',
-              hintStyle: TextStyle(color: Color(0xFF9CA3AF)),
+              hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
               border: InputBorder.none,
               isDense: true,
+              suffixIcon: Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Tooltip(
+                      message: 'Regenerate (AI)',
+                      child: IconButton(
+                        onPressed: isRegenerating ? null : onRegenerate,
+                        icon: isRegenerating
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.refresh,
+                                size: 18, color: Color(0xFF2563EB)),
+                        padding: EdgeInsets.zero,
+                        constraints:
+                            const BoxConstraints(minWidth: 36, minHeight: 36),
+                      ),
+                    ),
+                    Tooltip(
+                      message: 'Undo last AI regenerate',
+                      child: IconButton(
+                        onPressed: (aiUndoText != null) ? onUndo : null,
+                        icon: const Icon(Icons.undo,
+                            size: 18, color: Color(0xFF6B7280)),
+                        padding: EdgeInsets.zero,
+                        constraints:
+                            const BoxConstraints(minWidth: 36, minHeight: 36),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
             style: const TextStyle(fontSize: 14, color: Color(0xFF111827)),
           ),
@@ -543,7 +705,8 @@ class _RequirementRow {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           child: IconButton(
-            icon: const Icon(Icons.delete_outline, size: 20, color: Color(0xFFEF4444)),
+            icon: const Icon(Icons.delete_outline,
+                size: 20, color: Color(0xFFEF4444)),
             onPressed: () => onDelete(index),
             tooltip: 'Delete requirement',
             padding: EdgeInsets.zero,
@@ -566,7 +729,18 @@ class _TypeDropdown extends StatefulWidget {
 
 class _TypeDropdownState extends State<_TypeDropdown> {
   late String? _value = widget.value;
-  final List<String> _options = const ['Technical', 'Regulatory', 'Functional', 'Operational', 'Non-Functional', 'Business', 'Stakeholder', 'Solutions', 'Transitional', 'Other'];
+  final List<String> _options = const [
+    'Technical',
+    'Regulatory',
+    'Functional',
+    'Operational',
+    'Non-Functional',
+    'Business',
+    'Stakeholder',
+    'Solutions',
+    'Transitional',
+    'Other'
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -581,8 +755,10 @@ class _TypeDropdownState extends State<_TypeDropdown> {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String?>(
           value: _value,
-          hint: const Text('Select…', style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14)),
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF6B7280), size: 20),
+          hint: const Text('Select…',
+              style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14)),
+          icon: const Icon(Icons.keyboard_arrow_down_rounded,
+              color: Color(0xFF6B7280), size: 20),
           isExpanded: true,
           onChanged: (v) {
             setState(() => _value = v);
@@ -591,7 +767,9 @@ class _TypeDropdownState extends State<_TypeDropdown> {
           items: _options
               .map((e) => DropdownMenuItem<String?>(
                     value: e,
-                    child: Text(e, style: const TextStyle(fontSize: 14), overflow: TextOverflow.ellipsis),
+                    child: Text(e,
+                        style: const TextStyle(fontSize: 14),
+                        overflow: TextOverflow.ellipsis),
                   ))
               .toList(),
         ),
@@ -614,7 +792,9 @@ class _BottomOverlays extends StatelessWidget {
             Positioned(
               left: 24,
               bottom: 24,
-              child: _circleButton(icon: Icons.arrow_back_ios_new_rounded, onTap: () => Navigator.maybePop(context)),
+              child: _circleButton(
+                  icon: Icons.arrow_back_ios_new_rounded,
+                  onTap: () => Navigator.maybePop(context)),
             ),
             Positioned(
               right: 24,
@@ -628,11 +808,15 @@ class _BottomOverlays extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFFD700),
                       foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 28, vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(22)),
                       elevation: 0,
                     ),
-                    child: const Text('Submit', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    child: const Text('Submit',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w600)),
                   ),
                   // Removed the standalone '>' icon per request
                 ],
@@ -658,7 +842,8 @@ class _BottomOverlays extends StatelessWidget {
           SizedBox(width: 8),
           Text(
             'AI',
-            style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF2563EB)),
+            style: TextStyle(
+                fontWeight: FontWeight.w800, color: Color(0xFF2563EB)),
           ),
           SizedBox(width: 10),
           Text(
@@ -688,7 +873,10 @@ class _BottomOverlays extends StatelessWidget {
   }
 }
 
-Widget _roundedField({required TextEditingController controller, required String hint, int minLines = 1}) {
+Widget _roundedField(
+    {required TextEditingController controller,
+    required String hint,
+    int minLines = 1}) {
   return Container(
     width: double.infinity,
     decoration: BoxDecoration(

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/utils/text_sanitizer.dart';
+import 'package:ndu_project/widgets/ai_regenerate_undo_buttons.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
 class AiRecommendationsScreen extends StatefulWidget {
@@ -16,10 +18,13 @@ class AiRecommendationsScreen extends StatefulWidget {
 class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
   final List<Map<String, dynamic>> _items = [];
   bool _loading = true;
+  bool _generating = false;
+  List<Map<String, dynamic>>? _undoBeforeAi;
 
   @override
   void initState() {
     super.initState();
+    ApiKeyManager.initializeApiKey();
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
@@ -41,6 +46,9 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
   Future<void> _generate() async {
     final p = ProjectDataInherited.maybeOf(context);
     if (p == null) return;
+    if (_generating) return;
+    setState(() => _generating = true);
+    _undoBeforeAi = _items.map((e) => Map<String, dynamic>.from(e)).toList();
     final ai = OpenAiServiceSecure();
     final ctx = '${p.projectData.projectName}\n${p.projectData.solutionTitle}\n${p.projectData.projectObjective}';
     try {
@@ -51,7 +59,26 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
       await _save();
     } catch (e) {
       debugPrint('AI gen failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Regenerate failed: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _generating = false);
     }
+  }
+
+  Future<void> _undoGenerate() async {
+    final prev = _undoBeforeAi;
+    if (prev == null) return;
+    setState(() {
+      _items
+        ..clear()
+        ..addAll(prev.map((e) => Map<String, dynamic>.from(e)));
+      _undoBeforeAi = null;
+    });
+    await _save();
   }
 
   void _openAdd() {
@@ -88,7 +115,14 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   const Text('AI Recommendations', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
                   Row(children: [
-                    TextButton(onPressed: _generate, child: const Text('Auto-generate (AI)')),
+                    AiRegenerateUndoButtons(
+                      isLoading: _generating,
+                      canUndo: _undoBeforeAi != null,
+                      onRegenerate: _generate,
+                      onUndo: () {
+                        _undoGenerate();
+                      },
+                    ),
                     const SizedBox(width: 8),
                     ElevatedButton(onPressed: _openAdd, child: const Text('Add')),
                   ])

@@ -11,6 +11,7 @@ import 'package:ndu_project/widgets/user_access_chip.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/widgets/ai_regenerate_undo_buttons.dart';
 
 /// Front End Planning – Allowance screen
 /// Mirrors the provided layout with shared workspace chrome,
@@ -36,6 +37,7 @@ class _FrontEndPlanningAllowanceScreenState
   final TextEditingController _allowanceNotes = TextEditingController();
   bool _isSyncReady = false;
   bool _isGenerating = false;
+  String? _undoBeforeAi;
   late final OpenAiServiceSecure _openAi;
 
   @override
@@ -62,6 +64,7 @@ class _FrontEndPlanningAllowanceScreenState
   Future<void> _generateAllowanceContent() async {
     if (_isGenerating) return;
     setState(() => _isGenerating = true);
+    _undoBeforeAi = _allowanceNotes.text;
 
     try {
       final data = ProjectDataHelper.getData(context);
@@ -81,6 +84,8 @@ class _FrontEndPlanningAllowanceScreenState
               _allowanceNotes.text = generatedText;
               _syncAllowanceToProvider();
             });
+            await ProjectDataHelper.getProvider(context)
+                .saveToFirebase(checkpoint: 'fep_allowance');
           }
         } catch (e) {
           debugPrint('Error generating allowance content: $e');
@@ -116,6 +121,17 @@ class _FrontEndPlanningAllowanceScreenState
         setState(() => _isGenerating = false);
       }
     }
+  }
+
+  void _undoAllowance() {
+    final prev = _undoBeforeAi;
+    if (prev == null) return;
+    _undoBeforeAi = null;
+    _allowanceNotes.text = prev;
+    _syncAllowanceToProvider();
+    ProjectDataHelper.getProvider(context)
+        .saveToFirebase(checkpoint: 'fep_allowance');
+    setState(() {});
   }
 
   String _getFallbackAllowanceContent(ProjectDataModel data) {
@@ -207,7 +223,14 @@ Financial Controls:
                                   hint: 'Input your notes here...',
                                   minLines: 3),
                               const SizedBox(height: 24),
-                              const _SectionTitle(),
+                              _SectionTitle(
+                                trailing: AiRegenerateUndoButtons(
+                                  isLoading: _isGenerating,
+                                  canUndo: _undoBeforeAi != null,
+                                  onRegenerate: _generateAllowanceContent,
+                                  onUndo: _undoAllowance,
+                                ),
+                              ),
                               const SizedBox(height: 18),
                               _AllowancePanel(controller: _allowanceNotes),
                               const SizedBox(height: 140),
@@ -283,31 +306,41 @@ class _TopBar extends StatelessWidget {
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle();
+  const _SectionTitle({this.trailing});
+
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
-    return RichText(
-      text: const TextSpan(
-        children: [
-          TextSpan(
-            text: 'Allowance  ',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF111827),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: 'Allowance  ',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF111827),
+                  ),
+                ),
+                TextSpan(
+                  text:
+                      '(Identify budget allowances and contingencies for the project.)',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF6B7280),
+                  ),
+                ),
+              ],
             ),
           ),
-          TextSpan(
-            text:
-                '(Identify budget allowances and contingencies for the project.)',
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xFF6B7280),
-            ),
-          ),
-        ],
-      ),
+        ),
+        if (trailing != null) trailing!,
+      ],
     );
   }
 }

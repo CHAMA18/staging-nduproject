@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/utils/text_sanitizer.dart';
+import 'package:ndu_project/widgets/ai_regenerate_undo_buttons.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
 class TechnologyDefinitionsScreen extends StatefulWidget {
@@ -16,10 +18,13 @@ class TechnologyDefinitionsScreen extends StatefulWidget {
 class _TechnologyDefinitionsScreenState extends State<TechnologyDefinitionsScreen> {
   final List<Map<String, dynamic>> _items = [];
   bool _loading = true;
+  bool _seeding = false;
+  List<Map<String, dynamic>>? _undoBeforeAi;
 
   @override
   void initState() {
     super.initState();
+    ApiKeyManager.initializeApiKey();
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
@@ -42,6 +47,9 @@ class _TechnologyDefinitionsScreenState extends State<TechnologyDefinitionsScree
     final p = ProjectDataInherited.maybeOf(context);
     if (p == null) return;
     final ai = OpenAiServiceSecure();
+    if (_seeding) return;
+    setState(() => _seeding = true);
+    _undoBeforeAi = _items.map((e) => Map<String, dynamic>.from(e)).toList();
     try {
   final text = await ai.generateFepSectionText(
         section: 'Technology Definitions',
@@ -57,7 +65,26 @@ class _TechnologyDefinitionsScreenState extends State<TechnologyDefinitionsScree
       await _save();
     } catch (e) {
       debugPrint('AI seed failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Regenerate failed: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _seeding = false);
     }
+  }
+
+  Future<void> _undoSeed() async {
+    final prev = _undoBeforeAi;
+    if (prev == null) return;
+    setState(() {
+      _items
+        ..clear()
+        ..addAll(prev.map((e) => Map<String, dynamic>.from(e)));
+      _undoBeforeAi = null;
+    });
+    await _save();
   }
 
   void _openAdd() {
@@ -98,7 +125,14 @@ class _TechnologyDefinitionsScreenState extends State<TechnologyDefinitionsScree
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   const Text('Technology Definitions', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
                   Row(children: [
-                    TextButton(onPressed: _seed, child: const Text('Auto-populate (AI)')),
+                    AiRegenerateUndoButtons(
+                      isLoading: _seeding,
+                      canUndo: _undoBeforeAi != null,
+                      onRegenerate: _seed,
+                      onUndo: () {
+                        _undoSeed();
+                      },
+                    ),
                     const SizedBox(width: 8),
                     ElevatedButton(onPressed: _openAdd, child: const Text('Add')),
                   ])

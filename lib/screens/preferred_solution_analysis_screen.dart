@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ndu_project/widgets/header_banner_image.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
@@ -90,120 +89,8 @@ class _PreferredSolutionAnalysisScreenState
             ))
         .toList(growable: false);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkFeasibilityStudy();
       _loadExistingDataAndAnalysis();
     });
-  }
-
-  /// Check if user already has a feasibility study and offer fast track
-  Future<void> _checkFeasibilityStudy() async {
-    final provider = ProjectDataHelper.getProvider(context);
-    final projectData = provider.projectData;
-    final projectId = projectData.projectId;
-
-    // Check if already marked as having feasibility study
-    if (projectId != null) {
-      try {
-        await ProjectService.getProjectById(projectId);
-        // Check if there's a custom field indicating feasibility study exists
-        // For now, we'll show the dialog on first visit
-      } catch (e) {
-        debugPrint('Error checking feasibility study status: $e');
-      }
-    }
-
-    // Show dialog asking about feasibility study
-    if (!mounted) return;
-
-    final hasFeasibility = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.assignment_outlined, color: Color(0xFFFFD700), size: 28),
-            SizedBox(width: 12),
-            Expanded(child: Text('Feasibility Study')),
-          ],
-        ),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Do you already have a Feasibility Study for this project?',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            SizedBox(height: 16),
-            Text(
-              'If yes, you can skip the Preferred Solution Analysis and proceed directly to Risk Identification.',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('No, I need to create one'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFFD700),
-              foregroundColor: Colors.black,
-            ),
-            child: const Text('Yes, I have one'),
-          ),
-        ],
-      ),
-    );
-
-    if (hasFeasibility == true && mounted) {
-      // Update Firestore and skip to Risk Identification
-      final provider = ProjectDataHelper.getProvider(context);
-      final projectId = provider.projectData.projectId;
-
-      if (projectId != null) {
-        try {
-          await FirebaseFirestore.instance
-              .collection('projects')
-              .doc(projectId)
-              .update({
-            'hasFeasibilityStudy': true,
-            'checkpointRoute': 'risk_identification',
-            'checkpointAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-
-          // Update provider
-          provider.updateField((data) => data.copyWith(
-                currentCheckpoint: 'risk_identification',
-              ));
-
-          // Navigate to Risk Identification
-          if (mounted) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (_) => RiskIdentificationScreen(
-                  notes: projectData.notes,
-                  solutions: widget.solutions,
-                  businessCase: projectData.businessCase,
-                ),
-              ),
-            );
-          }
-        } catch (e) {
-          debugPrint('Error updating feasibility study status: $e');
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error: ${e.toString()}')),
-            );
-          }
-        }
-      }
-    }
-    // If false, continue with normal Preferred Solution Analysis flow
   }
 
   Future<void> _loadExistingDataAndAnalysis() async {
@@ -926,6 +813,10 @@ class _PreferredSolutionAnalysisScreenState
   Widget _buildMainContent() {
     // ignore: unused_local_variable
     final isMobile = AppBreakpoints.isMobile(context);
+    final projectData = ProjectDataHelper.getData(context);
+    final selectedSolutionTitle =
+        projectData.preferredSolutionAnalysis?.selectedSolutionTitle ?? '';
+    final hasSelection = selectedSolutionTitle.trim().isNotEmpty;
     return SingleChildScrollView(
       padding: EdgeInsets.all(AppBreakpoints.pagePadding(context)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -933,6 +824,8 @@ class _PreferredSolutionAnalysisScreenState
             style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
         _buildHeaderRow(),
+        const SizedBox(height: 16),
+        _ProjectContextWidget(projectData: projectData),
         const SizedBox(height: 16),
         _buildNotesField(),
         const SizedBox(height: 20),
@@ -950,7 +843,7 @@ class _PreferredSolutionAnalysisScreenState
           BusinessCaseNavigationButtons(
             currentScreen: 'Preferred Solution Analysis',
             padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 24),
-            onNext: _handleNextStep,
+            onNext: hasSelection ? _handleNextStep : null,
           ),
           const SizedBox(height: 24),
         ],
@@ -2171,6 +2064,242 @@ class _SolutionAnalysisData {
     required this.infrastructure,
     required this.costs,
   });
+}
+
+class _ProjectContextWidget extends StatelessWidget {
+  const _ProjectContextWidget({required this.projectData});
+
+  final ProjectDataModel projectData;
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedSolutionTitle =
+        projectData.preferredSolutionAnalysis?.selectedSolutionTitle ?? '';
+    final vision = _pickVision(projectData);
+    final stakeholders = _extractStakeholders(projectData);
+    final cba = _summarizeCostBenefit(projectData);
+
+    final assumptions = projectData.charterAssumptions.trim();
+    final constraints = projectData.charterConstraints.trim();
+    final risks = _extractTopRisks(projectData, selectedSolutionTitle);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Project Context (single source of truth)',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ),
+              if (selectedSolutionTitle.trim().isNotEmpty)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF7CC),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: const Color(0xFFFFD700)),
+                  ),
+                  child: Text(
+                    'Selected: $selectedSolutionTitle',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Table(
+            columnWidths: const {
+              0: FixedColumnWidth(160),
+              1: FlexColumnWidth(),
+            },
+            defaultVerticalAlignment: TableCellVerticalAlignment.top,
+            children: [
+              _row('Vision / Objective', vision),
+              _row('Key stakeholders', _bullet(stakeholders)),
+              _row('Business case', _clamp(projectData.businessCase, 520)),
+              _row('Cost vs benefits', cba),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Divider(height: 1),
+          const SizedBox(height: 14),
+          const Text(
+            'Assumptions, Constraints, and Risks',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 10),
+          Table(
+            columnWidths: const {
+              0: FixedColumnWidth(160),
+              1: FlexColumnWidth(),
+            },
+            defaultVerticalAlignment: TableCellVerticalAlignment.top,
+            children: [
+              _row('Assumptions',
+                  assumptions.isEmpty ? '—' : _bullet(_splitLines(assumptions))),
+              _row('Constraints',
+                  constraints.isEmpty ? '—' : _bullet(_splitLines(constraints))),
+              _row('Risks', risks.isEmpty ? '—' : _bullet(risks)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  static TableRow _row(String label, String value) {
+    return TableRow(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(right: 12, bottom: 10),
+          child: Text(label,
+              style:
+                  const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Text(value, style: const TextStyle(fontSize: 13)),
+        ),
+      ],
+    );
+  }
+
+  static String _pickVision(ProjectDataModel data) {
+    final objective = data.projectObjective.trim();
+    if (objective.isNotEmpty) return objective;
+    final desc = data.solutionDescription.trim();
+    if (desc.isNotEmpty) return desc;
+    final business = data.businessCase.trim();
+    if (business.isNotEmpty) return _clamp(business, 220);
+    return '—';
+  }
+
+  static List<String> _extractStakeholders(ProjectDataModel data) {
+    final core = data.coreStakeholdersData;
+    if (core == null) return const [];
+    final buf = <String>[];
+    for (final s in core.solutionStakeholderData) {
+      final text = s.notableStakeholders.trim();
+      if (text.isEmpty) continue;
+      buf.addAll(_splitLines(text));
+    }
+    final distinct = <String>[];
+    for (final item in buf.map((e) => e.trim()).where((e) => e.isNotEmpty)) {
+      final k = item.toLowerCase();
+      if (distinct.any((d) => d.toLowerCase() == k)) continue;
+      distinct.add(item);
+      if (distinct.length >= 8) break;
+    }
+    return distinct;
+  }
+
+  static String _summarizeCostBenefit(ProjectDataModel data) {
+    final cost = data.costAnalysisData;
+    if (cost == null) return '—';
+
+    double totalCost = 0;
+    for (final solution in cost.solutionCosts) {
+      for (final row in solution.costRows) {
+        final cleaned = row.cost.replaceAll(RegExp(r'[^\d.]'), '');
+        totalCost += double.tryParse(cleaned) ?? 0;
+      }
+    }
+    final costText = totalCost > 0 ? '\$${totalCost.toStringAsFixed(0)}' : 'TBD';
+
+    final benefits = [
+      if (cost.projectValueAmount.trim().isNotEmpty)
+        'Project value: ${cost.projectValueAmount.trim()}',
+      if (cost.savingsTarget.trim().isNotEmpty)
+        'Savings target: ${cost.savingsTarget.trim()}',
+    ].join(' • ');
+
+    return benefits.isEmpty ? 'Estimated cost: $costText' : '$costText vs $benefits';
+  }
+
+  static List<String> _extractTopRisks(
+      ProjectDataModel data, String selectedSolutionTitle) {
+    final desired = <String>[];
+    if (selectedSolutionTitle.trim().isNotEmpty) {
+      final match = data.solutionRisks.cast<SolutionRisk?>().firstWhere(
+            (r) =>
+                (r?.solutionTitle ?? '').trim().toLowerCase() ==
+                selectedSolutionTitle.trim().toLowerCase(),
+            orElse: () => null,
+          );
+      if (match != null) {
+        desired.addAll(
+            match.risks.map((e) => e.trim()).where((e) => e.isNotEmpty));
+      }
+    }
+    if (desired.isEmpty) {
+      for (final sr in data.solutionRisks) {
+        desired.addAll(sr.risks.map((e) => e.trim()).where((e) => e.isNotEmpty));
+      }
+    }
+
+    final distinct = <String>[];
+    for (final r in desired) {
+      if (distinct.length >= 3) break;
+      final k = r.toLowerCase();
+      if (distinct.any((e) => e.toLowerCase() == k)) continue;
+      distinct.add(r);
+    }
+
+    final register = data.frontEndPlanning.riskRegisterItems;
+    return distinct.map((name) {
+      final found = register.cast<RiskRegisterItem?>().firstWhere(
+            (item) => (item?.riskName ?? '')
+                .trim()
+                .toLowerCase()
+                .contains(name.trim().toLowerCase()),
+            orElse: () => null,
+          );
+      final impact = (found?.impactLevel ?? '').trim();
+      final mitigation = (found?.mitigationStrategy ?? '').trim();
+      final suffix = [
+        if (impact.isNotEmpty) 'Impact: $impact',
+        if (mitigation.isNotEmpty) 'Mitigation: $mitigation',
+      ].join(' • ');
+      return suffix.isEmpty ? name : '$name • $suffix';
+    }).toList();
+  }
+
+  static String _bullet(List<String> lines) {
+    if (lines.isEmpty) return '—';
+    return lines.map((e) => '• $e').join('\n');
+  }
+
+  static List<String> _splitLines(String text) {
+    return text
+        .split('\n')
+        .map((l) => l.trim())
+        .map((l) => l.replaceAll(RegExp(r'^[-•]\s*'), ''))
+        .where((l) => l.isNotEmpty)
+        .toList();
+  }
+
+  static String _clamp(String text, int max) {
+    final t = text.trim();
+    if (t.isEmpty) return '—';
+    if (t.length <= max) return t;
+    return '${t.substring(0, max - 3)}...';
+  }
 }
 
 class _ProjectSelectionResult {

@@ -619,6 +619,7 @@ class ProjectDataHelper {
     List<DebtInsight>? technicalDebtRootCauses,
     List<RemediationTrack>? technicalDebtTracks,
     List<OwnerItem>? technicalDebtOwners,
+    List<RiskRegisterItem>? riskRegisterItems,
   }) {
     return FrontEndPlanningData(
       requirements: requirements ?? current.requirements,
@@ -647,6 +648,7 @@ class ProjectDataHelper {
           technicalDebtRootCauses ?? current.technicalDebtRootCauses,
       technicalDebtTracks: technicalDebtTracks ?? current.technicalDebtTracks,
       technicalDebtOwners: technicalDebtOwners ?? current.technicalDebtOwners,
+      riskRegisterItems: riskRegisterItems ?? current.riskRegisterItems,
     );
   }
 }

@@ -369,14 +369,14 @@ class _CircularNavButton extends StatelessWidget {
   }
 }
 
-/// Project management framework step mirroring provided design.
-class ProjectManagementFrameworkScreen extends StatelessWidget {
-  const ProjectManagementFrameworkScreen({super.key});
+/// Project details step mirroring provided design.
+class ProjectDetailsScreen extends StatelessWidget {
+  const ProjectDetailsScreen({super.key});
 
   static void open(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
-          builder: (_) => const ProjectManagementFrameworkScreen()),
+          builder: (_) => const ProjectDetailsScreen()),
     );
   }
 
@@ -396,7 +396,7 @@ class ProjectManagementFrameworkScreen extends StatelessWidget {
                 activeItemLabel: 'Initiation Phase',
               ),
             ),
-            const Expanded(child: _ProjectManagementFrameworkContent()),
+            const Expanded(child: _ProjectDetailsContent()),
           ],
         ),
       ),
@@ -404,16 +404,16 @@ class ProjectManagementFrameworkScreen extends StatelessWidget {
   }
 }
 
-class _ProjectManagementFrameworkContent extends StatefulWidget {
-  const _ProjectManagementFrameworkContent();
+class _ProjectDetailsContent extends StatefulWidget {
+  const _ProjectDetailsContent();
 
   @override
-  State<_ProjectManagementFrameworkContent> createState() =>
-      _ProjectManagementFrameworkContentState();
+  State<_ProjectDetailsContent> createState() =>
+      _ProjectDetailsContentState();
 }
 
-class _ProjectManagementFrameworkContentState
-    extends State<_ProjectManagementFrameworkContent> {
+class _ProjectDetailsContentState
+    extends State<_ProjectDetailsContent> {
   bool _shownAiHint = false;
 
   @override
@@ -511,7 +511,7 @@ class _FrameworkHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: const [
               Text(
-                'Project Management Framework',
+                'Project Details',
                 style: TextStyle(
                   color: _kTextPrimary,
                   fontSize: 30,
@@ -725,7 +725,7 @@ class _FrameworkCardHeaderText extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: const [
         Text(
-          'Project Management Framework',
+          'Project Details',
           style: TextStyle(
             color: _kTextPrimary,
             fontSize: 22,

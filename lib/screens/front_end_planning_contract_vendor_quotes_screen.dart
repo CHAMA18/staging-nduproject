@@ -11,6 +11,8 @@ import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/widgets/user_access_chip.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/text_sanitizer.dart';
+import 'package:ndu_project/services/api_key_manager.dart';
+import 'package:ndu_project/widgets/ai_regenerate_undo_buttons.dart';
 
 /// Front End Planning – Contract and Vendor Quotes screen.
 /// Mirrors the provided mock with the shared workspace chrome,
@@ -21,22 +23,28 @@ class FrontEndPlanningContractVendorQuotesScreen extends StatefulWidget {
 
   static void open(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const FrontEndPlanningContractVendorQuotesScreen()),
+      MaterialPageRoute(
+          builder: (_) => const FrontEndPlanningContractVendorQuotesScreen()),
     );
   }
 
   @override
-  State<FrontEndPlanningContractVendorQuotesScreen> createState() => _FrontEndPlanningContractVendorQuotesScreenState();
+  State<FrontEndPlanningContractVendorQuotesScreen> createState() =>
+      _FrontEndPlanningContractVendorQuotesScreenState();
 }
 
-class _FrontEndPlanningContractVendorQuotesScreenState extends State<FrontEndPlanningContractVendorQuotesScreen> {
+class _FrontEndPlanningContractVendorQuotesScreenState
+    extends State<FrontEndPlanningContractVendorQuotesScreen> {
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _contractsController = TextEditingController();
   bool _isSyncReady = false;
+  bool _generating = false;
+  String? _undoBeforeAi;
 
   @override
   void initState() {
     super.initState();
+    ApiKeyManager.initializeApiKey();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final data = ProjectDataHelper.getData(context);
       _contractsController.text = data.frontEndPlanning.contractVendorQuotes;
@@ -51,20 +59,50 @@ class _FrontEndPlanningContractVendorQuotesScreenState extends State<FrontEndPla
   }
 
   Future<void> _generateAiSuggestion() async {
+    if (_generating) return;
+    setState(() => _generating = true);
+    _undoBeforeAi = _contractsController.text;
     try {
       final data = ProjectDataHelper.getData(context);
-      final ctx = ProjectDataHelper.buildFepContext(data, sectionLabel: 'Contract & Vendor Quotes');
+      final ctx = ProjectDataHelper.buildFepContext(data,
+          sectionLabel: 'Contract & Vendor Quotes');
       final ai = OpenAiServiceSecure();
-      final suggestion = await ai.generateFepSectionText(section: 'Contract & Vendor Quotes', context: ctx, maxTokens: 900, temperature: 0.55);
+      final suggestion = await ai.generateFepSectionText(
+          section: 'Contract & Vendor Quotes',
+          context: ctx,
+          maxTokens: 900,
+          temperature: 0.55);
       if (!mounted) return;
-      if (_contractsController.text.trim().isEmpty && suggestion.trim().isNotEmpty) {
+      final cleaned = TextSanitizer.sanitizeAiText(suggestion).trim();
+      if (cleaned.isNotEmpty) {
         setState(() {
-          _contractsController.text = TextSanitizer.sanitizeAiText(suggestion);
+          _contractsController.text = cleaned;
+          _syncContractsToProvider();
         });
+        await ProjectDataHelper.getProvider(context)
+            .saveToFirebase(checkpoint: 'fep_contracts');
       }
     } catch (e) {
       debugPrint('AI contracts suggestion failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Regenerate failed: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _generating = false);
     }
+  }
+
+  void _undoContracts() {
+    final prev = _undoBeforeAi;
+    if (prev == null) return;
+    _undoBeforeAi = null;
+    _contractsController.text = prev;
+    _syncContractsToProvider();
+    ProjectDataHelper.getProvider(context)
+        .saveToFirebase(checkpoint: 'fep_contracts');
+    setState(() {});
   }
 
   @override
@@ -100,7 +138,8 @@ class _FrontEndPlanningContractVendorQuotesScreenState extends State<FrontEndPla
           children: [
             DraggableSidebar(
               openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(activeItemLabel: 'Contract & Vendor Quotes'),
+              child: const InitiationLikeSidebar(
+                  activeItemLabel: 'Contract & Vendor Quotes'),
             ),
             Expanded(
               child: Stack(
@@ -111,15 +150,26 @@ class _FrontEndPlanningContractVendorQuotesScreenState extends State<FrontEndPla
                       const FrontEndPlanningHeader(),
                       Expanded(
                         child: SingleChildScrollView(
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 32, vertical: 24),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                        _roundedField(controller: _notesController, hint: 'Input your notes here...', minLines: 3),
-                        const SizedBox(height: 24),
-                        const _SectionTitle(),
-                        const SizedBox(height: 18),
-                        _ContractsPanel(controller: _contractsController),
+                              _roundedField(
+                                  controller: _notesController,
+                                  hint: 'Input your notes here...',
+                                  minLines: 3),
+                              const SizedBox(height: 24),
+                              _SectionTitle(
+                                trailing: AiRegenerateUndoButtons(
+                                  isLoading: _generating,
+                                  canUndo: _undoBeforeAi != null,
+                                  onRegenerate: _generateAiSuggestion,
+                                  onUndo: _undoContracts,
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+                              _ContractsPanel(controller: _contractsController),
                               const SizedBox(height: 140),
                             ],
                           ),
@@ -131,11 +181,13 @@ class _FrontEndPlanningContractVendorQuotesScreenState extends State<FrontEndPla
                     await ProjectDataHelper.saveAndNavigate(
                       context: context,
                       checkpoint: 'fep_contracts',
-                      nextScreenBuilder: () => const FrontEndPlanningProcurementScreen(),
+                      nextScreenBuilder: () =>
+                          const FrontEndPlanningProcurementScreen(),
                       dataUpdater: (data) => data.copyWith(
                         frontEndPlanning: ProjectDataHelper.updateFEPField(
                           current: data.frontEndPlanning,
-                          contractVendorQuotes: _contractsController.text.trim(),
+                          contractVendorQuotes:
+                              _contractsController.text.trim(),
                         ),
                       ),
                     );
@@ -152,32 +204,44 @@ class _FrontEndPlanningContractVendorQuotesScreenState extends State<FrontEndPla
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle();
+  const _SectionTitle({this.trailing});
+
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: const [
-        EditableContentText(
-          contentKey: 'fep_contract_vendor_quotes_title',
-          fallback: 'Contract and Vendor Quotes',
-          category: 'front_end_planning',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF111827),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Expanded(
+          child: Row(
+            children: [
+              EditableContentText(
+                contentKey: 'fep_contract_vendor_quotes_title',
+                fallback: 'Contract and Vendor Quotes',
+                category: 'front_end_planning',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: EditableContentText(
+                  contentKey: 'fep_contract_vendor_quotes_subtitle',
+                  fallback: '(Brief explanation here)',
+                  category: 'front_end_planning',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF6B7280),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        SizedBox(width: 8),
-        EditableContentText(
-          contentKey: 'fep_contract_vendor_quotes_subtitle',
-          fallback: '(Brief explanation here)',
-          category: 'front_end_planning',
-          style: TextStyle(
-            fontSize: 14,
-            color: Color(0xFF6B7280),
-          ),
-        ),
+        if (trailing != null) trailing!,
       ],
     );
   }
@@ -230,7 +294,8 @@ class _BottomOverlay extends StatelessWidget {
               child: Container(
                 width: 48,
                 height: 48,
-                decoration: const BoxDecoration(color: Color(0xFFB3D9FF), shape: BoxShape.circle),
+                decoration: const BoxDecoration(
+                    color: Color(0xFFB3D9FF), shape: BoxShape.circle),
                 child: const Icon(Icons.info_outline, color: Colors.white),
               ),
             ),
@@ -240,7 +305,8 @@ class _BottomOverlay extends StatelessWidget {
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 18, vertical: 16),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE6F1FF),
                       borderRadius: BorderRadius.circular(14),
@@ -251,7 +317,10 @@ class _BottomOverlay extends StatelessWidget {
                       children: const [
                         Icon(Icons.auto_awesome, color: Color(0xFF2563EB)),
                         SizedBox(width: 10),
-                        Text('AI', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF2563EB))),
+                        Text('AI',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF2563EB))),
                         SizedBox(width: 12),
                         Text(
                           'Focus on major risks associated with each potential solution.',
@@ -266,11 +335,15 @@ class _BottomOverlay extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFF6C437),
                       foregroundColor: const Color(0xFF111827),
-                      padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 34, vertical: 16),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(22)),
                       elevation: 0,
                     ),
-                    child: const Text('Next', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                    child: const Text('Next',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w700)),
                   ),
                 ],
               ),
@@ -299,15 +372,21 @@ class _TopBar extends StatelessWidget {
         children: [
           Row(
             children: [
-              _circleButton(icon: Icons.arrow_back_ios_new_rounded, onTap: () => Navigator.maybePop(context)),
+              _circleButton(
+                  icon: Icons.arrow_back_ios_new_rounded,
+                  onTap: () => Navigator.maybePop(context)),
               const SizedBox(width: 8),
-              _circleButton(icon: Icons.arrow_forward_ios_rounded, onTap: () {}),
+              _circleButton(
+                  icon: Icons.arrow_forward_ios_rounded, onTap: () {}),
             ],
           ),
           const Spacer(),
           const Text(
             'Front End Planning',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.black87),
+            style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.black87),
           ),
           const Spacer(),
           const UserAccessChip(),
@@ -334,7 +413,10 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-Widget _roundedField({required TextEditingController controller, required String hint, int minLines = 1}) {
+Widget _roundedField(
+    {required TextEditingController controller,
+    required String hint,
+    int minLines = 1}) {
   return Container(
     width: double.infinity,
     decoration: BoxDecoration(

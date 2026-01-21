@@ -2,12 +2,16 @@ import 'package:ndu_project/widgets/expanding_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/change_request_service.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class NewChangeRequestDialog extends StatefulWidget {
-  const NewChangeRequestDialog({super.key, this.changeRequest, this.onSaved});
+  const NewChangeRequestDialog({super.key, this.changeRequest, this.onSaved, this.projectId});
 
   final ChangeRequest? changeRequest;
   final VoidCallback? onSaved;
+  final String? projectId;
 
   @override
   State<NewChangeRequestDialog> createState() => _NewChangeRequestDialogState();
@@ -16,6 +20,7 @@ class NewChangeRequestDialog extends StatefulWidget {
 class _NewChangeRequestDialogState extends State<NewChangeRequestDialog> {
   final _formKey = GlobalKey<FormState>();
   bool _submitting = false;
+  bool _uploading = false;
 
   // Controllers
   final TextEditingController _titleCtrl = TextEditingController();
@@ -36,6 +41,12 @@ class _NewChangeRequestDialogState extends State<NewChangeRequestDialog> {
 
   DateTime? _selectedDate;
 
+  // Attachment state
+  String? _attachmentUrl;
+  String? _attachmentName;
+
+  bool get _isEditing => widget.changeRequest != null;
+
   @override
   void initState() {
     super.initState();
@@ -50,6 +61,8 @@ class _NewChangeRequestDialogState extends State<NewChangeRequestDialog> {
       _requesterCtrl.text = initial.requester;
       _selectedDate = initial.requestDate;
       _dateCtrl.text = _formatDate(initial.requestDate);
+      _attachmentUrl = initial.attachmentUrl;
+      _attachmentName = initial.attachmentName;
     }
   }
 
@@ -84,6 +97,75 @@ class _NewChangeRequestDialogState extends State<NewChangeRequestDialog> {
     return '${d.year}-${two(d.month)}-${two(d.day)}';
   }
 
+  Future<void> _pickAndUploadFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'png', 'jpg', 'jpeg'],
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+
+      final file = result.files.first;
+      if (file.bytes == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to read file data')),
+          );
+        }
+        return;
+      }
+
+      setState(() => _uploading = true);
+
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final storagePath = 'change_requests/${widget.projectId ?? 'general'}/${timestamp}_${file.name}';
+      final ref = FirebaseStorage.instance.ref(storagePath);
+      
+      await ref.putData(file.bytes!);
+      final downloadUrl = await ref.getDownloadURL();
+
+      setState(() {
+        _attachmentUrl = downloadUrl;
+        _attachmentName = file.name;
+        _uploading = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('File "${file.name}" uploaded successfully')),
+        );
+      }
+    } catch (e) {
+      setState(() => _uploading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Upload failed: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _downloadAttachment() async {
+    if (_attachmentUrl == null) return;
+    final uri = Uri.parse(_attachmentUrl!);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open attachment')),
+        );
+      }
+    }
+  }
+
+  void _removeAttachment() {
+    setState(() {
+      _attachmentUrl = null;
+      _attachmentName = null;
+    });
+  }
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -110,13 +192,13 @@ class _NewChangeRequestDialogState extends State<NewChangeRequestDialog> {
                     child: const Icon(Icons.change_circle_outlined, color: Colors.black87),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('New Change request', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                        SizedBox(height: 2),
-                        Text('Submit details to start the change management process.', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                        Text(_isEditing ? 'Update Change Request' : 'New Change request', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 2),
+                        Text(_isEditing ? 'Modify the details of this change request.' : 'Submit details to start the change management process.', style: const TextStyle(fontSize: 12, color: Colors.black54)),
                       ],
                     ),
                   ),
@@ -149,7 +231,7 @@ class _NewChangeRequestDialogState extends State<NewChangeRequestDialog> {
                     _textField('Justification / Reason', controller: _justificationCtrl, maxLines: 3, hint: 'Why is this change needed?'),
                     const SizedBox(height: 12),
 
-                    // Attachments placeholder area (UI only)
+                    // Attachments area
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
@@ -158,30 +240,55 @@ class _NewChangeRequestDialogState extends State<NewChangeRequestDialog> {
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
                       ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.attach_file, size: 18, color: Colors.black54),
-                          const SizedBox(width: 8),
-                          const Expanded(
-                            child: Text('Attachments (optional)', style: TextStyle(fontSize: 13, color: Colors.black87)),
-                          ),
-                          OutlinedButton(
-                            onPressed: () {
-                              // Placeholder: integrate file_picker in future if needed.
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Attachment picker coming soon')),
-                              );
-                            },
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                              side: BorderSide(color: Colors.grey.withValues(alpha: 0.4)),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              foregroundColor: Colors.black,
+                      child: _attachmentUrl != null
+                          ? Row(
+                              children: [
+                                const Icon(Icons.insert_drive_file, size: 18, color: Colors.blue),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _attachmentName ?? 'Attachment',
+                                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                IconButton(
+                                  tooltip: 'Download',
+                                  icon: const Icon(Icons.download, size: 18, color: Colors.blue),
+                                  onPressed: _downloadAttachment,
+                                ),
+                                IconButton(
+                                  tooltip: 'Remove',
+                                  icon: const Icon(Icons.close, size: 18, color: Colors.red),
+                                  onPressed: _removeAttachment,
+                                ),
+                              ],
+                            )
+                          : Row(
+                              children: [
+                                const Icon(Icons.attach_file, size: 18, color: Colors.black54),
+                                const SizedBox(width: 8),
+                                const Expanded(
+                                  child: Text('Attachments (optional)', style: TextStyle(fontSize: 13, color: Colors.black87)),
+                                ),
+                                _uploading
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : OutlinedButton(
+                                        onPressed: _pickAndUploadFile,
+                                        style: OutlinedButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                          side: BorderSide(color: Colors.grey.withValues(alpha: 0.4)),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                          foregroundColor: Colors.black,
+                                        ),
+                                        child: const Text('Add file'),
+                                      ),
+                              ],
                             ),
-                            child: const Text('Add file'),
-                          )
-                        ],
-                      ),
                     ),
                   ],
                 ),
@@ -208,7 +315,7 @@ class _NewChangeRequestDialogState extends State<NewChangeRequestDialog> {
                     ),
                     child: _submitting
                         ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Text('Create request', style: TextStyle(fontWeight: FontWeight.w600)),
+                        : Text(_isEditing ? 'Update request' : 'Create request', style: const TextStyle(fontWeight: FontWeight.w600)),
                   ),
                 ],
               )
@@ -218,7 +325,6 @@ class _NewChangeRequestDialogState extends State<NewChangeRequestDialog> {
       ),
     );
   }
-
   Future<void> _submit() async {
     if (_submitting) return;
     if (!_formKey.currentState!.validate()) return;
@@ -238,6 +344,9 @@ class _NewChangeRequestDialogState extends State<NewChangeRequestDialog> {
           justification: _justificationCtrl.text.trim().isEmpty ? null : _justificationCtrl.text.trim(),
           requestDate: _selectedDate!,
           createdAt: widget.changeRequest!.createdAt,
+          projectId: widget.changeRequest!.projectId,
+          attachmentUrl: _attachmentUrl,
+          attachmentName: _attachmentName,
         );
         await ChangeRequestService.updateChangeRequest(updated);
       } else {
@@ -248,13 +357,17 @@ class _NewChangeRequestDialogState extends State<NewChangeRequestDialog> {
           status: _selectedStatus,
           requester: _requesterCtrl.text.trim(),
           requestDate: _selectedDate!,
+          projectId: widget.projectId,
           description: _descriptionCtrl.text.trim().isEmpty ? null : _descriptionCtrl.text.trim(),
           justification: _justificationCtrl.text.trim().isEmpty ? null : _justificationCtrl.text.trim(),
+          attachmentUrl: _attachmentUrl,
+          attachmentName: _attachmentName,
         );
       }
       if (mounted) Navigator.of(context).pop(true);
       widget.onSaved?.call();
     } catch (e) {
+//...
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(widget.changeRequest != null ? 'Failed to update request: $e' : 'Failed to create request: $e')),

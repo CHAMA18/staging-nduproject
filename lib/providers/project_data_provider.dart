@@ -252,11 +252,13 @@ class ProjectDataProvider extends ChangeNotifier {
     String? wbsCriteriaA,
     String? wbsCriteriaB,
     List<List<WorkItem>>? goalWorkItems,
+    List<WorkItem>? wbsTree,
   }) {
     _projectData = _projectData.copyWith(
       wbsCriteriaA: wbsCriteriaA ?? _projectData.wbsCriteriaA,
       wbsCriteriaB: wbsCriteriaB ?? _projectData.wbsCriteriaB,
       goalWorkItems: goalWorkItems ?? _projectData.goalWorkItems,
+      wbsTree: wbsTree ?? _projectData.wbsTree,
     );
     notifyListeners();
   }

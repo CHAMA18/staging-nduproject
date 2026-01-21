@@ -10,8 +10,11 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/screens/project_framework_screen.dart';
+import 'package:ndu_project/screens/issue_management_screen.dart';
+import 'package:ndu_project/screens/ssher_stacked_screen.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/user_service.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
 
 class ChangeManagementScreen extends StatefulWidget {
   const ChangeManagementScreen({super.key});
@@ -174,7 +177,7 @@ class _ChangeManagementScreenState extends State<ChangeManagementScreen> {
                           const SizedBox(height: 16),
 
                           // Stats (live from Firestore)
-                          const _StatsRow(),
+                          _StatsRow(projectId: ProjectDataHelper.getData(context).projectId),
 
                           const SizedBox(height: 16),
 
@@ -199,7 +202,7 @@ class _ChangeManagementScreenState extends State<ChangeManagementScreen> {
                                 onPressed: () async {
                                   final result = await showDialog(
                                     context: context,
-                                    builder: (ctx) => NewChangeRequestDialog(),
+                                    builder: (ctx) => NewChangeRequestDialog(projectId: ProjectDataHelper.getData(context).projectId),
                                   );
                                   if (result != null) {
                                     ScaffoldMessenger.of(context).showSnackBar(
@@ -227,16 +230,19 @@ class _ChangeManagementScreenState extends State<ChangeManagementScreen> {
 
                           const SizedBox(height: 10),
 
-                          _ChangeRequestsTable(key: _tableKey),
+                          _ChangeRequestsTable(key: _tableKey, projectId: ProjectDataHelper.getData(context).projectId),
                           const SizedBox(height: 24),
                           LaunchPhaseNavigation(
-                            backLabel: 'Back: Issue Management',
-                            nextLabel: 'Next: Project Management Framework',
-                            onBack: () => Navigator.of(context).maybePop(),
+                            backLabel: 'Back: SSHER',
+                            nextLabel: 'Next: Issue Management',
+                            onBack: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        const SsherStackedScreen())),
                             onNext: () => Navigator.of(context).push(
                                 MaterialPageRoute(
                                     builder: (_) =>
-                                        const ProjectFrameworkScreen())),
+                                        const IssueManagementScreen())),
                           ),
                         ],
                       ),
@@ -431,6 +437,7 @@ class _YellowButton extends StatelessWidget {
   }
 }
 
+
 class _StepTile extends StatelessWidget {
   final int step;
   final String title;
@@ -497,12 +504,13 @@ class _StatTile extends StatelessWidget {
 }
 
 class _StatsRow extends StatelessWidget {
-  const _StatsRow();
+  const _StatsRow({this.projectId});
+  final String? projectId;
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
-      stream: ChangeRequestService.streamChangeRequests(),
+      stream: ChangeRequestService.streamChangeRequests(projectId: projectId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Row(
@@ -566,7 +574,9 @@ class _StatsRow extends StatelessWidget {
 }
 
 class _ChangeRequestsTable extends StatefulWidget {
-  const _ChangeRequestsTable({super.key});
+  const _ChangeRequestsTable({super.key, this.projectId});
+
+  final String? projectId;
 
   @override
   State<_ChangeRequestsTable> createState() => _ChangeRequestsTableState();
@@ -659,6 +669,7 @@ class _ChangeRequestsTableState extends State<_ChangeRequestsTable> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final boxWidth = constraints.maxWidth;
+        final targetWidth = boxWidth < 1000 ? 1000.0 : boxWidth;
         return Container(
           width: double.infinity,
           decoration: BoxDecoration(
@@ -668,8 +679,8 @@ class _ChangeRequestsTableState extends State<_ChangeRequestsTable> {
           ),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minWidth: boxWidth),
+            child: SizedBox(
+              width: targetWidth,
               child: Column(
                 children: [
                   Container(
@@ -690,12 +701,12 @@ class _ChangeRequestsTableState extends State<_ChangeRequestsTable> {
                         'IMPACT',
                         'STATUS',
                         'REQUESTER',
-                        'Actions'
+                        'Actions',
                       ],
                     ),
                   ),
                   StreamBuilder(
-                    stream: ChangeRequestService.streamChangeRequests(),
+                    stream: ChangeRequestService.streamChangeRequests(projectId: widget.projectId),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Padding(
@@ -780,6 +791,7 @@ class _TableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Columns: #(0), ID(1), TITLE(2), REQUEST DATE(3), TYPE(4), IMPACT(5), STATUS(6), REQUESTER(7), Actions(8)
     const flexes = [2, 3, 6, 4, 3, 4, 4, 4, 3];
     final TextStyle headerStyle = const TextStyle(
         fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black87);
@@ -788,7 +800,7 @@ class _TableRow extends StatelessWidget {
     return Row(
       children: [
         for (int i = 0; i < cells.length; i++)
-          if (i == cells.length - 1)
+          if (i == cells.length - 1)  // Actions column at end
             _actionsCell(
               flex: flexes[i],
               context: context,
@@ -798,13 +810,13 @@ class _TableRow extends StatelessWidget {
               request: request,
               onEdit: onEdit,
             )
-          else if (i == 4)
+          else if (i == 4)  // TYPE column
             _typeCell(cells[i],
                 flex: flexes[i],
                 isHeader: isHeader,
                 headerStyle: headerStyle,
                 cellStyle: cellStyle)
-          else if (i == 6)
+          else if (i == 6)  // STATUS column
             _statusCell(cells[i],
                 flex: flexes[i],
                 isHeader: isHeader,
@@ -817,7 +829,7 @@ class _TableRow extends StatelessWidget {
               isHeader: isHeader,
               headerStyle: headerStyle,
               cellStyle: cellStyle,
-              textAlign: {0, 5}.contains(i) ? TextAlign.center : TextAlign.left,
+              textAlign: i == 0 ? TextAlign.center : TextAlign.left,
             ),
       ],
     );
@@ -926,28 +938,34 @@ class _TableRow extends StatelessWidget {
     void Function(ChangeRequest)? onEdit,
   }) {
     if (isHeader) {
-      return _cell(text,
-          flex: flex,
-          isHeader: true,
-          headerStyle: headerStyle,
-          cellStyle: cellStyle);
+      return Expanded(
+        flex: flex,
+        child: Padding(
+          padding: const EdgeInsets.only(right: 24),
+          child: Text(text,
+              style: headerStyle,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center),
+        ),
+      );
     }
 
     return Expanded(
       flex: flex,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+      child: Padding(
+        padding: const EdgeInsets.only(right: 24),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
         children: [
           IconButton(
-            tooltip: 'Edit request',
+            tooltip: 'View request',
             onPressed: request == null ? null : () => onEdit?.call(request),
-            icon: Icon(Icons.edit_outlined, size: 18, color: Colors.grey[700]),
+            icon: Icon(Icons.visibility_outlined, size: 18, color: Colors.grey[700]),
           ),
-          PopupMenuButton<String>(
-            padding: EdgeInsets.zero,
-            icon: Icon(Icons.more_horiz, size: 18, color: Colors.grey[700]),
-            onSelected: (value) async {
-              if (value != 'delete' || request == null) return;
+          IconButton(
+            tooltip: 'Delete request',
+            icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+            onPressed: request == null ? null : () async {
               final confirmed = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
@@ -966,7 +984,7 @@ class _TableRow extends StatelessWidget {
               );
               if (confirmed != true) return;
               try {
-                await ChangeRequestService.deleteChangeRequest(request.id);
+                await ChangeRequestService.deleteChangeRequest(request!.id);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Change request deleted')));
@@ -978,13 +996,9 @@ class _TableRow extends StatelessWidget {
                 }
               }
             },
-            itemBuilder: (_) => [
-              const PopupMenuItem<String>(
-                  value: 'delete',
-                  child: Text('Delete', style: TextStyle(color: Colors.red))),
-            ],
           ),
         ],
+        ),
       ),
     );
   }

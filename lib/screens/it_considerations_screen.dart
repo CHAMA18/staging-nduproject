@@ -145,7 +145,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
         final solutionIT = itData.solutionITData[i];
         if (i < _solutions.length) {
           _solutions[i] = AiSolutionItem(
-            title: solutionIT.solutionTitle,
+            title: _cleanSolutionTitle(solutionIT.solutionTitle),
             description: '',
           );
         }
@@ -886,7 +886,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
           EditableContentText(
               contentKey: 'it_considerations_description',
               fallback:
-                  '(List core IT considerations for each Potential Solution)',
+                  '(List core IT considerations for each solution)',
               category: 'business_case',
               style: TextStyle(fontSize: 14, color: Colors.grey[600])),
         ]),
@@ -960,7 +960,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
                 border: Border.all(color: Colors.grey.withValues(alpha: 0.35))),
             child: const Row(children: [
               Expanded(
-                  child: Text('Potential Solution',
+                  child: Text('Solution',
                       style: TextStyle(
                           fontSize: 13, fontWeight: FontWeight.w600))),
               Expanded(
@@ -995,13 +995,24 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
   String _potentialSolutionLabel(int index) {
     final number = index + 1;
     if (index < 0 || index >= _solutions.length) {
-      return 'Potential Solution $number';
+      return 'Solution $number';
     }
-    final title = _solutions[index].title.trim();
+    final title = _cleanSolutionTitle(_solutions[index].title).trim();
     if (title.isEmpty) {
-      return 'Potential Solution $number';
+      return 'Solution $number';
     }
-    return 'Potential Solution $number: $title';
+    return title;
+  }
+
+  static String _cleanSolutionTitle(String raw) {
+    final t = raw.trim();
+    if (t.isEmpty) return '';
+    // Remove legacy prefixes like:
+    // "Potential Solution 1", "Potential Solution 2: Foo", etc.
+    return t.replaceFirst(
+      RegExp(r'^Potential\s+Solution\s+\d+\s*:?\s*', caseSensitive: false),
+      '',
+    ).trim();
   }
 
   Widget _row(int index) {

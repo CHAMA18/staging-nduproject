@@ -8,65 +8,6 @@ import 'package:ndu_project/models/project_data_model.dart';
 // Remove markdown bold markers commonly produced by the model (e.g. *text* or **text**)
 String _stripAsterisks(String s) => s.replaceAll('*', '');
 
-/// Filters out cloud/software-only references, keeping only physical infrastructure
-bool _isPhysicalInfrastructure(String item) {
-  final lower = item.toLowerCase();
-  // Exclude cloud services and software-only terms
-  final excludePatterns = [
-    'cloud', 'aws', 'azure', 'gcp', 'google cloud', 'amazon web services',
-    'saas', 'paas', 'iaas', 'docker', 'kubernetes', 'container',
-    'virtual machine', 'vm', 'vmware', 'hypervisor',
-    'api', 'framework', 'library', 'sdk', 'software',
-    'database' // Exclude unless it's clearly a physical server
-  ];
-
-  // Check if item contains any exclude patterns
-  for (final pattern in excludePatterns) {
-    if (lower.contains(pattern)) {
-      // Allow exceptions for physical hardware mentions
-      if (lower.contains('physical') ||
-          lower.contains('hardware') ||
-          lower.contains('server') ||
-          lower.contains('rack') ||
-          lower.contains('data center') ||
-          lower.contains('datacenter')) {
-        continue; // Allow if it's clearly physical
-      }
-      return false; // Exclude cloud/software references
-    }
-  }
-
-  // Include physical infrastructure keywords
-  final includePatterns = [
-    'server',
-    'cabling',
-    'cable',
-    'hardware',
-    'router',
-    'switch',
-    'network',
-    'storage',
-    'rack',
-    'data center',
-    'datacenter',
-    'cooling',
-    'power',
-    'ups',
-    'physical',
-    'equipment'
-  ];
-
-  // Check if item contains any include patterns
-  for (final pattern in includePatterns) {
-    if (lower.contains(pattern)) {
-      return true;
-    }
-  }
-
-  // Default: include if it doesn't match exclude patterns
-  return true;
-}
-
 class AiSolutionItem {
   final String title;
   final String description;
@@ -74,9 +15,8 @@ class AiSolutionItem {
   AiSolutionItem({required this.title, required this.description});
 
   factory AiSolutionItem.fromMap(Map<String, dynamic> map) => AiSolutionItem(
-        title: _stripAsterisks((map['title'] ?? '').toString().trim()),
-        description:
-            _stripAsterisks((map['description'] ?? '').toString().trim()),
+  title: _stripAsterisks((map['title'] ?? '').toString().trim()),
+  description: _stripAsterisks((map['description'] ?? '').toString().trim()),
       );
 }
 
@@ -165,17 +105,16 @@ class AiProjectValueInsights {
 
     final estimated = toD(map['estimated_value'] ?? map['project_value']);
     final benefitsRaw = map['benefits'];
-    final parsedBenefits = <String, String>{};
+  final parsedBenefits = <String, String>{};
     if (benefitsRaw is Map) {
       for (final entry in benefitsRaw.entries) {
-        parsedBenefits[entry.key.toString()] =
-            _stripAsterisks(entry.value.toString());
+    parsedBenefits[entry.key.toString()] = _stripAsterisks(entry.value.toString());
       }
     } else if (benefitsRaw is List) {
       for (final item in benefitsRaw) {
         if (item is Map && item.containsKey('category')) {
-          parsedBenefits[item['category'].toString()] = _stripAsterisks(
-              (item['details'] ?? item['value'] ?? '').toString());
+      parsedBenefits[item['category'].toString()] =
+        _stripAsterisks((item['details'] ?? item['value'] ?? '').toString());
         }
       }
     }
@@ -200,13 +139,13 @@ class AiProjectGoalRecommendation {
     final rawDesc = map['description'] ?? map['details'] ?? map['text'] ?? '';
     final rawFramework =
         map['framework'] ?? map['methodology'] ?? map['approach'] ?? '';
-    final name = _stripAsterisks(rawName.toString().trim());
-    final description = _stripAsterisks(rawDesc.toString().trim());
-    final framework = _stripAsterisks(rawFramework?.toString().trim() ?? '');
+  final name = _stripAsterisks(rawName.toString().trim());
+  final description = _stripAsterisks(rawDesc.toString().trim());
+  final framework = _stripAsterisks(rawFramework?.toString().trim() ?? '');
     return AiProjectGoalRecommendation(
       name: name,
       description: description,
-      framework: (framework.isEmpty) ? null : framework,
+  framework: (framework.isEmpty) ? null : framework,
     );
   }
 
@@ -346,20 +285,19 @@ class AiBenefitSavingsSuggestion {
 
     String parseString(dynamic value) => value?.toString().trim() ?? '';
 
-    return AiBenefitSavingsSuggestion(
-      lever: _stripAsterisks(
-          parseString(map['lever'] ?? map['title'] ?? map['scenario'])),
-      recommendation: _stripAsterisks(parseString(
-          map['recommendation'] ?? map['action'] ?? map['strategy'])),
-      projectedSavings: parseDouble(
-          map['projected_savings'] ?? map['savings'] ?? map['projected_value']),
-      timeframe: _stripAsterisks(
-          parseString(map['timeframe'] ?? map['horizon'] ?? map['period'])),
-      confidence: _stripAsterisks(parseString(
-          map['confidence'] ?? map['certainty'] ?? map['confidence_level'])),
-      rationale: _stripAsterisks(
-          parseString(map['rationale'] ?? map['notes'] ?? map['summary'])),
-    );
+  return AiBenefitSavingsSuggestion(
+    lever: _stripAsterisks(parseString(map['lever'] ?? map['title'] ?? map['scenario'])),
+    recommendation: _stripAsterisks(parseString(
+      map['recommendation'] ?? map['action'] ?? map['strategy'])),
+    projectedSavings: parseDouble(
+      map['projected_savings'] ?? map['savings'] ?? map['projected_value']),
+    timeframe:
+      _stripAsterisks(parseString(map['timeframe'] ?? map['horizon'] ?? map['period'])),
+    confidence: _stripAsterisks(parseString(
+      map['confidence'] ?? map['certainty'] ?? map['confidence_level'])),
+    rationale:
+      _stripAsterisks(parseString(map['rationale'] ?? map['notes'] ?? map['summary'])),
+  );
   }
 }
 
@@ -430,14 +368,11 @@ class OpenAiServiceSecure {
           (parsed['text'] ?? parsed['section'] ?? parsed['content'] ?? '')
               .toString()
               .trim();
-      final cleanText = _stripAsterisks(text);
-      if (cleanText.isNotEmpty) return cleanText;
+  final cleanText = _stripAsterisks(text);
+  if (cleanText.isNotEmpty) return cleanText;
       // If missing expected key, try to flatten other fields to text
       if (parsed.isNotEmpty) {
-        return parsed.values
-            .map((v) => _stripAsterisks(v.toString()))
-            .join('\n')
-            .trim();
+        return parsed.values.map((v) => _stripAsterisks(v.toString())).join('\n').trim();
       }
       return '';
     } catch (e) {
@@ -504,8 +439,7 @@ $trimmedContext
           .post(uri, headers: headers, body: body)
           .timeout(const Duration(seconds: 16));
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception(
-            'OpenAI error ${response.statusCode}: ${response.body}');
+        throw Exception('OpenAI error ${response.statusCode}: ${response.body}');
       }
       final data =
           jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
@@ -521,47 +455,36 @@ $trimmedContext
   DesignDeliverablesData _parseDesignDeliverables(Map<String, dynamic> json) {
     List<String> toStringList(dynamic value) {
       if (value is List) {
-        return value
-            .map((e) => _stripAsterisks(e.toString().trim()))
-            .where((e) => e.isNotEmpty)
-            .toList();
+        return value.map((e) => _stripAsterisks(e.toString().trim())).where((e) => e.isNotEmpty).toList();
       }
       return const [];
     }
 
     List<DesignDeliverablePipelineItem> parsePipeline(dynamic value) {
       if (value is List) {
-        return value
-            .map((item) {
-              final map = Map<String, dynamic>.from(item as Map);
-              return DesignDeliverablePipelineItem(
-                label: _stripAsterisks((map['label'] ?? '').toString().trim()),
-                status:
-                    _stripAsterisks((map['status'] ?? '').toString().trim()),
-              );
-            })
-            .where((item) => item.label.isNotEmpty)
-            .toList();
+        return value.map((item) {
+          final map = Map<String, dynamic>.from(item as Map);
+          return DesignDeliverablePipelineItem(
+            label: _stripAsterisks((map['label'] ?? '').toString().trim()),
+            status: _stripAsterisks((map['status'] ?? '').toString().trim()),
+          );
+        }).where((item) => item.label.isNotEmpty).toList();
       }
       return const [];
     }
 
     List<DesignDeliverableRegisterItem> parseRegister(dynamic value) {
       if (value is List) {
-        return value
-            .map((item) {
-              final map = Map<String, dynamic>.from(item as Map);
-              return DesignDeliverableRegisterItem(
-                name: _stripAsterisks((map['name'] ?? '').toString().trim()),
-                owner: _stripAsterisks((map['owner'] ?? '').toString().trim()),
-                status:
-                    _stripAsterisks((map['status'] ?? '').toString().trim()),
-                due: _stripAsterisks((map['due'] ?? '').toString().trim()),
-                risk: _stripAsterisks((map['risk'] ?? '').toString().trim()),
-              );
-            })
-            .where((item) => item.name.isNotEmpty)
-            .toList();
+        return value.map((item) {
+          final map = Map<String, dynamic>.from(item as Map);
+          return DesignDeliverableRegisterItem(
+            name: _stripAsterisks((map['name'] ?? '').toString().trim()),
+            owner: _stripAsterisks((map['owner'] ?? '').toString().trim()),
+            status: _stripAsterisks((map['status'] ?? '').toString().trim()),
+            due: _stripAsterisks((map['due'] ?? '').toString().trim()),
+            risk: _stripAsterisks((map['risk'] ?? '').toString().trim()),
+          );
+        }).where((item) => item.name.isNotEmpty).toList();
       }
       return const [];
     }
@@ -585,13 +508,10 @@ $trimmedContext
     final project = _extractProjectName(context);
     final name = project.isNotEmpty ? project : 'Project';
     return DesignDeliverablesData(
-      metrics: const DesignDeliverablesMetrics(
-          active: 6, inReview: 3, approved: 2, atRisk: 1),
+      metrics: const DesignDeliverablesMetrics(active: 6, inReview: 3, approved: 2, atRisk: 1),
       pipeline: const [
-        DesignDeliverablePipelineItem(
-            label: 'Discovery & Research', status: 'In Review'),
-        DesignDeliverablePipelineItem(
-            label: 'Wireframes', status: 'In Progress'),
+        DesignDeliverablePipelineItem(label: 'Discovery & Research', status: 'In Review'),
+        DesignDeliverablePipelineItem(label: 'Wireframes', status: 'In Progress'),
         DesignDeliverablePipelineItem(label: 'UI Design', status: 'Pending'),
         DesignDeliverablePipelineItem(label: 'Prototype', status: 'Pending'),
       ],
@@ -602,30 +522,10 @@ $trimmedContext
         'Brand compliance check queued',
       ],
       register: const [
-        DesignDeliverableRegisterItem(
-            name: 'Wireframe Pack',
-            owner: 'UX Team',
-            status: 'In Review',
-            due: 'TBD',
-            risk: 'Medium'),
-        DesignDeliverableRegisterItem(
-            name: 'UI Kit',
-            owner: 'Design Ops',
-            status: 'In Progress',
-            due: 'TBD',
-            risk: 'Low'),
-        DesignDeliverableRegisterItem(
-            name: 'Prototype',
-            owner: 'Product',
-            status: 'Pending',
-            due: 'TBD',
-            risk: 'High'),
-        DesignDeliverableRegisterItem(
-            name: 'Journey Maps',
-            owner: 'Research',
-            status: 'In Progress',
-            due: 'TBD',
-            risk: 'Medium'),
+        DesignDeliverableRegisterItem(name: 'Wireframe Pack', owner: 'UX Team', status: 'In Review', due: 'TBD', risk: 'Medium'),
+        DesignDeliverableRegisterItem(name: 'UI Kit', owner: 'Design Ops', status: 'In Progress', due: 'TBD', risk: 'Low'),
+        DesignDeliverableRegisterItem(name: 'Prototype', owner: 'Product', status: 'Pending', due: 'TBD', risk: 'High'),
+        DesignDeliverableRegisterItem(name: 'Journey Maps', owner: 'Research', status: 'In Progress', due: 'TBD', risk: 'Medium'),
       ],
       dependencies: const [
         'Finalize IA and navigation taxonomy',
@@ -716,14 +616,8 @@ $trimmedContext
   Future<List<Map<String, String>>> generateOpportunitiesFromContext(
       String context) async {
     final trimmed = context.trim();
-    if (trimmed.isEmpty) {
-      debugPrint('No context provided for opportunities generation');
-      return _fallbackOpportunities();
-    }
-    if (!OpenAiConfig.isConfigured) {
-      debugPrint('OpenAI not configured, using fallback opportunities');
-      return _fallbackOpportunities();
-    }
+    if (trimmed.isEmpty) throw Exception('No context provided');
+    if (!OpenAiConfig.isConfigured) throw const OpenAiNotConfiguredException();
 
     final uri = OpenAiConfig.chatUri();
     final headers = {
@@ -752,18 +646,12 @@ $trimmedContext
     try {
       final response = await _client
           .post(uri, headers: headers, body: body)
-          .timeout(const Duration(seconds: 30)); // Increased timeout
-      if (response.statusCode == 401) {
-        debugPrint('Invalid API key for opportunities generation');
-        return _fallbackOpportunities();
-      }
-      if (response.statusCode == 429) {
-        debugPrint('API quota exceeded for opportunities generation');
-        return _fallbackOpportunities();
-      }
+          .timeout(const Duration(seconds: 14));
+      if (response.statusCode == 401) throw Exception('Invalid API key');
+      if (response.statusCode == 429) throw Exception('API quota exceeded');
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        debugPrint('OpenAI error ${response.statusCode} for opportunities');
-        return _fallbackOpportunities();
+        throw Exception(
+            'OpenAI error ${response.statusCode}: ${response.body}');
       }
       final data =
           jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
@@ -775,117 +663,29 @@ $trimmedContext
       for (final item in list) {
         if (item is! Map) continue;
         final map = item as Map<String, dynamic>;
-        final opp = _stripAsterisks(
-            (map['opportunity'] ?? map['title'] ?? '').toString().trim());
+  final opp = _stripAsterisks((map['opportunity'] ?? map['title'] ?? '').toString().trim());
         if (opp.isEmpty) continue;
-
-        // Extract all fields with multiple fallback options
-        final discipline = (map['discipline'] ?? '').toString().trim();
-        final stakeholder = (map['stakeholder'] ??
-                map['owner'] ??
-                map['stakeholder_name'] ??
-                '')
-            .toString()
-            .trim();
-        final costSavings = (map['potential_cost_savings'] ??
-                map['cost_savings'] ??
-                map['potentialCost1'] ??
-                '')
-            .toString()
-            .trim();
-        final scheduleSavings = (map['potential_cost_schedule_savings'] ??
-                map['schedule_savings'] ??
-                map['potentialCost2'] ??
-                '')
-            .toString()
-            .trim();
-
-        // If critical fields are missing, use fallback data for this item
-        if (discipline.isEmpty ||
-            stakeholder.isEmpty ||
-            costSavings.isEmpty ||
-            scheduleSavings.isEmpty) {
-          // Use a fallback opportunity with all fields filled
-          final fallbackIndex = result.length % _fallbackOpportunities().length;
-          final fallback = _fallbackOpportunities()[fallbackIndex];
-          result.add({
-            'opportunity': opp.isNotEmpty ? opp : fallback['opportunity']!,
-            'discipline':
-                discipline.isNotEmpty ? discipline : fallback['discipline']!,
-            'stakeholder':
-                stakeholder.isNotEmpty ? stakeholder : fallback['stakeholder']!,
-            'potentialCost1': costSavings.isNotEmpty
-                ? costSavings
-                : fallback['potentialCost1']!,
-            'potentialCost2': scheduleSavings.isNotEmpty
-                ? scheduleSavings
-                : fallback['potentialCost2']!,
-          });
-        } else {
-          result.add({
-            'opportunity': opp,
-            'discipline': discipline,
-            'stakeholder': stakeholder,
-            'potentialCost1': costSavings,
-            'potentialCost2': scheduleSavings,
-          });
-        }
+        result.add({
+          'opportunity': opp,
+          'discipline': (map['discipline'] ?? '').toString().trim(),
+          'stakeholder':
+              (map['stakeholder'] ?? map['owner'] ?? '').toString().trim(),
+          'potentialCost1':
+              (map['potential_cost_savings'] ?? map['cost_savings'] ?? '')
+                  .toString()
+                  .trim(),
+          'potentialCost2': (map['potential_cost_schedule_savings'] ??
+                  map['schedule_savings'] ??
+                  '')
+              .toString()
+              .trim(),
+        });
       }
       if (result.isNotEmpty) return result.take(12).toList();
-      // Return fallback if no opportunities generated
-      return _fallbackOpportunities();
+      throw Exception('OpenAI returned no opportunities');
     } catch (e) {
-      debugPrint('generateOpportunitiesFromContext failed: $e');
-      // Return fallback on any error (timeout, network, parsing, etc.)
-      return _fallbackOpportunities();
+      rethrow;
     }
-  }
-
-  List<Map<String, String>> _fallbackOpportunities() {
-    return [
-      {
-        'opportunity': 'Automate manual data entry processes',
-        'discipline': 'IT',
-        'stakeholder': 'IT Operations Manager',
-        'potentialCost1': '50,000',
-        'potentialCost2': '4 weeks',
-      },
-      {
-        'opportunity': 'Consolidate vendor contracts for better pricing',
-        'discipline': 'Procurement',
-        'stakeholder': 'Procurement Director',
-        'potentialCost1': '75,000',
-        'potentialCost2': '6 weeks',
-      },
-      {
-        'opportunity': 'Implement early risk detection mechanisms',
-        'discipline': 'Project Management',
-        'stakeholder': 'Program Manager',
-        'potentialCost1': '30,000',
-        'potentialCost2': '2 weeks',
-      },
-      {
-        'opportunity': 'Streamline approval workflows',
-        'discipline': 'Operations',
-        'stakeholder': 'Operations Lead',
-        'potentialCost1': '40,000',
-        'potentialCost2': '3 weeks',
-      },
-      {
-        'opportunity': 'Leverage existing infrastructure investments',
-        'discipline': 'IT',
-        'stakeholder': 'IT Infrastructure Manager',
-        'potentialCost1': '100,000',
-        'potentialCost2': '8 weeks',
-      },
-      {
-        'opportunity': 'Cross-train team members for better coverage',
-        'discipline': 'Human Resources',
-        'stakeholder': 'HR Director',
-        'potentialCost1': '25,000',
-        'potentialCost2': '2 weeks',
-      },
-    ];
   }
 
   String _opportunitiesPrompt(String context) {
@@ -893,28 +693,23 @@ $trimmedContext
     return '''
 From the project context below, list concrete project opportunities that would benefit the initiative (efficiency, cost, schedule, risk reduction, quality, compliance, etc.).
 
-CRITICAL: You MUST include ALL fields for each opportunity. Do not leave any field empty.
-
 Return ONLY valid JSON with this exact structure:
 {
   "opportunities": [
     {
-      "opportunity": "Concise opportunity statement (REQUIRED)",
-      "discipline": "Owning discipline (e.g., IT, Finance, Operations, Project Management, Risk Management, Consulting) (REQUIRED)",
-      "stakeholder": "Primary stakeholder / owner name and title (e.g., 'IT Operations Manager', 'Procurement Director', 'Program Manager') (REQUIRED)",
-      "potential_cost_savings": "Estimated cost savings amount (e.g., '50,000', '75,000', '100,000') (REQUIRED)",
-      "potential_cost_schedule_savings": "Estimated schedule savings (e.g., '4 weeks', '6 weeks', '2 months') (REQUIRED)"
+      "opportunity": "Concise opportunity statement",
+      "discipline": "Owning discipline (e.g., IT, Finance, Operations)",
+      "stakeholder": "Primary stakeholder / owner",
+      "potential_cost_savings": "Numeric or short label (e.g., 25,000)",
+      "potential_cost_schedule_savings": "Numeric/short label (e.g., 2 weeks)"
     }
   ]
 }
 
 Guidelines:
 - Be specific and actionable (no placeholders).
-- ALWAYS provide a stakeholder name and title for each opportunity.
-- ALWAYS provide realistic cost savings estimates (use dollar amounts like '50,000' or '75,000').
-- ALWAYS provide realistic schedule savings (use time periods like '2 weeks', '1 month', '6 weeks').
 - Use concise text; do not add extra fields.
-- Generate 5–12 items.
+- 5–12 items is ideal.
 
 Project context:
 """
@@ -944,121 +739,6 @@ Project context:
 """
 $c
 """
-''';
-  }
-
-  /// Generates a comprehensive business case from project notes and context
-  Future<String> generateBusinessCase({
-    required String projectName,
-    String notes = '',
-    String solutionTitle = '',
-    String solutionDescription = '',
-    int maxTokens = 1200,
-    double temperature = 0.6,
-  }) async {
-    if (!OpenAiConfig.isConfigured) {
-      throw const OpenAiNotConfiguredException();
-    }
-
-    final uri = OpenAiConfig.chatUri();
-    final headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
-    };
-
-    final prompt = _businessCasePrompt(
-      projectName: projectName,
-      notes: notes,
-      solutionTitle: solutionTitle,
-      solutionDescription: solutionDescription,
-    );
-
-    final body = jsonEncode({
-      'model': OpenAiConfig.model,
-      'temperature': temperature,
-      'max_tokens': maxTokens,
-      'response_format': {'type': 'json_object'},
-      'messages': [
-        {
-          'role': 'system',
-          'content':
-              'You are a senior business analyst. Generate a comprehensive, professional business case that justifies the project investment. Always return only a JSON object with a "business_case" field containing the full text.'
-        },
-        {
-          'role': 'user',
-          'content': prompt,
-        }
-      ],
-    });
-
-    try {
-      final response = await _client
-          .post(uri, headers: headers, body: body)
-          .timeout(const Duration(seconds: 20));
-      if (response.statusCode == 401) throw Exception('Invalid API key');
-      if (response.statusCode == 429) throw Exception('API quota exceeded');
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception(
-            'OpenAI error ${response.statusCode}: ${response.body}');
-      }
-      final data =
-          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-      final content =
-          (data['choices'] as List).first['message']['content'] as String;
-      final parsed = jsonDecode(content) as Map<String, dynamic>;
-      final businessCase =
-          (parsed['business_case'] ?? parsed['text'] ?? parsed['content'] ?? '')
-              .toString()
-              .trim();
-      final cleanText = _stripAsterisks(businessCase);
-      if (cleanText.isNotEmpty) return cleanText;
-      // Fallback: try to extract from any text field
-      if (parsed.isNotEmpty) {
-        return parsed.values
-            .map((v) => _stripAsterisks(v.toString()))
-            .join('\n')
-            .trim();
-      }
-      return '';
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  String _businessCasePrompt({
-    required String projectName,
-    String notes = '',
-    String solutionTitle = '',
-    String solutionDescription = '',
-  }) {
-    final pn = _escape(projectName);
-    final n = _escape(notes);
-    final st = _escape(solutionTitle);
-    final sd = _escape(solutionDescription);
-
-    return '''
-Generate a comprehensive business case for the project: "$pn"
-
-Return ONLY valid JSON with this exact structure:
-{
-  "business_case": "A detailed business case (minimum 150 words) covering: 1) Executive Summary, 2) Problem Statement, 3) Proposed Solution, 4) Expected Benefits, 5) Investment Requirements, 6) Risk Assessment, 7) Success Metrics. Use clear paragraphs and professional business language."
-}
-
-Guidelines:
-- Minimum 150 words, ideally 200-400 words
-- Include specific, measurable benefits
-- Address risks and mitigation strategies
-- Use professional business terminology
-- Be specific to the project context provided
-- Avoid generic templates or placeholders
-
-Project Information:
-- Project Name: $pn
-${notes.isNotEmpty ? '- Notes: $n' : ''}
-${solutionTitle.isNotEmpty ? '- Solution: $st' : ''}
-${solutionDescription.isNotEmpty ? '- Solution Description: $sd' : ''}
-
-Generate a compelling business case that would justify this project to executive stakeholders.
 ''';
   }
 
@@ -1171,6 +851,92 @@ Additional context: "$notes"
 ''';
   }
 
+  // SUGGESTIONS
+  Future<List<CostEstimateItem>> generateCostEstimateSuggestions({
+    required String context,
+  }) async {
+    final trimmed = context.trim();
+    if (trimmed.isEmpty) throw Exception('No context provided');
+    if (!OpenAiConfig.isConfigured) throw const OpenAiNotConfiguredException();
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': 0.6,
+      'max_tokens': 1200,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content': 'You are a project cost estimator. Suggest 3-5 relevant cost items based on the project context. Return strict JSON only.'
+        },
+        {
+          'role': 'user',
+          'content': _costSuggestionsPrompt(trimmed),
+        },
+      ],
+    });
+
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 15));
+      
+      if (response.statusCode == 401) throw Exception('Invalid API key');
+      if (response.statusCode == 429) throw Exception('API quota exceeded');
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('OpenAI error ${response.statusCode}: ${response.body}');
+      }
+
+      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content = (data['choices'] as List).first['message']['content'] as String;
+      final parsed = jsonDecode(content) as Map<String, dynamic>;
+      
+      final list = (parsed['items'] as List?)?.map((e) {
+        final map = e as Map<String, dynamic>;
+        return CostEstimateItem(
+          title: _stripAsterisks((map['title'] ?? '').toString()),
+          amount: _toDouble(map['amount']),
+          notes: _stripAsterisks((map['notes'] ?? '').toString()),
+          costType: (map['costType'] ?? map['type'] ?? 'direct').toString().toLowerCase(),
+        );
+      }).toList() ?? [];
+
+      return list.where((i) => i.title.isNotEmpty).toList();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  String _costSuggestionsPrompt(String context) {
+    final c = _escape(context);
+    return '''
+Based on the project context below, suggest 3-5 realistic cost estimate items (mix of direct and indirect costs if appropriate).
+
+Return ONLY valid JSON with this structure:
+{
+  "items": [
+    {
+      "title": "Item Name",
+      "amount": 15000,
+      "costType": "direct" or "indirect",
+      "notes": "Brief explanation or assumption"
+    }
+  ]
+}
+
+Project Context:
+"""
+$c
+"""
+''';
+  }
+
   // SOLUTIONS
   Future<List<AiSolutionItem>> generateSolutionsFromBusinessCase(
       String businessCase) async {
@@ -1230,10 +996,10 @@ Additional context: "$notes"
     final content =
         (data['choices'] as List).first['message']['content'] as String;
     final parsed = jsonDecode(content) as Map<String, dynamic>;
-    final items = (parsed['solutions'] as List? ?? [])
-        .map((e) => AiSolutionItem.fromMap(e as Map<String, dynamic>))
-        .where((e) => e.title.isNotEmpty && e.description.isNotEmpty)
-        .toList();
+  final items = (parsed['solutions'] as List? ?? [])
+    .map((e) => AiSolutionItem.fromMap(e as Map<String, dynamic>))
+    .where((e) => e.title.isNotEmpty && e.description.isNotEmpty)
+    .toList();
     return _normalizeSolutions(items);
   }
 
@@ -1282,12 +1048,12 @@ Additional context: "$notes"
       final Map<String, List<String>> result = {};
       for (final item in list) {
         final map = item as Map<String, dynamic>;
-        final title = _stripAsterisks((map['solution'] ?? '').toString());
-        final items = (map['items'] as List? ?? [])
-            .map((e) => _stripAsterisks(e.toString()))
-            .where((e) => e.trim().isNotEmpty)
-            .take(3)
-            .toList();
+    final title = _stripAsterisks((map['solution'] ?? '').toString());
+    final items = (map['items'] as List? ?? [])
+      .map((e) => _stripAsterisks(e.toString()))
+      .where((e) => e.trim().isNotEmpty)
+      .take(3)
+      .toList();
         if (title.isNotEmpty && items.isNotEmpty) result[title] = items;
       }
       return _mergeWithFallbackRisks(solutions, result);
@@ -1411,8 +1177,7 @@ Additional context: "$notes"
         .map((e) {
           final item = e as Map<String, dynamic>;
           return {
-            'requirement':
-                _stripAsterisks((item['requirement'] ?? '').toString().trim()),
+            'requirement': _stripAsterisks((item['requirement'] ?? '').toString().trim()),
             'requirementType': _stripAsterisks((item['requirementType'] ??
                     item['requirement_type'] ??
                     'Functional')
@@ -1450,7 +1215,7 @@ Additional context: "$notes"
         {
           'role': 'system',
           'content':
-              'You are an infrastructure architect. For each solution, list ONLY physical infrastructure items needed (servers, cabling, hardware, routers, switches, physical storage, network equipment). EXCLUDE cloud services, software, frameworks, or virtual-only solutions. Focus on tangible, physical hardware and infrastructure components. Return strict JSON only.'
+              'You are a solutions architect. For each solution, list 3-6 core technologies, frameworks, services, or tools needed to implement it. Be concrete and vendor-agnostic where reasonable. Return strict JSON only.'
         },
         {
           'role': 'user',
@@ -1477,14 +1242,12 @@ Additional context: "$notes"
       final Map<String, List<String>> result = {};
       for (final item in list) {
         final map = item as Map<String, dynamic>;
-        final title = _stripAsterisks((map['solution'] ?? '').toString());
-        final items = (map['items'] as List? ?? [])
-            .map((e) => _stripAsterisks(e.toString()))
-            .where((e) => e.trim().isNotEmpty)
-            // Filter out cloud/software-only references
-            .where((e) => _isPhysicalInfrastructure(e))
-            .take(6)
-            .toList();
+    final title = _stripAsterisks((map['solution'] ?? '').toString());
+    final items = (map['items'] as List? ?? [])
+      .map((e) => _stripAsterisks(e.toString()))
+      .where((e) => e.trim().isNotEmpty)
+      .take(6)
+      .toList();
         if (title.isNotEmpty && items.isNotEmpty) result[title] = items;
       }
       return _mergeWithFallbackTech(solutions, result);
@@ -1561,7 +1324,7 @@ Additional context: "$notes"
       final Map<String, List<AiCostItem>> result = {};
       for (final entry in list) {
         final map = entry as Map<String, dynamic>;
-        final title = _stripAsterisks((map['solution'] ?? '').toString());
+  final title = _stripAsterisks((map['solution'] ?? '').toString());
         final itemsRaw = (map['items'] as List? ?? []);
         final items = itemsRaw
             .map((e) => AiCostItem.fromMap(e as Map<String, dynamic>))
@@ -1716,193 +1479,6 @@ Context notes (optional): $notes
             'Signals innovation leadership and improves partner confidence in programme execution.',
       },
     );
-  }
-
-  Future<List<BenefitLineItemInput>> generateBenefitLineItems({
-    required List<AiSolutionItem> solutions,
-    required double estimatedProjectValue,
-    String contextNotes = '',
-    String currency = 'USD',
-  }) async {
-    if (!OpenAiConfig.isConfigured) {
-      return _fallbackBenefitLineItems(estimatedProjectValue, currency);
-    }
-
-    final uri = OpenAiConfig.chatUri();
-    final headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}'
-    };
-    final body = jsonEncode({
-      'model': OpenAiConfig.model,
-      'temperature': 0.4,
-      'max_tokens': 1200,
-      'response_format': {'type': 'json_object'},
-      'messages': [
-        {
-          'role': 'system',
-          'content':
-              'You are a financial analyst creating detailed benefit line items for cost-benefit analysis. Generate realistic numeric values (unit_value and units) that sum to approximately the estimated project value. Return ONLY a JSON object with a "benefit_line_items" array.'
-        },
-        {
-          'role': 'user',
-          'content': _benefitLineItemsPrompt(
-              solutions, estimatedProjectValue, contextNotes, currency)
-        },
-      ],
-    });
-
-    try {
-      final response = await _client
-          .post(uri, headers: headers, body: body)
-          .timeout(const Duration(seconds: 12));
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception(
-            'OpenAI error ${response.statusCode}: ${response.body}');
-      }
-      final data =
-          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-      final content =
-          (data['choices'] as List).first['message']['content'] as String;
-      final parsed = jsonDecode(content) as Map<String, dynamic>;
-      final itemsRaw = parsed['benefit_line_items'] ?? parsed['items'] ?? [];
-      if (itemsRaw is! List) {
-        return _fallbackBenefitLineItems(estimatedProjectValue, currency);
-      }
-      final items = <BenefitLineItemInput>[];
-      for (final item in itemsRaw) {
-        if (item is Map<String, dynamic>) {
-          final category =
-              (item['category'] ?? item['category_key'] ?? 'other').toString();
-          final title = _stripAsterisks(
-              (item['title'] ?? item['name'] ?? '').toString().trim());
-          final unitValue =
-              _parseDouble(item['unit_value'] ?? item['unitValue'] ?? 0);
-          final units = _parseDouble(item['units'] ?? item['quantity'] ?? 0);
-          final notes = _stripAsterisks(
-              (item['notes'] ?? item['description'] ?? '').toString().trim());
-          if (title.isNotEmpty && unitValue > 0 && units > 0) {
-            items.add(BenefitLineItemInput(
-              category: category,
-              title: title,
-              unitValue: unitValue,
-              units: units,
-              notes: notes,
-            ));
-          }
-        }
-      }
-      return items.isNotEmpty
-          ? items
-          : _fallbackBenefitLineItems(estimatedProjectValue, currency);
-    } catch (e) {
-      print('generateBenefitLineItems failed: $e');
-      return _fallbackBenefitLineItems(estimatedProjectValue, currency);
-    }
-  }
-
-  double _parseDouble(dynamic value) {
-    if (value == null) return 0;
-    if (value is num) return value.toDouble();
-    final s = value.toString().replaceAll(',', '').replaceAll('%', '').trim();
-    return double.tryParse(s) ?? 0;
-  }
-
-  String _benefitLineItemsPrompt(
-    List<AiSolutionItem> solutions,
-    double estimatedProjectValue,
-    String contextNotes,
-    String currency,
-  ) {
-    final list = solutions
-        .map((s) =>
-            '{"title": "${_escape(s.title)}", "description": "${_escape(s.description)}"}')
-        .join(',');
-    return '''
-We are creating detailed benefit line items for a cost-benefit analysis. The estimated total project value is ${estimatedProjectValue.toStringAsFixed(0)} $currency.
-
-Generate 4-8 benefit line items with realistic numeric values. Each item should have:
-- category: one of revenue, cost_saving, ops_efficiency, productivity, regulatory_compliance, process_improvement, brand_image, stakeholder_commitment, or other
-- title: a clear, specific benefit description (e.g., "Reduced manual processing time", "Increased customer retention")
-- unit_value: numeric value per unit in $currency (e.g., 5000, 12000.50)
-- units: quantity/number of units (e.g., 10, 25.5, 100)
-- notes: optional brief explanation
-
-The total of (unit_value × units) for all items should approximately equal ${estimatedProjectValue.toStringAsFixed(0)} $currency.
-
-Return ONLY valid JSON with this exact structure:
-{
-  "benefit_line_items": [
-    {
-      "category": "revenue",
-      "title": "Increased monthly subscription revenue",
-      "unit_value": 5000,
-      "units": 12,
-      "notes": "Monthly recurring revenue increase"
-    },
-    {
-      "category": "ops_efficiency",
-      "title": "Reduced manual processing hours",
-      "unit_value": 50,
-      "units": 200,
-      "notes": "Time savings per month"
-    }
-  ]
-}
-
-Solutions: [$list]
-
-Context notes (optional): ${contextNotes.isEmpty ? 'None provided' : contextNotes}
-''';
-  }
-
-  List<BenefitLineItemInput> _fallbackBenefitLineItems(
-      double estimatedProjectValue, String currency) {
-    // Distribute the estimated value across realistic benefit line items
-    final items = <BenefitLineItemInput>[];
-    final valuePerItem = estimatedProjectValue / 5; // 5 items
-
-    items.add(BenefitLineItemInput(
-      category: 'revenue',
-      title: 'Increased monthly revenue',
-      unitValue: valuePerItem * 0.4,
-      units: 12,
-      notes: 'Monthly recurring revenue increase over 12 months',
-    ));
-
-    items.add(BenefitLineItemInput(
-      category: 'ops_efficiency',
-      title: 'Reduced operational costs',
-      unitValue: valuePerItem * 0.3,
-      units: 10,
-      notes: 'Cost savings from automation',
-    ));
-
-    items.add(BenefitLineItemInput(
-      category: 'productivity',
-      title: 'Time savings per employee',
-      unitValue: valuePerItem * 0.15,
-      units: 50,
-      notes: 'Hours saved per employee per month',
-    ));
-
-    items.add(BenefitLineItemInput(
-      category: 'cost_saving',
-      title: 'Avoided compliance penalties',
-      unitValue: valuePerItem * 0.1,
-      units: 1,
-      notes: 'One-time penalty avoidance',
-    ));
-
-    items.add(BenefitLineItemInput(
-      category: 'process_improvement',
-      title: 'Streamlined workflow efficiency',
-      unitValue: valuePerItem * 0.05,
-      units: 20,
-      notes: 'Process improvement gains',
-    ));
-
-    return items;
   }
 
   String _projectValuePrompt(List<AiSolutionItem> solutions, String notes) {
@@ -2189,7 +1765,7 @@ Remember: Return ONLY a JSON object with key "savings_scenarios".
       // If no solutions but we have project context, create a placeholder
       list = '{"title": "Project", "description": "${_escape(notes)}"}';
     }
-
+    
     return '''
 For each solution below, list the major infrastructure considerations required to support it in production. Think in terms of environments, networking, security, observability, scaling, data, and resilience. 
 
@@ -2312,7 +1888,7 @@ Context notes (optional): $notes
       // If no solutions but we have project context, create a placeholder
       list = '{"title": "Project", "description": "${_escape(notes)}"}';
     }
-
+    
     return '''
 For each solution below, identify the core stakeholders that must be engaged. Prioritize external, regulatory, government, and any other critical stakeholders of note. Keep each item under 12 words.
 
@@ -3883,23 +3459,20 @@ $escaped
       // If no solutions but we have project context, create a placeholder
       list = '{"title": "Project", "description": "${_escape(notes)}"}';
     }
-
+    
     return '''
-For each solution below, list 3-6 physical infrastructure considerations that would be SPECIFICALLY required. 
+For each solution below, list 3-6 core technologies/services/frameworks that would be SPECIFICALLY required to implement that particular solution. 
 
-CRITICAL REQUIREMENTS:
-- ONLY include physical infrastructure: servers, cabling, hardware, routers, switches, physical storage devices, network equipment, data center components
-- EXCLUDE: cloud services (AWS, Azure, GCP), software frameworks, virtual-only solutions, SaaS platforms, APIs, databases (unless referring to physical database servers)
-- Focus on tangible hardware and physical network components
-- Each solution must have DIFFERENT and UNIQUE infrastructure recommendations tailored to its specific requirements
-
-Examples of VALID items: "Physical servers (rack-mounted)", "Network cabling (Cat6)", "Hardware routers", "Physical storage arrays", "Network switches", "Data center cooling systems"
-Examples of INVALID items: "Cloud hosting", "AWS EC2", "Docker containers", "Kubernetes", "Software-defined networking", "Virtual machines"
+IMPORTANT: Each solution must have DIFFERENT and UNIQUE technology recommendations tailored to its specific title, description, and requirements. Do NOT repeat the same generic technologies across all solutions. Consider:
+- The nature of the solution (cloud-native vs on-premise, mobile vs web, etc.)
+- Industry-specific requirements implied by the solution
+- Scale and complexity differences between solutions
+- Different architectural patterns suitable for each solution
 
 Return ONLY valid JSON with this exact structure:
 {
   "technologies": [
-    {"solution": "Solution Name", "items": ["Physical Infrastructure Item 1", "Physical Infrastructure Item 2", "Physical Infrastructure Item 3"]}
+    {"solution": "Solution Name", "items": ["Tech 1", "Tech 2", "Tech 3"]}
   ]
 }
 
@@ -3910,14 +3483,9 @@ Context notes (optional): $notes
   }
 
   // FEP RISKS GENERATION - Generate risks with all fields (Title, Category, Probability, Impact)
-  Future<List<Map<String, String>>> generateFepRisks(String context,
-      {int? minCount}) async {
+  Future<List<Map<String, String>>> generateFepRisks(String context) async {
     if (context.trim().isEmpty) return [];
     if (!OpenAiConfig.isConfigured) throw const OpenAiNotConfiguredException();
-
-    final targetCount = minCount != null && minCount > 0
-        ? minCount.clamp(5, 20) // Generate between 5 and 20 risks
-        : 8; // Default to 8 risks
 
     final uri = OpenAiConfig.chatUri();
     final headers = {
@@ -3937,8 +3505,7 @@ Context notes (optional): $notes
         },
         {
           'role': 'user',
-          'content':
-              '''Generate $targetCount project risks based on this context:
+          'content': '''Generate 5-8 project risks based on this context:
 
 $context
 
@@ -3960,10 +3527,10 @@ Return JSON in this format:
     try {
       final response = await _client
           .post(uri, headers: headers, body: body)
-          .timeout(const Duration(seconds: 30)); // Increased timeout
+          .timeout(const Duration(seconds: 15));
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        // Return fallback instead of throwing
-        return _fallbackFepRisks(targetCount);
+        throw Exception(
+            'OpenAI error ${response.statusCode}: ${response.body}');
       }
       final data =
           jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
@@ -3983,150 +3550,19 @@ Return JSON in this format:
           })
           .where((r) => r['title']!.isNotEmpty)
           .toList();
-
-      // If we got fewer risks than requested, use fallback to fill the gap
-      if (risks.length < targetCount) {
-        final fallback = _fallbackFepRisks(targetCount - risks.length);
-        risks.addAll(fallback);
-      }
-
-      return risks.take(targetCount).toList();
+      return risks;
     } catch (e) {
-      // Return fallback on any error (timeout, network, parsing, etc.)
-      debugPrint('generateFepRisks failed: $e');
-      return _fallbackFepRisks(targetCount);
+      rethrow;
     }
   }
 
-  List<Map<String, String>> _fallbackFepRisks(int count) {
-    final fallbackRisks = [
-      {
-        'title': 'Scope creep leading to timeline delays',
-        'category': 'Schedule',
-        'probability': 'Medium',
-        'impact': 'High',
-      },
-      {
-        'title': 'Resource availability constraints',
-        'category': 'Resource',
-        'probability': 'Medium',
-        'impact': 'Medium',
-      },
-      {
-        'title': 'Technical integration challenges',
-        'category': 'Technical',
-        'probability': 'High',
-        'impact': 'High',
-      },
-      {
-        'title': 'Budget overruns due to unforeseen costs',
-        'category': 'Financial',
-        'probability': 'Medium',
-        'impact': 'Medium',
-      },
-      {
-        'title': 'Stakeholder alignment and approval delays',
-        'category': 'Operational',
-        'probability': 'Medium',
-        'impact': 'Medium',
-      },
-      {
-        'title': 'Data security and compliance requirements',
-        'category': 'Technical',
-        'probability': 'Low',
-        'impact': 'High',
-      },
-      {
-        'title': 'Vendor delivery delays',
-        'category': 'Schedule',
-        'probability': 'Medium',
-        'impact': 'Medium',
-      },
-      {
-        'title': 'Change management resistance',
-        'category': 'Operational',
-        'probability': 'Low',
-        'impact': 'Medium',
-      },
-    ];
-
-    // Return requested count, cycling through fallback risks if needed
-    final result = <Map<String, String>>[];
-    for (int i = 0; i < count; i++) {
-      result.add(
-          Map<String, String>.from(fallbackRisks[i % fallbackRisks.length]));
-    }
-    return result;
-  }
-
-  // PROCUREMENT - Generate multiple vendors
-  Future<List<Map<String, dynamic>>> generateProcurementVendors({
+  Future<List<WorkItem>> generateWbsStructure({
     required String projectName,
-    required String solutionTitle,
+    required String projectObjective,
+    required String dimension,
     String contextNotes = '',
-    int count = 5,
   }) async {
-    if (!OpenAiConfig.isConfigured) {
-      return _fallbackProcurementVendors(count);
-    }
-
-    final categories = [
-      'IT Equipment',
-      'Construction Services',
-      'Furniture',
-      'Security',
-      'Logistics',
-      'Services',
-      'Materials'
-    ];
-    final vendors = <Map<String, dynamic>>[];
-
-    // Generate vendors for different categories
-    final categoriesToGenerate = categories.take(count).toList();
-
-    for (final category in categoriesToGenerate) {
-      try {
-        final vendor = await generateVendorSuggestion(
-          projectName: projectName,
-          solutionTitle: solutionTitle,
-          category: category,
-          contextNotes: contextNotes,
-        );
-        vendors.add(vendor);
-      } catch (e) {
-        debugPrint('Failed to generate vendor for $category: $e');
-        // Add fallback vendor for this category
-        vendors.add(_fallbackVendor(category));
-      }
-    }
-
-    return vendors;
-  }
-
-  List<Map<String, dynamic>> _fallbackProcurementVendors(int count) {
-    final categories = [
-      'IT Equipment',
-      'Construction Services',
-      'Furniture',
-      'Security',
-      'Logistics'
-    ];
-    return categories
-        .take(count)
-        .map((category) => _fallbackVendor(category))
-        .toList();
-  }
-
-  // PROCUREMENT - Generate RFQ workflows
-  Future<List<Map<String, dynamic>>> generateProcurementRfqs({
-    required String projectName,
-    required String solutionTitle,
-    String contextNotes = '',
-    int count = 3,
-  }) async {
-    if (!OpenAiConfig.isConfigured) {
-      return _fallbackProcurementRfqs(count);
-    }
+    if (!OpenAiConfig.isConfigured) return [];
 
     final uri = OpenAiConfig.chatUri();
     final headers = {
@@ -4135,19 +3571,23 @@ Return JSON in this format:
     };
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-      'temperature': 0.6,
+      'temperature': 0.5,
       'max_tokens': 1500,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
           'role': 'system',
           'content':
-              'You are a procurement specialist. Generate RFQ (Request for Quotation) workflows with title, category, owner, dueDate, invited vendors count, responses count, budget, status, and priority. Return strict JSON only.'
+              'You are a project management expert. Generate a hierarchical Work Breakdown Structure (WBS) in strict JSON format. Each item should have a title, description, and optionally children and dependencies.'
         },
         {
           'role': 'user',
-          'content': _rfqGenerationPrompt(
-              projectName, solutionTitle, contextNotes, count)
+          'content': _wbsPrompt(
+            projectName: projectName,
+            projectObjective: projectObjective,
+            dimension: dimension,
+            contextNotes: contextNotes,
+          )
         },
       ],
     });
@@ -4155,879 +3595,77 @@ Return JSON in this format:
     try {
       final response = await _client
           .post(uri, headers: headers, body: body)
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 22));
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        return _fallbackProcurementRfqs(count);
+        throw Exception('OpenAI error ${response.statusCode}: ${response.body}');
       }
-      final data =
-          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-      final content =
-          (data['choices'] as List).first['message']['content'] as String;
+      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content = (data['choices'] as List).first['message']['content'] as String;
       final parsed = jsonDecode(content) as Map<String, dynamic>;
-      final rfqs = (parsed['rfqs'] as List? ?? [])
-          .map((e) {
-            final item = e as Map<String, dynamic>;
-            return {
-              'title': _stripAsterisks((item['title'] ?? '').toString().trim()),
-              'category': _stripAsterisks(
-                  (item['category'] ?? 'IT Equipment').toString().trim()),
-              'owner': _stripAsterisks(
-                  (item['owner'] ?? 'Procurement Manager').toString().trim()),
-              'dueDate': _stripAsterisks(
-                  (item['dueDate'] ?? item['due_date'] ?? '')
-                      .toString()
-                      .trim()),
-              'invited': (item['invited'] as num?)?.toInt() ?? 5,
-              'responses': (item['responses'] as num?)?.toInt() ?? 3,
-              'budget': (item['budget'] as num?)?.toInt() ?? 50000,
-              'status': _normalizeRfqStatus(
-                  (item['status'] ?? 'draft').toString().trim()),
-              'priority': _normalizePriority(
-                  (item['priority'] ?? 'medium').toString().trim()),
-            };
-          })
-          .where((r) => r['title']!.toString().isNotEmpty)
-          .toList();
-      return rfqs.length >= count
-          ? rfqs.take(count).toList()
-          : [...rfqs, ..._fallbackProcurementRfqs(count - rfqs.length)];
+      final List rawWbs = parsed['wbs'] as List? ?? [];
+      
+      final items = rawWbs.map((e) => WorkItem.fromJson(e as Map<String, dynamic>)).toList();
+      _wireUpWbsTree(items);
+      return items;
     } catch (e) {
-      debugPrint('generateProcurementRfqs failed: $e');
-      return _fallbackProcurementRfqs(count);
+      debugPrint('Error generating WBS: $e');
+      return [];
     }
   }
 
-  String _normalizeRfqStatus(String status) {
-    final lower = status.toLowerCase();
-    if (lower.contains('draft')) return 'draft';
-    if (lower.contains('review')) return 'review';
-    if (lower.contains('market')) return 'inMarket';
-    if (lower.contains('evaluation') || lower.contains('evaluating'))
-      return 'evaluation';
-    if (lower.contains('award')) return 'awarded';
-    return 'draft';
-  }
-
-  String _rfqGenerationPrompt(String projectName, String solutionTitle,
-      String contextNotes, int count) {
-    final notes = contextNotes.trim().isEmpty
-        ? 'No additional context provided.'
-        : contextNotes.trim();
-    return '''
-Generate $count RFQ (Request for Quotation) workflows for this procurement scenario:
-
-Project: $projectName
-Solution: $solutionTitle
-
-Context: $notes
-
-Return JSON in this format:
-{
-  "rfqs": [
-    {
-      "title": "RFQ title (e.g., Network Infrastructure Equipment)",
-      "category": "IT Equipment/Construction Services/Furniture/Security/Logistics/Services/Materials",
-      "owner": "Owner name (e.g., Procurement Manager)",
-      "dueDate": "YYYY-MM-DD format",
-      "invited": 5,
-      "responses": 3,
-      "budget": 50000,
-      "status": "draft/review/inMarket/evaluation/awarded",
-      "priority": "critical/high/medium/low"
+  void _wireUpWbsTree(List<WorkItem> items, {String parentId = ''}) {
+    for (var item in items) {
+      item.parentId = parentId;
+      if (item.children.isNotEmpty) {
+        _wireUpWbsTree(item.children, parentId: item.id);
+      }
     }
-  ]
-}
-
-Return ONLY valid JSON.
-''';
   }
 
-  List<Map<String, dynamic>> _fallbackProcurementRfqs(int count) {
-    final now = DateTime.now();
-    return List.generate(count, (index) {
-      final dueDate = now.add(Duration(days: 30 + (index * 15)));
-      return {
-        'title': [
-          'Network Infrastructure Equipment',
-          'Office Furniture Set',
-          'Security System Installation',
-          'Construction Materials',
-          'Professional Services'
-        ][index % 5],
-        'category': [
-          'IT Equipment',
-          'Furniture',
-          'Security',
-          'Materials',
-          'Services'
-        ][index % 5],
-        'owner': 'Procurement Manager',
-        'dueDate':
-            '${dueDate.year}-${dueDate.month.toString().padLeft(2, '0')}-${dueDate.day.toString().padLeft(2, '0')}',
-        'invited': 5 + index,
-        'responses': 3 + index,
-        'budget': 50000 + (index * 25000),
-        'status': [
-          'draft',
-          'review',
-          'inMarket',
-          'evaluation',
-          'awarded'
-        ][index % 5],
-        'priority': ['high', 'medium', 'critical', 'medium', 'low'][index % 5],
-      };
-    });
-  }
-
-  // PROCUREMENT - Generate Purchase Orders
-  Future<List<Map<String, dynamic>>> generateProcurementPurchaseOrders({
+  String _wbsPrompt({
     required String projectName,
-    required String solutionTitle,
-    String contextNotes = '',
-    int count = 4,
-  }) async {
-    if (!OpenAiConfig.isConfigured) {
-      return _fallbackProcurementPurchaseOrders(count);
-    }
-
-    final uri = OpenAiConfig.chatUri();
-    final headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}'
-    };
-    final body = jsonEncode({
-      'model': OpenAiConfig.model,
-      'temperature': 0.6,
-      'max_tokens': 1500,
-      'response_format': {'type': 'json_object'},
-      'messages': [
-        {
-          'role': 'system',
-          'content':
-              'You are a procurement specialist. Generate purchase orders with id, vendor, category, owner, orderedDate, expectedDate, amount, progress, and status. Return strict JSON only.'
-        },
-        {
-          'role': 'user',
-          'content': _purchaseOrderGenerationPrompt(
-              projectName, solutionTitle, contextNotes, count)
-        },
-      ],
-    });
-
-    try {
-      final response = await _client
-          .post(uri, headers: headers, body: body)
-          .timeout(const Duration(seconds: 30));
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        return _fallbackProcurementPurchaseOrders(count);
-      }
-      final data =
-          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-      final content =
-          (data['choices'] as List).first['message']['content'] as String;
-      final parsed = jsonDecode(content) as Map<String, dynamic>;
-      final pos = (parsed['purchaseOrders'] as List? ??
-              parsed['purchase_orders'] as List? ??
-              [])
-          .map((e) {
-            final item = e as Map<String, dynamic>;
-            return {
-              'id': _stripAsterisks((item['id'] ??
-                      item['po_id'] ??
-                      'PO-${DateTime.now().millisecondsSinceEpoch}')
-                  .toString()
-                  .trim()),
-              'vendor': _stripAsterisks(
-                  (item['vendor'] ?? item['vendor_name'] ?? '')
-                      .toString()
-                      .trim()),
-              'category': _stripAsterisks(
-                  (item['category'] ?? 'IT Equipment').toString().trim()),
-              'owner': _stripAsterisks(
-                  (item['owner'] ?? 'Procurement Manager').toString().trim()),
-              'orderedDate': _stripAsterisks(
-                  (item['orderedDate'] ?? item['ordered_date'] ?? '')
-                      .toString()
-                      .trim()),
-              'expectedDate': _stripAsterisks(
-                  (item['expectedDate'] ?? item['expected_date'] ?? '')
-                      .toString()
-                      .trim()),
-              'amount': (item['amount'] as num?)?.toInt() ?? 50000,
-              'progress': ((item['progress'] as num?)?.toDouble() ?? 0.5)
-                  .clamp(0.0, 1.0),
-              'status': _normalizePoStatus(
-                  (item['status'] ?? 'issued').toString().trim()),
-            };
-          })
-          .where((r) => r['vendor']!.toString().isNotEmpty)
-          .toList();
-      return pos.length >= count
-          ? pos.take(count).toList()
-          : [...pos, ..._fallbackProcurementPurchaseOrders(count - pos.length)];
-    } catch (e) {
-      debugPrint('generateProcurementPurchaseOrders failed: $e');
-      return _fallbackProcurementPurchaseOrders(count);
-    }
-  }
-
-  String _normalizePoStatus(String status) {
-    final lower = status.toLowerCase();
-    if (lower.contains('approval') || lower.contains('pending'))
-      return 'awaitingApproval';
-    if (lower.contains('issue')) return 'issued';
-    if (lower.contains('transit') || lower.contains('shipping'))
-      return 'inTransit';
-    if (lower.contains('receive') || lower.contains('delivered'))
-      return 'received';
-    return 'issued';
-  }
-
-  String _purchaseOrderGenerationPrompt(String projectName,
-      String solutionTitle, String contextNotes, int count) {
-    final notes = contextNotes.trim().isEmpty
-        ? 'No additional context provided.'
-        : contextNotes.trim();
+    required String projectObjective,
+    required String dimension,
+    required String contextNotes,
+  }) {
     return '''
-Generate $count purchase orders for this procurement scenario:
-
+Generate a Work Breakdown Structure (WBS) for:
 Project: $projectName
-Solution: $solutionTitle
+Objective: $projectObjective
+Segmentation Dimension: $dimension
 
-Context: $notes
+Requirements:
+1. Break the project down into a hierarchical tree structure (2-3 levels deep).
+2. Level 1 should be the major phases or segments based on "$dimension".
+3. Level 2 and below should be specific deliverables or tasks.
+4. Each item MUST have a "title" and "description".
+5. Use "children" for sub-items.
+6. Use "dependencies" as a list of titles of sibling items that must be completed first.
 
-Return JSON in this format:
+Return strict JSON only in this format:
 {
-  "purchaseOrders": [
+  "wbs": [
     {
-      "id": "PO-001",
-      "vendor": "Vendor company name",
-      "category": "IT Equipment/Construction Services/Furniture/Security/Logistics/Services/Materials",
-      "owner": "Owner name",
-      "orderedDate": "YYYY-MM-DD",
-      "expectedDate": "YYYY-MM-DD",
-      "amount": 50000,
-      "progress": 0.5,
-      "status": "awaitingApproval/issued/inTransit/received"
-    }
-  ]
-}
-
-Return ONLY valid JSON.
-''';
-  }
-
-  List<Map<String, dynamic>> _fallbackProcurementPurchaseOrders(int count) {
-    final now = DateTime.now();
-    return List.generate(count, (index) {
-      final orderedDate = now.subtract(Duration(days: 10 + (index * 5)));
-      final expectedDate = now.add(Duration(days: 20 + (index * 10)));
-      return {
-        'id': 'PO-${(1000 + index).toString().padLeft(4, '0')}',
-        'vendor': [
-          'TechCorp Solutions',
-          'BuildRight Contractors',
-          'Office Essentials Co',
-          'SecureGuard Services'
-        ][index % 4],
-        'category': [
-          'IT Equipment',
-          'Construction Services',
-          'Furniture',
-          'Security'
-        ][index % 4],
-        'owner': 'Procurement Manager',
-        'orderedDate':
-            '${orderedDate.year}-${orderedDate.month.toString().padLeft(2, '0')}-${orderedDate.day.toString().padLeft(2, '0')}',
-        'expectedDate':
-            '${expectedDate.year}-${expectedDate.month.toString().padLeft(2, '0')}-${expectedDate.day.toString().padLeft(2, '0')}',
-        'amount': 50000 + (index * 25000),
-        'progress': [0.3, 0.6, 0.8, 1.0][index % 4],
-        'status': [
-          'awaitingApproval',
-          'issued',
-          'inTransit',
-          'received'
-        ][index % 4],
-      };
-    });
-  }
-
-  // PROCUREMENT - Generate Trackable Items
-  Future<List<Map<String, dynamic>>> generateProcurementTrackableItems({
-    required String projectName,
-    required String solutionTitle,
-    String contextNotes = '',
-    int count = 3,
-  }) async {
-    if (!OpenAiConfig.isConfigured) {
-      return _fallbackProcurementTrackableItems(count);
-    }
-
-    final uri = OpenAiConfig.chatUri();
-    final headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}'
-    };
-    final body = jsonEncode({
-      'model': OpenAiConfig.model,
-      'temperature': 0.6,
-      'max_tokens': 1500,
-      'response_format': {'type': 'json_object'},
-      'messages': [
+      "title": "Phase 1: Civil Works",
+      "description": "Foundation and structural elements",
+      "children": [
         {
-          'role': 'system',
-          'content':
-              'You are a logistics coordinator. Generate trackable procurement items with name, description, orderStatus, currentStatus, lastUpdate, and events timeline. Return strict JSON only.'
+          "title": "Excavation",
+          "description": "Earthmoving and site preparation"
         },
         {
-          'role': 'user',
-          'content': _trackableItemGenerationPrompt(
-              projectName, solutionTitle, contextNotes, count)
-        },
-      ],
-    });
-
-    try {
-      final response = await _client
-          .post(uri, headers: headers, body: body)
-          .timeout(const Duration(seconds: 30));
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        return _fallbackProcurementTrackableItems(count);
-      }
-      final data =
-          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-      final content =
-          (data['choices'] as List).first['message']['content'] as String;
-      final parsed = jsonDecode(content) as Map<String, dynamic>;
-      final items =
-          (parsed['trackableItems'] as List? ?? parsed['items'] as List? ?? [])
-              .map<Map<String, dynamic>>((e) {
-                final item = e as Map<String, dynamic>;
-                final events = (item['events'] as List? ?? [])
-                    .map<Map<String, dynamic>>((ev) {
-                      final event = ev as Map<String, dynamic>;
-                      return <String, dynamic>{
-                        'title': _stripAsterisks(
-                            (event['title'] ?? event['description'] ?? '')
-                                .toString()
-                                .trim()),
-                        'date': _stripAsterisks(
-                            (event['date'] ?? event['timestamp'] ?? '')
-                                .toString()
-                                .trim()),
-                        'status': _normalizeTrackableStatus(
-                            (event['status'] ?? 'inTransit').toString().trim()),
-                      };
-                    })
-                    .where((ev) => ev['title']!.toString().isNotEmpty)
-                    .toList();
-
-                return <String, dynamic>{
-                  'name': _stripAsterisks(
-                      (item['name'] ?? item['title'] ?? '').toString().trim()),
-                  'description': _stripAsterisks(
-                      (item['description'] ?? '').toString().trim()),
-                  'orderStatus': _stripAsterisks(
-                      (item['orderStatus'] ?? item['order_status'] ?? 'Ordered')
-                          .toString()
-                          .trim()),
-                  'currentStatus': _normalizeTrackableStatus(
-                      (item['currentStatus'] ??
-                              item['current_status'] ??
-                              'inTransit')
-                          .toString()
-                          .trim()),
-                  'lastUpdate': _stripAsterisks(
-                      (item['lastUpdate'] ?? item['last_update'] ?? '')
-                          .toString()
-                          .trim()),
-                  'events': events,
-                };
-              })
-              .where((r) => r['name']!.toString().isNotEmpty)
-              .toList();
-      return items.length >= count
-          ? items.take(count).toList()
-          : [
-              ...items,
-              ..._fallbackProcurementTrackableItems(count - items.length)
-            ];
-    } catch (e) {
-      debugPrint('generateProcurementTrackableItems failed: $e');
-      return _fallbackProcurementTrackableItems(count);
-    }
-  }
-
-  String _normalizeTrackableStatus(String status) {
-    final lower = status.toLowerCase();
-    if (lower.contains('transit') || lower.contains('shipping'))
-      return 'inTransit';
-    if (lower.contains('deliver') || lower.contains('received'))
-      return 'delivered';
-    return 'notTracked';
-  }
-
-  String _trackableItemGenerationPrompt(String projectName,
-      String solutionTitle, String contextNotes, int count) {
-    final notes = contextNotes.trim().isEmpty
-        ? 'No additional context provided.'
-        : contextNotes.trim();
-    return '''
-Generate $count trackable procurement items for this project:
-
-Project: $projectName
-Solution: $solutionTitle
-
-Context: $notes
-
-Return JSON in this format:
-{
-  "trackableItems": [
-    {
-      "name": "Item name (e.g., Network Switches)",
-      "description": "Brief description",
-      "orderStatus": "Ordered/Processing/Shipped",
-      "currentStatus": "inTransit/notTracked/delivered",
-      "lastUpdate": "YYYY-MM-DD HH:MM",
-      "events": [
-        {
-          "title": "Event description",
-          "date": "YYYY-MM-DD",
-          "status": "inTransit/notTracked/delivered"
+          "title": "Concrete Pouring",
+          "description": "Foundation base construction",
+          "dependencies": ["Excavation"]
         }
       ]
     }
   ]
 }
 
-Return ONLY valid JSON.
+Additional Context: $contextNotes
 ''';
-  }
-
-  List<Map<String, dynamic>> _fallbackProcurementTrackableItems(int count) {
-    final now = DateTime.now();
-    return List.generate(count, (index) {
-      final lastUpdate = now.subtract(Duration(days: index));
-      return {
-        'name': [
-          'Network Infrastructure Equipment',
-          'Office Furniture Set',
-          'Security Cameras'
-        ][index % 3],
-        'description': 'Procurement item for project delivery',
-        'orderStatus': 'Ordered',
-        'currentStatus': ['inTransit', 'inTransit', 'delivered'][index % 3],
-        'lastUpdate':
-            '${lastUpdate.year}-${lastUpdate.month.toString().padLeft(2, '0')}-${lastUpdate.day.toString().padLeft(2, '0')} ${lastUpdate.hour.toString().padLeft(2, '0')}:${lastUpdate.minute.toString().padLeft(2, '0')}',
-        'events': [
-          {
-            'title': 'Order placed',
-            'date':
-                '${now.subtract(Duration(days: 5 + index)).year}-${(now.subtract(Duration(days: 5 + index)).month).toString().padLeft(2, '0')}-${(now.subtract(Duration(days: 5 + index)).day).toString().padLeft(2, '0')}',
-            'status': 'notTracked'
-          },
-          {
-            'title': 'Shipped from warehouse',
-            'date':
-                '${now.subtract(Duration(days: 3 + index)).year}-${(now.subtract(Duration(days: 3 + index)).month).toString().padLeft(2, '0')}-${(now.subtract(Duration(days: 3 + index)).day).toString().padLeft(2, '0')}',
-            'status': 'inTransit'
-          },
-          if (index == 2)
-            {
-              'title': 'Delivered',
-              'date':
-                  '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}',
-              'status': 'delivered'
-            },
-        ],
-      };
-    });
-  }
-
-  // PROCUREMENT - Generate Reports Data
-  List<Map<String, dynamic>> generateProcurementReportsData() {
-    // Reports are typically calculated from existing data, but we can provide default KPIs
-    return [
-      {
-        'kpis': [
-          {
-            'label': 'Total Spend',
-            'value': '\$450,000',
-            'delta': '+12.5%',
-            'positive': false
-          },
-          {
-            'label': 'Active POs',
-            'value': '8',
-            'delta': '+2',
-            'positive': true
-          },
-          {
-            'label': 'Avg Lead Time',
-            'value': '18 days',
-            'delta': '-3 days',
-            'positive': true
-          },
-          {
-            'label': 'On-Time Delivery',
-            'value': '87%',
-            'delta': '+5%',
-            'positive': true
-          },
-        ],
-        'spendBreakdown': [
-          {
-            'label': 'IT Equipment',
-            'amount': 180000,
-            'percent': 40.0,
-            'color': 0xFF2563EB
-          },
-          {
-            'label': 'Construction',
-            'amount': 135000,
-            'percent': 30.0,
-            'color': 0xFFF97316
-          },
-          {
-            'label': 'Services',
-            'amount': 90000,
-            'percent': 20.0,
-            'color': 0xFF10B981
-          },
-          {
-            'label': 'Other',
-            'amount': 45000,
-            'percent': 10.0,
-            'color': 0xFF64748B
-          },
-        ],
-        'leadTimeMetrics': [
-          {'label': 'IT Equipment', 'onTimeRate': 0.85},
-          {'label': 'Construction', 'onTimeRate': 0.90},
-          {'label': 'Services', 'onTimeRate': 0.92},
-        ],
-        'savingsOpportunities': [
-          {
-            'title': 'Consolidate vendor contracts',
-            'value': '\$25,000',
-            'owner': 'Procurement Manager'
-          },
-          {
-            'title': 'Negotiate volume discounts',
-            'value': '\$15,000',
-            'owner': 'Category Manager'
-          },
-        ],
-        'complianceMetrics': [
-          {'label': 'Contract Compliance', 'value': 0.95},
-          {'label': 'Documentation Complete', 'value': 0.88},
-        ],
-      },
-    ];
   }
 
   String _escape(String v) => v.replaceAll('"', '\\"').replaceAll('\n', ' ');
-
-  // PROCUREMENT - VENDORS
-  Future<Map<String, dynamic>> generateVendorSuggestion({
-    required String projectName,
-    required String solutionTitle,
-    required String category,
-    String contextNotes = '',
-  }) async {
-    if (!OpenAiConfig.isConfigured) {
-      return _fallbackVendor(category);
-    }
-
-    final uri = OpenAiConfig.chatUri();
-    final headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}'
-    };
-    final body = jsonEncode({
-      'model': OpenAiConfig.model,
-      'temperature': 0.6,
-      'max_tokens': 800,
-      'response_format': {'type': 'json_object'},
-      'messages': [
-        {
-          'role': 'system',
-          'content':
-              'You are a procurement specialist. Generate realistic vendor suggestions based on project context. Return a JSON object with: name (vendor company name), category (matching the requested category), rating (1-5 integer), approved (boolean), preferred (boolean).'
-        },
-        {
-          'role': 'user',
-          'content':
-              _vendorPrompt(projectName, solutionTitle, category, contextNotes)
-        },
-      ],
-    });
-
-    try {
-      final response = await _client
-          .post(uri, headers: headers, body: body)
-          .timeout(const Duration(seconds: 12));
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception(
-            'OpenAI error ${response.statusCode}: ${response.body}');
-      }
-      final data =
-          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-      final content =
-          (data['choices'] as List).first['message']['content'] as String;
-      final parsed = jsonDecode(content) as Map<String, dynamic>;
-
-      return {
-        'name': _stripAsterisks((parsed['name'] ?? '').toString().trim()),
-        'category':
-            _stripAsterisks((parsed['category'] ?? category).toString().trim()),
-        'rating': (parsed['rating'] is num)
-            ? (parsed['rating'] as num).toInt().clamp(1, 5)
-            : 4,
-        'approved': parsed['approved'] == true,
-        'preferred': parsed['preferred'] == false, // Default to false
-      };
-    } catch (e) {
-      debugPrint('generateVendorSuggestion failed: $e');
-      return _fallbackVendor(category);
-    }
-  }
-
-  Map<String, dynamic> _fallbackVendor(String category) {
-    final names = {
-      'IT Equipment': [
-        'TechCorp Solutions',
-        'Digital Systems Inc',
-        'IT Partners Group'
-      ],
-      'Construction Services': [
-        'BuildRight Contractors',
-        'Premier Construction Co',
-        'Apex Builders'
-      ],
-      'Furniture': [
-        'Office Essentials Co',
-        'Workspace Solutions',
-        'Furniture Direct'
-      ],
-      'Security': [
-        'SecureGuard Services',
-        'Safety First Systems',
-        'Protection Plus'
-      ],
-      'Logistics': [
-        'FastTrack Logistics',
-        'Global Shipping Co',
-        'Express Delivery'
-      ],
-      'Services': [
-        'Professional Services Group',
-        'Expert Consultants',
-        'Service Partners'
-      ],
-      'Materials': [
-        'Material Supply Co',
-        'Industrial Materials Inc',
-        'Supply Chain Solutions'
-      ],
-    };
-    final nameList = names[category] ?? ['Vendor Partner'];
-    return {
-      'name': nameList[0],
-      'category': category,
-      'rating': 4,
-      'approved': true,
-      'preferred': false,
-    };
-  }
-
-  String _vendorPrompt(String projectName, String solutionTitle,
-      String category, String contextNotes) {
-    final notes = contextNotes.trim().isEmpty
-        ? 'No additional context provided.'
-        : contextNotes.trim();
-    return '''
-Generate a vendor suggestion for this procurement scenario:
-
-Project: $projectName
-Solution: $solutionTitle
-Category: $category
-
-Context: $notes
-
-Provide a realistic vendor company name that specializes in $category. The vendor should be appropriate for a project involving "$solutionTitle".
-
-Return a JSON object with:
-- name: Company name (e.g., "Atlas Tech Supply" or "Premier Construction Co")
-- category: "$category"
-- rating: Integer 1-5 (typical range 3-5)
-- approved: Boolean (typically true)
-- preferred: Boolean (typically false unless explicitly noted)
-
-Return ONLY valid JSON.
-''';
-  }
-
-  // PROCUREMENT - ITEMS
-  Future<Map<String, dynamic>> generateProcurementItemSuggestion({
-    required String projectName,
-    required String solutionTitle,
-    required String category,
-    String contextNotes = '',
-  }) async {
-    if (!OpenAiConfig.isConfigured) {
-      return _fallbackProcurementItem(category);
-    }
-
-    final uri = OpenAiConfig.chatUri();
-    final headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}'
-    };
-    final body = jsonEncode({
-      'model': OpenAiConfig.model,
-      'temperature': 0.6,
-      'max_tokens': 1000,
-      'response_format': {'type': 'json_object'},
-      'messages': [
-        {
-          'role': 'system',
-          'content':
-              'You are a procurement specialist. Generate realistic procurement item suggestions. Return JSON with: name (item name), description (brief description), category (matching requested), budget (estimated cost as integer), priority (one of: critical, high, medium, low), estimatedDeliveryDays (days from now as integer, typically 30-180).'
-        },
-        {
-          'role': 'user',
-          'content': _procurementItemPrompt(
-              projectName, solutionTitle, category, contextNotes)
-        },
-      ],
-    });
-
-    try {
-      final response = await _client
-          .post(uri, headers: headers, body: body)
-          .timeout(const Duration(seconds: 12));
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception(
-            'OpenAI error ${response.statusCode}: ${response.body}');
-      }
-      final data =
-          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-      final content =
-          (data['choices'] as List).first['message']['content'] as String;
-      final parsed = jsonDecode(content) as Map<String, dynamic>;
-
-      final budget =
-          (parsed['budget'] is num) ? (parsed['budget'] as num).toInt() : 50000;
-      final deliveryDays = (parsed['estimatedDeliveryDays'] is num)
-          ? (parsed['estimatedDeliveryDays'] as num).toInt().clamp(7, 365)
-          : 90;
-
-      return {
-        'name': _stripAsterisks((parsed['name'] ?? '').toString().trim()),
-        'description':
-            _stripAsterisks((parsed['description'] ?? '').toString().trim()),
-        'category':
-            _stripAsterisks((parsed['category'] ?? category).toString().trim()),
-        'budget': budget,
-        'priority': _normalizePriority(
-            (parsed['priority'] ?? 'medium').toString().trim()),
-        'estimatedDeliveryDays': deliveryDays,
-      };
-    } catch (e) {
-      debugPrint('generateProcurementItemSuggestion failed: $e');
-      return _fallbackProcurementItem(category);
-    }
-  }
-
-  Map<String, dynamic> _fallbackProcurementItem(String category) {
-    final items = {
-      'IT Equipment': {
-        'name': 'Network Infrastructure Equipment',
-        'description': 'Core networking hardware and switches',
-        'budget': 85000
-      },
-      'Construction Services': {
-        'name': 'Site Preparation Services',
-        'description': 'Groundwork and site setup',
-        'budget': 120000
-      },
-      'Furniture': {
-        'name': 'Office Furniture Set',
-        'description': 'Desks, chairs, and workspace furniture',
-        'budget': 45000
-      },
-      'Security': {
-        'name': 'Security System Installation',
-        'description': 'Access control and monitoring systems',
-        'budget': 65000
-      },
-      'Logistics': {
-        'name': 'Shipping and Delivery Services',
-        'description': 'Transportation and logistics coordination',
-        'budget': 35000
-      },
-      'Services': {
-        'name': 'Professional Services',
-        'description': 'Consulting and implementation services',
-        'budget': 95000
-      },
-      'Materials': {
-        'name': 'Construction Materials',
-        'description': 'Building materials and supplies',
-        'budget': 75000
-      },
-    };
-    final item = items[category] ??
-        {
-          'name': 'Procurement Item',
-          'description': 'Item description',
-          'budget': 50000
-        };
-    return {
-      'name': item['name']!,
-      'description': item['description']!,
-      'category': category,
-      'budget': item['budget']!,
-      'priority': 'medium',
-      'estimatedDeliveryDays': 90,
-    };
-  }
-
-  String _normalizePriority(String priority) {
-    final lower = priority.toLowerCase();
-    if (lower.contains('critical')) return 'critical';
-    if (lower.contains('high')) return 'high';
-    if (lower.contains('low')) return 'low';
-    return 'medium';
-  }
-
-  String _procurementItemPrompt(String projectName, String solutionTitle,
-      String category, String contextNotes) {
-    final notes = contextNotes.trim().isEmpty
-        ? 'No additional context provided.'
-        : contextNotes.trim();
-    return '''
-Generate a procurement item suggestion for this project:
-
-Project: $projectName
-Solution: $solutionTitle
-Category: $category
-
-Context: $notes
-
-Provide a realistic procurement item that would be needed for a project involving "$solutionTitle" in the "$category" category.
-
-Return a JSON object with:
-- name: Item name (e.g., "Network core switches" or "Office furniture set")
-- description: Brief description (1-2 sentences)
-- category: "$category"
-- budget: Estimated cost as integer (typical range: 20000-200000)
-- priority: One of: critical, high, medium, low (typically "medium" or "high")
-- estimatedDeliveryDays: Days from now (typical range: 30-180)
-
-Return ONLY valid JSON.
-''';
-  }
 }

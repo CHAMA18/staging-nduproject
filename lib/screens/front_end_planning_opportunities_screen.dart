@@ -13,6 +13,8 @@ import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/screens/front_end_planning_procurement_screen.dart';
 import 'package:ndu_project/screens/project_charter_screen.dart';
 import 'package:ndu_project/services/sidebar_navigation_service.dart';
+import 'package:ndu_project/services/api_key_manager.dart';
+import 'package:ndu_project/widgets/ai_regenerate_undo_buttons.dart';
 
 /// Front End Planning – Project Opportunities page
 /// Built to match the provided screenshot exactly:
@@ -47,10 +49,12 @@ class _FrontEndPlanningOpportunitiesScreenState
   // Backing rows for the table; built from incoming requirements (if any).
   late List<_OpportunityItem> _rows;
   bool _isGeneratingOpportunities = false;
+  List<_OpportunityItem>? _undoBeforeAi;
 
   @override
   void initState() {
     super.initState();
+    ApiKeyManager.initializeApiKey();
     _rows = [];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final projectData = ProjectDataHelper.getData(context);
@@ -199,6 +203,7 @@ class _FrontEndPlanningOpportunitiesScreenState
     setState(() {
       _isGeneratingOpportunities = true;
     });
+    _undoBeforeAi = _rows.map((e) => e.copy()).toList();
 
     try {
       final data = ProjectDataHelper.getData(context);
@@ -310,7 +315,7 @@ class _FrontEndPlanningOpportunitiesScreenState
                     'potentialCost2': '8 weeks',
                   },
                 ];
-                final fallbackIndex = (index as int) % fallbackData.length;
+                final fallbackIndex = index % fallbackData.length;
                 final fallback = fallbackData[fallbackIndex];
                 return _OpportunityItem(
                   opportunity: existing.opportunity,
@@ -366,6 +371,8 @@ class _FrontEndPlanningOpportunitiesScreenState
           }
         });
         _syncOpportunitiesToProvider();
+        await ProjectDataHelper.getProvider(context)
+            .saveToFirebase(checkpoint: 'fep_opportunities');
       } else {
         // If generation returned empty, use fallback
         debugPrint('No opportunities generated, using fallback');
@@ -382,6 +389,18 @@ class _FrontEndPlanningOpportunitiesScreenState
         });
       }
     }
+  }
+
+  void _undoOpportunities() {
+    final prev = _undoBeforeAi;
+    if (prev == null) return;
+    setState(() {
+      _rows = prev;
+      _undoBeforeAi = null;
+    });
+    _syncOpportunitiesToProvider();
+    ProjectDataHelper.getProvider(context)
+        .saveToFirebase(checkpoint: 'fep_opportunities');
   }
 
   @override
@@ -421,8 +440,16 @@ class _FrontEndPlanningOpportunitiesScreenState
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
-                                  const Expanded(
-                                    child: _SectionTitle(),
+                                  Expanded(
+                                    child: _SectionTitle(
+                                      trailing: AiRegenerateUndoButtons(
+                                        isLoading: _isGeneratingOpportunities,
+                                        canUndo: _undoBeforeAi != null,
+                                        onRegenerate:
+                                            _generateOpportunitiesFromContext,
+                                        onUndo: _undoOpportunities,
+                                      ),
+                                    ),
                                   ),
                                   const SizedBox(width: 12),
                                   SizedBox(
@@ -685,32 +712,44 @@ class _BottomOverlays extends StatelessWidget {
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle();
+  const _SectionTitle({this.trailing});
+
+  final Widget? trailing;
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: const [
-        EditableContentText(
-          contentKey: 'fep_opportunities_title',
-          fallback: 'Project Opportunities',
-          category: 'front_end_planning',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF111827),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Expanded(
+          child: Row(
+            children: [
+              EditableContentText(
+                contentKey: 'fep_opportunities_title',
+                fallback: 'Project Opportunities',
+                category: 'front_end_planning',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: EditableContentText(
+                  contentKey: 'fep_opportunities_subtitle',
+                  fallback:
+                      '(List out opportunities that would benefit the project here)',
+                  category: 'front_end_planning',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF6B7280),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        SizedBox(width: 8),
-        EditableContentText(
-          contentKey: 'fep_opportunities_subtitle',
-          fallback:
-              '(List out opportunities that would benefit the project here)',
-          category: 'front_end_planning',
-          style: TextStyle(
-            fontSize: 14,
-            color: Color(0xFF6B7280),
-          ),
-        ),
+        if (trailing != null) trailing!,
       ],
     );
   }
@@ -729,6 +768,14 @@ class _OpportunityItem {
     required this.potentialCost1,
     required this.potentialCost2,
   });
+
+  _OpportunityItem copy() => _OpportunityItem(
+        opportunity: opportunity,
+        discipline: discipline,
+        stakeholder: stakeholder,
+        potentialCost1: potentialCost1,
+        potentialCost2: potentialCost2,
+      );
 }
 
 class _AddOpportunityDialog extends StatefulWidget {

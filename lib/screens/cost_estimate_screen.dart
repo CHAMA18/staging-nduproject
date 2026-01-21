@@ -13,6 +13,7 @@ import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/screens/scope_tracking_plan_screen.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/user_service.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
 
 class CostEstimateScreen extends StatefulWidget {
   const CostEstimateScreen({super.key});
@@ -38,7 +39,6 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
   };
 
   _CostView _activeView = _CostView.indirect;
-  bool _showIndirectBudget = false;
   bool _loadedCostItems = false;
 
   @override
@@ -109,12 +109,15 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
                           view: view,
                           onAiSuggestions: () => _showAiSuggestions(context),
                           onAddItem: () => _showAddItem(context),
-                          isIndirectView: _activeView == _CostView.indirect,
-                          showIndirectBudget: _showIndirectBudget,
-                          onToggleIndirectBudget: () => setState(() => _showIndirectBudget = !_showIndirectBudget),
                         ),
                         const SizedBox(height: 18),
-                        _CostCategoryList(view: view),
+                        _CostCategoryList(
+                          items: _activeView == _CostView.direct ? directItems : indirectItems,
+                          view: _activeView,
+                          iconForItem: _iconForItem,
+                          onEdit: (item) => _showEditItem(context, item),
+                          onDelete: (item) => _deleteItem(context, item),
+                        ),
                         const SizedBox(height: 22),
                         _TrailingSummaryCard(view: view),
                         const SizedBox(height: 16),
@@ -243,13 +246,44 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
 
   String _viewKey(_CostView view) => view == _CostView.direct ? 'direct' : 'indirect';
 
-  void _showAiSuggestions(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('AI suggestions coming soon!'),
-        behavior: SnackBarBehavior.floating,
-      ),
+  Future<void> _showAiSuggestions(BuildContext context) async {
+    final provider = ProjectDataHelper.getProvider(context);
+    final pd = provider.projectData;
+    
+    // Construct context context for AI
+    final projectContext = '''
+Project Info:
+Name: ${pd.projectName}
+Objective: ${pd.projectObjective}
+Description: ${pd.solutionDescription}
+Business Case: ${pd.businessCase}
+Current Cost Items: ${pd.costEstimateItems.map((e) => "${e.title} (${e.costType})").join(", ")}
+''';
+
+    final selectedItems = await showDialog<List<CostEstimateItem>>(
+      context: context,
+      builder: (ctx) => _AiSuggestionsDialog(projectContext: projectContext),
     );
+
+    if (selectedItems != null && selectedItems.isNotEmpty) {
+      final items = List<CostEstimateItem>.from(pd.costEstimateItems)..addAll(selectedItems);
+      provider.updateField((data) => data.copyWith(costEstimateItems: items));
+      await provider.saveToFirebase(checkpoint: 'cost_estimate');
+      
+      // Also persist individually if needed, though saving full list usually suffices
+      for (final item in selectedItems) {
+        await _persistCostItem(item);
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Added ${selectedItems.length} items from AI suggestions'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _showAddItem(BuildContext context) async {
@@ -265,6 +299,55 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
     provider.updateField((data) => data.copyWith(costEstimateItems: items));
     await provider.saveToFirebase(checkpoint: 'cost_estimate');
     await _persistCostItem(selected);
+  }
+
+  Future<void> _showEditItem(BuildContext context, CostEstimateItem existing) async {
+    final updated = await showDialog<CostEstimateItem>(
+      context: context,
+      builder: (dialogContext) => _AddCostItemDialog(
+        initialView: existing.costType == 'direct' ? _CostView.direct : _CostView.indirect,
+        existingItem: existing,
+      ),
+    );
+
+    if (updated == null) return;
+
+    final provider = ProjectDataHelper.getProvider(context);
+    final items = provider.projectData.costEstimateItems.map((i) => i.id == existing.id ? updated : i).toList();
+    provider.updateField((data) => data.copyWith(costEstimateItems: items));
+    await provider.saveToFirebase(checkpoint: 'cost_estimate');
+    await _persistCostItem(updated);
+  }
+
+  Future<void> _deleteItem(BuildContext context, CostEstimateItem item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete cost item?'),
+        content: const Text('This action cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final provider = ProjectDataHelper.getProvider(context);
+    final items = provider.projectData.costEstimateItems.where((i) => i.id != item.id).toList();
+    provider.updateField((data) => data.copyWith(costEstimateItems: items));
+    await provider.saveToFirebase(checkpoint: 'cost_estimate');
+
+    // Delete from Firestore
+    final projectId = provider.projectData.projectId;
+    if (projectId != null && projectId.isNotEmpty) {
+      await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('cost_estimate_items')
+          .doc(item.id)
+          .delete();
+    }
   }
 
   Future<void> _loadCostItemsFromFirestore() async {
@@ -562,160 +645,58 @@ class _SectionHeader extends StatelessWidget {
     required this.view,
     required this.onAiSuggestions,
     required this.onAddItem,
-    required this.isIndirectView,
-    required this.showIndirectBudget,
-    required this.onToggleIndirectBudget,
   });
 
   final _CostViewDefinition view;
   final VoidCallback onAiSuggestions;
   final VoidCallback onAddItem;
-  final bool isIndirectView;
-  final bool showIndirectBudget;
-  final VoidCallback onToggleIndirectBudget;
 
   @override
   Widget build(BuildContext context) {
     final bool isMobile = AppBreakpoints.isMobile(context);
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${view.label} Categories',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    view.description,
-                    style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
-                  ),
-                ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${view.label} Categories',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
               ),
-            ),
-            const SizedBox(width: 16),
-            Flexible(
-              child: Align(
-                alignment: isMobile ? Alignment.centerLeft : Alignment.centerRight,
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  alignment: isMobile ? WrapAlignment.start : WrapAlignment.end,
-                  children: [
-                    _OutlinedActionButton(
-                      label: 'AI Suggestions',
-                      icon: Icons.bolt_outlined,
-                      onPressed: onAiSuggestions,
-                    ),
-                    _FilledActionButton(
-                      label: 'Add Cost Item',
-                      icon: Icons.add,
-                      onPressed: onAddItem,
-                    ),
-                  ],
-                ),
+              const SizedBox(height: 6),
+              Text(
+                view.description,
+                style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-        if (isIndirectView) ...[
-          const SizedBox(height: 16),
-          _IndirectBudgetToggle(
-            isActive: showIndirectBudget,
-            onToggle: onToggleIndirectBudget,
+        const SizedBox(width: 16),
+        Flexible(
+          child: Align(
+            alignment: isMobile ? Alignment.centerLeft : Alignment.centerRight,
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              alignment: isMobile ? WrapAlignment.start : WrapAlignment.end,
+              children: [
+                _OutlinedActionButton(
+                  label: 'AI Suggestions',
+                  icon: Icons.bolt_outlined,
+                  onPressed: onAiSuggestions,
+                ),
+                _FilledActionButton(
+                  label: 'Add Cost Item',
+                  icon: Icons.add,
+                  onPressed: onAddItem,
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ],
-    );
-  }
-}
-
-class _IndirectBudgetToggle extends StatelessWidget {
-  const _IndirectBudgetToggle({required this.isActive, required this.onToggle});
-
-  final bool isActive;
-  final VoidCallback onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          GestureDetector(
-            onTap: isActive ? onToggle : () {},
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-              decoration: BoxDecoration(
-                color: !isActive ? const Color(0xFFFFB200) : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.category_outlined,
-                    size: 16,
-                    color: !isActive ? Colors.white : const Color(0xFF475569),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Categories',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: !isActive ? Colors.white : const Color(0xFF475569),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: !isActive ? onToggle : () {},
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-              decoration: BoxDecoration(
-                color: isActive ? const Color(0xFFFFB200) : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.account_balance_wallet_outlined,
-                    size: 16,
-                    color: isActive ? Colors.white : const Color(0xFF475569),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Indirect Budget',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: isActive ? Colors.white : const Color(0xFF475569),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -769,22 +750,37 @@ class _FilledActionButton extends StatelessWidget {
 }
 
 class _CostCategoryList extends StatelessWidget {
-  const _CostCategoryList({required this.view});
+  const _CostCategoryList({
+    required this.items,
+    required this.view,
+    required this.iconForItem,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
-  final _CostViewDefinition view;
+  final List<CostEstimateItem> items;
+  final _CostView view;
+  final IconData Function(CostEstimateItem, _CostView) iconForItem;
+  final void Function(CostEstimateItem) onEdit;
+  final void Function(CostEstimateItem) onDelete;
 
   @override
   Widget build(BuildContext context) {
-    if (view.categories.isEmpty) {
-      return _EmptyCostState(viewLabel: view.label);
+    if (items.isEmpty) {
+      return _EmptyCostState(viewLabel: view == _CostView.direct ? 'Direct Costs' : 'Indirect Costs');
     }
 
     return Column(
-      children: view.categories
+      children: items
           .map(
-            (category) => Padding(
+            (item) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: _CategoryTile(category: category),
+              child: _CategoryTile(
+                item: item,
+                icon: iconForItem(item, view),
+                onEdit: () => onEdit(item),
+                onDelete: () => onDelete(item),
+              ),
             ),
           )
           .toList(),
@@ -841,9 +837,17 @@ class _EmptyCostState extends StatelessWidget {
 }
 
 class _CategoryTile extends StatelessWidget {
-  const _CategoryTile({required this.category});
+  const _CategoryTile({
+    required this.item,
+    required this.icon,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
-  final _CostCategory category;
+  final CostEstimateItem item;
+  final IconData icon;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -870,7 +874,7 @@ class _CategoryTile extends StatelessWidget {
               color: const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(category.icon, size: 20, color: const Color(0xFF1E293B)),
+            child: Icon(icon, size: 20, color: const Color(0xFF1E293B)),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -878,12 +882,12 @@ class _CategoryTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  category.title,
+                  item.title,
                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  category.notes.isEmpty ? 'Tap to expand line items & vendor notes' : category.notes,
+                  item.notes.isEmpty ? 'No notes added' : item.notes,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
@@ -891,11 +895,23 @@ class _CategoryTile extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF94A3B8)),
           const SizedBox(width: 12),
           Text(
-            formatCurrency(category.amount),
+            formatCurrency(item.amount),
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: onEdit,
+            icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF64748B)),
+            tooltip: 'Edit',
+            splashRadius: 18,
+          ),
+          IconButton(
+            onPressed: onDelete,
+            icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)),
+            tooltip: 'Delete',
+            splashRadius: 18,
           ),
         ],
       ),
@@ -947,9 +963,10 @@ class _TrailingSummaryCard extends StatelessWidget {
 }
 
 class _AddCostItemDialog extends StatefulWidget {
-  const _AddCostItemDialog({required this.initialView});
+  const _AddCostItemDialog({required this.initialView, this.existingItem});
 
   final _CostView initialView;
+  final CostEstimateItem? existingItem;
 
   @override
   State<_AddCostItemDialog> createState() => _AddCostItemDialogState();
@@ -962,6 +979,19 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
   final _formKey = GlobalKey<FormState>();
   late _CostView _selectedView = widget.initialView;
   bool _showValidation = false;
+
+  bool get _isEditing => widget.existingItem != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = widget.existingItem;
+    if (existing != null) {
+      _titleController.text = existing.title;
+      _amountController.text = existing.amount.toStringAsFixed(2);
+      _notesController.text = existing.notes;
+    }
+  }
 
   @override
   void dispose() {
@@ -1005,20 +1035,22 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
                       color: accent.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: Icon(Icons.add_circle_outline, color: accent),
+                    child: Icon(_isEditing ? Icons.edit_outlined : Icons.add_circle_outline, color: accent),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Add Cost Item',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                        Text(
+                          _isEditing ? 'Edit Cost Item' : 'Add Cost Item',
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Capture a new cost line under ${_viewLabel(_selectedView)}.',
+                          _isEditing
+                              ? 'Update cost details for ${_viewLabel(_selectedView)}.'
+                              : 'Capture a new cost line under ${_viewLabel(_selectedView)}.',
                           style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                         ),
                       ],
@@ -1109,7 +1141,7 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                               elevation: 0,
                             ),
-                            child: const Text('Add item', style: TextStyle(fontWeight: FontWeight.w700)),
+                            child: Text(_isEditing ? 'Update item' : 'Add item', style: const TextStyle(fontWeight: FontWeight.w700)),
                           ),
                         ),
                       ],
@@ -1132,6 +1164,7 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
 
     final amount = _parseAmount(_amountController.text);
     final item = CostEstimateItem(
+      id: _isEditing ? widget.existingItem!.id : null,
       title: _titleController.text.trim(),
       notes: _notesController.text.trim(),
       amount: amount,
@@ -1367,4 +1400,304 @@ String formatCurrency(double value) {
     (match) => ',',
   );
   return "\$$whole.${parts.last}";
+}
+
+class _AiSuggestionsDialog extends StatefulWidget {
+  const _AiSuggestionsDialog({required this.projectContext});
+
+  final String projectContext;
+
+  @override
+  State<_AiSuggestionsDialog> createState() => _AiSuggestionsDialogState();
+}
+
+class _AiSuggestionsDialogState extends State<_AiSuggestionsDialog> {
+  final _service = OpenAiServiceSecure();
+  bool _loading = false;
+  List<CostEstimateItem> _suggestions = [];
+  final Set<int> _selectedIndices = {};
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchSuggestions();
+  }
+
+  Future<void> _fetchSuggestions() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+      _suggestions = [];
+      _selectedIndices.clear();
+    });
+
+    try {
+      final items = await _service.generateCostEstimateSuggestions(context: widget.projectContext);
+      if (mounted) {
+        setState(() {
+          _suggestions = items;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceAll('Exception:', '').trim();
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  void _toggleSelection(int index) {
+    setState(() {
+      if (_selectedIndices.contains(index)) {
+        _selectedIndices.remove(index);
+      } else {
+        _selectedIndices.add(index);
+      }
+    });
+  }
+
+  void _addSelected() {
+    final selected = _selectedIndices.map((i) => _suggestions[i]).toList();
+    Navigator.of(context).pop(selected);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      backgroundColor: Colors.white,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600, maxHeight: 700),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.fromLTRB(24, 20, 16, 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border(bottom: BorderSide(color: const Color(0xFFE2E8F0))),
+              ),
+              child: Row(
+                children: [
+                   Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDBEAFE),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.auto_awesome, color: Color(0xFF2563EB), size: 24),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          'AI Cost Suggestions',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF1E293B)),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Select suggested items to add to your estimate.',
+                          style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Content
+            Flexible(
+              child: _loading
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(40),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(strokeWidth: 3),
+                          SizedBox(height: 16),
+                          Text('Generating realistic estimates...', style: TextStyle(color: Color(0xFF64748B))),
+                        ],
+                      ),
+                    ),
+                  )
+                : _error != null
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.error_outline, size: 48, color: Color(0xFFEF4444)),
+                            const SizedBox(height: 16),
+                            Text(
+                              _error!,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w500),
+                            ),
+                            const SizedBox(height: 24),
+                            FilledButton.icon(
+                              onPressed: _fetchSuggestions,
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Try Again'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : _suggestions.isEmpty
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(40),
+                          child: Text('No suggestions found. Try regenerating.', style: TextStyle(color: Color(0xFF64748B))),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.all(24),
+                        shrinkWrap: true,
+                        itemCount: _suggestions.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (ctx, index) {
+                          final item = _suggestions[index];
+                          final isSelected = _selectedIndices.contains(index);
+                          return InkWell(
+                            onTap: () => _toggleSelection(index),
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: isSelected ? const Color(0xFFEFF6FF) : Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFFE2E8F0),
+                                  width: isSelected ? 2 : 1,
+                                ),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 2),
+                                    child: Icon(
+                                      isSelected ? Icons.check_circle : Icons.circle_outlined,
+                                      color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFFCBD5E1),
+                                      size: 22,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                item.title,
+                                                style: const TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Color(0xFF1E293B),
+                                                ),
+                                              ),
+                                            ),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFF1F5F9),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                item.costType.toUpperCase(),
+                                                style: const TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Color(0xFF64748B),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          item.notes,
+                                          style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          formatCurrency(item.amount),
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFF2563EB), // Blue-600
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+            ),
+
+            // Footer
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton.icon(
+                    onPressed: _loading ? null : _fetchSuggestions,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('Regenerate'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFF64748B),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Cancel'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF64748B),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      FilledButton(
+                         onPressed: _selectedIndices.isEmpty ? null : _addSelected,
+                         style: FilledButton.styleFrom(
+                           backgroundColor: const Color(0xFF2563EB),
+                           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                         ),
+                         child: Text('Add Selected (${_selectedIndices.length})'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

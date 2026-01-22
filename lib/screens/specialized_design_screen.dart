@@ -187,6 +187,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
             title: 'Design Phase',
             showImportButton: false,
             showContentButton: false,
+            showNavigationButtons: false,
           ),
           Expanded(
             child: SingleChildScrollView(
@@ -230,7 +231,10 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
                     ),
                     child: TextField(
                       controller: _notesController,
-                      maxLines: 2,
+                      minLines: 1,
+                      maxLines: null,
+                      textAlign: TextAlign.center,
+                      textAlignVertical: TextAlignVertical.center,
                       onChanged: (_) => _scheduleSave(),
                       decoration: InputDecoration(
                         hintText: 'Summarize the specialized design choices here... security zones, performance patterns, data flows, integrations that must be implemented in a very specific way.',
@@ -882,13 +886,15 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
   }) {
     return TextFormField(
       initialValue: initialValue,
-      maxLines: maxLines,
+      minLines: 1,
+      maxLines: null,
       textAlign: TextAlign.center,
       textAlignVertical: TextAlignVertical.center,
+      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
       onChanged: onChanged,
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: TextStyle(color: Colors.grey[500]),
+        hintStyle: TextStyle(fontSize: 13, color: Colors.grey[500]),
         isDense: true,
         filled: true,
         fillColor: Colors.white,
@@ -934,7 +940,20 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
     return DropdownButtonFormField<String>(
       initialValue: items.first,
       alignment: Alignment.center,
-      items: items.map((owner) => DropdownMenuItem(value: owner, child: Text(owner))).toList(),
+      isExpanded: true,
+      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
+      selectedItemBuilder: (context) => items
+          .map((owner) => Align(
+                alignment: Alignment.center,
+                child: Text(owner, textAlign: TextAlign.center),
+              ))
+          .toList(),
+      items: items
+          .map((owner) => DropdownMenuItem(
+                value: owner,
+                child: Center(child: Text(owner, textAlign: TextAlign.center)),
+              ))
+          .toList(),
       onChanged: (newValue) {
         if (newValue == null) return;
         onChanged(newValue);
@@ -1002,8 +1021,19 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
     return DropdownButtonFormField<String>(
       initialValue: value,
       alignment: Alignment.center,
+      isExpanded: true,
+      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
+      selectedItemBuilder: (context) => _statusOptions
+          .map((status) => Align(
+                alignment: Alignment.center,
+                child: Text(status, textAlign: TextAlign.center),
+              ))
+          .toList(),
       items: _statusOptions
-          .map((status) => DropdownMenuItem(value: status, child: Text(status)))
+          .map((status) => DropdownMenuItem(
+                value: status,
+                child: Center(child: Text(status, textAlign: TextAlign.center)),
+              ))
           .toList(),
       onChanged: (newValue) {
         if (newValue == null) return;
@@ -1068,6 +1098,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
   }
 
   Widget _buildBottomNavigation(bool isMobile) {
+    const accent = LightModeColors.lightPrimary;
     return Column(
       children: [
         const Divider(),
@@ -1083,10 +1114,11 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
                 icon: const Icon(Icons.arrow_back, size: 18),
                 label: const Text('Back: Long lead equipment ordering'),
                 style: OutlinedButton.styleFrom(
+                  backgroundColor: accent,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  side: BorderSide(color: Colors.grey[300]!),
+                  side: const BorderSide(color: accent),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  foregroundColor: Colors.black87,
+                  foregroundColor: Colors.white,
                 ),
               ),
               const SizedBox(height: 12),
@@ -1095,10 +1127,11 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
                 icon: const Icon(Icons.arrow_forward, size: 18),
                 label: const Text('Next: Design deliverables'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black87,
+                  backgroundColor: accent,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  elevation: 0,
                 ),
               ),
             ],
@@ -1111,10 +1144,11 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
                 icon: const Icon(Icons.arrow_back, size: 18),
                 label: const Text('Back: Long lead equipment ordering'),
                 style: OutlinedButton.styleFrom(
+                  backgroundColor: accent,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  side: BorderSide(color: Colors.grey[300]!),
+                  side: const BorderSide(color: accent),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  foregroundColor: Colors.black87,
+                  foregroundColor: Colors.white,
                 ),
               ),
               const SizedBox(width: 16),
@@ -1125,10 +1159,11 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
                 icon: const Icon(Icons.arrow_forward, size: 18),
                 label: const Text('Next: Design deliverables'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black87,
+                  backgroundColor: accent,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  elevation: 0,
                 ),
               ),
             ],

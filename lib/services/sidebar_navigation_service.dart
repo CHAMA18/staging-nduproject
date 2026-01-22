@@ -4,6 +4,39 @@ class SidebarNavigationService {
   SidebarNavigationService._();
   static final SidebarNavigationService instance = SidebarNavigationService._();
 
+  static const List<_PhaseRange> _phaseRanges = [
+    _PhaseRange(
+      label: 'Initiation Phase',
+      startCheckpoint: 'business_case',
+      endCheckpoint: 'preferred_solution_analysis',
+    ),
+    _PhaseRange(
+      label: 'Front End Planning',
+      startCheckpoint: 'fep_summary',
+      endCheckpoint: 'project_charter',
+    ),
+    _PhaseRange(
+      label: 'Planning Phase',
+      startCheckpoint: 'project_framework',
+      endCheckpoint: 'quality_management',
+    ),
+    _PhaseRange(
+      label: 'Design Phase',
+      startCheckpoint: 'design_management',
+      endCheckpoint: 'design_deliverables',
+    ),
+    _PhaseRange(
+      label: 'Execution Phase',
+      startCheckpoint: 'staff_team',
+      endCheckpoint: 'salvage_disposal_team',
+    ),
+    _PhaseRange(
+      label: 'Launch Phase',
+      startCheckpoint: 'deliver_project_closure',
+      endCheckpoint: 'demobilize_team',
+    ),
+  ];
+
   static const Set<String> basicPlanLockedLabels = {
     'Contract & Vendor Quotes',
     'Security',
@@ -284,6 +317,41 @@ class SidebarNavigationService {
         .map((item) => item.checkpoint)
         .toList();
   }
+
+  /// Resolve a checkpoint to its phase label (based on sidebar order).
+  static String? phaseForCheckpoint(String? checkpoint) {
+    if (checkpoint == null || checkpoint.isEmpty) return null;
+    final checkpointIndex =
+        _sidebarOrder.indexWhere((item) => item.checkpoint == checkpoint);
+    if (checkpointIndex == -1) return null;
+
+    for (final range in _phaseRanges) {
+      final startIndex = _sidebarOrder
+          .indexWhere((item) => item.checkpoint == range.startCheckpoint);
+      final endIndex = _sidebarOrder
+          .indexWhere((item) => item.checkpoint == range.endCheckpoint);
+      if (startIndex == -1 || endIndex == -1) continue;
+      if (checkpointIndex >= startIndex && checkpointIndex <= endIndex) {
+        return range.label;
+      }
+    }
+    return null;
+  }
+
+  /// Determine if navigation crosses a phase boundary.
+  static bool isPhaseChange(String? fromCheckpoint, String? toCheckpoint) {
+    final fromPhase = phaseForCheckpoint(fromCheckpoint);
+    final toPhase = phaseForCheckpoint(toCheckpoint);
+    if (fromPhase == null || toPhase == null) return false;
+    return fromPhase != toPhase;
+  }
+
+  /// Check if a checkpoint is the first item of a phase.
+  static bool isPhaseStartCheckpoint(String? checkpoint) {
+    if (checkpoint == null || checkpoint.isEmpty) return false;
+    return _phaseRanges
+        .any((range) => range.startCheckpoint == checkpoint);
+  }
 }
 
 /// Represents a single item in the sidebar navigation
@@ -294,5 +362,17 @@ class SidebarItem {
   const SidebarItem({
     required this.checkpoint,
     required this.label,
+  });
+}
+
+class _PhaseRange {
+  final String label;
+  final String startCheckpoint;
+  final String endCheckpoint;
+
+  const _PhaseRange({
+    required this.label,
+    required this.startCheckpoint,
+    required this.endCheckpoint,
   });
 }

@@ -168,21 +168,19 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
                           width: double.infinity,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF2D3748),
+                            color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFE4E7EC)),
                           ),
                           child: TextField(
                             controller: _notesController,
                             maxLines: 2,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                            ),
+                            style: const TextStyle(color: Color(0xFF1F2937), fontSize: 14),
                             decoration: const InputDecoration(
                               hintText: 'Capture key implementation notes here... (priorities, story mapping decisions, sequencing, and non-negotiables)',
                               hintStyle: TextStyle(
-                                color: Colors.white54,
-                                fontSize: 14,
+                                color: Color(0xFF9CA3AF),
+                                fontSize: 13,
                               ),
                               border: InputBorder.none,
                               isDense: true,
@@ -456,9 +454,10 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
           const SizedBox(height: 8),
           TextFormField(
             maxLines: 3,
+            style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
             decoration: InputDecoration(
               hintText: 'Capture sequencing decisions, launch scope, and deferred items.',
-              hintStyle: TextStyle(color: Colors.grey[500]),
+              hintStyle: TextStyle(fontSize: 13, color: Colors.grey[500]),
               filled: true,
               fillColor: const Color(0xFFF8FAFC),
               border: OutlineInputBorder(
@@ -658,11 +657,26 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
             flex: 2,
             child: DropdownButtonFormField<ChecklistStatus>(
               initialValue: item.status,
+              alignment: Alignment.center,
+              isExpanded: true,
+              style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
+              selectedItemBuilder: (context) => ChecklistStatus.values
+                  .map(
+                    (status) => Align(
+                      alignment: Alignment.center,
+                      child:
+                          Text(_statusLabel(status), textAlign: TextAlign.center),
+                    ),
+                  )
+                  .toList(),
               items: ChecklistStatus.values
                   .map(
                     (status) => DropdownMenuItem(
                       value: status,
-                      child: Text(_statusLabel(status)),
+                      child: Center(
+                        child:
+                            Text(_statusLabel(status), textAlign: TextAlign.center),
+                      ),
                     ),
                   )
                   .toList(),
@@ -725,9 +739,10 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
       maxLines: maxLines,
       textAlign: TextAlign.center,
       textAlignVertical: TextAlignVertical.center,
+      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: TextStyle(color: Colors.grey[500]),
+        hintStyle: TextStyle(fontSize: 13, color: Colors.grey[500]),
         isDense: true,
         filled: true,
         fillColor: Colors.white,
@@ -771,7 +786,20 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
     return DropdownButtonFormField<String>(
       initialValue: items.first,
       alignment: Alignment.center,
-      items: items.map((owner) => DropdownMenuItem(value: owner, child: Text(owner))).toList(),
+      isExpanded: true,
+      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
+      selectedItemBuilder: (context) => items
+          .map((owner) => Align(
+                alignment: Alignment.center,
+                child: Text(owner, textAlign: TextAlign.center),
+              ))
+          .toList(),
+      items: items
+          .map((owner) => DropdownMenuItem(
+                value: owner,
+                child: Center(child: Text(owner, textAlign: TextAlign.center)),
+              ))
+          .toList(),
       onChanged: (newValue) {
         if (newValue == null) return;
         onChanged(newValue);

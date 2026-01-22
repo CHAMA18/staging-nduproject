@@ -132,7 +132,13 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                   child: Card(
                     child: Padding(
                       padding: const EdgeInsets.all(12),
-                      child: ListView(children: _items.map((it) => ListTile(title: Text(it['recommendation'] ?? ''))).toList()),
+                      child: ListView.builder(
+                        itemCount: _items.length,
+                        itemBuilder: (context, index) {
+                          final item = _items[index];
+                          return ListTile(title: Text(item['recommendation'] ?? ''));
+                        },
+                      ),
                     ),
                   ),
                 ),

@@ -11,6 +11,7 @@ class PlanningPhaseHeader extends StatelessWidget {
     required this.title,
     this.onBack,
     this.onForward,
+    this.showNavigationButtons = true,
     this.showImportButton = true,
     this.showContentButton = true,
     this.onImportPressed,
@@ -20,6 +21,7 @@ class PlanningPhaseHeader extends StatelessWidget {
   final String title;
   final VoidCallback? onBack;
   final VoidCallback? onForward;
+  final bool showNavigationButtons;
   final bool showImportButton;
   final bool showContentButton;
   final VoidCallback? onImportPressed;
@@ -42,16 +44,18 @@ class PlanningPhaseHeader extends StatelessWidget {
         children: [
           Row(
             children: [
-              _CircleIconButton(
-                icon: Icons.arrow_back_ios_new_rounded,
-                onTap: onBack ?? () => Navigator.maybePop(context),
-              ),
-              const SizedBox(width: 12),
-              _CircleIconButton(
-                icon: Icons.arrow_forward_ios_rounded,
-                onTap: onForward,
-              ),
-              const SizedBox(width: 16),
+              if (showNavigationButtons) ...[
+                _CircleIconButton(
+                  icon: Icons.arrow_back_ios_new_rounded,
+                  onTap: onBack ?? () => Navigator.maybePop(context),
+                ),
+                const SizedBox(width: 12),
+                _CircleIconButton(
+                  icon: Icons.arrow_forward_ios_rounded,
+                  onTap: onForward,
+                ),
+                const SizedBox(width: 16),
+              ],
               Expanded(
                 child: Text(
                   title,

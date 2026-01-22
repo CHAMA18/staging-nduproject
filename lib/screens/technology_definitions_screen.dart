@@ -142,7 +142,16 @@ class _TechnologyDefinitionsScreenState extends State<TechnologyDefinitionsScree
                   child: Card(
                     child: Padding(
                       padding: const EdgeInsets.all(12),
-                      child: ListView(children: _items.map((it) => ListTile(title: Text(it['term'] ?? ''), subtitle: Text(it['definition'] ?? ''))).toList()),
+                      child: ListView.builder(
+                        itemCount: _items.length,
+                        itemBuilder: (context, index) {
+                          final item = _items[index];
+                          return ListTile(
+                            title: Text(item['term'] ?? ''),
+                            subtitle: Text(item['definition'] ?? ''),
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ),

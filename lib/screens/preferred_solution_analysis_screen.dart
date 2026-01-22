@@ -1027,11 +1027,7 @@ class _PreferredSolutionAnalysisScreenState
     Navigator.of(context, rootNavigator: true).pop();
 
     if (!mounted) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const FrontEndPlanningSummaryScreen(),
-      ),
-    );
+    FrontEndPlanningSummaryScreen.open(context);
   }
 
   Widget _buildHeaderRow() {

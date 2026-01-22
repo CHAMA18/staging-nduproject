@@ -836,11 +836,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     if (dialogShown && mounted) Navigator.of(context, rootNavigator: true).pop();
 
     if (!mounted) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const FrontEndPlanningSummaryScreen(),
-      ),
-    );
+    FrontEndPlanningSummaryScreen.open(context);
   }
 
   void _navigateToRequiredField(String checkpoint) {

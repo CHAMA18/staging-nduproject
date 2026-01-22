@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/services/sidebar_navigation_service.dart';
+import 'package:ndu_project/utils/phase_transition_helper.dart';
 
 /// Helper functions for easy integration of ProjectDataProvider across screens
 class ProjectDataHelper {
@@ -127,8 +128,11 @@ class ProjectDataHelper {
 
     // Navigate to next screen
     if (context.mounted) {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => nextScreenBuilder()),
+      PhaseTransitionHelper.pushPhaseAware(
+        context: context,
+        builder: (_) => nextScreenBuilder(),
+        destinationCheckpoint: destinationCheckpoint,
+        sourceCheckpoint: checkpoint,
       );
     }
   }

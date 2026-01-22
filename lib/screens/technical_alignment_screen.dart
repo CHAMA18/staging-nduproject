@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
-import 'package:ndu_project/screens/ui_ux_design_screen.dart';
-import 'package:ndu_project/widgets/launch_phase_navigation.dart';
+import 'package:ndu_project/screens/development_set_up_screen.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -99,6 +101,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             title: 'Design Phase',
             showImportButton: false,
             showContentButton: false,
+            showNavigationButtons: false,
           ),
           Expanded(
             child: SingleChildScrollView(
@@ -142,9 +145,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                     child: TextField(
                       controller: _notesController,
                       maxLines: 2,
+                      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
                       decoration: InputDecoration(
                         hintText: 'Input your notes here 9 (key constraints, assumptions, dependencies, and open technical questions)',
-                        hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+                        hintStyle: TextStyle(color: Colors.grey[500], fontSize: 13),
                         border: InputBorder.none,
                         isDense: true,
                         contentPadding: EdgeInsets.zero,
@@ -173,14 +177,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                   const SizedBox(height: 32),
 
                   // Bottom Navigation
-                  LaunchPhaseNavigation(
-                    backLabel: 'Back: Requirements implementation',
-                    nextLabel: 'Next: UI/UX design',
-                    onBack: () => Navigator.of(context).maybePop(),
-                    onNext: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const UiUxDesignScreen()),
-                    ),
-                  ),
+                  _buildBottomNavigation(isMobile),
                   const SizedBox(height: 16),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -441,7 +438,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () {},
+              onPressed: _exportAlignmentSummary,
               icon: const Icon(Icons.download, size: 18),
               label: const Text('Export alignment summary'),
               style: ElevatedButton.styleFrom(
@@ -454,6 +451,129 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _exportAlignmentSummary() async {
+    final doc = pw.Document();
+    final notes = _notesController.text.trim();
+
+    final constraints = _constraints
+        .map((row) {
+          final constraint = row.constraint.trim();
+          final guardrail = row.guardrail.trim();
+          final owner = row.owner.trim();
+          final status = row.status.trim();
+          if (constraint.isEmpty &&
+              guardrail.isEmpty &&
+              owner.isEmpty &&
+              status.isEmpty) {
+            return '';
+          }
+          final base = guardrail.isEmpty
+              ? constraint
+              : '$constraint — $guardrail';
+          final ownerLabel = owner.isEmpty ? '' : 'Owner: $owner';
+          final statusLabel = status.isEmpty ? '' : 'Status: $status';
+          final meta = [ownerLabel, statusLabel]
+              .where((value) => value.isNotEmpty)
+              .join(' · ');
+          return meta.isEmpty ? base : '$base ($meta)';
+        })
+        .where((line) => line.trim().isNotEmpty)
+        .toList();
+
+    final mappings = _mappings
+        .map((row) {
+          final requirement = row.requirement.trim();
+          final approach = row.approach.trim();
+          final status = row.status.trim();
+          if (requirement.isEmpty && approach.isEmpty && status.isEmpty) {
+            return '';
+          }
+          final base =
+              approach.isEmpty ? requirement : '$requirement — $approach';
+          return status.isEmpty ? base : '$base (Status: $status)';
+        })
+        .where((line) => line.trim().isNotEmpty)
+        .toList();
+
+    final dependencies = _dependencies
+        .map((row) {
+          final item = row.item.trim();
+          final detail = row.detail.trim();
+          final owner = row.owner.trim();
+          final status = row.status.trim();
+          if (item.isEmpty && detail.isEmpty && owner.isEmpty && status.isEmpty) {
+            return '';
+          }
+          final base = detail.isEmpty ? item : '$item — $detail';
+          final ownerLabel = owner.isEmpty ? '' : 'Owner: $owner';
+          final statusLabel = status.isEmpty ? '' : 'Status: $status';
+          final meta = [ownerLabel, statusLabel]
+              .where((value) => value.isNotEmpty)
+              .join(' · ');
+          return meta.isEmpty ? base : '$base ($meta)';
+        })
+        .where((line) => line.trim().isNotEmpty)
+        .toList();
+
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        build: (context) => [
+          pw.Text(
+            'Technical Alignment Summary',
+            style: pw.TextStyle(
+              fontSize: 22,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 12),
+          _pdfTextBlock('Notes', notes),
+          _pdfSection('Constraints & guardrails', constraints),
+          _pdfSection('Requirements → solution mapping', mappings),
+          _pdfSection('Dependencies & decisions', dependencies),
+        ],
+      ),
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (format) async => doc.save(),
+      name: 'technical-alignment-summary.pdf',
+    );
+  }
+
+  pw.Widget _pdfTextBlock(String title, String content) {
+    final normalized = content.trim().isEmpty ? 'No entries.' : content.trim();
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(title,
+            style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 6),
+        pw.Text(normalized, style: const pw.TextStyle(fontSize: 12)),
+        pw.SizedBox(height: 12),
+      ],
+    );
+  }
+
+  pw.Widget _pdfSection(String title, List<String> items) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(title,
+            style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 6),
+        if (items.isEmpty)
+          pw.Text('No entries.', style: const pw.TextStyle(fontSize: 12))
+        else
+          pw.Column(
+            children: items.map((item) => pw.Bullet(text: item)).toList(),
+          ),
+        pw.SizedBox(height: 12),
+      ],
     );
   }
 
@@ -645,16 +765,11 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             flex: 2,
             child: Align(
               alignment: Alignment.center,
-              child: _buildRowActions(
-                primaryLabel: 'Review',
-                accent: const Color(0xFF0F766E),
-                onPrimary: () {},
-                onDelete: () async {
-                  final confirmed = await _confirmDelete('mapping');
-                  if (!confirmed) return;
-                  setState(() => _mappings.removeAt(index));
-                },
-              ),
+              child: _buildDeleteAction(() async {
+                final confirmed = await _confirmDelete('mapping');
+                if (!confirmed) return;
+                setState(() => _mappings.removeAt(index));
+              }),
             ),
           ),
         ],
@@ -718,16 +833,11 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             flex: 2,
             child: Align(
               alignment: Alignment.center,
-              child: _buildRowActions(
-                primaryLabel: 'Log',
-                accent: const Color(0xFF9333EA),
-                onPrimary: () {},
-                onDelete: () async {
-                  final confirmed = await _confirmDelete('dependency');
-                  if (!confirmed) return;
-                  setState(() => _dependencies.removeAt(index));
-                },
-              ),
+              child: _buildDeleteAction(() async {
+                final confirmed = await _confirmDelete('dependency');
+                if (!confirmed) return;
+                setState(() => _dependencies.removeAt(index));
+              }),
             ),
           ),
         ],
@@ -744,14 +854,15 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     return TextFormField(
       initialValue: initialValue,
       minLines: 1,
-      maxLines: maxLines == 1 ? 1 : null,
+      maxLines: null,
       textAlign: TextAlign.center,
       textAlignVertical: TextAlignVertical.center,
-      keyboardType: maxLines == 1 ? TextInputType.text : TextInputType.multiline,
+      keyboardType: TextInputType.multiline,
+      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
       onChanged: onChanged,
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: TextStyle(color: Colors.grey[500]),
+        hintStyle: TextStyle(fontSize: 13, color: Colors.grey[500]),
         isDense: true,
         filled: true,
         fillColor: Colors.white,
@@ -780,8 +891,19 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     return DropdownButtonFormField<String>(
       initialValue: value,
       alignment: Alignment.center,
+      isExpanded: true,
+      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
+      selectedItemBuilder: (context) => _statusOptions
+          .map((status) => Align(
+                alignment: Alignment.center,
+                child: Text(status, textAlign: TextAlign.center),
+              ))
+          .toList(),
       items: _statusOptions
-          .map((status) => DropdownMenuItem(value: status, child: Text(status)))
+          .map((status) => DropdownMenuItem(
+                value: status,
+                child: Center(child: Text(status, textAlign: TextAlign.center)),
+              ))
           .toList(),
       onChanged: (newValue) {
         if (newValue == null) return;
@@ -831,7 +953,20 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     return DropdownButtonFormField<String>(
       initialValue: items.first,
       alignment: Alignment.center,
-      items: items.map((owner) => DropdownMenuItem(value: owner, child: Text(owner))).toList(),
+      isExpanded: true,
+      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
+      selectedItemBuilder: (context) => items
+          .map((owner) => Align(
+                alignment: Alignment.center,
+                child: Text(owner, textAlign: TextAlign.center),
+              ))
+          .toList(),
+      items: items
+          .map((owner) => DropdownMenuItem(
+                value: owner,
+                child: Center(child: Text(owner, textAlign: TextAlign.center)),
+              ))
+          .toList(),
       onChanged: (newValue) {
         if (newValue == null) return;
         onChanged(newValue);
@@ -871,34 +1006,81 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     );
   }
 
-  Widget _buildRowActions({
-    required String primaryLabel,
-    required Color accent,
-    required VoidCallback onPrimary,
-    required Future<void> Function() onDelete,
-  }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        OutlinedButton(
-          onPressed: onPrimary,
-          style: OutlinedButton.styleFrom(
-            foregroundColor: accent,
-            side: const BorderSide(color: Color(0xFFD6DCE8)),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+  Widget _buildBottomNavigation(bool isMobile) {
+    const accent = LightModeColors.lightPrimary;
+    const onAccent = Colors.white;
+
+    if (isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).maybePop(),
+            icon: const Icon(Icons.arrow_back, size: 18),
+            label: const Text('Back: Requirements implementation'),
+            style: OutlinedButton.styleFrom(
+              backgroundColor: accent,
+              foregroundColor: onAccent,
+              side: const BorderSide(color: accent),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
+            ),
           ),
-          child: Text(primaryLabel),
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const DevelopmentSetUpScreen()),
+            ),
+            icon: const Icon(Icons.arrow_forward, size: 18),
+            label: const Text('Next: Development set up'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: accent,
+              foregroundColor: onAccent,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              shape:
+                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              elevation: 0,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        OutlinedButton.icon(
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.arrow_back, size: 18),
+          label: const Text('Back: Requirements implementation'),
+          style: OutlinedButton.styleFrom(
+            backgroundColor: accent,
+            foregroundColor: onAccent,
+            side: const BorderSide(color: accent),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          ),
         ),
-        const SizedBox(height: 8),
-        TextButton.icon(
-          onPressed: () async {
-            await onDelete();
-          },
-          icon: const Icon(Icons.delete_outline, size: 18),
-          label: const Text('Delete'),
-          style: TextButton.styleFrom(
-            foregroundColor: const Color(0xFFB91C1C),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        const SizedBox(width: 16),
+        Text(
+          'Design phase · Technical alignment',
+          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+        ),
+        const Spacer(),
+        ElevatedButton.icon(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const DevelopmentSetUpScreen()),
+          ),
+          icon: const Icon(Icons.arrow_forward, size: 18),
+          label: const Text('Next: Development set up'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: accent,
+            foregroundColor: onAccent,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            elevation: 0,
           ),
         ),
       ],

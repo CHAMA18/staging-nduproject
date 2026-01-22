@@ -99,6 +99,7 @@ import 'package:ndu_project/screens/update_ops_maintenance_plans_screen.dart';
 import 'package:ndu_project/services/project_service.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
 import 'package:ndu_project/services/sidebar_navigation_service.dart';
+import 'package:ndu_project/utils/phase_transition_helper.dart';
 
  /// Sidebar styled to match InitiationPhaseScreen's sidebar.
  class InitiationLikeSidebar extends StatefulWidget {
@@ -299,28 +300,36 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
       return; // Block navigation if validation fails
     }
     
+    final provider = ProjectDataInherited.maybeOf(context);
+    final currentCheckpoint = provider?.projectData.currentCheckpoint;
+
     try {
-      final provider = ProjectDataInherited.maybeOf(context);
       if (provider != null && provider.projectData.projectId != null) {
         final projectId = provider.projectData.projectId!;
-        
+
         // Save to Firebase via provider (includes all project data)
         await provider.saveToFirebase(checkpoint: checkpoint);
-        
+
         // Also update checkpoint via ProjectService (ensures checkpointRoute is set)
         await ProjectService.updateCheckpoint(
           projectId: projectId,
           checkpointRoute: checkpoint,
         );
-        
+
         // Update ProjectNavigationService (writes to both Firestore and SharedPreferences)
-        await ProjectNavigationService.instance.saveLastPage(projectId, checkpoint);
+        await ProjectNavigationService.instance
+            .saveLastPage(projectId, checkpoint);
       }
     } catch (e) {
       debugPrint('Checkpoint save error: $e');
     }
     if (mounted) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+      PhaseTransitionHelper.pushPhaseAware(
+        context: context,
+        builder: (_) => screen,
+        destinationCheckpoint: checkpoint,
+        sourceCheckpoint: currentCheckpoint,
+      );
     }
   }
 

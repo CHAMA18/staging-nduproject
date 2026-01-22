@@ -13,13 +13,16 @@ import 'package:ndu_project/screens/project_charter_screen.dart';
 import 'package:ndu_project/screens/ssher_stacked_screen.dart';
 import 'package:ndu_project/services/sidebar_navigation_service.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
+import 'package:ndu_project/utils/phase_transition_helper.dart';
 
 class ProjectFrameworkScreen extends StatefulWidget {
   const ProjectFrameworkScreen({super.key});
 
   static void open(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ProjectFrameworkScreen()),
+    PhaseTransitionHelper.pushPhaseAware(
+      context: context,
+      builder: (_) => const ProjectFrameworkScreen(),
+      destinationCheckpoint: 'project_framework',
     );
   }
 

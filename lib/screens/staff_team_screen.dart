@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:ndu_project/screens/design_deliverables_screen.dart';
 import 'package:ndu_project/screens/team_meetings_screen.dart';
 import 'package:ndu_project/widgets/execution_phase_page.dart';
+import 'package:ndu_project/utils/phase_transition_helper.dart';
 
 class StaffTeamScreen extends StatelessWidget {
   const StaffTeamScreen({super.key});
 
   static void open(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const StaffTeamScreen()),
+    PhaseTransitionHelper.pushPhaseAware(
+      context: context,
+      builder: (_) => const StaffTeamScreen(),
+      destinationCheckpoint: 'staff_team',
     );
   }
 

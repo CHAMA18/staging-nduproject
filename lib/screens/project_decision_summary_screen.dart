@@ -215,11 +215,7 @@ class _ProjectDecisionSummaryScreenState
 
     // Navigate to Front End Planning Summary
     if (!mounted) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const FrontEndPlanningSummaryScreen(),
-      ),
-    );
+    FrontEndPlanningSummaryScreen.open(context);
   }
 }
 

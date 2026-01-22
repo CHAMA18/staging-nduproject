@@ -11,13 +11,16 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/utils/phase_transition_helper.dart';
 
 class DeliverProjectClosureScreen extends StatefulWidget {
   const DeliverProjectClosureScreen({super.key});
 
   static void open(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const DeliverProjectClosureScreen()),
+    PhaseTransitionHelper.pushPhaseAware(
+      context: context,
+      builder: (_) => const DeliverProjectClosureScreen(),
+      destinationCheckpoint: 'deliver_project_closure',
     );
   }
 

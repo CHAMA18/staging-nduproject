@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/screens/requirements_implementation_screen.dart';
@@ -11,15 +12,22 @@ import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/architecture_service.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
+import 'package:ndu_project/utils/phase_transition_helper.dart';
 
 class DesignPhaseScreen extends StatefulWidget {
   const DesignPhaseScreen({super.key, this.activeItemLabel = 'Design Management'});
 
   final String activeItemLabel;
 
-  static void open(BuildContext context, {String activeItemLabel = 'Design Management'}) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => DesignPhaseScreen(activeItemLabel: activeItemLabel)),
+  static void open(
+    BuildContext context, {
+    String activeItemLabel = 'Design Management',
+    String destinationCheckpoint = 'design_management',
+  }) {
+    PhaseTransitionHelper.pushPhaseAware(
+      context: context,
+      builder: (_) => DesignPhaseScreen(activeItemLabel: activeItemLabel),
+      destinationCheckpoint: destinationCheckpoint,
     );
   }
 
@@ -285,57 +293,23 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                           style: TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                         const SizedBox(height: 16),
-                        _buildManagementCards(),
-                        const SizedBox(height: 24),
                         _buildEditorSection(),
-                        const SizedBox(height: 24),
-                        _buildDocumentsSection(),
-                        const SizedBox(height: 24),
-                        _buildDesignToolsSidebarSection(),
-                        const SizedBox(height: 24),
-                        _buildCollaboratorsSection(),
                       ],
                     )
                   else
-                    Row(
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Internal Left Sidebar
-                        SizedBox(
-                          width: 260,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _buildDocumentsSection(),
-                              const SizedBox(height: 24),
-                              _buildDesignToolsSidebarSection(),
-                              const SizedBox(height: 24),
-                              _buildCollaboratorsSection(),
-                            ],
-                          ),
+                        const Text(
+                          'Design Management',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
-                        const SizedBox(width: 24),
-                        // Main Content Area
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Text(
-                                'Design Management',
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                              ),
-                              const Text(
-                                'Develop project design documentation',
-                                style: TextStyle(fontSize: 12, color: Colors.grey),
-                              ),
-                              const SizedBox(height: 16),
-                              _buildManagementCards(),
-                              const SizedBox(height: 24),
-                              _buildEditorSection(),
-                            ],
-                          ),
+                        const Text(
+                          'Develop project design documentation',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
                         ),
+                        const SizedBox(height: 16),
+                        _buildEditorSection(),
                       ],
                     ),
                 ],
@@ -552,42 +526,79 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
           const SizedBox(height: 8),
           Text('Select to use', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
           const SizedBox(height: 12),
-          _buildToolItem('Draw.io', Icons.account_tree, isSelected: true),
-          _buildToolItem('Miro', Icons.dashboard_outlined),
-          _buildToolItem('Figma', Icons.design_services),
-          _buildToolItem('Rich Text Editor', Icons.text_fields),
-          _buildToolItem('Whiteboard', Icons.brush),
-          _buildToolItem('Chart Builder', Icons.bar_chart),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildToolItem('Draw.io', Icons.account_tree, isSelected: true),
+                const SizedBox(width: 8),
+                _buildToolItem(
+                  'Miro',
+                  Icons.dashboard_outlined,
+                  onTap: () => _openToolWebView('Miro', 'https://miro.com/login/'),
+                ),
+                const SizedBox(width: 8),
+                _buildToolItem(
+                  'Figma',
+                  Icons.design_services,
+                  onTap: () =>
+                      _openToolWebView('Figma', 'https://www.figma.com/'),
+                ),
+                const SizedBox(width: 8),
+                _buildToolItem('Rich Text Editor', Icons.text_fields),
+                const SizedBox(width: 8),
+                _buildToolItem('Whiteboard', Icons.brush),
+                const SizedBox(width: 8),
+                _buildToolItem('Chart Builder', Icons.bar_chart),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildToolItem(String title, IconData icon, {bool isSelected = false}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isSelected ? Colors.blue.withValues(alpha: 0.1) : Colors.transparent,
+  Widget _buildToolItem(
+    String title,
+    IconData icon, {
+    bool isSelected = false,
+    VoidCallback? onTap,
+  }) {
+    final isClickable = onTap != null;
+    final backgroundColor = isSelected
+        ? Colors.blue.withValues(alpha: 0.1)
+        : Colors.grey.withValues(alpha: 0.06);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: isSelected ? Colors.blue : Colors.grey[700]),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 13,
-                color: isSelected ? Colors.blue : Colors.black87,
-                fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
-              ),
-            ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: Colors.grey.shade200),
           ),
-          if (!isSelected)
-            Icon(Icons.open_in_new, size: 14, color: Colors.grey[400]),
-        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18, color: isSelected ? Colors.blue : Colors.grey[700]),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isSelected ? Colors.blue : Colors.black87,
+                  fontWeight:
+                      isSelected ? FontWeight.w500 : FontWeight.normal,
+                ),
+              ),
+              if (isClickable)
+                Icon(Icons.open_in_new, size: 14, color: Colors.grey[400]),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -930,6 +941,32 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
               ],
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 860;
+                if (isNarrow) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildDesignToolsSidebarSection(),
+                      const SizedBox(height: 16),
+                      _buildCollaboratorsSection(),
+                    ],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: _buildDesignToolsSidebarSection()),
+                    const SizedBox(width: 16),
+                    Expanded(child: _buildCollaboratorsSection()),
+                  ],
+                );
+              },
+            ),
+          ),
           // Editor Body
           Expanded(
             child: Row(
@@ -1063,6 +1100,68 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _openToolWebView(String title, String url) {
+    final controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..loadRequest(Uri.parse(url));
+
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        final size = MediaQuery.sizeOf(context);
+        final width = size.width < 980 ? size.width * 0.92 : 920.0;
+        final height = size.height < 720 ? size.height * 0.82 : 700.0;
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: SizedBox(
+            width: width,
+            height: height,
+            child: Column(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey.shade200),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 18),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(16),
+                      bottomRight: Radius.circular(16),
+                    ),
+                    child: WebViewWidget(controller: controller),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

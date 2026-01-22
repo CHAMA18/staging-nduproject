@@ -2,10 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:go_router/go_router.dart';
 import 'package:ndu_project/services/integration_oauth_service.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/app_logo.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/routing/app_router.dart';
+import 'package:ndu_project/theme.dart';
 
 class ToolsIntegrationScreen extends StatefulWidget {
   const ToolsIntegrationScreen({super.key});
@@ -218,40 +221,9 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                   if (_isLoading) const SizedBox(height: 16),
                   _buildHeader(isNarrow),
                   const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 16,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Integration health snapshot',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1A1D1F)),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildStatsRow(isNarrow),
-                        const SizedBox(height: 8),
-                        TextButton.icon(
-                          onPressed: _addStat,
-                          icon: const Icon(Icons.add, size: 18),
-                          label: const Text('Add metric'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
                   _buildToolConnectionManager(isNarrow),
+                  const SizedBox(height: 24),
+                  _buildBottomNavigation(isNarrow),
                 ],
               ),
             ),
@@ -675,6 +647,100 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
     );
   }
 
+  Widget _buildBottomNavigation(bool isNarrow) {
+    const accent = LightModeColors.lightPrimary;
+    const onAccent = Colors.white;
+    return Column(
+      children: [
+        const Divider(height: 1),
+        const SizedBox(height: 16),
+        if (isNarrow)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Design phase · Tools integration',
+                style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () =>
+                    context.push('/${AppRoutes.technicalDevelopment}'),
+                icon: const Icon(Icons.arrow_back, size: 18),
+                label: const Text('Back: Technical Development'),
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: accent,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  side: const BorderSide(color: accent),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
+                  foregroundColor: onAccent,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: () =>
+                    context.push('/${AppRoutes.uiUxDesign}'),
+                icon: const Icon(Icons.arrow_forward, size: 18),
+                label: const Text('Next: UI/UX Design'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accent,
+                  foregroundColor: onAccent,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
+                  elevation: 0,
+                ),
+              ),
+            ],
+          )
+        else
+          Row(
+            children: [
+              OutlinedButton.icon(
+                onPressed: () =>
+                    context.push('/${AppRoutes.technicalDevelopment}'),
+                icon: const Icon(Icons.arrow_back, size: 18),
+                label: const Text('Back: Technical Development'),
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: accent,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  side: const BorderSide(color: accent),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
+                  foregroundColor: onAccent,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Text('Design phase · Tools integration',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+              const Spacer(),
+              ElevatedButton.icon(
+                onPressed: () =>
+                    context.push('/${AppRoutes.uiUxDesign}'),
+                icon: const Icon(Icons.arrow_forward, size: 18),
+                label: const Text('Next: UI/UX Design'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accent,
+                  foregroundColor: onAccent,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
+                  elevation: 0,
+                ),
+              ),
+            ],
+          ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
   Widget _buildIntegrationCard(_IntegrationItem item, bool isNarrow, int index) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -762,19 +828,8 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
             ],
           ),
         ),
-        // Configure button
         Column(
           children: [
-            OutlinedButton(
-              onPressed: () => _openIntegrationConfig(item, index),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF64748B),
-                side: const BorderSide(color: Color(0xFFE2E8F0)),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              ),
-              child: const Text('Configure', style: TextStyle(fontSize: 13)),
-            ),
-            const SizedBox(height: 8),
             OutlinedButton(
               onPressed: () => _deleteIntegration(item.id),
               style: OutlinedButton.styleFrom(
@@ -847,18 +902,6 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
         const SizedBox(height: 8),
         _buildMappingRow(item),
         const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton(
-            onPressed: () => _openIntegrationConfig(item, index),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF64748B),
-              side: const BorderSide(color: Color(0xFFE2E8F0)),
-            ),
-            child: const Text('Configure'),
-          ),
-        ),
-        const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
           child: OutlinedButton(

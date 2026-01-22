@@ -10,6 +10,9 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/theme.dart';
 import 'package:ndu_project/routing/app_router.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 class EngineeringDesignScreen extends StatefulWidget {
   const EngineeringDesignScreen({super.key});
@@ -239,6 +242,102 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
     _scheduleSave();
   }
 
+  Future<void> _exportEngineeringChecklist() async {
+    final doc = pw.Document();
+    final notes = _notesController.text.trim();
+    final keyDecisions = _keyDecisionsController.text.trim();
+    final coreLayers = _coreLayers
+        .map((layer) {
+          final name = layer.name.trim();
+          final desc = layer.description.trim();
+          if (name.isEmpty && desc.isEmpty) return '';
+          return desc.isEmpty ? name : '$name — $desc';
+        })
+        .where((line) => line.trim().isNotEmpty)
+        .toList();
+    final components = _components
+        .map((component) {
+          final name = component.name.trim();
+          final resp = component.responsibility.trim();
+          final status = component.statusLabel.trim();
+          if (name.isEmpty && resp.isEmpty && status.isEmpty) return '';
+          final base = resp.isEmpty ? name : '$name — $resp';
+          return status.isEmpty ? base : '$base ($status)';
+        })
+        .where((line) => line.trim().isNotEmpty)
+        .toList();
+    final readiness = _readinessItems
+        .map((item) {
+          final title = item.title.trim();
+          final desc = item.description.trim();
+          final owner = item.owner.trim();
+          if (title.isEmpty && desc.isEmpty && owner.isEmpty) return '';
+          final base = desc.isEmpty ? title : '$title — $desc';
+          return owner.isEmpty ? base : '$base (Owner: $owner)';
+        })
+        .where((line) => line.trim().isNotEmpty)
+        .toList();
+
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        build: (context) => [
+          pw.Text(
+            'Engineering Checklist',
+            style: pw.TextStyle(
+              fontSize: 22,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 12),
+          _pdfTextBlock('Notes', notes),
+          _pdfTextBlock('Key decisions', keyDecisions),
+          _pdfSection('System architecture', coreLayers),
+          _pdfSection('Components & interfaces', components),
+          _pdfSection('Engineering readiness', readiness),
+        ],
+      ),
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (format) async => doc.save(),
+      name: 'engineering-checklist.pdf',
+    );
+  }
+
+  pw.Widget _pdfTextBlock(String title, String content) {
+    final normalized = content.trim().isEmpty ? 'No entries.' : content.trim();
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(title,
+            style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 6),
+        pw.Text(normalized, style: const pw.TextStyle(fontSize: 12)),
+        pw.SizedBox(height: 12),
+      ],
+    );
+  }
+
+  pw.Widget _pdfSection(String title, List<String> items) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(title,
+            style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 6),
+        if (items.isEmpty)
+          pw.Text('No entries.', style: const pw.TextStyle(fontSize: 12))
+        else
+          pw.Column(
+            children: items.map((item) => pw.Bullet(text: item)).toList(),
+          ),
+        pw.SizedBox(height: 12),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
@@ -254,6 +353,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                 title: 'Design Phase',
                 showImportButton: false,
                 showContentButton: false,
+                showNavigationButtons: false,
               ),
               Expanded(
                 child: SingleChildScrollView(
@@ -289,21 +389,23 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Notes Input - Dark themed with subtle border
+                      // Notes Input - Light themed to match other pages
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF2A3441),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.transparent, width: 0),
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppSemanticColors.border),
                         ),
                         child: TextField(
                           controller: _notesController,
                           maxLines: 2,
-                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                          style: const TextStyle(
+                              color: Color(0xFF1F2937), fontSize: 14),
                           decoration: InputDecoration(
                             hintText: 'Capture engineering notes here... design assumptions, constraints, standards, and open technical decisions.',
-                            hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                            hintStyle: TextStyle(
+                                color: Colors.grey[500], fontSize: 13),
                             border: InputBorder.none,
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
@@ -401,7 +503,9 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                         key: ValueKey('core-layer-name-${layer.id}'),
                         initialValue: layer.name,
                         decoration: _inlineInputDecoration('Layer name'),
-                        style: const TextStyle(fontSize: 14, color: Colors.black87),
+                        textAlign: TextAlign.center,
+                        textAlignVertical: TextAlignVertical.center,
+                        style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
                         onChanged: (value) => _updateCoreLayer(layer.copyWith(name: value)),
                       ),
                     ),
@@ -411,7 +515,9 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                         key: ValueKey('core-layer-desc-${layer.id}'),
                         initialValue: layer.description,
                         decoration: _inlineInputDecoration('Responsibility'),
-                        style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                        textAlign: TextAlign.center,
+                        textAlignVertical: TextAlignVertical.center,
+                        style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
                         onChanged: (value) => _updateCoreLayer(layer.copyWith(description: value)),
                       ),
                     ),
@@ -510,7 +616,9 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                       key: ValueKey('component-name-${component.id}'),
                       initialValue: component.name,
                       decoration: _inlineInputDecoration('Component'),
-                      style: const TextStyle(fontSize: 14, color: Colors.black87),
+                      textAlign: TextAlign.center,
+                      textAlignVertical: TextAlignVertical.center,
+                      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
                       onChanged: (value) => _updateComponent(component.copyWith(name: value)),
                     ),
                   ),
@@ -521,7 +629,9 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                       key: ValueKey('component-resp-${component.id}'),
                       initialValue: component.responsibility,
                       decoration: _inlineInputDecoration('Responsibility'),
-                      style: const TextStyle(fontSize: 13, color: Colors.black87),
+                      textAlign: TextAlign.center,
+                      textAlignVertical: TextAlignVertical.center,
+                      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
                       onChanged: (value) => _updateComponent(component.copyWith(responsibility: value)),
                     ),
                   ),
@@ -532,9 +642,25 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                       initialValue: _statusOptions.contains(component.statusLabel)
                           ? component.statusLabel
                           : _statusOptions.first,
+                      alignment: Alignment.center,
+                      isExpanded: true,
+                      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
+                      selectedItemBuilder: (context) => _statusOptions
+                          .map((status) => Align(
+                                alignment: Alignment.center,
+                                child: Text(status,
+                                    textAlign: TextAlign.center),
+                              ))
+                          .toList(),
                       decoration: _inlineInputDecoration('Status'),
                       items: _statusOptions
-                          .map((status) => DropdownMenuItem(value: status, child: Text(status)))
+                          .map((status) => DropdownMenuItem(
+                                value: status,
+                                child: Center(
+                                  child: Text(status,
+                                      textAlign: TextAlign.center),
+                                ),
+                              ))
                           .toList(),
                       onChanged: (value) {
                         if (value == null) return;
@@ -590,10 +716,12 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                           key: ValueKey('readiness-title-${item.id}'),
                           initialValue: item.title,
                           decoration: _inlineInputDecoration('Readiness item'),
+                          textAlign: TextAlign.center,
+                          textAlignVertical: TextAlignVertical.center,
                           style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
-                              color: Colors.black87),
+                              color: Color(0xFF1F2937)),
                           onChanged: (value) => _updateReadiness(item.copyWith(title: value)),
                         ),
                         const SizedBox(height: 6),
@@ -601,7 +729,9 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                           key: ValueKey('readiness-desc-${item.id}'),
                           initialValue: item.description,
                           decoration: _inlineInputDecoration('Description'),
-                          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                          textAlign: TextAlign.center,
+                          textAlignVertical: TextAlignVertical.center,
+                          style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
                           onChanged: (value) => _updateReadiness(item.copyWith(description: value)),
                         ),
                       ],
@@ -614,7 +744,9 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                       key: ValueKey('readiness-owner-${item.id}'),
                       initialValue: item.owner,
                       decoration: _inlineInputDecoration('Owner'),
-                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      textAlign: TextAlign.center,
+                      textAlignVertical: TextAlignVertical.center,
+                      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
                       onChanged: (value) => _updateReadiness(item.copyWith(owner: value)),
                     ),
                   ),
@@ -656,7 +788,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
         // Export button
         Center(
           child: OutlinedButton.icon(
-            onPressed: () {},
+            onPressed: _exportEngineeringChecklist,
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.black87,
               side:
@@ -666,7 +798,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             ),
             icon: const Icon(Icons.download, size: 18),
-            label: const Text('Export engineering blueprint'),
+            label: const Text('Export engineering checklist'),
           ),
         ),
       ],
@@ -914,6 +1046,7 @@ InputDecoration _inlineInputDecoration(String hint) {
   return InputDecoration(
     isDense: true,
     hintText: hint,
+    hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
     filled: true,
     fillColor: const Color(0xFFF9FAFB),
     contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),

@@ -5,7 +5,6 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/screens/front_end_planning_requirements_screen.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
-import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/widgets/user_access_chip.dart';
@@ -34,9 +33,7 @@ class _FrontEndPlanningSummaryScreenState extends State<FrontEndPlanningSummaryS
   @override
   void initState() {
     super.initState();
-    // Enable auto-bullet for multi-line fields
-    _notes.enableAutoBullet();
-    _summaryNotes.enableAutoBullet();
+    // Notes = prose; no auto-bullet
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _summaryNotes.addListener(_syncSummaryToProvider);

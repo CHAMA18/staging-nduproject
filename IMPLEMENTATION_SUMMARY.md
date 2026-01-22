@@ -1,254 +1,270 @@
-# Admin Inline Editing System - Implementation Summary
+# Business Case Module – Implementation Summary
 
-## ✅ What Has Been Completed
-
-### 1. Core System Components
-All core components have been implemented and are ready to use:
-
-#### **AppContentProvider** (`lib/providers/app_content_provider.dart`)
-- ✓ Added `isEditMode` state management
-- ✓ Added `toggleEditMode()` and `setEditMode()` methods
-- ✓ Integrated with existing Firestore content sync
-
-#### **EditableContentText Widget** (`lib/widgets/content_text.dart`)
-- ✓ Created new widget that replaces static Text
-- ✓ Shows normal text when edit mode is OFF
-- ✓ Shows blue border + edit icon when edit mode is ON
-- ✓ Opens edit dialog on click
-- ✓ Handles Firestore create/update operations
-- ✓ Real-time sync with Firebase
-
-#### **AdminEditToggle Widget** (`lib/widgets/admin_edit_toggle.dart`)
-- ✓ Floating action button for admins only
-- ✓ Email-based admin check
-- ✓ Toggle between edit/view modes
-- ✓ Visual feedback (blue when off, red when on)
-
-#### **Supporting Files**
-- ✓ AppContentModel - Data model for content items
-- ✓ AppContentService - Firestore CRUD operations
-- ✓ Firestore security rules updated
-- ✓ Firestore indexes configured
-
-### 2. Reference Implementations
-Four screens have been fully implemented as examples:
-
-1. **SSHER Stacked Screen** (`lib/screens/ssher_stacked_screen.dart`)
-   - ✓ AdminEditToggle added
-   - ✓ Two EditableContentText examples (title + description)
-   - ✓ Shows best practices for implementation
-
-2. **Settings Screen** (`lib/screens/settings_screen.dart`)
-   - ✓ AdminEditToggle added
-   - ✓ Ready for content text replacement
-
-3. **Program Basics Screen** (`lib/screens/program_basics_screen.dart`)
-   - ✓ AdminEditToggle added
-   - ✓ Ready for content text replacement
-
-4. **Team Management Screen** (`lib/screens/team_management_screen.dart`)
-   - ✓ AdminEditToggle added
-   - ✓ Ready for content text replacement
-
-### 3. Documentation
-Three comprehensive guides created:
-
-1. **ADMIN_EDIT_MODE_GUIDE.md** - Full documentation (architecture, usage, troubleshooting)
-2. **QUICK_START_ADMIN_EDIT.md** - Quick reference for adding to screens
-3. **IMPLEMENTATION_SUMMARY.md** - This file
-
-### 4. Automation Tools
-Two scripts provided for batch updates:
-
-1. **update_all_screens.sh** - Bash script to update all screens automatically
-2. **add_admin_toggle.py** - Python script for automated updates
-
-### 5. Old Admin Screen
-- ✓ Removed "Admin Content" tab from Settings
-- ⚠️  Note: `admin_content_screen.dart` file still exists but is unused (can be deleted)
-
-## 🎯 What You Need to Do
-
-### Immediate Actions
-
-#### 1. Add Your Admin Email (Required)
-Edit `/lib/widgets/admin_edit_toggle.dart` and add your email:
-
-```dart
-const List<String> _adminEmails = [
-  'admin@example.com',
-  'YOUR_ACTUAL_EMAIL@domain.com',  // ← CHANGE THIS
-];
-```
-
-Then **restart the app** for changes to take effect.
-
-#### 2. Test the Implementation
-1. Sign in with your admin email
-2. Navigate to the SSHER page
-3. Look for the blue "Edit Content" button at bottom-right
-4. Click it to enable edit mode
-5. Click on "SSHER Plan Summary" title - it should have a blue border
-6. Edit the text and save
-7. Verify changes persist after reload
-
-### Optional Actions
-
-#### Option A: Update All Screens Automatically (Recommended)
-Run the shell script to add the toggle to all remaining screens:
-
-```bash
-cd /hologram/data/workspace/project
-chmod +x update_all_screens.sh
-./update_all_screens.sh
-```
-
-This will process ~45 remaining screen files and add:
-- Import statements
-- AdminEditToggle widget
-
-#### Option B: Update Screens Manually
-For each screen you want to enable, follow the 3-step process in `QUICK_START_ADMIN_EDIT.md`:
-1. Add imports
-2. Add AdminEditToggle to Stack
-3. Replace Text widgets with EditableContentText
-
-#### Option C: Do Nothing
-The system works as-is. You can:
-- Use the four implemented screens as examples
-- Add edit mode to other screens as needed
-- Only admins will see the toggle
-
-### Ongoing Usage
-
-#### Making Content Editable
-Identify text elements that should be editable and replace:
-
-```dart
-// Static text (not editable):
-Text('My Heading')
-
-// Editable text:
-EditableContentText(
-  contentKey: 'unique_key_here',
-  fallback: 'My Heading',
-  category: 'general',
-)
-```
-
-**Best candidates for editing:**
-- Page titles and section headings
-- Instructional text and descriptions
-- Help text and tooltips
-- Labels and form captions
-
-**Don't make editable:**
-- User data (names, emails, etc.)
-- Dynamic computed values
-- Form input fields
-- Database-driven content
-
-## 📊 Status Overview
-
-| Component | Status | Notes |
-|-----------|--------|-------|
-| Core Provider | ✅ Complete | Edit mode state management |
-| Editable Widget | ✅ Complete | Full CRUD with Firestore |
-| Admin Toggle | ✅ Complete | Email-based access control |
-| Firestore Rules | ✅ Complete | Security configured |
-| Firestore Indexes | ✅ Complete | Query performance optimized |
-| Example Screens | ✅ Complete | 4 reference implementations |
-| Documentation | ✅ Complete | 3 comprehensive guides |
-| Automation Scripts | ✅ Complete | Bash + Python tools |
-| Remaining Screens | ⚠️  Pending | ~45 screens need toggle |
-| Admin Email Setup | ⚠️  Pending | You need to add your email |
-
-## ⚠️ Important Notes
-
-### 1. Admin Email Required
-The edit toggle will NOT appear until you add your email to the admin list and restart the app.
-
-### 2. Firebase Must Be Connected
-This system requires Firebase/Firestore. Ensure your app is connected and initialized.
-
-### 3. All Users Can Read
-Current Firestore rules allow all authenticated users to read content. Consider restricting write access to admin users only in production.
-
-### 4. Backwards Compatible
-The system is fully backwards compatible:
-- Screens without EditableContentText continue to work
-- Non-admin users see no changes
-- Edit mode has zero impact when disabled
-
-### 5. Real-Time Updates
-Content changes are immediately visible to all users via Firestore real-time listeners.
-
-## 🐛 Troubleshooting
-
-### Edit button not showing?
-1. Check your email is in `_adminEmails` list
-2. Ensure you're signed in with that exact email
-3. Restart the app after adding email
-4. Verify you're on a screen with AdminEditToggle added
-
-### Content not saving?
-1. Check Firestore rules allow writes
-2. Verify Firebase is initialized
-3. Check browser console for errors
-4. Ensure you're authenticated
-
-### Changes not appearing?
-1. Verify Firestore listeners are active
-2. Check network connectivity
-3. Reload the page
-4. Check Firebase console to confirm data saved
-
-## 🚀 Next Steps
-
-1. **Immediate**: Add your admin email and test
-2. **Short-term**: Run automated script to update all screens
-3. **Medium-term**: Replace key Text widgets with EditableContentText
-4. **Long-term**: Train admins on using the system
-
-## 📝 Files Modified/Created
-
-### Modified Files
-- `lib/providers/app_content_provider.dart` - Added edit mode state
-- `lib/widgets/content_text.dart` - Added EditableContentText widget
-- `lib/screens/ssher_stacked_screen.dart` - Full implementation
-- `lib/screens/settings_screen.dart` - Toggle added
-- `lib/screens/program_basics_screen.dart` - Toggle added
-- `lib/screens/team_management_screen.dart` - Toggle added
-- `firestore.rules` - Updated permissions
-- `firestore.indexes.json` - Added index
-
-### New Files Created
-- `lib/widgets/admin_edit_toggle.dart` - Admin toggle button
-- `lib/widgets/editable_page_wrapper.dart` - Helper wrapper (optional)
-- `ADMIN_EDIT_MODE_GUIDE.md` - Full documentation
-- `QUICK_START_ADMIN_EDIT.md` - Quick reference
-- `IMPLEMENTATION_SUMMARY.md` - This file
-- `update_all_screens.sh` - Bash automation script
-- `add_admin_toggle.py` - Python automation script
-
-## ✨ System Benefits
-
-- ✅ Edit content without redeploying app
-- ✅ Real-time updates across all users
-- ✅ No separate admin panel needed
-- ✅ Visual, intuitive editing experience
-- ✅ Admin-only access control
-- ✅ Completely transparent to regular users
-- ✅ Firebase-backed with automatic sync
-- ✅ Organized by categories and keys
-
-## 📞 Support
-
-For detailed information, refer to:
-- `ADMIN_EDIT_MODE_GUIDE.md` - Complete guide
-- `QUICK_START_ADMIN_EDIT.md` - Quick reference
-- Example implementations in the four updated screens
+This document describes in detail all changes made after the “Green Light” audit, and confirms that the modified code has no known errors (linter-clean).
 
 ---
 
-**Compiled successfully** ✅ - All changes are error-free and ready to use!
+## 1. P0: Navigation & solutions (data no longer disappears)
+
+### Problem
+When users clicked **Back** or **Next** in the Business Case flow, Risk, IT, Infrastructure, Core Stakeholders, and Cost Analysis were recreated with **empty `solutions`**. Those screens depend on `solutions` to show rows. Empty `solutions` → no rows → “data disappeared” (e.g. risks, tech, infrastructure).
+
+### Changes
+
+**`lib/utils/business_case_navigation.dart`**
+- Imported `project_data_model.dart`.
+- Added **`_buildSolutionItems(ProjectDataModel data)`**:
+  - Uses `potentialSolutions` → `preferredSolutionAnalysis.solutionAnalyses` → `solutionTitle` / `solutionDescription` fallback (same logic as the sidebar).
+  - Returns `List<AiSolutionItem>` for downstream screens.
+- **`_navigateToScreen`** now:
+  - Calls `_buildSolutionItems(projectData)` once.
+  - Passes **`solutions`** into Risk, IT, Infrastructure, Core Stakeholders, and Cost Analysis (no more `const []`).
+  - Uses **section-specific notes** where relevant:
+    - IT: `itConsiderationsData?.notes ?? projectData.notes`
+    - Infrastructure: `infrastructureConsiderationsData?.notes ?? projectData.notes`
+    - Core Stakeholders: `coreStakeholdersData?.notes ?? projectData.notes`
+  - Preferred Solution still receives `solutions` built the same way.
+
+**`lib/widgets/initiation_like_sidebar.dart`**
+- **`_openCostAnalysis`** no longer uses `CostAnalysisScreen(notes: '', solutions: [])`.
+- It now passes **`data.notes`** and **`_buildSolutionItems(data)`** into `CostAnalysisScreen`, same pattern as IT / Infrastructure / Stakeholders.
+
+### Result
+- Back/Next and sidebar navigation **preserve solutions and section-specific notes**.
+- Risk, IT, Infrastructure, Stakeholders, and Cost Analysis always receive the correct solution list and notes, so data no longer “disappears” when moving between sections.
+
+---
+
+## 2. P1: CBA 3 – compact category labels
+
+### Problem
+Cost Benefit Analysis used long labels **“Operational Efficiency”** and **“Stakeholder Commitment”** instead of the requested compact labels.
+
+### Changes
+
+**`lib/screens/cost_analysis_screen.dart`**
+- In **`_projectValueFields`**:
+  - `ops_efficiency`: **“Operational Efficiency”** → **“Ops Eff.”**
+  - `stakeholder_commitment`: **“Stakeholder Commitment”** → **“SH Comm.”**
+
+### Result
+- Dropdowns, Project Benefits Review, and Value Summary use **“Ops Eff.”** and **“SH Comm.”** everywhere these categories appear.
+
+---
+
+## 3. P1: First-time hints (Risk & Preferred Solution)
+
+### Problem
+Risk Identification and Preferred Solution Analysis had no first-time hint dialog.
+
+### Changes
+
+**`lib/screens/risk_identification_screen.dart`**
+- Imported **`page_hint_dialog.dart`**.
+- In **`addPostFrameCallback`** (after load/bootstrap/generate):
+  - **`PageHintDialog.showIfNeeded`** with:
+    - `pageId`: `'risk_identification'`
+    - `title`: `'Risk Identification'`
+    - `message`: explains up to 3 risks per solution, “Generate risks,” and auto-save.
+
+**`lib/screens/preferred_solution_analysis_screen.dart`**
+- Imported **`page_hint_dialog.dart`**.
+- **`addPostFrameCallback`** now **`await`s `_loadExistingDataAndAnalysis()`**, then:
+  - **`PageHintDialog.showIfNeeded`** with:
+    - `pageId`: `'preferred_solution_analysis'`
+    - `title`: `'Preferred Solution Analysis'`
+    - `message`: review each solution, use “View More Details,” complete before WBS.
+
+### Result
+- First visit to Risk Identification and Preferred Solution Analysis shows the hint (subject to existing hint settings: “Disable hints for pages I’ve viewed before,” “Enable all hints”).
+
+---
+
+## 4. P2: Prose vs list & period bulleting
+
+### Problem
+- Auto-bullet used **`• `** (bullet character) instead of **`.`** (period).
+- **Prose** fields (Notes, Scope, Business Case, etc.) were using auto-bullet; they should not.
+
+### Changes
+
+**`lib/utils/auto_bullet_text_controller.dart`**
+- Introduced **`kListBullet = '. '`** (period + space).
+- **`AutoBulletTextController`** and **`_autoBulletListener`** now use **`kListBullet`** instead of **`• `** (empty start, after newline, prefix when no bullet).
+- Comments state: **list fields only**; **do not** use for prose.
+
+**Screens – prose (auto-bullet removed)**
+- **Risk**: `_notesController` – no `enableAutoBullet`.
+- **Core Stakeholders**: `_notesController` – no `enableAutoBullet`.
+- **IT Considerations**: `_notesController` – no `enableAutoBullet`.
+- **Initiation Phase**: `_notesController`, `_businessCaseController` – no `enableAutoBullet`.
+- **Front-End Planning Summary**: `_notes`, `_summaryNotes` – no `enableAutoBullet`.
+
+**Screens – list fields (keep auto-bullet, now `. `)**
+- **Risk**: risk controllers still use `enableAutoBullet` (including bootstrap and **Add**).
+- **Core Stakeholders**: internal/external stakeholder controllers unchanged.
+- **IT**: tech field controllers unchanged.
+
+**`lib/screens/cost_analysis_screen.dart`**
+- Imported **`auto_bullet_text_controller.dart`**.
+- When appending AI savings into category notes, **`• `** replaced with **`kListBullet`**.
+
+### Result
+- **List** fields use **`. `** bulleting; **prose** fields have no auto-bullet.
+- AI-appended list content in CBA uses **`. `** as well.
+
+---
+
+## 5. P2: Core Stakeholders – title and reminders
+
+### Problem
+- Section title above the table could be read as “Internal Stakeholders” only; it should be clear that the section covers **Core Stakeholders** (internal + external).
+- Need a **reminder** to update text in each box.
+
+### Changes
+
+**`lib/screens/core_stakeholders_screen.dart`**
+- Under **“Core Stakeholders”** heading:
+  - Added **“Reminder: update text within each box.”** (italic, grey).
+- Subheadings:
+  - **“Internal Stakeholders”** → **“Internal”**
+  - **“External Stakeholders”** → **“External”**
+- Table column headers (e.g. “Internal Stakeholders” / “External Stakeholders”) are unchanged.
+
+### Result
+- **“Core Stakeholders”** is the main title; **“Internal”** / **“External”** clarify the two blocks.
+- Reminder prompts users to update each stakeholder box.
+
+---
+
+## 6. P2: Preferred Solution – “View More Details”
+
+### Problem
+Users could not see **full** solution details (all costs, technologies, infrastructure, etc.) before selecting a preferred solution.
+
+### Changes
+
+**`lib/screens/preferred_solution_analysis_screen.dart`**
+- In **`_buildSolutionDetail`** (each solution tab):
+  - Added a **“View More Details”** `TextButton` (with `Icons.read_more`) next to the AI tag.
+- **`_showViewMoreDetails(context, data, index)`**:
+  - Opens a **scrollable dialog** (max width 560, max height 640).
+  - Shows **full** content:
+    - Title and **full description**
+    - **Key stakeholders** (all)
+    - **Top risks** (all)
+    - **Technologies** (if any)
+    - **Infrastructure** (if any)
+    - **Investment overview**: **all** cost items (no `take(4)`), each with Est. cost, ROI, NPV.
+- **`_buildFullCostsSection`**:
+  - Builds the full cost list for the dialog (reuses **`_buildCostBadge`** and **`_formatCurrency`**).
+
+### Result
+- Users can open **“View More Details”** per solution and see the **complete** information before choosing a preferred option.
+
+---
+
+## 7. P2: IT & Infrastructure – “update text” reminders
+
+### Problem
+IT Considerations and Infrastructure Considerations had no reminder to **update text within each box**.
+
+### Changes
+
+**`lib/screens/it_considerations_screen.dart`**
+- After **“IT Considerations for each potential solution”** and before the table:
+  - **“Reminder: update text within each Core Technology box.”** (italic, grey).
+- Shown for both mobile and desktop (title + reminder are above the `isMobile` branch).
+
+**`lib/screens/infrastructure_considerations_screen.dart`**
+- **Mobile**: before the list of rows, **“Reminder: update text within each box.”** (italic, grey).
+- **Desktop**: after **“Main Infrastructure Consideration for each potential solution”**, same reminder, then the table.
+
+### Result
+- Both screens remind users to update text in each Core Technology / infrastructure box.
+
+---
+
+## 8. P2: Save-before-undo (avoid data loss)
+
+### Problem
+When users clicked **Undo** in the text-formatting toolbar, the **current** state (before undo) was not saved. That could cause data loss.
+
+### Changes
+
+**`lib/widgets/text_formatting_toolbar.dart`**
+- Added optional **`onBeforeUndo`** (`VoidCallback?`).
+- **`_undo()`** now:
+  1. Calls **`widget.onBeforeUndo?.call()`**
+  2. Then performs the undo (revert to previous history entry).
+
+**Screens using the toolbar**
+- **IT Considerations**  
+  - Notes toolbar and each **Core Technology** toolbar:  
+    **`onBeforeUndo: () => _saveITConsiderationsData()`**
+- **Infrastructure Considerations**  
+  - Each infrastructure text area toolbar:  
+    **`onBeforeUndo: () => _saveInfrastructureConsiderationsData()`**
+- **Initiation Phase**  
+  - **`_saveBeforeUndo()`**:
+    - Updates provider with **`_notesController.text`** and **`_businessCaseController.text`** via **`updateInitiationData`**.
+    - Calls **`saveToFirebase(checkpoint: 'business_case')`** (fire-and-forget).
+  - Both **Notes** and **Business Case** toolbars use **`onBeforeUndo: _saveBeforeUndo`**.
+
+### Result
+- Before **any** undo in those toolbars, the **current** state is saved (provider + Firebase for initiation; IT/Infrastructure各自 save).
+- Reduces risk of losing edits when using Undo.
+
+---
+
+## 9. Error check
+
+- **Linter**: No issues reported for the modified files.
+- **Modified files**:
+  - `lib/utils/business_case_navigation.dart`
+  - `lib/widgets/initiation_like_sidebar.dart`
+  - `lib/screens/cost_analysis_screen.dart`
+  - `lib/screens/risk_identification_screen.dart`
+  - `lib/screens/preferred_solution_analysis_screen.dart`
+  - `lib/utils/auto_bullet_text_controller.dart`
+  - `lib/screens/core_stakeholders_screen.dart`
+  - `lib/screens/it_considerations_screen.dart`
+  - `lib/screens/infrastructure_considerations_screen.dart`
+  - `lib/screens/initiation_phase_screen.dart`
+  - `lib/widgets/text_formatting_toolbar.dart`
+
+---
+
+## 10. Not implemented (as per audit)
+
+- **Internal/External column** for Core Stakeholders: would require a single table with a per-row Internal/External choice and a different data model. Current design keeps separate Internal and External sections.
+- **Global visible Save** on every Business Case page: CBA and Preferred Solution already have Save; others use auto-save. No extra Save buttons were added elsewhere.
+
+---
+
+## 11. How to verify
+
+1. **Back/Next data persistence**  
+   Add risks (or IT / infra / stakeholders), go to another section via Back/Next, then return. Risks and other data should still be present.
+
+2. **CBA labels**  
+   Confirm **“Ops Eff.”** and **“SH Comm.”** in benefit category dropdowns and Project Benefits Review.
+
+3. **Hints**  
+   Clear hint state (or use “Enable all hints”), then open Risk Identification and Preferred Solution Analysis for the first time. The new hints should appear.
+
+4. **Bulleting**  
+   In list fields (e.g. risks, stakeholders), new lines should get **`. `**; in Notes/Business Case, no auto-bullet.
+
+5. **View More Details**  
+   On Preferred Solution Analysis, use **“View More Details”** and confirm full description, stakeholders, risks, technologies, infrastructure, and **all** costs.
+
+6. **Reminders**  
+   Check IT, Infrastructure, and Core Stakeholders for the new “Reminder: update text…” lines.
+
+7. **Save-before-undo**  
+   Edit Notes (or Business Case / IT / Infrastructure), then Undo. Confirm the **pre-undo** content is persisted (e.g. reload or check Firebase).
+
+---
+
+*Last updated: after Green Light implementation.*

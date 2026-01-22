@@ -382,7 +382,14 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
   }
 
   void _openCostAnalysis() {
-    _navigateWithCheckpoint('cost_analysis', const CostAnalysisScreen(notes: '', solutions: []));
+    final data = ProjectDataInherited.of(context).projectData;
+    _navigateWithCheckpoint(
+      'cost_analysis',
+      CostAnalysisScreen(
+        notes: data.notes,
+        solutions: _buildSolutionItems(data),
+      ),
+    );
   }
 
   List<AiSolutionItem> _buildSolutionItems(ProjectDataModel data) {

@@ -26,7 +26,7 @@ import 'package:ndu_project/screens/preferred_solution_analysis_screen.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/services/access_policy.dart';
-import 'package:ndu_project/services/user_service.dart';
+import 'package:ndu_project/widgets/page_hint_dialog.dart';
 
 class PotentialSolutionsScreen extends StatefulWidget {
   const PotentialSolutionsScreen({super.key});
@@ -67,8 +67,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
   bool _businessCaseExpanded = true;
   bool _frontEndExpanded = true;
   
-    // Admin status
-  bool _isAdmin = false;
+  bool get _isAdminHost => AccessPolicy.isRestrictedAdminHost();
 
   @override
   void initState() {
@@ -77,13 +76,6 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
     
     // Initialize API key manager
     ApiKeyManager.initializeApiKey();
-    
-    // Check admin status
-    UserService.isCurrentUserAdmin().then((isAdmin) {
-      if (mounted) {
-        setState(() => _isAdmin = isAdmin);
-      }
-    });
     
     // Load data from provider and defer generation
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -95,9 +87,10 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
       
       // Load saved solutions if they exist
       if (projectData.potentialSolutions.isNotEmpty) {
+        final targetCount = _isAdminHost ? projectData.potentialSolutions.length : 3;
         setState(() {
           _solutions.clear();
-          for (final solution in projectData.potentialSolutions) {
+          for (final solution in projectData.potentialSolutions.take(targetCount)) {
             _solutions.add(
               SolutionRow(
                 titleController: TextEditingController(text: solution.title),
@@ -120,48 +113,12 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
   void _showHintDialogOnce() {
     if (_hintShown) return;
     _hintShown = true;
-    showDialog<void>(
+    PageHintDialog.showIfNeeded(
       context: context,
-      barrierDismissible: true,
-      builder: (context) {
-        return Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: const [
-                    Icon(Icons.info_outline, color: Colors.blue, size: 22),
-                    SizedBox(width: 10),
-                    Text(
-                      'Notification',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Although AI-generated outputs can provide valuable insights, please review and refine them as needed to ensure they align with your project requirements.',
-                  style: TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
-                ),
-                const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    child: const Text('Got it'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+      pageId: 'potential_solutions',
+      title: 'Notification',
+      message:
+          'Although AI-generated outputs can provide valuable insights, please review and refine them as needed to ensure they align with your project requirements.',
     );
   }
 
@@ -183,8 +140,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
   }
 
   void _applySolutions(List<AiSolutionItem> aiSolutions) {
-    final isAdmin = AccessPolicy.isRestrictedAdminHost();
-    final targetCount = isAdmin ? 5 : 3;
+    final targetCount = _isAdminHost ? 5 : 3;
     
     setState(() {
       _solutions.clear();
@@ -205,8 +161,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
   }
 
   void _applyFallback(String errorMessage) {
-    final isAdmin = AccessPolicy.isRestrictedAdminHost();
-    final targetCount = isAdmin ? 5 : 3;
+    final targetCount = _isAdminHost ? 5 : 3;
     
     setState(() {
       _loadingError = errorMessage;
@@ -916,6 +871,17 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
                 ),
                 SizedBox(height: fieldGap),
                 _buildSolutionsSection(),
+                if (_isAdminHost) ...[
+                  const SizedBox(height: 14),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: OutlinedButton.icon(
+                      onPressed: _isLoadingSolutions ? null : _addManualSolution,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Solution'),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 // Navigation Buttons
                 BusinessCaseNavigationButtons(
@@ -941,7 +907,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
     }
 
     if (AppBreakpoints.isMobile(context)) {
-      final displayCount = _isAdmin ? _solutions.length : (_solutions.length > 3 ? 3 : _solutions.length);
+      final displayCount = _isAdminHost ? _solutions.length : (_solutions.length > 3 ? 3 : _solutions.length);
       return Column(
         children: [
           for (int i = 0; i < displayCount; i++) _buildSolutionCardMobile(_solutions[i], i),
@@ -953,6 +919,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
   }
 
   Widget _buildDesktopSolutionsTable() {
+    final displayCount = _isAdminHost ? _solutions.length : (_solutions.length > 3 ? 3 : _solutions.length);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -966,10 +933,10 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
           ),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           child: Row(
-            children: const [
+            children: [
               Expanded(
                 flex: 3,
-                child: Text(
+                child: const Text(
                   'Solution Title',
                   style: TextStyle(
                     fontSize: 14,
@@ -980,7 +947,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
               ),
               Expanded(
                 flex: 4,
-                child: Text(
+                child: const Text(
                   'Description',
                   style: TextStyle(
                     fontSize: 14,
@@ -989,6 +956,14 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
                   ),
                 ),
               ),
+              if (_isAdminHost)
+                const SizedBox(
+                  width: 48,
+                  child: Text(
+                    '',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                ),
             ],
           ),
         ),
@@ -1003,11 +978,11 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
           ),
           child: Column(
             children: [
-              for (int i = 0; i < (_isAdmin ? _solutions.length : (_solutions.length > 3 ? 3 : _solutions.length)); i++)
+              for (int i = 0; i < displayCount; i++)
                 _buildSolutionRow(
                   _solutions[i],
                   index: i,
-                  isLast: i == (_isAdmin ? _solutions.length - 1 : ((_solutions.length > 3 ? 3 : _solutions.length) - 1)),
+                  isLast: i == displayCount - 1,
                 ),
             ],
           ),
@@ -1208,6 +1183,17 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
               ),
             ),
           ),
+          if (_isAdminHost)
+            SizedBox(
+              width: 48,
+              child: (!solution.isAiGenerated)
+                  ? IconButton(
+                      tooltip: 'Delete',
+                      onPressed: () => _deleteSolutionAt(index),
+                      icon: const Icon(Icons.delete_outline),
+                    )
+                  : const SizedBox.shrink(),
+            ),
         ],
       ),
     );
@@ -1232,6 +1218,12 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Solution ${index + 1}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black54)),
+              if (_isAdminHost && !solution.isAiGenerated)
+                IconButton(
+                  tooltip: 'Delete',
+                  onPressed: () => _deleteSolutionAt(index),
+                  icon: const Icon(Icons.delete_outline, size: 20),
+                ),
             ],
           ),
           const SizedBox(height: 6),
@@ -1287,10 +1279,15 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
 
     // Save solutions to provider
     final provider = ProjectDataHelper.getProvider(context);
-    final potentialSolutions = _solutions.map((s) => PotentialSolution(
-      title: s.titleController.text.trim(),
-      description: s.descriptionController.text.trim(),
-    )).toList();
+    final rowsToPersist = _isAdminHost ? _solutions : _solutions.take(3).toList();
+    final potentialSolutions = rowsToPersist
+        .map(
+          (s) => PotentialSolution(
+            title: s.titleController.text.trim(),
+            description: s.descriptionController.text.trim(),
+          ),
+        )
+        .toList();
     
     provider.updateInitiationData(
       notes: trimmedNotes,
@@ -1332,6 +1329,28 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
       solution.descriptionController.dispose();
     }
     super.dispose();
+  }
+
+  void _addManualSolution() {
+    if (!_isAdminHost) return;
+    setState(() {
+      _solutions.add(
+        SolutionRow(
+          titleController: TextEditingController(),
+          descriptionController: TextEditingController(),
+          isAiGenerated: false,
+        ),
+      );
+    });
+  }
+
+  void _deleteSolutionAt(int index) {
+    if (!_isAdminHost) return;
+    if (index < 0 || index >= _solutions.length) return;
+    final row = _solutions.removeAt(index);
+    row.titleController.dispose();
+    row.descriptionController.dispose();
+    if (mounted) setState(() {});
   }
 }
 

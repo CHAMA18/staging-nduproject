@@ -1258,7 +1258,7 @@ Additional context: "$notes"
         {
           'role': 'system',
           'content':
-              'You are a risk analyst. For each provided solution, list three crisp, non-overlapping delivery risks. Return strict JSON only.'
+              'You are a risk analyst. For each provided solution, list three crisp, non-overlapping delivery risks. Be detailed and specific: do not use "etc.", "and similar", or vague groupings. State each risk explicitly in full. Return strict JSON only.'
         },
         {'role': 'user', 'content': _risksPrompt(solutions, contextNotes)},
       ],
@@ -1450,7 +1450,7 @@ Additional context: "$notes"
         {
           'role': 'system',
           'content':
-              'You are an infrastructure architect. For each solution, list ONLY physical infrastructure items needed (servers, cabling, hardware, routers, switches, physical storage, network equipment). EXCLUDE cloud services, software, frameworks, or virtual-only solutions. Focus on tangible, physical hardware and infrastructure components. Return strict JSON only.'
+              'You are an infrastructure architect. For each solution, list ONLY physical infrastructure items needed (servers, cabling, hardware, routers, switches, physical storage, network equipment). EXCLUDE cloud services, software, frameworks, or virtual-only solutions. Focus on tangible, physical hardware and infrastructure components. Be detailed and specific: do not use "etc.", "and similar", or vague groupings. State each item explicitly. Return strict JSON only.'
         },
         {
           'role': 'user',
@@ -1533,8 +1533,8 @@ Additional context: "$notes"
         {
           'role': 'system',
           'content':
-              'You are a cost analyst. For each solution, produce a concise cost breakdown: 8–20 project items with description, estimated cost ('
-                  '$currency), expected ROI% and NPV values for 3, 5, and 10-year horizons (same currency). Use realistic but round numbers. Keep descriptions under 18 words. Return strict JSON only.'
+              'You are a cost analyst. For each solution, produce a detailed cost breakdown: 8–20 project items with description, estimated cost ('
+                  '$currency), expected ROI% and NPV values for 3, 5, and 10-year horizons (same currency). Use realistic but round numbers. Be detailed and specific: do not use "etc.", "and similar", or vague groupings. State each cost item explicitly. Return strict JSON only.'
         },
         {
           'role': 'user',
@@ -1627,7 +1627,7 @@ Additional context: "$notes"
             '{"title": "${_escape(s.title)}", "description": "${_escape(s.description)}"}')
         .join(',');
     return '''
- For each solution below, provide a cost breakdown with up to 20 items (aim for 12–20 when possible). For each item include: item (name), description, estimated_cost (number in $currency), roi_percent (number), npv_by_years (object with keys "3_years", "5_years", "10_years" and numeric values in $currency). Keep descriptions concise.
+ For each solution below, provide a cost breakdown with up to 20 items (aim for 12–20 when possible). For each item include: item (name), description, estimated_cost (number in $currency), roi_percent (number), npv_by_years (object with keys "3_years", "5_years", "10_years" and numeric values in $currency). Be detailed and specific: do not use "etc.", "and similar", or vague groupings. State each cost item explicitly.
 
 Return ONLY valid JSON with this exact structure:
 {
@@ -2104,7 +2104,7 @@ Remember: Return ONLY a JSON object with key "savings_scenarios".
         {
           'role': 'system',
           'content':
-              'You are a cloud and infrastructure architect. For each solution, list the major infrastructure considerations required to operate it reliably and securely (e.g., environments, networking, security, observability, scaling, data, resiliency). Keep items concise. Return strict JSON only.'
+              'You are a cloud and infrastructure architect. For each solution, list the major infrastructure considerations required to operate it reliably and securely (e.g., environments, networking, security, observability, scaling, data, resiliency). Be detailed and specific: do not use "etc.", "and similar", or vague groupings. State each item explicitly. Return strict JSON only.'
         },
         {
           'role': 'user',
@@ -2162,17 +2162,63 @@ Remember: Return ONLY a JSON object with key "savings_scenarios".
   Map<String, List<String>> _fallbackInfrastructure(
       List<AiSolutionItem> solutions) {
     final map = <String, List<String>>{};
-    for (final s in solutions) {
-      map[s.title] = [
-        'Environments (dev/test/stage/prod) with promotion strategy',
-        'Networking (VPC/VNet, subnets, ingress/egress, load balancers)',
-        'Identity & access management (SSO, RBAC, least privilege)',
-        'Secrets management (KMS/KeyVault, rotation, audit)',
-        'Data storage & backups (RPO/RTO, encryption at rest/in transit)',
-        'Observability (logs, metrics, tracing, alerting, dashboards)',
-        'Scalability & performance (autoscaling, caching, capacity planning)',
-        'Resilience & DR (multi-AZ/region, failover, chaos testing)'
-      ];
+    // Provide distinct-but-reasonable infrastructure lists per solution (avoid identical outputs).
+    const pools = <List<String>>[
+      [
+        'Production environments (dev/test/stage/prod) with CI/CD promotion',
+        'Networking: segmented subnets, ingress/egress controls, load balancing',
+        'Identity & access: SSO + RBAC with least privilege reviews',
+        'Secrets management with rotation and audit trails',
+        'Encrypted data storage with backup policy (RPO/RTO defined)',
+        'Observability: logs, metrics, traces, alerting and dashboards',
+        'Scalability: autoscaling rules and capacity planning baselines',
+        'Resilience: multi-zone deployment and documented failover runbooks',
+      ],
+      [
+        'Dedicated environments with automated deployments and rollback strategy',
+        'API gateway / reverse proxy with WAF and rate limiting',
+        'Private networking with secure connectivity to on-prem / partners',
+        'Centralized identity provider and privileged access workflows',
+        'Data integration layer with secure queues/topics and retry policies',
+        'Monitoring for SLOs: uptime, latency, error budgets, alert routing',
+        'Performance testing infrastructure and caching strategy',
+        'Disaster recovery plan with periodic restore testing',
+      ],
+      [
+        'Hardened baseline images and configuration management standards',
+        'Network segmentation for sensitive components and data flows',
+        'Endpoint and service-to-service encryption (mTLS where needed)',
+        'Key management (KMS/KeyVault) and certificate lifecycle process',
+        'Audit logging and retention aligned to compliance requirements',
+        'Data lifecycle controls: retention, archival, deletion workflows',
+        'High availability with redundancy for critical services',
+        'Operational runbooks and incident response escalation paths',
+      ],
+      [
+        'Compute sizing for expected throughput and peak load scenarios',
+        'Storage performance tiering (IOPS/latency) for core datasets',
+        'Batch/ETL scheduling infrastructure (jobs, orchestration, retries)',
+        'Role-based access boundaries and admin separation of duties',
+        'Secure remote access for operations with session recording',
+        'Cost governance: tagging, budgets, alerts, and usage reporting',
+        'Service health dashboards and automated anomaly detection',
+        'Resilience testing cadence (chaos / failover exercises)',
+      ],
+      [
+        'Edge delivery where needed (CDN) and static asset optimization',
+        'DNS strategy and TLS termination with certificate automation',
+        'Load testing harness and production-like staging environment',
+        'Data replication strategy for geo / multi-site requirements',
+        'Backup encryption, immutable backups, and restore SLAs',
+        'Centralized logging with searchable retention policies',
+        'Security scanning pipeline (SAST/DAST/dependency) integrated into CI',
+        'Governance: change control approvals and deployment audit trail',
+      ],
+    ];
+
+    for (int i = 0; i < solutions.length; i++) {
+      final s = solutions[i];
+      map[s.title] = pools[i % pools.length];
     }
     return map;
   }
@@ -2191,9 +2237,17 @@ Remember: Return ONLY a JSON object with key "savings_scenarios".
     }
 
     return '''
-For each solution below, list the major infrastructure considerations required to support it in production. Think in terms of environments, networking, security, observability, scaling, data, and resilience. 
+For each solution below, list ONLY physical infrastructure considerations required to support it - things that can be physically touched or installed.
 
-IMPORTANT: Write clear, complete sentences. Each item should be a full, understandable statement (e.g., "Production environment with automated deployment pipelines" not just "Environments"). Keep each item between 8-20 words and make it actionable and specific.
+CRITICAL REQUIREMENTS:
+- ONLY include physical infrastructure: servers, cabling, hardware, routers, switches, physical storage devices, network equipment, data center components, cooling systems, power units, UPS systems, physical racks
+- EXCLUDE: cloud services (AWS, Azure, GCP), software frameworks, virtual-only solutions, SaaS platforms, APIs, databases (unless referring to physical database servers), containers, or any intangible components
+- Focus exclusively on tangible hardware and physical infrastructure components that can be physically installed
+- Each solution must have DIFFERENT and UNIQUE physical infrastructure recommendations tailored to its specific requirements
+
+IMPORTANT: Write clear, complete sentences. Each item should be a full, understandable statement (e.g., "Physical rack-mounted servers with redundant power supplies" not just "Servers"). Keep each item between 8-20 words and make it actionable and specific.
+IMPORTANT: Tailor items to EACH solution's title/description. Do NOT reuse the exact same list across different solutions.
+IMPORTANT: Be detailed and specific. Do not use "etc.", "and similar", or vague groupings. State each item explicitly.
 
 Return ONLY valid JSON with this exact structure:
 {
@@ -2209,10 +2263,11 @@ Context notes (optional): $notes
   }
 
   // STAKEHOLDERS
-  Future<Map<String, List<String>>> generateStakeholdersForSolutions(
+  // Returns a map with 'internal' and 'external' keys, each containing Map<String, List<String>>
+  Future<Map<String, Map<String, List<String>>>> generateStakeholdersForSolutions(
       List<AiSolutionItem> solutions,
       {String contextNotes = ''}) async {
-    if (solutions.isEmpty) return {};
+    if (solutions.isEmpty) return {'internal': {}, 'external': {}};
     if (!OpenAiConfig.isConfigured) return _fallbackStakeholders(solutions);
 
     final uri = OpenAiConfig.chatUri();
@@ -2223,13 +2278,13 @@ Context notes (optional): $notes
     final body = jsonEncode({
       'model': OpenAiConfig.model,
       'temperature': 0.5,
-      'max_tokens': 1200,
+      'max_tokens': 2000,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
           'role': 'system',
           'content':
-              'You are a stakeholder analyst. For each solution, list the notable stakeholders that must be involved or consulted. Emphasize external, regulatory, government, and any critical third parties. Keep items concise. Return strict JSON only.'
+              'You are a stakeholder analyst. For each solution, separately list INTERNAL stakeholders (employees, departments, teams within the organization) and EXTERNAL stakeholders (regulatory bodies, vendors, government agencies, external partners). Be detailed and specific: do not use "etc.", "and similar", or vague groupings. State each stakeholder explicitly. Return strict JSON only.'
         },
         {
           'role': 'user',
@@ -2252,52 +2307,155 @@ Context notes (optional): $notes
           (data['choices'] as List).first['message']['content'] as String;
       final parsed = jsonDecode(content) as Map<String, dynamic>;
 
-      final List list = (parsed['stakeholders'] as List? ?? []);
-      final Map<String, List<String>> result = {};
-      for (final item in list) {
+      final Map<String, List<String>> internalResult = {};
+      final Map<String, List<String>> externalResult = {};
+      
+      final List stakeholderList = (parsed['stakeholders'] as List? ?? []);
+      for (final item in stakeholderList) {
         final map = item as Map<String, dynamic>;
         final title = (map['solution'] ?? '').toString();
-        final items = (map['items'] as List? ?? [])
+        final internalItems = (map['internal'] as List? ?? [])
             .map((e) => e.toString())
             .where((e) => e.trim().isNotEmpty)
             .take(6)
             .toList();
-        if (title.isNotEmpty && items.isNotEmpty) result[title] = items;
+        final externalItems = (map['external'] as List? ?? [])
+            .map((e) => e.toString())
+            .where((e) => e.trim().isNotEmpty)
+            .take(6)
+            .toList();
+        if (title.isNotEmpty) {
+          if (internalItems.isNotEmpty) internalResult[title] = internalItems;
+          if (externalItems.isNotEmpty) externalResult[title] = externalItems;
+        }
       }
-      return _mergeWithFallbackStakeholders(solutions, result);
+      return _mergeWithFallbackStakeholders(solutions, internalResult, externalResult);
     } catch (e) {
       print('generateStakeholdersForSolutions failed: $e');
       return _fallbackStakeholders(solutions);
     }
   }
 
-  Map<String, List<String>> _mergeWithFallbackStakeholders(
-      List<AiSolutionItem> solutions, Map<String, List<String>> generated) {
+  Map<String, Map<String, List<String>>> _mergeWithFallbackStakeholders(
+      List<AiSolutionItem> solutions, 
+      Map<String, List<String>> generatedInternal,
+      Map<String, List<String>> generatedExternal) {
     final fallback = _fallbackStakeholders(solutions);
-    final merged = <String, List<String>>{};
+    final mergedInternal = <String, List<String>>{};
+    final mergedExternal = <String, List<String>>{};
+    
     for (final s in solutions) {
-      final g = generated[s.title];
-      merged[s.title] = (g != null && g.isNotEmpty)
-          ? g.take(6).toList()
-          : (fallback[s.title] ?? []);
+      final gInternal = generatedInternal[s.title];
+      final gExternal = generatedExternal[s.title];
+      mergedInternal[s.title] = (gInternal != null && gInternal.isNotEmpty)
+          ? gInternal.take(6).toList()
+          : (fallback['internal']![s.title] ?? []);
+      mergedExternal[s.title] = (gExternal != null && gExternal.isNotEmpty)
+          ? gExternal.take(6).toList()
+          : (fallback['external']![s.title] ?? []);
     }
-    return merged;
+    return {'internal': mergedInternal, 'external': mergedExternal};
   }
 
-  Map<String, List<String>> _fallbackStakeholders(
+  Map<String, Map<String, List<String>>> _fallbackStakeholders(
       List<AiSolutionItem> solutions) {
-    final map = <String, List<String>>{};
-    for (final s in solutions) {
-      map[s.title] = [
+    // Create distinct pools of stakeholders for variety
+    const internalPools = <List<String>>[
+      [
+        'Project Manager / Program Director',
+        'IT Operations Team',
+        'Finance & Budget Office',
+        'Legal & Compliance Department',
+        'Internal Audit',
+        'Business Unit Leads',
+      ],
+      [
+        'Executive Sponsor',
+        'Operations Manager',
+        'Procurement Team',
+        'Security & Risk Management',
+        'Quality Assurance',
+        'Change Management Office',
+      ],
+      [
+        'Technology Lead',
+        'Product Owner',
+        'Vendor Management',
+        'Data Governance Team',
+        'Training & Development',
+        'Stakeholder Relations',
+      ],
+      [
+        'Chief Technology Officer',
+        'Business Analysts',
+        'Contract Management',
+        'Information Security',
+        'Testing & Validation',
+        'Communications Team',
+      ],
+      [
+        'Program Office',
+        'Technical Architects',
+        'Budget & Finance',
+        'Legal Counsel',
+        'Internal Controls',
+        'User Experience Team',
+      ],
+    ];
+    
+    const externalPools = <List<String>>[
+      [
         'Regulatory authority (industry-specific)',
         'Data protection authority / privacy office',
         'Government procurement or finance oversight',
         'External vendors / systems integrators',
-        'Compliance & internal audit',
         'End-user representatives / advocacy groups',
-      ];
+        'Industry standards organizations',
+      ],
+      [
+        'Compliance & regulatory bodies',
+        'Third-party auditors',
+        'External consultants',
+        'Vendor partners',
+        'Community stakeholders',
+        'Trade associations',
+      ],
+      [
+        'Government agencies',
+        'Regulatory compliance officers',
+        'External service providers',
+        'Customer advisory boards',
+        'Public interest groups',
+        'Industry watchdogs',
+      ],
+      [
+        'Oversight committees',
+        'External legal advisors',
+        'Managed service providers',
+        'User groups',
+        'Environmental regulators',
+        'Consumer protection agencies',
+      ],
+      [
+        'International regulatory bodies',
+        'Certification organizations',
+        'Outsourced IT services',
+        'Public stakeholders',
+        'Media & communications',
+        'Independent evaluators',
+      ],
+    ];
+    
+    final internalMap = <String, List<String>>{};
+    final externalMap = <String, List<String>>{};
+    
+    for (int i = 0; i < solutions.length; i++) {
+      final s = solutions[i];
+      internalMap[s.title] = internalPools[i % internalPools.length];
+      externalMap[s.title] = externalPools[i % externalPools.length];
     }
-    return map;
+    
+    return {'internal': internalMap, 'external': externalMap};
   }
 
   String _stakeholdersPrompt(List<AiSolutionItem> solutions, String notes) {
@@ -2314,12 +2472,19 @@ Context notes (optional): $notes
     }
 
     return '''
-For each solution below, identify the core stakeholders that must be engaged. Prioritize external, regulatory, government, and any other critical stakeholders of note. Keep each item under 12 words.
+For each solution below, separately identify INTERNAL stakeholders (employees, departments, teams within your organization) and EXTERNAL stakeholders (regulatory bodies, vendors, government agencies, external partners, community groups). 
+
+IMPORTANT: Tailor stakeholders to EACH solution's specific title and description. Do NOT reuse the exact same list across different solutions. Keep each item under 12 words.
+IMPORTANT: Be detailed and specific. Do not use "etc.", "and similar", or vague groupings. State each stakeholder explicitly.
 
 Return ONLY valid JSON with this exact structure:
 {
   "stakeholders": [
-    {"solution": "Solution Name", "items": ["Stakeholder 1", "Stakeholder 2", "Stakeholder 3"]}
+    {
+      "solution": "Solution Name",
+      "internal": ["Internal Stakeholder 1", "Internal Stakeholder 2"],
+      "external": ["External Stakeholder 1", "External Stakeholder 2"]
+    }
   ]
 }
 
@@ -2398,7 +2563,7 @@ Do NOT repeat the same generic risks across solutions. Consider:
 - Integration challenges particular to that solution's architecture
 - Timeline and budget risks specific to that solution's scope
 
-Given these potential solutions, provide three distinct, solution-specific delivery risks for each. Keep each risk under 22 words, actionable and specific to that particular solution.
+Given these potential solutions, provide three distinct, solution-specific delivery risks for each. Keep each risk under 22 words, actionable and specific to that particular solution. Be detailed and specific: do not use "etc.", "and similar", or vague groupings. State each risk explicitly.
 
 Return ONLY valid JSON with this exact structure:
 {
@@ -3895,6 +4060,7 @@ CRITICAL REQUIREMENTS:
 
 Examples of VALID items: "Physical servers (rack-mounted)", "Network cabling (Cat6)", "Hardware routers", "Physical storage arrays", "Network switches", "Data center cooling systems"
 Examples of INVALID items: "Cloud hosting", "AWS EC2", "Docker containers", "Kubernetes", "Software-defined networking", "Virtual machines"
+Be detailed and specific: do not use "etc.", "and similar", or vague groupings. State each item explicitly.
 
 Return ONLY valid JSON with this exact structure:
 {

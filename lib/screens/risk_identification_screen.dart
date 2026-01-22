@@ -29,6 +29,7 @@ import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/services/access_policy.dart';
 import 'package:ndu_project/services/user_service.dart';
+import 'package:ndu_project/widgets/page_hint_dialog.dart';
 
 class RiskIdentificationScreen extends StatefulWidget {
   final String notes;
@@ -80,7 +81,7 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
     super.initState();
     _notesController = TextEditingController(text: widget.notes);
     _notesController.addListener(_onDataChanged);
-    _notesController.enableAutoBullet(); // Enable auto-bullet for notes
+    // Notes = prose; no auto-bullet
 
     _solutions = List<AiSolutionItem>.from(widget.solutions);
     // Initialize solution title controllers
@@ -121,6 +122,14 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
       } else if (_solutions.isNotEmpty) {
         _generateRisks();
       }
+
+      PageHintDialog.showIfNeeded(
+        context: context,
+        pageId: 'risk_identification',
+        title: 'Risk Identification',
+        message:
+            'Identify up to 3 delivery risks per potential solution. Use "Generate risks" for AI suggestions tailored to each solution. Risks auto-save as you edit.',
+      );
     });
   }
 
@@ -225,6 +234,7 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
             (_) => List.generate(3, (_) {
                   final controller = TextEditingController();
                   controller.addListener(_onDataChanged);
+                  controller.enableAutoBullet();
                   return controller;
                 }));
       });
@@ -252,6 +262,7 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
       _riskControllers.add(List.generate(3, (_) {
         final controller = TextEditingController();
         controller.addListener(_onDataChanged);
+        controller.enableAutoBullet();
         return controller;
       }));
     });

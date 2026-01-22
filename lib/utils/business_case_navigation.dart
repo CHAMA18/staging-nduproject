@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/screens/initiation_phase_screen.dart';
 import 'package:ndu_project/screens/potential_solutions_screen.dart';
 import 'package:ndu_project/screens/risk_identification_screen.dart';
@@ -54,9 +55,36 @@ class BusinessCaseNavigation {
     _navigateToScreen(context, nextIndex);
   }
 
+  /// Build solution items for downstream screens (Risk, IT, Infra, Stakeholders, CBA).
+  /// Mirrors InitiationLikeSidebar._buildSolutionItems so Back/Next navigation preserves data.
+  static List<AiSolutionItem> _buildSolutionItems(ProjectDataModel data) {
+    final potential = data.potentialSolutions
+        .map((s) => AiSolutionItem(title: s.title.trim(), description: s.description.trim()))
+        .where((s) => s.title.isNotEmpty || s.description.isNotEmpty)
+        .toList();
+    if (potential.isNotEmpty) return potential;
+
+    final preferred = data.preferredSolutionAnalysis?.solutionAnalyses
+            .map((s) => AiSolutionItem(
+                title: s.solutionTitle.trim(), description: s.solutionDescription.trim()))
+            .where((s) => s.title.isNotEmpty || s.description.isNotEmpty)
+            .toList() ??
+        [];
+    if (preferred.isNotEmpty) return preferred;
+
+    final fallbackTitle = data.solutionTitle.trim();
+    final fallbackDescription = data.solutionDescription.trim();
+    if (fallbackTitle.isNotEmpty || fallbackDescription.isNotEmpty) {
+      return [AiSolutionItem(title: fallbackTitle, description: fallbackDescription)];
+    }
+
+    return [];
+  }
+
   /// Navigate to a specific screen by index
   static void _navigateToScreen(BuildContext context, int index) {
     final projectData = ProjectDataHelper.getData(context);
+    final solutions = _buildSolutionItems(projectData);
 
     Widget screen;
     switch (index) {
@@ -69,39 +97,35 @@ class BusinessCaseNavigation {
       case 2: // Risk Identification
         screen = RiskIdentificationScreen(
           notes: projectData.notes,
-          solutions: const [],
+          solutions: solutions,
           businessCase: projectData.businessCase,
         );
         break;
       case 3: // IT Considerations
         screen = ITConsiderationsScreen(
-          notes: projectData.notes,
-          solutions: const [],
+          notes: projectData.itConsiderationsData?.notes ?? projectData.notes,
+          solutions: solutions,
         );
         break;
       case 4: // Infrastructure Considerations
         screen = InfrastructureConsiderationsScreen(
-          notes: projectData.notes,
-          solutions: const [],
+          notes: projectData.infrastructureConsiderationsData?.notes ?? projectData.notes,
+          solutions: solutions,
         );
         break;
       case 5: // Core Stakeholders
         screen = CoreStakeholdersScreen(
-          notes: projectData.notes,
-          solutions: const [],
+          notes: projectData.coreStakeholdersData?.notes ?? projectData.notes,
+          solutions: solutions,
         );
         break;
       case 6: // Cost Analysis
         screen = CostAnalysisScreen(
           notes: projectData.notes,
-          solutions: const [],
+          solutions: solutions,
         );
         break;
       case 7: // Preferred Solution Analysis
-        final potentialSolutions = projectData.potentialSolutions ?? [];
-        final solutions = potentialSolutions
-            .map((s) => AiSolutionItem(title: s.title, description: s.description))
-            .toList();
         screen = PreferredSolutionAnalysisScreen(
           notes: projectData.preferredSolutionAnalysis?.workingNotes ?? '',
           solutions: solutions,

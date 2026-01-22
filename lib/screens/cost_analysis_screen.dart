@@ -32,7 +32,9 @@ import 'package:ndu_project/screens/infrastructure_considerations_screen.dart';
 import 'package:ndu_project/screens/core_stakeholders_screen.dart';
 import 'package:ndu_project/screens/settings_screen.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
 import 'package:ndu_project/services/sidebar_navigation_service.dart';
+import 'package:ndu_project/widgets/page_hint_dialog.dart';
 
 class CostAnalysisScreen extends StatefulWidget {
   final String notes;
@@ -140,27 +142,34 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     ),
   ];
   static const Map<String, String> _benefitMetrics = {
-    'revenue': 'Revenue uplift, gross margin, payback period',
-    'cost_saving': 'Cost avoidance, savings from not buying, making something',
-    'ops_efficiency': 'Operational costs saved, equipment rental savings',
-    'productivity': 'Manpower hours, salary rate, time savings',
+    'revenue':
+        'A calculation of the income from the number of products/services that would come from the project multiplied by months/year for the number of years. Could be a lumpsum too.',
+    'cost_saving':
+        'Could be a lumpsum or similar math as #1 but with how much money would be saved from not buying, making something thanks to project.',
+    'ops_efficiency':
+        'Operational costs saved due to project. Could be same math as #1 and #2 if it\'s renting an equipment or something similar.',
+    'productivity':
+        'Directly tied to manpower. So, number of people multiplied by number of hours per month, per year. Multiply by salary rate.',
     'regulatory_compliance':
-        'Compliance fees, penalty avoidance, shutdown costs',
-    'process_improvement': 'Productivity gains, operational efficiency overlap',
-    'brand_image': 'Market gains, revenue impact, cost savings from perception',
+        'Could be a one-time or recurring non-compliance fee and/or cost of being fully shut down for a certain period of time.',
+    'process_improvement':
+        'Similar to productivity and/or operational efficiency. They can choose which applies the most.',
+    'brand_image':
+        'Estimation of how much more market gains, revenue (#1), or market loss, cost savings (#2) will result from project. Could also be %.',
     'stakeholder_commitment':
-        'Shareholder gains, loss avoidance from commitments',
-    'other': 'Custom category with flexible formulas',
+        'Could be gain (#1) or loss avoidance (#2) that\'s associated with meeting shareholder commitments.',
+    'other':
+        'They can decide which category and use any of the above formulas.',
   };
   static const List<MapEntry<String, String>> _projectValueFields = [
     MapEntry('revenue', 'Revenue'),
     MapEntry('cost_saving', 'Cost Saving'),
-    MapEntry('ops_efficiency', 'Operational Efficiency'),
+    MapEntry('ops_efficiency', 'Ops Eff.'),
     MapEntry('productivity', 'Productivity'),
-    MapEntry('regulatory_compliance', 'Regulatory & Compliance'),
-    MapEntry('process_improvement', 'Process Improvement'),
+    MapEntry('regulatory_compliance', 'Reg. & Comp.'),
+    MapEntry('process_improvement', 'P. Improve.'),
     MapEntry('brand_image', 'Brand Image'),
-    MapEntry('stakeholder_commitment', 'Stakeholder Commitment'),
+    MapEntry('stakeholder_commitment', 'SH Comm.'),
     MapEntry('other', 'Other'),
   ];
   late final TextEditingController _projectValueAmountController;
@@ -178,13 +187,15 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
   late final OpenAiServiceSecure _openAi;
   bool _isGenerating = false;
   bool _isGeneratingValue = false;
-  // Basis frequency for multi-year benefit calculations
-  String _basisFrequency = 'Monthly';
+  // Basis frequency for multi-year benefit calculations (required selection)
+  String? _basisFrequency;
   static const List<String> _frequencyOptions = [
     'Monthly',
     'Quarterly',
     'Yearly'
   ];
+  // Basis frequency for tracker table (Annual vs Monthly)
+  String _trackerBasisFrequency = 'Annual';
   String? _error;
   String? _projectValueError;
   int _npvHorizon = 5;
@@ -199,6 +210,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
   bool _isSavingsGenerating = false;
   String? _savingsError;
   List<AiBenefitSavingsSuggestion> _savingsSuggestions = [];
+  bool _hasShownTableHint = false;
 
   @override
   void initState() {
@@ -1158,7 +1170,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
               ),
               const SizedBox(width: 12),
               ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 200),
+                // Allow long headings to wrap instead of truncating.
+                constraints: const BoxConstraints(maxWidth: 260),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -1175,7 +1188,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                     const SizedBox(height: 2),
                     Text(
                       definition.title,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontSize: 11.5, color: subtitleColor),
                     ),
@@ -1210,7 +1223,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             title: stepDefinition.title,
             subtitle: stepDefinition.subtitle));
         children.add(_buildProjectValueSection());
-        children.add(const SizedBox(height: 16));
+        // Move Financial Benefits Tracker up directly under Project Benefit Details
+        children.add(const SizedBox(height: 12));
         children.add(_buildFinancialBenefitsTrackerSection());
         children.add(const SizedBox(height: 24));
         break;
@@ -1819,8 +1833,9 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             flex: 2,
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Estimated Project Benefit Value',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              Text('Estimated Project Benefit Value ($_currency)',
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
               TextField(
                 controller: _projectValueAmountController,
@@ -1851,12 +1866,12 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
-                initialValue: _basisFrequency,
+                value: _basisFrequency,
                 items: _frequencyOptions
                     .map((f) => DropdownMenuItem(value: f, child: Text(f)))
                     .toList(),
                 onChanged: (value) {
-                  if (value != null) setState(() => _basisFrequency = value);
+                  setState(() => _basisFrequency = value);
                 },
                 decoration: InputDecoration(
                   filled: true,
@@ -1871,14 +1886,16 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
+                hint: const Text('Select'),
               ),
             ]),
           ),
         ]),
         const SizedBox(height: 16),
-        _buildInlineYearBoxes(),
-        const SizedBox(height: 20),
+        // Move the table up (per updated design)
         _buildMultiYearBenefitTable(),
+        const SizedBox(height: 16),
+        _buildInlineYearBoxes(),
         const SizedBox(height: 20),
         Text('Project Benefits Value Summary',
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
@@ -2026,7 +2043,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
               style: TextStyle(fontSize: 12, color: Colors.grey[600])),
         ],
         const SizedBox(height: 12),
-        const Text('Value narrative & measurable outcome',
+        const Text('Project Benefit Details',
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
         const SizedBox(height: 6),
         SizedBox(
@@ -2037,7 +2054,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             minLines: 3,
             decoration: InputDecoration(
               hintText:
-                  'Summarise the financial impact, core drivers, and how this benefit will be realised.',
+                  'Highlight primary project benefits, drivers, and realization strategy.',
               border:
                   OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
               isDense: true,
@@ -2100,6 +2117,30 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
   Widget _buildInlineYearBoxes() {
     final amountText = _projectValueAmountController.text.trim();
     final baseValue = _parseCurrencyInput(amountText);
+
+    if (_basisFrequency == null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline, size: 18, color: Colors.grey[700]),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Select a basis frequency to calculate 1, 3, 5, and 10-year project value.',
+                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     // Calculate multiplier based on frequency
     int frequencyMultiplier;
@@ -2165,6 +2206,32 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     final amountText = _projectValueAmountController.text.trim();
     final baseValue = _parseCurrencyInput(amountText);
 
+    if (_basisFrequency == null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF8E1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+              color: const Color(0xFFFFD700).withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.calculate_outlined,
+                size: 20, color: Color(0xFFFF8F00)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Select a basis frequency to calculate Project Value for 1, 3, 5, and 10 years.',
+                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     // Calculate multiplier based on frequency
     int frequencyMultiplier;
     switch (_basisFrequency) {
@@ -2201,12 +2268,12 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           const Icon(Icons.calculate_outlined,
               size: 20, color: Color(0xFFFF8F00)),
           const SizedBox(width: 8),
-          const Text('Multi-Year Project Benefit Estimation',
+          const Text('Project Value Estimation',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
         ]),
         const SizedBox(height: 8),
         Text(
-          'Based on $_basisFrequency basis frequency${frequencyMultiplier > 1 ? " (×$frequencyMultiplier to annualize)" : ""}',
+          'Based on $_basisFrequency basis${frequencyMultiplier > 1 ? " (×$frequencyMultiplier to annualize first)" : ""}',
           style: TextStyle(fontSize: 12, color: Colors.grey[600]),
         ),
         const SizedBox(height: 16),
@@ -2227,7 +2294,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             Expanded(
                 flex: 3,
                 child: Align(
-                    alignment: Alignment.centerRight,
+                    alignment: Alignment.center,
                     child: Text('Projected Benefit ($_currency)',
                         style: const TextStyle(
                             fontSize: 12, fontWeight: FontWeight.w600)))),
@@ -2269,7 +2336,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         Expanded(
           flex: 3,
           child: Align(
-            alignment: Alignment.centerRight,
+            alignment: Alignment.center,
             child: Text(
               _formatCurrencyValue(value),
               style: TextStyle(
@@ -2281,6 +2348,38 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         ),
       ]),
     );
+  }
+
+  Widget _buildProjectBenefitDescriptions() {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('Project Benefit Descriptions',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 8),
+      Text(
+        'Select the category that best aligns with your project\'s benefits. If none apply, choose Other to specify your benefit.',
+        style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+      ),
+      const SizedBox(height: 16),
+      LayoutBuilder(builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 700;
+        if (isNarrow) {
+          return Column(children: [
+            for (final field in _projectValueFields) ...[
+              _buildBenefitDescriptionCard(field),
+              const SizedBox(height: 12),
+            ],
+          ]);
+        }
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (final field in _projectValueFields)
+              _buildBenefitDescriptionCard(field),
+          ],
+        );
+      }),
+    ]);
   }
 
   Widget _buildProjectValueSummary() {
@@ -2334,15 +2433,20 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         : 'Benefit pillars captured: ${definedBenefitLabels.join(', ')}.';
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('Finance-ready project value summary',
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+      const Text('Project Benefit Descriptions',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
       const SizedBox(height: 8),
+      Text(
+        'Select the category that best aligns with your project\'s benefits. If none apply, choose Other to specify your benefit.',
+        style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+      ),
+      const SizedBox(height: 16),
       Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.grey.withOpacity(0.25)),
           boxShadow: [
             BoxShadow(
@@ -2352,28 +2456,58 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           ],
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('$statementPrefix $statementSuffix',
-              style: TextStyle(fontSize: 12, color: Colors.grey[700])),
-          const SizedBox(height: 12),
+          // Display all 9 categories with their descriptions
           LayoutBuilder(builder: (context, constraints) {
-            final isNarrow = constraints.maxWidth < 600;
+            final isNarrow = constraints.maxWidth < 700;
             if (isNarrow) {
               return Column(children: [
-                for (final tile in benefitTiles) ...[
-                  tile,
-                  const SizedBox(height: 10),
+                for (final field in _projectValueFields) ...[
+                  _buildBenefitDescriptionCard(field),
+                  const SizedBox(height: 12),
                 ],
               ]);
             }
             return Wrap(
               spacing: 12,
               runSpacing: 12,
-              children: benefitTiles,
+              children: [
+                for (final field in _projectValueFields)
+                  _buildBenefitDescriptionCard(field),
+              ],
             );
           }),
         ]),
       ),
     ]);
+  }
+
+  Widget _buildBenefitDescriptionCard(MapEntry<String, String> field) {
+    final formula = _benefitMetrics[field.key] ?? '';
+    final width = 400.0;
+    return Container(
+      width: width,
+      constraints: const BoxConstraints(minHeight: 100),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.withOpacity(0.25)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(
+          field.value,
+          style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF1B5E20)),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          formula,
+          style: TextStyle(fontSize: 12, color: Colors.grey[700], height: 1.4),
+        ),
+      ]),
+    );
   }
 
   List<String> _metricTagsFor(String categoryKey) {
@@ -2391,7 +2525,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
   String _benefitCategoryLabel(String key) {
     final match = _projectValueFields.firstWhere(
       (entry) => entry.key == key,
-      orElse: () => const MapEntry('other', 'Other benefits'),
+      orElse: () => const MapEntry('other', 'Other'),
     );
     return match.value;
   }
@@ -2454,6 +2588,14 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     return _benefitLineItems.fold<double>(0, (sum, entry) => sum + entry.units);
   }
 
+  double _calculateTotalBenefitsWithFrequency() {
+    final baseTotal = _benefitTotalValue();
+    if (_trackerBasisFrequency == 'Monthly') {
+      return baseTotal * 12; // Annualize monthly values
+    }
+    return baseTotal; // Already annual
+  }
+
   Widget _buildFinancialBenefitsTrackerSection() {
     final tabs = const ['Line Items', 'Project Benefits Review'];
     final summaries = _benefitSummaries();
@@ -2476,16 +2618,45 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          const Text('Financial benefits tracker',
+          const Text('Project Benefits',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
           const SizedBox(width: 8),
           const _AiTag(),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              'Monetise benefits across projects, programs, and portfolios with spreadsheet-style controls and AI savings insights.',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Project Value Estimation',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Assign an estimated financial value to identified project benefits.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+              ],
             ),
+          ),
+          const SizedBox(width: 12),
+          // Basis Frequency Toggle
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Select Basis Frequency:',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+              const SizedBox(width: 8),
+              _BasisFrequencyToggle(
+                value: _trackerBasisFrequency,
+                onChanged: (value) {
+                  setState(() {
+                    _trackerBasisFrequency = value;
+                    _markDirty();
+                  });
+                },
+              ),
+            ],
           ),
           const SizedBox(width: 12),
           Chip(
@@ -2506,6 +2677,25 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                 selected: _benefitTabIndex == i,
                 onSelected: (selected) {
                   if (!selected) return;
+                  // Show hint on first tab interaction
+                  if (!_hasShownTableHint) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted && !_hasShownTableHint) {
+                        PageHintDialog.showIfNeeded(
+                          context: context,
+                          pageId: 'financial_benefits_tracker_table',
+                          title: 'Financial Benefits Tracker',
+                          message: 'Switch tabs as needed',
+                        ).then((_) {
+                          if (mounted) {
+                            setState(() {
+                              _hasShownTableHint = true;
+                            });
+                          }
+                        });
+                      }
+                    });
+                  }
                   setState(() {
                     _benefitTabIndex = i;
                   });
@@ -2528,6 +2718,9 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                 totalUnits: totalUnits),
           ],
         ),
+        // Project Benefit Descriptions footer
+        const SizedBox(height: 24),
+        _buildProjectBenefitDescriptions(),
       ]),
     );
   }
@@ -2562,55 +2755,50 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           border: Border.all(color: Colors.grey.withOpacity(0.35)),
         ),
         child: Row(children: [
-          SizedBox(
-              width: 32,
-              child: Text('#',
+          // Reordered columns: Benefit, Category, Basis, Unit Value, Number of Units, Sub Total Benefits Value
+          Expanded(
+              flex: 3,
+              child: Text('Benefit',
                   style: const TextStyle(
                       fontSize: 12, fontWeight: FontWeight.w600))),
           const SizedBox(width: 12),
           Expanded(
-              flex: 3,
+              flex: 2,
               child: Text('Category',
                   style: const TextStyle(
                       fontSize: 12, fontWeight: FontWeight.w600))),
           const SizedBox(width: 12),
           Expanded(
               flex: 3,
-              child: Text('Benefit title',
+              child: Text('Basis',
                   style: const TextStyle(
                       fontSize: 12, fontWeight: FontWeight.w600))),
           const SizedBox(width: 12),
           Expanded(
               flex: 2,
               child: Align(
-                  alignment: Alignment.centerRight,
-                  child: Text('Unit value',
+                  alignment: Alignment.center,
+                  child: Text('Unit Value',
                       style: const TextStyle(
                           fontSize: 12, fontWeight: FontWeight.w600)))),
           const SizedBox(width: 12),
           Expanded(
               flex: 2,
               child: Align(
-                  alignment: Alignment.centerRight,
-                  child: Text('Total units',
+                  alignment: Alignment.center,
+                  child: Text('Number of Units',
                       style: const TextStyle(
                           fontSize: 12, fontWeight: FontWeight.w600)))),
           const SizedBox(width: 12),
           Expanded(
               flex: 2,
               child: Align(
-                  alignment: Alignment.centerRight,
-                  child: Text('Total value',
+                  alignment: Alignment.center,
+                  child: Text('Sub Total Benefits Value',
                       style: const TextStyle(
                           fontSize: 12, fontWeight: FontWeight.w600)))),
-          const SizedBox(width: 12),
-          Expanded(
-              flex: 3,
-              child: Text('Notes',
-                  style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w600))),
           const SizedBox(width: 8),
-          const SizedBox(width: 36),
+          const SizedBox(width: 36), // Space for delete button
         ]),
       ),
       const SizedBox(height: 6),
@@ -2634,12 +2822,63 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         },
       ),
       const SizedBox(height: 12),
+      // TOTAL benefits row (dynamic based on Annual/Monthly)
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF8E1),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.4)),
+        ),
+        child: Row(children: [
+          Expanded(
+            flex: 3,
+            child: Text(
+              'TOTAL benefits',
+              style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1B5E20)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(flex: 2, child: Container()), // Category column spacer
+          const SizedBox(width: 12),
+          Expanded(flex: 3, child: Container()), // Basis column spacer
+          const SizedBox(width: 12),
+          Expanded(flex: 2, child: Container()), // Unit Value column spacer
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 2,
+            child: Align(
+              alignment: Alignment.center,
+              child: Text(
+                '${_benefitTotalUnits().toStringAsFixed(1)}',
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 2,
+            child: Align(
+              alignment: Alignment.center,
+              child: Text(
+                _formatCurrencyValue(_benefitTotalValue()),
+                style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1B5E20)),
+              ),
+            ),
+          ),
+        ]),
+      ),
+      const SizedBox(height: 12),
       Row(children: [
         Text(
-            'Total monetised benefits: ${_formatCurrencyValue(_benefitTotalValue())}',
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-        const SizedBox(width: 12),
-        Text('Total units: ${_benefitTotalUnits().toStringAsFixed(1)}',
+            'Basis: $_trackerBasisFrequency${_trackerBasisFrequency == 'Monthly' ? ' (×12 for annual roll-up)' : ''}',
             style: TextStyle(fontSize: 12, color: Colors.grey[600])),
         const Spacer(),
         OutlinedButton.icon(
@@ -2672,15 +2911,26 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       decoration: BoxDecoration(
         border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2))),
       ),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-        SizedBox(
-            width: 32,
-            child: Text('${index + 1}.',
-                style: const TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w600))),
-        const SizedBox(width: 12),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Reordered: Benefit first (no # column)
         Expanded(
           flex: 3,
+          child: TextField(
+            controller: entry.titleController,
+            decoration: InputDecoration(
+              hintText: 'Benefit name',
+              isDense: true,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        // Category second
+        Expanded(
+          flex: 2,
           child: DropdownButtonFormField<String>(
             initialValue: entry.categoryKey,
             items: categoryItems,
@@ -2701,12 +2951,16 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           ),
         ),
         const SizedBox(width: 12),
+        // Basis third (replaces Notes)
         Expanded(
           flex: 3,
           child: TextField(
-            controller: entry.titleController,
+            controller: entry.notesController,
+            textAlign: TextAlign.center,
+            minLines: 1,
+            maxLines: 3,
             decoration: InputDecoration(
-              hintText: 'Benefit title',
+              hintText: 'Assumptions/basis',
               isDense: true,
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
@@ -2718,19 +2972,34 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         const SizedBox(width: 12),
         Expanded(
           flex: 2,
-          child: TextField(
-            controller: entry.unitValueController,
-            textAlign: TextAlign.right,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(
-              hintText: '0.00',
-              suffixText: _currency,
-              isDense: true,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: entry.unitValueController,
+                  textAlign: TextAlign.center,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    hintText: '0.00',
+                    suffixText: _currency,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 14),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                icon: const Icon(Icons.auto_fix_high_outlined, size: 18),
+                tooltip: 'Suggest unit value with AI',
+                onPressed: () => _suggestUnitValueWithAI(entry),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+            ],
           ),
         ),
         const SizedBox(width: 12),
@@ -2738,7 +3007,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           flex: 2,
           child: TextField(
             controller: entry.unitsController,
-            textAlign: TextAlign.right,
+            textAlign: TextAlign.center,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
               hintText: '0',
@@ -2754,27 +3023,10 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         Expanded(
           flex: 2,
           child: Align(
-            alignment: Alignment.centerRight,
+            alignment: Alignment.center,
             child: Text(
               _formatCurrencyValue(entry.totalValue),
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          flex: 3,
-          child: TextField(
-            controller: entry.notesController,
-            minLines: 1,
-            maxLines: 3,
-            decoration: InputDecoration(
-              hintText: 'Realisation plan or assumptions',
-              isDense: true,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             ),
           ),
         ),
@@ -3064,24 +3316,128 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     required double totalValue,
     required double totalUnits,
   }) {
-    // Calculate top 3 metric focus areas from benefit line items
-    final metricCounts = <String, int>{};
+    // Calculate top 3 most selected categories from benefit line items
+    final categoryCounts = <String, int>{};
     for (final entry in _benefitLineItems) {
-      final metrics = _metricTagsFor(entry.categoryKey);
-      for (final metric in metrics) {
-        metricCounts[metric] = (metricCounts[metric] ?? 0) + 1;
-      }
+      categoryCounts[entry.categoryKey] =
+          (categoryCounts[entry.categoryKey] ?? 0) + 1;
     }
-    final topMetrics = metricCounts.entries.toList()
+    final topCategories = categoryCounts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    final top3Metrics = topMetrics.take(3).map((e) => e.key).toList();
+    final top3CategoryKeys = topCategories.take(3).map((e) => e.key).toList();
+    final top3CategoryLabels =
+        top3CategoryKeys.map((key) => _benefitCategoryLabel(key)).toList();
 
     // Sort benefit categories by total value (highest first)
     final sortedCategories = summaries.entries.toList()
       ..sort((a, b) => b.value.valueTotal.compareTo(a.value.valueTotal));
 
-    if (summaries.isEmpty) {
-      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // Value Calculation Formulas Table
+      const Text('Value Calculation Formulas',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 8),
+      Text(
+        'Each benefit category has a specific calculation method for determining financial impact.',
+        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+      ),
+      const SizedBox(height: 12),
+      Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            // Table Header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A3A3F),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(8),
+                  topRight: Radius.circular(8),
+                ),
+              ),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 50,
+                    child: Text('#',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white)),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text('Title',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white)),
+                  ),
+                  Expanded(
+                    flex: 5,
+                    child: Text('Value Calculation Formula',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white)),
+                  ),
+                ],
+              ),
+            ),
+            // Table Rows
+            ...List.generate(_projectValueFields.length, (index) {
+              final field = _projectValueFields[index];
+              final formula = _benefitMetrics[field.key] ?? '';
+              final isLast = index == _projectValueFields.length - 1;
+              return Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: isLast
+                      ? null
+                      : Border(
+                          bottom:
+                              BorderSide(color: Colors.grey.withOpacity(0.2)),
+                        ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 50,
+                      child: Text('${index + 1}',
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w600)),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text(field.value,
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w600)),
+                    ),
+                    Expanded(
+                      flex: 5,
+                      child: Text(formula,
+                          style:
+                              TextStyle(fontSize: 12, color: Colors.grey[700])),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+      const SizedBox(height: 32),
+
+      // Only show summaries if there are benefit items
+      if (summaries.isEmpty) ...[
         const Text('No benefits tracked yet',
             style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
         const SizedBox(height: 6),
@@ -3089,147 +3445,153 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           'Add benefit line items in the "Line Items" tab to see a comprehensive review of project benefits across all categories.',
           style: TextStyle(fontSize: 12, color: Colors.grey[600]),
         ),
-      ]);
-    }
-
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // Summary cards row
-      LayoutBuilder(builder: (context, constraints) {
-        final maxWidth = constraints.maxWidth;
-        final singleColumn = maxWidth < 600;
-        final cards = [
-          _benefitSummaryCard(
-            title: 'Tracked line items',
-            value: '${_benefitLineItems.length}',
-            helper: 'With monetary values and unit drivers.',
-            icon: Icons.list_alt,
-          ),
-          _benefitSummaryCard(
-            title: 'Total monetised benefits',
-            value: _formatCurrencyValue(totalValue),
-            helper: 'Across all categories and portfolios.',
-            icon: Icons.attach_money,
-          ),
-          _benefitSummaryCard(
-            title: 'Total units',
-            value: totalUnits.toStringAsFixed(1),
-            helper: 'Sum of all unit drivers captured.',
-            icon: Icons.stacked_line_chart,
-          ),
-        ];
-
-        if (singleColumn) {
-          return Column(children: [
-            for (final card in cards) ...[
-              card,
-              const SizedBox(height: 12),
-            ],
-          ]);
-        }
-        return Row(
-          children: [
-            for (int i = 0; i < cards.length; i++) ...[
-              Expanded(child: cards[i]),
-              if (i != cards.length - 1) const SizedBox(width: 12),
-            ]
-          ],
-        );
-      }),
-      const SizedBox(height: 20),
-
-      // Project Benefits Highlights section (top 3 metrics)
-      const Text('Project Benefits Highlights',
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-      const SizedBox(height: 6),
-      Text(
-        'Top 3 most selected project benefits from the 9 categories for this project.',
-        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-      ),
-      const SizedBox(height: 12),
-      if (top3Metrics.isEmpty)
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
-          ),
-          child: Text(
-            'No project benefits highlights yet. Add benefit line items to see highlights.',
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-          ),
-        )
-      else
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            for (final metric in top3Metrics)
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.stacked_line_chart,
-                        size: 18, color: const Color(0xFFFFD700)),
-                    const SizedBox(width: 8),
-                    Text(
-                      metric,
-                      style: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      const SizedBox(height: 24),
-
-      // Project Benefits Value Summary section
-      const Text('Project Benefits Value Summary',
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-      const SizedBox(height: 6),
-      Text(
-        'Total currency value of each of the selected benefits for this project, ordered by highest amount.',
-        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-      ),
-      const SizedBox(height: 12),
-      Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        children: [
-          for (final entry in sortedCategories)
-            _projectBenefitValueCard(
-              label: _benefitCategoryLabel(entry.key),
-              categoryKey: entry.key,
-              summary: entry.value,
-              isHighest: entry == sortedCategories.first,
+      ] else ...[
+        // Summary cards row
+        LayoutBuilder(builder: (context, constraints) {
+          final maxWidth = constraints.maxWidth;
+          final singleColumn = maxWidth < 600;
+          final cards = [
+            _benefitSummaryCard(
+              title: 'Tracked line items',
+              value: '${_benefitLineItems.length}',
+              helper: 'With monetary values and unit drivers.',
+              icon: Icons.list_alt,
             ),
-          // Show remaining categories with zero values
-          for (final field in _projectValueFields)
-            if (!summaries.containsKey(field.key))
-              _projectBenefitValueCard(
-                label: field.value,
-                categoryKey: field.key,
-                summary: null,
-                isHighest: false,
-              ),
-        ],
-      ),
+            _benefitSummaryCard(
+              title: 'Total monetised benefits',
+              value: _formatCurrencyValue(totalValue),
+              helper: 'Across all categories and portfolios.',
+              icon: Icons.attach_money,
+            ),
+            _benefitSummaryCard(
+              title: 'Total units',
+              value: totalUnits.toStringAsFixed(1),
+              helper: 'Sum of all unit drivers captured.',
+              icon: Icons.stacked_line_chart,
+            ),
+          ];
+
+          if (singleColumn) {
+            return Column(children: [
+              for (final card in cards) ...[
+                card,
+                const SizedBox(height: 12),
+              ],
+            ]);
+          }
+          return Row(
+            children: [
+              for (int i = 0; i < cards.length; i++) ...[
+                Expanded(child: cards[i]),
+                if (i != cards.length - 1) const SizedBox(width: 12),
+              ]
+            ],
+          );
+        }),
+        const SizedBox(height: 20),
+
+        // Project Benefits Highlights section (top 3 metrics)
+        const Text('Project Benefits Highlights',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+        Text(
+          'Top 3 most selected project benefits from the 9 categories for this project.',
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 12),
+        if (top3CategoryLabels.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+            ),
+            child: Text(
+              'No project benefits highlights yet. Add benefit line items to see highlights.',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+          )
+        else
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              for (final categoryLabel in top3CategoryLabels)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border:
+                        Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.stacked_line_chart,
+                          size: 18, color: const Color(0xFFFFD700)),
+                      const SizedBox(width: 8),
+                      Text(
+                        categoryLabel,
+                        style: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        const SizedBox(height: 24),
+
+        // Project Benefits Value Summary section
+        const Text('Project Benefits Value Summary',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+        Text(
+          'Total currency value ($_currency) of each of the 9 benefit categories for this project, ordered by highest amount.',
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 12),
+        Builder(
+          builder: (context) {
+            // Create a map of all 9 categories with their values
+            final allCategoriesWithValues = <String, double>{};
+            for (final field in _projectValueFields) {
+              final summary = summaries[field.key];
+              allCategoriesWithValues[field.key] = summary?.valueTotal ?? 0.0;
+            }
+
+            // Sort all categories by value (highest first)
+            final sortedAllCategories = allCategoriesWithValues.entries.toList()
+              ..sort((a, b) => b.value.compareTo(a.value));
+
+            return Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                for (final entry in sortedAllCategories)
+                  _projectBenefitValueCard(
+                    label: _benefitCategoryLabel(entry.key),
+                    categoryKey: entry.key,
+                    summary: summaries[entry.key],
+                    isHighest:
+                        entry == sortedAllCategories.first && entry.value > 0,
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
     ]);
   }
 
@@ -3421,7 +3783,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             Expanded(
                 flex: 2,
                 child: Align(
-                    alignment: Alignment.centerRight,
+                    alignment: Alignment.center,
                     child: Text('Estimated cost',
                         style: TextStyle(
                             fontSize: 12, fontWeight: FontWeight.w600)))),
@@ -4070,7 +4432,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             Expanded(
                 flex: 2,
                 child: Align(
-                    alignment: Alignment.centerRight,
+                    alignment: Alignment.center,
                     child: Text('Estimated cost',
                         style: TextStyle(
                             fontSize: 12, fontWeight: FontWeight.w600)))),
@@ -4107,7 +4469,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                 Expanded(
                   flex: 2,
                   child: Align(
-                    alignment: Alignment.centerRight,
+                    alignment: Alignment.center,
                     child: Text(
                       _formatCurrencyValue(_solutionTotalCost(solutionIndex)),
                       style: const TextStyle(
@@ -4348,7 +4710,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             Expanded(
                 flex: 2,
                 child: Align(
-                    alignment: Alignment.centerRight,
+                    alignment: Alignment.center,
                     child: Text('NPV ($horizon-yr)',
                         style: const TextStyle(
                             fontSize: 12, fontWeight: FontWeight.w600)))),
@@ -4459,7 +4821,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         Expanded(
             flex: 2,
             child: Align(
-                alignment: Alignment.centerRight,
+                alignment: Alignment.center,
                 child: Text(_formatCurrencyValue(npv)))),
         const SizedBox(width: 16),
         Expanded(
@@ -5824,7 +6186,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       final existing = entry.notesController.text.trim();
       final bullet = item.item.trim();
       final sep = existing.isEmpty ? '' : '\n';
-      entry.notesController.text = '$existing$sep• $bullet';
+      entry.notesController.text = '$existing$sep$kListBullet$bullet';
       final cur = _parseCurrencyInput(entry.costController.text.trim());
       final add = item.estimatedCost.isFinite ? item.estimatedCost : 0;
       final next = (cur + add);
@@ -5915,7 +6277,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           const Expanded(
               flex: 2,
               child: Align(
-                  alignment: Alignment.centerRight,
+                  alignment: Alignment.center,
                   child: Text('Return On Investment',
                       style: TextStyle(
                           fontSize: 13, fontWeight: FontWeight.w600)))),
@@ -5923,7 +6285,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           Expanded(
             flex: 2,
             child: Align(
-              alignment: Alignment.centerRight,
+              alignment: Alignment.center,
               child: Text('Net Present Value ($horizonLabel)',
                   style: const TextStyle(
                       fontSize: 13, fontWeight: FontWeight.w600)),
@@ -5933,7 +6295,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           const Expanded(
               flex: 2,
               child: Align(
-                  alignment: Alignment.centerRight,
+                  alignment: Alignment.center,
                   child: Text('Estimated Cost',
                       style: TextStyle(
                           fontSize: 13, fontWeight: FontWeight.w600)))),
@@ -6287,7 +6649,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         contextNotes: _notesController.text.trim(),
       );
       if (!mounted) return;
-      
+
       // Generate benefit line items with numeric values
       List<BenefitLineItemInput> benefitLineItems = [];
       if (insights.estimatedProjectValue > 0) {
@@ -6303,7 +6665,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           // Continue with project value even if benefit line items fail
         }
       }
-      
+
       if (!mounted) return;
       setState(() {
         if (insights.estimatedProjectValue > 0) {
@@ -6318,14 +6680,14 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             _projectValueBenefitControllers[field.key]!.text = value.trim();
           }
         }
-        
+
         // Clear existing benefit line items and add generated ones
         for (final entry in _benefitLineItems) {
           entry.unbind();
           WidgetsBinding.instance.addPostFrameCallback((_) => entry.dispose());
         }
         _benefitLineItems.clear();
-        
+
         // Add generated benefit line items
         final baseTimestamp = DateTime.now().microsecondsSinceEpoch;
         for (int i = 0; i < benefitLineItems.length; i++) {
@@ -6353,6 +6715,50 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       setState(() {
         _isGeneratingValue = false;
       });
+    }
+  }
+
+  Future<void> _suggestUnitValueWithAI(_BenefitLineItemEntry entry) async {
+    try {
+      final provider = ProjectDataInherited.maybeOf(context);
+      if (provider == null) return;
+
+      final projectContext = ProjectDataHelper.buildFepContext(
+        provider.projectData,
+      );
+
+      final benefitTitle = entry.titleController.text.trim();
+      if (benefitTitle.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a benefit title first')),
+        );
+        return;
+      }
+
+      final suggestedValue = await _openAi.estimateCostForItem(
+        itemName: benefitTitle,
+        contextNotes: projectContext,
+        currency: _currency,
+      );
+
+      if (mounted && suggestedValue > 0) {
+        setState(() {
+          entry.unitValueController.text = suggestedValue.toStringAsFixed(2);
+          _onBenefitEntryEdited();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(
+                  'AI suggested unit value: ${_formatCurrencyValue(suggestedValue)}')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Failed to generate suggestion: ${e.toString()}')),
+        );
+      }
     }
   }
 
@@ -6755,6 +7161,77 @@ class _AiTag extends StatelessWidget {
           color: Color(0xFFFFD700),
           borderRadius: BorderRadius.all(Radius.circular(4))),
       child: const Text('AI', style: TextStyle(fontWeight: FontWeight.bold)),
+    );
+  }
+}
+
+class _BasisFrequencyToggleButton extends StatelessWidget {
+  const _BasisFrequencyToggleButton({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFFFD700) : Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.black : Colors.grey[700],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BasisFrequencyToggle extends StatelessWidget {
+  const _BasisFrequencyToggle({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _BasisFrequencyToggleButton(
+            label: 'Annual',
+            isSelected: value == 'Annual',
+            onTap: () => onChanged('Annual'),
+          ),
+          _BasisFrequencyToggleButton(
+            label: 'Monthly',
+            isSelected: value == 'Monthly',
+            onTap: () => onChanged('Monthly'),
+          ),
+        ],
+      ),
     );
   }
 }

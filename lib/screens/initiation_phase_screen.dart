@@ -32,7 +32,8 @@ import 'package:ndu_project/widgets/select_project_kaz_button.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/project_service.dart';
-import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
+import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
+import 'package:ndu_project/widgets/page_hint_dialog.dart';
 
 class InitiationPhaseScreen extends StatefulWidget {
   final bool scrollToBusinessCase;
@@ -129,9 +130,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     _notesFocusNode.addListener(_handleNotesFocusChange);
     _businessFocusNode.addListener(_handleBusinessFocusChange);
     
-    // Enable auto-bullet for multi-line fields
-    _notesController.enableAutoBullet();
-    _businessCaseController.enableAutoBullet();
+    // Notes & Business Case = prose; no auto-bullet
     
     // Load existing data from provider
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -141,6 +140,17 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
       }
       if (projectData.businessCase.isNotEmpty) {
         _businessCaseController.text = projectData.businessCase;
+      }
+      
+      // Show hint on first visit
+      if (mounted) {
+        PageHintDialog.showIfNeeded(
+          context: context,
+          pageId: 'initiation_phase',
+          title: 'Business Case',
+          message:
+              'Enter your project notes and detailed business case here. Use the formatting toolbar above text fields for bold, underline, headings, and undo functionality.',
+        );
       }
       
       // If requested, scroll to Business Case
@@ -187,6 +197,15 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     provider.updateInitiationData(businessCase: value.trim());
     // Also rebuild so sidebar enable/disable state reflects current input
     setState(() {});
+  }
+
+  void _saveBeforeUndo() {
+    final provider = ProjectDataHelper.getProvider(context);
+    provider.updateInitiationData(
+      notes: _notesController.text.trim(),
+      businessCase: _businessCaseController.text.trim(),
+    );
+    provider.saveToFirebase(checkpoint: 'business_case');
   }
 
   int _wordCount(String text) {
@@ -1476,6 +1495,11 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
             ),
           ),
           const SizedBox(height: 8),
+          TextFormattingToolbar(
+            controller: _notesController,
+            onBeforeUndo: _saveBeforeUndo,
+          ),
+          const SizedBox(height: 8),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -1540,6 +1564,11 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
             ),
           ),
           SizedBox(height: AppBreakpoints.fieldGap(context)),
+          TextFormattingToolbar(
+            controller: _businessCaseController,
+            onBeforeUndo: _saveBeforeUndo,
+          ),
+          const SizedBox(height: 8),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),

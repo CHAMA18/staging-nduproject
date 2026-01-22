@@ -29,6 +29,8 @@ import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/services/sidebar_navigation_service.dart';
 import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
 import 'package:ndu_project/services/user_service.dart';
+import 'package:ndu_project/widgets/page_hint_dialog.dart';
+import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 
 class ITConsiderationsScreen extends StatefulWidget {
   final String notes;
@@ -73,7 +75,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
     // IMPORTANT: don't read inherited widgets in initState (causes dependOnInheritedWidget errors).
     // We'll hydrate from provider in didChangeDependencies.
     _notesController = TextEditingController(text: widget.notes);
-    _notesController.enableAutoBullet(); // Enable auto-bullet for notes
+    // Notes = prose; no auto-bullet
 
     _solutions = List.from(widget.solutions); // Create mutable copy
     // Initialize with at least one empty item if solutions list is empty
@@ -95,6 +97,13 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _loadExistingData();
+      PageHintDialog.showIfNeeded(
+        context: context,
+        pageId: 'it_considerations',
+        title: 'IT Considerations',
+        message:
+            'List the core technology considerations for each potential solution. Click "Generate Technologies" to get AI suggestions tailored to each solution.',
+      );
       // Only auto-generate if we have actual solutions (not empty placeholder)
       if (widget.solutions.isNotEmpty) {
         _generateTechnologies();
@@ -899,6 +908,11 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
               fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black),
         ),
         const SizedBox(height: 8),
+        TextFormattingToolbar(
+          controller: _notesController,
+          onBeforeUndo: () => _saveITConsiderationsData(),
+        ),
+        const SizedBox(height: 8),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
@@ -947,6 +961,9 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: Colors.black)),
+        const SizedBox(height: 6),
+        Text('Reminder: update text within each Core Technology box.',
+            style: TextStyle(fontSize: 12, color: Colors.grey[600], fontStyle: FontStyle.italic)),
         const SizedBox(height: 12),
         if (isMobile) ...[
           Column(
@@ -1101,26 +1118,36 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
   }
 
   Widget _techTextArea(TextEditingController controller) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.25))),
-      child: TextField(
-        controller: controller,
-        minLines: 2,
-        maxLines: null,
-        decoration: InputDecoration(
-          border: InputBorder.none,
-          isDense: true,
-          contentPadding: EdgeInsets.zero,
-          hintText:
-              'Enter core technologies specific to this solution (e.g., platforms, frameworks, databases, tools)...',
-          hintStyle: TextStyle(fontSize: 12, color: Colors.grey[400]),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormattingToolbar(
+          controller: controller,
+          onBeforeUndo: () => _saveITConsiderationsData(),
         ),
-        style: const TextStyle(fontSize: 12, color: Colors.black87),
-      ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.25))),
+          child: TextField(
+            controller: controller,
+            minLines: 2,
+            maxLines: null,
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
+              hintText:
+                  'Enter core technologies specific to this solution (e.g., platforms, frameworks, databases, tools)...',
+              hintStyle: TextStyle(fontSize: 12, color: Colors.grey[400]),
+            ),
+            style: const TextStyle(fontSize: 12, color: Colors.black87),
+          ),
+        ),
+      ],
     );
   }
 

@@ -1822,21 +1822,29 @@ class CoreStakeholdersData {
 class SolutionStakeholderData {
   String solutionTitle;
   String notableStakeholders;
+  String internalStakeholders;
+  String externalStakeholders;
 
   SolutionStakeholderData({
     this.solutionTitle = '',
     this.notableStakeholders = '',
+    this.internalStakeholders = '',
+    this.externalStakeholders = '',
   });
 
   Map<String, dynamic> toJson() => {
         'solutionTitle': solutionTitle,
         'notableStakeholders': notableStakeholders,
+        'internalStakeholders': internalStakeholders,
+        'externalStakeholders': externalStakeholders,
       };
 
   factory SolutionStakeholderData.fromJson(Map<String, dynamic> json) {
     return SolutionStakeholderData(
       solutionTitle: json['solutionTitle'] ?? '',
       notableStakeholders: json['notableStakeholders'] ?? '',
+      internalStakeholders: json['internalStakeholders'] ?? '',
+      externalStakeholders: json['externalStakeholders'] ?? '',
     );
   }
 }

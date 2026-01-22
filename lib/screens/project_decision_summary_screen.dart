@@ -387,10 +387,14 @@ class _MainContentState extends State<_MainContent> {
             title: widget.selectedSolution.title,
             description: widget.selectedSolution.description),
       ], contextNotes: widget.notes);
-      final list = map[widget.selectedSolution.title] ?? const <String>[];
-      final text = list.isEmpty
+      final internal =
+          map['internal']?[widget.selectedSolution.title] ?? const <String>[];
+      final external =
+          map['external']?[widget.selectedSolution.title] ?? const <String>[];
+      final combined = <String>[...internal, ...external];
+      final text = combined.isEmpty
           ? 'No stakeholders captured yet.'
-          : 'Key stakeholders: ${list.join('; ')}.';
+          : 'Key stakeholders: ${combined.join('; ')}.';
       setState(() {
         _stakeholderSummary = text;
         _stakeholderError = null;

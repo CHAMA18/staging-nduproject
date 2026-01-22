@@ -4,6 +4,7 @@ import 'package:ndu_project/widgets/app_logo.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart'; // provides AiSolutionItem model
 import 'package:ndu_project/services/auth_nav.dart';
+import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/models/project_data_model.dart';
@@ -27,6 +28,8 @@ import 'package:ndu_project/screens/preferred_solution_analysis_screen.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/services/sidebar_navigation_service.dart';
 import 'package:ndu_project/services/access_policy.dart';
+import 'package:ndu_project/widgets/page_hint_dialog.dart';
+import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 
 class InfrastructureConsiderationsScreen extends StatefulWidget {
   final String notes;
@@ -50,6 +53,8 @@ class _InfrastructureConsiderationsScreenState
   bool _businessCaseExpanded = true;
   bool _isAdmin = false;
   bool get _canUseAdminControls => _isAdmin && AccessPolicy.isRestrictedAdminHost();
+  final OpenAiServiceSecure _openAi = OpenAiServiceSecure();
+  bool _isGeneratingInfra = false;
 
   void _addNewItem() {
     if (!_canUseAdminControls) return;
@@ -71,6 +76,9 @@ class _InfrastructureConsiderationsScreenState
     _infraControllers =
         List.generate(_solutions.length, (_) => TextEditingController());
 
+    // Initialize API key manager
+    ApiKeyManager.initializeApiKey();
+
     // Check admin status (controls Add Item visibility)
     UserService.isCurrentUserAdmin().then((isAdmin) {
       if (mounted) setState(() => _isAdmin = isAdmin);
@@ -79,6 +87,14 @@ class _InfrastructureConsiderationsScreenState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _loadExistingData();
+      PageHintDialog.showIfNeeded(
+        context: context,
+        pageId: 'infrastructure_considerations',
+        title: 'Infrastructure Considerations',
+        message:
+            'List the main infrastructure considerations for each potential solution. If suggestions look repetitive, refine each entry to match the specific solution.',
+      );
+      _generateInfrastructureIfNeeded();
     });
   }
 
@@ -119,6 +135,38 @@ class _InfrastructureConsiderationsScreenState
     } catch (e) {
       debugPrint(
           'Error loading existing infrastructure considerations data: $e');
+    }
+  }
+
+  Future<void> _generateInfrastructureIfNeeded() async {
+    if (!mounted) return;
+    if (_isGeneratingInfra) return;
+
+    // If any row already has content, do not overwrite.
+    final hasAny = _infraControllers.any((c) => c.text.trim().isNotEmpty);
+    if (hasAny) return;
+
+    if (_solutions.isEmpty) return;
+    setState(() => _isGeneratingInfra = true);
+
+    try {
+      // Generate infrastructure suggestions (with tailored fallback if OpenAI not configured)
+      final result = await _openAi.generateInfrastructureForSolutions(
+        _solutions, 
+        contextNotes: _notesController.text,
+      );
+
+      if (!mounted) return;
+      for (int i = 0; i < _solutions.length && i < _infraControllers.length; i++) {
+        final title = _solutions[i].title.trim();
+        final items = result[title] ?? const <String>[];
+        if (items.isEmpty) continue;
+        _infraControllers[i].text = items.map((e) => '- $e').join('\n');
+      }
+    } catch (e) {
+      debugPrint('Error generating infrastructure considerations: $e');
+    } finally {
+      if (mounted) setState(() => _isGeneratingInfra = false);
     }
   }
 
@@ -724,13 +772,19 @@ class _InfrastructureConsiderationsScreenState
         ),
         const SizedBox(height: 24),
         if (isMobile) ...[
+          Text('Reminder: update text within each box.',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600], fontStyle: FontStyle.italic)),
+          const SizedBox(height: 8),
           Column(children: List.generate(_solutions.length, (i) => _row(i))),
         ] else ...[
-          const Text('Potential Solution',
+          const Text('Main Infrastructure Consideration for each potential solution',
               style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: Colors.black)),
+          const SizedBox(height: 6),
+          Text('Reminder: update text within each box.',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600], fontStyle: FontStyle.italic)),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -957,7 +1011,7 @@ class _InfrastructureConsiderationsScreenState
                     style: const TextStyle(fontSize: 12, color: Colors.grey)),
               ],
               const SizedBox(height: 10),
-              _infraTextArea(_infraControllers[index]),
+              _infraTextArea(_infraControllers[index], index: index),
             ])
           : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(
@@ -995,7 +1049,7 @@ class _InfrastructureConsiderationsScreenState
                 ),
               ),
               const SizedBox(width: 16),
-              Expanded(child: _infraTextArea(_infraControllers[index])),
+              Expanded(child: _infraTextArea(_infraControllers[index], index: index)),
             ]),
     );
   }
@@ -1018,23 +1072,36 @@ class _InfrastructureConsiderationsScreenState
     );
   }
 
-  Widget _infraTextArea(TextEditingController controller) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.25))),
-      child: TextField(
-        controller: controller,
-        minLines: 2,
-        maxLines: null,
-        decoration: const InputDecoration(
-            border: InputBorder.none,
-            isDense: true,
-            contentPadding: EdgeInsets.zero),
-        style: const TextStyle(fontSize: 12, color: Colors.black87),
-      ),
+  Widget _infraTextArea(TextEditingController controller, {required int index}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormattingToolbar(
+          controller: controller,
+          onBeforeUndo: () => _saveInfrastructureConsiderationsData(),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.25))),
+          child: TextField(
+            controller: controller,
+            minLines: 2,
+            maxLines: null,
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
+              hintText: 'Enter main infrastructure considerations for Solution ${index + 1}...',
+              hintStyle: TextStyle(color: Colors.grey[400]),
+            ),
+            style: const TextStyle(fontSize: 12, color: Colors.black87),
+          ),
+        ),
+      ],
     );
   }
 }

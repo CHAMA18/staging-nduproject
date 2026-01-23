@@ -574,33 +574,15 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
           children: [
             Expanded(
               flex: 2,
-              child: Text(
-                'Component',
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[600]),
-              ),
+              child: _tableHeaderCell('Component'),
             ),
             Expanded(
               flex: 2,
-              child: Text(
-                'Responsibility',
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[600]),
-              ),
+              child: _tableHeaderCell('Responsibility'),
             ),
             Expanded(
               flex: 1,
-              child: Text(
-                'Interface status',
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[600]),
-              ),
+              child: _tableHeaderCell('Interface status'),
             ),
           ],
         ),
@@ -818,6 +800,21 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
       default:
         return const Color(0xFF94A3B8);
     }
+  }
+
+  Widget _tableHeaderCell(String label) {
+    return Align(
+      alignment: Alignment.center,
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: Colors.grey[600],
+        ),
+      ),
+    );
   }
 
   Widget _buildBottomNavigation(bool isMobile) => Column(

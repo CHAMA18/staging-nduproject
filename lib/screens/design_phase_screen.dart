@@ -13,6 +13,10 @@ import 'package:ndu_project/services/architecture_service.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/utils/phase_transition_helper.dart';
+import 'package:ndu_project/widgets/whiteboard_canvas.dart';
+import 'package:ndu_project/widgets/chart_builder_workspace.dart';
+import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class DesignPhaseScreen extends StatefulWidget {
   const DesignPhaseScreen({super.key, this.activeItemLabel = 'Design Management'});
@@ -35,6 +39,13 @@ class DesignPhaseScreen extends StatefulWidget {
   State<DesignPhaseScreen> createState() => _DesignPhaseScreenState();
 }
 
+enum DesignTool {
+  architecture,
+  whiteboard,
+  chartBuilder,
+  richText,
+}
+
 class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
   // Dynamic Output Documents list
   final List<_DocItem> _outputDocs = [];
@@ -49,6 +60,10 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
   bool _isSaving = false;
   DateTime? _lastSavedAt;
   Timer? _saveDebounce;
+
+  DesignTool _activeTool = DesignTool.architecture;
+  late final TextEditingController _richTextController;
+  bool _showRichPreview = true;
 
   // Component Library for dragging into Output Docs OR directly onto canvas
   final List<_PaletteItem> _library = const [
@@ -87,6 +102,10 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
   @override
   void initState() {
     super.initState();
+    _richTextController = TextEditingController(
+      text: '### Design Notes\n\nStart drafting your design narrative here. Use the toolbar above for quick formatting.',
+    );
+    _richTextController.addListener(_onRichTextChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final provider = ProjectDataInherited.maybeOf(context);
       final pid = provider?.projectData.projectId;
@@ -102,7 +121,16 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
   @override
   void dispose() {
     _saveDebounce?.cancel();
+    _richTextController.removeListener(_onRichTextChanged);
+    _richTextController.dispose();
     super.dispose();
+  }
+
+  void _onRichTextChanged() {
+    if (!mounted) return;
+    if (_showRichPreview) {
+      setState(() {});
+    }
   }
 
   Future<void> _loadPersisted(String projectId) async {
@@ -530,12 +558,18 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _buildToolItem('Draw.io', Icons.account_tree, isSelected: true),
+                _buildToolItem(
+                  'Draw.io',
+                  Icons.account_tree,
+                  isSelected: _activeTool == DesignTool.architecture,
+                  onTap: () => setState(() => _activeTool = DesignTool.architecture),
+                ),
                 const SizedBox(width: 8),
                 _buildToolItem(
                   'Miro',
                   Icons.dashboard_outlined,
                   onTap: () => _openToolWebView('Miro', 'https://miro.com/login/'),
+                  showExternalIcon: true,
                 ),
                 const SizedBox(width: 8),
                 _buildToolItem(
@@ -543,13 +577,29 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                   Icons.design_services,
                   onTap: () =>
                       _openToolWebView('Figma', 'https://www.figma.com/'),
+                  showExternalIcon: true,
                 ),
                 const SizedBox(width: 8),
-                _buildToolItem('Rich Text Editor', Icons.text_fields),
+                _buildToolItem(
+                  'Rich Text Editor',
+                  Icons.text_fields,
+                  isSelected: _activeTool == DesignTool.richText,
+                  onTap: () => setState(() => _activeTool = DesignTool.richText),
+                ),
                 const SizedBox(width: 8),
-                _buildToolItem('Whiteboard', Icons.brush),
+                _buildToolItem(
+                  'Whiteboard',
+                  Icons.brush,
+                  isSelected: _activeTool == DesignTool.whiteboard,
+                  onTap: () => setState(() => _activeTool = DesignTool.whiteboard),
+                ),
                 const SizedBox(width: 8),
-                _buildToolItem('Chart Builder', Icons.bar_chart),
+                _buildToolItem(
+                  'Chart Builder',
+                  Icons.bar_chart,
+                  isSelected: _activeTool == DesignTool.chartBuilder,
+                  onTap: () => setState(() => _activeTool = DesignTool.chartBuilder),
+                ),
               ],
             ),
           ),
@@ -563,8 +613,8 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
     IconData icon, {
     bool isSelected = false,
     VoidCallback? onTap,
+    bool showExternalIcon = false,
   }) {
-    final isClickable = onTap != null;
     final backgroundColor = isSelected
         ? Colors.blue.withValues(alpha: 0.1)
         : Colors.grey.withValues(alpha: 0.06);
@@ -594,7 +644,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                       isSelected ? FontWeight.w500 : FontWeight.normal,
                 ),
               ),
-              if (isClickable)
+              if (showExternalIcon)
                 Icon(Icons.open_in_new, size: 14, color: Colors.grey[400]),
             ],
           ),
@@ -971,103 +1021,13 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
           Expanded(
             child: Row(
               children: [
-                // Component Library
-                Container(
-                  width: 220,
-                  decoration: BoxDecoration(
-                    border: Border(right: BorderSide(color: AppSemanticColors.border)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 12),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                        child: Text('Component Library', style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.w700)),
-                      ),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          itemCount: _library.length,
-                          itemBuilder: (context, i) {
-                            final item = _library[i];
-                            final payload = ArchitectureDragPayload(item.label, icon: item.icon, color: Colors.blueGrey[50]);
-                            return LongPressDraggable<ArchitectureDragPayload>(
-                              data: payload,
-                              dragAnchorStrategy: pointerDragAnchorStrategy,
-                              feedback: Material(
-                                color: Colors.transparent,
-                                child: _componentTile(item, isDragging: true, showAddButton: false),
-                              ),
-                              child: _componentTile(
-                                item,
-                                showAddButton: true,
-                                onAddToCanvas: () {
-                                  // Add node to center of visible canvas
-                                  final centerPos = Offset(200 + (_nodes.length * 40).toDouble(), 200 + (_nodes.length * 40).toDouble());
-                                  final newNode = ArchitectureNode(
-                                    id: 'n_${_nodeCounter++}',
-                                    label: item.label,
-                                    position: centerPos,
-                                    color: Colors.white,
-                                    icon: item.icon,
-                                  );
-                                  setState(() {
-                                    _nodes.add(newNode);
-                                  });
-                                  _scheduleSave();
-                                },
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Tip: Click + to add to canvas, or drag to position.',
-                              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Use "Connect" mode to draw workflow arrows between components.',
-                              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                _buildToolSidePanel(),
 
                 // Canvas
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(12.0),
-                    child: ArchitectureCanvas(
-                      nodes: _nodes,
-                      edges: _edges,
-                      onNodesChanged: (n) => setState(() {
-                        _nodes
-                          ..clear()
-                          ..addAll(n);
-                        _scheduleSave();
-                      }),
-                      onEdgesChanged: (e) => setState(() {
-                        _edges
-                          ..clear()
-                          ..addAll(e);
-                        _scheduleSave();
-                      }),
-                      onRequestAddNodeFromDrop: (pos, payload) {
-                        final node = _createNodeFromDrop(pos, payload);
-                        return node;
-                      },
-                    ),
+                    child: _buildActiveCanvas(),
                   ),
                 ),
               ],
@@ -1094,13 +1054,299 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                   style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                 ),
                 const Spacer(),
-                Text('${_nodes.length} elements on canvas', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                Text(_toolFooterLabel(), style: TextStyle(fontSize: 12, color: Colors.grey[600])),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildToolSidePanel() {
+    if (_activeTool != DesignTool.architecture) {
+      return Container(
+        width: 220,
+        decoration: BoxDecoration(
+          border: Border(right: BorderSide(color: AppSemanticColors.border)),
+        ),
+        child: _buildToolSidebarContent(),
+      );
+    }
+    return Container(
+      width: 220,
+      decoration: BoxDecoration(
+        border: Border(right: BorderSide(color: AppSemanticColors.border)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: Text('Component Library', style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.w700)),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              itemCount: _library.length,
+              itemBuilder: (context, i) {
+                final item = _library[i];
+                final payload = ArchitectureDragPayload(item.label, icon: item.icon, color: Colors.blueGrey[50]);
+                return LongPressDraggable<ArchitectureDragPayload>(
+                  data: payload,
+                  dragAnchorStrategy: pointerDragAnchorStrategy,
+                  feedback: Material(
+                    color: Colors.transparent,
+                    child: _componentTile(item, isDragging: true, showAddButton: false),
+                  ),
+                  child: _componentTile(
+                    item,
+                    showAddButton: true,
+                    onAddToCanvas: () {
+                      // Add node to center of visible canvas
+                      final centerPos = Offset(200 + (_nodes.length * 40).toDouble(), 200 + (_nodes.length * 40).toDouble());
+                      final newNode = ArchitectureNode(
+                        id: 'n_${_nodeCounter++}',
+                        label: item.label,
+                        position: centerPos,
+                        color: Colors.white,
+                        icon: item.icon,
+                      );
+                      setState(() {
+                        _nodes.add(newNode);
+                      });
+                      _scheduleSave();
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Tip: Click + to add to canvas, or drag to position.',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Use "Connect" mode to draw workflow arrows between components.',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToolSidebarContent() {
+    switch (_activeTool) {
+      case DesignTool.whiteboard:
+        return _toolSidebarCard(
+          title: 'Whiteboard Tips',
+          lines: const [
+            'Draw freely with pen or marker.',
+            'Use the eraser to clean sections.',
+            'Undo restores the last stroke.',
+            'Clear removes everything instantly.',
+          ],
+        );
+      case DesignTool.chartBuilder:
+        return _toolSidebarCard(
+          title: 'Chart Builder',
+          lines: const [
+            'Switch chart types in the header.',
+            'Edit labels and values on the right.',
+            'Add points to grow the chart.',
+            'Use colors to group meaning.',
+          ],
+        );
+      case DesignTool.richText:
+        return _toolSidebarCard(
+          title: 'Rich Text Editor',
+          lines: const [
+            'Draft narratives beside diagrams.',
+            'Use headings for quick scannability.',
+            'Keep key decisions highlighted.',
+          ],
+        );
+      case DesignTool.architecture:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _toolSidebarCard({required String title, required List<String> lines}) {
+    return Padding(
+      padding: const EdgeInsets.all(12.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.w700)),
+          const SizedBox(height: 12),
+          ...lines.map(
+            (line) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(line, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            ),
+          ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.grey.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.auto_awesome, size: 16, color: Colors.amber[700]),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Pro tip: switch tools any time - your work stays here.',
+                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActiveCanvas() {
+    switch (_activeTool) {
+      case DesignTool.whiteboard:
+        return const WhiteboardCanvas();
+      case DesignTool.chartBuilder:
+        return const ChartBuilderWorkspace();
+      case DesignTool.richText:
+        return _buildRichTextPlaceholder();
+      case DesignTool.architecture:
+        return ArchitectureCanvas(
+          nodes: _nodes,
+          edges: _edges,
+          onNodesChanged: (n) => setState(() {
+            _nodes
+              ..clear()
+              ..addAll(n);
+            _scheduleSave();
+          }),
+          onEdgesChanged: (e) => setState(() {
+            _edges
+              ..clear()
+              ..addAll(e);
+            _scheduleSave();
+          }),
+          onRequestAddNodeFromDrop: (pos, payload) {
+            final node = _createNodeFromDrop(pos, payload);
+            return node;
+          },
+        );
+    }
+  }
+
+  Widget _buildRichTextPlaceholder() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppSemanticColors.border),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Row(
+              children: [
+                Text('Rich Text Editor', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey[800])),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () => setState(() => _showRichPreview = !_showRichPreview),
+                  icon: Icon(_showRichPreview ? Icons.visibility_off : Icons.visibility, size: 16),
+                  label: Text(_showRichPreview ? 'Hide preview' : 'Show preview'),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextFormattingToolbar(controller: _richTextController),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: TextField(
+                        controller: _richTextController,
+                        expands: true,
+                        maxLines: null,
+                        minLines: null,
+                        decoration: const InputDecoration.collapsed(
+                          hintText: 'Start typing your design notes...',
+                        ),
+                        style: const TextStyle(height: 1.5),
+                      ),
+                    ),
+                  ),
+                  if (_showRichPreview) ...[
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF9FAFB),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Markdown(
+                          data: _richTextController.text,
+                          shrinkWrap: true,
+                          styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+                            p: const TextStyle(height: 1.5),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _toolFooterLabel() {
+    switch (_activeTool) {
+      case DesignTool.whiteboard:
+        return 'Whiteboard ready for freehand sketching';
+      case DesignTool.chartBuilder:
+        return 'Chart builder active';
+      case DesignTool.richText:
+        return 'Rich text workspace ready';
+      case DesignTool.architecture:
+        return '${_nodes.length} elements on canvas';
+    }
   }
 
   void _openToolWebView(String title, String url) {

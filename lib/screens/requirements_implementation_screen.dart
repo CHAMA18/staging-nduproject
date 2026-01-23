@@ -524,6 +524,7 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
                 alignment: column.alignment,
                 child: Text(
                   column.label.toUpperCase(),
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -918,7 +919,7 @@ class _TableColumn {
   const _TableColumn({
     required this.label,
     this.flex = 1,
-    this.alignment = Alignment.centerLeft,
+    this.alignment = Alignment.center,
   });
 
   final String label;

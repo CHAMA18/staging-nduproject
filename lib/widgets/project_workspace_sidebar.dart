@@ -182,7 +182,7 @@ class _SidebarItem extends StatelessWidget {
     final background = isActive ? _kAccentColor.withOpacity(0.18) : Colors.transparent;
     final borderColor = isActive ? _kAccentColor.withOpacity(0.35) : Colors.transparent;
     final iconColor = isActive ? _kAccentColor : const Color(0xFF6B7280);
-    final labelColor = isActive ? _kTextPrimary : const Color(0xFF4B5563);
+    final labelColor = _kTextPrimary;
     return Material(
       color: Colors.transparent,
       child: InkWell(

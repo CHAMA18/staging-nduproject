@@ -19,6 +19,9 @@
       "statusCode": 200
     }
   },
+  "globalHeaders": {
+    "Content-Security-Policy": "default-src 'self'; script-src 'self' https://www.gstatic.com; connect-src 'self' https://www.gstatic.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:;"
+  },
   "routes": [
     {
       "route": "/index.html",

@@ -123,7 +123,7 @@ class _SidebarItem extends StatelessWidget {
     final background = isActive ? kProgramSidebarAccentColor.withValues(alpha: 0.18) : Colors.transparent;
     final borderColor = isActive ? kProgramSidebarAccentColor.withValues(alpha: 0.35) : Colors.transparent;
     final iconColor = isActive ? kProgramSidebarAccentColor : const Color(0xFF6B7280);
-    final labelColor = isActive ? kProgramSidebarTextPrimary : const Color(0xFF4B5563);
+    final labelColor = kProgramSidebarTextPrimary;
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),

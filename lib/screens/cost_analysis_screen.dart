@@ -1066,6 +1066,22 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                           ],
                         ),
                         const SizedBox(height: 20),
+                        // Currency selector at the very top (before table)
+                        if (_currentStepIndex == 0) ...[
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                            child: _buildCurrencySelector(),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        // Data Table at the top - first thing user sees (before step indicator)
+                        if (_currentStepIndex == 0) ...[
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                            child: _buildBenefitLineItemsTab(),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
                         _buildStepProgressIndicator(),
                       ],
                     ),
@@ -1276,12 +1292,12 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
 
     switch (index) {
       case 0:
-        // Currency selector at the very top
-        children.add(_buildCurrencySelector());
-        children.add(const SizedBox(height: 16));
-        // Table at the top - first thing user sees
-        children.add(_buildBenefitLineItemsTab());
-        children.add(const SizedBox(height: 24));
+        // Currency selector moved to top of page (before step indicator) - no longer here
+        // children.add(_buildCurrencySelector()); // Moved to top of page
+        // children.add(const SizedBox(height: 16));
+        // Table moved to top of page (before step indicator) - no longer here
+        // children.add(_buildBenefitLineItemsTab()); // Moved to top of page
+        // children.add(const SizedBox(height: 24));
         if (_projectValueError != null) {
           children.add(_errorBanner(_projectValueError!,
               onRetry: _isGeneratingValue ? null : _generateProjectValue));
@@ -2892,9 +2908,33 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header row
+                  // Currency indicator at top of table
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.attach_money, size: 16, color: Colors.blue.shade700),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Currency: $_currency',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blue.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Header row - reduced padding and font size
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
                       color: Colors.grey.shade200,
                       borderRadius: BorderRadius.circular(6),
@@ -2907,52 +2947,52 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                         child: Center(
                           child: Text('Benefit',
                               style: const TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w600)),
+                                  fontSize: 11, fontWeight: FontWeight.w600)),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       SizedBox(
                         width: 140,
                         child: Center(
                           child: Text('Category',
                               style: const TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w600)),
+                                  fontSize: 11, fontWeight: FontWeight.w600)),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       SizedBox(
                         width: 200,
                         child: Center(
                           child: Text('Basis',
                               style: const TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w600)),
+                                  fontSize: 11, fontWeight: FontWeight.w600)),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       SizedBox(
                         width: 140,
                         child: Center(
-                          child: Text('Unit Value ($_currency)',
+                          child: Text('Unit Value',
                               style: const TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w600)),
+                                  fontSize: 11, fontWeight: FontWeight.w600)),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       SizedBox(
                         width: 140,
                         child: Center(
                           child: Text('Number of Units',
                               style: const TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w600)),
+                                  fontSize: 11, fontWeight: FontWeight.w600)),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       SizedBox(
                         width: 140,
                         child: Center(
                           child: Text('Subtotal Benefit',
                               style: const TextStyle(
-                                  fontSize: 12, fontWeight: FontWeight.w600)),
+                                  fontSize: 11, fontWeight: FontWeight.w600)),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -2981,9 +3021,9 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                     },
                   ),
                   const SizedBox(height: 12),
-                  // TOTAL benefits row (dynamic based on Annual/Monthly)
+                  // TOTAL benefits row (dynamic based on Annual/Monthly) - reduced padding and font
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFF8E1),
                       borderRadius: BorderRadius.circular(6),
@@ -2992,41 +3032,44 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                     child: Row(children: [
                       SizedBox(
                         width: 200,
-                        child: Text(
-                          'TOTAL benefits',
-                          style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF1B5E20)),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      SizedBox(width: 140, child: Container()), // Category column spacer
-                      const SizedBox(width: 12),
-                      SizedBox(width: 200, child: Container()), // Basis column spacer
-                      const SizedBox(width: 12),
-                      SizedBox(width: 140, child: Container()), // Unit Value column spacer
-                      const SizedBox(width: 12),
-                      SizedBox(
-                        width: 140,
-                        child: Align(
-                          alignment: Alignment.center,
+                        child: Center(
                           child: Text(
-                            '${_benefitTotalUnits().toStringAsFixed(1)}',
-                            style:
-                                const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                            'TOTAL benefits',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF1B5E20)),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
+                      SizedBox(width: 140, child: Container()), // Category column spacer
+                      const SizedBox(width: 10),
+                      SizedBox(width: 200, child: Container()), // Basis column spacer
+                      const SizedBox(width: 10),
+                      SizedBox(width: 140, child: Container()), // Unit Value column spacer
+                      const SizedBox(width: 10),
                       SizedBox(
                         width: 140,
-                        child: Align(
-                          alignment: Alignment.center,
+                        child: Center(
+                          child: Text(
+                            '${_benefitTotalUnits().toStringAsFixed(1)}',
+                            textAlign: TextAlign.center,
+                            style:
+                                const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        width: 140,
+                        child: Center(
                           child: Text(
                             _formatCurrencyValue(_benefitTotalValue()),
+                            textAlign: TextAlign.center,
                             style: const TextStyle(
-                                fontSize: 14,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w700,
                                 color: Color(0xFF1B5E20)),
                           ),
@@ -3067,34 +3110,36 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             !_selectedBenefitCategories.contains(e.key))
         .map((e) => DropdownMenuItem<String>(
               value: e.key,
-              child: Text(e.value, style: const TextStyle(fontSize: 12)),
+              child: Text(e.value, style: const TextStyle(fontSize: 11)),
             ))
         .toList();
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2))),
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Reordered: Benefit first (no # column)
+        // Reordered: Benefit first (no # column) - reduced padding and font
         SizedBox(
           width: 200,
           child: TextField(
             controller: entry.titleController,
             textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 11),
             decoration: InputDecoration(
               hintText: 'Benefit name',
+              hintStyle: const TextStyle(fontSize: 11),
               isDense: true,
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
               border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
             ),
           ),
         ),
-        const SizedBox(width: 12),
-        // Category second
+        const SizedBox(width: 10),
+        // Category second - reduced padding and font
         SizedBox(
           width: 140,
           child: DropdownButtonFormField<String>(
@@ -3109,34 +3154,36 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             decoration: InputDecoration(
               isDense: true,
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
               border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
             ),
             isExpanded: true,
-            style: const TextStyle(fontSize: 12),
+            style: const TextStyle(fontSize: 11),
           ),
         ),
-        const SizedBox(width: 12),
-        // Basis third (replaces Notes)
+        const SizedBox(width: 10),
+        // Basis third (replaces Notes) - reduced padding and font
         SizedBox(
           width: 200,
           child: TextField(
             controller: entry.notesController,
             textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 11),
             minLines: 1,
             maxLines: 3,
             decoration: InputDecoration(
               hintText: 'Assumptions/basis',
+              hintStyle: const TextStyle(fontSize: 11),
               isDense: true,
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
               border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         SizedBox(
           width: 140,
           child: Row(
@@ -3145,54 +3192,58 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                 child: TextField(
                   controller: entry.unitValueController,
                   textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 11),
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
                   decoration: InputDecoration(
                     hintText: '0.00',
+                    hintStyle: const TextStyle(fontSize: 11),
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 14),
+                        horizontal: 8, vertical: 10),
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8)),
+                        borderRadius: BorderRadius.circular(6)),
                   ),
                 ),
               ),
               const SizedBox(width: 4),
               IconButton(
-                icon: const Icon(Icons.auto_fix_high_outlined, size: 18),
+                icon: const Icon(Icons.auto_fix_high_outlined, size: 16),
                 tooltip: 'Suggest unit value with AI',
                 onPressed: () => _suggestUnitValueWithAI(entry),
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
               ),
             ],
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         SizedBox(
           width: 140,
           child: TextField(
             controller: entry.unitsController,
             textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 11),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
               hintText: '0',
+              hintStyle: const TextStyle(fontSize: 11),
               isDense: true,
               contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
               border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         SizedBox(
           width: 140,
           child: Align(
             alignment: Alignment.center,
             child: Text(
               _formatCurrencyValue(entry.totalValue),
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
             ),
           ),
         ),
@@ -3200,7 +3251,9 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         IconButton(
           tooltip: 'Remove item',
           onPressed: () => _removeBenefitLineItem(entry),
-          icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+          icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
         )
       ]),
     );

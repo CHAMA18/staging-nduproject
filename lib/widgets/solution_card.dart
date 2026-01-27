@@ -7,6 +7,7 @@ class SolutionCard extends StatelessWidget {
     super.key,
     required this.solution,
     required this.onViewDetails,
+    required this.onSelectPreferred,
     this.onDelete,
     this.riskCount = 0,
     this.itConsiderationsCount = 0,
@@ -14,10 +15,13 @@ class SolutionCard extends StatelessWidget {
     this.costBenefitSummary = 'Not calculated',
     this.stakeholderCount = 0,
     this.scopeBrief = '',
+    this.isSelected = false,
+    this.isSaving = false,
   });
 
   final PotentialSolution solution;
   final VoidCallback onViewDetails;
+  final VoidCallback onSelectPreferred;
   final VoidCallback? onDelete;
   final int riskCount;
   final int itConsiderationsCount;
@@ -25,21 +29,29 @@ class SolutionCard extends StatelessWidget {
   final String costBenefitSummary;
   final int stakeholderCount;
   final String scopeBrief;
+  final bool isSelected;
+  final bool isSaving;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    final borderColor = isSelected
+        ? const Color(0xFFFFD700).withValues(alpha: 0.9)
+        : Colors.grey.shade300;
+
     return Card(
-      elevation: 4,
-      margin: const EdgeInsets.only(bottom: 16),
+      elevation: isSelected ? 4 : 2,
+      margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade300, width: 1),
+        side: BorderSide(color: borderColor, width: isSelected ? 1.5 : 1),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -60,7 +72,7 @@ class SolutionCard extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             if (solution.title.isNotEmpty)
               Text(
                 solution.title,
@@ -70,27 +82,81 @@ class SolutionCard extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             _buildSummaryRow(Icons.description, 'Scope', scopeBrief.isNotEmpty ? scopeBrief : 'Not specified'),
             _buildSummaryRow(Icons.warning, 'Risks', '$riskCount identified'),
             _buildSummaryRow(Icons.computer, 'IT', '$itConsiderationsCount items'),
             _buildSummaryRow(Icons.construction, 'Infrastructure', infrastructureStatus),
             _buildSummaryRow(Icons.attach_money, 'Cost Benefit', costBenefitSummary),
             _buildSummaryRow(Icons.people, 'Stakeholders', '$stakeholderCount identified'),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: onViewDetails,
-                icon: const Icon(Icons.visibility, size: 18),
-                label: const Text('View Details'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFD700),
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+            const SizedBox(height: 12),
+            if (isMobile) ...[
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: isSaving ? null : onViewDetails,
+                  icon: const Icon(Icons.visibility, size: 18),
+                  label: const Text('View Details'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(40),
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: isSaving ? null : onSelectPreferred,
+                  icon: isSaving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.check, size: 18),
+                  label: Text(isSelected ? 'Selected' : 'Select as Preferred'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFD700),
+                    foregroundColor: Colors.black,
+                    minimumSize: const Size.fromHeight(40),
+                  ),
+                ),
+              ),
+            ] else ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: isSaving ? null : onViewDetails,
+                      icon: const Icon(Icons.visibility, size: 18),
+                      label: const Text('View Details'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(40),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: isSaving ? null : onSelectPreferred,
+                      icon: isSaving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.check, size: 18),
+                      label: Text(isSelected ? 'Selected' : 'Select This'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFFFD700),
+                        foregroundColor: Colors.black,
+                        minimumSize: const Size.fromHeight(40),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -99,7 +165,7 @@ class SolutionCard extends StatelessWidget {
 
   Widget _buildSummaryRow(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

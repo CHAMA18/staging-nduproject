@@ -31,6 +31,7 @@ import 'package:ndu_project/services/access_policy.dart';
 import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/widgets/page_hint_dialog.dart';
 import 'package:ndu_project/widgets/field_regenerate_undo_buttons.dart';
+import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
 
 class RiskIdentificationScreen extends StatefulWidget {
   final String notes;
@@ -951,22 +952,43 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
         ),
         const SizedBox(height: 24),
         // Title
-        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          const EditableContentText(
-              contentKey: 'risk_identification_heading',
-              fallback: 'Risk Identification ',
-              category: 'business_case',
-              style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black)),
-          EditableContentText(
-              contentKey: 'risk_identification_description',
-              fallback:
-                  '(Identify up to 3 risks for each potential solution here)',
-              category: 'business_case',
-              style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-        ]),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const EditableContentText(
+                      contentKey: 'risk_identification_heading',
+                      fallback: 'Risk Identification ',
+                      category: 'business_case',
+                      style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black)),
+                  EditableContentText(
+                      contentKey: 'risk_identification_description',
+                      fallback:
+                          '(Identify up to 3 risks for each potential solution here)',
+                      category: 'business_case',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+                ],
+              ),
+            ),
+            // Page-level Regenerate All button
+            PageRegenerateAllButton(
+              onRegenerateAll: () async {
+                final confirmed = await showRegenerateAllConfirmation(context);
+                if (confirmed && mounted) {
+                  await _regenerateAllRisks();
+                }
+              },
+              isLoading: _isGenerating,
+              tooltip: 'Regenerate all risks',
+            ),
+          ],
+        ),
         const SizedBox(height: 16),
 
         if (_error != null)

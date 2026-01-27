@@ -944,7 +944,6 @@ class _PreferredSolutionAnalysisScreenState
         const SizedBox(height: 16),
         _buildHeaderRow(),
         const SizedBox(height: 16),
-        _ProjectContextWidget(projectData: projectData),
         if (hasSelection) ...[
           const SizedBox(height: 16),
           _buildSelectedSolutionFullDetail(projectData, selectedSolutionTitle),
@@ -1871,23 +1870,19 @@ class _PreferredSolutionAnalysisScreenState
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        int crossAxisCount;
-        if (width >= 1200) {
-          crossAxisCount = _analysis.length >= 3 ? 3 : _analysis.length;
-        } else if (width >= 900) {
-          crossAxisCount = 2;
-        } else {
-          crossAxisCount = 1;
-        }
+        final selectedTitle =
+            projectData.preferredSolutionAnalysis?.selectedSolutionTitle ?? '';
 
         return GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
+          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+            // Desktop: ~3 columns; Tablet: 2; Mobile: 1
+            maxCrossAxisExtent: width >= 1200 ? 400 : 520,
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
-            childAspectRatio: 0.75,
+            // Keep cards balanced and equal-height
+            mainAxisExtent: 280,
           ),
           itemCount: _analysis.length,
           itemBuilder: (context, index) {
@@ -1906,6 +1901,9 @@ class _PreferredSolutionAnalysisScreenState
                 ? '${analysis.solution.description.substring(0, 100)}...'
                 : analysis.solution.description;
 
+            final isSelected =
+                _matchSolutionTitle(selectedTitle, analysis.solution.title);
+
             return SolutionCard(
               solution: PotentialSolution(
                 id: 'temp_$index',
@@ -1920,6 +1918,14 @@ class _PreferredSolutionAnalysisScreenState
               stakeholderCount: stakeholderCount,
               scopeBrief: scopeBrief,
               onViewDetails: () => _navigateToSolutionDetails(index),
+              onSelectPreferred: _isSavingPreferredSelection
+                  ? () {}
+                  : () => _confirmSelectPreferredFromCard(
+                        index: index,
+                        title: analysis.solution.title,
+                      ),
+              isSelected: isSelected,
+              isSaving: _isSavingPreferredSelection && _savingPreferredIndex == index,
             );
           },
         );
@@ -1927,14 +1933,137 @@ class _PreferredSolutionAnalysisScreenState
     );
   }
 
+  bool _isSavingPreferredSelection = false;
+  int? _savingPreferredIndex;
+
+  Future<void> _confirmSelectPreferredFromCard({
+    required int index,
+    required String title,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Preferred Solution'),
+        content: Text(
+          'You are about to select:\n\n"Solution #${index + 1}: $title"\n\nas your preferred solution.\n\nThis will move you to the next phase of the project. You can still review details before finalizing.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFFFD700),
+              foregroundColor: Colors.black,
+            ),
+            child: const Text('Confirm & Continue'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await _selectPreferredAndContinue(index: index);
+  }
+
+  Future<void> _selectPreferredAndContinue({required int index}) async {
+    if (index < 0 || index >= _analysis.length) return;
+    if (_isSavingPreferredSelection) return;
+
+    setState(() {
+      _isSavingPreferredSelection = true;
+      _savingPreferredIndex = index;
+    });
+
+    try {
+      final provider = ProjectDataHelper.getProvider(context);
+      final projectData = provider.projectData;
+      final analysis = _analysis[index];
+
+      final solutionId = projectData.potentialSolutions
+          .where((s) => _matchSolutionTitle(s.title, analysis.solution.title))
+          .firstOrNull
+          ?.id;
+
+      if (solutionId == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not match solution to select.')),
+          );
+        }
+        return;
+      }
+
+      await provider.setPreferredSolution(solutionId,
+          checkpoint: 'preferred_solution_selected');
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Solution selected successfully')),
+      );
+      FrontEndPlanningSummaryScreen.open(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to select solution: $e')),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isSavingPreferredSelection = false;
+        _savingPreferredIndex = null;
+      });
+    }
+  }
+
   void _navigateToSolutionDetails(int index) {
     if (index < 0 || index >= _analysis.length) return;
     
     final analysis = _analysis[index];
-    
-    // Navigate to detailed view - we'll create a route for this
-    // For now, we'll show details in a dialog or navigate to a new screen
-    _showSolutionDetailsDialog(analysis, index);
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PreferredSolutionDetailsScreen(
+          analysis: analysis,
+          index: index,
+          onSelectPreferred: () => _confirmSelectPreferredFromDetails(
+            index: index,
+            title: analysis.solution.title,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmSelectPreferredFromDetails({
+    required int index,
+    required String title,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Preferred Solution'),
+        content: Text(
+          'You are about to select:\n\n"Solution #${index + 1}: $title"\n\nas your preferred solution.\n\nThis will move you to the next phase of the project.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFFFD700),
+              foregroundColor: Colors.black,
+            ),
+            child: const Text('Confirm & Continue'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await _selectPreferredAndContinue(index: index);
   }
 
   void _showSolutionDetailsDialog(_SolutionAnalysisData analysis, int index) {
@@ -3025,242 +3154,6 @@ class _SolutionAnalysisData {
   });
 }
 
-class _ProjectContextWidget extends StatelessWidget {
-  const _ProjectContextWidget({required this.projectData});
-
-  final ProjectDataModel projectData;
-
-  @override
-  Widget build(BuildContext context) {
-    final selectedSolutionTitle =
-        projectData.preferredSolutionAnalysis?.selectedSolutionTitle ?? '';
-    final vision = _pickVision(projectData);
-    final stakeholders = _extractStakeholders(projectData);
-    final cba = _summarizeCostBenefit(projectData);
-
-    final assumptions = projectData.charterAssumptions.trim();
-    final constraints = projectData.charterConstraints.trim();
-    final risks = _extractTopRisks(projectData, selectedSolutionTitle);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Project Context (single source of truth)',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                ),
-              ),
-              if (selectedSolutionTitle.trim().isNotEmpty)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF7CC),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: const Color(0xFFFFD700)),
-                  ),
-                  child: Text(
-                    'Selected: $selectedSolutionTitle',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Table(
-            columnWidths: const {
-              0: FixedColumnWidth(160),
-              1: FlexColumnWidth(),
-            },
-            defaultVerticalAlignment: TableCellVerticalAlignment.top,
-            children: [
-              _row('Vision / Objective', vision),
-              _row('Key stakeholders', _bullet(stakeholders)),
-              _row('Business case', _clamp(projectData.businessCase, 520)),
-              _row('Cost vs benefits', cba),
-            ],
-          ),
-          const SizedBox(height: 14),
-          const Divider(height: 1),
-          const SizedBox(height: 14),
-          const Text(
-            'Assumptions, Constraints, and Risks',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 10),
-          Table(
-            columnWidths: const {
-              0: FixedColumnWidth(160),
-              1: FlexColumnWidth(),
-            },
-            defaultVerticalAlignment: TableCellVerticalAlignment.top,
-            children: [
-              _row('Assumptions',
-                  assumptions.isEmpty ? '—' : _bullet(_splitLines(assumptions))),
-              _row('Constraints',
-                  constraints.isEmpty ? '—' : _bullet(_splitLines(constraints))),
-              _row('Risks', risks.isEmpty ? '—' : _bullet(risks)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  static TableRow _row(String label, String value) {
-    return TableRow(
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(right: 12, bottom: 10),
-          child: Text(label,
-              style:
-                  const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: Text(value, style: const TextStyle(fontSize: 13)),
-        ),
-      ],
-    );
-  }
-
-  static String _pickVision(ProjectDataModel data) {
-    final objective = data.projectObjective.trim();
-    if (objective.isNotEmpty) return objective;
-    final desc = data.solutionDescription.trim();
-    if (desc.isNotEmpty) return desc;
-    final business = data.businessCase.trim();
-    if (business.isNotEmpty) return _clamp(business, 220);
-    return '—';
-  }
-
-  static List<String> _extractStakeholders(ProjectDataModel data) {
-    final core = data.coreStakeholdersData;
-    if (core == null) return const [];
-    final buf = <String>[];
-    for (final s in core.solutionStakeholderData) {
-      final text = s.notableStakeholders.trim();
-      if (text.isEmpty) continue;
-      buf.addAll(_splitLines(text));
-    }
-    final distinct = <String>[];
-    for (final item in buf.map((e) => e.trim()).where((e) => e.isNotEmpty)) {
-      final k = item.toLowerCase();
-      if (distinct.any((d) => d.toLowerCase() == k)) continue;
-      distinct.add(item);
-      if (distinct.length >= 8) break;
-    }
-    return distinct;
-  }
-
-  static String _summarizeCostBenefit(ProjectDataModel data) {
-    final cost = data.costAnalysisData;
-    if (cost == null) return '—';
-
-    double totalCost = 0;
-    for (final solution in cost.solutionCosts) {
-      for (final row in solution.costRows) {
-        final cleaned = row.cost.replaceAll(RegExp(r'[^\d.]'), '');
-        totalCost += double.tryParse(cleaned) ?? 0;
-      }
-    }
-    final costText = totalCost > 0 ? '\$${totalCost.toStringAsFixed(0)}' : 'TBD';
-
-    final benefits = [
-      if (cost.projectValueAmount.trim().isNotEmpty)
-        'Project value: ${cost.projectValueAmount.trim()}',
-      if (cost.savingsTarget.trim().isNotEmpty)
-        'Savings target: ${cost.savingsTarget.trim()}',
-    ].join(' • ');
-
-    return benefits.isEmpty ? 'Estimated cost: $costText' : '$costText vs $benefits';
-  }
-
-  static List<String> _extractTopRisks(
-      ProjectDataModel data, String selectedSolutionTitle) {
-    final desired = <String>[];
-    if (selectedSolutionTitle.trim().isNotEmpty) {
-      final match = data.solutionRisks.cast<SolutionRisk?>().firstWhere(
-            (r) =>
-                (r?.solutionTitle ?? '').trim().toLowerCase() ==
-                selectedSolutionTitle.trim().toLowerCase(),
-            orElse: () => null,
-          );
-      if (match != null) {
-        desired.addAll(
-            match.risks.map((e) => e.trim()).where((e) => e.isNotEmpty));
-      }
-    }
-    if (desired.isEmpty) {
-      for (final sr in data.solutionRisks) {
-        desired.addAll(sr.risks.map((e) => e.trim()).where((e) => e.isNotEmpty));
-      }
-    }
-
-    final distinct = <String>[];
-    for (final r in desired) {
-      if (distinct.length >= 3) break;
-      final k = r.toLowerCase();
-      if (distinct.any((e) => e.toLowerCase() == k)) continue;
-      distinct.add(r);
-    }
-
-    final register = data.frontEndPlanning.riskRegisterItems;
-    return distinct.map((name) {
-      final found = register.cast<RiskRegisterItem?>().firstWhere(
-            (item) => (item?.riskName ?? '')
-                .trim()
-                .toLowerCase()
-                .contains(name.trim().toLowerCase()),
-            orElse: () => null,
-          );
-      final impact = (found?.impactLevel ?? '').trim();
-      final mitigation = (found?.mitigationStrategy ?? '').trim();
-      final suffix = [
-        if (impact.isNotEmpty) 'Impact: $impact',
-        if (mitigation.isNotEmpty) 'Mitigation: $mitigation',
-      ].join(' • ');
-      return suffix.isEmpty ? name : '$name • $suffix';
-    }).toList();
-  }
-
-  static String _bullet(List<String> lines) {
-    if (lines.isEmpty) return '—';
-    return lines.map((e) => '• $e').join('\n');
-  }
-
-  static List<String> _splitLines(String text) {
-    return text
-        .split('\n')
-        .map((l) => l.trim())
-        .map((l) => l.replaceAll(RegExp(r'^[-•]\s*'), ''))
-        .where((l) => l.isNotEmpty)
-        .toList();
-  }
-
-  static String _clamp(String text, int max) {
-    final t = text.trim();
-    if (t.isEmpty) return '—';
-    if (t.length <= max) return t;
-    return '${t.substring(0, max - 3)}...';
-  }
-}
-
 class _ProjectSelectionResult {
   final AiSolutionItem solution;
   final String projectName;
@@ -4253,6 +4146,230 @@ class _ComparisonContent extends StatelessWidget {
     final decimalPart = hasDecimals ? '.${parts[1]}' : '';
     final symbol = value < 0 ? '-\$' : '\$';
     return '$symbol$withCommas$decimalPart';
+  }
+}
+
+class PreferredSolutionDetailsScreen extends StatelessWidget {
+  const PreferredSolutionDetailsScreen({
+    super.key,
+    required this.analysis,
+    required this.index,
+    required this.onSelectPreferred,
+  });
+
+  final _SolutionAnalysisData analysis;
+  final int index;
+  final Future<void> Function() onSelectPreferred;
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = ProjectDataHelper.getProvider(context);
+    final projectData = provider.projectData;
+    final selectedTitle =
+        projectData.preferredSolutionAnalysis?.selectedSolutionTitle ?? '';
+    bool titlesMatch(String a, String b) =>
+        a.trim().toLowerCase() == b.trim().toLowerCase();
+    final isSelected = titlesMatch(selectedTitle, analysis.solution.title);
+
+    final cbaRows = (projectData.costAnalysisData?.solutionCosts ?? const [])
+        .where((s) => titlesMatch(s.solutionTitle, analysis.solution.title))
+        .expand((s) => s.costRows)
+        .toList();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Solution #${index + 1}: ${analysis.solution.title}'),
+      ),
+      body: Column(
+        children: [
+          if (isSelected)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              color: const Color(0xFFFFF7CC),
+              child: const Text(
+                'This is your preferred solution.',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SolutionDetailSection(
+                    title: 'Scope Statement',
+                    content: Text(
+                      analysis.solution.description.isNotEmpty
+                          ? analysis.solution.description
+                          : 'No scope statement provided.',
+                      style: const TextStyle(fontSize: 14, height: 1.5),
+                    ),
+                    initiallyExpanded: true,
+                  ),
+                  SolutionDetailSection(
+                    title: 'Risks Identified',
+                    content: analysis.risks.isEmpty
+                        ? const Text('No risks identified.',
+                            style: TextStyle(fontSize: 14))
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: analysis.risks
+                                .map((risk) => Padding(
+                                      padding:
+                                          const EdgeInsets.only(bottom: 8),
+                                      child: Text('• $risk',
+                                          style: const TextStyle(fontSize: 14)),
+                                    ))
+                                .toList(),
+                          ),
+                  ),
+                  SolutionDetailSection(
+                    title: 'IT Considerations',
+                    content: analysis.itConsiderationText?.isNotEmpty == true
+                        ? Text(analysis.itConsiderationText!,
+                            style: const TextStyle(fontSize: 14, height: 1.5))
+                        : (analysis.technologies.isEmpty
+                            ? const Text('No IT considerations recorded.',
+                                style: TextStyle(fontSize: 14))
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: analysis.technologies
+                                    .map((tech) => Padding(
+                                          padding: const EdgeInsets.only(
+                                              bottom: 8),
+                                          child: Text('• $tech',
+                                              style: const TextStyle(
+                                                  fontSize: 14)),
+                                        ))
+                                    .toList(),
+                              )),
+                  ),
+                  SolutionDetailSection(
+                    title: 'Infrastructure Considerations',
+                    content: analysis.infraConsiderationText?.isNotEmpty == true
+                        ? Text(analysis.infraConsiderationText!,
+                            style: const TextStyle(fontSize: 14, height: 1.5))
+                        : (analysis.infrastructure.isEmpty
+                            ? const Text(
+                                'No infrastructure considerations recorded.',
+                                style: TextStyle(fontSize: 14))
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: analysis.infrastructure
+                                    .map((infra) => Padding(
+                                          padding: const EdgeInsets.only(
+                                              bottom: 8),
+                                          child: Text('• $infra',
+                                              style: const TextStyle(
+                                                  fontSize: 14)),
+                                        ))
+                                    .toList(),
+                              )),
+                  ),
+                  SolutionDetailSection(
+                    title: 'Cost Benefit Analysis',
+                    content: cbaRows.isEmpty
+                        ? const Text('No cost analysis available.',
+                            style: TextStyle(fontSize: 14))
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              for (final row in cbaRows.take(12))
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Text(
+                                    '• ${row.itemName.isEmpty ? 'Cost item' : row.itemName}: ${row.cost.isEmpty ? '—' : row.cost}',
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                ),
+                            ],
+                          ),
+                  ),
+                  SolutionDetailSection(
+                    title: 'Core Stakeholders',
+                    content: (analysis.stakeholders.isEmpty &&
+                            (analysis.internalStakeholders?.isEmpty ?? true) &&
+                            (analysis.externalStakeholders?.isEmpty ?? true))
+                        ? const Text('No stakeholders identified.',
+                            style: TextStyle(fontSize: 14))
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              for (final s in (analysis.stakeholders))
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Text('• $s',
+                                      style: const TextStyle(fontSize: 14)),
+                                ),
+                              if (analysis.externalStakeholders?.isNotEmpty ==
+                                  true) ...[
+                                const SizedBox(height: 8),
+                                const Text('External:',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14)),
+                                const SizedBox(height: 6),
+                                for (final s in analysis.externalStakeholders!)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: Text('• $s',
+                                        style:
+                                            const TextStyle(fontSize: 14)),
+                                  ),
+                              ],
+                              if (analysis.internalStakeholders?.isNotEmpty ==
+                                  true) ...[
+                                const SizedBox(height: 8),
+                                const Text('Internal:',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14)),
+                                const SizedBox(height: 6),
+                                for (final s in analysis.internalStakeholders!)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: Text('• $s',
+                                        style:
+                                            const TextStyle(fontSize: 14)),
+                                  ),
+                              ],
+                            ],
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(isSelected
+                      ? 'Back to Change Selection'
+                      : 'Back to Selection'),
+                ),
+                const Spacer(),
+                FilledButton.icon(
+                  onPressed: () async => onSelectPreferred(),
+                  icon: const Icon(Icons.check),
+                  label: Text(isSelected
+                      ? 'Continue to Next Phase'
+                      : 'Select as Preferred & Continue'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFD700),
+                    foregroundColor: Colors.black,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

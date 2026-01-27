@@ -625,18 +625,13 @@ class _RequirementRow {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: TextField(
-            controller: descriptionController,
-            minLines: 2,
-            maxLines: null,
-            onChanged: (_) => onChanged?.call(),
-            decoration: InputDecoration(
-              hintText: 'Requirement description',
-              hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
-              border: InputBorder.none,
-              isDense: true,
-              suffixIcon: Padding(
-                padding: const EdgeInsets.only(right: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Floating action row above the field
+              Container(
+                padding: const EdgeInsets.only(bottom: 4),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -653,27 +648,42 @@ class _RequirementRow {
                               )
                             : const Icon(Icons.refresh,
                                 size: 18, color: Color(0xFF2563EB)),
-                        padding: EdgeInsets.zero,
+                        padding: const EdgeInsets.all(6),
                         constraints:
                             const BoxConstraints(minWidth: 36, minHeight: 36),
+                        splashRadius: 18,
                       ),
                     ),
                     Tooltip(
                       message: 'Undo last AI regenerate',
                       child: IconButton(
                         onPressed: (aiUndoText != null) ? onUndo : null,
-                        icon: const Icon(Icons.undo,
-                            size: 18, color: Color(0xFF6B7280)),
-                        padding: EdgeInsets.zero,
+                        icon: Icon(Icons.undo,
+                            size: 18, color: aiUndoText != null ? const Color(0xFF6B7280) : Colors.grey.shade300),
+                        padding: const EdgeInsets.all(6),
                         constraints:
                             const BoxConstraints(minWidth: 36, minHeight: 36),
+                        splashRadius: 18,
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-            style: const TextStyle(fontSize: 14, color: Color(0xFF111827)),
+              // Text field
+              TextField(
+                controller: descriptionController,
+                minLines: 2,
+                maxLines: null,
+                onChanged: (_) => onChanged?.call(),
+                decoration: const InputDecoration(
+                  hintText: 'Requirement description',
+                  hintStyle: TextStyle(color: Color(0xFF9CA3AF)),
+                  border: InputBorder.none,
+                  isDense: true,
+                ),
+                style: const TextStyle(fontSize: 14, color: Color(0xFF111827)),
+              ),
+            ],
           ),
         ),
         Padding(

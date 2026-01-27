@@ -1574,13 +1574,56 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
     final isAiGenerated = solution.isAiGenerated;
 
     return StatefulBuilder(
-      builder: (context, setState) {
-        return MouseRegion(
-          onEnter: (_) => setState(() {}),
-          onExit: (_) => setState(() {}),
-          child: Stack(
-            children: [
-              isMobile
+      builder: (context, setStateLocal) {
+        bool _isHovering = false;
+        final isMobile = MediaQuery.of(context).size.width < 600;
+        final showControls = isMobile || _isHovering;
+
+        void _setHovering(bool value) {
+          if (_isHovering != value) {
+            setStateLocal(() => _isHovering = value);
+          }
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Floating action row above the field
+            if (isAiGenerated)
+              AnimatedOpacity(
+                duration: const Duration(milliseconds: 150),
+                opacity: showControls ? 1.0 : 0.0,
+                child: Container(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.refresh, size: 18, color: Color(0xFF2563EB)),
+                        tooltip: 'Regenerate this field',
+                        onPressed: () => _regenerateSolutionField(solution, fieldName),
+                        padding: const EdgeInsets.all(6),
+                        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                        splashRadius: 18,
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.undo, size: 18, color: canUndo ? const Color(0xFF6B7280) : Colors.grey.shade300),
+                        tooltip: 'Undo last change',
+                        onPressed: canUndo ? () => _undoSolutionField(solution, fieldName) : null,
+                        padding: const EdgeInsets.all(6),
+                        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                        splashRadius: 18,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            // Text field
+            MouseRegion(
+              onEnter: (_) => _setHovering(true),
+              onExit: (_) => _setHovering(false),
+              child: isMobile
                   ? TextField(
                       controller: controller,
                       decoration: InputDecoration(
@@ -1606,32 +1649,8 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
                       ),
                       minLines: 1,
                     ),
-              if (isAiGenerated)
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.refresh, size: 16, color: Color(0xFF2563EB)),
-                        tooltip: 'Regenerate this field',
-                        onPressed: () => _regenerateSolutionField(solution, fieldName),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.undo, size: 16, color: canUndo ? const Color(0xFF6B7280) : Colors.grey),
-                        tooltip: 'Undo last change',
-                        onPressed: canUndo ? () => _undoSolutionField(solution, fieldName) : null,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
+            ),
+          ],
         );
       },
     );

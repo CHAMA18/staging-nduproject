@@ -1429,7 +1429,7 @@ Context notes (optional): $notes
         {
           'role': 'system',
           'content':
-              'You are a financial analyst helping to prepare a cost-benefit analysis. Focus on analyzing what VALUE this project brings to the company. Consider financial value (ROI, cost savings, revenue potential), strategic value (market position, competitive advantage), operational value (efficiency improvements, risk mitigation), and long-term impact (sustainability, scalability). Provide quantifiable insights when possible. Return strict JSON only.'
+              'You are a financial analyst helping to prepare a cost-benefit analysis. Your primary focus is: "What direct financial value does this project bring to the company?" Analyze direct financial impact including ROI, cost savings, revenue potential, and quantifiable monetary benefits. While strategic and operational value are important, prioritize direct financial metrics and measurable monetary outcomes. Provide quantifiable insights when possible. Return strict JSON only.'
         },
         {
           'role': 'user',
@@ -1487,14 +1487,20 @@ Context notes (optional): $notes
             '{"title": "${_escape(s.title)}", "description": "${_escape(s.description)}"}')
         .join(',');
     return '''
-Based on the following project cost-benefit analysis data, provide a comprehensive review of the VALUE this project brings to the company. Consider:
+Based on the following project cost-benefit analysis data, answer this critical question: "What direct financial value does this project bring to the company?"
 
-1. Financial Value: ROI, cost savings, revenue potential
-2. Strategic Value: Market position, competitive advantage, strategic alignment
-3. Operational Value: Efficiency improvements, risk mitigation, process optimization
-4. Long-term Impact: Sustainability, scalability, future-proofing
+Primary Focus - Direct Financial Value:
+1. ROI (Return on Investment): Calculate and quantify the return percentage
+2. Cost Savings: Identify and quantify direct cost reductions (operational expenses, labor costs, material costs)
+3. Revenue Potential: Estimate direct revenue increases, new revenue streams, or revenue protection
+4. Quantifiable Monetary Benefits: Provide specific dollar amounts, percentages, and financial metrics
 
-Focus on tangible company benefits and quantify where possible.
+Secondary Considerations (include but prioritize financial metrics):
+- Strategic Value: Market position, competitive advantage (quantify financial impact where possible)
+- Operational Value: Efficiency improvements (translate to cost savings or revenue gains)
+- Long-term Impact: Sustainability and scalability (project future financial returns)
+
+Focus on direct financial metrics and measurable monetary outcomes. Quantify all benefits in financial terms where possible.
 
 Return ONLY valid JSON with this exact structure:
 {

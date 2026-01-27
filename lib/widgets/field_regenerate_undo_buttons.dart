@@ -9,7 +9,7 @@ class FieldRegenerateUndoButtons extends StatelessWidget {
     required this.onUndo,
     required this.canUndo,
     this.isLoading = false,
-    this.size = 16,
+    this.size = 20,
   });
 
   final VoidCallback onRegenerate;
@@ -20,6 +20,7 @@ class FieldRegenerateUndoButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -33,22 +34,26 @@ class FieldRegenerateUndoButtons extends StatelessWidget {
                     color: Color(0xFF2563EB),
                   ),
                 )
-              : const Icon(Icons.refresh, size: 16, color: Color(0xFF2563EB)),
+              : Icon(Icons.refresh, size: size, color: Colors.grey.shade600),
           tooltip: 'Regenerate this field',
           onPressed: isLoading ? null : onRegenerate,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          padding: const EdgeInsets.all(8),
+          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          splashRadius: 20,
+          hoverColor: primary.withValues(alpha: 0.08),
         ),
         IconButton(
           icon: Icon(
             Icons.undo,
             size: size,
-            color: canUndo ? const Color(0xFF6B7280) : Colors.grey,
+            color: canUndo ? Colors.grey.shade600 : Colors.grey.shade300,
           ),
           tooltip: 'Undo last change',
           onPressed: canUndo ? onUndo : null,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          padding: const EdgeInsets.all(8),
+          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          splashRadius: 20,
+          hoverColor: primary.withValues(alpha: 0.08),
         ),
       ],
     );
@@ -81,31 +86,57 @@ class HoverableFieldControls extends StatefulWidget {
 class _HoverableFieldControlsState extends State<HoverableFieldControls> {
   bool _isHovering = false;
 
+  void _setHovering(bool value) {
+    if (mounted && _isHovering != value) {
+      setState(() => _isHovering = value);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!widget.isAiGenerated) {
       return widget.child;
     }
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovering = true),
-      onExit: (_) => setState(() => _isHovering = false),
-      child: Stack(
-        children: [
-          widget.child,
-          if (_isHovering)
-            Positioned(
-              right: 8,
-              top: 8,
-              child: FieldRegenerateUndoButtons(
-                onRegenerate: widget.onRegenerate,
-                onUndo: widget.onUndo,
-                canUndo: widget.canUndo,
-                isLoading: widget.isLoading,
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    final showControls = isMobile || _isHovering;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Floating action row above the field
+        AnimatedOpacity(
+          duration: const Duration(milliseconds: 150),
+          opacity: showControls ? 1.0 : 0.0,
+          child: MouseRegion(
+            onEnter: (_) => _setHovering(true),
+            onExit: (_) => _setHovering(false),
+            child: IgnorePointer(
+              ignoring: !showControls,
+              child: Container(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Material(
+                  color: Colors.transparent,
+                  child: FieldRegenerateUndoButtons(
+                    onRegenerate: widget.onRegenerate,
+                    onUndo: widget.onUndo,
+                    canUndo: widget.canUndo,
+                    isLoading: widget.isLoading,
+                    size: 18,
+                  ),
+                ),
               ),
             ),
-        ],
-      ),
+          ),
+        ),
+        // Text field without padding reservation
+        MouseRegion(
+          onEnter: (_) => _setHovering(true),
+          onExit: (_) => _setHovering(false),
+          child: widget.child,
+        ),
+      ],
     );
   }
 }

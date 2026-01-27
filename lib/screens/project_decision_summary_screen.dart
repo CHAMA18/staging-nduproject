@@ -569,6 +569,10 @@ class _MainContentState extends State<_MainContent> {
             const SizedBox(height: 20),
             _buildComparisonSection('Risks to monitor', risks),
             const SizedBox(height: 20),
+            _buildITConsiderationsSection(analysisData),
+            const SizedBox(height: 20),
+            _buildInfrastructureSection(analysisData),
+            const SizedBox(height: 20),
             _buildFinancialSignals(analysisData),
             const SizedBox(height: 20),
             if (analysisData?.costs != null &&
@@ -620,6 +624,106 @@ class _MainContentState extends State<_MainContent> {
                 ],
               ),
             )),
+      ],
+    );
+  }
+
+  Widget _buildITConsiderationsSection(SolutionAnalysisItem? analysisData) {
+    final itItems = <String>[];
+    
+    if (analysisData?.itConsiderationText != null && 
+        analysisData!.itConsiderationText!.isNotEmpty) {
+      // If there's a text description, use it as a single item
+      itItems.add(analysisData.itConsiderationText!);
+    } else if (analysisData?.technologies.isNotEmpty == true) {
+      // Otherwise use the technologies list
+      itItems.addAll(analysisData!.technologies);
+    } else {
+      // Placeholder if no data
+      itItems.add('No IT considerations recorded.');
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.computer, size: 16, color: Colors.grey[700]),
+            const SizedBox(width: 6),
+            const Text('IT Considerations',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (analysisData?.itConsiderationText != null && 
+            analysisData!.itConsiderationText!.isNotEmpty)
+          Text(
+            analysisData.itConsiderationText!,
+            style: const TextStyle(fontSize: 13, height: 1.4),
+          )
+        else
+          ...itItems.map((item) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('- ', style: TextStyle(fontSize: 13)),
+                    Expanded(
+                        child: Text(item,
+                            style: const TextStyle(fontSize: 13, height: 1.4))),
+                  ],
+                ),
+              )),
+      ],
+    );
+  }
+
+  Widget _buildInfrastructureSection(SolutionAnalysisItem? analysisData) {
+    final infraItems = <String>[];
+    
+    if (analysisData?.infraConsiderationText != null && 
+        analysisData!.infraConsiderationText!.isNotEmpty) {
+      // If there's a text description, use it as a single item
+      infraItems.add(analysisData.infraConsiderationText!);
+    } else if (analysisData?.infrastructure.isNotEmpty == true) {
+      // Otherwise use the infrastructure list
+      infraItems.addAll(analysisData!.infrastructure);
+    } else {
+      // Placeholder if no data
+      infraItems.add('No infrastructure considerations recorded.');
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.construction, size: 16, color: Colors.grey[700]),
+            const SizedBox(width: 6),
+            const Text('Infrastructure Considerations',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (analysisData?.infraConsiderationText != null && 
+            analysisData!.infraConsiderationText!.isNotEmpty)
+          Text(
+            analysisData.infraConsiderationText!,
+            style: const TextStyle(fontSize: 13, height: 1.4),
+          )
+        else
+          ...infraItems.map((item) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('- ', style: TextStyle(fontSize: 13)),
+                    Expanded(
+                        child: Text(item,
+                            style: const TextStyle(fontSize: 13, height: 1.4))),
+                  ],
+                ),
+              )),
       ],
     );
   }

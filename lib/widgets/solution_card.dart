@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 
 /// Card widget for displaying a potential solution with summary information
-class SolutionCard extends StatelessWidget {
+class SolutionCard extends StatefulWidget {
   const SolutionCard({
     super.key,
     required this.solution,
@@ -33,23 +33,68 @@ class SolutionCard extends StatelessWidget {
   final bool isSaving;
 
   @override
+  State<SolutionCard> createState() => _SolutionCardState();
+}
+
+class _SolutionCardState extends State<SolutionCard> with SingleTickerProviderStateMixin {
+  bool _isHovering = false;
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.02).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isMobile = MediaQuery.of(context).size.width < 600;
-    final borderColor = isSelected
+    final baseBorderColor = widget.isSelected
         ? const Color(0xFFFFD700).withValues(alpha: 0.9)
         : Colors.grey.shade300;
+    final hoverBorderColor = const Color(0xFFFFD700).withValues(alpha: 0.6);
+    final borderColor = _isHovering && !widget.isSelected 
+        ? hoverBorderColor 
+        : baseBorderColor;
+    final elevation = widget.isSelected ? 6 : (_isHovering ? 4 : 2);
 
-    return Card(
-      elevation: isSelected ? 4 : 2,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: borderColor, width: isSelected ? 1.5 : 1),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
+    return MouseRegion(
+      onEnter: (_) {
+        setState(() => _isHovering = true);
+        _animationController.forward();
+      },
+      onExit: (_) {
+        setState(() => _isHovering = false);
+        _animationController.reverse();
+      },
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: Card(
+          elevation: elevation.toDouble(),
+          margin: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: borderColor, 
+              width: _isHovering ? 1.5 : 1,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -57,15 +102,15 @@ class SolutionCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Solution #${solution.number}',
+                  'Solution #${widget.solution.number}',
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                if (onDelete != null)
+                if (widget.onDelete != null)
                   IconButton(
                     icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-                    onPressed: onDelete,
+                    onPressed: widget.onDelete,
                     tooltip: 'Delete solution',
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -73,9 +118,9 @@ class SolutionCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 6),
-            if (solution.title.isNotEmpty)
+            if (widget.solution.title.isNotEmpty)
               Text(
-                solution.title,
+                widget.solution.title,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -83,81 +128,27 @@ class SolutionCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             const SizedBox(height: 10),
-            _buildSummaryRow(Icons.description, 'Scope', scopeBrief.isNotEmpty ? scopeBrief : 'Not specified'),
-            _buildSummaryRow(Icons.warning, 'Risks', '$riskCount identified'),
-            _buildSummaryRow(Icons.computer, 'IT', '$itConsiderationsCount items'),
-            _buildSummaryRow(Icons.construction, 'Infrastructure', infrastructureStatus),
-            _buildSummaryRow(Icons.attach_money, 'Cost Benefit', costBenefitSummary),
-            _buildSummaryRow(Icons.people, 'Stakeholders', '$stakeholderCount identified'),
+            _buildSummaryRow(Icons.description, 'Scope', widget.scopeBrief.isNotEmpty ? widget.scopeBrief : 'Not specified'),
+            _buildSummaryRow(Icons.warning, 'Risks', '${widget.riskCount} identified'),
+            _buildSummaryRow(Icons.computer, 'IT', '${widget.itConsiderationsCount} items'),
+            _buildSummaryRow(Icons.construction, 'Infrastructure', widget.infrastructureStatus),
+            _buildSummaryRow(Icons.attach_money, 'Cost Benefit', widget.costBenefitSummary),
+            _buildSummaryRow(Icons.people, 'Stakeholders', '${widget.stakeholderCount} identified'),
             const SizedBox(height: 12),
-            if (isMobile) ...[
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: isSaving ? null : onViewDetails,
-                  icon: const Icon(Icons.visibility, size: 18),
-                  label: const Text('View Details'),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(40),
-                  ),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: widget.isSaving ? null : widget.onViewDetails,
+                icon: const Icon(Icons.visibility, size: 18),
+                label: const Text('View Details'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(40),
                 ),
               ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: isSaving ? null : onSelectPreferred,
-                  icon: isSaving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.check, size: 18),
-                  label: Text(isSelected ? 'Selected' : 'Select as Preferred'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFD700),
-                    foregroundColor: Colors.black,
-                    minimumSize: const Size.fromHeight(40),
-                  ),
-                ),
-              ),
-            ] else ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: isSaving ? null : onViewDetails,
-                      icon: const Icon(Icons.visibility, size: 18),
-                      label: const Text('View Details'),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(40),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: isSaving ? null : onSelectPreferred,
-                      icon: isSaving
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.check, size: 18),
-                      label: Text(isSelected ? 'Selected' : 'Select This'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFD700),
-                        foregroundColor: Colors.black,
-                        minimumSize: const Size.fromHeight(40),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            ),
             ],
-          ],
+          ),
+        ),
         ),
       ),
     );

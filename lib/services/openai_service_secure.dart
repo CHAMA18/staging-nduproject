@@ -3926,6 +3926,7 @@ Return JSON in this format:
     required String projectName,
     required String projectObjective,
     required String dimension,
+    List<ProjectGoal>? goals,
     String contextNotes = '',
   }) async {
     if (!OpenAiConfig.isConfigured) return [];
@@ -3952,6 +3953,7 @@ Return JSON in this format:
             projectName: projectName,
             projectObjective: projectObjective,
             dimension: dimension,
+            goals: goals,
             contextNotes: contextNotes,
           )
         },
@@ -3992,12 +3994,17 @@ Return JSON in this format:
     required String projectName,
     required String projectObjective,
     required String dimension,
+    List<ProjectGoal>? goals,
     required String contextNotes,
   }) {
+    final goalsText = goals != null && goals.isNotEmpty
+        ? "\nProject Goals:\n${goals.map((g) => "- ${g.name}: ${g.description}").join("\n")}"
+        : "";
+
     return '''
 Generate a Work Breakdown Structure (WBS) for:
 Project: $projectName
-Objective: $projectObjective
+Objective: $projectObjective$goalsText
 Segmentation Dimension: $dimension
 
 Requirements:

@@ -1,5 +1,8 @@
 import 'dart:convert';
 import 'package:ndu_project/models/project_data_model.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import 'download_helper_stub.dart'
     if (dart.library.html) 'download_helper_web.dart' as loader;
 
@@ -56,5 +59,83 @@ class SsherExportHelper {
   static Future<void> downloadCsv(String csvContent, String filename) async {
     final bytes = utf8.encode(csvContent);
     loader.downloadFile(bytes, filename);
+  }
+
+  static Future<void> exportToPdf(List<SsherEntry> entries, {required String categoryTitle}) async {
+    final doc = pw.Document();
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        build: (context) => [
+          pw.Header(
+            level: 0,
+            child: pw.Text('SSHER Export - $categoryTitle', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+          ),
+          pw.SizedBox(height: 20),
+          pw.TableHelper.fromTextArray(
+            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            headers: ['#', 'Department', 'Team Member', 'Concern', 'Risk Level', 'Mitigation Strategy'],
+            data: List<List<String>>.generate(
+              entries.length,
+              (index) => [
+                '${index + 1}',
+                entries[index].department,
+                entries[index].teamMember,
+                entries[index].concern,
+                entries[index].riskLevel,
+                entries[index].mitigation,
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (format) async => doc.save(),
+      name: 'ssher_${categoryTitle.toLowerCase()}.pdf',
+    );
+  }
+
+  static Future<void> exportAllToPdf(Map<String, List<SsherEntry>> categoryMap) async {
+    final doc = pw.Document();
+    
+    categoryMap.forEach((category, entries) {
+      if (entries.isEmpty) return;
+      doc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (context) => [
+            pw.Header(
+              level: 0,
+              child: pw.Text('SSHER Export - $category', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+            ),
+            pw.SizedBox(height: 20),
+            pw.TableHelper.fromTextArray(
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              headers: ['#', 'Department', 'Team Member', 'Concern', 'Risk Level', 'Mitigation Strategy'],
+              data: List<List<String>>.generate(
+                entries.length,
+                (index) => [
+                  '${index + 1}',
+                  entries[index].department,
+                  entries[index].teamMember,
+                  entries[index].concern,
+                  entries[index].riskLevel,
+                  entries[index].mitigation,
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+
+    await Printing.layoutPdf(
+      onLayout: (format) async => doc.save(),
+      name: 'ssher_all_categories.pdf',
+    );
   }
 }

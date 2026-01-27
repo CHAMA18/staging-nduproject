@@ -535,6 +535,11 @@ class ProjectDataModel {
           InfrastructureConsiderationsData.fromJson),
       coreStakeholdersData: safeParseSingle(
           'coreStakeholdersData', CoreStakeholdersData.fromJson),
+      projectRoles: safeParseList('projectRoles', RoleDefinition.fromJson),
+      staffingRequirements:
+          safeParseList('staffingRequirements', StaffingRequirement.fromJson),
+      trainingActivities:
+          safeParseList('trainingActivities', TrainingActivity.fromJson),
       designDeliverablesData: safeParseSingle(
               'designDeliverables', DesignDeliverablesData.fromJson) ??
           DesignDeliverablesData(),
@@ -2606,6 +2611,23 @@ class TrainingActivity {
       duration: json['duration']?.toString() ?? '',
       category: json['category']?.toString() ?? 'Training',
       status: json['status']?.toString() ?? 'Upcoming',
+    );
+  }
+
+  TrainingActivity copyWith({
+    String? title,
+    String? date,
+    String? duration,
+    String? category,
+    String? status,
+  }) {
+    return TrainingActivity(
+      id: id,
+      title: title ?? this.title,
+      date: date ?? this.date,
+      duration: duration ?? this.duration,
+      category: category ?? this.category,
+      status: status ?? this.status,
     );
   }
 }

@@ -17,6 +17,7 @@ class SsherCategoryFullView extends StatefulWidget {
   final VoidCallback onDownload;
   final String addButtonLabel;
   final String concernLabel; // For the dialog
+  final bool allowCsv;
 
   const SsherCategoryFullView({
     super.key,
@@ -33,6 +34,7 @@ class SsherCategoryFullView extends StatefulWidget {
     required this.onDownload,
     required this.addButtonLabel,
     required this.concernLabel,
+    required this.allowCsv,
   });
 
   @override
@@ -129,8 +131,8 @@ class _SsherCategoryFullViewState extends State<SsherCategoryFullView> {
                 const SizedBox(width: 10),
                 ElevatedButton.icon(
                   onPressed: widget.onDownload,
-                  icon: const Icon(Icons.download, size: 16),
-                  label: const Text('Download'),
+                  icon: Icon(widget.allowCsv ? Icons.download : Icons.picture_as_pdf, size: 16),
+                  label: Text(widget.allowCsv ? 'Download CSV' : 'Download PDF'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: widget.accentColor,
                     foregroundColor: Colors.white,

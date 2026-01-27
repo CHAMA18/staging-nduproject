@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ndu_project/screens/project_framework_screen.dart';
 import 'package:ndu_project/screens/project_framework_next_screen.dart';
 import 'package:ndu_project/screens/work_breakdown_structure_screen.dart';
-import 'package:ndu_project/screens/front_end_planning_requirements_screen.dart';
+import 'package:ndu_project/screens/planning_requirements_screen.dart';
 import 'package:ndu_project/screens/front_end_planning_personnel_screen.dart';
 import 'package:ndu_project/screens/organization_plan_subsections_screen.dart';
 import 'package:ndu_project/screens/team_training_building_screen.dart';
@@ -49,7 +49,7 @@ class PlanningPhaseNavigation {
     PlanningPage(
       id: 'requirements',
       title: 'Requirements',
-      builder: (_) => const FrontEndPlanningRequirementsScreen(),
+      builder: (_) => const PlanningRequirementsScreen(),
     ),
     // Organization Plan Group
     PlanningPage(
@@ -61,11 +61,6 @@ class PlanningPhaseNavigation {
       id: 'organization_staffing_plan',
       title: 'Staffing Plan',
       builder: (_) => const OrganizationStaffingPlanScreen(),
-    ),
-    PlanningPage(
-      id: 'personnel',
-      title: 'Personnel',
-      builder: (_) => const FrontEndPlanningPersonnelScreen(),
     ),
     PlanningPage(
       id: 'team_training',

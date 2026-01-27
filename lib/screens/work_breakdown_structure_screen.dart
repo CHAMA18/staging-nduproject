@@ -9,10 +9,9 @@ import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'project_framework_screen.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
-import 'project_framework_next_screen.dart';
-import 'package:ndu_project/screens/ssher_stacked_screen.dart';
-import 'package:ndu_project/services/sidebar_navigation_service.dart';
+import 'package:ndu_project/services/project_route_registry.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
 const Color _kSurfaceBackground = Color(0xFFF7F8FC);
 const Color _kAccentColor = Color(0xFFFFC812);
@@ -41,7 +40,8 @@ class WorkBreakdownStructureScreen extends StatelessWidget {
               children: [
                 DraggableSidebar(
                   openWidth: AppBreakpoints.sidebarWidth(context),
-                  child: const InitiationLikeSidebar(activeItemLabel: 'Work Breakdown Structure'),
+                  child: const InitiationLikeSidebar(
+                      activeItemLabel: 'Work Breakdown Structure'),
                 ),
                 Expanded(child: _WorkBreakdownStructureBody()),
               ],
@@ -58,10 +58,12 @@ class _WorkBreakdownStructureBody extends StatefulWidget {
   const _WorkBreakdownStructureBody();
 
   @override
-  State<_WorkBreakdownStructureBody> createState() => _WorkBreakdownStructureBodyState();
+  State<_WorkBreakdownStructureBody> createState() =>
+      _WorkBreakdownStructureBodyState();
 }
 
-class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody> {
+class _WorkBreakdownStructureBodyState
+    extends State<_WorkBreakdownStructureBody> {
   final List<String> _criteriaOptions = const [
     'Project Area',
     'Discipline',
@@ -83,12 +85,13 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
       final projectData = ProjectDataHelper.getData(context);
       _selectedCriteriaA = projectData.wbsCriteriaA;
       _syncGoalContext(projectData);
-      
+
       _wbsItems = projectData.wbsTree;
-      if (_wbsItems.isEmpty && projectData.goalWorkItems.any((list) => list.isNotEmpty)) {
+      if (_wbsItems.isEmpty &&
+          projectData.goalWorkItems.any((list) => list.isNotEmpty)) {
         _migrateFromGoalsToTree(projectData.goalWorkItems);
       }
-      
+
       setState(() {});
     });
   }
@@ -96,8 +99,10 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
   void _migrateFromGoalsToTree(List<List<WorkItem>> goalWorkItems) {
     for (int i = 0; i < goalWorkItems.length; i++) {
       if (goalWorkItems[i].isNotEmpty) {
-        final goalTitle = _goalTitles[i].isNotEmpty ? _goalTitles[i] : 'Goal ${i + 1}';
-        final goalNode = WorkItem(title: goalTitle, description: _goalDescriptions[i]);
+        final goalTitle =
+            _goalTitles[i].isNotEmpty ? _goalTitles[i] : 'Goal ${i + 1}';
+        final goalNode =
+            WorkItem(title: goalTitle, description: _goalDescriptions[i]);
         goalNode.children.addAll(goalWorkItems[i]);
         _wbsItems.add(goalNode);
       }
@@ -117,9 +122,11 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
     });
   }
 
-  Future<WorkItem?> _openAddNodeDialog({String parentId = '', WorkItem? existingNode}) async {
+  Future<WorkItem?> _openAddNodeDialog(
+      {String parentId = '', WorkItem? existingNode}) async {
     final titleController = TextEditingController(text: existingNode?.title);
-    final descriptionController = TextEditingController(text: existingNode?.description);
+    final descriptionController =
+        TextEditingController(text: existingNode?.description);
     final formKey = GlobalKey<FormState>();
     var selectedStatus = existingNode?.status ?? 'not_started';
     WorkItem? result;
@@ -129,12 +136,16 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
       barrierDismissible: false,
       builder: (dialogContext) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
           title: Text(
-            existingNode != null 
-                ? 'Edit Item' 
-                : (parentId.isEmpty ? 'Create Main Segment' : 'Create Sub-Deliverable'),
-            style: const TextStyle(fontWeight: FontWeight.w800, color: _kPrimaryText),
+            existingNode != null
+                ? 'Edit Item'
+                : (parentId.isEmpty
+                    ? 'Create Main Segment'
+                    : 'Create Sub-Deliverable'),
+            style: const TextStyle(
+                fontWeight: FontWeight.w800, color: _kPrimaryText),
           ),
           content: StatefulBuilder(
             builder: (context, setStateDialog) {
@@ -151,26 +162,37 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
                           controller: titleController,
                           decoration: const InputDecoration(labelText: 'Title'),
                           textCapitalization: TextCapitalization.sentences,
-                          validator: (value) => (value == null || value.trim().isEmpty) ? 'Please enter a title' : null,
+                          validator: (value) =>
+                              (value == null || value.trim().isEmpty)
+                                  ? 'Please enter a title'
+                                  : null,
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: descriptionController,
-                          decoration: const InputDecoration(labelText: 'Description'),
+                          decoration:
+                              const InputDecoration(labelText: 'Description'),
                           minLines: 3,
                           maxLines: 5,
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
                           value: selectedStatus,
-                          decoration: const InputDecoration(labelText: 'Initial Status'),
+                          decoration: const InputDecoration(
+                              labelText: 'Initial Status'),
                           items: const [
-                            DropdownMenuItem(value: 'not_started', child: Text('Not Started')),
-                            DropdownMenuItem(value: 'in_progress', child: Text('In Progress')),
-                            DropdownMenuItem(value: 'completed', child: Text('Completed')),
+                            DropdownMenuItem(
+                                value: 'not_started',
+                                child: Text('Not Started')),
+                            DropdownMenuItem(
+                                value: 'in_progress',
+                                child: Text('In Progress')),
+                            DropdownMenuItem(
+                                value: 'completed', child: Text('Completed')),
                           ],
                           onChanged: (value) {
-                            if (value != null) setStateDialog(() => selectedStatus = value);
+                            if (value != null)
+                              setStateDialog(() => selectedStatus = value);
                           },
                         ),
                       ],
@@ -188,7 +210,7 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
             ElevatedButton(
               onPressed: () {
                 if (!(formKey.currentState?.validate() ?? false)) return;
-                
+
                 if (existingNode != null) {
                   existingNode.title = titleController.text.trim();
                   existingNode.description = descriptionController.text.trim();
@@ -207,7 +229,8 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
               style: ElevatedButton.styleFrom(
                 backgroundColor: _kAccentColor,
                 foregroundColor: _kPrimaryText,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
               ),
               child: Text(existingNode != null ? 'Update' : 'Create'),
             ),
@@ -248,8 +271,17 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
 
   Future<void> _handleGenerateWbsAi() async {
     final projectData = ProjectDataHelper.getData(context);
-    final dimension = _selectedCriteriaA ?? 'Discipline';
-    
+    final dimension = _selectedCriteriaA;
+    if (dimension == null || dimension.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a Breakdown Dimension first.'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
+
     // Show loading
     setState(() {
       _isAiLoading = true;
@@ -260,6 +292,7 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
         projectName: projectData.projectName,
         projectObjective: projectData.projectObjective,
         dimension: dimension,
+        goals: projectData.projectGoals,
       );
 
       if (generatedItems.isNotEmpty) {
@@ -313,8 +346,10 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
     }
   }
 
-
-  Widget _buildCriteriaDropdown({required String hint, required String? value, required ValueChanged<String?> onChanged}) {
+  Widget _buildCriteriaDropdown(
+      {required String hint,
+      required String? value,
+      required ValueChanged<String?> onChanged}) {
     return SizedBox(
       width: 160,
       child: DropdownButtonFormField<String>(
@@ -330,17 +365,27 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
             borderRadius: BorderRadius.circular(14),
             borderSide: const BorderSide(color: _kCardBorder),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
-        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _kSecondaryText),
+        icon: const Icon(Icons.keyboard_arrow_down_rounded,
+            color: _kSecondaryText),
         items: _criteriaOptions
             .map((option) => DropdownMenuItem<String>(
                   value: option,
-                  child: Text(option, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _kPrimaryText)),
+                  child: Text(option,
+                      style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: _kPrimaryText)),
                 ))
             .toList(),
         onChanged: onChanged,
-        hint: Text(hint, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _kSecondaryText)),
+        hint: Text(hint,
+            style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: _kSecondaryText)),
       ),
     );
   }
@@ -354,7 +399,8 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
       children: [
         const Text(
           'Breakdown Dimension:',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _kPrimaryText),
+          style: TextStyle(
+              fontSize: 16, fontWeight: FontWeight.w800, color: _kPrimaryText),
         ),
         _buildCriteriaDropdown(
           hint: 'Select',
@@ -365,7 +411,8 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
           const SizedBox(
             width: 24,
             height: 24,
-            child: CircularProgressIndicator(strokeWidth: 3, color: _kAccentColor),
+            child:
+                CircularProgressIndicator(strokeWidth: 3, color: _kAccentColor),
           ),
         ElevatedButton.icon(
           onPressed: _isAiLoading ? null : _handleGenerateWbsAi,
@@ -373,14 +420,16 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
               ? const SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white),
                 )
               : const Icon(Icons.auto_awesome, size: 18),
           label: Text(_isAiLoading ? 'Generating...' : 'Suggest Structure'),
           style: ElevatedButton.styleFrom(
             backgroundColor: _kAccentColor,
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
           ),
         ),
@@ -394,11 +443,15 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.account_tree_outlined, size: 64, color: _kSecondaryText),
+            const Icon(Icons.account_tree_outlined,
+                size: 64, color: _kSecondaryText),
             const SizedBox(height: 16),
             const Text(
               'No WBS items yet',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: _kSecondaryText),
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: _kSecondaryText),
             ),
             const SizedBox(height: 24),
             _buildAddTopLevelButton(),
@@ -488,7 +541,10 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
                     Expanded(
                       child: Text(
                         item.title,
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _kPrimaryText),
+                        style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: _kPrimaryText),
                       ),
                     ),
                     _buildStatusIcon(item.status),
@@ -500,7 +556,10 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
                     item.description,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: _kSecondaryText),
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: _kSecondaryText),
                   ),
                 ],
                 const SizedBox(height: 16),
@@ -509,12 +568,14 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
                   children: [
                     GestureDetector(
                       onTap: () => _handleEditNode(item),
-                      child: const Icon(Icons.edit_outlined, size: 18, color: Colors.grey),
+                      child: const Icon(Icons.edit_outlined,
+                          size: 18, color: Colors.grey),
                     ),
                     const SizedBox(width: 12),
                     GestureDetector(
                       onTap: () => _handleDeleteNode(item),
-                      child: const Icon(Icons.delete_outline, size: 18, color: Colors.grey),
+                      child: const Icon(Icons.delete_outline,
+                          size: 18, color: Colors.grey),
                     ),
                     const SizedBox(width: 12),
                     GestureDetector(
@@ -525,7 +586,8 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
                           color: _kAccentColor.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Icon(Icons.add, size: 18, color: _kPrimaryText),
+                        child: const Icon(Icons.add,
+                            size: 18, color: _kPrimaryText),
                       ),
                     ),
                   ],
@@ -563,7 +625,10 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
                 SizedBox(height: 4),
                 Text(
                   'Add Main Segment',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kSecondaryText),
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: _kSecondaryText),
                 ),
               ],
             ),
@@ -605,7 +670,6 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
     return Icon(icon, size: 16, color: color);
   }
 
-
   Widget _buildNotesCard() {
     return Container(
       constraints: const BoxConstraints(maxWidth: 400),
@@ -614,7 +678,8 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
         sectionLabel: 'Work Breakdown Structure',
         noteKey: 'planning_wbs_notes',
         checkpoint: 'wbs',
-        description: 'Summarize the WBS structure, criteria decisions, and any key dependencies.',
+        description:
+            'Summarize the WBS structure, criteria decisions, and any key dependencies.',
       ),
     );
   }
@@ -629,22 +694,22 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
       ),
       child: const Text(
         'The WBS is a breakdown of the project into manageable bitesize components for more effective execution. This is dependent on the project type and could be by project area, sub scope, discipline, contract, or a different criteria.',
-        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimaryText),
+        style: TextStyle(
+            fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimaryText),
       ),
     );
   }
 
   Future<void> _handleNextPressed() async {
-    final isBasicPlan = ProjectDataHelper.getData(context).isBasicPlanProject;
-    final nextItem = SidebarNavigationService.instance.getNextAccessibleItem('work_breakdown_structure', isBasicPlan);
+// Use ProjectRouteRegistry to find next accessible screen
+    final nextScreen =
+        ProjectRouteRegistry.getNextScreen(context, 'work_breakdown_structure');
 
-    Widget nextScreen;
-    if (nextItem?.checkpoint == 'project_goals_milestones') {
-      nextScreen = const ProjectFrameworkNextScreen();
-    } else if (nextItem?.checkpoint == 'ssher') {
-      nextScreen = const SsherStackedScreen();
-    } else {
-      nextScreen = const ProjectFrameworkNextScreen(); // Default
+    if (nextScreen == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No next screen available')),
+      );
+      return;
     }
 
     await ProjectDataHelper.saveAndNavigate(
@@ -704,11 +769,53 @@ class _WorkBreakdownStructureBodyState extends State<_WorkBreakdownStructureBody
                     ),
                   ),
                   const SizedBox(height: 24),
-                  LaunchPhaseNavigation(
-                    backLabel: 'Back: Project Details',
-                    nextLabel: 'Next: Goals & Milestones',
-                    onBack: () => ProjectFrameworkScreen.open(context),
-                    onNext: _handleNextPressed,
+                  Padding(
+                    padding: const EdgeInsets.only(top: 24),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () => Navigator.maybePop(context),
+                          icon: const Icon(Icons.arrow_back, size: 16),
+                          label: const Text('Back'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xFF374151),
+                            elevation: 0,
+                            side: const BorderSide(color: Color(0xFFD1D5DB)),
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                               final navIndex = PlanningPhaseNavigation.getPageIndex('wbs');
+                               if (navIndex != -1 && navIndex < PlanningPhaseNavigation.pages.length - 1) {
+                                 final nextPage = PlanningPhaseNavigation.pages[navIndex + 1];
+                                 
+                                 await ProjectDataHelper.saveAndNavigate(
+                                   context: context,
+                                   checkpoint: 'work_breakdown_structure',
+                                   nextScreenBuilder: () => nextPage.builder(context),
+                                   dataUpdater: (data) => data.copyWith(
+                                      wbsCriteriaA: _selectedCriteriaA,
+                                      wbsTree: _wbsItems,
+                                   ),
+                                 );
+                               }
+                          },
+                          icon: const Icon(Icons.arrow_forward, size: 16),
+                          label: const Text('Next'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFFC044),
+                            foregroundColor: const Color(0xFF111827),
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -790,12 +897,10 @@ class _DottedBorderPainter extends CustomPainter {
           ));
         break;
       case BorderType.rect:
-        path = Path()
-          ..addRect(Offset.zero & size);
+        path = Path()..addRect(Offset.zero & size);
         break;
       case BorderType.circle:
-        path = Path()
-          ..addOval(Offset.zero & size);
+        path = Path()..addOval(Offset.zero & size);
         break;
     }
 
@@ -812,7 +917,8 @@ class _DottedBorderPainter extends CustomPainter {
       while (distance < metric.length) {
         final double len = dashPattern[i];
         if (draw) {
-          dest.addPath(metric.extractPath(distance, distance + len), Offset.zero);
+          dest.addPath(
+              metric.extractPath(distance, distance + len), Offset.zero);
         }
         distance += len;
         draw = !draw;

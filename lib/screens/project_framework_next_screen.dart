@@ -10,6 +10,7 @@ import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/services/user_service.dart';
+import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
 const Color _kAccentColor = Color(0xFFFFC812);
 const Color _kPrimaryText = Color(0xFF1F2933);
@@ -105,7 +106,33 @@ class _ProjectFrameworkNextScreenState extends State<ProjectFrameworkNextScreen>
           ? projectData.projectObjective 
           : (projectData.businessCase.isNotEmpty ? projectData.businessCase : '');
 
+      // Setup nomenclature listeners
+      for (int i = 0; i < 3; i++) {
+        _setupGoalNomenclature(i);
+      }
+
       setState(() {});
+    });
+  }
+
+  void _setupGoalNomenclature(int index) {
+    _goalDescControllers[index].addListener(() {
+      final text = _goalDescControllers[index].text.trim();
+      if (text.isNotEmpty) {
+        final words = text.split(RegExp(r'\s+')).take(3);
+        final initials = words.where((w) => w.isNotEmpty).map((w) => w[0].toUpperCase()).join();
+        if (initials.isNotEmpty) {
+          final newTitle = 'G${index + 1} $initials';
+          if (_goalTitleControllers[index].text != newTitle) {
+            _goalTitleControllers[index].text = newTitle;
+          }
+        }
+      } else {
+        final defaultTitle = 'Goal ${index + 1}';
+        if (_goalTitleControllers[index].text != defaultTitle) {
+          _goalTitleControllers[index].text = defaultTitle;
+        }
+      }
     });
   }
 
@@ -214,22 +241,13 @@ class _ProjectFrameworkNextScreenState extends State<ProjectFrameworkNextScreen>
       );
     });
 
-    final isBasicPlan = ProjectDataHelper.getData(context).isBasicPlanProject;
-    
-    // Find next accessible item from 'project_goals_milestones'
-    final nextItem = SidebarNavigationService.instance.getNextAccessibleItem('project_goals_milestones', isBasicPlan);
-    
-    Widget nextScreen;
-    if (nextItem?.checkpoint == 'ssher') {
-      nextScreen = const SsherStackedScreen();
-    } else {
-      nextScreen = const SsherStackedScreen(); // Default/Fallback
-    }
-
     await ProjectDataHelper.saveAndNavigate(
       context: context,
       checkpoint: 'project_goals_milestones',
-      nextScreenBuilder: () => nextScreen,
+      nextScreenBuilder: () {
+        final nextIdx = PlanningPhaseNavigation.getPageIndex('project_goals_milestones') + 1;
+        return PlanningPhaseNavigation.pages[nextIdx].builder(context);
+      },
       dataUpdater: (data) => data.copyWith(planningGoals: planningGoals),
     );
   }
@@ -326,9 +344,30 @@ class _HeaderRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        _circleIconButton(icon: Icons.arrow_back_ios_new_rounded, onTap: () => Navigator.maybePop(context)),
+        _circleIconButton(
+          icon: Icons.arrow_back_ios_new_rounded, 
+          onTap: () {
+            final idx = PlanningPhaseNavigation.getPageIndex('project_goals_milestones');
+            if (idx > 0) {
+              final prevPage = PlanningPhaseNavigation.pages[idx - 1];
+              Navigator.pushReplacement(context, MaterialPageRoute(builder: prevPage.builder));
+            } else {
+              Navigator.maybePop(context);
+            }
+          }
+        ),
         const SizedBox(width: 12),
-        _circleIconButton(icon: Icons.arrow_forward_ios_rounded, backgroundColor: _kAccentColor),
+        _circleIconButton(
+          icon: Icons.arrow_forward_ios_rounded, 
+          backgroundColor: _kAccentColor,
+          onTap: () {
+            final idx = PlanningPhaseNavigation.getPageIndex('project_goals_milestones');
+            if (idx < PlanningPhaseNavigation.pages.length - 1) {
+              final nextPage = PlanningPhaseNavigation.pages[idx + 1];
+              Navigator.pushReplacement(context, MaterialPageRoute(builder: nextPage.builder));
+            }
+          }
+        ),
         const SizedBox(width: 16),
         const Text(
           'Planning Phase',
@@ -362,18 +401,6 @@ class _HeaderRow extends StatelessWidget {
               ),
             ],
           ),
-        ),
-        const SizedBox(width: 16),
-        ElevatedButton(
-          onPressed: () {},
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFFFC107),
-            foregroundColor: _kPrimaryText,
-            elevation: 0,
-            padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          ),
-          child: const Text('+ Add New Contract', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
         ),
       ],
     );

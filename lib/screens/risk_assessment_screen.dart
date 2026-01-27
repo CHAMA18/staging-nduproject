@@ -12,6 +12,7 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:provider/provider.dart';
+import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
 class RiskAssessmentScreen extends StatefulWidget {
   const RiskAssessmentScreen({super.key});
@@ -395,7 +396,18 @@ class _TopUtilityBar extends StatelessWidget {
         children: [
           _circleButton(icon: Icons.arrow_back_ios_new_rounded, onTap: onBack),
           const SizedBox(width: 12),
-          _circleButton(icon: Icons.arrow_forward_ios_rounded),
+          _circleButton(
+              icon: Icons.arrow_forward_ios_rounded,
+              onTap: () {
+                final navIndex =
+                    PlanningPhaseNavigation.getPageIndex('risk_management');
+                if (navIndex != -1 &&
+                    navIndex < PlanningPhaseNavigation.pages.length - 1) {
+                  final nextPage = PlanningPhaseNavigation.pages[navIndex + 1];
+                  Navigator.push(
+                      context, MaterialPageRoute(builder: nextPage.builder));
+                }
+              }),
           const SizedBox(width: 20),
           const Text(
             'Risk Mitigation',

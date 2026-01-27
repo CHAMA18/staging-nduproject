@@ -54,12 +54,14 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
         _goals.clear();
         for (int i = 0; i < projectData.projectGoals.length; i++) {
           final goal = projectData.projectGoals[i];
-          _goals.add(_Goal(
+          final g = _Goal(
             id: i + 1,
             name: goal.name.isEmpty ? 'Goal ${i + 1}' : goal.name,
             framework: goal.framework,
             description: goal.description,
-          ));
+          );
+          _goals.add(g);
+          _setupGoalNomenclature(g);
         }
         setState(() {});
       } else if (projectData.planningGoals.isNotEmpty && projectData.planningGoals.any((g) => g.title.isNotEmpty)) {
@@ -68,16 +70,19 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
         int idCounter = 1;
         for (final planGoal in projectData.planningGoals) {
           if (planGoal.title.isNotEmpty) {
-            _goals.add(_Goal(
+            final g = _Goal(
               id: idCounter++,
               name: planGoal.title,
               description: planGoal.description.isNotEmpty ? planGoal.description : null,
-              framework: null)); // Framework is not available in PlanningGoal
+              framework: null);
+            _goals.add(g);
+            _setupGoalNomenclature(g);
           }
         }
         if (_goals.isEmpty) {
-           // Ensure at least one empty goal if filtering resulted in none
-           _goals.add(_Goal(id: 1, name: 'Goal 1', framework: null));
+           final g = _Goal(id: 1, name: 'Goal 1', framework: null);
+           _goals.add(g);
+           _setupGoalNomenclature(g);
         }
         setState(() {});
       }
@@ -123,13 +128,36 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
         // Actually, logic: if Hybrid, user can select. If W/A, user cannot. 
         // When adding new goal, if locked, it MUST start as locked value.
       }
-      _goals.add(_Goal(
+      final g = _Goal(
         id: _goals.length + 1, 
         name: 'Goal ${_goals.length + 1}', 
         framework: (_selectedOverallFramework == 'Waterfall' || _selectedOverallFramework == 'Agile') 
             ? _selectedOverallFramework 
             : null
-      ));
+      );
+      _goals.add(g);
+      _setupGoalNomenclature(g);
+    });
+  }
+
+  void _setupGoalNomenclature(_Goal goal) {
+    goal.controller.addListener(() {
+      final text = goal.controller.text.trim();
+      if (text.isNotEmpty) {
+        final words = text.split(RegExp(r'\s+')).take(3);
+        final initials = words.where((w) => w.isNotEmpty).map((w) => w[0].toUpperCase()).join();
+        if (initials.isNotEmpty) {
+          final newTitle = 'G${goal.id} $initials';
+          if (goal.nameController.text != newTitle) {
+            goal.nameController.text = newTitle;
+          }
+        }
+      } else {
+        final defaultTitle = 'Goal ${goal.id}';
+        if (goal.nameController.text != defaultTitle) {
+          goal.nameController.text = defaultTitle;
+        }
+      }
     });
   }
 
@@ -156,7 +184,7 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
     }
 
     final projectGoals = _goals.map((g) => ProjectGoal(
-      name: g.name,
+      name: g.nameController.text.trim(),
       description: g.controller.text.trim(),
       framework: g.framework,
     )).toList();
@@ -285,13 +313,17 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
 }
 
 class _Goal {
-  _Goal({required this.id, required this.name, this.framework, String? description}) : controller = TextEditingController(text: description);
+  _Goal({required this.id, String? name, this.framework, String? description}) 
+      : controller = TextEditingController(text: description),
+        nameController = TextEditingController(text: name);
+
   final int id;
-  final String name;
+  final TextEditingController nameController;
   final TextEditingController controller;
   String? framework;
   
   void dispose() {
+    nameController.dispose();
     controller.dispose();
   }
 }
@@ -506,9 +538,19 @@ class _GoalCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(
-                goal.name,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+              SizedBox(
+                width: 120,
+                child: TextField(
+                  controller: goal.nameController,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                    border: InputBorder.none,
+                    hintText: 'Goal Name',
+                    hintStyle: TextStyle(color: Color(0xFF9CA3AF), fontSize: 16),
+                  ),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+                ),
               ),
               const SizedBox(width: 20),
               Expanded(

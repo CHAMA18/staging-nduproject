@@ -7,26 +7,16 @@ import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/screens/training_project_tasks_screen.dart';
-import 'package:ndu_project/models/project_data_model.dart';
-
+import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/widgets/premium_edit_dialog.dart';
 
-class TeamTrainingAndBuildingScreen extends StatefulWidget {
+class TeamTrainingAndBuildingScreen extends StatelessWidget {
   const TeamTrainingAndBuildingScreen({super.key});
 
   @override
-  State<TeamTrainingAndBuildingScreen> createState() => _TeamTrainingAndBuildingScreenState();
-}
-
-class _TeamTrainingAndBuildingScreenState extends State<TeamTrainingAndBuildingScreen> {
-  @override
   Widget build(BuildContext context) {
-    final projectData = ProjectDataHelper.getData(context);
-    final activities = projectData.trainingActivities;
-    
-    final training = activities.where((a) => a.category == 'Training').toList();
-    final teamBuilding = activities.where((a) => a.category == 'Team Building').toList();
-
     final sidebarWidth = AppBreakpoints.sidebarWidth(context);
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -36,18 +26,14 @@ class _TeamTrainingAndBuildingScreenState extends State<TeamTrainingAndBuildingS
             openWidth: sidebarWidth,
             child: const InitiationLikeSidebar(activeItemLabel: 'Team Training and Team Building'),
           ),
-          Expanded(child: _buildMain(context, training, teamBuilding)),
+          Expanded(child: _buildMain(context)),
         ],
       ),
     );
   }
 
-  Widget _buildMain(BuildContext context, List<TrainingActivity> training, List<TrainingActivity> teamBuilding) {
-    final totalTraining = training.length;
-    final completedTraining = training.where((a) => a.status == 'Completed').length;
-    final totalTeamBuilding = teamBuilding.length;
-    final completedTeamBuilding = teamBuilding.where((a) => a.status == 'Completed').length;
 
+  Widget _buildMain(BuildContext context) {
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(32, 24, 32, 32),
@@ -59,17 +45,57 @@ class _TeamTrainingAndBuildingScreenState extends State<TeamTrainingAndBuildingS
               children: [
                 _circleIconButton(Icons.arrow_back_ios, onTap: () => Navigator.maybePop(context)),
                 const SizedBox(width: 12),
-                _circleIconButton(Icons.arrow_forward_ios),
+                _circleIconButton(Icons.arrow_forward_ios, onTap: () async {
+                   final navIndex = PlanningPhaseNavigation.getPageIndex('team_training');
+                   if (navIndex != -1 && navIndex < PlanningPhaseNavigation.pages.length - 1) {
+                     final nextPage = PlanningPhaseNavigation.pages[navIndex + 1];
+                     Navigator.pushReplacement(context, MaterialPageRoute(builder: nextPage.builder));
+                   } else {
+                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No next screen available')));
+                   }
+                }),
                 const SizedBox(width: 16),
                 const Expanded(
                   child: Center(
                     child: Text(
                       'Team Training and Team Building',
-                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.w600, color: Colors.black),
+                      style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
                     ),
                   ),
                 ),
                 _profileCluster(context),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                _yellowButton(
+                  label: 'Add Training Event',
+                  icon: Icons.school_outlined,
+                  onPressed: () async {
+                    final newActivity = TrainingActivity(title: 'New Training', category: 'Training');
+                    await ProjectDataHelper.saveAndNavigate(
+                      context: context,
+                      checkpoint: 'team_training',
+                      nextScreenBuilder: () => const TeamTrainingAndBuildingScreen(),
+                      dataUpdater: (d) => d.copyWith(trainingActivities: [...d.trainingActivities, newActivity]),
+                    );
+                  },
+                ),
+                const SizedBox(width: 12),
+                _yellowButton(
+                  label: 'Add Team Building',
+                  icon: Icons.favorite_outline,
+                  onPressed: () async {
+                    final newActivity = TrainingActivity(title: 'New Event', category: 'Team Building');
+                    await ProjectDataHelper.saveAndNavigate(
+                      context: context,
+                      checkpoint: 'team_training',
+                      nextScreenBuilder: () => const TeamTrainingAndBuildingScreen(),
+                      dataUpdater: (d) => d.copyWith(trainingActivities: [...d.trainingActivities, newActivity]),
+                    );
+                  },
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -88,21 +114,6 @@ class _TeamTrainingAndBuildingScreenState extends State<TeamTrainingAndBuildingS
               noteKey: 'planning_team_training_notes',
               checkpoint: 'team_training',
               description: 'Outline training themes, cadence, and team-building priorities.',
-            ),
-            const SizedBox(height: 16),
-            // Add New Button
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton.icon(
-                onPressed: _onAddNewActivity,
-                icon: const Icon(Icons.add),
-                label: const Text('Add Activity'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF111827),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-              ),
             ),
             const SizedBox(height: 16),
             // Main overview card
@@ -141,13 +152,29 @@ class _TeamTrainingAndBuildingScreenState extends State<TeamTrainingAndBuildingS
                             const SizedBox(height: 12),
                             Row(
                               children: [
-                                Expanded(child: _StatTile(icon: Icons.school_outlined, label: 'Total Events', value: totalTraining.toString())),
+                                Expanded(child: _StatTile(
+                                  icon: Icons.school_outlined, 
+                                  label: 'Total Training', 
+                                  value: ProjectDataHelper.getData(context).trainingActivities
+                                      .where((a) => a.category == 'Training').length.toString(),
+                                )),
                                 const SizedBox(width: 12),
-                                Expanded(child: _StatTile(icon: Icons.verified_outlined, label: 'Completed', value: completedTraining.toString())),
+                                Expanded(child: _StatTile(
+                                  icon: Icons.verified_outlined, 
+                                  label: 'Completed', 
+                                  value: ProjectDataHelper.getData(context).trainingActivities
+                                      .where((a) => a.category == 'Training' && a.status == 'Completed').length.toString(),
+                                )),
                               ],
                             ),
                             const SizedBox(height: 16),
-                            _UpcomingTrainingColumn(accent: Colors.blue, heart: false, activities: training),
+                            _UpcomingTrainingList(
+                              activities: ProjectDataHelper.getData(context).trainingActivities
+                                  .where((a) => a.category == 'Training').toList(),
+                              accent: Colors.blue,
+                              onEdit: (activity) => _editActivity(context, activity),
+                              onDelete: (activity) => _deleteActivity(context, activity),
+                            ),
                           ],
                         ),
                       ),
@@ -160,19 +187,36 @@ class _TeamTrainingAndBuildingScreenState extends State<TeamTrainingAndBuildingS
                             const Text('Team Building', style: TextStyle(fontWeight: FontWeight.w700)),
                             const SizedBox(height: 4),
                             Text(
-                              'Team building activities strengthen relationships, improve communication, and foster a collaborative environment.',
+                              'Team building activities strengthen relationships and improve communication.',
                               style: TextStyle(fontSize: 12, color: Colors.grey[700]),
                             ),
                             const SizedBox(height: 12),
                             Row(
                               children: [
-                                Expanded(child: _StatTile(icon: Icons.event_available_outlined, label: 'Total Events', value: totalTeamBuilding.toString())),
+                                Expanded(child: _StatTile(
+                                  icon: Icons.event_available_outlined, 
+                                  label: 'Team Events', 
+                                  value: ProjectDataHelper.getData(context).trainingActivities
+                                      .where((a) => a.category == 'Team Building').length.toString(),
+                                )),
                                 const SizedBox(width: 12),
-                                Expanded(child: _StatTile(icon: Icons.check_circle_outline, label: 'Completed', value: completedTeamBuilding.toString())),
+                                Expanded(child: _StatTile(
+                                  icon: Icons.check_circle_outline, 
+                                  label: 'Completed', 
+                                  value: ProjectDataHelper.getData(context).trainingActivities
+                                      .where((a) => a.category == 'Team Building' && a.status == 'Completed').length.toString(),
+                                )),
                               ],
                             ),
                             const SizedBox(height: 16),
-                            _UpcomingTrainingColumn(accent: Colors.purple, heart: true, activities: teamBuilding),
+                            _UpcomingTrainingList(
+                              activities: ProjectDataHelper.getData(context).trainingActivities
+                                  .where((a) => a.category == 'Team Building').toList(),
+                              accent: Colors.purple,
+                              heart: true,
+                              onEdit: (activity) => _editActivity(context, activity),
+                              onDelete: (activity) => _deleteActivity(context, activity),
+                            ),
                           ],
                         ),
                       ),
@@ -184,8 +228,8 @@ class _TeamTrainingAndBuildingScreenState extends State<TeamTrainingAndBuildingS
 
             const SizedBox(height: 16),
             // Benefits row
-            const Row(
-              children: [
+            Row(
+              children: const [
                 Expanded(child: _BenefitCard(icon: Icons.lightbulb_outline, title: 'Skill Development', subtitle: 'Enhance technical and soft skills through structured learning')),
                 SizedBox(width: 12),
                 Expanded(child: _BenefitCard(icon: Icons.favorite_border, title: 'Team Cohesion', subtitle: 'Build stronger relationships and mutual trust')),
@@ -197,61 +241,131 @@ class _TeamTrainingAndBuildingScreenState extends State<TeamTrainingAndBuildingS
             ),
 
             const SizedBox(height: 20),
-            // Bottom segment with navigation
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const TrainingProjectTasksScreen()),
-                        );
-                      },
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 14),
-                        child: Center(
-                          child: Text('Training Events', style: TextStyle(fontWeight: FontWeight.w600)),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Container(width: 1, height: 44, color: Colors.grey.withValues(alpha: 0.2)),
-                  const Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 14),
-                      child: Center(child: Text('Team Building Activities', style: TextStyle(color: Colors.grey))),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            const SizedBox(height: 40),
           ],
         ),
       ),
     );
   }
 
-  void _onAddNewActivity() async {
-    final newActivity = TrainingActivity(
-      title: 'New Event',
-      date: '2026-06-01',
-      duration: '2h',
-      category: 'Training',
-      status: 'Upcoming',
-    );
-    await ProjectDataHelper.saveAndNavigate(
+  void _editActivity(BuildContext context, TrainingActivity activity) {
+    final titleController = TextEditingController(text: activity.title);
+    final dateController = TextEditingController(text: activity.date);
+    final durationController = TextEditingController(text: activity.duration);
+
+    showDialog(
       context: context,
-      checkpoint: 'team_training',
-      nextScreenBuilder: () => const TeamTrainingAndBuildingScreen(),
-      dataUpdater: (d) => d.copyWith(trainingActivities: [...d.trainingActivities, newActivity]),
+      builder: (context) => PremiumEditDialog(
+        title: 'Edit ${activity.category}',
+        icon: activity.category == 'Training' ? Icons.school_outlined : Icons.favorite_border,
+        onSave: () async {
+          final updated = List<TrainingActivity>.from(ProjectDataHelper.getData(context).trainingActivities);
+          final index = updated.indexWhere((a) => a.id == activity.id);
+          if (index != -1) {
+            updated[index] = activity.copyWith(
+              title: titleController.text.trim(),
+              date: dateController.text.trim(),
+              duration: durationController.text.trim(),
+            );
+          }
+          Navigator.pop(context);
+          await ProjectDataHelper.saveAndNavigate(
+            context: context,
+            checkpoint: 'team_training',
+            nextScreenBuilder: () => const TeamTrainingAndBuildingScreen(),
+            dataUpdater: (d) => d.copyWith(trainingActivities: updated),
+          );
+        },
+        children: [
+          PremiumEditDialog.fieldLabel('Title'),
+          PremiumEditDialog.textField(controller: titleController, hint: 'Activity name...'),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    PremiumEditDialog.fieldLabel('Date'),
+                    PremiumEditDialog.textField(controller: dateController, hint: 'e.g. Q3 2024'),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    PremiumEditDialog.fieldLabel('Duration / Interval'),
+                    PremiumEditDialog.textField(controller: durationController, hint: 'e.g. 2 hours'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
-    setState(() {});
+  }
+
+  void _deleteActivity(BuildContext context, TrainingActivity activity) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Activity'),
+        content: const Text('Are you sure you want to delete this activity?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () async {
+              final updated = List<TrainingActivity>.from(ProjectDataHelper.getData(context).trainingActivities);
+              updated.removeWhere((a) => a.id == activity.id);
+              Navigator.pop(context);
+              await ProjectDataHelper.saveAndNavigate(
+                context: context,
+                checkpoint: 'team_training',
+                nextScreenBuilder: () => const TeamTrainingAndBuildingScreen(),
+                dataUpdater: (d) => d.copyWith(trainingActivities: updated),
+              );
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _yellowButton({required String label, required IconData icon, required VoidCallback onPressed}) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 16),
+      label: Text(label),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFFFFC107),
+        foregroundColor: const Color(0xFF1F2933),
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+      ),
+    );
+  }
+
+  Widget _circleIconButton(IconData icon, {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))],
+        ),
+        child: Icon(icon, size: 16, color: Colors.grey[700]),
+      ),
+    );
   }
 
   Widget _profileCluster(BuildContext context) {
@@ -310,24 +424,6 @@ class _TeamTrainingAndBuildingScreenState extends State<TeamTrainingAndBuildingS
       ],
     );
   }
-
-  Widget _circleIconButton(IconData icon, {VoidCallback? onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))],
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
-        ),
-        child: Icon(icon, size: 16, color: Colors.grey[700]),
-      ),
-    );
-  }
 }
 
 
@@ -361,17 +457,23 @@ class _StatTile extends StatelessWidget {
   }
 }
 
-class _UpcomingTrainingColumn extends StatelessWidget {
+class _UpcomingTrainingList extends StatelessWidget {
+  final List<TrainingActivity> activities;
   final Color accent;
   final bool heart;
-  final List<TrainingActivity> activities;
-  const _UpcomingTrainingColumn({required this.accent, this.heart = false, required this.activities});
+  final ValueChanged<TrainingActivity>? onEdit;
+  final ValueChanged<TrainingActivity>? onDelete;
+  
+  const _UpcomingTrainingList({
+    required this.activities, 
+    required this.accent, 
+    this.heart = false,
+    this.onEdit,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
-    // Show top 2 upcoming
-    final upcoming = activities.where((a) => a.status == 'Upcoming').take(2).toList();
-    
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -389,22 +491,22 @@ class _UpcomingTrainingColumn extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(heart ? Icons.favorite_border : Icons.auto_awesome, color: accent, size: 18),
+                Icon(heart ? Icons.favorite_border : Icons.auto_awesome, color: accent),
                 const SizedBox(width: 8),
-                Text('Next up', style: TextStyle(color: accent, fontWeight: FontWeight.w700, fontSize: 13)),
+                Text(heart ? 'Upcoming Events' : 'Upcoming Training', style: TextStyle(color: accent, fontWeight: FontWeight.w700)),
               ],
             ),
           ),
-          if (upcoming.isEmpty)
+          if (activities.isEmpty)
             const Padding(
               padding: EdgeInsets.all(16.0),
-              child: Text('No upcoming events', style: TextStyle(fontSize: 12, color: Colors.grey)),
+              child: Text('No upcoming activities.', style: TextStyle(fontSize: 12, color: Colors.grey)),
             )
           else
-            ...upcoming.map((a) => Column(
+            ...activities.map<Widget>((a) => Column(
               children: [
                 _trainingItem(a),
-                if (a != upcoming.last) const Divider(height: 1),
+                if (a != activities.last) const Divider(height: 1),
               ],
             )),
         ],
@@ -415,19 +517,42 @@ class _UpcomingTrainingColumn extends StatelessWidget {
   Widget _trainingItem(TrainingActivity activity) {
     return Padding(
       padding: const EdgeInsets.all(12.0),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(activity.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-        const SizedBox(height: 6),
-        Row(children: [
-          const Icon(Icons.event_outlined, size: 14, color: Colors.grey),
-          const SizedBox(width: 4),
-          Text(activity.date, style: const TextStyle(color: Colors.black87, fontSize: 11)),
-          const SizedBox(width: 12),
-          const Icon(Icons.schedule_outlined, size: 14, color: Colors.grey),
-          const SizedBox(width: 4),
-          Text(activity.duration, style: const TextStyle(color: Colors.black87, fontSize: 11)),
-        ]),
-      ]),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(activity.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 6),
+              Row(children: [
+                const Icon(Icons.event_outlined, size: 18, color: Colors.grey),
+                const SizedBox(width: 6),
+                Text(activity.date.isEmpty ? 'TBD' : activity.date, style: const TextStyle(color: Colors.black87)),
+                const SizedBox(width: 12),
+                const Icon(Icons.schedule_outlined, size: 18, color: Colors.grey),
+                const SizedBox(width: 6),
+                Text(activity.duration.isEmpty ? 'TBD' : activity.duration, style: const TextStyle(color: Colors.black87)),
+              ]),
+            ]),
+          ),
+          if (onEdit != null)
+            IconButton(
+              onPressed: () => onEdit!(activity),
+              icon: const Icon(Icons.edit_outlined, size: 18, color: Colors.grey),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+          if (onDelete != null) ...[
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: () => onDelete!(activity),
+              icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

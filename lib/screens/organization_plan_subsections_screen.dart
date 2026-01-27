@@ -6,9 +6,10 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/services/user_service.dart';
-import 'package:ndu_project/models/project_data_model.dart';
-
+import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/widgets/premium_edit_dialog.dart';
 
 class OrganizationRolesResponsibilitiesScreen extends StatefulWidget {
   const OrganizationRolesResponsibilitiesScreen({super.key});
@@ -28,13 +29,19 @@ class _OrganizationRolesResponsibilitiesScreenState extends State<OrganizationRo
       _MetricData('Workstreams', roles.map<String>((r) => r.workstream).toSet().length.toString(), const Color(0xFF10B981)),
     ];
 
-    final List<_SectionData> sections = roles.map<_SectionData>((role) => _SectionData(
-      title: role.title,
-      subtitle: role.workstream,
-      bullets: [
-        _BulletData(role.description, false),
-      ],
-    )).toList();
+    final List<_SectionData> sections = roles.asMap().entries.map<_SectionData>((entry) {
+      final index = entry.key;
+      final role = entry.value;
+      return _SectionData(
+        title: role.title,
+        subtitle: role.workstream,
+        bullets: [
+          _BulletData(role.description, false),
+        ],
+        onEdit: () => _editRole(context, index, role),
+        onDelete: () => _deleteRole(context, index),
+      );
+    }).toList();
 
     return _PlanningSubsectionScreen(
       config: _PlanningSubsectionConfig(
@@ -58,6 +65,74 @@ class _OrganizationRolesResponsibilitiesScreenState extends State<OrganizationRo
       },
     );
   }
+
+  void _editRole(BuildContext context, int index, RoleDefinition role) {
+    final titleController = TextEditingController(text: role.title);
+    final workstreamController = TextEditingController(text: role.workstream);
+    final descController = TextEditingController(text: role.description);
+
+    showDialog(
+      context: context,
+      builder: (context) => PremiumEditDialog(
+        title: 'Edit Role',
+        icon: Icons.badge_outlined,
+        onSave: () async {
+          final updatedRoles = List<RoleDefinition>.from(ProjectDataHelper.getData(context).projectRoles);
+          updatedRoles[index] = RoleDefinition(
+            title: titleController.text.trim(),
+            workstream: workstreamController.text.trim(),
+            description: descController.text.trim(),
+          );
+          Navigator.pop(context);
+          await ProjectDataHelper.saveAndNavigate(
+            context: context,
+            checkpoint: 'organization_roles_responsibilities',
+            nextScreenBuilder: () => const OrganizationRolesResponsibilitiesScreen(),
+            dataUpdater: (d) => d.copyWith(projectRoles: updatedRoles),
+          );
+          setState(() {});
+        },
+        children: [
+          PremiumEditDialog.fieldLabel('Title'),
+          PremiumEditDialog.textField(controller: titleController, hint: 'e.g. Project Manager'),
+          const SizedBox(height: 16),
+          PremiumEditDialog.fieldLabel('Workstream'),
+          PremiumEditDialog.textField(controller: workstreamController, hint: 'e.g. Management'),
+          const SizedBox(height: 16),
+          PremiumEditDialog.fieldLabel('Description'),
+          PremiumEditDialog.textField(controller: descController, hint: 'Role responsibilities...', maxLines: 4),
+        ],
+      ),
+    );
+  }
+
+  void _deleteRole(BuildContext context, int index) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Role'),
+        content: const Text('Are you sure you want to delete this role?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () async {
+              final updatedRoles = List<RoleDefinition>.from(ProjectDataHelper.getData(context).projectRoles);
+              updatedRoles.removeAt(index);
+              Navigator.pop(context);
+              await ProjectDataHelper.saveAndNavigate(
+                context: context,
+                checkpoint: 'organization_roles_responsibilities',
+                nextScreenBuilder: () => const OrganizationRolesResponsibilitiesScreen(),
+                dataUpdater: (d) => d.copyWith(projectRoles: updatedRoles),
+              );
+              setState(() {});
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class OrganizationStaffingPlanScreen extends StatefulWidget {
@@ -71,20 +146,27 @@ class _OrganizationStaffingPlanScreenState extends State<OrganizationStaffingPla
   @override
   Widget build(BuildContext context) {
     final projectData = ProjectDataHelper.getData(context);
-    final reqs = projectData.staffingRequirements;
+    final requirements = projectData.staffingRequirements;
 
     final List<_MetricData> metrics = [
-      _MetricData('Total Staff', reqs.fold<int>(0, (sum, r) => sum + r.headcount).toString(), const Color(0xFF3B82F6)),
-      _MetricData('Open Roles', reqs.where((r) => r.status != 'Filled').length.toString(), const Color(0xFFF59E0B)),
+      _MetricData('Total Staff', requirements.fold<int>(0, (sum, r) => sum + r.headcount).toString(), const Color(0xFFF59E0B)),
+      _MetricData('Positions', requirements.length.toString(), const Color(0xFF8B5CF6)),
     ];
 
-    final List<_SectionData> sections = reqs.map<_SectionData>((req) => _SectionData(
-      title: req.title,
-      subtitle: '${req.headcount} slots • ${req.startDate} to ${req.endDate}',
-      statusRows: [
-        _StatusRowData('Status', req.status, req.status == 'Filled' ? const Color(0xFF10B981) : const Color(0xFFF59E0B)),
-      ],
-    )).toList();
+    final List<_SectionData> sections = requirements.asMap().entries.map<_SectionData>((entry) {
+      final index = entry.key;
+      final req = entry.value;
+      return _SectionData(
+        title: req.title,
+        subtitle: '${req.startDate} to ${req.endDate}',
+        statusRows: [
+          _StatusRowData('Status', req.status, req.status == 'Hired' ? const Color(0xFF10B981) : const Color(0xFF6B7280)),
+          _StatusRowData('Headcount', req.headcount.toString(), const Color(0xFF3B82F6)),
+        ],
+        onEdit: () => _editStaffing(context, index, req),
+        onDelete: () => _deleteStaffing(context, index),
+      );
+    }).toList();
 
     return _PlanningSubsectionScreen(
       config: _PlanningSubsectionConfig(
@@ -97,7 +179,7 @@ class _OrganizationStaffingPlanScreenState extends State<OrganizationStaffingPla
         sections: sections,
       ),
       onAdd: () async {
-        final newReq = StaffingRequirement(title: 'New Requirement', headcount: 1, startDate: 'TBD', endDate: 'TBD');
+        final newReq = StaffingRequirement(title: 'New Position', startDate: 'TBD', endDate: 'TBD');
         await ProjectDataHelper.saveAndNavigate(
           context: context,
           checkpoint: 'organization_staffing_plan',
@@ -106,6 +188,120 @@ class _OrganizationStaffingPlanScreenState extends State<OrganizationStaffingPla
         );
         setState(() {});
       },
+    );
+  }
+
+  void _editStaffing(BuildContext context, int index, StaffingRequirement req) {
+    final titleController = TextEditingController(text: req.title);
+    final headcountController = TextEditingController(text: req.headcount.toString());
+    final statusController = TextEditingController(text: req.status);
+    final startController = TextEditingController(text: req.startDate);
+    final endController = TextEditingController(text: req.endDate);
+
+    showDialog(
+      context: context,
+      builder: (context) => PremiumEditDialog(
+        title: 'Edit Staffing Requirement',
+        icon: Icons.person_add_alt_1_outlined,
+        onSave: () async {
+          final updated = List<StaffingRequirement>.from(ProjectDataHelper.getData(context).staffingRequirements);
+          updated[index] = StaffingRequirement(
+            title: titleController.text.trim(),
+            headcount: int.tryParse(headcountController.text) ?? 1,
+            status: statusController.text.trim(),
+            startDate: startController.text.trim(),
+            endDate: endController.text.trim(),
+          );
+          Navigator.pop(context);
+          await ProjectDataHelper.saveAndNavigate(
+            context: context,
+            checkpoint: 'organization_staffing_plan',
+            nextScreenBuilder: () => const OrganizationStaffingPlanScreen(),
+            dataUpdater: (d) => d.copyWith(staffingRequirements: updated),
+          );
+          setState(() {});
+        },
+        children: [
+          PremiumEditDialog.fieldLabel('Job Title'),
+          PremiumEditDialog.textField(controller: titleController, hint: 'e.g. Senior Developer'),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    PremiumEditDialog.fieldLabel('Headcount'),
+                    PremiumEditDialog.textField(controller: headcountController, keyboardType: TextInputType.number),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    PremiumEditDialog.fieldLabel('Status'),
+                    PremiumEditDialog.textField(controller: statusController, hint: 'e.g. Planned'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    PremiumEditDialog.fieldLabel('Start Date'),
+                    PremiumEditDialog.textField(controller: startController, hint: 'Q1 2024'),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    PremiumEditDialog.fieldLabel('End Date'),
+                    PremiumEditDialog.textField(controller: endController, hint: 'Q4 2024'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteStaffing(BuildContext context, int index) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Position'),
+        content: const Text('Are you sure you want to delete this staffing position?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () async {
+              final updated = List<StaffingRequirement>.from(ProjectDataHelper.getData(context).staffingRequirements);
+              updated.removeAt(index);
+              Navigator.pop(context);
+              await ProjectDataHelper.saveAndNavigate(
+                context: context,
+                checkpoint: 'organization_staffing_plan',
+                nextScreenBuilder: () => const OrganizationStaffingPlanScreen(),
+                dataUpdater: (d) => d.copyWith(staffingRequirements: updated),
+              );
+              setState(() {});
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -151,8 +347,18 @@ class _PlanningSubsectionScreen extends StatelessWidget {
                           children: [
                             _TopHeader(
                                 title: config.title,
-                                onBack: () => Navigator.maybePop(context),
-                                onAdd: onAdd),
+                                onBack: () {
+                                  final navIdx = PlanningPhaseNavigation.getPageIndex(config.checkpoint);
+                                  if (navIdx > 0) {
+                                    final prevPage = PlanningPhaseNavigation.pages[navIdx - 1];
+                                    Navigator.pushReplacement(context, MaterialPageRoute(builder: prevPage.builder));
+                                  } else {
+                                    Navigator.maybePop(context);
+                                  }
+                                },
+                                onNext: () => _handleNext(context),
+                                onAdd: onAdd,
+                            ),
                             const SizedBox(height: 12),
                             Text(
                               config.subtitle,
@@ -183,9 +389,9 @@ class _PlanningSubsectionScreen extends StatelessWidget {
                               ),
                             ] else
                               const _SectionEmptyState(
-                                title: 'No details yet',
+                                title: 'No staffing details yet',
                                 message:
-                                    'Add items or notes to populate this view.',
+                                    'Add roles, responsibilities, and staffing notes to populate this view.',
                                 icon: Icons.group_outlined,
                               ),
                             const SizedBox(height: 40),
@@ -204,10 +410,26 @@ class _PlanningSubsectionScreen extends StatelessWidget {
       ),
     );
   }
+  void _handleNext(BuildContext context) async {
+    final navIndex = PlanningPhaseNavigation.getPageIndex(config.checkpoint);
+    if (navIndex != -1 && navIndex < PlanningPhaseNavigation.pages.length - 1) {
+      final nextPage = PlanningPhaseNavigation.pages[navIndex + 1];
+      await ProjectDataHelper.saveAndNavigate(
+        context: context,
+        checkpoint: config.checkpoint,
+        nextScreenBuilder: () => nextPage.builder(context),
+        dataUpdater: (d) => d,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No next screen available')),
+      );
+    }
+  }
 }
 
 class _PlanningSubsectionConfig {
-  const _PlanningSubsectionConfig({
+  _PlanningSubsectionConfig({
     required this.title,
     required this.subtitle,
     required this.noteKey,
@@ -227,10 +449,11 @@ class _PlanningSubsectionConfig {
 }
 
 class _TopHeader extends StatelessWidget {
-  const _TopHeader({required this.title, required this.onBack, this.onAdd});
+  const _TopHeader({required this.title, required this.onBack, this.onNext, this.onAdd});
 
   final String title;
   final VoidCallback onBack;
+  final VoidCallback? onNext;
   final VoidCallback? onAdd;
 
   @override
@@ -240,7 +463,9 @@ class _TopHeader extends StatelessWidget {
         _CircleIconButton(
             icon: Icons.arrow_back_ios_new_rounded, onTap: onBack),
         const SizedBox(width: 12),
-        const _CircleIconButton(icon: Icons.arrow_forward_ios_rounded),
+        _CircleIconButton(
+            icon: Icons.arrow_forward_ios_rounded,
+            onTap: onNext),
         const SizedBox(width: 16),
         Text(
           title,
@@ -249,38 +474,31 @@ class _TopHeader extends StatelessWidget {
               fontWeight: FontWeight.w700,
               color: Color(0xFF111827)),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 24),
         if (onAdd != null)
-          _AddPill(onTap: onAdd!),
+          _yellowButton(
+            label: 'Add Item',
+            icon: Icons.add,
+            onPressed: onAdd!,
+          ),
         const Spacer(),
         const _UserChip(),
       ],
     );
   }
-}
 
-class _AddPill extends StatelessWidget {
-  const _AddPill({required this.onTap});
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: const Color(0xFF111827),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.add, size: 14, color: Colors.white),
-            SizedBox(width: 4),
-            Text('Add New', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
-          ],
-        ),
+  Widget _yellowButton({required String label, required IconData icon, required VoidCallback onPressed}) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 16),
+      label: Text(label),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFFFFC107),
+        foregroundColor: const Color(0xFF1F2933),
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -390,7 +608,7 @@ class _MetricsRow extends StatelessWidget {
 }
 
 class _MetricData {
-  const _MetricData(this.label, this.value, this.color);
+  _MetricData(this.label, this.value, this.color);
 
   final String label;
   final String value;
@@ -433,28 +651,32 @@ class _MetricCard extends StatelessWidget {
 }
 
 class _SectionData {
-  const _SectionData({
+  _SectionData({
     required this.title,
     required this.subtitle,
     this.bullets = const [],
     this.statusRows = const [],
+    this.onEdit,
+    this.onDelete,
   });
 
   final String title;
   final String subtitle;
   final List<_BulletData> bullets;
   final List<_StatusRowData> statusRows;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 }
 
 class _BulletData {
-  const _BulletData(this.text, this.isCheck);
+  _BulletData(this.text, this.isCheck);
 
   final String text;
   final bool isCheck;
 }
 
 class _StatusRowData {
-  const _StatusRowData(this.label, this.value, this.color);
+  _StatusRowData(this.label, this.value, this.color);
 
   final String label;
   final String value;
@@ -485,11 +707,40 @@ class _SectionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(data.title,
-              style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF111827))),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(data.title,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827))),
+              ),
+              if (data.onEdit != null || data.onDelete != null)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (data.onEdit != null)
+                      IconButton(
+                        onPressed: data.onEdit,
+                        icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF6B7280)),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    if (data.onDelete != null) ...[
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: data.onDelete,
+                        icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ],
+                ),
+            ],
+          ),
           const SizedBox(height: 6),
           Text(data.subtitle,
               style: const TextStyle(

@@ -11,6 +11,7 @@ import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/user_service.dart';
+import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
 class LessonsLearnedScreen extends StatefulWidget {
   const LessonsLearnedScreen({super.key});
@@ -157,6 +158,46 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
           _buildSummaryCard(isMobile),
           const SizedBox(height: 24),
           _buildProjectTasksCard(isMobile),
+          const SizedBox(height: 24),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 80),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.maybePop(context),
+                  icon: const Icon(Icons.arrow_back, size: 16),
+                  label: const Text('Back'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF374151),
+                    elevation: 0,
+                    side: const BorderSide(color: Color(0xFFD1D5DB)),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                       final navIndex = PlanningPhaseNavigation.getPageIndex('lessons_learned');
+                       if (navIndex != -1 && navIndex < PlanningPhaseNavigation.pages.length - 1) {
+                         final nextPage = PlanningPhaseNavigation.pages[navIndex + 1];
+                         Navigator.push(context, MaterialPageRoute(builder: nextPage.builder));
+                       }
+                  },
+                  icon: const Icon(Icons.arrow_forward, size: 16),
+                  label: const Text('Next'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFC044),
+                    foregroundColor: const Color(0xFF111827),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -168,9 +209,15 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
       children: [
         Row(
           children: [
-            _circularIconButton(Icons.arrow_back_ios_new_outlined),
+            _circularIconButton(Icons.arrow_back_ios_new_outlined, onTap: () => Navigator.maybePop(context)),
             const SizedBox(width: 12),
-            _circularIconButton(Icons.arrow_forward_ios),
+            _circularIconButton(Icons.arrow_forward_ios, onTap: () {
+                 final navIndex = PlanningPhaseNavigation.getPageIndex('lessons_learned');
+                 if (navIndex != -1 && navIndex < PlanningPhaseNavigation.pages.length - 1) {
+                   final nextPage = PlanningPhaseNavigation.pages[navIndex + 1];
+                   Navigator.push(context, MaterialPageRoute(builder: nextPage.builder));
+                 }
+            }),
             const SizedBox(width: 16),
             const Expanded(
               child: Center(
@@ -721,9 +768,9 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
     );
   }
 
-  Widget _circularIconButton(IconData icon) {
+  Widget _circularIconButton(IconData icon, {VoidCallback? onTap}) {
     return InkWell(
-      onTap: () {},
+      onTap: onTap,
       borderRadius: BorderRadius.circular(24),
       child: Container(
         width: 44,

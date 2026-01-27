@@ -11,6 +11,7 @@ import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
 class StakeholderManagementScreen extends StatefulWidget {
   const StakeholderManagementScreen({super.key});
@@ -34,6 +35,7 @@ class _StakeholderManagementScreenState extends State<StakeholderManagementScree
   final _Debouncer _planSaveDebounce = _Debouncer();
   bool _loadingStakeholders = false;
   bool _loadingPlans = false;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -98,13 +100,13 @@ class _StakeholderManagementScreenState extends State<StakeholderManagementScree
                         const SizedBox(height: 24),
                         _InfoCardsRow(isMobile: isMobile),
                         const SizedBox(height: 24),
-                        _InfluenceInterestMatrix(hasData: _stakeholders.isNotEmpty),
+                        _InfluenceInterestMatrix(stakeholders: _stakeholders),
                         const SizedBox(height: 28),
                         _EngagementSection(
                           activeTabIndex: _activeTabIndex,
                           onTabChanged: (index) => setState(() => _activeTabIndex = index),
-                          stakeholders: _stakeholders,
-                          engagementPlans: _engagementPlans,
+                          stakeholders: _stakeholders.where((s) => s.name.toLowerCase().contains(_searchQuery.toLowerCase()) || s.organization.toLowerCase().contains(_searchQuery.toLowerCase())).toList(),
+                          engagementPlans: _engagementPlans.where((p) => p.stakeholder.toLowerCase().contains(_searchQuery.toLowerCase()) || p.objective.toLowerCase().contains(_searchQuery.toLowerCase())).toList(),
                           isLoadingStakeholders: _loadingStakeholders,
                           isLoadingPlans: _loadingPlans,
                           onAddStakeholder: _addStakeholder,
@@ -113,6 +115,8 @@ class _StakeholderManagementScreenState extends State<StakeholderManagementScree
                           onAddPlan: _addEngagementPlan,
                           onUpdatePlan: _updateEngagementPlan,
                           onDeletePlan: _deleteEngagementPlan,
+                          searchQuery: _searchQuery,
+                          onSearchQueryChanged: (query) => setState(() => _searchQuery = query),
                         ),
                         const SizedBox(height: 80),
                       ],
@@ -279,7 +283,18 @@ class _TopUtilityBar extends StatelessWidget {
         children: [
           _circleButton(icon: Icons.arrow_back_ios_new_rounded, onTap: onBack),
           const SizedBox(width: 12),
-          _circleButton(icon: Icons.arrow_forward_ios_rounded),
+          _circleButton(
+             icon: Icons.arrow_forward_ios_rounded,
+             onTap: () async {
+                 final navIndex = PlanningPhaseNavigation.getPageIndex('stakeholder_management');
+                 if (navIndex != -1 && navIndex < PlanningPhaseNavigation.pages.length - 1) {
+                   final nextPage = PlanningPhaseNavigation.pages[navIndex + 1];
+                   Navigator.pushReplacement(context, MaterialPageRoute(builder: nextPage.builder));
+                 } else {
+                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No next screen available')));
+                 }
+             }
+          ),
           const Spacer(),
           const _UserChip(
             name: '',
@@ -412,33 +427,7 @@ class _TitleSection extends StatelessWidget {
     );
   }
 
-  static Widget _outlineButton({required String label, required IconData icon, required VoidCallback onPressed}) {
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 18, color: const Color(0xFF111827)),
-      label: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF111827))),
-      style: OutlinedButton.styleFrom(
-        side: const BorderSide(color: Color(0xFFE5E7EB)),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
 
-  static Widget _yellowButton({required String label, required IconData icon, required VoidCallback onPressed}) {
-    return ElevatedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 18, color: const Color(0xFF1F2937)),
-      label: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF1F2937))),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFFFFD84D),
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      ),
-    );
-  }
 }
 
 class _StatsRow extends StatelessWidget {
@@ -634,116 +623,198 @@ class _LevelDistributionCard extends StatelessWidget {
 }
 
 class _InfluenceInterestMatrix extends StatelessWidget {
-  const _InfluenceInterestMatrix({required this.hasData});
+  const _InfluenceInterestMatrix({required this.stakeholders});
 
-  final bool hasData;
+  final List<_StakeholderEntry> stakeholders;
 
   @override
   Widget build(BuildContext context) {
-    if (!hasData) {
-      return const _SectionEmptyState(
-        title: 'No matrix data yet',
-        message: 'Add stakeholders to populate the influence-interest matrix.',
-        icon: Icons.grid_view_outlined,
-      );
-    }
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF3F4F6),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-            ),
-            child: Row(
-              children: const [
-                Expanded(
-                  child: Text('Low Influence', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF6B7280))),
+    // Quadrants mapping (Power/Influence on Y-axis, Interest on X-axis)
+    // 1. Manage Closely (High/High)
+    final manageClosely = stakeholders.where((s) => s.influence == 'High' && s.interest == 'High').toList();
+    // 2. Keep Satisfied (High Influence, Low/Med Interest)
+    final keepSatisfied = stakeholders.where((s) => s.influence == 'High' && (s.interest == 'Low' || s.interest == 'Medium')).toList();
+    // 3. Keep Informed (Low/Med Influence, High Interest)
+    final keepInformed = stakeholders.where((s) => (s.influence == 'Low' || s.influence == 'Medium') && s.interest == 'High').toList();
+    // 4. Monitor (Low/Med Influence, Low/Med Interest)
+    final monitor = stakeholders.where((s) => (s.influence == 'Low' || s.influence == 'Medium') && (s.interest == 'Low' || s.interest == 'Medium')).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Influence / Interest Matrix',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            boxShadow: const [
+              BoxShadow(color: Color(0x05000000), blurRadius: 10, offset: Offset(0, 4)),
+            ],
+          ),
+          child: Column(
+            children: [
+              // Column Headers (Interest)
+              Padding(
+                padding: const EdgeInsets.only(top: 16, bottom: 8),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 40), // Spacing for Y-axis label
+                    Expanded(child: _axisHeader('LOW INTEREST')),
+                    Expanded(child: _axisHeader('HIGH INTEREST')),
+                  ],
                 ),
-                Expanded(
-                  child: Text('High Influence', textAlign: TextAlign.right, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF6B7280))),
-                ),
-              ],
-            ),
+              ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                   // Y-axis label (Influence)
+                  _verticalAxisLabel('HIGH INFLUENCE'),
+                  Expanded(
+                    child: _matrixQuadrant(
+                      label: 'Keep Satisfied',
+                      color: const Color(0xFFEFF6FF), // Blue
+                      accentColor: const Color(0xFF3B82F6),
+                      stakeholders: keepSatisfied,
+                    ),
+                  ),
+                  Expanded(
+                    child: _matrixQuadrant(
+                      label: 'Manage Closely (Key Players)',
+                      color: const Color(0xFFFEF2F2), // Red
+                      accentColor: const Color(0xFFEF4444),
+                      stakeholders: manageClosely,
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _verticalAxisLabel('LOW INFLUENCE'),
+                  Expanded(
+                    child: _matrixQuadrant(
+                      label: 'Monitor (Minimal Effort)',
+                      color: const Color(0xFFF9FAFB), // Grey
+                      accentColor: const Color(0xFF6B7280),
+                      stakeholders: monitor,
+                    ),
+                  ),
+                  Expanded(
+                    child: _matrixQuadrant(
+                      label: 'Keep Informed',
+                      color: const Color(0xFFECFDF5), // Green
+                      accentColor: const Color(0xFF10B981),
+                      stakeholders: keepInformed,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
           ),
-          _matrixRow(
-            header: 'High Interest',
-            leftLabel: 'Manage Closely',
-            rightLabel: 'Manage Closely',
-            leftName: 'Sarah Johnson',
-            rightName: 'Sarah Johnson',
-            leftColor: const Color(0xFFE8F5E9),
-            rightColor: const Color(0xFFFDECEA),
-          ),
-          const Divider(height: 1, color: Color(0xFFE5E7EB)),
-          _matrixRow(
-            header: 'Low interest',
-            leftLabel: 'Manage Closely',
-            rightLabel: 'Manage Closely',
-            leftName: 'Sarah Johnson',
-            rightName: 'Sarah Johnson',
-            leftColor: const Color(0xFFFDF8E7),
-            rightColor: const Color(0xFFFFF7ED),
-          ),
-        ],
+        ),
+      ],
+    );
+  }
+
+  Widget _axisHeader(String text) {
+    return Center(
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.2, color: Color(0xFF9CA3AF)),
       ),
     );
   }
 
-  static Widget _matrixRow({
-    required String header,
-    required String leftLabel,
-    required String rightLabel,
-    required String leftName,
-    required String rightName,
-    required Color leftColor,
-    required Color rightColor,
+  Widget _verticalAxisLabel(String text) {
+    return Container(
+      width: 40,
+      height: 140,
+      alignment: Alignment.center,
+      child: RotatedBox(
+        quarterTurns: 3,
+        child: Text(
+          text,
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.2, color: Color(0xFF9CA3AF)),
+        ),
+      ),
+    );
+  }
+
+  Widget _matrixQuadrant({
+    required String label,
+    required Color color,
+    required Color accentColor,
+    required List<_StakeholderEntry> stakeholders,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      child: Row(
+      height: 140,
+      margin: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: accentColor.withOpacity(0.2)),
+      ),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 110,
-            child: Text(
-              header,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
-            ),
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(color: accentColor, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: accentColor),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 16),
+          const SizedBox(height: 10),
           Expanded(
-            child: _matrixCell(label: leftLabel, name: leftName, background: leftColor),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: _matrixCell(label: rightLabel, name: rightName, background: rightColor),
+            child: stakeholders.isEmpty
+                ? Center(
+                    child: Text(
+                      'None',
+                      style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: accentColor.withOpacity(0.5)),
+                    ),
+                  )
+                : SingleChildScrollView(
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: stakeholders.map((s) => _stakeholderChip(s, accentColor)).toList(),
+                    ),
+                  ),
           ),
         ],
       ),
     );
   }
 
-  static Widget _matrixCell({required String label, required String name, required Color background}) {
+  Widget _stakeholderChip(_StakeholderEntry s, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.1)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827))),
-          const SizedBox(height: 8),
-          Text(name, style: const TextStyle(fontSize: 13, color: Color(0xFF4B5563))),
-        ],
+      child: Text(
+        s.name.isEmpty ? 'Unnamed' : s.name,
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: color.withOpacity(0.8)),
       ),
     );
   }
@@ -808,6 +879,8 @@ class _EngagementSection extends StatelessWidget {
     required this.onAddPlan,
     required this.onUpdatePlan,
     required this.onDeletePlan,
+    required this.searchQuery,
+    required this.onSearchQueryChanged,
   });
 
   final int activeTabIndex;
@@ -822,6 +895,8 @@ class _EngagementSection extends StatelessWidget {
   final VoidCallback onAddPlan;
   final ValueChanged<_EngagementPlanEntry> onUpdatePlan;
   final ValueChanged<String> onDeletePlan;
+  final String searchQuery;
+  final ValueChanged<String> onSearchQueryChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -855,11 +930,11 @@ class _EngagementSection extends StatelessWidget {
                   children: [
                     Expanded(
                       child: _SearchField(
-                        enabled: false,
+                        enabled: true,
+                        value: searchQuery,
+                        onChanged: onSearchQueryChanged,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    _FilterButton(label: 'Filter', icon: Icons.filter_list, enabled: false),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
                       onPressed: activeTabIndex == 0 ? onAddStakeholder : onAddPlan,
@@ -930,16 +1005,19 @@ class _EngagementSection extends StatelessWidget {
 }
 
 class _SearchField extends StatelessWidget {
-  const _SearchField({required this.enabled});
+  const _SearchField({required this.enabled, required this.value, required this.onChanged});
 
   final bool enabled;
+  final String value;
+  final ValueChanged<String> onChanged;
 
   @override
   Widget build(BuildContext context) {
     return TextField(
       enabled: enabled,
+      onChanged: onChanged,
       decoration: InputDecoration(
-        hintText: 'Search...',
+        hintText: 'Search stakeholders...',
         prefixIcon: const Icon(Icons.search, size: 20, color: Color(0xFF9CA3AF)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         filled: true,
@@ -954,37 +1032,14 @@ class _SearchField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.2),
+          borderSide: const BorderSide(color: Color(0xFFFFC812), width: 1.2),
         ),
       ),
     );
   }
 }
 
-class _FilterButton extends StatelessWidget {
-  const _FilterButton({required this.label, required this.icon, required this.enabled});
-
-  final String label;
-  final IconData icon;
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: enabled ? () {} : null,
-      icon: Icon(icon, size: 18),
-      label: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        side: const BorderSide(color: Color(0xFFE5E7EB)),
-        foregroundColor: const Color(0xFF111827),
-        backgroundColor: Colors.white,
-        disabledForegroundColor: const Color(0xFFBFC5D3),
-      ),
-    );
-  }
-}
+// _FilterButton removed as per plan
 
 class _StakeholdersTable extends StatelessWidget {
   const _StakeholdersTable({
@@ -1280,7 +1335,7 @@ class _TableColumnDef {
   final double width;
 }
 
-class _TextCell extends StatelessWidget {
+class _TextCell extends StatefulWidget {
   const _TextCell({
     required this.value,
     required this.fieldKey,
@@ -1298,22 +1353,57 @@ class _TextCell extends StatelessWidget {
   final ValueChanged<String> onChanged;
 
   @override
+  State<_TextCell> createState() => _TextCellState();
+}
+
+class _TextCellState extends State<_TextCell> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value);
+  }
+
+  @override
+  void didUpdateWidget(_TextCell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.value != widget.value && _controller.text != widget.value) {
+      // Only update from external source if it's actually different from what's currently being typed
+      // This prevents the cursor from jumping during rapid typing but allows external sync.
+      _controller.text = widget.value;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      key: ValueKey(fieldKey),
-      initialValue: value,
-      minLines: minLines,
-      maxLines: maxLines,
-      decoration: InputDecoration(
-        hintText: hintText,
-        isDense: true,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
-      style: const TextStyle(fontSize: 13, color: Color(0xFF111827)),
-      onChanged: onChanged,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: TextFormField(
+        controller: _controller,
+        minLines: widget.minLines,
+        maxLines: widget.maxLines,
+        decoration: InputDecoration(
+          hintText: widget.hintText,
+          isDense: true,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+        ),
+        style: const TextStyle(fontSize: 13, color: Color(0xFF111827)),
+        onChanged: widget.onChanged,
+      ),
     );
   }
 }

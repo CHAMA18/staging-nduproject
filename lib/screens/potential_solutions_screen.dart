@@ -1575,13 +1575,13 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
 
     return StatefulBuilder(
       builder: (context, setStateLocal) {
-        bool _isHovering = false;
+        bool isHovering = false;
         final isMobile = MediaQuery.of(context).size.width < 600;
-        final showControls = isMobile || _isHovering;
+        final showControls = isMobile || isHovering;
 
-        void _setHovering(bool value) {
-          if (_isHovering != value) {
-            setStateLocal(() => _isHovering = value);
+        void setHovering(bool value) {
+          if (isHovering != value) {
+            setStateLocal(() => isHovering = value);
           }
         }
 
@@ -1621,8 +1621,8 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
               ),
             // Text field
             MouseRegion(
-              onEnter: (_) => _setHovering(true),
-              onExit: (_) => _setHovering(false),
+              onEnter: (_) => setHovering(true),
+              onExit: (_) => setHovering(false),
               child: isMobile
                   ? TextField(
                       controller: controller,

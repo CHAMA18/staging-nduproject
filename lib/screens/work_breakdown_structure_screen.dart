@@ -177,7 +177,7 @@ class _WorkBreakdownStructureBodyState
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: selectedStatus,
+                          initialValue: selectedStatus,
                           decoration: const InputDecoration(
                               labelText: 'Initial Status'),
                           items: const [
@@ -191,8 +191,9 @@ class _WorkBreakdownStructureBodyState
                                 value: 'completed', child: Text('Completed')),
                           ],
                           onChanged: (value) {
-                            if (value != null)
+                            if (value != null) {
                               setStateDialog(() => selectedStatus = value);
+                            }
                           },
                         ),
                       ],

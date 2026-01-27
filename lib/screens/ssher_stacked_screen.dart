@@ -266,16 +266,21 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
 
     if (confirmed == true) {
       setState(() {
-        if (entry.category == 'safety')
+        if (entry.category == 'safety') {
           _safetyEntries.removeWhere((e) => e.id == entry.id);
-        if (entry.category == 'security')
+        }
+        if (entry.category == 'security') {
           _securityEntries.removeWhere((e) => e.id == entry.id);
-        if (entry.category == 'health')
+        }
+        if (entry.category == 'health') {
           _healthEntries.removeWhere((e) => e.id == entry.id);
-        if (entry.category == 'environment')
+        }
+        if (entry.category == 'environment') {
           _environmentEntries.removeWhere((e) => e.id == entry.id);
-        if (entry.category == 'regulatory')
+        }
+        if (entry.category == 'regulatory') {
           _regulatoryEntries.removeWhere((e) => e.id == entry.id);
+        }
       });
       await _saveEntries();
     }

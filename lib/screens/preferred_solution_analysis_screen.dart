@@ -3033,8 +3033,9 @@ class _PreferredSolutionAnalysisScreenState
 
   String _getITDataForSolution(
       ProjectDataModel projectData, String solutionTitle) {
-    if (projectData.itConsiderationsData == null)
+    if (projectData.itConsiderationsData == null) {
       return 'No IT considerations recorded';
+    }
 
     final itData = projectData.itConsiderationsData!.solutionITData.firstWhere(
       (it) =>
@@ -3043,15 +3044,17 @@ class _PreferredSolutionAnalysisScreenState
       orElse: () => SolutionITData(solutionTitle: solutionTitle),
     );
 
-    if (itData.coreTechnology.trim().isEmpty)
+    if (itData.coreTechnology.trim().isEmpty) {
       return 'No IT considerations recorded';
+    }
     return itData.coreTechnology;
   }
 
   String _getInfrastructureDataForSolution(
       ProjectDataModel projectData, String solutionTitle) {
-    if (projectData.infrastructureConsiderationsData == null)
+    if (projectData.infrastructureConsiderationsData == null) {
       return 'No infrastructure considerations recorded';
+    }
 
     final infraData = projectData
         .infrastructureConsiderationsData!.solutionInfrastructureData
@@ -3062,15 +3065,17 @@ class _PreferredSolutionAnalysisScreenState
       orElse: () => SolutionInfrastructureData(solutionTitle: solutionTitle),
     );
 
-    if (infraData.majorInfrastructure.trim().isEmpty)
+    if (infraData.majorInfrastructure.trim().isEmpty) {
       return 'No infrastructure considerations recorded';
+    }
     return infraData.majorInfrastructure;
   }
 
   String _getStakeholderDataForSolution(
       ProjectDataModel projectData, String solutionTitle) {
-    if (projectData.coreStakeholdersData == null)
+    if (projectData.coreStakeholdersData == null) {
       return 'No stakeholders identified';
+    }
 
     final stakeholderData =
         projectData.coreStakeholdersData!.solutionStakeholderData.firstWhere(
@@ -3080,15 +3085,17 @@ class _PreferredSolutionAnalysisScreenState
       orElse: () => SolutionStakeholderData(solutionTitle: solutionTitle),
     );
 
-    if (stakeholderData.notableStakeholders.trim().isEmpty)
+    if (stakeholderData.notableStakeholders.trim().isEmpty) {
       return 'No stakeholders identified';
+    }
     return stakeholderData.notableStakeholders;
   }
 
   String _getCostBenefitDataForSolution(
       ProjectDataModel projectData, String solutionTitle) {
-    if (projectData.costAnalysisData == null)
+    if (projectData.costAnalysisData == null) {
       return 'No cost analysis available';
+    }
 
     final costData = projectData.costAnalysisData!.solutionCosts.firstWhere(
       (cost) =>

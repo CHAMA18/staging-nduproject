@@ -200,7 +200,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
   String? _error;
   String? _projectValueError;
   int _npvHorizon = 5;
-  double _discountRate = 0.10; // Default 10% discount rate for NPV calculations
+  final double _discountRate = 0.10; // Default 10% discount rate for NPV calculations
   final Set<int> _solutionLoading = <int>{};
   final List<_BenefitLineItemEntry> _benefitLineItems = [];
   int _benefitTabIndex = 0;
@@ -2000,7 +2000,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
-                value: _basisFrequency,
+                initialValue: _basisFrequency,
                 items: _frequencyOptions
                     .map((f) => DropdownMenuItem(value: f, child: Text(f)))
                     .toList(),
@@ -3054,7 +3054,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                         width: 140,
                         child: Center(
                           child: Text(
-                            '${_benefitTotalUnits().toStringAsFixed(1)}',
+                            _benefitTotalUnits().toStringAsFixed(1),
                             textAlign: TextAlign.center,
                             style:
                                 const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
@@ -5527,8 +5527,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             for (int i = 0; i < selectors.length; i++) ...[
               Flexible(
-                child: selectors[i],
                 flex: 1,
+                child: selectors[i],
               ),
               if (i != selectors.length - 1) const SizedBox(width: 12),
             ],

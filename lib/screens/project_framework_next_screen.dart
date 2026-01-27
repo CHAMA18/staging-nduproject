@@ -919,7 +919,7 @@ class _GoalFilters extends StatelessWidget {
   Widget build(BuildContext context) {
     final filters = [
       _FilterChipData(
-        label: goalTitles.length > 0 && goalTitles[0].trim().isNotEmpty ? goalTitles[0] : 'Goal 1', 
+        label: goalTitles.isNotEmpty && goalTitles[0].trim().isNotEmpty ? goalTitles[0] : 'Goal 1', 
         value: 'Goal 1',
         color: const Color(0xFFFFC107)
       ),

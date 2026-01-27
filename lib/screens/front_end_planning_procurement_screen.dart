@@ -287,7 +287,7 @@ class _FrontEndPlanningProcurementScreenState
           final progress = [0.0, 0.25, 0.5, 0.75, 1.0][i % 5];
 
           items.add(_ProcurementItem(
-            name: (result['name'] ?? '${category} Procurement').toString(),
+            name: (result['name'] ?? '$category Procurement').toString(),
             description: (result['description'] ??
                     'Procurement item for $category category')
                 .toString(),
@@ -302,7 +302,7 @@ class _FrontEndPlanningProcurementScreenState
           debugPrint('Error generating item for $category: $e');
           // Use fallback item
           items.add(_ProcurementItem(
-            name: '${category} Procurement',
+            name: '$category Procurement',
             description: 'Procurement item for $category category',
             category: category,
             status: _ProcurementItemStatus.planning,
@@ -843,7 +843,9 @@ class _FrontEndPlanningProcurementScreenState
       if (_approvedOnly && !vendor.approved) return false;
       if (_preferredOnly && !vendor.preferred) return false;
       if (_categoryFilter != 'All Categories' &&
-          vendor.category != _categoryFilter) return false;
+          vendor.category != _categoryFilter) {
+        return false;
+      }
       return true;
     }).toList();
   }

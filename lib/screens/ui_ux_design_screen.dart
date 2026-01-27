@@ -626,7 +626,7 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
     required String hint,
   }) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       isExpanded: true,
       alignment: Alignment.center,
       style: const TextStyle(fontSize: 13, color: Color(0xFF111827)),
@@ -1103,7 +1103,7 @@ class _JourneyItem {
     final items = <_JourneyItem>[];
     for (final item in data) {
       if (item is! Map) continue;
-      final map = Map<String, dynamic>.from(item as Map);
+      final map = Map<String, dynamic>.from(item);
       items.add(_JourneyItem(
         id: map['id']?.toString() ??
             DateTime.now().microsecondsSinceEpoch.toString(),
@@ -1141,7 +1141,7 @@ class _InterfaceItem {
     final items = <_InterfaceItem>[];
     for (final item in data) {
       if (item is! Map) continue;
-      final map = Map<String, dynamic>.from(item as Map);
+      final map = Map<String, dynamic>.from(item);
       items.add(_InterfaceItem(
         id: map['id']?.toString() ??
             DateTime.now().microsecondsSinceEpoch.toString(),
@@ -1179,7 +1179,7 @@ class _DesignElement {
     final items = <_DesignElement>[];
     for (final item in data) {
       if (item is! Map) continue;
-      final map = Map<String, dynamic>.from(item as Map);
+      final map = Map<String, dynamic>.from(item);
       items.add(_DesignElement(
         id: map['id']?.toString() ??
             DateTime.now().microsecondsSinceEpoch.toString(),

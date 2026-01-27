@@ -53,7 +53,7 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
   late final OpenAiServiceSecure _openAi;
   bool _isGenerating = false;
   String? _error;
-  bool _hintShown = false;
+  final bool _hintShown = false;
   bool _initiationExpanded = true;
   bool _businessCaseExpanded = true;
   bool _isAdmin = false;

@@ -392,7 +392,7 @@ class _UserChip extends StatelessWidget {
 }
 
 class _OutlinedButton extends StatelessWidget {
-  const _OutlinedButton({required this.label, this.onPressed});
+  const _OutlinedButton({required this.label});
 
   final String label;
   final VoidCallback? onPressed;
@@ -415,7 +415,7 @@ class _OutlinedButton extends StatelessWidget {
 }
 
 class _YellowButton extends StatelessWidget {
-  const _YellowButton({required this.label, this.onPressed});
+  const _YellowButton({required this.label});
 
   final String label;
   final VoidCallback? onPressed;
@@ -984,7 +984,7 @@ class _TableRow extends StatelessWidget {
               );
               if (confirmed != true) return;
               try {
-                await ChangeRequestService.deleteChangeRequest(request!.id);
+                await ChangeRequestService.deleteChangeRequest(request.id);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Change request deleted')));

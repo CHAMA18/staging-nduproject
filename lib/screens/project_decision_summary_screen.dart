@@ -789,13 +789,15 @@ class _MainContentState extends State<_MainContent> {
           return preferredSolution;
         case 2:
           if (_loadingRisks) return 'Summarizing risks...';
-          if (_riskError != null)
+          if (_riskError != null) {
             return 'Unable to summarize risks. Tap to retry.';
+          }
           return _riskSummary ?? 'No risks captured yet.';
         case 3:
           if (_loadingStakeholders) return 'Summarizing stakeholders...';
-          if (_stakeholderError != null)
+          if (_stakeholderError != null) {
             return 'Unable to summarize stakeholders. Tap to retry.';
+          }
           return _stakeholderSummary ?? 'No stakeholders captured yet.';
         case 4:
           return 'Outline infrastructure constraints, dependencies, environments, and rollout considerations.';

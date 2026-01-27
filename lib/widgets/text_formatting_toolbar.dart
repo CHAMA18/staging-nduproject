@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 /// A toolbar for basic text formatting (bold, underline, text size, undo)
 /// Works with standard TextField controllers by inserting markdown-like syntax

@@ -1675,10 +1675,10 @@ class _AiSuggestionsDialogState extends State<_AiSuggestionsDialog> {
                     children: [
                       TextButton(
                         onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Cancel'),
                         style: TextButton.styleFrom(
                           foregroundColor: const Color(0xFF64748B),
                         ),
+                        child: const Text('Cancel'),
                       ),
                       const SizedBox(width: 12),
                       FilledButton(

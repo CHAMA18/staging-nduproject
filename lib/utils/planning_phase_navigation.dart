@@ -3,7 +3,6 @@ import 'package:ndu_project/screens/project_framework_screen.dart';
 import 'package:ndu_project/screens/project_framework_next_screen.dart';
 import 'package:ndu_project/screens/work_breakdown_structure_screen.dart';
 import 'package:ndu_project/screens/planning_requirements_screen.dart';
-import 'package:ndu_project/screens/front_end_planning_personnel_screen.dart';
 import 'package:ndu_project/screens/organization_plan_subsections_screen.dart';
 import 'package:ndu_project/screens/team_training_building_screen.dart';
 import 'package:ndu_project/screens/stakeholder_management_screen.dart';

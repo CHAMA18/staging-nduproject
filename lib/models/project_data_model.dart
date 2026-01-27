@@ -1491,8 +1491,9 @@ class LessonRecord {
   factory LessonRecord.fromJson(Map<String, dynamic> json) {
     DateTime? parsed;
     try {
-      if (json['dateSubmitted'] is String)
+      if (json['dateSubmitted'] is String) {
         parsed = DateTime.parse(json['dateSubmitted']);
+      }
     } catch (_) {}
     return LessonRecord(
       id: json['id']?.toString(),

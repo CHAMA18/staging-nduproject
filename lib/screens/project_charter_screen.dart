@@ -99,8 +99,9 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
     final needsAssumptions = _projectData!.charterAssumptions.trim().isEmpty;
     final needsConstraints = _projectData!.charterConstraints.trim().isEmpty;
 
-    if (!needsOverview && !needsGoals && !needsAssumptions && !needsConstraints)
+    if (!needsOverview && !needsGoals && !needsAssumptions && !needsConstraints) {
       return;
+    }
 
     setState(() => _isGenerating = true);
 

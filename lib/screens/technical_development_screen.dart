@@ -609,7 +609,7 @@ class _TechnicalDevelopmentScreenState extends State<TechnicalDevelopmentScreen>
               SizedBox(
                 width: 140,
                 child: DropdownButtonFormField<String>(
-                  value: ownerOptions.contains(item.owner.trim())
+                  initialValue: ownerOptions.contains(item.owner.trim())
                       ? item.owner.trim()
                       : ownerOptions.first,
                   items: ownerOptions

@@ -2419,8 +2419,6 @@ class _DialogTextField extends StatelessWidget {
     this.icon,
     this.keyboardType,
     this.maxLines = 1,
-    this.onChanged,
-    this.suffixIcon,
   });
 
   @override
@@ -2470,8 +2468,6 @@ class _ChoicePills extends StatelessWidget {
     required this.options,
     required this.selectedValue,
     required this.onChanged,
-    this.pillColor,
-    this.selectedColor,
   });
 
   final String label;

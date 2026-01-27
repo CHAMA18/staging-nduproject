@@ -58,9 +58,8 @@ class PhaseTransitionRoute<T> extends PageRouteBuilder<T> {
   PhaseTransitionRoute({
     required WidgetBuilder builder,
     String? phaseLabel,
-    RouteSettings? settings,
+    super.settings,
   }) : super(
-          settings: settings,
           transitionDuration: const Duration(seconds: 10),
           reverseTransitionDuration: const Duration(milliseconds: 420),
           pageBuilder: (context, animation, secondaryAnimation) =>

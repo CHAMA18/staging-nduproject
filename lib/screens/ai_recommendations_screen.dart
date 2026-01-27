@@ -3,7 +3,6 @@ import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/utils/text_sanitizer.dart';
-import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 

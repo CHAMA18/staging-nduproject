@@ -6,7 +6,7 @@ const String kListBullet = '. ';
 /// Mixin that adds auto-bullet functionality for *list* fields.
 /// Uses ". " (period + space). Do not use for prose (Notes, Scope, Value narrative).
 class AutoBulletTextController extends TextEditingController {
-  AutoBulletTextController({String? text}) : super(text: text) {
+  AutoBulletTextController({super.text}) {
     _setupListener();
   }
 

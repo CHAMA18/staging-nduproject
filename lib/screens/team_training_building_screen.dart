@@ -7,6 +7,7 @@ import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/screens/training_project_tasks_screen.dart';
+import 'package:ndu_project/models/project_data_model.dart';
 
 import 'package:ndu_project/utils/project_data_helper.dart';
 

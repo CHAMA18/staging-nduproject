@@ -6,6 +6,7 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/services/user_service.dart';
+import 'package:ndu_project/models/project_data_model.dart';
 
 import 'package:ndu_project/utils/project_data_helper.dart';
 
@@ -435,8 +436,9 @@ class _SectionData {
   const _SectionData({
     required this.title,
     required this.subtitle,
-  })  : bullets = const [],
-        statusRows = const [];
+    this.bullets = const [],
+    this.statusRows = const [],
+  });
 
   final String title;
   final String subtitle;

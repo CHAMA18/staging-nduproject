@@ -51,6 +51,27 @@ class _TechnicalDevelopmentScreenState extends State<TechnicalDevelopmentScreen>
     'Blocked',
   ];
 
+  List<String> _ownerOptions({String? currentValue}) {
+    final provider = ProjectDataInherited.maybeOf(context);
+    final members = provider?.projectData.teamMembers ?? [];
+    final names = members
+        .map((member) {
+          final name = member.name.trim();
+          if (name.isNotEmpty) return name;
+          final email = member.email.trim();
+          if (email.isNotEmpty) return email;
+          return member.role.trim();
+        })
+        .where((value) => value.isNotEmpty)
+        .toList();
+    final options = names.isEmpty ? <String>['Owner'] : names.toSet().toList();
+    final normalized = currentValue?.trim() ?? '';
+    if (normalized.isNotEmpty && !options.contains(normalized)) {
+      return [normalized, ...options];
+    }
+    return options;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -558,6 +579,7 @@ class _TechnicalDevelopmentScreenState extends State<TechnicalDevelopmentScreen>
   }
 
   Widget _buildReadinessItem(_ReadinessItem item) {
+    final ownerOptions = _ownerOptions(currentValue: item.owner);
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
@@ -586,15 +608,29 @@ class _TechnicalDevelopmentScreenState extends State<TechnicalDevelopmentScreen>
             children: [
               SizedBox(
                 width: 140,
-                child: TextFormField(
-                  key: ValueKey('readiness-owner-${item.id}'),
-                  initialValue: item.owner,
-                  decoration: const InputDecoration(border: InputBorder.none, isDense: true),
-                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                  minLines: 1,
-                  maxLines: null,
-                  textAlign: TextAlign.center,
-                  onChanged: (value) => _updateReadinessItem(item.copyWith(owner: value)),
+                child: DropdownButtonFormField<String>(
+                  value: ownerOptions.contains(item.owner.trim())
+                      ? item.owner.trim()
+                      : ownerOptions.first,
+                  items: ownerOptions
+                      .map((owner) => DropdownMenuItem(
+                            value: owner,
+                            child: Center(
+                              child: Text(
+                                owner,
+                                style:
+                                    TextStyle(fontSize: 11, color: Colors.grey[600]),
+                              ),
+                            ),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    _updateReadinessItem(item.copyWith(owner: value));
+                  },
+                  decoration:
+                      const InputDecoration(border: InputBorder.none, isDense: true),
+                  isExpanded: true,
                 ),
               ),
               const SizedBox(height: 2),

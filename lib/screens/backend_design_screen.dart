@@ -62,6 +62,27 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
     'Deprecated'
   ];
 
+  List<String> _ownerOptions({String? currentValue}) {
+    final data = ProjectDataHelper.getData(context);
+    final members = data.teamMembers;
+    final names = members
+        .map((member) {
+          final name = member.name.trim();
+          if (name.isNotEmpty) return name;
+          final email = member.email.trim();
+          if (email.isNotEmpty) return email;
+          return member.role.trim();
+        })
+        .where((value) => value.isNotEmpty)
+        .toList();
+    final options = names.isEmpty ? <String>['Owner'] : names.toSet().toList();
+    final normalized = currentValue?.trim() ?? '';
+    if (normalized.isNotEmpty && !options.contains(normalized)) {
+      return [normalized, ...options];
+    }
+    return options;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -434,10 +455,10 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
                 onChanged: (value) =>
                     _updateComponent(entry.copyWith(responsibility: value)),
               ),
-              _TextCell(
+              _DropdownCell(
                 value: entry.owner,
                 fieldKey: '${entry.id}_owner',
-                hintText: 'Owner',
+                options: _ownerOptions(currentValue: entry.owner),
                 onChanged: (value) =>
                     _updateComponent(entry.copyWith(owner: value)),
               ),
@@ -555,10 +576,10 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
                 onChanged: (value) =>
                     _updateDesignDocument(entry.copyWith(description: value)),
               ),
-              _TextCell(
+              _DropdownCell(
                 value: entry.owner,
                 fieldKey: '${entry.id}_owner',
-                hintText: 'Owner',
+                options: _ownerOptions(currentValue: entry.owner),
                 onChanged: (value) =>
                     _updateDesignDocument(entry.copyWith(owner: value)),
               ),
@@ -621,10 +642,10 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
                 onChanged: (value) =>
                     _updateEntity(entry.copyWith(primaryKey: value)),
               ),
-              _TextCell(
+              _DropdownCell(
                 value: entry.owner,
                 fieldKey: '${entry.id}_owner',
-                hintText: 'Owner',
+                options: _ownerOptions(currentValue: entry.owner),
                 onChanged: (value) =>
                     _updateEntity(entry.copyWith(owner: value)),
               ),

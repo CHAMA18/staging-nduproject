@@ -2453,7 +2453,6 @@ class DesignDeliverableRegisterItem {
   }
 }
 
-<<<<<<< HEAD
 /// Field history tracking for undo functionality
 class FieldHistory {
   final String fieldName;
@@ -2607,7 +2606,6 @@ class TrainingActivity {
       duration: json['duration']?.toString() ?? '',
       category: json['category']?.toString() ?? 'Training',
       status: json['status']?.toString() ?? 'Upcoming',
->>>>>>> 4aec0fed560453de42f8d9833522eb25be70360b
     );
   }
 }

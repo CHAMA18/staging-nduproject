@@ -7,11 +7,34 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/services/user_service.dart';
 
-class OrganizationRolesResponsibilitiesScreen extends StatelessWidget {
+import 'package:ndu_project/utils/project_data_helper.dart';
+
+class OrganizationRolesResponsibilitiesScreen extends StatefulWidget {
   const OrganizationRolesResponsibilitiesScreen({super.key});
 
   @override
+  State<OrganizationRolesResponsibilitiesScreen> createState() => _OrganizationRolesResponsibilitiesScreenState();
+}
+
+class _OrganizationRolesResponsibilitiesScreenState extends State<OrganizationRolesResponsibilitiesScreen> {
+  @override
   Widget build(BuildContext context) {
+    final projectData = ProjectDataHelper.getData(context);
+    final roles = projectData.projectRoles;
+
+    final List<_MetricData> metrics = [
+      _MetricData('Total Roles', roles.length.toString(), const Color(0xFF3B82F6)),
+      _MetricData('Workstreams', roles.map<String>((r) => r.workstream).toSet().length.toString(), const Color(0xFF10B981)),
+    ];
+
+    final List<_SectionData> sections = roles.map<_SectionData>((role) => _SectionData(
+      title: role.title,
+      subtitle: role.workstream,
+      bullets: [
+        _BulletData(role.description, false),
+      ],
+    )).toList();
+
     return _PlanningSubsectionScreen(
       config: _PlanningSubsectionConfig(
         title: 'Roles & Responsibilities',
@@ -19,37 +42,78 @@ class OrganizationRolesResponsibilitiesScreen extends StatelessWidget {
         noteKey: 'planning_organization_roles_responsibilities',
         checkpoint: 'organization_roles_responsibilities',
         activeItemLabel: 'Organization Plan - Roles & Responsibilities',
-        metrics: const [],
-        sections: const [],
+        metrics: metrics,
+        sections: sections,
       ),
+      onAdd: () async {
+        final newRole = RoleDefinition(title: 'New Role', description: 'Role description', workstream: 'Default');
+        await ProjectDataHelper.saveAndNavigate(
+          context: context,
+          checkpoint: 'organization_roles_responsibilities',
+          nextScreenBuilder: () => const OrganizationRolesResponsibilitiesScreen(),
+          dataUpdater: (d) => d.copyWith(projectRoles: [...d.projectRoles, newRole]),
+        );
+        setState(() {});
+      },
     );
   }
 }
 
-class OrganizationStaffingPlanScreen extends StatelessWidget {
+class OrganizationStaffingPlanScreen extends StatefulWidget {
   const OrganizationStaffingPlanScreen({super.key});
 
   @override
+  State<OrganizationStaffingPlanScreen> createState() => _OrganizationStaffingPlanScreenState();
+}
+
+class _OrganizationStaffingPlanScreenState extends State<OrganizationStaffingPlanScreen> {
+  @override
   Widget build(BuildContext context) {
+    final projectData = ProjectDataHelper.getData(context);
+    final reqs = projectData.staffingRequirements;
+
+    final List<_MetricData> metrics = [
+      _MetricData('Total Staff', reqs.fold<int>(0, (sum, r) => sum + r.headcount).toString(), const Color(0xFF3B82F6)),
+      _MetricData('Open Roles', reqs.where((r) => r.status != 'Filled').length.toString(), const Color(0xFFF59E0B)),
+    ];
+
+    final List<_SectionData> sections = reqs.map<_SectionData>((req) => _SectionData(
+      title: req.title,
+      subtitle: '${req.headcount} slots • ${req.startDate} to ${req.endDate}',
+      statusRows: [
+        _StatusRowData('Status', req.status, req.status == 'Filled' ? const Color(0xFF10B981) : const Color(0xFFF59E0B)),
+      ],
+    )).toList();
+
     return _PlanningSubsectionScreen(
       config: _PlanningSubsectionConfig(
         title: 'Staffing Plan',
-        subtitle:
-            'Plan resource needs, staffing timeline, and onboarding cadence.',
+        subtitle: 'Plan resource needs, staffing timeline, and onboarding cadence.',
         noteKey: 'planning_organization_staffing_plan',
         checkpoint: 'organization_staffing_plan',
         activeItemLabel: 'Organization Plan - Staffing Plan',
-        metrics: const [],
-        sections: const [],
+        metrics: metrics,
+        sections: sections,
       ),
+      onAdd: () async {
+        final newReq = StaffingRequirement(title: 'New Requirement', headcount: 1, startDate: 'TBD', endDate: 'TBD');
+        await ProjectDataHelper.saveAndNavigate(
+          context: context,
+          checkpoint: 'organization_staffing_plan',
+          nextScreenBuilder: () => const OrganizationStaffingPlanScreen(),
+          dataUpdater: (d) => d.copyWith(staffingRequirements: [...d.staffingRequirements, newReq]),
+        );
+        setState(() {});
+      },
     );
   }
 }
 
 class _PlanningSubsectionScreen extends StatelessWidget {
-  const _PlanningSubsectionScreen({required this.config});
+  const _PlanningSubsectionScreen({required this.config, this.onAdd});
 
   final _PlanningSubsectionConfig config;
+  final VoidCallback? onAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +150,8 @@ class _PlanningSubsectionScreen extends StatelessWidget {
                           children: [
                             _TopHeader(
                                 title: config.title,
-                                onBack: () => Navigator.maybePop(context)),
+                                onBack: () => Navigator.maybePop(context),
+                                onAdd: onAdd),
                             const SizedBox(height: 12),
                             Text(
                               config.subtitle,
@@ -117,9 +182,9 @@ class _PlanningSubsectionScreen extends StatelessWidget {
                               ),
                             ] else
                               const _SectionEmptyState(
-                                title: 'No staffing details yet',
+                                title: 'No details yet',
                                 message:
-                                    'Add roles, responsibilities, and staffing notes to populate this view.',
+                                    'Add items or notes to populate this view.',
                                 icon: Icons.group_outlined,
                               ),
                             const SizedBox(height: 40),
@@ -161,10 +226,11 @@ class _PlanningSubsectionConfig {
 }
 
 class _TopHeader extends StatelessWidget {
-  const _TopHeader({required this.title, required this.onBack});
+  const _TopHeader({required this.title, required this.onBack, this.onAdd});
 
   final String title;
   final VoidCallback onBack;
+  final VoidCallback? onAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -182,9 +248,39 @@ class _TopHeader extends StatelessWidget {
               fontWeight: FontWeight.w700,
               color: Color(0xFF111827)),
         ),
+        const SizedBox(width: 16),
+        if (onAdd != null)
+          _AddPill(onTap: onAdd!),
         const Spacer(),
         const _UserChip(),
       ],
+    );
+  }
+}
+
+class _AddPill extends StatelessWidget {
+  const _AddPill({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFF111827),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.add, size: 14, color: Colors.white),
+            SizedBox(width: 4),
+            Text('Add New', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
     );
   }
 }

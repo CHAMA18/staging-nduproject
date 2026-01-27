@@ -70,6 +70,11 @@ class ProjectDataModel {
   // Core Stakeholders Data
   CoreStakeholdersData? coreStakeholdersData;
 
+  // Organisation Plan Data
+  List<RoleDefinition> projectRoles;
+  List<StaffingRequirement> staffingRequirements;
+  List<TrainingActivity> trainingActivities;
+
   // Design Deliverables Data
   DesignDeliverablesData designDeliverablesData;
 
@@ -134,6 +139,9 @@ class ProjectDataModel {
     this.itConsiderationsData,
     this.infrastructureConsiderationsData,
     this.coreStakeholdersData,
+    List<RoleDefinition>? projectRoles,
+    List<StaffingRequirement>? staffingRequirements,
+    List<TrainingActivity>? trainingActivities,
     DesignDeliverablesData? designDeliverablesData,
     ExecutionPhaseData? executionPhaseData,
     this.isBasicPlanProject = false,
@@ -167,6 +175,9 @@ class ProjectDataModel {
         costEstimateItems = costEstimateItems ?? [],
         designDeliverablesData =
             designDeliverablesData ?? DesignDeliverablesData(),
+        projectRoles = projectRoles ?? [],
+        staffingRequirements = staffingRequirements ?? [],
+        trainingActivities = trainingActivities ?? [],
         executionPhaseData = executionPhaseData,
         aiUsageCounts = aiUsageCounts ?? {},
         aiIntegrations = aiIntegrations ?? [],
@@ -213,6 +224,9 @@ class ProjectDataModel {
     ITConsiderationsData? itConsiderationsData,
     InfrastructureConsiderationsData? infrastructureConsiderationsData,
     CoreStakeholdersData? coreStakeholdersData,
+    List<RoleDefinition>? projectRoles,
+    List<StaffingRequirement>? staffingRequirements,
+    List<TrainingActivity>? trainingActivities,
     DesignDeliverablesData? designDeliverablesData,
     ExecutionPhaseData? executionPhaseData,
     bool? isBasicPlanProject,
@@ -270,6 +284,9 @@ class ProjectDataModel {
       infrastructureConsiderationsData: infrastructureConsiderationsData ??
           this.infrastructureConsiderationsData,
       coreStakeholdersData: coreStakeholdersData ?? this.coreStakeholdersData,
+      projectRoles: projectRoles ?? this.projectRoles,
+      staffingRequirements: staffingRequirements ?? this.staffingRequirements,
+      trainingActivities: trainingActivities ?? this.trainingActivities,
       designDeliverablesData:
           designDeliverablesData ?? this.designDeliverablesData,
       executionPhaseData: executionPhaseData ?? this.executionPhaseData,
@@ -345,6 +362,9 @@ class ProjectDataModel {
             infrastructureConsiderationsData!.toJson(),
       if (coreStakeholdersData != null)
         'coreStakeholdersData': coreStakeholdersData!.toJson(),
+      'projectRoles': projectRoles.map((r) => r.toJson()).toList(),
+      'staffingRequirements': staffingRequirements.map((s) => s.toJson()).toList(),
+      'trainingActivities': trainingActivities.map((t) => t.toJson()).toList(),
       'designDeliverables': designDeliverablesData.toJson(),
       'currentCheckpoint': currentCheckpoint,
       'isBasicPlanProject': isBasicPlanProject,
@@ -2433,6 +2453,7 @@ class DesignDeliverableRegisterItem {
   }
 }
 
+<<<<<<< HEAD
 /// Field history tracking for undo functionality
 class FieldHistory {
   final String fieldName;
@@ -2480,6 +2501,113 @@ class FieldHistory {
       fieldName: json['fieldName']?.toString() ?? '',
       history: (json['history'] as List?)?.map((e) => e.toString()).toList() ?? [],
       isAiGenerated: json['isAiGenerated'] == true,
+    );
+  }
+}
+
+class RoleDefinition {
+  String id;
+  String title;
+  String description;
+  String workstream;
+
+  RoleDefinition({
+    String? id,
+    this.title = '',
+    this.description = '',
+    this.workstream = '',
+  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'description': description,
+        'workstream': workstream,
+      };
+
+  factory RoleDefinition.fromJson(Map<String, dynamic> json) {
+    return RoleDefinition(
+      id: json['id']?.toString(),
+      title: json['title']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      workstream: json['workstream']?.toString() ?? '',
+    );
+  }
+}
+
+class StaffingRequirement {
+  String id;
+  String title;
+  int headcount;
+  String startDate;
+  String endDate;
+  String status;
+
+  StaffingRequirement({
+    String? id,
+    this.title = '',
+    this.headcount = 1,
+    this.startDate = '',
+    this.endDate = '',
+    this.status = 'Not Started',
+  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'headcount': headcount,
+        'startDate': startDate,
+        'endDate': endDate,
+        'status': status,
+      };
+
+  factory StaffingRequirement.fromJson(Map<String, dynamic> json) {
+    return StaffingRequirement(
+      id: json['id']?.toString(),
+      title: json['title']?.toString() ?? '',
+      headcount: json['headcount'] as int? ?? 1,
+      startDate: json['startDate']?.toString() ?? '',
+      endDate: json['endDate']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'Not Started',
+    );
+  }
+}
+
+class TrainingActivity {
+  String id;
+  String title;
+  String date;
+  String duration;
+  String category; // Training or Team Building
+  String status;
+
+  TrainingActivity({
+    String? id,
+    this.title = '',
+    this.date = '',
+    this.duration = '',
+    this.category = 'Training',
+    this.status = 'Upcoming',
+  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'date': date,
+        'duration': duration,
+        'category': category,
+        'status': status,
+      };
+
+  factory TrainingActivity.fromJson(Map<String, dynamic> json) {
+    return TrainingActivity(
+      id: json['id']?.toString(),
+      title: json['title']?.toString() ?? '',
+      date: json['date']?.toString() ?? '',
+      duration: json['duration']?.toString() ?? '',
+      category: json['category']?.toString() ?? 'Training',
+      status: json['status']?.toString() ?? 'Upcoming',
+>>>>>>> 4aec0fed560453de42f8d9833522eb25be70360b
     );
   }
 }

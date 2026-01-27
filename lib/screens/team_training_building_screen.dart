@@ -8,11 +8,24 @@ import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/screens/training_project_tasks_screen.dart';
 
-class TeamTrainingAndBuildingScreen extends StatelessWidget {
+import 'package:ndu_project/utils/project_data_helper.dart';
+
+class TeamTrainingAndBuildingScreen extends StatefulWidget {
   const TeamTrainingAndBuildingScreen({super.key});
 
   @override
+  State<TeamTrainingAndBuildingScreen> createState() => _TeamTrainingAndBuildingScreenState();
+}
+
+class _TeamTrainingAndBuildingScreenState extends State<TeamTrainingAndBuildingScreen> {
+  @override
   Widget build(BuildContext context) {
+    final projectData = ProjectDataHelper.getData(context);
+    final activities = projectData.trainingActivities;
+    
+    final training = activities.where((a) => a.category == 'Training').toList();
+    final teamBuilding = activities.where((a) => a.category == 'Team Building').toList();
+
     final sidebarWidth = AppBreakpoints.sidebarWidth(context);
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -22,14 +35,18 @@ class TeamTrainingAndBuildingScreen extends StatelessWidget {
             openWidth: sidebarWidth,
             child: const InitiationLikeSidebar(activeItemLabel: 'Team Training and Team Building'),
           ),
-          Expanded(child: _buildMain(context)),
+          Expanded(child: _buildMain(context, training, teamBuilding)),
         ],
       ),
     );
   }
 
+  Widget _buildMain(BuildContext context, List<TrainingActivity> training, List<TrainingActivity> teamBuilding) {
+    final totalTraining = training.length;
+    final completedTraining = training.where((a) => a.status == 'Completed').length;
+    final totalTeamBuilding = teamBuilding.length;
+    final completedTeamBuilding = teamBuilding.where((a) => a.status == 'Completed').length;
 
-  Widget _buildMain(BuildContext context) {
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(32, 24, 32, 32),
@@ -39,7 +56,7 @@ class TeamTrainingAndBuildingScreen extends StatelessWidget {
             // Header
             Row(
               children: [
-                _circleIconButton(Icons.arrow_back_ios),
+                _circleIconButton(Icons.arrow_back_ios, onTap: () => Navigator.maybePop(context)),
                 const SizedBox(width: 12),
                 _circleIconButton(Icons.arrow_forward_ios),
                 const SizedBox(width: 16),
@@ -72,6 +89,21 @@ class TeamTrainingAndBuildingScreen extends StatelessWidget {
               description: 'Outline training themes, cadence, and team-building priorities.',
             ),
             const SizedBox(height: 16),
+            // Add New Button
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton.icon(
+                onPressed: _onAddNewActivity,
+                icon: const Icon(Icons.add),
+                label: const Text('Add Activity'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF111827),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
             // Main overview card
             Container(
               decoration: BoxDecoration(
@@ -102,19 +134,19 @@ class TeamTrainingAndBuildingScreen extends StatelessWidget {
                             const Text('Training & Development', style: TextStyle(fontWeight: FontWeight.w700)),
                             const SizedBox(height: 4),
                             Text(
-                              'Continuous learning and skill development are essential for project success and professional growth. Our training program ensures team members have the knowledge and skills needed to excel in their roles.',
+                              'Continuous learning and skill development are essential for project success and professional growth.',
                               style: TextStyle(fontSize: 12, color: Colors.grey[700]),
                             ),
                             const SizedBox(height: 12),
                             Row(
-                              children: const [
-                                Expanded(child: _StatTile(icon: Icons.school_outlined, label: 'Total Training Events', value: '5')),
-                                SizedBox(width: 12),
-                                Expanded(child: _StatTile(icon: Icons.verified_outlined, label: 'Completed Trainings', value: '2')),
+                              children: [
+                                Expanded(child: _StatTile(icon: Icons.school_outlined, label: 'Total Events', value: totalTraining.toString())),
+                                const SizedBox(width: 12),
+                                Expanded(child: _StatTile(icon: Icons.verified_outlined, label: 'Completed', value: completedTraining.toString())),
                               ],
                             ),
                             const SizedBox(height: 16),
-                            _UpcomingTrainingCard(accent: Colors.blue, heart: false),
+                            _UpcomingTrainingColumn(accent: Colors.blue, heart: false, activities: training),
                           ],
                         ),
                       ),
@@ -127,19 +159,19 @@ class TeamTrainingAndBuildingScreen extends StatelessWidget {
                             const Text('Team Building', style: TextStyle(fontWeight: FontWeight.w700)),
                             const SizedBox(height: 4),
                             Text(
-                              'Team building activities strengthen relationships, improve communication, and foster a collaborative environment. Regular team building events create a positive team culture and enhance productivity.',
+                              'Team building activities strengthen relationships, improve communication, and foster a collaborative environment.',
                               style: TextStyle(fontSize: 12, color: Colors.grey[700]),
                             ),
                             const SizedBox(height: 12),
                             Row(
-                              children: const [
-                                Expanded(child: _StatTile(icon: Icons.event_available_outlined, label: 'Team Building Events', value: '5')),
-                                SizedBox(width: 12),
-                                Expanded(child: _StatTile(icon: Icons.check_circle_outline, label: 'Completed Events', value: '2')),
+                              children: [
+                                Expanded(child: _StatTile(icon: Icons.event_available_outlined, label: 'Total Events', value: totalTeamBuilding.toString())),
+                                const SizedBox(width: 12),
+                                Expanded(child: _StatTile(icon: Icons.check_circle_outline, label: 'Completed', value: completedTeamBuilding.toString())),
                               ],
                             ),
                             const SizedBox(height: 16),
-                            const _UpcomingTrainingCard(accent: Colors.purple, heart: true),
+                            _UpcomingTrainingColumn(accent: Colors.purple, heart: true, activities: teamBuilding),
                           ],
                         ),
                       ),
@@ -151,8 +183,8 @@ class TeamTrainingAndBuildingScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
             // Benefits row
-            Row(
-              children: const [
+            const Row(
+              children: [
                 Expanded(child: _BenefitCard(icon: Icons.lightbulb_outline, title: 'Skill Development', subtitle: 'Enhance technical and soft skills through structured learning')),
                 SizedBox(width: 12),
                 Expanded(child: _BenefitCard(icon: Icons.favorite_border, title: 'Team Cohesion', subtitle: 'Build stronger relationships and mutual trust')),
@@ -204,17 +236,21 @@ class TeamTrainingAndBuildingScreen extends StatelessWidget {
     );
   }
 
-  Widget _circleIconButton(IconData icon) {
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))],
-      ),
-      child: Icon(icon, size: 16, color: Colors.grey[700]),
+  void _onAddNewActivity() async {
+    final newActivity = TrainingActivity(
+      title: 'New Event',
+      date: '2026-06-01',
+      duration: '2h',
+      category: 'Training',
+      status: 'Upcoming',
     );
+    await ProjectDataHelper.saveAndNavigate(
+      context: context,
+      checkpoint: 'team_training',
+      nextScreenBuilder: () => const TeamTrainingAndBuildingScreen(),
+      dataUpdater: (d) => d.copyWith(trainingActivities: [...d.trainingActivities, newActivity]),
+    );
+    setState(() {});
   }
 
   Widget _profileCluster(BuildContext context) {
@@ -273,6 +309,24 @@ class TeamTrainingAndBuildingScreen extends StatelessWidget {
       ],
     );
   }
+
+  Widget _circleIconButton(IconData icon, {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))],
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+        ),
+        child: Icon(icon, size: 16, color: Colors.grey[700]),
+      ),
+    );
+  }
 }
 
 
@@ -306,13 +360,17 @@ class _StatTile extends StatelessWidget {
   }
 }
 
-class _UpcomingTrainingCard extends StatelessWidget {
+class _UpcomingTrainingColumn extends StatelessWidget {
   final Color accent;
   final bool heart;
-  const _UpcomingTrainingCard({required this.accent, this.heart = false});
+  final List<TrainingActivity> activities;
+  const _UpcomingTrainingColumn({required this.accent, this.heart = false, required this.activities});
 
   @override
   Widget build(BuildContext context) {
+    // Show top 2 upcoming
+    final upcoming = activities.where((a) => a.status == 'Upcoming').take(2).toList();
+    
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -330,34 +388,43 @@ class _UpcomingTrainingCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(heart ? Icons.favorite_border : Icons.auto_awesome, color: accent),
+                Icon(heart ? Icons.favorite_border : Icons.auto_awesome, color: accent, size: 18),
                 const SizedBox(width: 8),
-                Text('Upcoming Training', style: TextStyle(color: accent, fontWeight: FontWeight.w700)),
+                Text('Next up', style: TextStyle(color: accent, fontWeight: FontWeight.w700, fontSize: 13)),
               ],
             ),
           ),
-          _trainingItem(),
-          const Divider(height: 1),
-          _trainingItem(),
+          if (upcoming.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text('No upcoming events', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            )
+          else
+            ...upcoming.map((a) => Column(
+              children: [
+                _trainingItem(a),
+                if (a != upcoming.last) const Divider(height: 1),
+              ],
+            )),
         ],
       ),
     );
   }
 
-  Widget _trainingItem() {
+  Widget _trainingItem(TrainingActivity activity) {
     return Padding(
       padding: const EdgeInsets.all(12.0),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Agile Project Management Fundamentals', style: TextStyle(fontWeight: FontWeight.w700)),
+        Text(activity.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
         const SizedBox(height: 6),
-        Row(children: const [
-          Icon(Icons.event_outlined, size: 18, color: Colors.grey),
-          SizedBox(width: 6),
-          Text('2025-04-10', style: TextStyle(color: Colors.black87)),
-          SizedBox(width: 12),
-          Icon(Icons.schedule_outlined, size: 18, color: Colors.grey),
-          SizedBox(width: 6),
-          Text('16 hours', style: TextStyle(color: Colors.black87)),
+        Row(children: [
+          const Icon(Icons.event_outlined, size: 14, color: Colors.grey),
+          const SizedBox(width: 4),
+          Text(activity.date, style: const TextStyle(color: Colors.black87, fontSize: 11)),
+          const SizedBox(width: 12),
+          const Icon(Icons.schedule_outlined, size: 14, color: Colors.grey),
+          const SizedBox(width: 4),
+          Text(activity.duration, style: const TextStyle(color: Colors.black87, fontSize: 11)),
         ]),
       ]),
     );

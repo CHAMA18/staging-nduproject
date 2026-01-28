@@ -3,6 +3,7 @@ import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/services/sidebar_navigation_service.dart';
 import 'package:ndu_project/utils/phase_transition_helper.dart';
+import 'package:provider/provider.dart';
 
 /// Helper functions for easy integration of ProjectDataProvider across screens
 class ProjectDataHelper {
@@ -10,9 +11,8 @@ class ProjectDataHelper {
   /// Returns true if the destination is locked, false if accessible
   static bool isDestinationLocked(
       BuildContext context, String destinationCheckpoint) {
-    final provider = ProjectDataInherited.maybeOf(context);
-    if (provider == null) return true; // Lock if no provider
-
+    final provider = Provider.of<ProjectDataProvider>(context, listen: false);
+    
     final projectData = provider.projectData;
     final currentCheckpoint = projectData.currentCheckpoint;
 
@@ -99,7 +99,7 @@ class ProjectDataHelper {
         destinationCheckpoint, // Optional: checkpoint of destination screen for lock checking
     String? destinationName, // Optional: human-readable name for error messages
   }) async {
-    final provider = ProjectDataInherited.of(context);
+    final provider = Provider.of<ProjectDataProvider>(context, listen: false);
 
     // Security check: Verify destination is not locked
     if (destinationCheckpoint != null &&
@@ -499,12 +499,12 @@ class ProjectDataHelper {
 
   /// Get project data from context
   static ProjectDataModel getData(BuildContext context) {
-    return ProjectDataInherited.of(context).projectData;
+    return Provider.of<ProjectDataProvider>(context).projectData;
   }
 
   /// Get provider from context
   static ProjectDataProvider getProvider(BuildContext context) {
-    return ProjectDataInherited.of(context);
+    return Provider.of<ProjectDataProvider>(context, listen: false);
   }
 
   /// Update and save data without navigation
@@ -514,7 +514,7 @@ class ProjectDataHelper {
     required ProjectDataModel Function(ProjectDataModel) dataUpdater,
     bool showSnackbar = true,
   }) async {
-    final provider = ProjectDataInherited.of(context);
+    final provider = Provider.of<ProjectDataProvider>(context, listen: false);
     provider.updateField(dataUpdater);
 
     final success = await provider.saveToFirebase(checkpoint: checkpoint);

@@ -12,6 +12,8 @@ import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
+import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/widgets/project_workspace_sidebar.dart';
 
 class StakeholderManagementScreen extends StatefulWidget {
   const StakeholderManagementScreen({super.key});
@@ -29,10 +31,8 @@ class StakeholderManagementScreen extends StatefulWidget {
 class _StakeholderManagementScreenState extends State<StakeholderManagementScreen> {
   int _activeTabIndex = 1; // 0 = Stakeholders, 1 = Engagement Plans
 
-  final List<_StakeholderEntry> _stakeholders = [];
-  final List<_EngagementPlanEntry> _engagementPlans = [];
-  final _Debouncer _stakeholderSaveDebounce = _Debouncer();
-  final _Debouncer _planSaveDebounce = _Debouncer();
+  final _stakeholderSaveDebounce = _Debouncer();
+  final _planSaveDebounce = _Debouncer();
   bool _loadingStakeholders = false;
   bool _loadingPlans = false;
   String _searchQuery = '';
@@ -40,10 +40,7 @@ class _StakeholderManagementScreenState extends State<StakeholderManagementScree
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadStakeholders();
-      _loadEngagementPlans();
-    });
+    // Data is managed by ProjectDataHelper and Provider
   }
 
   @override
@@ -57,218 +54,251 @@ class _StakeholderManagementScreenState extends State<StakeholderManagementScree
   Widget build(BuildContext context) {
     final bool isMobile = AppBreakpoints.isMobile(context);
     final double horizontalPadding = isMobile ? 20 : 36;
+    final projectData = ProjectDataHelper.getData(context);
+
+    // Filter stakeholders and plans based on search
+    final filteredStakeholders = projectData.stakeholderEntries.where((s) {
+      if (_searchQuery.isEmpty) return true;
+      final q = _searchQuery.toLowerCase();
+      return s.name.toLowerCase().contains(q) || 
+             s.organization.toLowerCase().contains(q) || 
+             s.role.toLowerCase().contains(q);
+    }).toList();
+
+    final filteredPlans = projectData.engagementPlanEntries.where((p) {
+      if (_searchQuery.isEmpty) return true;
+      final q = _searchQuery.toLowerCase();
+      return p.stakeholder.toLowerCase().contains(q) || 
+             p.objective.toLowerCase().contains(q);
+    }).toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
-      body: SafeArea(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            DraggableSidebar(
-              openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(activeItemLabel: 'Stakeholder Management'),
-            ),
-            Expanded(
-              child: Stack(
-                children: [
-                  SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 28),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _TopUtilityBar(onBack: () => Navigator.maybePop(context)),
-                        const SizedBox(height: 28),
-                        _TitleSection(
-                          showButtonsBelow: isMobile,
-                          onExport: () {},
-                          onAddProject: () {},
+      body: Row(
+        children: [
+          DraggableSidebar(
+            openWidth: AppBreakpoints.sidebarWidth(context),
+            child: const InitiationLikeSidebar(activeItemLabel: 'Stakeholder Management'),
+          ),
+          Expanded(
+            child: Column(
+              children: [
+                const _TopUtilityBar(),
+                Expanded(
+                  child: Stack(
+                    children: [
+                      SingleChildScrollView(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 32),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _TitleSection(
+                                showButtonsBelow: isMobile,
+                                onExport: () {},
+                                onAddProject: () {},
+                                onAutoPopulate: _autoPopulateFromInitiation,
+                              ),
+                              const SizedBox(height: 24),
+                              const PlanningAiNotesCard(
+                                title: 'Stakeholder Notes',
+                                sectionLabel: 'Stakeholder Management',
+                                noteKey: 'planning_stakeholder_notes',
+                                checkpoint: 'stakeholder_management',
+                                description: 'Capture overall stakeholder strategy, risks, and communication protocols.',
+                              ),
+                              const SizedBox(height: 32),
+                              _StatsRow(
+                                totalStakeholders: projectData.stakeholderEntries.length,
+                                externalCount: projectData.stakeholderEntries.where((s) => s.organization.toLowerCase() != 'internal').length,
+                              ),
+                              const SizedBox(height: 32),
+                              _InfluenceInterestMatrix(stakeholders: projectData.stakeholderEntries),
+                              const SizedBox(height: 32),
+                              _EngagementSection(
+                                activeTabIndex: _activeTabIndex,
+                                onTabChanged: (idx) => setState(() => _activeTabIndex = idx),
+                                stakeholderTable: _StakeholdersTable(
+                                  entries: filteredStakeholders,
+                                  isLoading: false,
+                                  onChanged: _updateStakeholder,
+                                  onDelete: _deleteStakeholder,
+                                ),
+                                planTable: _EngagementPlansTable(
+                                  entries: filteredPlans,
+                                  isLoading: false,
+                                  onChanged: _updateEngagementPlan,
+                                  onDelete: _deleteEngagementPlan,
+                                ),
+                                onAdd: _activeTabIndex == 0 ? _addStakeholder : _addEngagementPlan,
+                                onSearch: (v) => setState(() => _searchQuery = v),
+                              ),
+                              const SizedBox(height: 60),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 24),
-                        const PlanningAiNotesCard(
-                          title: 'Notes',
-                          sectionLabel: 'Stakeholder Management',
-                          noteKey: 'planning_stakeholder_management_notes',
-                          checkpoint: 'stakeholder_management',
-                          description: 'Summarize stakeholder priorities, engagement cadence, and influence mapping.',
-                        ),
-                        const SizedBox(height: 28),
-                        _StatsRow(
-                          isMobile: isMobile,
-                          totalStakeholders: _stakeholders.length,
-                          highInfluenceCount: _stakeholders.where((entry) => entry.influence.toLowerCase() == 'high').length,
-                        ),
-                        const SizedBox(height: 24),
-                        _InfoCardsRow(isMobile: isMobile),
-                        const SizedBox(height: 24),
-                        _InfluenceInterestMatrix(stakeholders: _stakeholders),
-                        const SizedBox(height: 28),
-                        _EngagementSection(
-                          activeTabIndex: _activeTabIndex,
-                          onTabChanged: (index) => setState(() => _activeTabIndex = index),
-                          stakeholders: _stakeholders.where((s) => s.name.toLowerCase().contains(_searchQuery.toLowerCase()) || s.organization.toLowerCase().contains(_searchQuery.toLowerCase())).toList(),
-                          engagementPlans: _engagementPlans.where((p) => p.stakeholder.toLowerCase().contains(_searchQuery.toLowerCase()) || p.objective.toLowerCase().contains(_searchQuery.toLowerCase())).toList(),
-                          isLoadingStakeholders: _loadingStakeholders,
-                          isLoadingPlans: _loadingPlans,
-                          onAddStakeholder: _addStakeholder,
-                          onUpdateStakeholder: _updateStakeholder,
-                          onDeleteStakeholder: _deleteStakeholder,
-                          onAddPlan: _addEngagementPlan,
-                          onUpdatePlan: _updateEngagementPlan,
-                          onDeletePlan: _deleteEngagementPlan,
-                          searchQuery: _searchQuery,
-                          onSearchQueryChanged: (query) => setState(() => _searchQuery = query),
-                        ),
-                        const SizedBox(height: 80),
-                      ],
-                    ),
+                      ),
+                      const Positioned(right: 24, bottom: 24, child: KazAiChatBubble()),
+                    ],
                   ),
-                  const KazAiChatBubble(),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   String? _projectId() => ProjectDataHelper.getData(context).projectId;
 
-  Future<void> _loadStakeholders() async {
-    final projectId = _projectId();
-    if (projectId == null || projectId.isEmpty) return;
-    setState(() => _loadingStakeholders = true);
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('projects')
-          .doc(projectId)
-          .collection('stakeholder_management')
-          .doc('stakeholders')
-          .get();
-      final data = doc.data() ?? {};
-      final items = data['items'];
-      final entries = _StakeholderEntry.fromList(items);
-      if (!mounted) return;
-      setState(() {
-        _stakeholders
-          ..clear()
-          ..addAll(entries);
-      });
-    } catch (error) {
-      debugPrint('Failed to load stakeholders: $error');
-    } finally {
-      if (mounted) setState(() => _loadingStakeholders = false);
-    }
+  // Manual persistence methods removed as we now use ProjectDataHelper.updateAndSave
+
+  void _addStakeholder() async {
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'stakeholder_management',
+      dataUpdater: (d) => d.copyWith(
+        stakeholderEntries: [...d.stakeholderEntries, StakeholderEntry.empty()],
+      ),
+    );
   }
 
-  Future<void> _loadEngagementPlans() async {
-    final projectId = _projectId();
-    if (projectId == null || projectId.isEmpty) return;
-    setState(() => _loadingPlans = true);
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('projects')
-          .doc(projectId)
-          .collection('stakeholder_management')
-          .doc('engagement_plans')
-          .get();
-      final data = doc.data() ?? {};
-      final items = data['items'];
-      final entries = _EngagementPlanEntry.fromList(items);
-      if (!mounted) return;
-      setState(() {
-        _engagementPlans
-          ..clear()
-          ..addAll(entries);
-      });
-    } catch (error) {
-      debugPrint('Failed to load engagement plans: $error');
-    } finally {
-      if (mounted) setState(() => _loadingPlans = false);
-    }
-  }
-
-  void _scheduleStakeholderSave() {
-    _stakeholderSaveDebounce.run(_persistStakeholders);
-  }
-
-  void _schedulePlanSave() {
-    _planSaveDebounce.run(_persistEngagementPlans);
-  }
-
-  Future<void> _persistStakeholders() async {
-    final projectId = _projectId();
-    if (projectId == null || projectId.isEmpty) return;
-    final payload = {
-      'items': _stakeholders.map((entry) => entry.toJson()).toList(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
-    await FirebaseFirestore.instance
-        .collection('projects')
-        .doc(projectId)
-        .collection('stakeholder_management')
-        .doc('stakeholders')
-        .set(payload, SetOptions(merge: true));
-  }
-
-  Future<void> _persistEngagementPlans() async {
-    final projectId = _projectId();
-    if (projectId == null || projectId.isEmpty) return;
-    final payload = {
-      'items': _engagementPlans.map((entry) => entry.toJson()).toList(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
-    await FirebaseFirestore.instance
-        .collection('projects')
-        .doc(projectId)
-        .collection('stakeholder_management')
-        .doc('engagement_plans')
-        .set(payload, SetOptions(merge: true));
-  }
-
-  void _addStakeholder() {
-    setState(() {
-      _stakeholders.add(_StakeholderEntry.empty());
-    });
-    _scheduleStakeholderSave();
-  }
-
-  void _updateStakeholder(_StakeholderEntry updated) {
-    final index = _stakeholders.indexWhere((entry) => entry.id == updated.id);
+  void _updateStakeholder(StakeholderEntry updated) async {
+    final projectData = ProjectDataHelper.getData(context);
+    final entries = List<StakeholderEntry>.from(projectData.stakeholderEntries);
+    final index = entries.indexWhere((entry) => entry.id == updated.id);
     if (index == -1) return;
-    setState(() => _stakeholders[index] = updated.copyWith(updatedAt: DateTime.now()));
-    _scheduleStakeholderSave();
-  }
-
-  void _deleteStakeholder(String id) {
-    setState(() => _stakeholders.removeWhere((entry) => entry.id == id));
-    _scheduleStakeholderSave();
-  }
-
-  void _addEngagementPlan() {
-    setState(() {
-      _engagementPlans.add(_EngagementPlanEntry.empty());
+    entries[index] = updated.copyWith(updatedAt: DateTime.now());
+    
+    // Use a debonced save here to avoid too many writes while typing in the table
+    _stakeholderSaveDebounce.run(() async {
+        await ProjectDataHelper.updateAndSave(
+            context: context,
+            checkpoint: 'stakeholder_management',
+            showSnackbar: false,
+            dataUpdater: (d) => d.copyWith(stakeholderEntries: entries),
+        );
     });
-    _schedulePlanSave();
   }
 
-  void _updateEngagementPlan(_EngagementPlanEntry updated) {
-    final index = _engagementPlans.indexWhere((entry) => entry.id == updated.id);
+  void _deleteStakeholder(String id) async {
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'stakeholder_management',
+      dataUpdater: (d) => d.copyWith(
+        stakeholderEntries: d.stakeholderEntries.where((e) => e.id != id).toList(),
+      ),
+    );
+  }
+
+  void _addEngagementPlan() async {
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'stakeholder_management',
+      dataUpdater: (d) => d.copyWith(
+        engagementPlanEntries: [...d.engagementPlanEntries, EngagementPlanEntry.empty()],
+      ),
+    );
+  }
+
+  void _updateEngagementPlan(EngagementPlanEntry updated) async {
+    final projectData = ProjectDataHelper.getData(context);
+    final entries = List<EngagementPlanEntry>.from(projectData.engagementPlanEntries);
+    final index = entries.indexWhere((entry) => entry.id == updated.id);
     if (index == -1) return;
-    setState(() => _engagementPlans[index] = updated.copyWith(updatedAt: DateTime.now()));
-    _schedulePlanSave();
+    entries[index] = updated.copyWith(updatedAt: DateTime.now());
+
+    _planSaveDebounce.run(() async {
+        await ProjectDataHelper.updateAndSave(
+            context: context,
+            checkpoint: 'stakeholder_management',
+            showSnackbar: false,
+            dataUpdater: (d) => d.copyWith(engagementPlanEntries: entries),
+        );
+    });
   }
 
-  void _deleteEngagementPlan(String id) {
-    setState(() => _engagementPlans.removeWhere((entry) => entry.id == id));
-    _schedulePlanSave();
+  void _deleteEngagementPlan(String id) async {
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'stakeholder_management',
+      dataUpdater: (d) => d.copyWith(
+        engagementPlanEntries: d.engagementPlanEntries.where((e) => e.id != id).toList(),
+      ),
+    );
+  }
+
+  Future<void> _autoPopulateFromInitiation() async {
+    final projectData = ProjectDataHelper.getData(context);
+    final coreStakeholders = projectData.coreStakeholdersData;
+    if (coreStakeholders == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No stakeholder data found in Initiation Phase.')));
+      return;
+    }
+
+    final selectedSolutionId = projectData.preferredSolutionId;
+    final solutionData = coreStakeholders.solutionStakeholderData.firstWhere(
+      (s) => s.solutionTitle == projectData.preferredSolution?.title,
+      orElse: () => coreStakeholders.solutionStakeholderData.isNotEmpty 
+          ? coreStakeholders.solutionStakeholderData.first 
+          : SolutionStakeholderData(),
+    );
+
+    if (solutionData.solutionTitle.isEmpty && coreStakeholders.solutionStakeholderData.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No stakeholder data found in Initiation Phase.')));
+        return;
+    }
+
+    final List<StakeholderEntry> newEntries = [];
+
+    void parseAndAdd(String text, String org) {
+      final lines = text.split('\n');
+      final projectData = ProjectDataHelper.getData(context);
+      for (var line in lines) {
+        final cleaned = line.replaceAll(RegExp(r'^[-*•]\s*'), '').trim();
+        if (cleaned.isNotEmpty) {
+          if (!projectData.stakeholderEntries.any((s) => s.name.toLowerCase() == cleaned.toLowerCase())) {
+            newEntries.add(StakeholderEntry(
+              id: DateTime.now().microsecondsSinceEpoch.toString() + cleaned.hashCode.toString(),
+              name: cleaned,
+              organization: org,
+              role: 'TBD',
+              contactInfo: '',
+              influence: 'Medium',
+              interest: 'Medium',
+              channel: 'Email',
+              owner: 'Project Manager',
+              notes: 'Added from Initiation Phase',
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            ));
+          }
+        }
+      }
+    }
+
+    parseAndAdd(solutionData.internalStakeholders, 'Internal');
+    parseAndAdd(solutionData.externalStakeholders, 'External');
+
+    if (newEntries.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('All stakeholders from Initiation are already present.')));
+      return;
+    }
+
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'stakeholder_management',
+      dataUpdater: (d) => d.copyWith(
+        stakeholderEntries: [...d.stakeholderEntries, ...newEntries],
+      ),
+    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Added ${newEntries.length} stakeholders from Initiation Phase.')));
   }
 }
 
 class _TopUtilityBar extends StatelessWidget {
-  const _TopUtilityBar({required this.onBack});
-
-  final VoidCallback onBack;
+  const _TopUtilityBar();
 
   @override
   Widget build(BuildContext context) {
@@ -281,7 +311,7 @@ class _TopUtilityBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _circleButton(icon: Icons.arrow_back_ios_new_rounded, onTap: onBack),
+          _circleButton(icon: Icons.arrow_back_ios_new_rounded, onTap: () => Navigator.maybePop(context)),
           const SizedBox(width: 12),
           _circleButton(
              icon: Icons.arrow_forward_ios_rounded,
@@ -384,11 +414,12 @@ class _UserChip extends StatelessWidget {
 }
 
 class _TitleSection extends StatelessWidget {
-  const _TitleSection({required this.showButtonsBelow, required this.onExport, required this.onAddProject});
+  const _TitleSection({required this.showButtonsBelow, required this.onExport, required this.onAddProject, this.onAutoPopulate});
 
   final bool showButtonsBelow;
   final VoidCallback onExport;
   final VoidCallback onAddProject;
+  final VoidCallback? onAutoPopulate;
 
   @override
   Widget build(BuildContext context) {
@@ -416,15 +447,39 @@ class _TitleSection extends StatelessWidget {
                 ],
               ),
             ),
-            if (!showButtonsBelow) buttons,
+            if (!showButtonsBelow) ...[
+                if (onAutoPopulate != null)
+                   _topButton(label: 'Auto-populate', icon: Icons.auto_awesome, color: const Color(0xFFFFC107), textColor: Colors.black, onPressed: onAutoPopulate!),
+                   const SizedBox(width: 12),
+                buttons,
+            ],
           ],
         ),
         if (showButtonsBelow) ...[
           const SizedBox(height: 16),
+          if (onAutoPopulate != null) ...[
+             _topButton(label: 'Auto-populate from Initiation', icon: Icons.auto_awesome, color: const Color(0xFFFFC107), textColor: Colors.black, onPressed: onAutoPopulate!),
+             const SizedBox(height: 12),
+          ],
           buttons,
         ],
       ],
     );
+  }
+
+  Widget _topButton({required String label, required IconData icon, required Color color, required Color textColor, required VoidCallback onPressed}) {
+      return ElevatedButton.icon(
+          onPressed: onPressed,
+          icon: Icon(icon, size: 16, color: textColor),
+          label: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: textColor)),
+          style: ElevatedButton.styleFrom(
+              backgroundColor: color,
+              foregroundColor: textColor,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+      );
   }
 
 
@@ -432,31 +487,29 @@ class _TitleSection extends StatelessWidget {
 
 class _StatsRow extends StatelessWidget {
   const _StatsRow({
-    required this.isMobile,
     required this.totalStakeholders,
-    required this.highInfluenceCount,
+    required this.externalCount,
   });
 
-  final bool isMobile;
   final int totalStakeholders;
-  final int highInfluenceCount;
+  final int externalCount;
 
   @override
   Widget build(BuildContext context) {
-    final String totalLabel = totalStakeholders == 0 ? '0' : totalStakeholders.toString();
-    final String highInfluenceLabel = totalStakeholders == 0 ? '0' : highInfluenceCount.toString();
+    final bool isMobile = AppBreakpoints.isMobile(context);
+    
     final children = [
       _MetricCard(
         title: 'Total Stakeholders',
-        value: totalLabel,
+        value: totalStakeholders.toString(),
         icon: Icons.people_alt_outlined,
-        accentColor: Color(0xFF60A5FA),
+        accentColor: const Color(0xFF60A5FA),
       ),
       _MetricCard(
-        title: 'High Influence',
-        value: highInfluenceLabel,
-        icon: Icons.trending_up_rounded,
-        accentColor: Color(0xFFF87171),
+        title: 'External Partners',
+        value: externalCount.toString(),
+        icon: Icons.public_rounded,
+        accentColor: const Color(0xFF10B981),
       ),
     ];
 
@@ -473,9 +526,10 @@ class _StatsRow extends StatelessWidget {
 
     return Row(
       children: [
-        Expanded(child: children[0]),
-        const SizedBox(width: 16),
-        Expanded(child: children[1]),
+        for (int i = 0; i < children.length; i++) ...[
+          if (i != 0) const SizedBox(width: 16),
+          Expanded(child: children[i]),
+        ],
       ],
     );
   }
@@ -625,15 +679,15 @@ class _LevelDistributionCard extends StatelessWidget {
 class _InfluenceInterestMatrix extends StatelessWidget {
   const _InfluenceInterestMatrix({required this.stakeholders});
 
-  final List<_StakeholderEntry> stakeholders;
+  final List<StakeholderEntry> stakeholders;
 
   @override
   Widget build(BuildContext context) {
-    // Quadrants mapping (Power/Influence on Y-axis, Interest on X-axis)
-    // 1. Manage Closely (High/High)
-    final manageClosely = stakeholders.where((s) => s.influence == 'High' && s.interest == 'High').toList();
-    // 2. Keep Satisfied (High Influence, Low/Med Interest)
-    final keepSatisfied = stakeholders.where((s) => s.influence == 'High' && (s.interest == 'Low' || s.interest == 'Medium')).toList();
+    final hHighILow = stakeholders.where((s) => s.influence == 'High' && s.interest == 'Low').toList();
+    final hHighIHigh = stakeholders.where((s) => s.influence == 'High' && s.interest == 'High').toList();
+    final hLowILow = stakeholders.where((s) => s.influence == 'Low' && s.interest == 'Low').toList();
+    final hLowIHigh = stakeholders.where((s) => s.influence == 'Low' && s.interest == 'High').toList();
+    final hMid = stakeholders.where((s) => s.influence == 'Medium' || s.interest == 'Medium').toList();
     // 3. Keep Informed (Low/Med Influence, High Interest)
     final keepInformed = stakeholders.where((s) => (s.influence == 'Low' || s.influence == 'Medium') && s.interest == 'High').toList();
     // 4. Monitor (Low/Med Influence, Low/Med Interest)
@@ -679,7 +733,7 @@ class _InfluenceInterestMatrix extends StatelessWidget {
                       label: 'Keep Satisfied',
                       color: const Color(0xFFEFF6FF), // Blue
                       accentColor: const Color(0xFF3B82F6),
-                      stakeholders: keepSatisfied,
+                      stakeholders: hHighILow,
                     ),
                   ),
                   Expanded(
@@ -687,7 +741,7 @@ class _InfluenceInterestMatrix extends StatelessWidget {
                       label: 'Manage Closely (Key Players)',
                       color: const Color(0xFFFEF2F2), // Red
                       accentColor: const Color(0xFFEF4444),
-                      stakeholders: manageClosely,
+                      stakeholders: hHighIHigh,
                     ),
                   ),
                 ],
@@ -701,7 +755,7 @@ class _InfluenceInterestMatrix extends StatelessWidget {
                       label: 'Monitor (Minimal Effort)',
                       color: const Color(0xFFF9FAFB), // Grey
                       accentColor: const Color(0xFF6B7280),
-                      stakeholders: monitor,
+                      stakeholders: hLowILow,
                     ),
                   ),
                   Expanded(
@@ -709,7 +763,7 @@ class _InfluenceInterestMatrix extends StatelessWidget {
                       label: 'Keep Informed',
                       color: const Color(0xFFECFDF5), // Green
                       accentColor: const Color(0xFF10B981),
-                      stakeholders: keepInformed,
+                      stakeholders: hLowIHigh,
                     ),
                   ),
                 ],
@@ -750,7 +804,7 @@ class _InfluenceInterestMatrix extends StatelessWidget {
     required String label,
     required Color color,
     required Color accentColor,
-    required List<_StakeholderEntry> stakeholders,
+    required List<StakeholderEntry> stakeholders,
   }) {
     return Container(
       height: 140,
@@ -804,7 +858,7 @@ class _InfluenceInterestMatrix extends StatelessWidget {
     );
   }
 
-  Widget _stakeholderChip(_StakeholderEntry s, Color color) {
+  Widget _stakeholderChip(StakeholderEntry s, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -869,34 +923,18 @@ class _EngagementSection extends StatelessWidget {
   const _EngagementSection({
     required this.activeTabIndex,
     required this.onTabChanged,
-    required this.stakeholders,
-    required this.engagementPlans,
-    required this.isLoadingStakeholders,
-    required this.isLoadingPlans,
-    required this.onAddStakeholder,
-    required this.onUpdateStakeholder,
-    required this.onDeleteStakeholder,
-    required this.onAddPlan,
-    required this.onUpdatePlan,
-    required this.onDeletePlan,
-    required this.searchQuery,
-    required this.onSearchQueryChanged,
+    required this.stakeholderTable,
+    required this.planTable,
+    required this.onAdd,
+    required this.onSearch,
   });
 
   final int activeTabIndex;
   final ValueChanged<int> onTabChanged;
-  final List<_StakeholderEntry> stakeholders;
-  final List<_EngagementPlanEntry> engagementPlans;
-  final bool isLoadingStakeholders;
-  final bool isLoadingPlans;
-  final VoidCallback onAddStakeholder;
-  final ValueChanged<_StakeholderEntry> onUpdateStakeholder;
-  final ValueChanged<String> onDeleteStakeholder;
-  final VoidCallback onAddPlan;
-  final ValueChanged<_EngagementPlanEntry> onUpdatePlan;
-  final ValueChanged<String> onDeletePlan;
-  final String searchQuery;
-  final ValueChanged<String> onSearchQueryChanged;
+  final Widget stakeholderTable;
+  final Widget planTable;
+  final VoidCallback onAdd;
+  final ValueChanged<String> onSearch;
 
   @override
   Widget build(BuildContext context) {
@@ -931,13 +969,13 @@ class _EngagementSection extends StatelessWidget {
                     Expanded(
                       child: _SearchField(
                         enabled: true,
-                        value: searchQuery,
-                        onChanged: onSearchQueryChanged,
+                        value: '', // Managed externally now
+                        onChanged: onSearch,
                       ),
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
-                      onPressed: activeTabIndex == 0 ? onAddStakeholder : onAddPlan,
+                      onPressed: onAdd,
                       icon: const Icon(Icons.add),
                       label: Text(activeTabIndex == 0 ? 'Add stakeholder' : 'Add plan'),
                       style: ElevatedButton.styleFrom(
@@ -951,20 +989,13 @@ class _EngagementSection extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 24),
-                if (activeTabIndex == 0)
-                  _StakeholdersTable(
-                    entries: stakeholders,
-                    isLoading: isLoadingStakeholders,
-                    onChanged: onUpdateStakeholder,
-                    onDelete: onDeleteStakeholder,
-                  )
-                else
-                  _EngagementPlansTable(
-                    entries: engagementPlans,
-                    isLoading: isLoadingPlans,
-                    onChanged: onUpdatePlan,
-                    onDelete: onDeletePlan,
-                  ),
+                IndexedStack(
+                  index: activeTabIndex,
+                  children: [
+                    stakeholderTable,
+                    planTable,
+                  ],
+                ),
               ],
             ),
           ),
@@ -974,29 +1005,25 @@ class _EngagementSection extends StatelessWidget {
   }
 
   Widget _tabButton({required String title, required int index}) {
-    final bool isActive = activeTabIndex == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => onTabChanged(index),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          decoration: BoxDecoration(
-            color: isActive ? Colors.white : Colors.transparent,
-            borderRadius: index == 0
-                ? const BorderRadius.only(topLeft: Radius.circular(20))
-                : const BorderRadius.only(topRight: Radius.circular(20)),
-            border: Border(
-              bottom: BorderSide(color: isActive ? Colors.white : const Color(0xFFE5E7EB), width: 1),
+    final active = activeTabIndex == index;
+    return InkWell(
+      onTap: () => onTabChanged(index),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: active ? const Color(0xFF1F2937) : Colors.transparent,
+              width: 2,
             ),
           ),
-          alignment: Alignment.center,
-          child: Text(
-            title,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: isActive ? const Color(0xFF111827) : const Color(0xFF9CA3AF),
-            ),
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+            color: active ? const Color(0xFF1F2937) : const Color(0xFF6B7280),
           ),
         ),
       ),
@@ -1049,9 +1076,9 @@ class _StakeholdersTable extends StatelessWidget {
     required this.onDelete,
   });
 
-  final List<_StakeholderEntry> entries;
+  final List<StakeholderEntry> entries;
   final bool isLoading;
-  final ValueChanged<_StakeholderEntry> onChanged;
+  final ValueChanged<StakeholderEntry> onChanged;
   final ValueChanged<String> onDelete;
 
   @override
@@ -1060,6 +1087,7 @@ class _StakeholdersTable extends StatelessWidget {
       const _TableColumnDef('Stakeholder', 200),
       const _TableColumnDef('Organization', 180),
       const _TableColumnDef('Role/Title', 160),
+      const _TableColumnDef('Contact Info', 200),
       const _TableColumnDef('Influence', 140),
       const _TableColumnDef('Interest', 140),
       const _TableColumnDef('Channel', 180),
@@ -1105,6 +1133,12 @@ class _StakeholdersTable extends StatelessWidget {
                 fieldKey: '${entry.id}_role',
                 hintText: 'Role/Title',
                 onChanged: (value) => onChanged(entry.copyWith(role: value)),
+              ),
+              _TextCell(
+                value: entry.contactInfo,
+                fieldKey: '${entry.id}_contactInfo',
+                hintText: 'Email/Phone',
+                onChanged: (value) => onChanged(entry.copyWith(contactInfo: value)),
               ),
               _DropdownCell(
                 value: entry.influence,
@@ -1154,9 +1188,9 @@ class _EngagementPlansTable extends StatelessWidget {
     required this.onDelete,
   });
 
-  final List<_EngagementPlanEntry> entries;
+  final List<EngagementPlanEntry> entries;
   final bool isLoading;
-  final ValueChanged<_EngagementPlanEntry> onChanged;
+  final ValueChanged<EngagementPlanEntry> onChanged;
   final ValueChanged<String> onDelete;
 
   @override
@@ -1288,7 +1322,7 @@ class _EditableTable extends StatelessWidget {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: ConstrainedBox(
-          constraints: BoxConstraints(minWidth: columns.fold<double>(0, (sum, col) => sum + col.width)),
+          constraints: BoxConstraints(minWidth: columns.fold<double>(0, (total, col) => total + col.width)),
           child: Column(
             children: [
               header,
@@ -1461,226 +1495,7 @@ class _DeleteCell extends StatelessWidget {
   }
 }
 
-class _StakeholderEntry {
-  const _StakeholderEntry({
-    required this.id,
-    required this.name,
-    required this.organization,
-    required this.role,
-    required this.influence,
-    required this.interest,
-    required this.channel,
-    required this.owner,
-    required this.notes,
-    required this.createdAt,
-    required this.updatedAt,
-  });
-
-  final String id;
-  final String name;
-  final String organization;
-  final String role;
-  final String influence;
-  final String interest;
-  final String channel;
-  final String owner;
-  final String notes;
-  final DateTime createdAt;
-  final DateTime updatedAt;
-
-  factory _StakeholderEntry.empty() {
-    final now = DateTime.now();
-    return _StakeholderEntry(
-      id: now.microsecondsSinceEpoch.toString(),
-      name: '',
-      organization: '',
-      role: '',
-      influence: 'Medium',
-      interest: 'Medium',
-      channel: '',
-      owner: '',
-      notes: '',
-      createdAt: now,
-      updatedAt: now,
-    );
-  }
-
-  _StakeholderEntry copyWith({
-    String? name,
-    String? organization,
-    String? role,
-    String? influence,
-    String? interest,
-    String? channel,
-    String? owner,
-    String? notes,
-    DateTime? updatedAt,
-  }) {
-    return _StakeholderEntry(
-      id: id,
-      name: name ?? this.name,
-      organization: organization ?? this.organization,
-      role: role ?? this.role,
-      influence: influence ?? this.influence,
-      interest: interest ?? this.interest,
-      channel: channel ?? this.channel,
-      owner: owner ?? this.owner,
-      notes: notes ?? this.notes,
-      createdAt: createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'organization': organization,
-      'role': role,
-      'influence': influence,
-      'interest': interest,
-      'channel': channel,
-      'owner': owner,
-      'notes': notes,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'updatedAt': Timestamp.fromDate(updatedAt),
-    };
-  }
-
-  static List<_StakeholderEntry> fromList(dynamic raw) {
-    if (raw is! List) return [];
-    return raw.whereType<Map>().map((item) {
-      final data = Map<String, dynamic>.from(item);
-      return _StakeholderEntry(
-        id: (data['id'] as String?) ?? DateTime.now().microsecondsSinceEpoch.toString(),
-        name: (data['name'] as String?) ?? '',
-        organization: (data['organization'] as String?) ?? '',
-        role: (data['role'] as String?) ?? '',
-        influence: (data['influence'] as String?) ?? 'Medium',
-        interest: (data['interest'] as String?) ?? 'Medium',
-        channel: (data['channel'] as String?) ?? '',
-        owner: (data['owner'] as String?) ?? '',
-        notes: (data['notes'] as String?) ?? '',
-        createdAt: _readTimestamp(data['createdAt']) ?? DateTime.now(),
-        updatedAt: _readTimestamp(data['updatedAt']) ?? DateTime.now(),
-      );
-    }).toList();
-  }
-}
-
-class _EngagementPlanEntry {
-  const _EngagementPlanEntry({
-    required this.id,
-    required this.stakeholder,
-    required this.objective,
-    required this.method,
-    required this.frequency,
-    required this.owner,
-    required this.status,
-    required this.nextTouchpoint,
-    required this.notes,
-    required this.createdAt,
-    required this.updatedAt,
-  });
-
-  final String id;
-  final String stakeholder;
-  final String objective;
-  final String method;
-  final String frequency;
-  final String owner;
-  final String status;
-  final String nextTouchpoint;
-  final String notes;
-  final DateTime createdAt;
-  final DateTime updatedAt;
-
-  factory _EngagementPlanEntry.empty() {
-    final now = DateTime.now();
-    return _EngagementPlanEntry(
-      id: now.microsecondsSinceEpoch.toString(),
-      stakeholder: '',
-      objective: '',
-      method: '',
-      frequency: '',
-      owner: '',
-      status: 'Planned',
-      nextTouchpoint: '',
-      notes: '',
-      createdAt: now,
-      updatedAt: now,
-    );
-  }
-
-  _EngagementPlanEntry copyWith({
-    String? stakeholder,
-    String? objective,
-    String? method,
-    String? frequency,
-    String? owner,
-    String? status,
-    String? nextTouchpoint,
-    String? notes,
-    DateTime? updatedAt,
-  }) {
-    return _EngagementPlanEntry(
-      id: id,
-      stakeholder: stakeholder ?? this.stakeholder,
-      objective: objective ?? this.objective,
-      method: method ?? this.method,
-      frequency: frequency ?? this.frequency,
-      owner: owner ?? this.owner,
-      status: status ?? this.status,
-      nextTouchpoint: nextTouchpoint ?? this.nextTouchpoint,
-      notes: notes ?? this.notes,
-      createdAt: createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'stakeholder': stakeholder,
-      'objective': objective,
-      'method': method,
-      'frequency': frequency,
-      'owner': owner,
-      'status': status,
-      'nextTouchpoint': nextTouchpoint,
-      'notes': notes,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'updatedAt': Timestamp.fromDate(updatedAt),
-    };
-  }
-
-  static List<_EngagementPlanEntry> fromList(dynamic raw) {
-    if (raw is! List) return [];
-    return raw.whereType<Map>().map((item) {
-      final data = Map<String, dynamic>.from(item);
-      return _EngagementPlanEntry(
-        id: (data['id'] as String?) ?? DateTime.now().microsecondsSinceEpoch.toString(),
-        stakeholder: (data['stakeholder'] as String?) ?? '',
-        objective: (data['objective'] as String?) ?? '',
-        method: (data['method'] as String?) ?? '',
-        frequency: (data['frequency'] as String?) ?? '',
-        owner: (data['owner'] as String?) ?? '',
-        status: (data['status'] as String?) ?? 'Planned',
-        nextTouchpoint: (data['nextTouchpoint'] as String?) ?? '',
-        notes: (data['notes'] as String?) ?? '',
-        createdAt: _readTimestamp(data['createdAt']) ?? DateTime.now(),
-        updatedAt: _readTimestamp(data['updatedAt']) ?? DateTime.now(),
-      );
-    }).toList();
-  }
-}
-
-DateTime? _readTimestamp(dynamic value) {
-  if (value is Timestamp) return value.toDate();
-  if (value is DateTime) return value;
-  if (value is String) return DateTime.tryParse(value);
-  return null;
-}
+// Private entry classes removed in favor of StakeholderEntry and EngagementPlanEntry in project_data_model.dart
 
 class _Debouncer {
   _Debouncer({Duration? delay}) : delay = delay ?? const Duration(milliseconds: 700);

@@ -63,6 +63,70 @@ class _OrganizationRolesResponsibilitiesScreenState extends State<OrganizationRo
         );
         setState(() {});
       },
+      onAddPredefined: () => _showPredefinedRolesDialog(context),
+    );
+  }
+
+  void _showPredefinedRolesDialog(BuildContext context) {
+    final List<RoleDefinition> predefined = [
+      RoleDefinition(title: 'Project Manager', description: 'Overall project leadership and coordination.', workstream: 'Management', isPredefined: true),
+      RoleDefinition(title: 'Product Engineer', description: 'Responsible for product design and technical specifications.', workstream: 'Engineering', isPredefined: true),
+      RoleDefinition(title: 'Cost Person', description: 'Financial planning, budgeting, and cost control.', workstream: 'Finance', isPredefined: true),
+      RoleDefinition(title: 'Developer', description: 'Software development and implementation.', workstream: 'Development', isPredefined: true),
+      RoleDefinition(title: 'Tester', description: 'Quality assurance and testing of deliverables.', workstream: 'QA', isPredefined: true),
+    ];
+
+    final currentRoles = ProjectDataHelper.getData(context).projectRoles;
+    final selectedIndices = <int>{};
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Add Standard Roles'),
+          content: SizedBox(
+            width: 400,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: predefined.length,
+              itemBuilder: (context, index) {
+                final role = predefined[index];
+                final alreadyAdded = currentRoles.any((r) => r.title == role.title);
+                return CheckboxListTile(
+                  title: Text(role.title),
+                  subtitle: Text(role.workstream),
+                  value: selectedIndices.contains(index) || alreadyAdded,
+                  enabled: !alreadyAdded,
+                  onChanged: alreadyAdded ? null : (val) {
+                    setDialogState(() {
+                      if (val == true) selectedIndices.add(index);
+                      else selectedIndices.remove(index);
+                    });
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: selectedIndices.isEmpty ? null : () async {
+                final newRoles = selectedIndices.map((i) => predefined[i]).toList();
+                Navigator.pop(context);
+                await ProjectDataHelper.saveAndNavigate(
+                  context: context,
+                  checkpoint: 'organization_roles_responsibilities',
+                  nextScreenBuilder: () => const OrganizationRolesResponsibilitiesScreen(),
+                  dataUpdater: (d) => d.copyWith(projectRoles: [...d.projectRoles, ...newRoles]),
+                );
+                setState(() {});
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFC107), foregroundColor: Colors.black),
+              child: const Text('Add Selected'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -160,8 +224,10 @@ class _OrganizationStaffingPlanScreenState extends State<OrganizationStaffingPla
         title: req.title,
         subtitle: '${req.startDate} to ${req.endDate}',
         statusRows: [
-          _StatusRowData('Status', req.status, req.status == 'Hired' ? const Color(0xFF10B981) : const Color(0xFF6B7280)),
-          _StatusRowData('Headcount', req.headcount.toString(), const Color(0xFF3B82F6)),
+          _StatusRowData('Person', req.personName.isEmpty ? 'TBD' : req.personName, Colors.black87),
+          _StatusRowData('Location', req.location.isEmpty ? 'TBD' : req.location, const Color(0xFF3B82F6)),
+          _StatusRowData('Type', '${req.employmentType} / ${req.employeeType}', const Color(0xFF6B7280)),
+          _StatusRowData('Status', req.status, req.status == 'Hired' ? const Color(0xFF10B981) : const Color(0xFFF59E0B)),
         ],
         onEdit: () => _editStaffing(context, index, req),
         onDelete: () => _deleteStaffing(context, index),
@@ -188,91 +254,223 @@ class _OrganizationStaffingPlanScreenState extends State<OrganizationStaffingPla
         );
         setState(() {});
       },
+      onAddPredefined: () => _showSyncRolesDialog(context),
+    );
+  }
+
+  void _showSyncRolesDialog(BuildContext context) {
+    final roles = ProjectDataHelper.getData(context).projectRoles;
+    if (roles.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('No Roles Defined'),
+          content: const Text('Please define roles in the "Roles & Responsibilities" section first.'),
+          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+        ),
+      );
+      return;
+    }
+
+    final currentStaff = ProjectDataHelper.getData(context).staffingRequirements;
+    final selectedIndices = <int>{};
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Sync from Roles'),
+          content: SizedBox(
+            width: 400,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: roles.length,
+              itemBuilder: (context, index) {
+                final role = roles[index];
+                final alreadyStaffed = currentStaff.any((s) => s.title == role.title);
+                return CheckboxListTile(
+                  title: Text(role.title),
+                  subtitle: Text(role.workstream),
+                  value: selectedIndices.contains(index) || alreadyStaffed,
+                  enabled: !alreadyStaffed,
+                  onChanged: alreadyStaffed ? null : (val) {
+                    setDialogState(() {
+                      if (val == true) selectedIndices.add(index);
+                      else selectedIndices.remove(index);
+                    });
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: selectedIndices.isEmpty ? null : () async {
+                final newStaff = selectedIndices.map((i) => StaffingRequirement(
+                  title: roles[i].title,
+                  startDate: 'TBD',
+                  endDate: 'TBD',
+                  employeeType: roles[i].workstream == 'Engineering' || roles[i].workstream == 'Development' ? 'Contractor' : 'Employee',
+                )).toList();
+                Navigator.pop(context);
+                await ProjectDataHelper.saveAndNavigate(
+                  context: context,
+                  checkpoint: 'organization_staffing_plan',
+                  nextScreenBuilder: () => const OrganizationStaffingPlanScreen(),
+                  dataUpdater: (d) => d.copyWith(staffingRequirements: [...d.staffingRequirements, ...newStaff]),
+                );
+                setState(() {});
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFC107), foregroundColor: Colors.black),
+              child: const Text('Sync Selected'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   void _editStaffing(BuildContext context, int index, StaffingRequirement req) {
     final titleController = TextEditingController(text: req.title);
+    final personController = TextEditingController(text: req.personName);
+    final locationController = TextEditingController(text: req.location);
     final headcountController = TextEditingController(text: req.headcount.toString());
     final statusController = TextEditingController(text: req.status);
     final startController = TextEditingController(text: req.startDate);
     final endController = TextEditingController(text: req.endDate);
+    String empType = req.employmentType;
+    String employeeType = req.employeeType;
 
     showDialog(
       context: context,
-      builder: (context) => PremiumEditDialog(
-        title: 'Edit Staffing Requirement',
-        icon: Icons.person_add_alt_1_outlined,
-        onSave: () async {
-          final updated = List<StaffingRequirement>.from(ProjectDataHelper.getData(context).staffingRequirements);
-          updated[index] = StaffingRequirement(
-            title: titleController.text.trim(),
-            headcount: int.tryParse(headcountController.text) ?? 1,
-            status: statusController.text.trim(),
-            startDate: startController.text.trim(),
-            endDate: endController.text.trim(),
-          );
-          Navigator.pop(context);
-          await ProjectDataHelper.saveAndNavigate(
-            context: context,
-            checkpoint: 'organization_staffing_plan',
-            nextScreenBuilder: () => const OrganizationStaffingPlanScreen(),
-            dataUpdater: (d) => d.copyWith(staffingRequirements: updated),
-          );
-          setState(() {});
-        },
-        children: [
-          PremiumEditDialog.fieldLabel('Job Title'),
-          PremiumEditDialog.textField(controller: titleController, hint: 'e.g. Senior Developer'),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    PremiumEditDialog.fieldLabel('Headcount'),
-                    PremiumEditDialog.textField(controller: headcountController, keyboardType: TextInputType.number),
-                  ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => PremiumEditDialog(
+          title: 'Edit Staffing Requirement',
+          icon: Icons.person_add_alt_1_outlined,
+          onSave: () async {
+            final updated = List<StaffingRequirement>.from(ProjectDataHelper.getData(context).staffingRequirements);
+            updated[index] = req.copyWith(
+              title: titleController.text.trim(),
+              personName: personController.text.trim(),
+              location: locationController.text.trim(),
+              headcount: int.tryParse(headcountController.text) ?? 1,
+              status: statusController.text.trim(),
+              startDate: startController.text.trim(),
+              endDate: endController.text.trim(),
+              employmentType: empType,
+              employeeType: employeeType,
+            );
+            Navigator.pop(context);
+            await ProjectDataHelper.saveAndNavigate(
+              context: context,
+              checkpoint: 'organization_staffing_plan',
+              nextScreenBuilder: () => const OrganizationStaffingPlanScreen(),
+              dataUpdater: (d) => d.copyWith(staffingRequirements: updated),
+            );
+            setState(() {});
+          },
+          children: [
+            PremiumEditDialog.fieldLabel('Job Title'),
+            PremiumEditDialog.textField(controller: titleController, hint: 'e.g. Senior Developer'),
+            const SizedBox(height: 16),
+            PremiumEditDialog.fieldLabel('Person Name'),
+            PremiumEditDialog.textField(controller: personController, hint: 'Assign to...'),
+            const SizedBox(height: 16),
+            PremiumEditDialog.fieldLabel('Location'),
+            PremiumEditDialog.textField(controller: locationController, hint: 'e.g. Remote, Office, Site'),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PremiumEditDialog.fieldLabel('Employment'),
+                      DropdownButtonFormField<String>(
+                        value: empType,
+                        items: ['FT', 'PT'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                        onChanged: (v) => setDialogState(() => empType = v!),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    PremiumEditDialog.fieldLabel('Status'),
-                    PremiumEditDialog.textField(controller: statusController, hint: 'e.g. Planned'),
-                  ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PremiumEditDialog.fieldLabel('Category'),
+                      DropdownButtonFormField<String>(
+                        value: employeeType,
+                        items: ['Employee', 'Contractor'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                        onChanged: (v) => setDialogState(() => employeeType = v!),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    PremiumEditDialog.fieldLabel('Start Date'),
-                    PremiumEditDialog.textField(controller: startController, hint: 'Q1 2024'),
-                  ],
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PremiumEditDialog.fieldLabel('Status'),
+                      PremiumEditDialog.textField(controller: statusController, hint: 'e.g. Hired'),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    PremiumEditDialog.fieldLabel('End Date'),
-                    PremiumEditDialog.textField(controller: endController, hint: 'Q4 2024'),
-                  ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PremiumEditDialog.fieldLabel('Headcount'),
+                      PremiumEditDialog.textField(controller: headcountController, keyboardType: TextInputType.number),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PremiumEditDialog.fieldLabel('Mobilization Date'),
+                      PremiumEditDialog.textField(controller: startController, hint: 'Q1 2024'),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PremiumEditDialog.fieldLabel('Release Date'),
+                      PremiumEditDialog.textField(controller: endController, hint: 'Q4 2024'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -307,10 +505,11 @@ class _OrganizationStaffingPlanScreenState extends State<OrganizationStaffingPla
 }
 
 class _PlanningSubsectionScreen extends StatelessWidget {
-  const _PlanningSubsectionScreen({required this.config, this.onAdd});
+  const _PlanningSubsectionScreen({required this.config, this.onAdd, this.onAddPredefined});
 
   final _PlanningSubsectionConfig config;
   final VoidCallback? onAdd;
+  final VoidCallback? onAddPredefined;
 
   @override
   Widget build(BuildContext context) {
@@ -358,6 +557,7 @@ class _PlanningSubsectionScreen extends StatelessWidget {
                                 },
                                 onNext: () => _handleNext(context),
                                 onAdd: onAdd,
+                                onAddPredefined: onAddPredefined,
                             ),
                             const SizedBox(height: 12),
                             Text(
@@ -449,12 +649,13 @@ class _PlanningSubsectionConfig {
 }
 
 class _TopHeader extends StatelessWidget {
-  const _TopHeader({required this.title, required this.onBack, this.onNext, this.onAdd});
+  const _TopHeader({required this.title, required this.onBack, this.onNext, this.onAdd, this.onAddPredefined});
 
   final String title;
   final VoidCallback onBack;
   final VoidCallback? onNext;
   final VoidCallback? onAdd;
+  final VoidCallback? onAddPredefined;
 
   @override
   Widget build(BuildContext context) {
@@ -475,6 +676,14 @@ class _TopHeader extends StatelessWidget {
               color: Color(0xFF111827)),
         ),
         const SizedBox(width: 24),
+        if (onAddPredefined != null) ...[
+          _yellowButton(
+            label: onAddPredefined!.toString().contains('SyncRoles') ? 'Sync from Roles' : 'Standard Roles',
+            icon: onAddPredefined!.toString().contains('SyncRoles') ? Icons.sync : Icons.assignment_outlined,
+            onPressed: onAddPredefined!,
+          ),
+          const SizedBox(width: 12),
+        ],
         if (onAdd != null)
           _yellowButton(
             label: 'Add Item',

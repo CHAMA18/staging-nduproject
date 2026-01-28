@@ -5,6 +5,8 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/models/project_data_model.dart';
 
 enum _QualityTab { plan, targets, qaTracking, qcTracking, metrics }
 
@@ -226,11 +228,22 @@ class _QualityPlanView extends StatefulWidget {
 
 class _QualityPlanViewState extends State<_QualityPlanView> {
   late final TextEditingController _controller;
+  bool _didInit = false;
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_didInit) {
+      final projectData = ProjectDataHelper.getData(context);
+      _controller.text = projectData.qualityManagementData?.qualityPlan ?? '';
+      _didInit = true;
+    }
   }
 
   @override
@@ -240,6 +253,16 @@ class _QualityPlanViewState extends State<_QualityPlanView> {
   }
 
   void _handleSave() {
+    ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'quality_management_plan',
+      dataUpdater: (data) => data.copyWith(
+        qualityManagementData: (data.qualityManagementData ?? QualityManagementData.empty()).copyWith(
+          qualityPlan: _controller.text.trim(),
+        ),
+      ),
+    );
+
     FocusScope.of(context).unfocus();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -318,17 +341,15 @@ class _TargetsView extends StatefulWidget {
 }
 
 class _TargetsViewState extends State<_TargetsView> {
-  final List<_QualityTarget> _targets = [];
-
   Future<void> _showAddTargetDialog() async {
     final nameController = TextEditingController();
     final metricController = TextEditingController();
     final targetValueController = TextEditingController();
     final currentValueController = TextEditingController();
     final formKey = GlobalKey<FormState>();
-    _QualityTargetStatus selectedStatus = _QualityTargetStatus.onTrack;
+    QualityTargetStatus selectedStatus = QualityTargetStatus.onTrack;
 
-    final result = await showDialog<_QualityTarget>(
+    final result = await showDialog<QualityTarget>(
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(
@@ -371,11 +392,11 @@ class _TargetsViewState extends State<_TargetsView> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      DropdownButtonFormField<_QualityTargetStatus>(
-                        initialValue: selectedStatus,
+                      DropdownButtonFormField<QualityTargetStatus>(
+                        value: selectedStatus,
                         decoration: const InputDecoration(labelText: 'Status'),
-                        items: _QualityTargetStatus.values
-                            .map((status) => DropdownMenuItem<_QualityTargetStatus>(
+                        items: QualityTargetStatus.values
+                            .map((status) => DropdownMenuItem<QualityTargetStatus>(
                                   value: status,
                                   child: Text(_TargetsViewState._statusLabel(status)),
                                 ))
@@ -399,7 +420,8 @@ class _TargetsViewState extends State<_TargetsView> {
                   onPressed: () {
                     if (formKey.currentState?.validate() ?? false) {
                       Navigator.of(dialogContext).pop(
-                        _QualityTarget(
+                        QualityTarget(
+                          id: DateTime.now().microsecondsSinceEpoch.toString(),
                           name: nameController.text.trim(),
                           metric: metricController.text.trim(),
                           target: targetValueController.text.trim(),
@@ -424,39 +446,70 @@ class _TargetsViewState extends State<_TargetsView> {
     currentValueController.dispose();
 
     if (result != null) {
-      setState(() => _targets.add(result));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Target "${result.name}" added'),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
+      await ProjectDataHelper.updateAndSave(
+        context: context,
+        checkpoint: 'quality_management_targets',
+        dataUpdater: (data) {
+          final currentQualityData = data.qualityManagementData ?? QualityManagementData.empty();
+          final updatedTargets = List<QualityTarget>.from(currentQualityData.targets)..add(result);
+          return data.copyWith(
+            qualityManagementData: currentQualityData.copyWith(targets: updatedTargets),
+          );
+        },
       );
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Target "${result.name}" added'),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
   void _handleRemoveTarget(int index) {
-    final removed = _targets.removeAt(index);
-    setState(() {});
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Removed target "${removed.name}"'),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
+    ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'quality_management_targets',
+      dataUpdater: (data) {
+        final currentQualityData = data.qualityManagementData ?? QualityManagementData.empty();
+        final updatedTargets = List<QualityTarget>.from(currentQualityData.targets);
+        final removed = updatedTargets.removeAt(index);
+        
+        // Show snackbar
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Removed target "${removed.name}"'),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+        
+        return data.copyWith(
+          qualityManagementData: currentQualityData.copyWith(targets: updatedTargets),
+        );
+      },
+      showSnackbar: false, // We show our own descriptive snackbar
     );
   }
 
   void _handleEditTarget(int index) {
-    final original = _targets[index];
+    final projectData = ProjectDataHelper.getData(context);
+    final currentQualityData = projectData.qualityManagementData ?? QualityManagementData.empty();
+    final original = currentQualityData.targets[index];
     final nameController = TextEditingController(text: original.name);
     final metricController = TextEditingController(text: original.metric);
     final targetValueController = TextEditingController(text: original.target);
     final currentValueController = TextEditingController(text: original.current);
     final formKey = GlobalKey<FormState>();
-    _QualityTargetStatus selectedStatus = original.status;
+    QualityTargetStatus selectedStatus = original.status;
 
-    showDialog<_QualityTarget>(
+    showDialog<QualityTarget>(
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(
@@ -499,11 +552,11 @@ class _TargetsViewState extends State<_TargetsView> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      DropdownButtonFormField<_QualityTargetStatus>(
-                        initialValue: selectedStatus,
+                      DropdownButtonFormField<QualityTargetStatus>(
+                        value: selectedStatus,
                         decoration: const InputDecoration(labelText: 'Status'),
-                        items: _QualityTargetStatus.values
-                            .map((status) => DropdownMenuItem<_QualityTargetStatus>(
+                        items: QualityTargetStatus.values
+                            .map((status) => DropdownMenuItem<QualityTargetStatus>(
                                   value: status,
                                   child: Text(_TargetsViewState._statusLabel(status)),
                                 ))
@@ -527,7 +580,7 @@ class _TargetsViewState extends State<_TargetsView> {
                   onPressed: () {
                     if (formKey.currentState?.validate() ?? false) {
                       Navigator.of(dialogContext).pop(
-                        _QualityTarget(
+                        original.copyWith(
                           name: nameController.text.trim(),
                           metric: metricController.text.trim(),
                           target: targetValueController.text.trim(),
@@ -544,27 +597,43 @@ class _TargetsViewState extends State<_TargetsView> {
           },
         );
       },
-    ).then((updated) {
+    ).then((updated) async {
       nameController.dispose();
       metricController.dispose();
       targetValueController.dispose();
       currentValueController.dispose();
 
+
       if (updated != null) {
-        setState(() => _targets[index] = updated);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Updated target "${updated.name}"'),
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
-          ),
+        await ProjectDataHelper.updateAndSave(
+          context: context,
+          checkpoint: 'quality_management_targets',
+          dataUpdater: (data) {
+            final currentQualityData = data.qualityManagementData ?? QualityManagementData.empty();
+            final updatedTargets = List<QualityTarget>.from(currentQualityData.targets);
+            updatedTargets[index] = updated;
+            return data.copyWith(
+              qualityManagementData: currentQualityData.copyWith(targets: updatedTargets),
+            );
+          },
         );
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Updated target "${updated.name}"'),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final targets = ProjectDataHelper.getData(context).qualityManagementData?.targets ?? [];
     return _PrimaryCard(
       icon: Icons.flag_outlined,
       iconBackground: const Color(0xFFF3F4FF),
@@ -587,32 +656,36 @@ class _TargetsViewState extends State<_TargetsView> {
         ),
       ],
       child: _QualityTargetsTable(
-        targets: _targets,
+        targets: targets,
         onRemove: _handleRemoveTarget,
         onEdit: _handleEditTarget,
       ),
     );
   }
 
-  static String _statusLabel(_QualityTargetStatus status) {
+  static String _statusLabel(QualityTargetStatus status) {
     switch (status) {
-      case _QualityTargetStatus.onTrack:
+      case QualityTargetStatus.onTrack:
         return 'On Track';
-      case _QualityTargetStatus.monitoring:
+      case QualityTargetStatus.monitoring:
         return 'Monitoring';
-      case _QualityTargetStatus.offTrack:
+      case QualityTargetStatus.offTrack:
         return 'Off Track';
+      default:
+        return 'Unknown';
     }
   }
 
-  static Color _statusColor(_QualityTargetStatus status) {
+  static Color _statusColor(QualityTargetStatus status) {
     switch (status) {
-      case _QualityTargetStatus.onTrack:
+      case QualityTargetStatus.onTrack:
         return const Color(0xFF16A34A);
-      case _QualityTargetStatus.monitoring:
+      case QualityTargetStatus.monitoring:
         return const Color(0xFFF59E0B);
-      case _QualityTargetStatus.offTrack:
+      case QualityTargetStatus.offTrack:
         return const Color(0xFFDC2626);
+      default:
+        return Colors.grey;
     }
   }
 }
@@ -620,7 +693,7 @@ class _TargetsViewState extends State<_TargetsView> {
 class _QualityTargetsTable extends StatelessWidget {
   const _QualityTargetsTable({required this.targets, required this.onRemove, required this.onEdit});
 
-  final List<_QualityTarget> targets;
+  final List<QualityTarget> targets;
   final ValueChanged<int> onRemove;
   final ValueChanged<int> onEdit;
 
@@ -663,6 +736,7 @@ class _QualityTargetsTable extends StatelessWidget {
           if (hasTargets)
             for (int i = 0; i < targets.length; i++)
               _TargetDataRow(
+                key: ValueKey(targets[i].id),
                 data: targets[i],
                 index: i,
                 isLast: i == targets.length - 1,
@@ -710,6 +784,7 @@ class _TargetsHeaderCell extends StatelessWidget {
 
 class _TargetDataRow extends StatelessWidget {
   const _TargetDataRow({
+    super.key,
     required this.data,
     required this.index,
     required this.isLast,
@@ -717,7 +792,7 @@ class _TargetDataRow extends StatelessWidget {
     required this.onEdit,
   });
 
-  final _QualityTarget data;
+  final QualityTarget data;
   final int index;
   final bool isLast;
   final ValueChanged<int> onRemove;
@@ -811,23 +886,7 @@ class _TargetDataRow extends StatelessWidget {
   }
 }
 
-class _QualityTarget {
-  const _QualityTarget({
-    required this.name,
-    required this.metric,
-    required this.target,
-    required this.current,
-    required this.status,
-  });
-
-  final String name;
-  final String metric;
-  final String target;
-  final String current;
-  final _QualityTargetStatus status;
-}
-
-enum _QualityTargetStatus { onTrack, monitoring, offTrack }
+// Quality Management model classes moved to project_data_model.dart
 
 class _QaTrackingView extends StatefulWidget {
   const _QaTrackingView();
@@ -837,8 +896,7 @@ class _QaTrackingView extends StatefulWidget {
 }
 
 class _QaTrackingViewState extends State<_QaTrackingView> {
-  final List<_QaTechnique> _techniques = [];
-
+  // Methods...
   Future<void> _showAddTechniqueDialog() async {
     final nameController = TextEditingController();
     final descriptionController = TextEditingController();
@@ -846,7 +904,7 @@ class _QaTrackingViewState extends State<_QaTrackingView> {
     final standardsController = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
-    final result = await showDialog<_QaTechnique>(
+    final result = await showDialog<QaTechnique>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
@@ -899,7 +957,8 @@ class _QaTrackingViewState extends State<_QaTrackingView> {
               onPressed: () {
                 if (formKey.currentState?.validate() ?? false) {
                   Navigator.of(dialogContext).pop(
-                    _QaTechnique(
+                    QaTechnique(
+                      id: DateTime.now().microsecondsSinceEpoch.toString(),
                       name: nameController.text.trim(),
                       description: descriptionController.text.trim(),
                       frequency: frequencyController.text.trim(),
@@ -921,38 +980,68 @@ class _QaTrackingViewState extends State<_QaTrackingView> {
     standardsController.dispose();
 
     if (result != null) {
-      setState(() => _techniques.add(result));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Technique "${result.name}" added'),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
+      await ProjectDataHelper.updateAndSave(
+        context: context,
+        checkpoint: 'quality_management_qa',
+        dataUpdater: (data) {
+          final currentQualityData = data.qualityManagementData ?? QualityManagementData.empty();
+          final updatedTechniques = List<QaTechnique>.from(currentQualityData.qaTechniques)..add(result);
+          return data.copyWith(
+            qualityManagementData: currentQualityData.copyWith(qaTechniques: updatedTechniques),
+          );
+        },
       );
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Technique "${result.name}" added'),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
   void _handleRemoveTechnique(int index) {
-    final removed = _techniques.removeAt(index);
-    setState(() {});
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Removed technique "${removed.name}"'),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
+    ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'quality_management_qa',
+      dataUpdater: (data) {
+        final currentQualityData = data.qualityManagementData ?? QualityManagementData.empty();
+        final updatedTechniques = List<QaTechnique>.from(currentQualityData.qaTechniques);
+        final removed = updatedTechniques.removeAt(index);
+        
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Removed technique "${removed.name}"'),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+        
+        return data.copyWith(
+          qualityManagementData: currentQualityData.copyWith(qaTechniques: updatedTechniques),
+        );
+      },
+      showSnackbar: false,
     );
   }
 
   void _handleEditTechnique(int index) {
-    final original = _techniques[index];
+    final projectData = ProjectDataHelper.getData(context);
+    final currentQualityData = projectData.qualityManagementData ?? QualityManagementData.empty();
+    final original = currentQualityData.qaTechniques[index];
     final nameController = TextEditingController(text: original.name);
     final descriptionController = TextEditingController(text: original.description);
     final frequencyController = TextEditingController(text: original.frequency);
     final standardsController = TextEditingController(text: original.standards);
     final formKey = GlobalKey<FormState>();
 
-    showDialog<_QaTechnique>(
+    showDialog<QaTechnique>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
@@ -1005,7 +1094,7 @@ class _QaTrackingViewState extends State<_QaTrackingView> {
               onPressed: () {
                 if (formKey.currentState?.validate() ?? false) {
                   Navigator.of(dialogContext).pop(
-                    _QaTechnique(
+                    original.copyWith(
                       name: nameController.text.trim(),
                       description: descriptionController.text.trim(),
                       frequency: frequencyController.text.trim(),
@@ -1019,21 +1108,36 @@ class _QaTrackingViewState extends State<_QaTrackingView> {
           ],
         );
       },
-    ).then((result) {
+    ).then((result) async {
       nameController.dispose();
       descriptionController.dispose();
       frequencyController.dispose();
       standardsController.dispose();
 
+
       if (result != null) {
-        setState(() => _techniques[index] = result);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Updated technique "${result.name}"'),
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
-          ),
+        await ProjectDataHelper.updateAndSave(
+          context: context,
+          checkpoint: 'quality_management_qa',
+          dataUpdater: (data) {
+            final currentQualityData = data.qualityManagementData ?? QualityManagementData.empty();
+            final updatedTechniques = List<QaTechnique>.from(currentQualityData.qaTechniques);
+            updatedTechniques[index] = result;
+            return data.copyWith(
+              qualityManagementData: currentQualityData.copyWith(qaTechniques: updatedTechniques),
+            );
+          },
         );
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Updated technique "${result.name}"'),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
       }
     });
   }
@@ -1052,7 +1156,7 @@ class _QaTrackingViewState extends State<_QaTrackingView> {
           icon: const Icon(Icons.add),
           label: const Text('Add Technique'),
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF7C3AED),
+            backgroundColor: Theme.of(context).colorScheme.primary,
             foregroundColor: Colors.white,
             elevation: 0,
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
@@ -1062,7 +1166,7 @@ class _QaTrackingViewState extends State<_QaTrackingView> {
         ),
       ],
       child: _QaTechniquesTable(
-        techniques: _techniques,
+        techniques: ProjectDataHelper.getData(context).qualityManagementData?.qaTechniques ?? [],
         onRemove: _handleRemoveTechnique,
         onEdit: _handleEditTechnique,
       ),
@@ -1078,15 +1182,13 @@ class _QcTrackingView extends StatefulWidget {
 }
 
 class _QcTrackingViewState extends State<_QcTrackingView> {
-  final List<_QcTechnique> _techniques = [];
-
   Future<void> _showAddTechniqueDialog() async {
     final nameController = TextEditingController();
     final descriptionController = TextEditingController();
     final frequencyController = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
-    final result = await showDialog<_QcTechnique>(
+    final result = await showDialog<QcTechnique>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
@@ -1125,7 +1227,8 @@ class _QcTrackingViewState extends State<_QcTrackingView> {
               onPressed: () {
                 if (formKey.currentState?.validate() ?? false) {
                   Navigator.of(dialogContext).pop(
-                    _QcTechnique(
+                    QcTechnique(
+                      id: DateTime.now().microsecondsSinceEpoch.toString(),
                       name: nameController.text.trim(),
                       description: descriptionController.text.trim(),
                       frequency: frequencyController.text.trim(),
@@ -1145,37 +1248,67 @@ class _QcTrackingViewState extends State<_QcTrackingView> {
     frequencyController.dispose();
 
     if (result != null) {
-      setState(() => _techniques.add(result));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Technique "${result.name}" added'),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
+      await ProjectDataHelper.updateAndSave(
+        context: context,
+        checkpoint: 'quality_management_qc',
+        dataUpdater: (data) {
+          final currentQualityData = data.qualityManagementData ?? QualityManagementData.empty();
+          final updatedTechniques = List<QcTechnique>.from(currentQualityData.qcTechniques)..add(result);
+          return data.copyWith(
+            qualityManagementData: currentQualityData.copyWith(qcTechniques: updatedTechniques),
+          );
+        },
       );
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Technique "${result.name}" added'),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
   void _handleRemoveTechnique(int index) {
-    final removed = _techniques.removeAt(index);
-    setState(() {});
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Removed technique "${removed.name}"'),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
+    ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'quality_management_qc',
+      dataUpdater: (data) {
+        final currentQualityData = data.qualityManagementData ?? QualityManagementData.empty();
+        final updatedTechniques = List<QcTechnique>.from(currentQualityData.qcTechniques);
+        final removed = updatedTechniques.removeAt(index);
+        
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Removed technique "${removed.name}"'),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+        
+        return data.copyWith(
+          qualityManagementData: currentQualityData.copyWith(qcTechniques: updatedTechniques),
+        );
+      },
+      showSnackbar: false,
     );
   }
 
   void _handleEditTechnique(int index) {
-    final original = _techniques[index];
+    final projectData = ProjectDataHelper.getData(context);
+    final currentQualityData = projectData.qualityManagementData ?? QualityManagementData.empty();
+    final original = currentQualityData.qcTechniques[index];
     final nameController = TextEditingController(text: original.name);
     final descriptionController = TextEditingController(text: original.description);
     final frequencyController = TextEditingController(text: original.frequency);
     final formKey = GlobalKey<FormState>();
 
-    showDialog<_QcTechnique>(
+    showDialog<QcTechnique>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
@@ -1214,7 +1347,7 @@ class _QcTrackingViewState extends State<_QcTrackingView> {
               onPressed: () {
                 if (formKey.currentState?.validate() ?? false) {
                   Navigator.of(dialogContext).pop(
-                    _QcTechnique(
+                    original.copyWith(
                       name: nameController.text.trim(),
                       description: descriptionController.text.trim(),
                       frequency: frequencyController.text.trim(),
@@ -1227,20 +1360,34 @@ class _QcTrackingViewState extends State<_QcTrackingView> {
           ],
         );
       },
-    ).then((result) {
+    ).then((result) async {
       nameController.dispose();
       descriptionController.dispose();
       frequencyController.dispose();
 
       if (result != null) {
-        setState(() => _techniques[index] = result);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Updated technique "${result.name}"'),
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
-          ),
+        await ProjectDataHelper.updateAndSave(
+          context: context,
+          checkpoint: 'quality_management_qc',
+          dataUpdater: (data) {
+            final currentQualityData = data.qualityManagementData ?? QualityManagementData.empty();
+            final updatedTechniques = List<QcTechnique>.from(currentQualityData.qcTechniques);
+            updatedTechniques[index] = result;
+            return data.copyWith(
+              qualityManagementData: currentQualityData.copyWith(qcTechniques: updatedTechniques),
+            );
+          },
         );
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Updated technique "${result.name}"'),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
       }
     });
   }
@@ -1259,7 +1406,7 @@ class _QcTrackingViewState extends State<_QcTrackingView> {
           icon: const Icon(Icons.add),
           label: const Text('Add Technique'),
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF7C3AED),
+            backgroundColor: Theme.of(context).colorScheme.primary,
             foregroundColor: Colors.white,
             elevation: 0,
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
@@ -1269,7 +1416,7 @@ class _QcTrackingViewState extends State<_QcTrackingView> {
         ),
       ],
       child: _QcTechniquesTable(
-        techniques: _techniques,
+        techniques: ProjectDataHelper.getData(context).qualityManagementData?.qcTechniques ?? [],
         onRemove: _handleRemoveTechnique,
         onEdit: _handleEditTechnique,
       ),
@@ -1278,9 +1425,14 @@ class _QcTrackingViewState extends State<_QcTrackingView> {
 }
 
 class _QcTechniquesTable extends StatelessWidget {
-  const _QcTechniquesTable({required this.techniques, required this.onRemove, required this.onEdit});
+  const _QcTechniquesTable({
+    super.key,
+    required this.techniques,
+    required this.onRemove,
+    required this.onEdit,
+  });
 
-  final List<_QcTechnique> techniques;
+  final List<QcTechnique> techniques;
   final ValueChanged<int> onRemove;
   final ValueChanged<int> onEdit;
 
@@ -1321,6 +1473,7 @@ class _QcTechniquesTable extends StatelessWidget {
           if (hasTechniques)
             for (int i = 0; i < techniques.length; i++)
               _QcDataRow(
+                key: ValueKey(techniques[i].id),
                 data: techniques[i],
                 index: i,
                 isLast: i == techniques.length - 1,
@@ -1368,6 +1521,7 @@ class _QcHeaderCell extends StatelessWidget {
 
 class _QcDataRow extends StatelessWidget {
   const _QcDataRow({
+    super.key,
     required this.data,
     required this.index,
     required this.isLast,
@@ -1375,7 +1529,7 @@ class _QcDataRow extends StatelessWidget {
     required this.onEdit,
   });
 
-  final _QcTechnique data;
+  final QcTechnique data;
   final int index;
   final bool isLast;
   final ValueChanged<int> onRemove;
@@ -1414,12 +1568,12 @@ class _QcDataRow extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF7C3AED).withValues(alpha: 0.12),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
                   data.frequency,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF7C3AED)),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.primary),
                 ),
               ),
             ),
@@ -1451,47 +1605,54 @@ class _QcDataRow extends StatelessWidget {
   }
 }
 
-class _QcTechnique {
-  const _QcTechnique({required this.name, required this.description, required this.frequency});
-
-  final String name;
-  final String description;
-  final String frequency;
-}
+// QaTechnique and QcTechnique moved to project_data_model.dart
 
 class _MetricsView extends StatelessWidget {
   const _MetricsView();
 
   @override
   Widget build(BuildContext context) {
-    const summaries = [
+    final qualityData = ProjectDataHelper.getData(context).qualityManagementData;
+    final targets = qualityData?.targets ?? [];
+
+    // Calculate dynamic achievement metric
+    String achievementValue = '0%';
+    _MetricTrend achievementTrend = _MetricTrend.neutral;
+    if (targets.isNotEmpty) {
+      final onTrackCount = targets.where((t) => t.status == QualityTargetStatus.onTrack).length;
+      final achievementPercentage = (onTrackCount / targets.length * 100).round();
+      achievementValue = '$achievementPercentage%';
+      achievementTrend = achievementPercentage >= 80 ? _MetricTrend.up : (achievementPercentage >= 50 ? _MetricTrend.neutral : _MetricTrend.down);
+    }
+
+    final summaries = [
       _MetricSummaryData(
+        title: 'Target Achievement',
+        value: achievementValue,
+        changeLabel: '${targets.isNotEmpty ? targets.length : 0} Total',
+        changeContext: 'targets defined',
+        trend: achievementTrend,
+      ),
+      const _MetricSummaryData(
         title: 'Defect Density',
         value: 'N/A',
         changeLabel: '-15%',
         changeContext: 'per 1000 LOC',
         trend: _MetricTrend.down,
       ),
-      _MetricSummaryData(
+      const _MetricSummaryData(
         title: 'Customer Satisfaction',
         value: 'N/A',
         changeLabel: '+5%',
         changeContext: 'from surveys',
         trend: _MetricTrend.up,
       ),
-      _MetricSummaryData(
+      const _MetricSummaryData(
         title: 'On-Time Delivery',
         value: 'N/A',
         changeLabel: '+3%',
         changeContext: 'last quarter',
         trend: _MetricTrend.up,
-      ),
-      _MetricSummaryData(
-        title: 'Test Coverage',
-        value: 'N/A',
-        changeLabel: '0%',
-        changeContext: 'code coverage',
-        trend: _MetricTrend.neutral,
       ),
     ];
 
@@ -1686,9 +1847,14 @@ class _PrimaryCard extends StatelessWidget {
 }
 
 class _QaTechniquesTable extends StatelessWidget {
-  const _QaTechniquesTable({required this.techniques, required this.onRemove, required this.onEdit});
+  const _QaTechniquesTable({
+    super.key,
+    required this.techniques,
+    required this.onRemove,
+    required this.onEdit,
+  });
 
-  final List<_QaTechnique> techniques;
+  final List<QaTechnique> techniques;
   final ValueChanged<int> onRemove;
   final ValueChanged<int> onEdit;
 
@@ -1730,6 +1896,7 @@ class _QaTechniquesTable extends StatelessWidget {
           if (hasTechniques)
             for (int i = 0; i < techniques.length; i++)
               _QaTechniqueDataRow(
+                key: ValueKey(techniques[i].id),
                 data: techniques[i],
                 index: i,
                 isLast: i == techniques.length - 1,
@@ -1777,6 +1944,7 @@ class _QaTechniqueHeaderCell extends StatelessWidget {
 
 class _QaTechniqueDataRow extends StatelessWidget {
   const _QaTechniqueDataRow({
+    super.key,
     required this.data,
     required this.index,
     required this.isLast,
@@ -1784,7 +1952,7 @@ class _QaTechniqueDataRow extends StatelessWidget {
     required this.onEdit,
   });
 
-  final _QaTechnique data;
+  final QaTechnique data;
   final int index;
   final bool isLast;
   final ValueChanged<int> onRemove;
@@ -1859,19 +2027,6 @@ class _QaTechniqueDataRow extends StatelessWidget {
   }
 }
 
-class _QaTechnique {
-  const _QaTechnique({
-    required this.name,
-    required this.description,
-    required this.frequency,
-    required this.standards,
-  });
-
-  final String name;
-  final String description;
-  final String frequency;
-  final String standards;
-}
 
 class _MetricSummaryData {
   const _MetricSummaryData({

@@ -12,7 +12,6 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/business_case_header.dart';
-import 'package:ndu_project/widgets/business_case_navigation_buttons.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/screens/project_decision_summary_screen.dart';
 import 'package:ndu_project/screens/front_end_planning_summary.dart';
@@ -109,6 +108,7 @@ class _PreferredSolutionAnalysisScreenState
     try {
       final provider = ProjectDataHelper.getProvider(context);
       final existingData = provider.projectData.preferredSolutionAnalysis;
+      final projectData = provider.projectData;
 
       if (existingData != null && existingData.solutionAnalyses.isNotEmpty) {
         _notesController.text = existingData.workingNotes;
@@ -140,6 +140,32 @@ class _PreferredSolutionAnalysisScreenState
             _isLoading = false;
           });
           _enrichAnalysisFromProjectData();
+          
+          // Restore selection using UUID/Index fallback
+          if (existingData.selectedSolutionIndex != null &&
+              existingData.selectedSolutionIndex! >= 0 &&
+              existingData.selectedSolutionIndex! < _analysis.length) {
+            _selectedSolutionIndex = existingData.selectedSolutionIndex;
+          } else if (existingData.selectedSolutionId != null) {
+            // Try to match by UUID
+            for (int i = 0; i < projectData.potentialSolutions.length; i++) {
+              if (projectData.potentialSolutions[i].id == existingData.selectedSolutionId) {
+                if (i < _analysis.length) {
+                  _selectedSolutionIndex = i;
+                  break;
+                }
+              }
+            }
+          } else if (existingData.selectedSolutionTitle != null &&
+                     existingData.selectedSolutionTitle!.isNotEmpty) {
+            // Fallback to title matching
+            for (int i = 0; i < _analysis.length; i++) {
+              if (_matchSolutionTitle(_analysis[i].solution.title, existingData.selectedSolutionTitle!)) {
+                _selectedSolutionIndex = i;
+                break;
+              }
+            }
+          }
         }
       } else {
         await _loadAnalysis();
@@ -946,7 +972,7 @@ class _PreferredSolutionAnalysisScreenState
         const SizedBox(height: 16),
         if (hasSelection) ...[
           const SizedBox(height: 16),
-          _buildSelectedSolutionFullDetail(projectData, selectedSolutionTitle),
+          _buildSelectedSolutionIndicator(projectData),
         ],
         const SizedBox(height: 16),
         _buildNotesField(),
@@ -961,12 +987,6 @@ class _PreferredSolutionAnalysisScreenState
           const SizedBox(height: 16),
           // Select Project button (KAZ) - only show if a solution is selected
           if (hasSelection) _buildSelectProjectButton(),
-          const SizedBox(height: 12),
-          BusinessCaseNavigationButtons(
-            currentScreen: 'Preferred Solution Analysis',
-            padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 24),
-            onNext: hasSelection ? _handleNextStep : null,
-          ),
           const SizedBox(height: 24),
         ],
         if (_isLoading) const SizedBox(height: 24),
@@ -1120,86 +1140,69 @@ class _PreferredSolutionAnalysisScreenState
     }
   }
 
-  Widget _buildSelectedSolutionFullDetail(
-      ProjectDataModel projectData, String selectedSolutionTitle) {
-    _SolutionAnalysisData? data;
-    for (final a in _analysis) {
-      if (_matchSolutionTitle(a.solution.title, selectedSolutionTitle)) {
-        data = a;
-        break;
+  Widget _buildSelectedSolutionIndicator(ProjectDataModel projectData) {
+    final preferredAnalysis = projectData.preferredSolutionAnalysis;
+    final selectedTitle = preferredAnalysis?.selectedSolutionTitle ?? '';
+    final selectedIndex = preferredAnalysis?.selectedSolutionIndex;
+    
+    if (selectedTitle.isEmpty) return const SizedBox.shrink();
+    
+    // Find the selected solution number
+    int? solutionNumber;
+    if (selectedIndex != null && selectedIndex >= 0 && selectedIndex < _analysis.length) {
+      solutionNumber = selectedIndex + 1;
+    } else {
+      // Try to find by title match
+      for (int i = 0; i < _analysis.length; i++) {
+        if (_matchSolutionTitle(_analysis[i].solution.title, selectedTitle)) {
+          solutionNumber = i + 1;
+          break;
+        }
       }
     }
-    if (data == null) return const SizedBox.shrink();
-    final cbaRows = _getCbaCostRowsForSolution(projectData, data.solution.title);
-
+    
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+        color: const Color(0xFFFFF8E1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.5), width: 1.5),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              const Icon(Icons.check_circle_outline,
-                  color: Color(0xFFFFD700), size: 24),
-              const SizedBox(width: 10),
-              const Text(
-                'Selected Preferred Solution – Full Details',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
+          const Icon(
+            Icons.check_circle,
+            color: Color(0xFFFFD700),
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Preferred Solution Selected',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1B5E20),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            data.solution.title,
-            style: TextStyle(
-              fontSize: 15,
-              color: Colors.grey[700],
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 20),
-          if (data.solution.description.isNotEmpty)
-            _buildDetailSectionCard(
-              title: 'Description',
-              child: Text(data.solution.description,
+                const SizedBox(height: 4),
+                Text(
+                  solutionNumber != null
+                      ? 'Solution #$solutionNumber: $selectedTitle'
+                      : selectedTitle,
                   style: const TextStyle(
-                      fontSize: 14, height: 1.45, color: Colors.black87)),
+                    fontSize: 13,
+                    color: Color(0xFF424242),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-          _buildDetailSectionCard(
-            title: 'Risk information',
-            child: _buildDetailList(data.risks),
-          ),
-          _buildDetailSectionCard(
-            title: 'IT consideration',
-            child: _buildITOrInfraContent(
-              data.itConsiderationText,
-              data.technologies,
-            ),
-          ),
-          _buildDetailSectionCard(
-            title: 'Infrastructure consideration',
-            child: _buildITOrInfraContent(
-              data.infraConsiderationText,
-              data.infrastructure,
-            ),
-          ),
-          _buildDetailSectionCard(
-            title: 'Core stakeholders',
-            child: _buildStakeholdersDetail(data),
-          ),
-          _buildCostBenefitSection(cbaRows),
-          _buildDetailSectionCard(
-            title: 'Investment overview (AI)',
-            child: _buildInvestmentOverviewBody(data.costs),
           ),
         ],
       ),
@@ -1870,64 +1873,76 @@ class _PreferredSolutionAnalysisScreenState
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final selectedTitle =
-            projectData.preferredSolutionAnalysis?.selectedSolutionTitle ?? '';
+        final preferredAnalysis = projectData.preferredSolutionAnalysis;
+        final selectedId = preferredAnalysis?.selectedSolutionId;
+        final selectedIndex = preferredAnalysis?.selectedSolutionIndex;
+        final selectedTitle = preferredAnalysis?.selectedSolutionTitle ?? '';
 
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-            // Desktop: ~3 columns; Tablet: 2; Mobile: 1
-            maxCrossAxisExtent: width >= 1200 ? 400 : 520,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            // Keep cards balanced and equal-height
-            mainAxisExtent: 280,
-          ),
-          itemCount: _analysis.length,
-          itemBuilder: (context, index) {
-            final analysis = _analysis[index];
-            // Get summary data for this solution
-            final riskCount = analysis.risks.length;
-            final itCount = analysis.technologies.length;
-            final infraStatus = analysis.infrastructure.isNotEmpty ? 'Specified' : 'Not specified';
-            final stakeholderCount = (analysis.internalStakeholders?.length ?? 0) + 
-                                   (analysis.externalStakeholders?.length ?? 0);
-            final cbaRows = _getCbaCostRowsForSolution(projectData, analysis.solution.title);
-            final costBenefitSummary = cbaRows.isNotEmpty 
-                ? '\$${cbaRows.fold<double>(0, (sum, row) => sum + (double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0)).toStringAsFixed(0)}'
-                : 'Not calculated';
-            final scopeBrief = analysis.solution.description.length > 100 
-                ? '${analysis.solution.description.substring(0, 100)}...'
-                : analysis.solution.description;
+        // Vertical card stack - single column layout
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (int index = 0; index < _analysis.length; index++)
+              Padding(
+                padding: EdgeInsets.only(
+                  bottom: index < _analysis.length - 1 ? 16 : 0,
+                ),
+                child: Builder(
+                  builder: (context) {
+                    final analysis = _analysis[index];
+                    // Get summary data for this solution
+                    final riskCount = analysis.risks.length;
+                    final itCount = analysis.technologies.length;
+                    final infraStatus = analysis.infrastructure.isNotEmpty ? 'Specified' : 'Not specified';
+                    final stakeholderCount = (analysis.internalStakeholders?.length ?? 0) + 
+                                           (analysis.externalStakeholders?.length ?? 0);
+                    final cbaRows = _getCbaCostRowsForSolution(projectData, analysis.solution.title);
+                    final costBenefitSummary = cbaRows.isNotEmpty 
+                        ? '\$${cbaRows.fold<double>(0, (sum, row) => sum + (double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0)).toStringAsFixed(0)}'
+                        : 'Not calculated';
+                    final scopeBrief = analysis.solution.description.length > 100 
+                        ? '${analysis.solution.description.substring(0, 100)}...'
+                        : analysis.solution.description;
 
-            final isSelected =
-                _matchSolutionTitle(selectedTitle, analysis.solution.title);
+                    // Check if selected: Primary by index, fallback to UUID, then title
+                    bool isSelected = false;
+                    if (selectedIndex != null && selectedIndex == index) {
+                      isSelected = true;
+                    } else if (selectedId != null && index < projectData.potentialSolutions.length) {
+                      isSelected = projectData.potentialSolutions[index].id == selectedId;
+                    } else if (selectedTitle.isNotEmpty) {
+                      isSelected = _matchSolutionTitle(selectedTitle, analysis.solution.title);
+                    }
 
-            return SolutionCard(
-              solution: PotentialSolution(
-                id: 'temp_$index',
-                number: index + 1,
-                title: analysis.solution.title,
-                description: analysis.solution.description,
-              ),
-              riskCount: riskCount,
-              itConsiderationsCount: itCount,
-              infrastructureStatus: infraStatus,
-              costBenefitSummary: costBenefitSummary,
-              stakeholderCount: stakeholderCount,
-              scopeBrief: scopeBrief,
-              onViewDetails: () => _navigateToSolutionDetails(index),
-              onSelectPreferred: _isSavingPreferredSelection
-                  ? () {}
-                  : () => _confirmSelectPreferredFromCard(
-                        index: index,
+                    return SolutionCard(
+                      solution: PotentialSolution(
+                        id: index < projectData.potentialSolutions.length
+                            ? projectData.potentialSolutions[index].id
+                            : 'temp_$index',
+                        number: index + 1,
                         title: analysis.solution.title,
+                        description: analysis.solution.description,
                       ),
-              isSelected: isSelected,
-              isSaving: _isSavingPreferredSelection && _savingPreferredIndex == index,
-            );
-          },
+                      riskCount: riskCount,
+                      itConsiderationsCount: itCount,
+                      infrastructureStatus: infraStatus,
+                      costBenefitSummary: costBenefitSummary,
+                      stakeholderCount: stakeholderCount,
+                      scopeBrief: scopeBrief,
+                      onViewDetails: () => _navigateToSolutionDetails(index),
+                      onSelectPreferred: _isSavingPreferredSelection
+                          ? () {}
+                          : () => _confirmSelectPreferredFromCard(
+                                index: index,
+                                title: analysis.solution.title,
+                              ),
+                      isSelected: false, // Don't show visual selection state on cards
+                      isSaving: _isSavingPreferredSelection && _savingPreferredIndex == index,
+                    );
+                  },
+                ),
+              ),
+          ],
         );
       },
     );
@@ -1981,28 +1996,104 @@ class _PreferredSolutionAnalysisScreenState
       final projectData = provider.projectData;
       final analysis = _analysis[index];
 
-      final solutionId = projectData.potentialSolutions
-          .where((s) => _matchSolutionTitle(s.title, analysis.solution.title))
-          .firstOrNull
-          ?.id;
+      // Primary: Try index-based matching (most reliable)
+      String? solutionId;
+      if (index < projectData.potentialSolutions.length) {
+        solutionId = projectData.potentialSolutions[index].id;
+      } else {
+        // Fallback 1: Try UUID/ID matching if we have stored ID
+        final currentAnalysis = projectData.preferredSolutionAnalysis;
+        if (currentAnalysis?.selectedSolutionId != null) {
+          final matchById = projectData.potentialSolutions
+              .where((s) => s.id == currentAnalysis!.selectedSolutionId)
+              .firstOrNull;
+          if (matchById != null) {
+            solutionId = matchById.id;
+          }
+        }
+        
+        // Fallback 2: Try title matching (last resort)
+        if (solutionId == null) {
+          final matchByTitle = projectData.potentialSolutions
+              .where((s) => _matchSolutionTitle(s.title, analysis.solution.title))
+              .firstOrNull;
+          solutionId = matchByTitle?.id;
+        }
+      }
 
       if (solutionId == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not match solution to select.')),
+            const SnackBar(content: Text('Could not match solution to select. Please ensure solutions are properly configured.')),
           );
         }
         return;
       }
 
+      // Update both provider and PreferredSolutionAnalysis with UUID and index
       await provider.setPreferredSolution(solutionId,
           checkpoint: 'preferred_solution_selected');
+
+      // Also update PreferredSolutionAnalysis with UUID and index for persistence
+      final currentAnalysis = provider.projectData.preferredSolutionAnalysis;
+      final updatedAnalysis = PreferredSolutionAnalysis(
+        workingNotes: currentAnalysis?.workingNotes ?? _notesController.text.trim(),
+        solutionAnalyses: currentAnalysis?.solutionAnalyses ?? [],
+        selectedSolutionTitle: analysis.solution.title,
+        selectedSolutionId: solutionId,
+        selectedSolutionIndex: index,
+      );
+
+      provider.updateField((data) => data.copyWith(
+            preferredSolutionAnalysis: updatedAnalysis,
+          ));
+
+      await provider.saveToFirebase(checkpoint: 'preferred_solution_selected');
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Solution selected successfully')),
       );
-      FrontEndPlanningSummaryScreen.open(context);
+      
+      // Navigate to Preferred Solutions screen (ProjectDecisionSummaryScreen)
+      final potentialSolutions = projectData.potentialSolutions;
+      final solutions = potentialSolutions
+          .map((s) => AiSolutionItem(title: s.title, description: s.description))
+          .toList();
+      final safeSolutions = solutions.isNotEmpty
+          ? solutions
+          : [
+              AiSolutionItem(
+                title: projectData.projectName.isNotEmpty 
+                    ? projectData.projectName 
+                    : 'Preferred Solution',
+                description: projectData.businessCase.isNotEmpty 
+                    ? projectData.businessCase 
+                    : '',
+              ),
+            ];
+      final selectedSolution = safeSolutions.firstWhere(
+        (s) => _matchSolutionTitle(s.title, analysis.solution.title),
+        orElse: () => safeSolutions.first,
+      );
+
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ProjectDecisionSummaryScreen(
+            projectName: projectData.projectName.isNotEmpty 
+                ? projectData.projectName 
+                : 'Untitled Project',
+            selectedSolution: selectedSolution,
+            allSolutions: safeSolutions,
+            businessCase: projectData.businessCase.isNotEmpty 
+                ? projectData.businessCase 
+                : '',
+            notes: updatedAnalysis.workingNotes.isNotEmpty 
+                ? updatedAnalysis.workingNotes 
+                : '',
+          ),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -4161,15 +4252,193 @@ class PreferredSolutionDetailsScreen extends StatelessWidget {
   final int index;
   final Future<void> Function() onSelectPreferred;
 
+  Widget _buildCbaDataTable(List<CostRowData> cbaRows, String currency) {
+    if (cbaRows.isEmpty) {
+      return const Text('No cost analysis available.', style: TextStyle(fontSize: 14));
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const minTableWidth = 800.0;
+        final tableWidth = constraints.maxWidth < minTableWidth
+            ? minTableWidth
+            : constraints.maxWidth;
+
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: tableWidth,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Currency indicator at top
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.attach_money, size: 16, color: Colors.blue.shade700),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Currency: $currency',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.blue.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Header row - center-aligned, reduced font/padding
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.grey.withOpacity(0.35)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Center(
+                          child: Text(
+                            'Item',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 1,
+                        child: Center(
+                          child: Text(
+                            'Cost',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Center(
+                          child: Text(
+                            'Description',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                // Data rows
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.grey.withOpacity(0.25)),
+                  ),
+                  child: Column(
+                    children: [
+                      for (int i = 0; i < cbaRows.length; i++)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              top: i > 0
+                                  ? BorderSide(color: Colors.grey.withOpacity(0.2))
+                                  : BorderSide.none,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                flex: 2,
+                                child: Center(
+                                  child: Text(
+                                    cbaRows[i].itemName.isEmpty
+                                        ? 'Cost item'
+                                        : cbaRows[i].itemName,
+                                    style: const TextStyle(fontSize: 11),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                flex: 1,
+                                child: Center(
+                                  child: Text(
+                                    cbaRows[i].cost.isEmpty ? '—' : cbaRows[i].cost,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: Center(
+                                  child: Text(
+                                    cbaRows[i].description.isEmpty
+                                        ? '—'
+                                        : cbaRows[i].description,
+                                    style: const TextStyle(fontSize: 11),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = ProjectDataHelper.getProvider(context);
     final projectData = provider.projectData;
-    final selectedTitle =
-        projectData.preferredSolutionAnalysis?.selectedSolutionTitle ?? '';
+    final preferredAnalysis = projectData.preferredSolutionAnalysis;
+    final selectedId = preferredAnalysis?.selectedSolutionId;
+    final selectedIndex = preferredAnalysis?.selectedSolutionIndex;
+    final selectedTitle = preferredAnalysis?.selectedSolutionTitle ?? '';
+    
+    // Check if selected: Primary by index, fallback to UUID, then title
+    bool isSelected = false;
     bool titlesMatch(String a, String b) =>
         a.trim().toLowerCase() == b.trim().toLowerCase();
-    final isSelected = titlesMatch(selectedTitle, analysis.solution.title);
+    if (selectedIndex != null && selectedIndex == index) {
+      isSelected = true;
+    } else if (selectedId != null && index < projectData.potentialSolutions.length) {
+      isSelected = projectData.potentialSolutions[index].id == selectedId;
+    } else if (selectedTitle.isNotEmpty) {
+      isSelected = titlesMatch(selectedTitle, analysis.solution.title);
+    }
 
     final cbaRows = (projectData.costAnalysisData?.solutionCosts ?? const [])
         .where((s) => titlesMatch(s.solutionTitle, analysis.solution.title))
@@ -4198,18 +4467,20 @@ class PreferredSolutionDetailsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // CBA Table at TOP (first section)
                   SolutionDetailSection(
-                    title: 'Scope Statement',
-                    content: Text(
-                      analysis.solution.description.isNotEmpty
-                          ? analysis.solution.description
-                          : 'No scope statement provided.',
-                      style: const TextStyle(fontSize: 14, height: 1.5),
-                    ),
+                    title: 'Cost Benefit Analysis',
+                    icon: Icons.attach_money,
                     initiallyExpanded: true,
+                    content: cbaRows.isEmpty
+                        ? const Text('No cost analysis available.',
+                            style: TextStyle(fontSize: 14))
+                        : _buildCbaDataTable(cbaRows, projectData.costBenefitCurrency),
                   ),
+                  // Risks & IT Considerations
                   SolutionDetailSection(
                     title: 'Risks Identified',
+                    icon: Icons.warning,
                     content: analysis.risks.isEmpty
                         ? const Text('No risks identified.',
                             style: TextStyle(fontSize: 14))
@@ -4219,7 +4490,7 @@ class PreferredSolutionDetailsScreen extends StatelessWidget {
                                 .map((risk) => Padding(
                                       padding:
                                           const EdgeInsets.only(bottom: 8),
-                                      child: Text('• $risk',
+                                      child: Text('. $risk',
                                           style: const TextStyle(fontSize: 14)),
                                     ))
                                 .toList(),
@@ -4227,6 +4498,7 @@ class PreferredSolutionDetailsScreen extends StatelessWidget {
                   ),
                   SolutionDetailSection(
                     title: 'IT Considerations',
+                    icon: Icons.computer,
                     content: analysis.itConsiderationText?.isNotEmpty == true
                         ? Text(analysis.itConsiderationText!,
                             style: const TextStyle(fontSize: 14, height: 1.5))
@@ -4239,7 +4511,7 @@ class PreferredSolutionDetailsScreen extends StatelessWidget {
                                     .map((tech) => Padding(
                                           padding: const EdgeInsets.only(
                                               bottom: 8),
-                                          child: Text('• $tech',
+                                          child: Text('. $tech',
                                               style: const TextStyle(
                                                   fontSize: 14)),
                                         ))
@@ -4248,6 +4520,7 @@ class PreferredSolutionDetailsScreen extends StatelessWidget {
                   ),
                   SolutionDetailSection(
                     title: 'Infrastructure Considerations',
+                    icon: Icons.construction,
                     content: analysis.infraConsiderationText?.isNotEmpty == true
                         ? Text(analysis.infraConsiderationText!,
                             style: const TextStyle(fontSize: 14, height: 1.5))
@@ -4261,34 +4534,17 @@ class PreferredSolutionDetailsScreen extends StatelessWidget {
                                     .map((infra) => Padding(
                                           padding: const EdgeInsets.only(
                                               bottom: 8),
-                                          child: Text('• $infra',
+                                          child: Text('. $infra',
                                               style: const TextStyle(
                                                   fontSize: 14)),
                                         ))
                                     .toList(),
                               )),
                   ),
-                  SolutionDetailSection(
-                    title: 'Cost Benefit Analysis',
-                    content: cbaRows.isEmpty
-                        ? const Text('No cost analysis available.',
-                            style: TextStyle(fontSize: 14))
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              for (final row in cbaRows.take(12))
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: Text(
-                                    '• ${row.itemName.isEmpty ? 'Cost item' : row.itemName}: ${row.cost.isEmpty ? '—' : row.cost}',
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                ),
-                            ],
-                          ),
-                  ),
+                  // Core Stakeholders - External FIRST, Internal SECOND
                   SolutionDetailSection(
                     title: 'Core Stakeholders',
+                    icon: Icons.people,
                     content: (analysis.stakeholders.isEmpty &&
                             (analysis.internalStakeholders?.isEmpty ?? true) &&
                             (analysis.externalStakeholders?.isEmpty ?? true))
@@ -4297,16 +4553,10 @@ class PreferredSolutionDetailsScreen extends StatelessWidget {
                         : Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              for (final s in (analysis.stakeholders))
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: Text('• $s',
-                                      style: const TextStyle(fontSize: 14)),
-                                ),
+                              // External Stakeholders FIRST
                               if (analysis.externalStakeholders?.isNotEmpty ==
                                   true) ...[
-                                const SizedBox(height: 8),
-                                const Text('External:',
+                                const Text('External Stakeholders:',
                                     style: TextStyle(
                                         fontWeight: FontWeight.w700,
                                         fontSize: 14)),
@@ -4314,15 +4564,16 @@ class PreferredSolutionDetailsScreen extends StatelessWidget {
                                 for (final s in analysis.externalStakeholders!)
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 8),
-                                    child: Text('• $s',
+                                    child: Text('. $s',
                                         style:
                                             const TextStyle(fontSize: 14)),
                                   ),
+                                const SizedBox(height: 12),
                               ],
+                              // Internal Stakeholders SECOND
                               if (analysis.internalStakeholders?.isNotEmpty ==
                                   true) ...[
-                                const SizedBox(height: 8),
-                                const Text('Internal:',
+                                const Text('Internal Stakeholders:',
                                     style: TextStyle(
                                         fontWeight: FontWeight.w700,
                                         fontSize: 14)),
@@ -4330,13 +4581,34 @@ class PreferredSolutionDetailsScreen extends StatelessWidget {
                                 for (final s in analysis.internalStakeholders!)
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 8),
-                                    child: Text('• $s',
+                                    child: Text('. $s',
                                         style:
                                             const TextStyle(fontSize: 14)),
                                   ),
                               ],
+                              // Combined stakeholders (if any) - show last
+                              if (analysis.stakeholders.isNotEmpty &&
+                                  (analysis.externalStakeholders?.isEmpty ?? true) &&
+                                  (analysis.internalStakeholders?.isEmpty ?? true))
+                                for (final s in analysis.stakeholders)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: Text('. $s',
+                                        style: const TextStyle(fontSize: 14)),
+                                  ),
                             ],
                           ),
+                  ),
+                  // Scope Statement - Clean prose, no bullets
+                  SolutionDetailSection(
+                    title: 'Scope Statement',
+                    icon: Icons.description,
+                    content: Text(
+                      analysis.solution.description.isNotEmpty
+                          ? analysis.solution.description
+                          : 'No scope statement provided.',
+                      style: const TextStyle(fontSize: 14, height: 1.5),
+                    ),
                   ),
                 ],
               ),

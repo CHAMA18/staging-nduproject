@@ -768,7 +768,13 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
     final provider = ProjectDataInherited.maybeOf(context);
     final members = provider?.projectData.teamMembers ?? [];
     final names = members
-        .map((member) => member.name.trim().isNotEmpty ? member.name.trim() : member.email.trim())
+        .map((member) {
+          final name = member.name.trim();
+          if (name.isNotEmpty) return name;
+          final email = member.email.trim();
+          if (email.isNotEmpty) return email;
+          return member.role.trim();
+        })
         .where((value) => value.isNotEmpty)
         .toList();
     if (names.isEmpty) return const ['Owner'];

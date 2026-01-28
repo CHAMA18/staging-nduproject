@@ -11,7 +11,9 @@ import '../routing/app_router.dart';
 import '../services/navigation_context_service.dart';
 import '../services/project_service.dart';
 import '../services/program_service.dart';
+import '../services/portfolio_service.dart';
 import '../models/program_model.dart';
+import '../models/portfolio_model.dart';
 import 'basic_plan_dashboard_screen.dart';
 import 'project_dashboard_screen.dart';
 import 'program_dashboard_screen.dart';
@@ -39,16 +41,241 @@ class PortfolioDashboardScreen extends StatelessWidget {
   }
 }
 
-class _PortfolioRollUpContent extends StatelessWidget {
+class _PortfolioRollUpContent extends StatefulWidget {
   const _PortfolioRollUpContent({this.portfolioId});
 
   final String? portfolioId;
+
+  @override
+  State<_PortfolioRollUpContent> createState() =>
+      _PortfolioRollUpContentState();
+}
+
+class _PortfolioRollUpContentState extends State<_PortfolioRollUpContent> {
+  final Set<String> _selectedProjectIds = {};
+  _ProjectSort _singleProjectsSort = _ProjectSort.newest;
+  _ProjectSort _groupProjectsSort = _ProjectSort.newest;
+
+  void _togglePortfolioSelection(ProjectRecord project) {
+    final id = project.id;
+    final isSelected = _selectedProjectIds.contains(id);
+    if (isSelected) {
+      setState(() {
+        _selectedProjectIds.remove(id);
+      });
+      return;
+    }
+    if (_selectedProjectIds.length >= 7) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You can add up to 7 projects to a portfolio.'),
+        ),
+      );
+      return;
+    }
+    setState(() {
+      _selectedProjectIds.add(id);
+    });
+    if (_selectedProjectIds.length == 7) {
+      Future<void>.microtask(_promptPortfolioName);
+    }
+  }
+
+  Future<void> _promptPortfolioName() async {
+    final controller = TextEditingController();
+    final selectedCount = _selectedProjectIds.length;
+    final result = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final canCreate = controller.text.trim().isNotEmpty;
+            return Dialog(
+              insetPadding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24)),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 30,
+                      offset: const Offset(0, 18),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFE0F2FE), Color(0xFFF0FDF4)],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(Icons.auto_awesome_rounded,
+                          color: Color(0xFF0EA5E9)),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Name this portfolio',
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'You are grouping $selectedCount projects into a portfolio. Give it a name your executives will recognize.',
+                      style: const TextStyle(
+                          fontSize: 13, color: Color(0xFF6B7280)),
+                    ),
+                    const SizedBox(height: 18),
+                    TextField(
+                      controller: controller,
+                      onChanged: (_) => setDialogState(() {}),
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.text_fields_rounded,
+                            size: 18),
+                        hintText: 'Portfolio name',
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFC),
+                        contentPadding:
+                            const EdgeInsets.symmetric(vertical: 14),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFE5E7EB)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFE5E7EB)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3F4F6),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            '$selectedCount selected',
+                            style: const TextStyle(
+                                fontSize: 11, color: Color(0xFF6B7280)),
+                          ),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(),
+                          child: const Text('Cancel'),
+                        ),
+                        const SizedBox(width: 8),
+                        InkWell(
+                          onTap: canCreate
+                              ? () => Navigator.of(dialogContext)
+                                  .pop(controller.text.trim())
+                              : null,
+                          borderRadius: BorderRadius.circular(999),
+                          child: Ink(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 10),
+                            decoration: BoxDecoration(
+                              gradient: canCreate
+                                  ? const LinearGradient(
+                                      colors: [
+                                        Color(0xFF0EA5E9),
+                                        Color(0xFF22C55E)
+                                      ],
+                                    )
+                                  : const LinearGradient(
+                                      colors: [
+                                        Color(0xFFE5E7EB),
+                                        Color(0xFFE5E7EB)
+                                      ],
+                                    ),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              'Create',
+                              style: TextStyle(
+                                  color:
+                                      canCreate ? Colors.white : Colors.grey,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+    if (!mounted) return;
+    final name = result?.trim();
+    if (name == null || name.isEmpty) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sign in to create a portfolio.')),
+      );
+      return;
+    }
+    final projectIds = _selectedProjectIds.toList(growable: false);
+    try {
+      await PortfolioService.createPortfolio(
+        name: name,
+        projectIds: projectIds,
+        ownerId: user.uid,
+      );
+      if (!mounted) return;
+      setState(() {
+        _selectedProjectIds.clear();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Portfolio "$name" created successfully.'),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to create portfolio.')),
+      );
+    }
+  }
 
   void _openProjectDashboard(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const ProjectDashboardScreen()),
     );
+  }
+
+  List<ProjectRecord> _sortedProjects(
+      List<ProjectRecord> projects, _ProjectSort sort) {
+    final sorted = [...projects];
+    sorted.sort((a, b) {
+      final compare = a.createdAt.compareTo(b.createdAt);
+      return sort == _ProjectSort.oldest ? compare : -compare;
+    });
+    return sorted;
   }
 
   void _openBasicProjectDashboard(BuildContext context) {
@@ -104,7 +331,7 @@ class _PortfolioRollUpContent extends StatelessWidget {
       ),
       DashboardStatCard(
         label: 'Portfolios',
-        value: '0',
+        value: '${metrics.portfolioCount}',
         subLabel: 'Executive views',
         icon: Icons.pie_chart_outline_rounded,
         color: const Color(0xFF16A34A),
@@ -122,6 +349,9 @@ class _PortfolioRollUpContent extends StatelessWidget {
     final programStream = user == null
         ? Stream.value(const <ProgramModel>[])
         : ProgramService.streamPrograms(ownerId: user.uid);
+    final portfolioStream = user == null
+        ? Stream.value(const <PortfolioModel>[])
+        : PortfolioService.streamPortfolios(ownerId: user.uid);
 
     return StreamBuilder<List<ProjectRecord>>(
       stream: projectStream,
@@ -131,44 +361,121 @@ class _PortfolioRollUpContent extends StatelessWidget {
           stream: programStream,
           builder: (context, programSnapshot) {
             final programs = programSnapshot.data ?? const <ProgramModel>[];
-            final metrics = _PortfolioMetrics.fromData(
-                projects: projects, programs: programs);
+            return StreamBuilder<List<PortfolioModel>>(
+              stream: portfolioStream,
+              builder: (context, portfolioSnapshot) {
+                final portfolios =
+                    portfolioSnapshot.data ?? const <PortfolioModel>[];
+                final metrics = _PortfolioMetrics.fromData(
+                  projects: projects,
+                  programs: programs,
+                  portfolios: portfolios,
+                );
 
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                final isNarrow = constraints.maxWidth < 1000;
-                final statsIsStacked = constraints.maxWidth < 920;
-                final statCards = _buildPortfolioStatsCards(context, metrics);
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _HeaderSection(metrics: metrics),
-                      const SizedBox(height: 24),
-                      DashboardStatLayout(
-                        cards: statCards,
-                        isStacked: statsIsStacked,
-                        horizontalSpacing: 20,
-                        verticalSpacing: 16,
-                      ),
-                      const SizedBox(height: 24),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 1000;
+                    final statsIsStacked = constraints.maxWidth < 920;
+                    final statCards =
+                        _buildPortfolioStatsCards(context, metrics);
+                    final independentProjects = metrics.independentProjects;
+                    final singleSource = independentProjects.isEmpty
+                        ? metrics.projects
+                        : independentProjects;
+                    final sortedSingles =
+                        _sortedProjects(singleSource, _singleProjectsSort)
+                            .take(10)
+                            .toList(growable: false);
+                    final groupSource = independentProjects.isEmpty
+                        ? metrics.projects
+                        : independentProjects;
+                    final sortedGroups =
+                        _sortedProjects(groupSource, _groupProjectsSort)
+                            .take(10)
+                            .toList(growable: false);
+                    return SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _ProgramsProjectsCard(metrics: metrics),
+                          _HeaderSection(metrics: metrics),
                           const SizedBox(height: 24),
-                          const _GovernanceReportingCard(),
+                          DashboardStatLayout(
+                            cards: statCards,
+                            isStacked: statsIsStacked,
+                            horizontalSpacing: 20,
+                            verticalSpacing: 16,
+                          ),
                           const SizedBox(height: 24),
-                          _IndependentProjectsCard(metrics: metrics),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (isNarrow) ...[
+                                _SingleProjectsCard(
+                                  projects: sortedSingles,
+                                  sort: _singleProjectsSort,
+                                  onSortChanged: (sort) => setState(
+                                      () => _singleProjectsSort = sort),
+                                  onSeeAll: () =>
+                                      _openProjectDashboard(context),
+                                ),
+                                const SizedBox(height: 24),
+                                _GroupProjectsIntoPortfolioCard(
+                                  projects: sortedGroups,
+                                  sort: _groupProjectsSort,
+                                  onSortChanged: (sort) => setState(
+                                      () => _groupProjectsSort = sort),
+                                  onSeeAll: () =>
+                                      _openProjectDashboard(context),
+                                  selectedProjectIds: _selectedProjectIds,
+                                  onToggle: _togglePortfolioSelection,
+                                ),
+                              ] else ...[
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: _SingleProjectsCard(
+                                        projects: sortedSingles,
+                                        sort: _singleProjectsSort,
+                                        onSortChanged: (sort) => setState(
+                                            () => _singleProjectsSort = sort),
+                                        onSeeAll: () =>
+                                            _openProjectDashboard(context),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 24),
+                                    Expanded(
+                                      child: _GroupProjectsIntoPortfolioCard(
+                                        projects: sortedGroups,
+                                        sort: _groupProjectsSort,
+                                        onSortChanged: (sort) => setState(
+                                            () => _groupProjectsSort = sort),
+                                        onSeeAll: () =>
+                                            _openProjectDashboard(context),
+                                        selectedProjectIds: _selectedProjectIds,
+                                        onToggle: _togglePortfolioSelection,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                              const SizedBox(height: 24),
+                              _ProgramsProjectsCard(metrics: metrics),
+                              const SizedBox(height: 24),
+                              const _GovernanceReportingCard(),
+                              const SizedBox(height: 24),
+                              _IndependentProjectsCard(metrics: metrics),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                          _CostScheduleRiskSection(metrics: metrics),
+                          const SizedBox(height: 24),
+                          _RollUpUpdateSection(metrics: metrics),
                         ],
                       ),
-                      const SizedBox(height: 24),
-                      _CostScheduleRiskSection(metrics: metrics),
-                      const SizedBox(height: 24),
-                      _RollUpUpdateSection(metrics: metrics),
-                    ],
-                  ),
+                    );
+                  },
                 );
               },
             );
@@ -558,6 +865,578 @@ class _ProgramRow extends StatelessWidget {
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
                             color: priorityColor)))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+enum _ProjectSort { newest, oldest }
+
+class _SingleProjectsCard extends StatelessWidget {
+  const _SingleProjectsCard({
+    required this.projects,
+    required this.sort,
+    required this.onSortChanged,
+    required this.onSeeAll,
+  });
+
+  final List<ProjectRecord> projects;
+  final _ProjectSort sort;
+  final ValueChanged<_ProjectSort> onSortChanged;
+  final VoidCallback onSeeAll;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Single Projects',
+                        style: textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Review all standalone projects before they are linked into programs or portfolios.',
+                      style: textTheme.bodySmall
+                          ?.copyWith(color: const Color(0xFF6B7280)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              TextButton(
+                onPressed: onSeeAll,
+                style: TextButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  backgroundColor: const Color(0xFFFCE7F3),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
+                ),
+                child: const Text(
+                  'See All',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFDB2777)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.group_work_outlined,
+                        size: 16, color: Color(0xFF6B7280)),
+                    SizedBox(width: 6),
+                    Text('If more than 3 projects, group up to 7 into a portfolio',
+                        style:
+                            TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                  ],
+                ),
+              ),
+              _SortDropdown(
+                value: sort,
+                onChanged: onSortChanged,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search, size: 18),
+              hintText: 'Search projects...',
+              isDense: true,
+              filled: true,
+              fillColor: const Color(0xFFF9FAFB),
+              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  color: const Color(0xFFF9FAFB),
+                  child: const Row(
+                    children: [
+                      Expanded(
+                          flex: 3,
+                          child: Padding(
+                            padding: EdgeInsets.only(right: 12),
+                            child: Text('Project',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF6B7280))),
+                          )),
+                      Expanded(
+                          flex: 2,
+                          child: Padding(
+                            padding: EdgeInsets.only(right: 12),
+                            child: Text('Stage',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF6B7280))),
+                          )),
+                      Expanded(
+                          flex: 2,
+                          child: Padding(
+                            padding: EdgeInsets.only(right: 12),
+                            child: Text('Owner',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF6B7280))),
+                          )),
+                      Expanded(
+                          flex: 2,
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: Text('Investment',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF6B7280))),
+                          )),
+                    ],
+                  ),
+                ),
+                if (projects.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Text(
+                      'No standalone projects yet.',
+                      style: textTheme.bodySmall
+                          ?.copyWith(color: const Color(0xFF9CA3AF)),
+                    ),
+                  )
+                else
+                  for (int i = 0; i < projects.length; i++) ...[
+                    _SingleProjectRow(project: projects[i]),
+                    if (i != projects.length - 1)
+                      const Divider(height: 1, color: Color(0xFFE5E7EB)),
+                  ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SingleProjectRow extends StatelessWidget {
+  const _SingleProjectRow({required this.project});
+
+  final ProjectRecord project;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = project.name.trim().isEmpty ? 'Untitled Project' : project.name;
+    final owner =
+        project.ownerName.trim().isEmpty ? 'Unassigned' : project.ownerName;
+    final stage = _projectPhase(project);
+    final investment = project.investmentMillions <= 0
+        ? 'Not set'
+        : _formatMillions(project.investmentMillions);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1D4ED8)),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEDE9FE),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                stage,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF6D28D9)),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 12, right: 12),
+              child: Text(
+                owner,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontSize: 12, color: Color(0xFF111827)),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                investment,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontSize: 12, color: Color(0xFF111827)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GroupProjectsIntoPortfolioCard extends StatelessWidget {
+  const _GroupProjectsIntoPortfolioCard({
+    required this.projects,
+    required this.sort,
+    required this.onSortChanged,
+    required this.onSeeAll,
+    required this.selectedProjectIds,
+    required this.onToggle,
+  });
+
+  final List<ProjectRecord> projects;
+  final _ProjectSort sort;
+  final ValueChanged<_ProjectSort> onSortChanged;
+  final VoidCallback onSeeAll;
+  final Set<String> selectedProjectIds;
+  final ValueChanged<ProjectRecord> onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final isNarrow = MediaQuery.of(context).size.width < 900;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Group Projects Into A Portfolio',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Select up to seven projects that share an outcome to create a new portfolio.',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: const Color(0xFF6B7280)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              TextButton(
+                onPressed: onSeeAll,
+                style: TextButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  backgroundColor: const Color(0xFFFCE7F3),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
+                ),
+                child: const Text(
+                  'See All',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFDB2777)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.filter_list, size: 16, color: Color(0xFF6B7280)),
+                    SizedBox(width: 6),
+                    Text('Up to 7 projects',
+                        style:
+                            TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                  ],
+                ),
+              ),
+              _SortDropdown(
+                value: sort,
+                onChanged: onSortChanged,
+              ),
+              SizedBox(
+                width: isNarrow ? double.infinity : 320,
+                child: TextField(
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search, size: 18),
+                    hintText: 'Search projects to group...',
+                    isDense: true,
+                    filled: true,
+                    fillColor: const Color(0xFFF9FAFB),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          const BorderSide(color: Color(0xFFE5E7EB)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          const BorderSide(color: Color(0xFFE5E7EB)),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (projects.isEmpty)
+            Text(
+              'No available projects to group right now.',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: const Color(0xFF9CA3AF)),
+            )
+          else
+            Column(
+              children: [
+                for (int i = 0; i < projects.length; i++) ...[
+                  _GroupProjectRow(
+                    title: projects[i].name.isEmpty
+                        ? 'Untitled Project'
+                        : projects[i].name,
+                    subtitle: _projectPhase(projects[i]),
+                    isSelected: selectedProjectIds
+                        .contains(projects[i].id),
+                    onToggle: () => onToggle(projects[i]),
+                  ),
+                  if (i != projects.length - 1)
+                    const SizedBox(height: 12),
+                ],
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GroupProjectRow extends StatelessWidget {
+  const _GroupProjectRow({
+    required this.title,
+    required this.subtitle,
+    required this.isSelected,
+    required this.onToggle,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool isSelected;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: isSelected ? const Color(0xFFEFF6FF) : const Color(0xFFF9FAFF),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+            color: isSelected
+                ? const Color(0xFF93C5FD)
+                : const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 18,
+            height: 18,
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? const Color(0xFF3B82F6)
+                  : const Color(0xFF9CA3AF),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: isSelected
+                ? const Icon(Icons.check, size: 12, color: Colors.white)
+                : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF111827))),
+                const SizedBox(height: 4),
+                Text(subtitle,
+                    style: const TextStyle(
+                        fontSize: 11, color: Color(0xFF6B7280))),
+              ],
+            ),
+          ),
+          OutlinedButton(
+            onPressed: onToggle,
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999)),
+              side: const BorderSide(color: Color(0xFFE5E7EB)),
+            ),
+            child: Text(
+              isSelected ? 'Included' : 'Tap to include',
+              style: const TextStyle(fontSize: 11, color: Color(0xFF374151))),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SortDropdown extends StatelessWidget {
+  const _SortDropdown({required this.value, required this.onChanged});
+
+  final _ProjectSort value;
+  final ValueChanged<_ProjectSort> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<_ProjectSort>(
+          value: value,
+          onChanged: (next) {
+            if (next != null) onChanged(next);
+          },
+          items: const [
+            DropdownMenuItem(
+              value: _ProjectSort.newest,
+              child: Text('Newest'),
+            ),
+            DropdownMenuItem(
+              value: _ProjectSort.oldest,
+              child: Text('Oldest'),
+            ),
           ],
         ),
       ),
@@ -1395,6 +2274,7 @@ class _PortfolioMetrics {
     required this.projects,
     required this.projectCount,
     required this.programCount,
+    required this.portfolioCount,
     required this.inProgramProjectCount,
     required this.independentProjectCount,
     required this.totalValue,
@@ -1418,6 +2298,7 @@ class _PortfolioMetrics {
   final List<ProjectRecord> projects;
   final int projectCount;
   final int programCount;
+  final int portfolioCount;
   final int inProgramProjectCount;
   final int independentProjectCount;
   final double totalValue;
@@ -1440,6 +2321,7 @@ class _PortfolioMetrics {
   static _PortfolioMetrics fromData({
     required List<ProjectRecord> projects,
     required List<ProgramModel> programs,
+    required List<PortfolioModel> portfolios,
   }) {
     final totalValue = projects.fold<double>(
         0, (sum, project) => sum + project.investmentMillions);
@@ -1591,6 +2473,7 @@ class _PortfolioMetrics {
       projects: projects,
       projectCount: projects.length,
       programCount: programs.length,
+      portfolioCount: portfolios.length,
       inProgramProjectCount: inProgramProjectCount,
       independentProjectCount: independentProjectCount,
       totalValue: totalValue,

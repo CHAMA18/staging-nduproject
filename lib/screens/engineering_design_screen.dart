@@ -44,6 +44,52 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
     'Planned',
   ];
 
+  List<String> _ownerOptions({String? currentValue}) {
+    final provider = ProjectDataInherited.maybeOf(context);
+    final members = provider?.projectData.teamMembers ?? [];
+    final names = members
+        .map((member) {
+          final name = member.name.trim();
+          if (name.isNotEmpty) return name;
+          final email = member.email.trim();
+          if (email.isNotEmpty) return email;
+          return member.role.trim();
+        })
+        .where((value) => value.isNotEmpty)
+        .toList();
+    final options = names.isEmpty ? <String>['Owner'] : names.toSet().toList();
+    final normalized = currentValue?.trim() ?? '';
+    if (normalized.isNotEmpty && !options.contains(normalized)) {
+      return [normalized, ...options];
+    }
+    return options;
+  }
+
+  Widget _buildOwnerDropdown({
+    required String value,
+    required ValueChanged<String> onChanged,
+  }) {
+    final options = _ownerOptions(currentValue: value);
+    final normalized = value.trim();
+    final resolved =
+        normalized.isNotEmpty && options.contains(normalized) ? normalized : options.first;
+    return DropdownButtonFormField<String>(
+      initialValue: resolved,
+      alignment: Alignment.center,
+      isExpanded: true,
+      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
+      items: options
+          .map((owner) =>
+              DropdownMenuItem(value: owner, child: Center(child: Text(owner))))
+          .toList(),
+      onChanged: (newValue) {
+        if (newValue == null) return;
+        onChanged(newValue);
+      },
+      decoration: _inlineInputDecoration('Owner'),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -722,14 +768,10 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                   const SizedBox(width: 12),
                   SizedBox(
                     width: 180,
-                    child: TextFormField(
-                      key: ValueKey('readiness-owner-${item.id}'),
-                      initialValue: item.owner,
-                      decoration: _inlineInputDecoration('Owner'),
-                      textAlign: TextAlign.center,
-                      textAlignVertical: TextAlignVertical.center,
-                      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
-                      onChanged: (value) => _updateReadiness(item.copyWith(owner: value)),
+                    child: _buildOwnerDropdown(
+                      value: item.owner,
+                      onChanged: (value) =>
+                          _updateReadiness(item.copyWith(owner: value)),
                     ),
                   ),
                   IconButton(

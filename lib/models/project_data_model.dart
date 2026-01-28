@@ -1613,17 +1613,23 @@ class PreferredSolutionAnalysis {
   String workingNotes;
   List<SolutionAnalysisItem> solutionAnalyses;
   String? selectedSolutionTitle;
+  String? selectedSolutionId; // UUID/ID for reliable matching
+  int? selectedSolutionIndex; // Index fallback for matching
 
   PreferredSolutionAnalysis({
     this.workingNotes = '',
     List<SolutionAnalysisItem>? solutionAnalyses,
     this.selectedSolutionTitle,
+    this.selectedSolutionId,
+    this.selectedSolutionIndex,
   }) : solutionAnalyses = solutionAnalyses ?? [];
 
   Map<String, dynamic> toJson() => {
         'workingNotes': workingNotes,
         'solutionAnalyses': solutionAnalyses.map((s) => s.toJson()).toList(),
         'selectedSolutionTitle': selectedSolutionTitle,
+        'selectedSolutionId': selectedSolutionId,
+        'selectedSolutionIndex': selectedSolutionIndex,
       };
 
   factory PreferredSolutionAnalysis.fromJson(Map<String, dynamic> json) {
@@ -1634,6 +1640,12 @@ class PreferredSolutionAnalysis {
               .toList() ??
           [],
       selectedSolutionTitle: json['selectedSolutionTitle'],
+      selectedSolutionId: json['selectedSolutionId']?.toString(),
+      selectedSolutionIndex: json['selectedSolutionIndex'] is int 
+          ? json['selectedSolutionIndex'] as int
+          : (json['selectedSolutionIndex'] != null 
+              ? int.tryParse(json['selectedSolutionIndex'].toString())
+              : null),
     );
   }
 }

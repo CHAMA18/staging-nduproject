@@ -978,6 +978,22 @@ class _EditableRegisterRow extends StatelessWidget {
 
   static const List<String> _riskOptions = ['Low', 'Medium', 'High'];
 
+  List<String> _ownerOptions(BuildContext context) {
+    final members = ProjectDataHelper.getData(context).teamMembers;
+    final names = members
+        .map((member) {
+          final name = member.name.trim();
+          if (name.isNotEmpty) return name;
+          final email = member.email.trim();
+          if (email.isNotEmpty) return email;
+          return member.role.trim();
+        })
+        .where((value) => value.isNotEmpty)
+        .toList();
+    if (names.isEmpty) return const ['Owner'];
+    return names.toSet().toList();
+  }
+
   List<String> _optionsFor(String value, List<String> defaults) {
     if (value.isEmpty) return defaults;
     return defaults.contains(value) ? defaults : [value, ...defaults];
@@ -987,6 +1003,7 @@ class _EditableRegisterRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusOptions = _optionsFor(row.status, _statusOptions);
     final riskOptions = _optionsFor(row.risk, _riskOptions);
+    final ownerOptions = _optionsFor(row.owner, _ownerOptions(context));
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -1008,12 +1025,19 @@ class _EditableRegisterRow extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             flex: 3,
-            child: TextFormField(
+            child: DropdownButtonFormField<String>(
               key: ValueKey('deliverable-owner-$index'),
-              initialValue: row.owner,
+              initialValue: ownerOptions.first,
               decoration: _inlineInputDecoration('Owner'),
               style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
-              onChanged: (value) => onChanged(row.copyWith(owner: value)),
+              items: ownerOptions
+                  .map((option) =>
+                      DropdownMenuItem(value: option, child: Text(option)))
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                onChanged(row.copyWith(owner: value));
+              },
             ),
           ),
           const SizedBox(width: 8),

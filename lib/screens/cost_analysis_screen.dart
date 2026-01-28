@@ -1112,15 +1112,31 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          height: 72,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.zero,
-            itemCount: totalSteps,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) => _buildProgressChip(index),
-          ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth >= 980;
+            if (isWide) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (int i = 0; i < totalSteps; i++) ...[
+                    Expanded(child: _buildProgressChip(i, expand: true)),
+                    if (i != totalSteps - 1) const SizedBox(width: 12),
+                  ],
+                ],
+              );
+            }
+            return SizedBox(
+              height: 112,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: EdgeInsets.zero,
+                itemCount: totalSteps,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, index) => _buildProgressChip(index),
+              ),
+            );
+          },
         ),
         const SizedBox(height: 12),
         ClipRRect(
@@ -1136,7 +1152,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     );
   }
 
-  Widget _buildProgressChip(int index) {
+  Widget _buildProgressChip(int index, {bool expand = false}) {
     final definition = _stepDefinitions[index];
     final isActive = index == _currentStepIndex;
     final isComplete = index < _currentStepIndex;
@@ -1165,7 +1181,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         onTap: () => _goToStep(index),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           decoration: BoxDecoration(
             color: backgroundColor,
             borderRadius: BorderRadius.circular(14),
@@ -1204,32 +1220,59 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                 ),
               ),
               const SizedBox(width: 12),
-              ConstrainedBox(
-                // Allow long headings to wrap instead of truncating.
-                constraints: const BoxConstraints(maxWidth: 260),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      definition.shortLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: resolvedTextColor),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      definition.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 11.5, color: subtitleColor),
-                    ),
-                  ],
+              if (expand)
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        definition.shortLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: resolvedTextColor),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        definition.title,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 11.5, color: subtitleColor),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                ConstrainedBox(
+                  // Allow long headings to wrap instead of truncating.
+                  constraints: const BoxConstraints(maxWidth: 260),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        definition.shortLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: resolvedTextColor),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        definition.title,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            TextStyle(fontSize: 11.5, color: subtitleColor),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
             ],
           ),
         ),

@@ -7,11 +7,13 @@ class SolutionDetailSection extends StatefulWidget {
     required this.title,
     required this.content,
     this.initiallyExpanded = false,
+    this.icon,
   });
 
   final String title;
   final Widget content;
   final bool initiallyExpanded;
+  final IconData? icon;
 
   @override
   State<SolutionDetailSection> createState() => _SolutionDetailSectionState();
@@ -39,9 +41,22 @@ class _SolutionDetailSectionState extends State<SolutionDetailSection> {
       child: Column(
         children: [
           ListTile(
-            leading: Icon(
-              isExpanded ? Icons.expand_more : Icons.chevron_right,
-              color: theme.colorScheme.primary,
+            leading: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.icon != null) ...[
+                  Icon(
+                    widget.icon,
+                    color: theme.colorScheme.primary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Icon(
+                  isExpanded ? Icons.expand_more : Icons.chevron_right,
+                  color: theme.colorScheme.primary,
+                ),
+              ],
             ),
             title: Text(
               widget.title,

@@ -1101,7 +1101,7 @@ class _YellowButton extends StatelessWidget {
 }
 
 class _OutlinedButton extends StatelessWidget {
-  const _OutlinedButton({required this.label});
+  const _OutlinedButton({required this.label, this.onPressed});
 
   final String label;
   final VoidCallback? onPressed;

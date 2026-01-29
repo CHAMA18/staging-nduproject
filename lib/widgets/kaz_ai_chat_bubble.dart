@@ -427,7 +427,7 @@ class _ChatBubble extends StatelessWidget {
       em: baseStyle?.copyWith(fontStyle: FontStyle.italic),
       listBullet: baseStyle,
       code: baseStyle?.copyWith(
-        fontFamily: 'monospace',
+        fontFamily: 'Satoshi',
         backgroundColor: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
       ),
     );

@@ -2493,7 +2493,7 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.grey.shade800,
                       fontSize: 13,
-                      fontFamily: 'monospace',
+                      fontFamily: 'Satoshi',
                     ),
                   ),
                 ),

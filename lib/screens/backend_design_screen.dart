@@ -737,6 +737,8 @@ class _CardShell extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.child,
+    this.onTap,
+    this.trailing,
   });
 
   final String title;

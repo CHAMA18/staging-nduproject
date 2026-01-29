@@ -1729,6 +1729,7 @@ class _LabeledField extends StatelessWidget {
   const _LabeledField({
     required this.label,
     required this.child,
+    this.helper,
   });
 
   final String label;

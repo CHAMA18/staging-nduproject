@@ -335,6 +335,7 @@ class _CircularNavButton extends StatelessWidget {
     required this.background,
     required this.borderColor,
     required this.iconColor,
+    this.onTap,
   });
 
   final IconData icon;

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+const String _appFontFamily = 'Satoshi';
 
 class LightModeColors {
   // Brand: yellow accent like the screenshot logo, neutral blue/green for UI
@@ -89,6 +89,7 @@ class FontSizes {
 
 ThemeData get lightTheme => ThemeData(
   useMaterial3: true,
+  fontFamily: _appFontFamily,
   colorScheme: ColorScheme.light(
     primary: LightModeColors.lightPrimary,
     onPrimary: LightModeColors.lightOnPrimary,
@@ -133,7 +134,8 @@ ThemeData get lightTheme => ThemeData(
   chipTheme: ChipThemeData(
     backgroundColor: AppSemanticColors.subtle,
     selectedColor: LightModeColors.lightPrimaryContainer,
-    labelStyle: GoogleFonts.inter(
+    labelStyle: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.labelMedium,
       fontWeight: FontWeight.w600,
       color: LightModeColors.lightOnSurface,
@@ -145,7 +147,7 @@ ThemeData get lightTheme => ThemeData(
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
     fillColor: const Color(0xFFF1F5F9),
-    hintStyle: GoogleFonts.inter(color: const Color(0xFF6B7280), fontSize: 14),
+    hintStyle: const TextStyle(fontFamily: _appFontFamily, color: Color(0xFF6B7280), fontSize: 14),
     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
@@ -183,7 +185,7 @@ ThemeData get lightTheme => ThemeData(
   textButtonTheme: TextButtonThemeData(
     style: ButtonStyle(
       foregroundColor: const WidgetStatePropertyAll(LightModeColors.lightSecondary),
-      textStyle: WidgetStatePropertyAll(GoogleFonts.inter(fontWeight: FontWeight.w600)),
+      textStyle: const WidgetStatePropertyAll(TextStyle(fontFamily: _appFontFamily, fontWeight: FontWeight.w600)),
     ),
   ),
   listTileTheme: const ListTileThemeData(
@@ -197,63 +199,78 @@ ThemeData get lightTheme => ThemeData(
     columnSpacing: 18,
   ),
   textTheme: TextTheme(
-    displayLarge: GoogleFonts.inter(
+    displayLarge: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.displayLarge,
       fontWeight: FontWeight.normal,
     ),
-    displayMedium: GoogleFonts.inter(
+    displayMedium: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.displayMedium,
       fontWeight: FontWeight.normal,
     ),
-    displaySmall: GoogleFonts.inter(
+    displaySmall: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.displaySmall,
       fontWeight: FontWeight.w600,
     ),
-    headlineLarge: GoogleFonts.inter(
+    headlineLarge: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.headlineLarge,
       fontWeight: FontWeight.normal,
     ),
-    headlineMedium: GoogleFonts.inter(
+    headlineMedium: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.headlineMedium,
       fontWeight: FontWeight.w500,
     ),
-    headlineSmall: GoogleFonts.inter(
+    headlineSmall: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.headlineSmall,
       fontWeight: FontWeight.bold,
     ),
-    titleLarge: GoogleFonts.inter(
+    titleLarge: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.titleLarge,
       fontWeight: FontWeight.w500,
     ),
-    titleMedium: GoogleFonts.inter(
+    titleMedium: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.titleMedium,
       fontWeight: FontWeight.w500,
     ),
-    titleSmall: GoogleFonts.inter(
+    titleSmall: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.titleSmall,
       fontWeight: FontWeight.w500,
     ),
-    labelLarge: GoogleFonts.inter(
+    labelLarge: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.labelLarge,
       fontWeight: FontWeight.w500,
     ),
-    labelMedium: GoogleFonts.inter(
+    labelMedium: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.labelMedium,
       fontWeight: FontWeight.w500,
     ),
-    labelSmall: GoogleFonts.inter(
+    labelSmall: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.labelSmall,
       fontWeight: FontWeight.w500,
     ),
-    bodyLarge: GoogleFonts.inter(
+    bodyLarge: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.bodyLarge,
       fontWeight: FontWeight.normal,
     ),
-    bodyMedium: GoogleFonts.inter(
+    bodyMedium: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.bodyMedium,
       fontWeight: FontWeight.normal,
     ),
-    bodySmall: GoogleFonts.inter(
+    bodySmall: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.bodySmall,
       fontWeight: FontWeight.normal,
     ),
@@ -262,6 +279,7 @@ ThemeData get lightTheme => ThemeData(
 
 ThemeData get darkTheme => ThemeData(
   useMaterial3: true,
+  fontFamily: _appFontFamily,
   colorScheme: ColorScheme.dark(
     primary: DarkModeColors.darkPrimary,
     onPrimary: DarkModeColors.darkOnPrimary,
@@ -306,7 +324,8 @@ ThemeData get darkTheme => ThemeData(
   chipTheme: ChipThemeData(
     backgroundColor: const Color(0xFF111318),
     selectedColor: const Color(0xFF1B1E25),
-    labelStyle: GoogleFonts.inter(
+    labelStyle: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.labelMedium,
       fontWeight: FontWeight.w600,
       color: DarkModeColors.darkOnSurface,
@@ -318,7 +337,7 @@ ThemeData get darkTheme => ThemeData(
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
     fillColor: const Color(0xFF0B0D11),
-    hintStyle: GoogleFonts.inter(color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
+    hintStyle: TextStyle(fontFamily: _appFontFamily, color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
@@ -356,7 +375,7 @@ ThemeData get darkTheme => ThemeData(
   textButtonTheme: TextButtonThemeData(
     style: ButtonStyle(
       foregroundColor: const WidgetStatePropertyAll(DarkModeColors.darkSecondary),
-      textStyle: WidgetStatePropertyAll(GoogleFonts.inter(fontWeight: FontWeight.w600)),
+      textStyle: const WidgetStatePropertyAll(TextStyle(fontFamily: _appFontFamily, fontWeight: FontWeight.w600)),
     ),
   ),
   listTileTheme: ListTileThemeData(
@@ -370,63 +389,78 @@ ThemeData get darkTheme => ThemeData(
     columnSpacing: 18,
   ),
   textTheme: TextTheme(
-    displayLarge: GoogleFonts.inter(
+    displayLarge: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.displayLarge,
       fontWeight: FontWeight.normal,
     ),
-    displayMedium: GoogleFonts.inter(
+    displayMedium: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.displayMedium,
       fontWeight: FontWeight.normal,
     ),
-    displaySmall: GoogleFonts.inter(
+    displaySmall: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.displaySmall,
       fontWeight: FontWeight.w600,
     ),
-    headlineLarge: GoogleFonts.inter(
+    headlineLarge: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.headlineLarge,
       fontWeight: FontWeight.normal,
     ),
-    headlineMedium: GoogleFonts.inter(
+    headlineMedium: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.headlineMedium,
       fontWeight: FontWeight.w500,
     ),
-    headlineSmall: GoogleFonts.inter(
+    headlineSmall: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.headlineSmall,
       fontWeight: FontWeight.bold,
     ),
-    titleLarge: GoogleFonts.inter(
+    titleLarge: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.titleLarge,
       fontWeight: FontWeight.w500,
     ),
-    titleMedium: GoogleFonts.inter(
+    titleMedium: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.titleMedium,
       fontWeight: FontWeight.w500,
     ),
-    titleSmall: GoogleFonts.inter(
+    titleSmall: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.titleSmall,
       fontWeight: FontWeight.w500,
     ),
-    labelLarge: GoogleFonts.inter(
+    labelLarge: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.labelLarge,
       fontWeight: FontWeight.w500,
     ),
-    labelMedium: GoogleFonts.inter(
+    labelMedium: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.labelMedium,
       fontWeight: FontWeight.w500,
     ),
-    labelSmall: GoogleFonts.inter(
+    labelSmall: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.labelSmall,
       fontWeight: FontWeight.w500,
     ),
-    bodyLarge: GoogleFonts.inter(
+    bodyLarge: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.bodyLarge,
       fontWeight: FontWeight.normal,
     ),
-    bodyMedium: GoogleFonts.inter(
+    bodyMedium: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.bodyMedium,
       fontWeight: FontWeight.normal,
     ),
-    bodySmall: GoogleFonts.inter(
+    bodySmall: const TextStyle(
+      fontFamily: _appFontFamily,
       fontSize: FontSizes.bodySmall,
       fontWeight: FontWeight.normal,
     ),

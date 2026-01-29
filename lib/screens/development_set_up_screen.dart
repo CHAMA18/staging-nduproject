@@ -360,6 +360,7 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
     required ValueChanged<String> onDeleteItem,
   }) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -528,7 +529,7 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
                       hintText: 'Owner',
                       onChanged: (value) => onUpdateItem(item.copyWith(owner: value)),
                     ),
-                    _TextCell(
+                    _DateCell(
                       value: item.targetDate,
                       fieldKey: '${item.id}_date',
                       hintText: 'YYYY-MM-DD',
@@ -546,13 +547,43 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
                       hintText: 'Notes',
                       onChanged: (value) => onUpdateItem(item.copyWith(notes: value)),
                     ),
-                    _DeleteCell(onPressed: () => onDeleteItem(item.id)),
+                    _DeleteCell(
+                      onPressed: () async {
+                        final confirmed = await _confirmDelete('checklist item');
+                        if (confirmed) onDeleteItem(item.id);
+                      },
+                    ),
                   ],
                 ),
             ],
           ),
       ],
     );
+  }
+
+  Future<bool> _confirmDelete(String label) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete item'),
+        content: Text('Are you sure you want to delete this $label?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 }
 
@@ -622,28 +653,35 @@ class _EditableTable extends StatelessWidget {
       ),
     );
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(minWidth: columns.fold<double>(0, (sum, col) => sum + col.width)),
-        child: Column(
-          children: [
-            header,
-            const SizedBox(height: 8),
-            for (int i = 0; i < rows.length; i++)
-              Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: i.isEven ? Colors.white : const Color(0xFFF9FAFB),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
-                ),
-                child: rows[i],
-              ),
-          ],
-        ),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final totalWidth = columns.fold<double>(0, (sum, col) => sum + col.width);
+        final minWidth = constraints.maxWidth > totalWidth ? constraints.maxWidth : totalWidth;
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: minWidth),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                header,
+                const SizedBox(height: 8),
+                for (int i = 0; i < rows.length; i++)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: i.isEven ? Colors.white : const Color(0xFFF9FAFB),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    child: rows[i],
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -701,6 +739,81 @@ class _TextCell extends StatelessWidget {
       style: const TextStyle(fontSize: 12, color: Color(0xFF111827)),
       onChanged: onChanged,
     );
+  }
+}
+
+class _DateCell extends StatelessWidget {
+  const _DateCell({
+    required this.value,
+    required this.fieldKey,
+    required this.onChanged,
+    this.hintText,
+  });
+
+  final String value;
+  final String fieldKey;
+  final ValueChanged<String> onChanged;
+  final String? hintText;
+
+  @override
+  Widget build(BuildContext context) {
+    final displayText = value.trim();
+    final textStyle = TextStyle(
+      fontSize: 12,
+      color: displayText.isEmpty ? const Color(0xFF9CA3AF) : const Color(0xFF111827),
+    );
+
+    return InkWell(
+      key: ValueKey(fieldKey),
+      borderRadius: BorderRadius.circular(8),
+      onTap: () async {
+        final parsed = _tryParseDate(displayText);
+        final now = DateTime.now();
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: parsed ?? DateTime(now.year, now.month, now.day),
+          firstDate: DateTime(2000),
+          lastDate: DateTime(2100),
+        );
+        if (picked == null) return;
+        final formatted = _formatDate(picked);
+        onChanged(formatted);
+      },
+      child: InputDecorator(
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: hintText,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          filled: true,
+          fillColor: Colors.white,
+          suffixIcon: const Icon(Icons.calendar_today_outlined, size: 16, color: Color(0xFF6B7280)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        ),
+        child: Text(
+          displayText.isEmpty ? (hintText ?? '') : displayText,
+          style: textStyle,
+        ),
+      ),
+    );
+  }
+
+  DateTime? _tryParseDate(String raw) {
+    if (raw.isEmpty) return null;
+    final parsed = DateTime.tryParse(raw);
+    if (parsed != null) return parsed;
+    final parts = raw.split('-');
+    if (parts.length != 3) return null;
+    final year = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    final day = int.tryParse(parts[2]);
+    if (year == null || month == null || day == null) return null;
+    return DateTime(year, month, day);
+  }
+
+  String _formatDate(DateTime date) {
+    final mm = date.month.toString().padLeft(2, '0');
+    final dd = date.day.toString().padLeft(2, '0');
+    return '${date.year}-$mm-$dd';
   }
 }
 

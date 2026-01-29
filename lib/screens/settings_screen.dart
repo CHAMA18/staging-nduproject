@@ -1492,7 +1492,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                             child: SelectableText(
                               OpenAiConfig.apiKeyValue,
                               style: const TextStyle(
-                                  fontFamily: 'monospace', fontSize: 13),
+                                  fontFamily: 'Satoshi', fontSize: 13),
                             ),
                           ),
                         ],

@@ -24,7 +24,7 @@ class ExecutionSectionSpec {
   final String titleLabel;
 }
 
-/// Reusable Execution Phase page builder: blank by default, with pop-up add + Firebase submit.
+/// Reusable Execution Phase page builder: blank by default, with pop-up add + auto-save.
 class ExecutionPhasePage extends StatefulWidget {
   const ExecutionPhasePage({
     super.key,
@@ -49,9 +49,7 @@ class ExecutionPhasePage extends StatefulWidget {
 
 class _ExecutionPhasePageState extends State<ExecutionPhasePage> {
   final Map<String, List<LaunchEntry>> _sectionData = {};
-  bool _submitting = false;
   bool _loading = true;
-  String? _submitError;
 
   /// Get project ID from ProjectDataInherited
   String? get _projectId {
@@ -109,7 +107,8 @@ class _ExecutionPhasePageState extends State<ExecutionPhasePage> {
       activeItemLabel: widget.title,
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
-        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: isMobile ? 16 : 28),
+        padding: EdgeInsets.symmetric(
+            horizontal: horizontalPadding, vertical: isMobile ? 16 : 28),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -122,11 +121,11 @@ class _ExecutionPhasePageState extends State<ExecutionPhasePage> {
                 entries: _sectionData[section.key]!,
                 onAdd: () => _addEntry(_sectionData[section.key]!, section),
                 onRemove: (i) => _removeEntry(section.key, i),
-                onEdit: (i, entry) => _editEntry(_sectionData[section.key]!, section, i, entry),
+                onEdit: (i, entry) =>
+                    _editEntry(_sectionData[section.key]!, section, i, entry),
               ),
               const SizedBox(height: 16),
             ],
-            _buildSubmitRow(),
             if (widget.navigation != null) ...[
               const SizedBox(height: 24),
               LaunchPhaseNavigation(
@@ -149,13 +148,14 @@ class _ExecutionPhasePageState extends State<ExecutionPhasePage> {
       children: [
         Text(
           widget.title,
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+          style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827)),
         ),
         const SizedBox(height: 6),
         Text(
-          _loading 
-            ? '${widget.subtitle} · Loading...'
-            : '${widget.subtitle} · Use the add buttons to populate and submit to Firebase.',
+          _loading ? '${widget.subtitle} · Loading...' : widget.subtitle,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: const Color(0xFF4B5563),
                 height: 1.5,
@@ -175,25 +175,8 @@ class _ExecutionPhasePageState extends State<ExecutionPhasePage> {
     );
   }
 
-  Widget _buildSubmitRow() {
-    return Row(
-      children: [
-        FilledButton.icon(
-          onPressed: _submitting ? null : _submitToFirebase,
-          icon: _submitting
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-              : const Icon(Icons.cloud_upload_outlined),
-          label: const Text('Submit to Firebase'),
-        ),
-        if (_submitError != null) ...[
-          const SizedBox(width: 12),
-          Text(_submitError!, style: const TextStyle(color: Colors.red)),
-        ],
-      ],
-    );
-  }
-
-  Future<void> _addEntry(List<LaunchEntry> target, ExecutionSectionSpec section) async {
+  Future<void> _addEntry(
+      List<LaunchEntry> target, ExecutionSectionSpec section) async {
     final entry = await showLaunchEntryDialog(
       context,
       titleLabel: section.titleLabel,
@@ -206,7 +189,8 @@ class _ExecutionPhasePageState extends State<ExecutionPhasePage> {
     }
   }
 
-  Future<void> _editEntry(List<LaunchEntry> target, ExecutionSectionSpec section, int index, LaunchEntry currentEntry) async {
+  Future<void> _editEntry(List<LaunchEntry> target,
+      ExecutionSectionSpec section, int index, LaunchEntry currentEntry) async {
     final entry = await showLaunchEntryDialog(
       context,
       titleLabel: section.titleLabel,
@@ -230,7 +214,7 @@ class _ExecutionPhasePageState extends State<ExecutionPhasePage> {
     _autoSaveDebounce?.cancel();
     _autoSaveDebounce = Timer(const Duration(milliseconds: 1500), () {
       if (mounted) {
-        _submitToFirebase(showSnackbar: false);
+        _persistChanges(showSnackbar: false);
       }
     });
   }
@@ -241,17 +225,12 @@ class _ExecutionPhasePageState extends State<ExecutionPhasePage> {
     super.dispose();
   }
 
-  Future<void> _submitToFirebase({bool showSnackbar = true}) async {
+  Future<void> _persistChanges({bool showSnackbar = false}) async {
     final projectId = _projectId;
     if (projectId == null || projectId.isEmpty) {
-      setState(() => _submitError = 'No project selected');
       return;
     }
 
-    setState(() {
-      _submitting = true;
-      _submitError = null;
-    });
     try {
       await ExecutionPhaseService.savePageData(
         projectId: projectId,
@@ -259,15 +238,9 @@ class _ExecutionPhasePageState extends State<ExecutionPhasePage> {
         sections: _sectionData,
         userId: FirebaseAuth.instance.currentUser?.uid,
       );
-      if (mounted && showSnackbar) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Saved to Firebase'), backgroundColor: Colors.green),
-        );
-      }
+      // Silent save - no snackbar unless explicitly requested
     } catch (e) {
-      setState(() => _submitError = 'Failed to submit: ${e.toString()}');
-    } finally {
-      if (mounted) setState(() => _submitting = false);
+      debugPrint('Error persisting execution phase data: $e');
     }
   }
 }

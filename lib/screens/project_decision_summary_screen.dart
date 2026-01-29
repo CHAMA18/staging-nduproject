@@ -631,12 +631,8 @@ class _MainContentState extends State<_MainContent> {
   Widget _buildITConsiderationsSection(SolutionAnalysisItem? analysisData) {
     final itItems = <String>[];
     
-    if (analysisData?.itConsiderationText != null && 
-        analysisData!.itConsiderationText!.isNotEmpty) {
-      // If there's a text description, use it as a single item
-      itItems.add(analysisData.itConsiderationText!);
-    } else if (analysisData?.technologies.isNotEmpty == true) {
-      // Otherwise use the technologies list
+    if (analysisData?.technologies.isNotEmpty == true) {
+      // Use the technologies list
       itItems.addAll(analysisData!.technologies);
     } else {
       // Placeholder if no data
@@ -655,25 +651,18 @@ class _MainContentState extends State<_MainContent> {
           ],
         ),
         const SizedBox(height: 12),
-        if (analysisData?.itConsiderationText != null && 
-            analysisData!.itConsiderationText!.isNotEmpty)
-          Text(
-            analysisData.itConsiderationText!,
-            style: const TextStyle(fontSize: 13, height: 1.4),
-          )
-        else
-          ...itItems.map((item) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('- ', style: TextStyle(fontSize: 13)),
-                    Expanded(
-                        child: Text(item,
-                            style: const TextStyle(fontSize: 13, height: 1.4))),
-                  ],
-                ),
-              )),
+        ...itItems.map((item) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('- ', style: TextStyle(fontSize: 13)),
+                  Expanded(
+                      child: Text(item,
+                          style: const TextStyle(fontSize: 13, height: 1.4))),
+                ],
+              ),
+            )),
       ],
     );
   }
@@ -681,12 +670,8 @@ class _MainContentState extends State<_MainContent> {
   Widget _buildInfrastructureSection(SolutionAnalysisItem? analysisData) {
     final infraItems = <String>[];
     
-    if (analysisData?.infraConsiderationText != null && 
-        analysisData!.infraConsiderationText!.isNotEmpty) {
-      // If there's a text description, use it as a single item
-      infraItems.add(analysisData.infraConsiderationText!);
-    } else if (analysisData?.infrastructure.isNotEmpty == true) {
-      // Otherwise use the infrastructure list
+    if (analysisData?.infrastructure.isNotEmpty == true) {
+      // Use the infrastructure list
       infraItems.addAll(analysisData!.infrastructure);
     } else {
       // Placeholder if no data
@@ -705,25 +690,18 @@ class _MainContentState extends State<_MainContent> {
           ],
         ),
         const SizedBox(height: 12),
-        if (analysisData?.infraConsiderationText != null && 
-            analysisData!.infraConsiderationText!.isNotEmpty)
-          Text(
-            analysisData.infraConsiderationText!,
-            style: const TextStyle(fontSize: 13, height: 1.4),
-          )
-        else
-          ...infraItems.map((item) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('- ', style: TextStyle(fontSize: 13)),
-                    Expanded(
-                        child: Text(item,
-                            style: const TextStyle(fontSize: 13, height: 1.4))),
-                  ],
-                ),
-              )),
+        ...infraItems.map((item) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('- ', style: TextStyle(fontSize: 13)),
+                  Expanded(
+                      child: Text(item,
+                          style: const TextStyle(fontSize: 13, height: 1.4))),
+                ],
+              ),
+            )),
       ],
     );
   }

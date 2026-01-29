@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/screens/contracts_tracking_screen.dart';
 import 'package:ndu_project/screens/detailed_design_screen.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:ndu_project/services/vendor_service.dart';
+import 'package:ndu_project/services/contract_service.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
+import 'package:ndu_project/widgets/vendors_table_widget.dart';
+import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class VendorTrackingScreen extends StatefulWidget {
   const VendorTrackingScreen({super.key});
@@ -233,25 +236,35 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
 
         final vendors = snapshot.data!;
         final activeVendors = vendors.where((v) => v.status == 'Active').length;
-        final onTimeAvg = vendors.isEmpty
-            ? 0.0
-            : vendors.map((v) => v.onTimeDelivery).reduce((a, b) => a + b) /
-                vendors.length;
-        final atRiskCount = vendors.where((v) => v.status == 'At risk').length;
-        final avgRating = _calculateAverageRating(vendors);
+        // Calculate pending deliveries (vendors with incomplete orders)
+        // For now, we'll use vendors with status != 'Completed' as pending
+        final pendingDeliveries = vendors
+            .where((v) => v.status != 'Completed' && v.status != 'Expired')
+            .length;
+        // Calculate vendor risk level based on criticality
+        final highCriticalityCount =
+            vendors.where((v) => v.criticality.toLowerCase() == 'high').length;
+        final mediumCriticalityCount = vendors
+            .where((v) => v.criticality.toLowerCase() == 'medium')
+            .length;
+        final riskLevel = highCriticalityCount > 0
+            ? 'High'
+            : mediumCriticalityCount > vendors.length * 0.5
+                ? 'Medium'
+                : 'Low';
 
         final stats = [
-          _StatCardData('Active vendors', '$activeVendors',
+          _StatCardData('Active Vendors', '$activeVendors',
               '${vendors.length} total', const Color(0xFF0EA5E9)),
-          _StatCardData('On-time delivery', '${(onTimeAvg * 100).round()}%',
-              '${vendors.length} vendors tracked', const Color(0xFF10B981)),
+          _StatCardData('Pending Deliveries', '$pendingDeliveries',
+              'Open/incomplete orders', const Color(0xFFF59E0B)),
           _StatCardData(
-              'Risk rating',
-              avgRating,
-              atRiskCount > 0 ? '$atRiskCount at risk' : 'All stable',
-              const Color(0xFFF59E0B)),
-          _StatCardData('Total vendors', '${vendors.length}',
-              'Across all categories', const Color(0xFF6366F1)),
+              'Vendor Risk Level',
+              riskLevel,
+              highCriticalityCount > 0
+                  ? '$highCriticalityCount high criticality'
+                  : 'All stable',
+              const Color(0xFFEF4444)),
         ];
 
         if (isNarrow) {
@@ -274,25 +287,6 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
         );
       },
     );
-  }
-
-  String _calculateAverageRating(List<VendorModel> vendors) {
-    if (vendors.isEmpty) return 'N/A';
-    int total = 0;
-    for (var vendor in vendors) {
-      if (vendor.rating == 'A') {
-        total += 4;
-      } else if (vendor.rating == 'B')
-        total += 3;
-      else if (vendor.rating == 'C')
-        total += 2;
-      else if (vendor.rating == 'D') total += 1;
-    }
-    final avg = total / vendors.length;
-    if (avg >= 3.5) return 'A';
-    if (avg >= 2.5) return 'B';
-    if (avg >= 1.5) return 'C';
-    return 'D';
   }
 
   Widget _buildStatCard(_StatCardData data) {
@@ -381,75 +375,13 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
             );
           }
 
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                  child: DataTable(
-                    headingRowColor:
-                        WidgetStateProperty.all(const Color(0xFFF8FAFC)),
-                    columns: const [
-                      DataColumn(
-                          label: Text('Vendor',
-                              style: TextStyle(fontWeight: FontWeight.w600))),
-                      DataColumn(
-                          label: Text('Category',
-                              style: TextStyle(fontWeight: FontWeight.w600))),
-                      DataColumn(
-                          label: Text('SLA',
-                              style: TextStyle(fontWeight: FontWeight.w600))),
-                      DataColumn(
-                          label: Text('Rating',
-                              style: TextStyle(fontWeight: FontWeight.w600))),
-                      DataColumn(
-                          label: Text('Status',
-                              style: TextStyle(fontWeight: FontWeight.w600))),
-                      DataColumn(
-                          label: Text('Next review',
-                              style: TextStyle(fontWeight: FontWeight.w600))),
-                      DataColumn(
-                          label: Text('Actions',
-                              style: TextStyle(fontWeight: FontWeight.w600))),
-                    ],
-                    rows: filteredVendors.map((vendor) {
-                      return DataRow(cells: [
-                        DataCell(Text(vendor.name,
-                            style: const TextStyle(fontSize: 13))),
-                        DataCell(_chip(vendor.category)),
-                        DataCell(Text(vendor.sla,
-                            style: const TextStyle(fontSize: 12))),
-                        DataCell(_ratingChip(vendor.rating)),
-                        DataCell(_statusChip(vendor.status)),
-                        DataCell(Text(vendor.nextReview,
-                            style: const TextStyle(fontSize: 12))),
-                        DataCell(
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit,
-                                    size: 18, color: Color(0xFF64748B)),
-                                onPressed: () =>
-                                    _showEditVendorDialog(context, vendor),
-                                tooltip: 'Edit',
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete,
-                                    size: 18, color: Color(0xFFEF4444)),
-                                onPressed: () =>
-                                    _showDeleteVendorDialog(context, vendor),
-                                tooltip: 'Delete',
-                              ),
-                            ],
-                          ),
-                        ),
-                      ]);
-                    }).toList(),
-                  ),
-                ),
-              );
+          return VendorsTableWidget(
+            vendors: filteredVendors,
+            onUpdated: (vendor) {
+              // Vendor updated via table widget
+            },
+            onDeleted: (vendor) {
+              // Vendor deleted via table widget
             },
           );
         },
@@ -677,66 +609,6 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
     );
   }
 
-  Widget _chip(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(label,
-          style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF475569))),
-    );
-  }
-
-  Widget _ratingChip(String label) {
-    final color = label == 'A'
-        ? const Color(0xFF10B981)
-        : label == 'B'
-            ? const Color(0xFFF59E0B)
-            : const Color(0xFFEF4444);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 11, fontWeight: FontWeight.w600, color: color)),
-    );
-  }
-
-  Widget _statusChip(String label) {
-    Color color;
-    switch (label) {
-      case 'At risk':
-        color = const Color(0xFFEF4444);
-        break;
-      case 'Watch':
-        color = const Color(0xFFF59E0B);
-        break;
-      case 'Onboard':
-        color = const Color(0xFF6366F1);
-        break;
-      default:
-        color = const Color(0xFF10B981);
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 11, fontWeight: FontWeight.w600, color: color)),
-    );
-  }
-
   void _showAddVendorDialog(BuildContext context) {
     final projectId = _projectId;
     if (projectId == null) {
@@ -750,30 +622,26 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
     _showVendorDialog(context, null, projectId);
   }
 
-  void _showEditVendorDialog(BuildContext context, VendorModel vendor) {
-    final projectId = _projectId;
-    if (projectId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('No project selected. Please open a project first.')),
-      );
-      return;
-    }
-    _showVendorDialog(context, vendor, projectId);
-  }
-
   void _showVendorDialog(
-      BuildContext context, VendorModel? vendor, String projectId) {
+      BuildContext context, VendorModel? vendor, String projectId) async {
     final isEdit = vendor != null;
     final nameController = TextEditingController(text: vendor?.name ?? '');
-    final categoryController =
-        TextEditingController(text: vendor?.category ?? '');
-    final slaController = TextEditingController(text: vendor?.sla ?? '');
+    var selectedCategory = vendor?.category ?? 'Logistics';
+    var selectedCriticality = vendor?.criticality ?? 'Medium';
+    final slaController = TextEditingController(text: vendor?.sla ?? '92%');
+    final slaPerformanceController = TextEditingController(
+        text: vendor?.slaPerformance.toString() ?? '0.85');
+    final leadTimeController =
+        TextEditingController(text: vendor?.leadTime ?? '14 Days');
+    // Required Deliverables (SLA Terms) - use AutoBulletTextController
+    final requiredDeliverablesController =
+        AutoBulletTextController(text: vendor?.requiredDeliverables ?? '');
     final ratingController = TextEditingController(text: vendor?.rating ?? 'B');
     final statusController =
         TextEditingController(text: vendor?.status ?? 'Active');
     final nextReviewController =
         TextEditingController(text: vendor?.nextReview ?? '');
+    var selectedContractId = vendor?.contractId;
     final onTimeController = TextEditingController(
         text: vendor?.onTimeDelivery.toString() ?? '0.86');
     final incidentController = TextEditingController(
@@ -782,78 +650,210 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
         TextEditingController(text: vendor?.qualityScore.toString() ?? '0.79');
     final costController =
         TextEditingController(text: vendor?.costAdherence.toString() ?? '0.65');
+    // Vendor Notes - regular TextEditingController (prose)
     final notesController = TextEditingController(text: vendor?.notes ?? '');
+
+    // Load contracts for linking
+    List<ContractModel> contracts = [];
+    try {
+      // Use streamContracts and take first snapshot
+      final stream = ContractService.streamContracts(projectId);
+      final snapshot = await stream.first;
+      contracts = snapshot;
+    } catch (e) {
+      debugPrint('Error loading contracts: $e');
+    }
+
+    // Load infrastructure data for vendor suggestions
+    final provider = ProjectDataInherited.maybeOf(context);
+    List<String> infrastructureSuggestions = [];
+    if (provider != null) {
+      final infraData = provider.projectData.infrastructureConsiderationsData;
+      if (infraData != null) {
+        for (var solutionInfra in infraData.solutionInfrastructureData) {
+          final infraText = solutionInfra.majorInfrastructure.toLowerCase();
+          if (infraText.contains('hardware') ||
+              infraText.contains('server') ||
+              infraText.contains('network') ||
+              infraText.contains('equipment')) {
+            infrastructureSuggestions.addAll([
+              'Dell Technologies',
+              'Cisco Systems',
+              'HP Enterprise',
+            ]);
+          }
+          if (infraText.contains('logistics') || infraText.contains('supply')) {
+            infrastructureSuggestions.addAll([
+              'FedEx',
+              'DHL',
+              'UPS',
+            ]);
+          }
+        }
+      }
+    }
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(isEdit ? 'Edit Vendor' : 'Add New Vendor'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                  controller: nameController,
-                  decoration:
-                      const InputDecoration(labelText: 'Vendor Name *')),
-              const SizedBox(height: 12),
-              TextField(
-                  controller: categoryController,
-                  decoration: const InputDecoration(labelText: 'Category *')),
-              const SizedBox(height: 12),
-              TextField(
-                  controller: slaController,
-                  decoration: const InputDecoration(
-                      labelText: 'SLA % *', hintText: 'e.g., 92%')),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: ratingController.text,
-                decoration: const InputDecoration(labelText: 'Rating *'),
-                items: ['A', 'B', 'C', 'D']
-                    .map((r) => DropdownMenuItem(value: r, child: Text(r)))
-                    .toList(),
-                onChanged: (v) => ratingController.text = v ?? 'B',
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: statusController.text,
-                decoration: const InputDecoration(labelText: 'Status *'),
-                items: ['Active', 'Watch', 'At risk', 'Onboard']
-                    .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                    .toList(),
-                onChanged: (v) => statusController.text = v ?? 'Active',
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                  controller: nextReviewController,
-                  decoration: const InputDecoration(
-                      labelText: 'Next Review *', hintText: 'e.g., Oct 28')),
-              const SizedBox(height: 12),
-              TextField(
-                  controller: onTimeController,
-                  decoration: const InputDecoration(
-                      labelText: 'On-time Delivery (0.0-1.0) *')),
-              const SizedBox(height: 12),
-              TextField(
-                  controller: incidentController,
-                  decoration: const InputDecoration(
-                      labelText: 'Incident Response (0.0-1.0) *')),
-              const SizedBox(height: 12),
-              TextField(
-                  controller: qualityController,
-                  decoration: const InputDecoration(
-                      labelText: 'Quality Score (0.0-1.0) *')),
-              const SizedBox(height: 12),
-              TextField(
-                  controller: costController,
-                  decoration: const InputDecoration(
-                      labelText: 'Cost Adherence (0.0-1.0) *')),
-              const SizedBox(height: 12),
-              TextField(
-                  controller: notesController,
-                  decoration: const InputDecoration(labelText: 'Notes'),
-                  maxLines: 3),
-            ],
+        content: StatefulBuilder(
+          builder: (context, setDialogState) => SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                    controller: nameController,
+                    decoration:
+                        const InputDecoration(labelText: 'Vendor Name *')),
+                if (infrastructureSuggestions.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children:
+                        infrastructureSuggestions.take(3).map((suggestion) {
+                      return ActionChip(
+                        label: Text(suggestion,
+                            style: const TextStyle(fontSize: 11)),
+                        onPressed: () {
+                          nameController.text = suggestion;
+                          setDialogState(() {});
+                        },
+                        avatar: const Icon(Icons.add, size: 16),
+                      );
+                    }).toList(),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: selectedCategory,
+                  decoration: const InputDecoration(labelText: 'Category *'),
+                  items: const [
+                    'Logistics',
+                    'IT Hardware',
+                    'Consulting',
+                    'Raw Materials',
+                    'Utilities',
+                  ]
+                      .map((cat) =>
+                          DropdownMenuItem(value: cat, child: Text(cat)))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) {
+                      setDialogState(() => selectedCategory = v);
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: selectedCriticality,
+                  decoration: const InputDecoration(labelText: 'Criticality *'),
+                  items: const ['High', 'Medium', 'Low']
+                      .map((crit) =>
+                          DropdownMenuItem(value: crit, child: Text(crit)))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) {
+                      setDialogState(() => selectedCriticality = v);
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                    controller: slaController,
+                    decoration: const InputDecoration(
+                        labelText: 'SLA % *', hintText: 'e.g., 92%')),
+                const SizedBox(height: 12),
+                TextField(
+                    controller: slaPerformanceController,
+                    decoration: const InputDecoration(
+                        labelText: 'SLA Performance (0.0-1.0) *',
+                        hintText: 'e.g., 0.85')),
+                const SizedBox(height: 12),
+                TextField(
+                    controller: leadTimeController,
+                    decoration: const InputDecoration(
+                        labelText: 'Lead Time *', hintText: 'e.g., 14 Days')),
+                const SizedBox(height: 12),
+                TextField(
+                    controller: requiredDeliverablesController,
+                    decoration: const InputDecoration(
+                        labelText: 'Required Deliverables (SLA Terms)',
+                        hintText: 'Use "." bullet format'),
+                    maxLines: 5),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: ratingController.text,
+                  decoration: const InputDecoration(labelText: 'Rating *'),
+                  items: ['A', 'B', 'C', 'D']
+                      .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                      .toList(),
+                  onChanged: (v) => ratingController.text = v ?? 'B',
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: statusController.text,
+                  decoration: const InputDecoration(labelText: 'Status *'),
+                  items: ['Active', 'Watch', 'At risk', 'Onboard']
+                      .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                      .toList(),
+                  onChanged: (v) => statusController.text = v ?? 'Active',
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                    controller: nextReviewController,
+                    decoration: const InputDecoration(
+                        labelText: 'Next Review *', hintText: 'e.g., Oct 28')),
+                if (contracts.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String?>(
+                    value: selectedContractId,
+                    decoration: const InputDecoration(
+                        labelText: 'Linked Contract (Optional)'),
+                    items: [
+                      const DropdownMenuItem<String?>(
+                          value: null, child: Text('None')),
+                      ...contracts.map((contract) => DropdownMenuItem<String?>(
+                            value: contract.id,
+                            child: Text(contract.name,
+                                overflow: TextOverflow.ellipsis),
+                          )),
+                    ],
+                    onChanged: (v) {
+                      setDialogState(() => selectedContractId = v);
+                    },
+                  ),
+                ],
+                const SizedBox(height: 12),
+                TextField(
+                    controller: onTimeController,
+                    decoration: const InputDecoration(
+                        labelText: 'On-time Delivery (0.0-1.0) *')),
+                const SizedBox(height: 12),
+                TextField(
+                    controller: incidentController,
+                    decoration: const InputDecoration(
+                        labelText: 'Incident Response (0.0-1.0) *')),
+                const SizedBox(height: 12),
+                TextField(
+                    controller: qualityController,
+                    decoration: const InputDecoration(
+                        labelText: 'Quality Score (0.0-1.0) *')),
+                const SizedBox(height: 12),
+                TextField(
+                    controller: costController,
+                    decoration: const InputDecoration(
+                        labelText: 'Cost Adherence (0.0-1.0) *')),
+                const SizedBox(height: 12),
+                TextField(
+                    controller: notesController,
+                    decoration: const InputDecoration(
+                        labelText: 'Vendor Notes',
+                        hintText: 'Prose description, no bullets'),
+                    maxLines: 3),
+              ],
+            ),
           ),
         ),
         actions: [
@@ -863,8 +863,7 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              if (nameController.text.isEmpty ||
-                  categoryController.text.isEmpty) {
+              if (nameController.text.isEmpty || selectedCategory.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                       content: Text('Please fill in required fields')),
@@ -878,17 +877,24 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                     double.tryParse(incidentController.text) ?? 0.0;
                 final quality = double.tryParse(qualityController.text) ?? 0.0;
                 final cost = double.tryParse(costController.text) ?? 0.0;
+                final slaPerformance =
+                    double.tryParse(slaPerformanceController.text) ?? 0.0;
 
                 if (isEdit) {
                   await VendorService.updateVendor(
                     projectId: projectId,
                     vendorId: vendor.id,
                     name: nameController.text,
-                    category: categoryController.text,
+                    category: selectedCategory,
+                    criticality: selectedCriticality,
                     sla: slaController.text,
+                    slaPerformance: slaPerformance,
+                    leadTime: leadTimeController.text,
+                    requiredDeliverables: requiredDeliverablesController.text,
                     rating: ratingController.text,
                     status: statusController.text,
                     nextReview: nextReviewController.text,
+                    contractId: selectedContractId,
                     onTimeDelivery: onTime,
                     incidentResponse: incident,
                     qualityScore: quality,
@@ -901,11 +907,16 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                   await VendorService.createVendor(
                     projectId: projectId,
                     name: nameController.text,
-                    category: categoryController.text,
+                    category: selectedCategory,
+                    criticality: selectedCriticality,
                     sla: slaController.text,
+                    slaPerformance: slaPerformance,
+                    leadTime: leadTimeController.text,
+                    requiredDeliverables: requiredDeliverablesController.text,
                     rating: ratingController.text,
                     status: statusController.text,
                     nextReview: nextReviewController.text,
+                    contractId: selectedContractId,
                     onTimeDelivery: onTime,
                     incidentResponse: incident,
                     qualityScore: quality,
@@ -934,56 +945,6 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
               }
             },
             child: Text(isEdit ? 'Update' : 'Add'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteVendorDialog(BuildContext context, VendorModel vendor) {
-    final projectId = _projectId;
-    if (projectId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('No project selected. Please open a project first.')),
-      );
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Vendor'),
-        content: Text(
-            'Are you sure you want to delete "${vendor.name}"? This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                await VendorService.deleteVendor(
-                    projectId: projectId, vendorId: vendor.id);
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Vendor deleted successfully')),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error deleting vendor: $e')),
-                  );
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

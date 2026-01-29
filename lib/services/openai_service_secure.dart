@@ -15,8 +15,9 @@ class AiSolutionItem {
   AiSolutionItem({required this.title, required this.description});
 
   factory AiSolutionItem.fromMap(Map<String, dynamic> map) => AiSolutionItem(
-  title: _stripAsterisks((map['title'] ?? '').toString().trim()),
-  description: _stripAsterisks((map['description'] ?? '').toString().trim()),
+        title: _stripAsterisks((map['title'] ?? '').toString().trim()),
+        description:
+            _stripAsterisks((map['description'] ?? '').toString().trim()),
       );
 }
 
@@ -105,16 +106,17 @@ class AiProjectValueInsights {
 
     final estimated = toD(map['estimated_value'] ?? map['project_value']);
     final benefitsRaw = map['benefits'];
-  final parsedBenefits = <String, String>{};
+    final parsedBenefits = <String, String>{};
     if (benefitsRaw is Map) {
       for (final entry in benefitsRaw.entries) {
-    parsedBenefits[entry.key.toString()] = _stripAsterisks(entry.value.toString());
+        parsedBenefits[entry.key.toString()] =
+            _stripAsterisks(entry.value.toString());
       }
     } else if (benefitsRaw is List) {
       for (final item in benefitsRaw) {
         if (item is Map && item.containsKey('category')) {
-      parsedBenefits[item['category'].toString()] =
-        _stripAsterisks((item['details'] ?? item['value'] ?? '').toString());
+          parsedBenefits[item['category'].toString()] = _stripAsterisks(
+              (item['details'] ?? item['value'] ?? '').toString());
         }
       }
     }
@@ -139,13 +141,13 @@ class AiProjectGoalRecommendation {
     final rawDesc = map['description'] ?? map['details'] ?? map['text'] ?? '';
     final rawFramework =
         map['framework'] ?? map['methodology'] ?? map['approach'] ?? '';
-  final name = _stripAsterisks(rawName.toString().trim());
-  final description = _stripAsterisks(rawDesc.toString().trim());
-  final framework = _stripAsterisks(rawFramework?.toString().trim() ?? '');
+    final name = _stripAsterisks(rawName.toString().trim());
+    final description = _stripAsterisks(rawDesc.toString().trim());
+    final framework = _stripAsterisks(rawFramework?.toString().trim() ?? '');
     return AiProjectGoalRecommendation(
       name: name,
       description: description,
-  framework: (framework.isEmpty) ? null : framework,
+      framework: (framework.isEmpty) ? null : framework,
     );
   }
 
@@ -285,19 +287,20 @@ class AiBenefitSavingsSuggestion {
 
     String parseString(dynamic value) => value?.toString().trim() ?? '';
 
-  return AiBenefitSavingsSuggestion(
-    lever: _stripAsterisks(parseString(map['lever'] ?? map['title'] ?? map['scenario'])),
-    recommendation: _stripAsterisks(parseString(
-      map['recommendation'] ?? map['action'] ?? map['strategy'])),
-    projectedSavings: parseDouble(
-      map['projected_savings'] ?? map['savings'] ?? map['projected_value']),
-    timeframe:
-      _stripAsterisks(parseString(map['timeframe'] ?? map['horizon'] ?? map['period'])),
-    confidence: _stripAsterisks(parseString(
-      map['confidence'] ?? map['certainty'] ?? map['confidence_level'])),
-    rationale:
-      _stripAsterisks(parseString(map['rationale'] ?? map['notes'] ?? map['summary'])),
-  );
+    return AiBenefitSavingsSuggestion(
+      lever: _stripAsterisks(
+          parseString(map['lever'] ?? map['title'] ?? map['scenario'])),
+      recommendation: _stripAsterisks(parseString(
+          map['recommendation'] ?? map['action'] ?? map['strategy'])),
+      projectedSavings: parseDouble(
+          map['projected_savings'] ?? map['savings'] ?? map['projected_value']),
+      timeframe: _stripAsterisks(
+          parseString(map['timeframe'] ?? map['horizon'] ?? map['period'])),
+      confidence: _stripAsterisks(parseString(
+          map['confidence'] ?? map['certainty'] ?? map['confidence_level'])),
+      rationale: _stripAsterisks(
+          parseString(map['rationale'] ?? map['notes'] ?? map['summary'])),
+    );
   }
 }
 
@@ -368,11 +371,14 @@ class OpenAiServiceSecure {
           (parsed['text'] ?? parsed['section'] ?? parsed['content'] ?? '')
               .toString()
               .trim();
-  final cleanText = _stripAsterisks(text);
-  if (cleanText.isNotEmpty) return cleanText;
+      final cleanText = _stripAsterisks(text);
+      if (cleanText.isNotEmpty) return cleanText;
       // If missing expected key, try to flatten other fields to text
       if (parsed.isNotEmpty) {
-        return parsed.values.map((v) => _stripAsterisks(v.toString())).join('\n').trim();
+        return parsed.values
+            .map((v) => _stripAsterisks(v.toString()))
+            .join('\n')
+            .trim();
       }
       return '';
     } catch (e) {
@@ -439,7 +445,8 @@ $trimmedContext
           .post(uri, headers: headers, body: body)
           .timeout(const Duration(seconds: 16));
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception('OpenAI error ${response.statusCode}: ${response.body}');
+        throw Exception(
+            'OpenAI error ${response.statusCode}: ${response.body}');
       }
       final data =
           jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
@@ -455,36 +462,47 @@ $trimmedContext
   DesignDeliverablesData _parseDesignDeliverables(Map<String, dynamic> json) {
     List<String> toStringList(dynamic value) {
       if (value is List) {
-        return value.map((e) => _stripAsterisks(e.toString().trim())).where((e) => e.isNotEmpty).toList();
+        return value
+            .map((e) => _stripAsterisks(e.toString().trim()))
+            .where((e) => e.isNotEmpty)
+            .toList();
       }
       return const [];
     }
 
     List<DesignDeliverablePipelineItem> parsePipeline(dynamic value) {
       if (value is List) {
-        return value.map((item) {
-          final map = Map<String, dynamic>.from(item as Map);
-          return DesignDeliverablePipelineItem(
-            label: _stripAsterisks((map['label'] ?? '').toString().trim()),
-            status: _stripAsterisks((map['status'] ?? '').toString().trim()),
-          );
-        }).where((item) => item.label.isNotEmpty).toList();
+        return value
+            .map((item) {
+              final map = Map<String, dynamic>.from(item as Map);
+              return DesignDeliverablePipelineItem(
+                label: _stripAsterisks((map['label'] ?? '').toString().trim()),
+                status:
+                    _stripAsterisks((map['status'] ?? '').toString().trim()),
+              );
+            })
+            .where((item) => item.label.isNotEmpty)
+            .toList();
       }
       return const [];
     }
 
     List<DesignDeliverableRegisterItem> parseRegister(dynamic value) {
       if (value is List) {
-        return value.map((item) {
-          final map = Map<String, dynamic>.from(item as Map);
-          return DesignDeliverableRegisterItem(
-            name: _stripAsterisks((map['name'] ?? '').toString().trim()),
-            owner: _stripAsterisks((map['owner'] ?? '').toString().trim()),
-            status: _stripAsterisks((map['status'] ?? '').toString().trim()),
-            due: _stripAsterisks((map['due'] ?? '').toString().trim()),
-            risk: _stripAsterisks((map['risk'] ?? '').toString().trim()),
-          );
-        }).where((item) => item.name.isNotEmpty).toList();
+        return value
+            .map((item) {
+              final map = Map<String, dynamic>.from(item as Map);
+              return DesignDeliverableRegisterItem(
+                name: _stripAsterisks((map['name'] ?? '').toString().trim()),
+                owner: _stripAsterisks((map['owner'] ?? '').toString().trim()),
+                status:
+                    _stripAsterisks((map['status'] ?? '').toString().trim()),
+                due: _stripAsterisks((map['due'] ?? '').toString().trim()),
+                risk: _stripAsterisks((map['risk'] ?? '').toString().trim()),
+              );
+            })
+            .where((item) => item.name.isNotEmpty)
+            .toList();
       }
       return const [];
     }
@@ -508,10 +526,13 @@ $trimmedContext
     final project = _extractProjectName(context);
     final name = project.isNotEmpty ? project : 'Project';
     return DesignDeliverablesData(
-      metrics: const DesignDeliverablesMetrics(active: 6, inReview: 3, approved: 2, atRisk: 1),
+      metrics: const DesignDeliverablesMetrics(
+          active: 6, inReview: 3, approved: 2, atRisk: 1),
       pipeline: const [
-        DesignDeliverablePipelineItem(label: 'Discovery & Research', status: 'In Review'),
-        DesignDeliverablePipelineItem(label: 'Wireframes', status: 'In Progress'),
+        DesignDeliverablePipelineItem(
+            label: 'Discovery & Research', status: 'In Review'),
+        DesignDeliverablePipelineItem(
+            label: 'Wireframes', status: 'In Progress'),
         DesignDeliverablePipelineItem(label: 'UI Design', status: 'Pending'),
         DesignDeliverablePipelineItem(label: 'Prototype', status: 'Pending'),
       ],
@@ -522,10 +543,30 @@ $trimmedContext
         'Brand compliance check queued',
       ],
       register: const [
-        DesignDeliverableRegisterItem(name: 'Wireframe Pack', owner: 'UX Team', status: 'In Review', due: 'TBD', risk: 'Medium'),
-        DesignDeliverableRegisterItem(name: 'UI Kit', owner: 'Design Ops', status: 'In Progress', due: 'TBD', risk: 'Low'),
-        DesignDeliverableRegisterItem(name: 'Prototype', owner: 'Product', status: 'Pending', due: 'TBD', risk: 'High'),
-        DesignDeliverableRegisterItem(name: 'Journey Maps', owner: 'Research', status: 'In Progress', due: 'TBD', risk: 'Medium'),
+        DesignDeliverableRegisterItem(
+            name: 'Wireframe Pack',
+            owner: 'UX Team',
+            status: 'In Review',
+            due: 'TBD',
+            risk: 'Medium'),
+        DesignDeliverableRegisterItem(
+            name: 'UI Kit',
+            owner: 'Design Ops',
+            status: 'In Progress',
+            due: 'TBD',
+            risk: 'Low'),
+        DesignDeliverableRegisterItem(
+            name: 'Prototype',
+            owner: 'Product',
+            status: 'Pending',
+            due: 'TBD',
+            risk: 'High'),
+        DesignDeliverableRegisterItem(
+            name: 'Journey Maps',
+            owner: 'Research',
+            status: 'In Progress',
+            due: 'TBD',
+            risk: 'Medium'),
       ],
       dependencies: const [
         'Finalize IA and navigation taxonomy',
@@ -663,7 +704,8 @@ $trimmedContext
       for (final item in list) {
         if (item is! Map) continue;
         final map = item as Map<String, dynamic>;
-  final opp = _stripAsterisks((map['opportunity'] ?? map['title'] ?? '').toString().trim());
+        final opp = _stripAsterisks(
+            (map['opportunity'] ?? map['title'] ?? '').toString().trim());
         if (opp.isEmpty) continue;
         result.add({
           'opportunity': opp,
@@ -873,7 +915,8 @@ Additional context: "$notes"
       'messages': [
         {
           'role': 'system',
-          'content': 'You are a project cost estimator. Suggest 3-5 relevant cost items based on the project context. Return strict JSON only.'
+          'content':
+              'You are a project cost estimator. Suggest 3-5 relevant cost items based on the project context. Return strict JSON only.'
         },
         {
           'role': 'user',
@@ -886,26 +929,32 @@ Additional context: "$notes"
       final response = await _client
           .post(uri, headers: headers, body: body)
           .timeout(const Duration(seconds: 15));
-      
+
       if (response.statusCode == 401) throw Exception('Invalid API key');
       if (response.statusCode == 429) throw Exception('API quota exceeded');
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception('OpenAI error ${response.statusCode}: ${response.body}');
+        throw Exception(
+            'OpenAI error ${response.statusCode}: ${response.body}');
       }
 
-      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-      final content = (data['choices'] as List).first['message']['content'] as String;
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content =
+          (data['choices'] as List).first['message']['content'] as String;
       final parsed = jsonDecode(content) as Map<String, dynamic>;
-      
+
       final list = (parsed['items'] as List?)?.map((e) {
-        final map = e as Map<String, dynamic>;
-        return CostEstimateItem(
-          title: _stripAsterisks((map['title'] ?? '').toString()),
-          amount: _toDouble(map['amount']),
-          notes: _stripAsterisks((map['notes'] ?? '').toString()),
-          costType: (map['costType'] ?? map['type'] ?? 'direct').toString().toLowerCase(),
-        );
-      }).toList() ?? [];
+            final map = e as Map<String, dynamic>;
+            return CostEstimateItem(
+              title: _stripAsterisks((map['title'] ?? '').toString()),
+              amount: _toDouble(map['amount']),
+              notes: _stripAsterisks((map['notes'] ?? '').toString()),
+              costType: (map['costType'] ?? map['type'] ?? 'direct')
+                  .toString()
+                  .toLowerCase(),
+            );
+          }).toList() ??
+          [];
 
       return list.where((i) => i.title.isNotEmpty).toList();
     } catch (e) {
@@ -996,10 +1045,10 @@ $c
     final content =
         (data['choices'] as List).first['message']['content'] as String;
     final parsed = jsonDecode(content) as Map<String, dynamic>;
-  final items = (parsed['solutions'] as List? ?? [])
-    .map((e) => AiSolutionItem.fromMap(e as Map<String, dynamic>))
-    .where((e) => e.title.isNotEmpty && e.description.isNotEmpty)
-    .toList();
+    final items = (parsed['solutions'] as List? ?? [])
+        .map((e) => AiSolutionItem.fromMap(e as Map<String, dynamic>))
+        .where((e) => e.title.isNotEmpty && e.description.isNotEmpty)
+        .toList();
     return _normalizeSolutions(items);
   }
 
@@ -1048,12 +1097,12 @@ $c
       final Map<String, List<String>> result = {};
       for (final item in list) {
         final map = item as Map<String, dynamic>;
-    final title = _stripAsterisks((map['solution'] ?? '').toString());
-    final items = (map['items'] as List? ?? [])
-      .map((e) => _stripAsterisks(e.toString()))
-      .where((e) => e.trim().isNotEmpty)
-      .take(3)
-      .toList();
+        final title = _stripAsterisks((map['solution'] ?? '').toString());
+        final items = (map['items'] as List? ?? [])
+            .map((e) => _stripAsterisks(e.toString()))
+            .where((e) => e.trim().isNotEmpty)
+            .take(3)
+            .toList();
         if (title.isNotEmpty && items.isNotEmpty) result[title] = items;
       }
       return _mergeWithFallbackRisks(solutions, result);
@@ -1177,7 +1226,8 @@ $c
         .map((e) {
           final item = e as Map<String, dynamic>;
           return {
-            'requirement': _stripAsterisks((item['requirement'] ?? '').toString().trim()),
+            'requirement':
+                _stripAsterisks((item['requirement'] ?? '').toString().trim()),
             'requirementType': _stripAsterisks((item['requirementType'] ??
                     item['requirement_type'] ??
                     'Functional')
@@ -1242,12 +1292,12 @@ $c
       final Map<String, List<String>> result = {};
       for (final item in list) {
         final map = item as Map<String, dynamic>;
-    final title = _stripAsterisks((map['solution'] ?? '').toString());
-    final items = (map['items'] as List? ?? [])
-      .map((e) => _stripAsterisks(e.toString()))
-      .where((e) => e.trim().isNotEmpty)
-      .take(6)
-      .toList();
+        final title = _stripAsterisks((map['solution'] ?? '').toString());
+        final items = (map['items'] as List? ?? [])
+            .map((e) => _stripAsterisks(e.toString()))
+            .where((e) => e.trim().isNotEmpty)
+            .take(6)
+            .toList();
         if (title.isNotEmpty && items.isNotEmpty) result[title] = items;
       }
       return _mergeWithFallbackTech(solutions, result);
@@ -1324,7 +1374,7 @@ $c
       final Map<String, List<AiCostItem>> result = {};
       for (final entry in list) {
         final map = entry as Map<String, dynamic>;
-  final title = _stripAsterisks((map['solution'] ?? '').toString());
+        final title = _stripAsterisks((map['solution'] ?? '').toString());
         final itemsRaw = (map['items'] as List? ?? []);
         final items = itemsRaw
             .map((e) => AiCostItem.fromMap(e as Map<String, dynamic>))
@@ -1564,7 +1614,8 @@ Return plain text only.'''
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('OpenAI error ${response.statusCode}: ${response.body}');
     }
-    final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final data =
+        jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     final content =
         (data['choices'] as List).first['message']['content'] as String;
     return _stripAsterisks(content).trim();
@@ -1630,14 +1681,16 @@ Return plain text only.'''
       final items = (parsed['items'] as List? ?? [])
           .map((e) => Map<String, dynamic>.from(e as Map))
           .map((item) {
-        return BenefitLineItemInput(
-          category: (item['category'] ?? '').toString(),
-          title: (item['title'] ?? '').toString(),
-          unitValue: _toDouble(item['unit_value'] ?? item['unitValue']),
-          units: _toDouble(item['units'] ?? 1),
-          notes: (item['notes'] ?? '').toString(),
-        );
-      }).where((item) => item.title.isNotEmpty).toList();
+            return BenefitLineItemInput(
+              category: (item['category'] ?? '').toString(),
+              title: (item['title'] ?? '').toString(),
+              unitValue: _toDouble(item['unit_value'] ?? item['unitValue']),
+              units: _toDouble(item['units'] ?? 1),
+              notes: (item['notes'] ?? '').toString(),
+            );
+          })
+          .where((item) => item.title.isNotEmpty)
+          .toList();
       return items.isEmpty
           ? _fallbackBenefitLineItems(estimatedProjectValue, currency)
           : items;
@@ -2007,7 +2060,7 @@ Remember: Return ONLY a JSON object with key "savings_scenarios".
       // If no solutions but we have project context, create a placeholder
       list = '{"title": "Project", "description": "${_escape(notes)}"}';
     }
-    
+
     return '''
 For each solution below, list ONLY physical infrastructure considerations required to support it - things that can be physically touched or installed.
 
@@ -2036,9 +2089,9 @@ Context notes (optional): $notes
 
   // STAKEHOLDERS
   // Returns a map with 'internal' and 'external' keys, each containing Map<String, List<String>>
-  Future<Map<String, Map<String, List<String>>>> generateStakeholdersForSolutions(
-      List<AiSolutionItem> solutions,
-      {String contextNotes = ''}) async {
+  Future<Map<String, Map<String, List<String>>>>
+      generateStakeholdersForSolutions(List<AiSolutionItem> solutions,
+          {String contextNotes = ''}) async {
     if (solutions.isEmpty) return {'internal': {}, 'external': {}};
     if (!OpenAiConfig.isConfigured) return _fallbackStakeholders(solutions);
 
@@ -2081,7 +2134,7 @@ Context notes (optional): $notes
 
       final Map<String, List<String>> internalResult = {};
       final Map<String, List<String>> externalResult = {};
-      
+
       final List stakeholderList = (parsed['stakeholders'] as List? ?? []);
       for (final item in stakeholderList) {
         final map = item as Map<String, dynamic>;
@@ -2101,7 +2154,8 @@ Context notes (optional): $notes
           if (externalItems.isNotEmpty) externalResult[title] = externalItems;
         }
       }
-      return _mergeWithFallbackStakeholders(solutions, internalResult, externalResult);
+      return _mergeWithFallbackStakeholders(
+          solutions, internalResult, externalResult);
     } catch (e) {
       print('generateStakeholdersForSolutions failed: $e');
       return _fallbackStakeholders(solutions);
@@ -2109,13 +2163,13 @@ Context notes (optional): $notes
   }
 
   Map<String, Map<String, List<String>>> _mergeWithFallbackStakeholders(
-      List<AiSolutionItem> solutions, 
+      List<AiSolutionItem> solutions,
       Map<String, List<String>> generatedInternal,
       Map<String, List<String>> generatedExternal) {
     final fallback = _fallbackStakeholders(solutions);
     final mergedInternal = <String, List<String>>{};
     final mergedExternal = <String, List<String>>{};
-    
+
     for (final s in solutions) {
       final gInternal = generatedInternal[s.title];
       final gExternal = generatedExternal[s.title];
@@ -2174,7 +2228,7 @@ Context notes (optional): $notes
         'User Experience Team',
       ],
     ];
-    
+
     const externalPools = <List<String>>[
       [
         'Regulatory authority (industry-specific)',
@@ -2217,16 +2271,16 @@ Context notes (optional): $notes
         'Independent evaluators',
       ],
     ];
-    
+
     final internalMap = <String, List<String>>{};
     final externalMap = <String, List<String>>{};
-    
+
     for (int i = 0; i < solutions.length; i++) {
       final s = solutions[i];
       internalMap[s.title] = internalPools[i % internalPools.length];
       externalMap[s.title] = externalPools[i % externalPools.length];
     }
-    
+
     return {'internal': internalMap, 'external': externalMap};
   }
 
@@ -2242,7 +2296,7 @@ Context notes (optional): $notes
       // If no solutions but we have project context, create a placeholder
       list = '{"title": "Project", "description": "${_escape(notes)}"}';
     }
-    
+
     return '''
 For each solution below, separately identify INTERNAL stakeholders (employees, departments, teams within your organization) and EXTERNAL stakeholders (regulatory bodies, vendors, government agencies, external partners, community groups). 
 
@@ -2675,6 +2729,263 @@ $escaped
     }
 
     return _fallbackLaunchEntries(trimmedContext, sections, itemsPerSection);
+  }
+
+  /// Generate staffing role suggestions based on PreferredSolution and project context
+  /// Returns a list of role names (3-4 suggestions) that are relevant to the project
+  Future<List<String>> generateStaffingRoleSuggestions({
+    required String context,
+    int maxSuggestions = 4,
+    int maxTokens = 400,
+    double temperature = 0.6,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) return _fallbackStaffingRoles();
+
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackStaffingRoles();
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a staffing specialist. Generate $maxSuggestions relevant staffing role suggestions based on the project context and preferred solution. Return ONLY valid JSON with a "roles" array of role name strings. Each role should be specific and relevant to the project domain (e.g., "Health Data Privacy Expert" for healthcare projects, "UI/UX Designer" for app projects).'
+        },
+        {
+          'role': 'user',
+          'content':
+              _staffingRoleSuggestionsPrompt(trimmedContext, maxSuggestions),
+        },
+      ],
+    });
+
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 12));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+            'OpenAI error ${response.statusCode}: ${response.body}');
+      }
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final choices = data['choices'] as List<dynamic>? ?? [];
+      if (choices.isNotEmpty) {
+        final firstMessage =
+            choices.first['message'] as Map<String, dynamic>? ?? {};
+        final content = (firstMessage['content'] as String?)?.trim() ?? '';
+        final parsed = _decodeJsonSafely(content);
+        if (parsed != null) {
+          final roles = _parseStaffingRoleSuggestions(parsed);
+          if (roles.isNotEmpty) return roles;
+        }
+      }
+    } catch (e) {
+      debugPrint('generateStaffingRoleSuggestions failed: $e');
+    }
+
+    return _fallbackStaffingRoles();
+  }
+
+  String _staffingRoleSuggestionsPrompt(String context, int maxSuggestions) {
+    final escaped = _escape(context);
+    return '''
+Based on the project context below, suggest $maxSuggestions specific staffing roles that would be essential for executing this project.
+
+Focus on roles that are:
+- Domain-specific to the project type (e.g., healthcare, technology, construction)
+- Relevant to the preferred solution
+- Critical for project success
+
+Return ONLY valid JSON with this exact structure:
+{
+  "roles": [
+    "Role Name 1",
+    "Role Name 2",
+    "Role Name 3",
+    "Role Name 4"
+  ]
+}
+
+Project Context:
+"""
+$escaped
+"""
+''';
+  }
+
+  List<String> _parseStaffingRoleSuggestions(Map<String, dynamic> parsed) {
+    final rolesRaw = parsed['roles'];
+    if (rolesRaw is List) {
+      return rolesRaw
+          .map((r) => _stripAsterisks(r.toString().trim()))
+          .where((r) => r.isNotEmpty)
+          .toList();
+    }
+    return [];
+  }
+
+  List<String> _fallbackStaffingRoles() {
+    return [
+      'Project Manager',
+      'Technical Lead',
+      'Business Analyst',
+      'Quality Assurance Specialist',
+    ];
+  }
+
+  /// Generate meeting objective/agenda based on meeting type and participant roles
+  /// Returns a prose meeting objective (no bullets) and optionally a 5-point agenda
+  Future<Map<String, String>> generateMeetingObjective({
+    required String context,
+    required String meetingType,
+    required List<String> participantRoles,
+    int maxTokens = 600,
+    double temperature = 0.6,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) {
+      return _fallbackMeetingObjective(meetingType, participantRoles);
+    }
+
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackMeetingObjective(meetingType, participantRoles);
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a meeting facilitator. Generate a detailed meeting objective (prose format, no bullets) and a 5-point agenda based on the meeting type and participant roles. The objective should be tailored to the project context and roles involved. Return ONLY valid JSON with "objective" (prose text) and "agenda" (array of 5 agenda items).'
+        },
+        {
+          'role': 'user',
+          'content': _meetingObjectivePrompt(
+              trimmedContext, meetingType, participantRoles),
+        },
+      ],
+    });
+
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 12));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+            'OpenAI error ${response.statusCode}: ${response.body}');
+      }
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final choices = data['choices'] as List<dynamic>? ?? [];
+      if (choices.isNotEmpty) {
+        final firstMessage =
+            choices.first['message'] as Map<String, dynamic>? ?? {};
+        final content = (firstMessage['content'] as String?)?.trim() ?? '';
+        final parsed = _decodeJsonSafely(content);
+        if (parsed != null) {
+          final result = _parseMeetingObjective(parsed);
+          if (result.isNotEmpty) return result;
+        }
+      }
+    } catch (e) {
+      debugPrint('generateMeetingObjective failed: $e');
+    }
+
+    return _fallbackMeetingObjective(meetingType, participantRoles);
+  }
+
+  String _meetingObjectivePrompt(
+      String context, String meetingType, List<String> roles) {
+    final escaped = _escape(context);
+    final rolesText = roles.isEmpty ? 'General team members' : roles.join(', ');
+    return '''
+Based on the project context below, generate a detailed meeting objective and 5-point agenda for a "$meetingType" meeting.
+
+Participant Roles: $rolesText
+
+Requirements:
+- The objective should be prose format (no bullets, complete sentences)
+- The agenda should be 5 specific, actionable items relevant to the meeting type and roles
+- Consider the project context and preferred solution when generating content
+
+Return ONLY valid JSON with this exact structure:
+{
+  "objective": "Detailed prose meeting objective that explains the purpose and expected outcomes of this meeting...",
+  "agenda": [
+    "Agenda item 1",
+    "Agenda item 2",
+    "Agenda item 3",
+    "Agenda item 4",
+    "Agenda item 5"
+  ]
+}
+
+Project Context:
+"""
+$escaped
+"""
+''';
+  }
+
+  Map<String, String> _parseMeetingObjective(Map<String, dynamic> parsed) {
+    final objective =
+        _stripAsterisks((parsed['objective'] ?? '').toString().trim());
+    final agendaRaw = parsed['agenda'];
+    final agendaItems = <String>[];
+
+    if (agendaRaw is List) {
+      agendaItems.addAll(
+        agendaRaw
+            .map((a) => _stripAsterisks(a.toString().trim()))
+            .where((a) => a.isNotEmpty),
+      );
+    }
+
+    // Format agenda items with "." bullet prefix
+    final agendaText = agendaItems.map((item) => '. $item').join('\n');
+
+    return {
+      'objective': objective.isNotEmpty
+          ? objective
+          : 'Review project progress and align on next steps.',
+      'agenda': agendaText.isNotEmpty
+          ? agendaText
+          : '. Review status updates\n. Discuss blockers\n. Plan next sprint\n. Assign action items\n. Set follow-up date',
+    };
+  }
+
+  Map<String, String> _fallbackMeetingObjective(
+      String meetingType, List<String> roles) {
+    final rolesText = roles.isEmpty ? 'team members' : roles.join(', ');
+    return {
+      'objective':
+          'Conduct a $meetingType meeting with $rolesText to review progress, address challenges, and align on next steps.',
+      'agenda':
+          '. Review status updates\n. Discuss blockers\n. Plan next sprint\n. Assign action items\n. Set follow-up date',
+    };
   }
 
   String _ssherSummaryPrompt(String context) {
@@ -3820,7 +4131,7 @@ $escaped
       // If no solutions but we have project context, create a placeholder
       list = '{"title": "Project", "description": "${_escape(notes)}"}';
     }
-    
+
     return '''
 For each solution below, list 3-6 core technologies/services/frameworks that would be SPECIFICALLY required to implement that particular solution. 
 
@@ -3871,7 +4182,8 @@ Context notes (optional): $notes
         },
         {
           'role': 'user',
-          'content': '''Generate at least $count project risks based on this context:
+          'content':
+              '''Generate at least $count project risks based on this context:
 
 $context
 
@@ -3965,14 +4277,19 @@ Return JSON in this format:
           .post(uri, headers: headers, body: body)
           .timeout(const Duration(seconds: 22));
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception('OpenAI error ${response.statusCode}: ${response.body}');
+        throw Exception(
+            'OpenAI error ${response.statusCode}: ${response.body}');
       }
-      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-      final content = (data['choices'] as List).first['message']['content'] as String;
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content =
+          (data['choices'] as List).first['message']['content'] as String;
       final parsed = jsonDecode(content) as Map<String, dynamic>;
       final List rawWbs = parsed['wbs'] as List? ?? [];
-      
-      final items = rawWbs.map((e) => WorkItem.fromJson(e as Map<String, dynamic>)).toList();
+
+      final items = rawWbs
+          .map((e) => WorkItem.fromJson(e as Map<String, dynamic>))
+          .toList();
       _wireUpWbsTree(items);
       return items;
     } catch (e) {
@@ -4541,22 +4858,61 @@ Return ONLY JSON: {"items":[...]}'''
     return [
       {
         'kpis': [
-          {'label': 'On-time delivery', 'value': '86%', 'delta': '+4%', 'positive': true},
-          {'label': 'Spend vs budget', 'value': '92%', 'delta': '-3%', 'positive': true},
-          {'label': 'Open RFQs', 'value': '8', 'delta': '+2', 'positive': false},
+          {
+            'label': 'On-time delivery',
+            'value': '86%',
+            'delta': '+4%',
+            'positive': true
+          },
+          {
+            'label': 'Spend vs budget',
+            'value': '92%',
+            'delta': '-3%',
+            'positive': true
+          },
+          {
+            'label': 'Open RFQs',
+            'value': '8',
+            'delta': '+2',
+            'positive': false
+          },
         ],
         'spendBreakdown': [
-          {'label': 'IT Equipment', 'amount': 240000, 'percent': 42, 'color': 0xFF6366F1},
-          {'label': 'Construction', 'amount': 180000, 'percent': 31, 'color': 0xFFF59E0B},
-          {'label': 'Security', 'amount': 90000, 'percent': 16, 'color': 0xFF10B981},
-          {'label': 'Other', 'amount': 60000, 'percent': 11, 'color': 0xFF94A3B8},
+          {
+            'label': 'IT Equipment',
+            'amount': 240000,
+            'percent': 42,
+            'color': 0xFF6366F1
+          },
+          {
+            'label': 'Construction',
+            'amount': 180000,
+            'percent': 31,
+            'color': 0xFFF59E0B
+          },
+          {
+            'label': 'Security',
+            'amount': 90000,
+            'percent': 16,
+            'color': 0xFF10B981
+          },
+          {
+            'label': 'Other',
+            'amount': 60000,
+            'percent': 11,
+            'color': 0xFF94A3B8
+          },
         ],
         'leadTimeMetrics': [
           {'label': 'Critical items', 'onTimeRate': 0.78},
           {'label': 'Standard items', 'onTimeRate': 0.9},
         ],
         'savingsOpportunities': [
-          {'title': 'Renegotiate security maintenance', 'value': '\$18k', 'owner': 'Procurement'},
+          {
+            'title': 'Renegotiate security maintenance',
+            'value': '\$18k',
+            'owner': 'Procurement'
+          },
           {'title': 'Consolidate IT vendors', 'value': '\$24k', 'owner': 'Ops'},
         ],
         'complianceMetrics': [
@@ -4565,5 +4921,1083 @@ Return ONLY JSON: {"items":[...]}'''
         ],
       }
     ];
+  }
+
+  /// Predict potential delays for deliverables based on current date and project context
+  Future<Map<String, dynamic>> predictDeliverableDelays({
+    required String context,
+    required String deliverableTitle,
+    required String dueDate,
+    required String currentStatus,
+    int maxTokens = 500,
+    double temperature = 0.6,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) {
+      return _fallbackDelayPrediction(deliverableTitle, dueDate);
+    }
+
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackDelayPrediction(deliverableTitle, dueDate);
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a project management AI. Analyze the deliverable and predict potential delays based on the project context, current status, and due date. Return ONLY valid JSON with risk assessment and mitigation suggestions.'
+        },
+        {
+          'role': 'user',
+          'content': _delayPredictionPrompt(
+            trimmedContext,
+            deliverableTitle,
+            dueDate,
+            currentStatus,
+          ),
+        },
+      ],
+    });
+
+    try {
+      final response = await http.post(uri, headers: headers, body: body);
+      if (response.statusCode == 200) {
+        final parsed = jsonDecode(response.body) as Map<String, dynamic>;
+        final content = parsed['choices']?[0]?['message']?['content'];
+        if (content != null) {
+          final result = jsonDecode(content.toString()) as Map<String, dynamic>;
+          return _parseDelayPrediction(result, deliverableTitle, dueDate);
+        }
+      }
+    } catch (e) {
+      debugPrint('predictDeliverableDelays failed: $e');
+    }
+
+    return _fallbackDelayPrediction(deliverableTitle, dueDate);
+  }
+
+  String _delayPredictionPrompt(
+    String context,
+    String deliverableTitle,
+    String dueDate,
+    String currentStatus,
+  ) {
+    final escaped = _escape(context);
+    return '''
+Analyze the following deliverable and predict potential delays based on the project context.
+
+Deliverable: $deliverableTitle
+Due Date: $dueDate
+Current Status: $currentStatus
+
+Consider:
+- Project complexity and dependencies
+- Current progress vs timeline
+- Resource availability
+- Historical project patterns
+- Risk factors
+
+Return ONLY valid JSON with this exact structure:
+{
+  "riskLevel": "Low" | "Medium" | "High",
+  "predictedDelayDays": 0-30,
+  "riskFactors": [
+    "Factor 1",
+    "Factor 2",
+    "Factor 3"
+  ],
+  "mitigationSuggestions": [
+    ". Suggestion 1",
+    ". Suggestion 2",
+    ". Suggestion 3"
+  ],
+  "recommendedAction": "Prose description of recommended action (no bullets)"
+}
+
+Project Context:
+"""
+$escaped
+"""
+''';
+  }
+
+  Map<String, dynamic> _parseDelayPrediction(
+    Map<String, dynamic> parsed,
+    String deliverableTitle,
+    String dueDate,
+  ) {
+    final riskLevel = _stripAsterisks(
+      (parsed['riskLevel'] ?? 'Medium').toString().trim(),
+    );
+    final delayDays = (parsed['predictedDelayDays'] as num?)?.toInt() ?? 0;
+    final riskFactorsRaw = parsed['riskFactors'];
+    final riskFactors = <String>[];
+    if (riskFactorsRaw is List) {
+      riskFactors.addAll(
+        riskFactorsRaw
+            .map((f) => _stripAsterisks(f.toString().trim()))
+            .where((f) => f.isNotEmpty),
+      );
+    }
+    final mitigationRaw = parsed['mitigationSuggestions'];
+    final mitigations = <String>[];
+    if (mitigationRaw is List) {
+      mitigations.addAll(
+        mitigationRaw
+            .map((m) => _stripAsterisks(m.toString().trim()))
+            .where((m) => m.isNotEmpty),
+      );
+    }
+    final recommendedAction = _stripAsterisks(
+      (parsed['recommendedAction'] ?? '').toString().trim(),
+    );
+
+    return {
+      'riskLevel': riskLevel,
+      'predictedDelayDays': delayDays,
+      'riskFactors': riskFactors,
+      'mitigationSuggestions': mitigations,
+      'recommendedAction': recommendedAction.isNotEmpty
+          ? recommendedAction
+          : 'Monitor progress closely and adjust resources if needed.',
+    };
+  }
+
+  Map<String, dynamic> _fallbackDelayPrediction(
+    String deliverableTitle,
+    String dueDate,
+  ) {
+    return {
+      'riskLevel': 'Medium',
+      'predictedDelayDays': 0,
+      'riskFactors': [
+        'Insufficient data to assess risk',
+        'Monitor progress regularly',
+      ],
+      'mitigationSuggestions': [
+        '. Review dependencies',
+        '. Allocate additional resources if needed',
+        '. Communicate with stakeholders',
+      ],
+      'recommendedAction':
+          'Continue monitoring the deliverable progress and adjust timeline if necessary.',
+    };
+  }
+
+  /// Suggest cost-saving measures if spending exceeds plan
+  Future<List<String>> suggestCostSavingMeasures({
+    required String context,
+    required double plannedAmount,
+    required double actualAmount,
+    int maxSuggestions = 5,
+    int maxTokens = 600,
+    double temperature = 0.6,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) {
+      return _fallbackCostSavingMeasures();
+    }
+
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackCostSavingMeasures();
+    }
+
+    final variance = actualAmount - plannedAmount;
+    final variancePercent = plannedAmount > 0
+        ? ((variance / plannedAmount) * 100).toStringAsFixed(1)
+        : '0';
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a financial analysis AI. Analyze spending patterns and suggest practical cost-saving measures. Return ONLY valid JSON with an array of suggestions.'
+        },
+        {
+          'role': 'user',
+          'content': _costSavingPrompt(
+            trimmedContext,
+            plannedAmount,
+            actualAmount,
+            variancePercent,
+            maxSuggestions,
+          ),
+        },
+      ],
+    });
+
+    try {
+      final response = await http.post(uri, headers: headers, body: body);
+      if (response.statusCode == 200) {
+        final parsed = jsonDecode(response.body) as Map<String, dynamic>;
+        final content = parsed['choices']?[0]?['message']?['content'];
+        if (content != null) {
+          final result = jsonDecode(content.toString()) as Map<String, dynamic>;
+          return _parseCostSavingSuggestions(result);
+        }
+      }
+    } catch (e) {
+      debugPrint('suggestCostSavingMeasures failed: $e');
+    }
+
+    return _fallbackCostSavingMeasures();
+  }
+
+  String _costSavingPrompt(
+    String context,
+    double plannedAmount,
+    double actualAmount,
+    String variancePercent,
+    int maxSuggestions,
+  ) {
+    final escaped = _escape(context);
+    final isOverBudget = actualAmount > plannedAmount;
+    return '''
+Analyze the project spending and suggest $maxSuggestions practical cost-saving measures.
+
+Planned Amount: \$${plannedAmount.toStringAsFixed(2)}
+Actual Amount: \$${actualAmount.toStringAsFixed(2)}
+Variance: ${isOverBudget ? '+' : ''}$variancePercent%
+
+${isOverBudget ? '⚠️ Spending exceeds plan. Suggest specific, actionable cost-saving measures.' : 'Spending is within plan. Suggest proactive cost optimization measures.'}
+
+Return ONLY valid JSON with this exact structure:
+{
+  "suggestions": [
+    ". Suggestion 1",
+    ". Suggestion 2",
+    ". Suggestion 3",
+    ". Suggestion 4",
+    ". Suggestion 5"
+  ]
+}
+
+Each suggestion should:
+- Be specific and actionable
+- Use "." bullet format
+- Consider the project context and constraints
+- Be realistic and implementable
+
+Project Context:
+"""
+$escaped
+"""
+''';
+  }
+
+  List<String> _parseCostSavingSuggestions(Map<String, dynamic> parsed) {
+    final suggestionsRaw = parsed['suggestions'];
+    if (suggestionsRaw is List) {
+      return suggestionsRaw
+          .map((s) => _stripAsterisks(s.toString().trim()))
+          .where((s) => s.isNotEmpty)
+          .toList();
+    }
+    return _fallbackCostSavingMeasures();
+  }
+
+  List<String> _fallbackCostSavingMeasures() {
+    return [
+      '. Review and optimize vendor contracts',
+      '. Identify non-essential expenses that can be deferred',
+      '. Negotiate better rates with suppliers',
+      '. Consolidate similar activities to reduce overhead',
+      '. Implement stricter budget approval processes',
+    ];
+  }
+
+  /// Auto-summarize weekly wins from completed tasks
+  Future<String> summarizeWeeklyWins({
+    required String context,
+    required List<String> completedTasks,
+    int maxTokens = 400,
+    double temperature = 0.5,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty || completedTasks.isEmpty) {
+      return _fallbackWeeklyWinsSummary(completedTasks);
+    }
+
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackWeeklyWinsSummary(completedTasks);
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final tasksText = completedTasks.join('\n');
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a project communication AI. Summarize completed tasks into a concise, positive "Weekly Wins" summary. Use prose format (no bullets, complete sentences).'
+        },
+        {
+          'role': 'user',
+          'content': _weeklyWinsPrompt(trimmedContext, tasksText),
+        },
+      ],
+    });
+
+    try {
+      final response = await http.post(uri, headers: headers, body: body);
+      if (response.statusCode == 200) {
+        final parsed = jsonDecode(response.body) as Map<String, dynamic>;
+        final content = parsed['choices']?[0]?['message']?['content'];
+        if (content != null) {
+          final result = jsonDecode(content.toString()) as Map<String, dynamic>;
+          final summary = _stripAsterisks(
+            (result['summary'] ?? '').toString().trim(),
+          );
+          if (summary.isNotEmpty) {
+            return summary;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('summarizeWeeklyWins failed: $e');
+    }
+
+    return _fallbackWeeklyWinsSummary(completedTasks);
+  }
+
+  String _weeklyWinsPrompt(String context, String tasksText) {
+    final escaped = _escape(context);
+    return '''
+Based on the project context and completed tasks below, generate a concise "Weekly Wins" summary.
+
+Requirements:
+- Use prose format (no bullets, complete sentences)
+- Highlight key achievements and progress
+- Keep it positive and motivating
+- Be specific about what was accomplished
+- 2-3 sentences maximum
+
+Return ONLY valid JSON with this exact structure:
+{
+  "summary": "Prose summary of weekly wins highlighting key achievements..."
+}
+
+Completed Tasks:
+"""
+$tasksText
+"""
+
+Project Context:
+"""
+$escaped
+"""
+''';
+  }
+
+  String _fallbackWeeklyWinsSummary(List<String> completedTasks) {
+    if (completedTasks.isEmpty) {
+      return 'No completed tasks to summarize this week.';
+    }
+    final count = completedTasks.length;
+    return 'This week, the team successfully completed $count ${count == 1 ? 'task' : 'tasks'}, demonstrating strong progress toward project goals.';
+  }
+
+  /// Generate standard contract key terms based on contract type and preferred solution
+  Future<String> generateContractKeyTerms({
+    required String context,
+    required String contractType,
+    int maxTokens = 600,
+    double temperature = 0.6,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) {
+      return _fallbackContractKeyTerms(contractType);
+    }
+
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackContractKeyTerms(contractType);
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a legal contract specialist AI. Generate standard key terms for contracts based on the contract type and project context. Return ONLY valid JSON with key terms formatted with "." bullet prefix.'
+        },
+        {
+          'role': 'user',
+          'content': _contractKeyTermsPrompt(trimmedContext, contractType),
+        },
+      ],
+    });
+
+    try {
+      final response = await http.post(uri, headers: headers, body: body);
+      if (response.statusCode == 200) {
+        final parsed = jsonDecode(response.body) as Map<String, dynamic>;
+        final content = parsed['choices']?[0]?['message']?['content'];
+        if (content != null) {
+          final result = jsonDecode(content.toString()) as Map<String, dynamic>;
+          final keyTerms = _stripAsterisks(
+            (result['keyTerms'] ?? '').toString().trim(),
+          );
+          if (keyTerms.isNotEmpty) {
+            return keyTerms;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('generateContractKeyTerms failed: $e');
+    }
+
+    return _fallbackContractKeyTerms(contractType);
+  }
+
+  String _contractKeyTermsPrompt(String context, String contractType) {
+    final escaped = _escape(context);
+    return '''
+Generate standard key terms for a "$contractType" contract based on the project context below.
+
+Requirements:
+- Generate 5-7 key terms specific to this contract type
+- Each term should be a complete, actionable clause
+- Use "." bullet format (each line should start with ". ")
+- Terms should be relevant to the project's preferred solution and domain
+- Focus on standard legal and business terms appropriate for this contract type
+
+Return ONLY valid JSON with this exact structure:
+{
+  "keyTerms": ". Term 1\\n. Term 2\\n. Term 3\\n. Term 4\\n. Term 5"
+}
+
+Contract Type: $contractType
+
+Project Context:
+"""
+$escaped
+"""
+''';
+  }
+
+  String _fallbackContractKeyTerms(String contractType) {
+    switch (contractType.toLowerCase()) {
+      case 'service level agreement (sla)':
+      case 'sla':
+        return '. Service availability target: 99.9% uptime\n. Response time: Critical issues within 2 hours\n. Escalation procedures defined\n. Performance metrics and reporting requirements\n. Penalties for service level breaches\n. Review and renewal terms';
+      case 'nda':
+      case 'non-disclosure agreement':
+        return '. Confidential information definition\n. Obligations of receiving party\n. Exclusions from confidentiality\n. Term and duration of agreement\n. Return or destruction of materials\n. Remedies for breach';
+      case 'procurement':
+        return '. Delivery schedule and milestones\n. Quality standards and acceptance criteria\n. Payment terms and invoicing\n. Warranty and support provisions\n. Change order procedures\n. Termination and cancellation terms';
+      case 'employment':
+        return '. Job title and responsibilities\n. Compensation and benefits\n. Work schedule and location\n. Confidentiality and non-compete clauses\n. Termination notice requirements\n. Intellectual property assignment';
+      default:
+        return '. Scope of work and deliverables\n. Payment terms and schedule\n. Term and termination conditions\n. Confidentiality provisions\n. Dispute resolution procedures';
+    }
+  }
+
+  /// Generate vendor SLA/Terms based on vendor category and project context
+  Future<String> generateVendorSLATerms({
+    required String context,
+    required String vendorCategory,
+    int maxTokens = 600,
+    double temperature = 0.6,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) {
+      return _fallbackVendorSLATerms(vendorCategory);
+    }
+
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackVendorSLATerms(vendorCategory);
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a vendor management specialist AI. Generate standard SLA terms and required deliverables for vendors based on their category and project context. Return ONLY valid JSON with terms formatted with "." bullet prefix.'
+        },
+        {
+          'role': 'user',
+          'content': _vendorSLATermsPrompt(trimmedContext, vendorCategory),
+        },
+      ],
+    });
+
+    try {
+      final response = await http.post(uri, headers: headers, body: body);
+      if (response.statusCode == 200) {
+        final parsed = jsonDecode(response.body) as Map<String, dynamic>;
+        final content = parsed['choices']?[0]?['message']?['content'];
+        if (content != null) {
+          final result = jsonDecode(content.toString()) as Map<String, dynamic>;
+          final terms = _stripAsterisks(
+            (result['slaTerms'] ?? '').toString().trim(),
+          );
+          if (terms.isNotEmpty) {
+            return terms;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('generateVendorSLATerms failed: $e');
+    }
+
+    return _fallbackVendorSLATerms(vendorCategory);
+  }
+
+  String _vendorSLATermsPrompt(String context, String vendorCategory) {
+    final escaped = _escape(context);
+    return '''
+Generate standard SLA terms and required deliverables for a vendor in the "$vendorCategory" category based on the project context below.
+
+Requirements:
+- Generate 5-7 specific deliverables and performance requirements
+- Each item should be a complete, actionable requirement
+- Use "." bullet format (each line should start with ". ")
+- Terms should be relevant to the vendor category and project's preferred solution
+- Focus on measurable performance metrics, delivery timelines, and quality standards
+
+Return ONLY valid JSON with this exact structure:
+{
+  "slaTerms": ". Deliverable 1\\n. Deliverable 2\\n. Deliverable 3\\n. Deliverable 4\\n. Deliverable 5"
+}
+
+Vendor Category: $vendorCategory
+
+Project Context:
+"""
+$escaped
+"""
+''';
+  }
+
+  String _fallbackVendorSLATerms(String category) {
+    switch (category.toLowerCase()) {
+      case 'logistics':
+        return '. On-time delivery target: 95% within agreed timeframe\n. Real-time shipment tracking and status updates\n. Damage-free delivery with proper packaging\n. 24-hour customer support for urgent issues\n. Monthly performance reports\n. Compliance with all regulatory requirements';
+      case 'it hardware':
+        return '. Hardware delivery within 14 business days\n. Pre-installation testing and quality assurance\n. Warranty coverage for minimum 12 months\n. Technical support during business hours\n. Installation and configuration services\n. Return and replacement procedures for defective items';
+      case 'consulting':
+        return '. Weekly progress reports and status updates\n. Deliverable milestones aligned with project timeline\n. Subject matter expertise in specified domain\n. Availability for meetings and consultations\n. Documentation and knowledge transfer\n. Post-engagement support period';
+      case 'raw materials':
+        return '. Material quality meets specified standards\n. Batch tracking and traceability\n. Delivery schedule adherence\n. Proper storage and handling procedures\n. Material safety data sheets provided\n. Minimum order quantities and lead times';
+      case 'utilities':
+        return '. Service availability: 99.5% uptime\n. Response time for outages: within 4 hours\n. Monthly usage reports and billing transparency\n. Emergency contact availability 24/7\n. Scheduled maintenance notifications\n. Compliance with service level commitments';
+      default:
+        return '. Deliverables meet specified quality standards\n. Delivery timelines aligned with project schedule\n. Regular status updates and communication\n. Compliance with all contractual requirements\n. Support and issue resolution procedures';
+    }
+  }
+
+  /// Generate technical specification details for design components
+  Future<String> generateDesignSpecification({
+    required String context,
+    required String componentName,
+    required String category,
+    int maxTokens = 800,
+    double temperature = 0.6,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) {
+      return _fallbackDesignSpecification(componentName, category);
+    }
+
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackDesignSpecification(componentName, category);
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a technical architect AI. Generate detailed technical specifications for design components based on component name, category, and project context. Return ONLY valid JSON with specifications formatted with "." bullet prefix.'
+        },
+        {
+          'role': 'user',
+          'content': _designSpecificationPrompt(
+              trimmedContext, componentName, category),
+        },
+      ],
+    });
+
+    try {
+      final response = await http.post(uri, headers: headers, body: body);
+      if (response.statusCode == 200) {
+        final parsed = jsonDecode(response.body) as Map<String, dynamic>;
+        final content = parsed['choices']?[0]?['message']?['content'];
+        if (content != null) {
+          final result = jsonDecode(content.toString()) as Map<String, dynamic>;
+          final specs = _stripAsterisks(
+            (result['specifications'] ?? '').toString().trim(),
+          );
+          if (specs.isNotEmpty) {
+            return specs;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('generateDesignSpecification failed: $e');
+    }
+
+    return _fallbackDesignSpecification(componentName, category);
+  }
+
+  String _designSpecificationPrompt(
+      String context, String componentName, String category) {
+    final escaped = _escape(context);
+    return '''
+Generate detailed technical specifications for a design component named "$componentName" in the "$category" category based on the project context below.
+
+Requirements:
+- Generate 6-8 specific technical requirements and specifications
+- Each item should be a complete, actionable technical requirement
+- Use "." bullet format (each line should start with ". ")
+- Specifications should be relevant to the component name, category, and project's preferred solution
+- Focus on technical details: architecture, protocols, standards, interfaces, performance, security, scalability
+
+Return ONLY valid JSON with this exact structure:
+{
+  "specifications": ". Requirement 1\\n. Requirement 2\\n. Requirement 3\\n. Requirement 4\\n. Requirement 5\\n. Requirement 6"
+}
+
+Component Name: $componentName
+Category: $category
+
+Project Context:
+"""
+$escaped
+"""
+''';
+  }
+
+  String _fallbackDesignSpecification(String componentName, String category) {
+    switch (category.toLowerCase()) {
+      case 'ui/ux':
+        return '. Responsive design supporting mobile, tablet, and desktop viewports\n. Accessibility compliance (WCAG 2.1 AA minimum)\n. Consistent design system with reusable component library\n. User authentication and authorization UI flows\n. Error handling and loading state management\n. Cross-browser compatibility (Chrome, Firefox, Safari, Edge)';
+      case 'backend':
+        return '. RESTful API design with versioning strategy\n. Database schema with proper indexing and relationships\n. Authentication and authorization middleware\n. Error handling and logging mechanisms\n. API rate limiting and throttling\n. Data validation and sanitization\n. Caching strategy for performance optimization';
+      case 'security':
+        return '. Encryption at rest and in transit (TLS 1.3 minimum)\n. Authentication using OAuth 2.0 or JWT tokens\n. Role-based access control (RBAC) implementation\n. Security audit logging and monitoring\n. Input validation and SQL injection prevention\n. Regular security vulnerability assessments';
+      case 'networking':
+        return '. Network topology and segmentation design\n. Load balancing and failover mechanisms\n. Firewall rules and network security policies\n. VPN configuration for remote access\n. DNS and CDN configuration\n. Network monitoring and alerting setup';
+      case 'physical infrastructure':
+        return '. Server hardware specifications and capacity planning\n. Data center location and redundancy requirements\n. Power and cooling infrastructure\n. Network cabling and physical security\n. Backup and disaster recovery procedures\n. Hardware lifecycle management';
+      default:
+        return '. Define clear technical requirements and interfaces\n. Establish performance and scalability targets\n. Implement proper error handling and logging\n. Ensure security best practices are followed\n. Document integration points and dependencies';
+    }
+  }
+
+  /// Break down a user story into specific sub-tasks based on Detailed Design components
+  Future<String> breakDownUserStory({
+    required String context,
+    required String userStory,
+    required List<String> designComponents,
+    int maxTokens = 800,
+    double temperature = 0.6,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) {
+      return _fallbackTaskBreakdown(userStory);
+    }
+
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackTaskBreakdown(userStory);
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are an agile development specialist AI. Break down user stories into specific, actionable sub-tasks based on design components. Return ONLY valid JSON with sub-tasks formatted with "." bullet prefix.'
+        },
+        {
+          'role': 'user',
+          'content':
+              _taskBreakdownPrompt(trimmedContext, userStory, designComponents),
+        },
+      ],
+    });
+
+    try {
+      final response = await http.post(uri, headers: headers, body: body);
+      if (response.statusCode == 200) {
+        final parsed = jsonDecode(response.body) as Map<String, dynamic>;
+        final content = parsed['choices']?[0]?['message']?['content'];
+        if (content != null) {
+          final result = jsonDecode(content.toString()) as Map<String, dynamic>;
+          final breakdown = _stripAsterisks(
+            (result['subTasks'] ?? '').toString().trim(),
+          );
+          if (breakdown.isNotEmpty) {
+            return breakdown;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('breakDownUserStory failed: $e');
+    }
+
+    return _fallbackTaskBreakdown(userStory);
+  }
+
+  String _taskBreakdownPrompt(
+      String context, String userStory, List<String> designComponents) {
+    final escaped = _escape(context);
+    final componentsText = designComponents.isEmpty
+        ? 'No specific design components identified yet.'
+        : designComponents.map((c) => '- $c').join('\n');
+
+    return '''
+Break down the following user story into 3-5 specific, actionable sub-tasks based on the project context and available design components.
+
+Requirements:
+- Generate 3-5 specific sub-tasks that can be completed independently
+- Each sub-task should be a complete, actionable task
+- Use "." bullet format (each line should start with ". ")
+- Sub-tasks should align with the design components identified
+- Focus on technical implementation steps
+
+Return ONLY valid JSON with this exact structure:
+{
+  "subTasks": ". Sub-task 1\\n. Sub-task 2\\n. Sub-task 3\\n. Sub-task 4\\n. Sub-task 5"
+}
+
+User Story: $userStory
+
+Available Design Components:
+$componentsText
+
+Project Context:
+"""
+$escaped
+"""
+''';
+  }
+
+  String _fallbackTaskBreakdown(String userStory) {
+    return '. Analyze requirements and design specifications\n. Implement core functionality\n. Add error handling and validation\n. Write unit tests\n. Update documentation';
+  }
+
+  /// Generate verification steps for a scope item based on Detailed Design components
+  Future<String> generateVerificationSteps({
+    required String context,
+    required String scopeItem,
+    required List<String> designComponents,
+    int maxTokens = 600,
+    double temperature = 0.6,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) {
+      return _fallbackVerificationSteps(scopeItem);
+    }
+
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackVerificationSteps(scopeItem);
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a quality assurance specialist helping to define verification steps for project deliverables. Always reply with JSON only and obey the required schema.'
+        },
+        {
+          'role': 'user',
+          'content': _verificationStepsPrompt(
+              trimmedContext, scopeItem, designComponents),
+        },
+      ],
+    });
+
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 12));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+            'OpenAI error ${response.statusCode}: ${response.body}');
+      }
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final choices = data['choices'] as List<dynamic>? ?? [];
+      if (choices.isNotEmpty) {
+        final firstMessage =
+            choices.first['message'] as Map<String, dynamic>? ?? {};
+        final content = (firstMessage['content'] as String?)?.trim() ?? '';
+        final parsed = _decodeJsonSafely(content);
+        if (parsed != null) {
+          final result = parsed['verificationSteps']?.toString().trim() ?? '';
+          if (result.isNotEmpty) {
+            return _stripAsterisks(result);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('generateVerificationSteps failed: $e');
+    }
+
+    return _fallbackVerificationSteps(scopeItem);
+  }
+
+  String _verificationStepsPrompt(
+      String context, String scopeItem, List<String> designComponents) {
+    final escaped = _escape(context);
+    final componentsText = designComponents.isEmpty
+        ? 'No specific design components identified yet.'
+        : designComponents.map((c) => '- $c').join('\n');
+
+    return '''
+Generate specific verification steps for the following scope item based on the project context and available design components.
+
+Requirements:
+- Generate 3-5 specific verification steps that can be used to validate the scope item
+- Each step should be a complete, actionable verification task
+- Use "." bullet format (each line should start with ". ")
+- Steps should align with the design components and verification methods (Testing, UAT, Stakeholder Review)
+- Focus on practical validation approaches
+
+Return ONLY valid JSON with this exact structure:
+{
+  "verificationSteps": ". Verification step 1\\n. Verification step 2\\n. Verification step 3\\n. Verification step 4\\n. Verification step 5"
+}
+
+Scope Item: $scopeItem
+
+Available Design Components:
+$componentsText
+
+Project Context:
+"""
+$escaped
+"""
+''';
+  }
+
+  String _fallbackVerificationSteps(String scopeItem) {
+    return '. Review design specifications against requirements\n. Execute functional testing\n. Conduct user acceptance testing\n. Validate integration points\n. Document test results and sign-off';
+  }
+
+  /// Generate engagement strategy for a stakeholder based on their alignment status and key interest
+  Future<String> generateEngagementStrategy({
+    required String context,
+    required String stakeholderName,
+    required String stakeholderRole,
+    required String keyInterest,
+    required String alignmentStatus,
+    String feedbackSummary = '',
+    int maxTokens = 600,
+    double temperature = 0.6,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) {
+      return _fallbackEngagementStrategy(
+          stakeholderName, keyInterest, alignmentStatus);
+    }
+
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackEngagementStrategy(
+          stakeholderName, keyInterest, alignmentStatus);
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a stakeholder engagement specialist helping to draft communication plans and engagement strategies. Always reply with JSON only and obey the required schema.'
+        },
+        {
+          'role': 'user',
+          'content': _engagementStrategyPrompt(
+            trimmedContext,
+            stakeholderName,
+            stakeholderRole,
+            keyInterest,
+            alignmentStatus,
+            feedbackSummary,
+          ),
+        },
+      ],
+    });
+
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 12));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+            'OpenAI error ${response.statusCode}: ${response.body}');
+      }
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final choices = data['choices'] as List<dynamic>? ?? [];
+      if (choices.isNotEmpty) {
+        final firstMessage =
+            choices.first['message'] as Map<String, dynamic>? ?? {};
+        final content = (firstMessage['content'] as String?)?.trim() ?? '';
+        final parsed = _decodeJsonSafely(content);
+        if (parsed != null) {
+          final result = parsed['engagementStrategy']?.toString().trim() ?? '';
+          if (result.isNotEmpty) {
+            return _stripAsterisks(result);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('generateEngagementStrategy failed: $e');
+    }
+
+    return _fallbackEngagementStrategy(
+        stakeholderName, keyInterest, alignmentStatus);
+  }
+
+  String _engagementStrategyPrompt(
+    String context,
+    String stakeholderName,
+    String stakeholderRole,
+    String keyInterest,
+    String alignmentStatus,
+    String feedbackSummary,
+  ) {
+    final escaped = _escape(context);
+    final feedbackText = feedbackSummary.isEmpty
+        ? 'No specific feedback provided yet.'
+        : feedbackSummary;
+
+    return '''
+Generate a specific engagement strategy for the following stakeholder based on their alignment status and key interest.
+
+Requirements:
+- Generate 3-5 specific engagement actions or communication steps
+- Each step should be a complete, actionable engagement task
+- Use "." bullet format (each line should start with ". ")
+- Steps should address their key interest and alignment status
+- If alignment status is "Concerned" or "Resistent", include steps to address concerns
+- Focus on practical communication and engagement approaches
+
+Return ONLY valid JSON with this exact structure:
+{
+  "engagementStrategy": ". Engagement step 1\\n. Engagement step 2\\n. Engagement step 3\\n. Engagement step 4\\n. Engagement step 5"
+}
+
+Stakeholder: $stakeholderName
+Role: $stakeholderRole
+Key Interest: $keyInterest
+Alignment Status: $alignmentStatus
+Feedback Summary: $feedbackText
+
+Project Context:
+"""
+$escaped
+"""
+''';
+  }
+
+  String _fallbackEngagementStrategy(
+    String stakeholderName,
+    String keyInterest,
+    String alignmentStatus,
+  ) {
+    final baseStrategy =
+        '. Schedule one-on-one meeting to discuss $keyInterest\n. Share relevant project updates and metrics\n. Address any concerns and gather feedback\n. Establish regular communication cadence\n. Document agreed outcomes and next steps';
+
+    if (alignmentStatus == 'Concerned' || alignmentStatus == 'Resistent') {
+      return '. Schedule urgent meeting to address concerns\n. Prepare detailed response addressing $keyInterest\n. Provide additional data and context\n. Offer alternative solutions or compromises\n. Follow up within 48 hours to confirm resolution';
+    }
+
+    return baseStrategy;
   }
 }

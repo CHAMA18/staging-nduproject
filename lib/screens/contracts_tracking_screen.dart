@@ -8,6 +8,9 @@ import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/screens/progress_tracking_screen.dart';
 import 'package:ndu_project/screens/vendor_tracking_screen.dart';
 import 'package:ndu_project/services/contract_service.dart';
+import 'package:ndu_project/services/execution_phase_service.dart';
+import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
+import 'package:ndu_project/widgets/contracts_table_widget.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -23,7 +26,8 @@ class ContractsTrackingScreen extends StatefulWidget {
   }
 
   @override
-  State<ContractsTrackingScreen> createState() => _ContractsTrackingScreenState();
+  State<ContractsTrackingScreen> createState() =>
+      _ContractsTrackingScreenState();
 }
 
 class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
@@ -100,10 +104,12 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
       setState(() {
         final lanes = _RenewalLaneData.fromList(data['renewalLanes']);
         final signals = _RiskSignalData.fromList(data['riskSignals']);
-        final approvals = _ApprovalCheckpointData.fromList(data['approvalCheckpoints']);
+        final approvals =
+            _ApprovalCheckpointData.fromList(data['approvalCheckpoints']);
         _renewalLanes = lanes.isEmpty ? _defaultRenewalLanes() : lanes;
         _riskSignals = signals.isEmpty ? _defaultRiskSignals() : signals;
-        _approvalCheckpoints = approvals.isEmpty ? _defaultApprovalCheckpoints() : approvals;
+        _approvalCheckpoints =
+            approvals.isEmpty ? _defaultApprovalCheckpoints() : approvals;
       });
     } catch (error) {
       debugPrint('Contracts tracking load error: $error');
@@ -120,7 +126,8 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
       await _trackingDoc(projectId).set({
         'renewalLanes': _renewalLanes.map((e) => e.toMap()).toList(),
         'riskSignals': _riskSignals.map((e) => e.toMap()).toList(),
-        'approvalCheckpoints': _approvalCheckpoints.map((e) => e.toMap()).toList(),
+        'approvalCheckpoints':
+            _approvalCheckpoints.map((e) => e.toMap()).toList(),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } catch (error) {
@@ -130,22 +137,52 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
 
   List<_RenewalLaneData> _defaultRenewalLanes() {
     return [
-      _RenewalLaneData(id: _newId(), label: '30 days', count: '0', note: 'Immediate renewals', color: const Color(0xFFF97316)),
-      _RenewalLaneData(id: _newId(), label: '60 days', count: '0', note: 'Prepare negotiation pack', color: const Color(0xFF6366F1)),
-      _RenewalLaneData(id: _newId(), label: '90 days', count: '0', note: 'Pipeline planning', color: const Color(0xFF10B981)),
+      _RenewalLaneData(
+          id: _newId(),
+          label: '30 days',
+          count: '0',
+          note: 'Immediate renewals',
+          color: const Color(0xFFF97316)),
+      _RenewalLaneData(
+          id: _newId(),
+          label: '60 days',
+          count: '0',
+          note: 'Prepare negotiation pack',
+          color: const Color(0xFF6366F1)),
+      _RenewalLaneData(
+          id: _newId(),
+          label: '90 days',
+          count: '0',
+          note: 'Pipeline planning',
+          color: const Color(0xFF10B981)),
     ];
   }
 
   List<_RiskSignalData> _defaultRiskSignals() {
     return [
-      _RiskSignalData(id: _newId(), title: 'Renewal risk flagged', detail: 'Track renewals with expiring SLAs', owner: 'Legal', status: 'Needs review'),
+      _RiskSignalData(
+          id: _newId(),
+          title: 'Renewal risk flagged',
+          detail: 'Track renewals with expiring SLAs',
+          owner: 'Legal',
+          status: 'Needs review'),
     ];
   }
 
   List<_ApprovalCheckpointData> _defaultApprovalCheckpoints() {
     return [
-      _ApprovalCheckpointData(id: _newId(), title: 'Legal review queue', status: 'Pending', owner: 'Legal', dueDate: 'TBD'),
-      _ApprovalCheckpointData(id: _newId(), title: 'Finance sign-off', status: 'Complete', owner: 'Finance', dueDate: 'TBD'),
+      _ApprovalCheckpointData(
+          id: _newId(),
+          title: 'Legal review queue',
+          status: 'Pending',
+          owner: 'Legal',
+          dueDate: 'TBD'),
+      _ApprovalCheckpointData(
+          id: _newId(),
+          title: 'Finance sign-off',
+          status: 'Complete',
+          owner: 'Finance',
+          dueDate: 'TBD'),
     ];
   }
 
@@ -213,7 +250,8 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
           ),
           child: const Text(
             'CONTRACT CONTROL',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black),
+            style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black),
           ),
         ),
         const SizedBox(height: 10),
@@ -225,7 +263,10 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                 children: const [
                   Text(
                     'Contracts Tracking',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                    style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827)),
                   ),
                   SizedBox(height: 6),
                   Text(
@@ -251,7 +292,8 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
       spacing: 10,
       runSpacing: 10,
       children: [
-        _actionButton(Icons.add, 'Add contract', onPressed: () => _showAddContractDialog(context)),
+        _actionButton(Icons.add, 'Add contract',
+            onPressed: () => _showAddContractDialog(context)),
         _actionButton(Icons.upload_outlined, 'Upload addendum'),
         _actionButton(Icons.description_outlined, 'Export register'),
         _primaryButton('Start renewal review'),
@@ -263,7 +305,11 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
     return OutlinedButton.icon(
       onPressed: onPressed ?? () {},
       icon: Icon(icon, size: 18, color: const Color(0xFF64748B)),
-      label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+      label: Text(label,
+          style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF64748B))),
       style: OutlinedButton.styleFrom(
         side: const BorderSide(color: Color(0xFFE2E8F0)),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -276,7 +322,8 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
     return ElevatedButton.icon(
       onPressed: () {},
       icon: const Icon(Icons.play_arrow, size: 18),
-      label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+      label: Text(label,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFF0EA5E9),
         foregroundColor: Colors.white,
@@ -287,7 +334,13 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
   }
 
   Widget _buildFilterChips() {
-    const filters = ['All contracts', 'Renewal due', 'At risk', 'Pending sign-off', 'Archived'];
+    const filters = [
+      'All contracts',
+      'Renewal due',
+      'At risk',
+      'Pending sign-off',
+      'Archived'
+    ];
     return Wrap(
       spacing: 10,
       runSpacing: 10,
@@ -351,21 +404,34 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
           final daysUntilRenewal = c.endDate.difference(DateTime.now()).inDays;
           return daysUntilRenewal <= 30 && daysUntilRenewal > 0;
         }).length;
-        final totalValue = contracts.fold<double>(0.0, (sum, c) => sum + c.estimatedValue);
-        final atRiskCount = contracts.where((c) => c.status == 'At risk').length;
+        final totalValue =
+            contracts.fold<double>(0.0, (sum, c) => sum + c.estimatedValue);
+        final atRiskCount =
+            contracts.where((c) => c.status == 'At risk').length;
 
         final stats = [
-          _StatCardData('Active contracts', '$activeCount', '${contracts.length} total', const Color(0xFF0EA5E9)),
-          _StatCardData('Renewal due', '$renewalDue', 'Next 30 days', const Color(0xFFF97316)),
-          _StatCardData('Total value', '\$${(totalValue / 1000000).toStringAsFixed(1)}M', 'FY spend', const Color(0xFF10B981)),
-          _StatCardData('At risk', '$atRiskCount', atRiskCount > 0 ? 'Require attention' : 'All stable', const Color(0xFF6366F1)),
+          _StatCardData('Active Contracts', '$activeCount',
+              '${contracts.length} total', const Color(0xFF0EA5E9)),
+          _StatCardData(
+              'Total Committed Value',
+              '\$${(totalValue / 1000000).toStringAsFixed(1)}M',
+              'FY spend',
+              const Color(0xFF10B981)),
+          _StatCardData('Upcoming Renewals', '$renewalDue', 'Next 30-60 days',
+              const Color(0xFFF97316)),
+          _StatCardData(
+              'At Risk',
+              '$atRiskCount',
+              atRiskCount > 0 ? 'Require attention' : 'All stable',
+              const Color(0xFF6366F1)),
         ];
 
         if (isNarrow) {
           return Column(
             children: [
               for (int i = 0; i < stats.length; i++) ...[
-                SizedBox(width: double.infinity, child: _buildStatCard(stats[i])),
+                SizedBox(
+                    width: double.infinity, child: _buildStatCard(stats[i])),
                 if (i < stats.length - 1) const SizedBox(height: 12),
               ],
             ],
@@ -395,11 +461,20 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(data.value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: data.color)),
+          Text(data.value,
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: data.color)),
           const SizedBox(height: 6),
-          Text(data.label, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+          Text(data.label,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
           const SizedBox(height: 6),
-          Text(data.supporting, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: data.color)),
+          Text(data.supporting,
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: data.color)),
         ],
       ),
     );
@@ -413,7 +488,8 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
         child: const Center(
           child: Padding(
             padding: EdgeInsets.all(24.0),
-            child: Text('No project selected. Please open a project first.', style: TextStyle(color: Color(0xFF64748B))),
+            child: Text('No project selected. Please open a project first.',
+                style: TextStyle(color: Color(0xFF64748B))),
           ),
         ),
       );
@@ -427,14 +503,18 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
         stream: ContractService.streamContracts(_projectId!),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: Padding(padding: EdgeInsets.all(24.0), child: CircularProgressIndicator()));
+            return const Center(
+                child: Padding(
+                    padding: EdgeInsets.all(24.0),
+                    child: CircularProgressIndicator()));
           }
 
           if (snapshot.hasError) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
-                child: Text('Error loading contracts: ${snapshot.error}', style: const TextStyle(color: Colors.red)),
+                child: Text('Error loading contracts: ${snapshot.error}',
+                    style: const TextStyle(color: Colors.red)),
               ),
             );
           }
@@ -448,7 +528,8 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
                   children: [
-                    const Text('No contracts found.', style: TextStyle(color: Color(0xFF64748B))),
+                    const Text('No contracts found.',
+                        style: TextStyle(color: Color(0xFF64748B))),
                     const SizedBox(height: 12),
                     ElevatedButton.icon(
                       onPressed: () => _showAddContractDialog(context),
@@ -461,62 +542,13 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
             );
           }
 
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                  child: DataTable(
-                    headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
-                    columns: const [
-                      DataColumn(label: Text('ID', style: TextStyle(fontWeight: FontWeight.w600))),
-                      DataColumn(label: Text('Contract Name', style: TextStyle(fontWeight: FontWeight.w600))),
-                      DataColumn(label: Text('Type', style: TextStyle(fontWeight: FontWeight.w600))),
-                      DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
-                      DataColumn(label: Text('Renewal', style: TextStyle(fontWeight: FontWeight.w600))),
-                      DataColumn(label: Text('Value', style: TextStyle(fontWeight: FontWeight.w600))),
-                      DataColumn(label: Text('Owner', style: TextStyle(fontWeight: FontWeight.w600))),
-                      DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.w600))),
-                    ],
-                    rows: filteredContracts.map((contract) {
-                      final renewalDate = DateFormat('MMM dd').format(contract.endDate);
-                      final valueStr = contract.estimatedValue >= 1000000
-                          ? '\$${(contract.estimatedValue / 1000000).toStringAsFixed(1)}M'
-                          : '\$${(contract.estimatedValue / 1000).toStringAsFixed(0)}K';
-                      final contractId = contract.id.length > 8 ? contract.id.substring(0, 8).toUpperCase() : contract.id.toUpperCase();
-                      final ownerName = contract.createdByName.split(' ').map((n) => n[0]).join('. ');
-                      
-                      return DataRow(cells: [
-                        DataCell(Text('CT-$contractId', style: const TextStyle(fontSize: 12, color: Color(0xFF0EA5E9)))),
-                        DataCell(Text(contract.name, style: const TextStyle(fontSize: 13))),
-                        DataCell(_chip(contract.contractType)),
-                        DataCell(_statusChip(contract.status)),
-                        DataCell(Text(renewalDate, style: const TextStyle(fontSize: 12))),
-                        DataCell(Text(valueStr, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
-                        DataCell(Text(ownerName, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)))),
-                        DataCell(
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit, size: 18, color: Color(0xFF64748B)),
-                                onPressed: () => _showEditContractDialog(context, contract),
-                                tooltip: 'Edit',
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete, size: 18, color: Color(0xFFEF4444)),
-                                onPressed: () => _showDeleteContractDialog(context, contract),
-                                tooltip: 'Delete',
-                              ),
-                            ],
-                          ),
-                        ),
-                      ]);
-                    }).toList(),
-                  ),
-                ),
-              );
+          return ContractsTableWidget(
+            contracts: filteredContracts,
+            onContractUpdated: (updated) async {
+              await _updateContract(updated);
+            },
+            onContractDeleted: (deleted) async {
+              await _deleteContract(deleted);
             },
           );
         },
@@ -529,11 +561,18 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
     return contracts.where((c) {
       if (_selectedFilters.contains('Renewal due')) {
         final daysUntilRenewal = c.endDate.difference(DateTime.now()).inDays;
-        return daysUntilRenewal <= 30 && daysUntilRenewal > 0;
+        return daysUntilRenewal <= 60 && daysUntilRenewal > 0;
       }
-      if (_selectedFilters.contains('At risk') && c.status == 'At risk') return true;
-      if (_selectedFilters.contains('Pending sign-off') && c.status == 'Pending sign-off') return true;
-      if (_selectedFilters.contains('Archived') && c.status == 'Archived') return true;
+      if (_selectedFilters.contains('At risk')) {
+        final daysUntilRenewal = c.endDate.difference(DateTime.now()).inDays;
+        return daysUntilRenewal <= 30 &&
+            daysUntilRenewal > 0 &&
+            c.status != 'Expired';
+      }
+      if (_selectedFilters.contains('Pending sign-off') && c.status == 'Draft')
+        return true;
+      if (_selectedFilters.contains('Archived') && c.status == 'Expired')
+        return true;
       return false;
     }).toList();
   }
@@ -583,7 +622,8 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
             ? [
                 const Padding(
                   padding: EdgeInsets.all(12),
-                  child: Text('No active risk signals', style: TextStyle(color: Color(0xFF10B981))),
+                  child: Text('No active risk signals',
+                      style: TextStyle(color: Color(0xFF10B981))),
                 ),
               ]
             : _riskSignals.map(_buildRiskSignal).toList(),
@@ -607,40 +647,98 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
     );
   }
 
-  Widget _chip(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
-    );
+  Future<void> _updateContract(ContractModel contract) async {
+    final projectId = _projectId;
+    if (projectId == null) return;
+
+    try {
+      await ContractService.updateContract(
+        projectId: projectId,
+        contractId: contract.id,
+        name: contract.name,
+        description: contract.description,
+        contractType: contract.contractType,
+        paymentType: contract.paymentType,
+        status: contract.status,
+        estimatedValue: contract.estimatedValue,
+        startDate: contract.startDate,
+        endDate: contract.endDate,
+        scope: contract.scope,
+        discipline: contract.discipline,
+        notes: contract.notes,
+      );
+      // Sync to Progress Tracking budget (only if value changed)
+      // Note: Budget sync is handled in ContractsTableWidget._updateContract
+      // This is a fallback for direct updates
+    } catch (e) {
+      debugPrint('Error updating contract: $e');
+    }
   }
 
-  Widget _statusChip(String label) {
-    Color color;
-    switch (label) {
-      case 'Renewal due':
-        color = const Color(0xFFF97316);
-        break;
-      case 'At risk':
-        color = const Color(0xFFEF4444);
-        break;
-      case 'Pending sign-off':
-        color = const Color(0xFF6366F1);
-        break;
-      default:
-        color = const Color(0xFF10B981);
+  Future<void> _deleteContract(ContractModel contract) async {
+    final projectId = _projectId;
+    if (projectId == null) return;
+
+    try {
+      await ContractService.deleteContract(
+        projectId: projectId,
+        contractId: contract.id,
+      );
+      // Sync to Progress Tracking budget (remove value)
+      await _syncContractValueToBudget(contract, isDelete: true);
+    } catch (e) {
+      debugPrint('Error deleting contract: $e');
     }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)      ),
-    );
+  }
+
+  Future<void> _restoreContract(ContractModel contract) async {
+    final projectId = _projectId;
+    if (projectId == null) return;
+
+    try {
+      // Recreate the contract
+      final user = FirebaseAuth.instance.currentUser;
+      await ContractService.createContract(
+        projectId: projectId,
+        name: contract.name,
+        description: contract.description,
+        contractType: contract.contractType,
+        paymentType: contract.paymentType,
+        status: contract.status,
+        estimatedValue: contract.estimatedValue,
+        startDate: contract.startDate,
+        endDate: contract.endDate,
+        scope: contract.scope,
+        discipline: contract.discipline,
+        notes: contract.notes,
+        createdById: contract.createdById,
+        createdByEmail: contract.createdByEmail,
+        createdByName: contract.createdByName,
+      );
+      // Sync to budget
+      await _syncContractValueToBudget(contract, isDelete: false);
+    } catch (e) {
+      debugPrint('Error restoring contract: $e');
+    }
+  }
+
+  Future<void> _syncContractValueToBudget(ContractModel contract,
+      {bool isDelete = false}) async {
+    final projectId = _projectId;
+    if (projectId == null) return;
+
+    try {
+      await ExecutionPhaseService.syncContractValueToBudget(
+        projectId: projectId,
+        contractValue: contract.estimatedValue,
+        contractName: contract.name,
+        isDelete: isDelete,
+        userId: FirebaseAuth.instance.currentUser?.uid,
+      );
+    } catch (e) {
+      debugPrint('Error syncing contract value to budget: $e');
+      // Don't show error to user - budget sync is background operation
+    }
   }
 
   Widget _buildRenewalLane(_RenewalLaneData lane) {
@@ -657,7 +755,8 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
           Container(
             width: 8,
             height: 8,
-            decoration: BoxDecoration(color: lane.color, shape: BoxShape.circle),
+            decoration:
+                BoxDecoration(color: lane.color, shape: BoxShape.circle),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -665,7 +764,8 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
               initialValue: lane.label,
               decoration: _inlineDecoration('Lane label'),
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              onChanged: (value) => _updateRenewalLane(lane.copyWith(label: value)),
+              onChanged: (value) =>
+                  _updateRenewalLane(lane.copyWith(label: value)),
             ),
           ),
           const SizedBox(width: 10),
@@ -675,7 +775,8 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
               initialValue: lane.count,
               decoration: _inlineDecoration('Count'),
               keyboardType: TextInputType.number,
-              onChanged: (value) => _updateRenewalLane(lane.copyWith(count: value)),
+              onChanged: (value) =>
+                  _updateRenewalLane(lane.copyWith(count: value)),
             ),
           ),
           const SizedBox(width: 10),
@@ -683,7 +784,8 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
             child: TextFormField(
               initialValue: lane.note,
               decoration: _inlineDecoration('Note'),
-              onChanged: (value) => _updateRenewalLane(lane.copyWith(note: value)),
+              onChanged: (value) =>
+                  _updateRenewalLane(lane.copyWith(note: value)),
             ),
           ),
           IconButton(
@@ -711,14 +813,16 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
             initialValue: signal.title,
             decoration: _inlineDecoration('Signal title'),
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-            onChanged: (value) => _updateRiskSignal(signal.copyWith(title: value)),
+            onChanged: (value) =>
+                _updateRiskSignal(signal.copyWith(title: value)),
           ),
           const SizedBox(height: 6),
           TextFormField(
             initialValue: signal.detail,
             decoration: _inlineDecoration('Detail'),
             style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-            onChanged: (value) => _updateRiskSignal(signal.copyWith(detail: value)),
+            onChanged: (value) =>
+                _updateRiskSignal(signal.copyWith(detail: value)),
           ),
           const SizedBox(height: 6),
           Row(
@@ -727,20 +831,27 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                 child: TextFormField(
                   initialValue: signal.owner,
                   decoration: _inlineDecoration('Owner'),
-                  onChanged: (value) => _updateRiskSignal(signal.copyWith(owner: value)),
+                  onChanged: (value) =>
+                      _updateRiskSignal(signal.copyWith(owner: value)),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  initialValue: _riskStatusOptions.contains(signal.status) ? signal.status : _riskStatusOptions.first,
+                  initialValue: _riskStatusOptions.contains(signal.status)
+                      ? signal.status
+                      : _riskStatusOptions.first,
                   decoration: _inlineDecoration('Status'),
-                  items: _riskStatusOptions.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-                  onChanged: (value) => _updateRiskSignal(signal.copyWith(status: value ?? _riskStatusOptions.first)),
+                  items: _riskStatusOptions
+                      .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                      .toList(),
+                  onChanged: (value) => _updateRiskSignal(signal.copyWith(
+                      status: value ?? _riskStatusOptions.first)),
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
+                icon:
+                    const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
                 onPressed: () => _deleteRiskSignal(signal.id),
               ),
             ],
@@ -766,17 +877,23 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
               initialValue: checkpoint.title,
               decoration: _inlineDecoration('Checkpoint'),
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              onChanged: (value) => _updateApprovalCheckpoint(checkpoint.copyWith(title: value)),
+              onChanged: (value) =>
+                  _updateApprovalCheckpoint(checkpoint.copyWith(title: value)),
             ),
           ),
           const SizedBox(width: 10),
           SizedBox(
             width: 120,
             child: DropdownButtonFormField<String>(
-              initialValue: _approvalStatusOptions.contains(checkpoint.status) ? checkpoint.status : _approvalStatusOptions.first,
+              initialValue: _approvalStatusOptions.contains(checkpoint.status)
+                  ? checkpoint.status
+                  : _approvalStatusOptions.first,
               decoration: _inlineDecoration('Status'),
-              items: _approvalStatusOptions.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-              onChanged: (value) => _updateApprovalCheckpoint(checkpoint.copyWith(status: value ?? _approvalStatusOptions.first)),
+              items: _approvalStatusOptions
+                  .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                  .toList(),
+              onChanged: (value) => _updateApprovalCheckpoint(checkpoint
+                  .copyWith(status: value ?? _approvalStatusOptions.first)),
             ),
           ),
           const SizedBox(width: 10),
@@ -784,7 +901,8 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
             child: TextFormField(
               initialValue: checkpoint.owner,
               decoration: _inlineDecoration('Owner'),
-              onChanged: (value) => _updateApprovalCheckpoint(checkpoint.copyWith(owner: value)),
+              onChanged: (value) =>
+                  _updateApprovalCheckpoint(checkpoint.copyWith(owner: value)),
             ),
           ),
           const SizedBox(width: 10),
@@ -793,7 +911,8 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
             child: TextFormField(
               initialValue: checkpoint.dueDate,
               decoration: _inlineDecoration('Due date'),
-              onChanged: (value) => _updateApprovalCheckpoint(checkpoint.copyWith(dueDate: value)),
+              onChanged: (value) => _updateApprovalCheckpoint(
+                  checkpoint.copyWith(dueDate: value)),
             ),
           ),
           IconButton(
@@ -869,7 +988,8 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
   }
 
   void _updateApprovalCheckpoint(_ApprovalCheckpointData checkpoint) {
-    final index = _approvalCheckpoints.indexWhere((item) => item.id == checkpoint.id);
+    final index =
+        _approvalCheckpoints.indexWhere((item) => item.id == checkpoint.id);
     if (index == -1) return;
     setState(() => _approvalCheckpoints[index] = checkpoint);
     _scheduleSave();
@@ -906,7 +1026,8 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
     final projectId = _projectId;
     if (projectId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No project selected. Please open a project first.')),
+        const SnackBar(
+            content: Text('No project selected. Please open a project first.')),
       );
       return;
     }
@@ -917,23 +1038,50 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
     final projectId = _projectId;
     if (projectId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No project selected. Please open a project first.')),
+        const SnackBar(
+            content: Text('No project selected. Please open a project first.')),
       );
       return;
     }
     _showContractDialog(context, contract, projectId);
   }
 
-  void _showContractDialog(BuildContext context, ContractModel? contract, String projectId) {
+  Future<void> _showContractDialog(
+      BuildContext context, ContractModel? contract, String projectId) async {
     final isEdit = contract != null;
+
+    // Load External/Contractor roles from Staff Needs
+    List<String> externalRoles = [];
+    try {
+      final staffRows =
+          await ExecutionPhaseService.loadStaffingRows(projectId: projectId);
+      externalRoles = staffRows
+          .where((row) => !row.isInternal) // External/Contractor roles
+          .map((row) => row.role)
+          .where((role) => role.isNotEmpty)
+          .toList();
+    } catch (e) {
+      debugPrint('Error loading staff roles: $e');
+    }
+
     final nameController = TextEditingController(text: contract?.name ?? '');
-    final descriptionController = TextEditingController(text: contract?.description ?? '');
-    final contractTypeController = TextEditingController(text: contract?.contractType ?? '');
-    final paymentTypeController = TextEditingController(text: contract?.paymentType ?? '');
-    final statusController = TextEditingController(text: contract?.status ?? 'Active');
-    final estimatedValueController = TextEditingController(text: contract?.estimatedValue.toString() ?? '0');
-    final scopeController = TextEditingController(text: contract?.scope ?? '');
-    final disciplineController = TextEditingController(text: contract?.discipline ?? '');
+    final descriptionController =
+        TextEditingController(text: contract?.description ?? '');
+    final contractTypeController =
+        TextEditingController(text: contract?.contractType ?? '');
+    final paymentTypeController =
+        TextEditingController(text: contract?.paymentType ?? '');
+    var selectedStatus = contract?.status ?? 'Draft';
+    final estimatedValueController =
+        TextEditingController(text: contract?.estimatedValue.toString() ?? '0');
+    // Key Terms (scope) - use AutoBulletTextController
+    final scopeController =
+        contract?.scope != null && contract!.scope.isNotEmpty
+            ? AutoBulletTextController(text: contract.scope)
+            : AutoBulletTextController();
+    final disciplineController =
+        TextEditingController(text: contract?.discipline ?? '');
+    // Contract Notes - regular TextEditingController (prose)
     final notesController = TextEditingController(text: contract?.notes ?? '');
     DateTime? startDate = contract?.startDate;
     DateTime? endDate = contract?.endDate;
@@ -947,45 +1095,170 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Contract Name *')),
-                const SizedBox(height: 12),
-                TextField(controller: descriptionController, decoration: const InputDecoration(labelText: 'Description *'), maxLines: 2),
-                const SizedBox(height: 12),
-                TextField(controller: contractTypeController, decoration: const InputDecoration(labelText: 'Contract Type *')),
-                const SizedBox(height: 12),
-                TextField(controller: paymentTypeController, decoration: const InputDecoration(labelText: 'Payment Type *')),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: statusController.text,
-                  decoration: const InputDecoration(labelText: 'Status *'),
-                  items: ['Active', 'Renewal due', 'At risk', 'Pending sign-off', 'Archived'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-                  onChanged: (v) => setDialogState(() => statusController.text = v ?? 'Active'),
+                // Vendor/Party Name with suggestions from External roles
+                if (externalRoles.isNotEmpty && !isEdit) ...[
+                  Text(
+                    'Suggested from External/Contractor roles:',
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                  ),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: externalRoles.take(5).map((role) {
+                      return ActionChip(
+                        label: Text(role, style: const TextStyle(fontSize: 11)),
+                        onPressed: () {
+                          nameController.text = role;
+                          setDialogState(() {});
+                        },
+                        backgroundColor: const Color(0xFFF3F4F6),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Vendor/Party Name *',
+                    isDense: true,
+                  ),
                 ),
                 const SizedBox(height: 12),
-                TextField(controller: estimatedValueController, decoration: const InputDecoration(labelText: 'Estimated Value *', hintText: 'e.g., 1000000')),
+                TextField(
+                  controller: descriptionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Description *',
+                    isDense: true,
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: contractTypeController.text.isEmpty
+                      ? null
+                      : contractTypeController.text,
+                  decoration: const InputDecoration(
+                    labelText: 'Contract Type *',
+                    isDense: true,
+                  ),
+                  items: const [
+                    'Service Level Agreement (SLA)',
+                    'NDA',
+                    'Procurement',
+                    'Employment',
+                  ]
+                      .map((type) => DropdownMenuItem(
+                            value: type,
+                            child: Text(type,
+                                style: const TextStyle(fontSize: 13)),
+                          ))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) {
+                      contractTypeController.text = v;
+                      setDialogState(() {});
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: paymentTypeController,
+                  decoration: const InputDecoration(
+                    labelText: 'Payment Type *',
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: selectedStatus.isEmpty ? null : selectedStatus,
+                  decoration: const InputDecoration(
+                    labelText: 'Status *',
+                    isDense: true,
+                  ),
+                  items: const [
+                    'Draft',
+                    'Signed',
+                    'Active',
+                    'Expired',
+                  ]
+                      .map((status) => DropdownMenuItem(
+                            value: status,
+                            child: Text(status,
+                                style: const TextStyle(fontSize: 13)),
+                          ))
+                      .toList(),
+                  onChanged: (v) {
+                    setDialogState(() => selectedStatus = v ?? 'Draft');
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: estimatedValueController,
+                  decoration: const InputDecoration(
+                    labelText: 'Total Value *',
+                    hintText: 'e.g., 1000000',
+                    isDense: true,
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
                 const SizedBox(height: 12),
                 ListTile(
-                  title: Text('Start Date: ${startDate != null ? DateFormat('MMM dd, yyyy').format(startDate!) : 'Not set'}'),
-                  trailing: const Icon(Icons.calendar_today),
+                  title: Text(
+                      'Effective Date: ${startDate != null ? DateFormat('MMM dd, yyyy').format(startDate!) : 'Not set'}'),
+                  trailing: const Icon(Icons.calendar_today, size: 18),
                   onTap: () async {
-                    final date = await showDatePicker(context: context, initialDate: startDate ?? DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2030));
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: startDate ?? DateTime.now(),
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2030),
+                    );
                     if (date != null) setDialogState(() => startDate = date);
                   },
                 ),
                 ListTile(
-                  title: Text('End Date: ${endDate != null ? DateFormat('MMM dd, yyyy').format(endDate!) : 'Not set'}'),
-                  trailing: const Icon(Icons.calendar_today),
+                  title: Text(
+                      'Expiry Date: ${endDate != null ? DateFormat('MMM dd, yyyy').format(endDate!) : 'Not set'}'),
+                  trailing: const Icon(Icons.calendar_today, size: 18),
                   onTap: () async {
-                    final date = await showDatePicker(context: context, initialDate: endDate ?? DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2030));
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: endDate ?? DateTime.now(),
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2030),
+                    );
                     if (date != null) setDialogState(() => endDate = date);
                   },
                 ),
                 const SizedBox(height: 12),
-                TextField(controller: scopeController, decoration: const InputDecoration(labelText: 'Scope *')),
+                TextField(
+                  controller: scopeController,
+                  decoration: const InputDecoration(
+                    labelText: 'Key Terms',
+                    hintText: 'Use "." bullet format',
+                    isDense: true,
+                  ),
+                  maxLines: 5,
+                ),
                 const SizedBox(height: 12),
-                TextField(controller: disciplineController, decoration: const InputDecoration(labelText: 'Discipline *')),
+                TextField(
+                  controller: disciplineController,
+                  decoration: const InputDecoration(
+                    labelText: 'Discipline',
+                    isDense: true,
+                  ),
+                ),
                 const SizedBox(height: 12),
-                TextField(controller: notesController, decoration: const InputDecoration(labelText: 'Notes'), maxLines: 3),
+                TextField(
+                  controller: notesController,
+                  decoration: const InputDecoration(
+                    labelText: 'Contract Notes',
+                    hintText: 'Prose description, no bullets',
+                    isDense: true,
+                  ),
+                  maxLines: 3,
+                ),
               ],
             ),
           ),
@@ -996,58 +1269,94 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                if (nameController.text.isEmpty || descriptionController.text.isEmpty || startDate == null || endDate == null) {
+                if (nameController.text.isEmpty ||
+                    descriptionController.text.isEmpty ||
+                    startDate == null ||
+                    endDate == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please fill in all required fields')),
+                    const SnackBar(
+                        content: Text('Please fill in all required fields')),
                   );
                   return;
                 }
 
                 try {
                   final user = FirebaseAuth.instance.currentUser;
-                  final estimatedValue = double.tryParse(estimatedValueController.text) ?? 0.0;
+                  final estimatedValue =
+                      double.tryParse(estimatedValueController.text) ?? 0.0;
 
                   if (isEdit) {
                     await ContractService.updateContract(
                       projectId: projectId,
                       contractId: contract.id,
-                      name: nameController.text,
-                      description: descriptionController.text,
-                      contractType: contractTypeController.text,
-                      paymentType: paymentTypeController.text,
-                      status: statusController.text,
+                      name: nameController.text.trim(),
+                      description: descriptionController.text.trim(),
+                      contractType: contractTypeController.text.trim(),
+                      paymentType: paymentTypeController.text.trim(),
+                      status: selectedStatus,
                       estimatedValue: estimatedValue,
                       startDate: startDate!,
                       endDate: endDate!,
-                      scope: scopeController.text,
-                      discipline: disciplineController.text,
-                      notes: notesController.text.isEmpty ? null : notesController.text,
+                      scope: scopeController.text.trim(),
+                      discipline: disciplineController.text.trim(),
+                      notes: notesController.text.trim().isEmpty
+                          ? null
+                          : notesController.text.trim(),
                     );
-                  } else {
-                    await ContractService.createContract(
+                    // Sync to Progress Tracking budget
+                    final updatedContract = ContractModel(
+                      id: contract.id,
                       projectId: projectId,
-                      name: nameController.text,
-                      description: descriptionController.text,
-                      contractType: contractTypeController.text,
-                      paymentType: paymentTypeController.text,
-                      status: statusController.text,
+                      name: nameController.text.trim(),
+                      description: descriptionController.text.trim(),
+                      contractType: contractTypeController.text.trim(),
+                      paymentType: paymentTypeController.text.trim(),
+                      status: selectedStatus,
                       estimatedValue: estimatedValue,
                       startDate: startDate!,
                       endDate: endDate!,
-                      scope: scopeController.text,
-                      discipline: disciplineController.text,
-                      notes: notesController.text,
+                      scope: scopeController.text.trim(),
+                      discipline: disciplineController.text.trim(),
+                      notes: notesController.text.trim(),
+                      createdById: contract.createdById,
+                      createdByEmail: contract.createdByEmail,
+                      createdByName: contract.createdByName,
+                      createdAt: contract.createdAt,
+                      updatedAt: DateTime.now(),
+                    );
+                    await _syncContractValueToBudget(updatedContract);
+                  } else {
+                    final contractId = await ContractService.createContract(
+                      projectId: projectId,
+                      name: nameController.text.trim(),
+                      description: descriptionController.text.trim(),
+                      contractType: contractTypeController.text.trim(),
+                      paymentType: paymentTypeController.text.trim(),
+                      status: selectedStatus,
+                      estimatedValue: estimatedValue,
+                      startDate: startDate!,
+                      endDate: endDate!,
+                      scope: scopeController.text.trim(),
+                      discipline: disciplineController.text.trim(),
+                      notes: notesController.text.trim(),
                       createdById: user?.uid ?? '',
                       createdByEmail: user?.email ?? '',
-                      createdByName: user?.displayName ?? user?.email?.split('@').first ?? '',
+                      createdByName: user?.displayName ??
+                          user?.email?.split('@').first ??
+                          '',
                     );
+                    // Sync to Progress Tracking budget
+                    final newContract = await ContractService.getContract(
+                      projectId: projectId,
+                      contractId: contractId,
+                    );
+                    if (newContract != null) {
+                      await _syncContractValueToBudget(newContract);
+                    }
                   }
 
                   if (context.mounted) {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(isEdit ? 'Contract updated successfully' : 'Contract added successfully')),
-                    );
                   }
                 } catch (e) {
                   if (context.mounted) {
@@ -1069,7 +1378,8 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
     final projectId = _projectId;
     if (projectId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No project selected. Please open a project first.')),
+        const SnackBar(
+            content: Text('No project selected. Please open a project first.')),
       );
       return;
     }
@@ -1078,7 +1388,8 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Contract'),
-        content: Text('Are you sure you want to delete "${contract.name}"? This action cannot be undone.'),
+        content: Text(
+            'Are you sure you want to delete "${contract.name}"? This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -1087,11 +1398,13 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
           ElevatedButton(
             onPressed: () async {
               try {
-                await ContractService.deleteContract(projectId: projectId, contractId: contract.id);
+                await ContractService.deleteContract(
+                    projectId: projectId, contractId: contract.id);
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Contract deleted successfully')),
+                    const SnackBar(
+                        content: Text('Contract deleted successfully')),
                   );
                 }
               } catch (e) {
@@ -1144,9 +1457,13 @@ class _PanelShell extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                    Text(title,
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 4),
-                    Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                    Text(subtitle,
+                        style: const TextStyle(
+                            fontSize: 12, color: Color(0xFF64748B))),
                   ],
                 ),
               ),
@@ -1176,7 +1493,8 @@ class _RenewalLaneData {
   final String note;
   final Color color;
 
-  _RenewalLaneData copyWith({String? label, String? count, String? note, Color? color}) {
+  _RenewalLaneData copyWith(
+      {String? label, String? count, String? note, Color? color}) {
     return _RenewalLaneData(
       id: id,
       label: label ?? this.label,
@@ -1199,11 +1517,14 @@ class _RenewalLaneData {
     return data.map((item) {
       final map = Map<String, dynamic>.from(item as Map? ?? {});
       return _RenewalLaneData(
-        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: map['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         label: map['label']?.toString() ?? '',
         count: map['count']?.toString() ?? '',
         note: map['note']?.toString() ?? '',
-        color: Color(map['color'] is int ? map['color'] as int : const Color(0xFFF97316).value),
+        color: Color(map['color'] is int
+            ? map['color'] as int
+            : const Color(0xFFF97316).value),
       );
     }).toList();
   }
@@ -1224,7 +1545,8 @@ class _RiskSignalData {
   final String owner;
   final String status;
 
-  _RiskSignalData copyWith({String? title, String? detail, String? owner, String? status}) {
+  _RiskSignalData copyWith(
+      {String? title, String? detail, String? owner, String? status}) {
     return _RiskSignalData(
       id: id,
       title: title ?? this.title,
@@ -1247,7 +1569,8 @@ class _RiskSignalData {
     return data.map((item) {
       final map = Map<String, dynamic>.from(item as Map? ?? {});
       return _RiskSignalData(
-        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: map['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         title: map['title']?.toString() ?? '',
         detail: map['detail']?.toString() ?? '',
         owner: map['owner']?.toString() ?? '',
@@ -1272,7 +1595,8 @@ class _ApprovalCheckpointData {
   final String owner;
   final String dueDate;
 
-  _ApprovalCheckpointData copyWith({String? title, String? status, String? owner, String? dueDate}) {
+  _ApprovalCheckpointData copyWith(
+      {String? title, String? status, String? owner, String? dueDate}) {
     return _ApprovalCheckpointData(
       id: id,
       title: title ?? this.title,
@@ -1295,7 +1619,8 @@ class _ApprovalCheckpointData {
     return data.map((item) {
       final map = Map<String, dynamic>.from(item as Map? ?? {});
       return _ApprovalCheckpointData(
-        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: map['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         title: map['title']?.toString() ?? '',
         status: map['status']?.toString() ?? 'Pending',
         owner: map['owner']?.toString() ?? '',
@@ -1306,7 +1631,8 @@ class _ApprovalCheckpointData {
 }
 
 class _Debouncer {
-  _Debouncer({Duration? delay}) : delay = delay ?? const Duration(milliseconds: 700);
+  _Debouncer({Duration? delay})
+      : delay = delay ?? const Duration(milliseconds: 700);
 
   final Duration delay;
   Timer? _timer;

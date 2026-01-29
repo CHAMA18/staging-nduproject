@@ -81,6 +81,13 @@ class ProjectDataModel {
   // Execution Phase Data
   ExecutionPhaseData? executionPhaseData;
 
+  // Stakeholder Management Data
+  List<StakeholderEntry> stakeholderEntries;
+  List<EngagementPlanEntry> engagementPlanEntries;
+
+  // Quality Management Data
+  QualityManagementData? qualityManagementData;
+
   // Metadata
   bool isBasicPlanProject;
   Map<String, int> aiUsageCounts;
@@ -143,11 +150,14 @@ class ProjectDataModel {
     List<StaffingRequirement>? staffingRequirements,
     List<TrainingActivity>? trainingActivities,
     DesignDeliverablesData? designDeliverablesData,
-    ExecutionPhaseData? executionPhaseData,
     this.isBasicPlanProject = false,
     Map<String, int>? aiUsageCounts,
     List<Map<String, dynamic>>? aiIntegrations,
     List<Map<String, dynamic>>? aiRecommendations,
+    List<StakeholderEntry>? stakeholderEntries,
+    List<EngagementPlanEntry>? engagementPlanEntries,
+    this.qualityManagementData,
+    this.executionPhaseData,
     this.projectId,
     this.createdAt,
     this.updatedAt,
@@ -178,10 +188,11 @@ class ProjectDataModel {
         projectRoles = projectRoles ?? [],
         staffingRequirements = staffingRequirements ?? [],
         trainingActivities = trainingActivities ?? [],
-        executionPhaseData = executionPhaseData,
         aiUsageCounts = aiUsageCounts ?? {},
         aiIntegrations = aiIntegrations ?? [],
         aiRecommendations = aiRecommendations ?? [],
+        stakeholderEntries = stakeholderEntries ?? [],
+        engagementPlanEntries = engagementPlanEntries ?? [],
         fieldHistories = fieldHistories ?? {},
         costBenefitCurrency = costBenefitCurrency ?? 'USD',
         preferredSolutionId = preferredSolutionId;
@@ -240,6 +251,9 @@ class ProjectDataModel {
     Map<String, FieldHistory>? fieldHistories,
     String? costBenefitCurrency,
     String? preferredSolutionId,
+    List<StakeholderEntry>? stakeholderEntries,
+    List<EngagementPlanEntry>? engagementPlanEntries,
+    QualityManagementData? qualityManagementData,
   }) {
     return ProjectDataModel(
       projectName: projectName ?? this.projectName,
@@ -301,6 +315,11 @@ class ProjectDataModel {
       fieldHistories: fieldHistories ?? this.fieldHistories,
       costBenefitCurrency: costBenefitCurrency ?? this.costBenefitCurrency,
       preferredSolutionId: preferredSolutionId ?? this.preferredSolutionId,
+      stakeholderEntries: stakeholderEntries ?? this.stakeholderEntries,
+      engagementPlanEntries:
+          engagementPlanEntries ?? this.engagementPlanEntries,
+      qualityManagementData:
+          qualityManagementData ?? this.qualityManagementData,
     );
   }
 
@@ -378,6 +397,11 @@ class ProjectDataModel {
       'fieldHistories': fieldHistories.map((key, value) => MapEntry(key, value.toJson())),
       'costBenefitCurrency': costBenefitCurrency,
       'preferredSolutionId': preferredSolutionId,
+      'stakeholderEntries': stakeholderEntries.map((e) => e.toJson()).toList(),
+      'engagementPlanEntries':
+          engagementPlanEntries.map((e) => e.toJson()).toList(),
+      'qualityManagementData': qualityManagementData?.toJson(),
+      'executionPhaseData': executionPhaseData?.toJson(),
     };
   }
 
@@ -586,6 +610,17 @@ class ProjectDataModel {
           : {},
       costBenefitCurrency: json['costBenefitCurrency']?.toString() ?? 'USD',
       preferredSolutionId: json['preferredSolutionId']?.toString(),
+      stakeholderEntries: (json['stakeholderEntries'] as List?)
+              ?.map((e) => StakeholderEntry.fromJson(e))
+              .toList() ??
+          [],
+      engagementPlanEntries: (json['engagementPlanEntries'] as List?)
+              ?.map((e) => EngagementPlanEntry.fromJson(e))
+              .toList() ??
+          [],
+      qualityManagementData: json['qualityManagementData'] != null
+          ? QualityManagementData.fromJson(json['qualityManagementData'])
+          : null,
     );
   }
 
@@ -2527,12 +2562,14 @@ class RoleDefinition {
   String title;
   String description;
   String workstream;
+  bool isPredefined;
 
   RoleDefinition({
     String? id,
     this.title = '',
     this.description = '',
     this.workstream = '',
+    this.isPredefined = false,
   }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
 
   Map<String, dynamic> toJson() => {
@@ -2540,6 +2577,7 @@ class RoleDefinition {
         'title': title,
         'description': description,
         'workstream': workstream,
+        'isPredefined': isPredefined,
       };
 
   factory RoleDefinition.fromJson(Map<String, dynamic> json) {
@@ -2548,6 +2586,7 @@ class RoleDefinition {
       title: json['title']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
       workstream: json['workstream']?.toString() ?? '',
+      isPredefined: json['isPredefined'] == true,
     );
   }
 }
@@ -2559,6 +2598,10 @@ class StaffingRequirement {
   String startDate;
   String endDate;
   String status;
+  String personName;
+  String employmentType; // FT or PT
+  String location;
+  String employeeType; // e.g., Employee, Contractor
 
   StaffingRequirement({
     String? id,
@@ -2567,6 +2610,10 @@ class StaffingRequirement {
     this.startDate = '',
     this.endDate = '',
     this.status = 'Not Started',
+    this.personName = '',
+    this.employmentType = 'FT',
+    this.location = '',
+    this.employeeType = 'Employee',
   }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
 
   Map<String, dynamic> toJson() => {
@@ -2576,6 +2623,10 @@ class StaffingRequirement {
         'startDate': startDate,
         'endDate': endDate,
         'status': status,
+        'personName': personName,
+        'employmentType': employmentType,
+        'location': location,
+        'employeeType': employeeType,
       };
 
   factory StaffingRequirement.fromJson(Map<String, dynamic> json) {
@@ -2586,6 +2637,35 @@ class StaffingRequirement {
       startDate: json['startDate']?.toString() ?? '',
       endDate: json['endDate']?.toString() ?? '',
       status: json['status']?.toString() ?? 'Not Started',
+      personName: json['personName']?.toString() ?? '',
+      employmentType: json['employmentType']?.toString() ?? 'FT',
+      location: json['location']?.toString() ?? '',
+      employeeType: json['employeeType']?.toString() ?? 'Employee',
+    );
+  }
+
+  StaffingRequirement copyWith({
+    String? title,
+    int? headcount,
+    String? startDate,
+    String? endDate,
+    String? status,
+    String? personName,
+    String? employmentType,
+    String? location,
+    String? employeeType,
+  }) {
+    return StaffingRequirement(
+      id: id,
+      title: title ?? this.title,
+      headcount: headcount ?? this.headcount,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      status: status ?? this.status,
+      personName: personName ?? this.personName,
+      employmentType: employmentType ?? this.employmentType,
+      location: location ?? this.location,
+      employeeType: employeeType ?? this.employeeType,
     );
   }
 }
@@ -2597,6 +2677,7 @@ class TrainingActivity {
   String duration;
   String category; // Training or Team Building
   String status;
+  bool isMandatory;
 
   TrainingActivity({
     String? id,
@@ -2605,6 +2686,7 @@ class TrainingActivity {
     this.duration = '',
     this.category = 'Training',
     this.status = 'Upcoming',
+    this.isMandatory = false,
   }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
 
   Map<String, dynamic> toJson() => {
@@ -2614,6 +2696,7 @@ class TrainingActivity {
         'duration': duration,
         'category': category,
         'status': status,
+        'isMandatory': isMandatory,
       };
 
   factory TrainingActivity.fromJson(Map<String, dynamic> json) {
@@ -2624,6 +2707,7 @@ class TrainingActivity {
       duration: json['duration']?.toString() ?? '',
       category: json['category']?.toString() ?? 'Training',
       status: json['status']?.toString() ?? 'Upcoming',
+      isMandatory: json['isMandatory'] == true,
     );
   }
 
@@ -2633,6 +2717,7 @@ class TrainingActivity {
     String? duration,
     String? category,
     String? status,
+    bool? isMandatory,
   }) {
     return TrainingActivity(
       id: id,
@@ -2641,6 +2726,469 @@ class TrainingActivity {
       duration: duration ?? this.duration,
       category: category ?? this.category,
       status: status ?? this.status,
+      isMandatory: isMandatory ?? this.isMandatory,
+    );
+  }
+}
+
+class StakeholderEntry {
+  final String id;
+  final String name;
+  final String organization;
+  final String role;
+  final String influence;
+  final String interest;
+  final String channel;
+  final String contactInfo;
+  final String owner;
+  final String notes;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  StakeholderEntry({
+    required this.id,
+    required this.name,
+    required this.organization,
+    required this.role,
+    required this.influence,
+    required this.interest,
+    required this.channel,
+    required this.contactInfo,
+    required this.owner,
+    required this.notes,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory StakeholderEntry.empty() {
+    final now = DateTime.now();
+    return StakeholderEntry(
+      id: now.microsecondsSinceEpoch.toString(),
+      name: '',
+      organization: '',
+      role: '',
+      influence: 'Medium',
+      interest: 'Medium',
+      channel: '',
+      contactInfo: '',
+      owner: '',
+      notes: '',
+      createdAt: now,
+      updatedAt: now,
+    );
+  }
+
+  StakeholderEntry copyWith({
+    String? name,
+    String? organization,
+    String? role,
+    String? influence,
+    String? interest,
+    String? channel,
+    String? contactInfo,
+    String? owner,
+    String? notes,
+    DateTime? updatedAt,
+  }) {
+    return StakeholderEntry(
+      id: id,
+      name: name ?? this.name,
+      organization: organization ?? this.organization,
+      role: role ?? this.role,
+      influence: influence ?? this.influence,
+      interest: interest ?? this.interest,
+      channel: channel ?? this.channel,
+      contactInfo: contactInfo ?? this.contactInfo,
+      owner: owner ?? this.owner,
+      notes: notes ?? this.notes,
+      createdAt: createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'organization': organization,
+        'role': role,
+        'influence': influence,
+        'interest': interest,
+        'channel': channel,
+        'contactInfo': contactInfo,
+        'owner': owner,
+        'notes': notes,
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt.toIso8601String(),
+      };
+
+  factory StakeholderEntry.fromJson(Map<String, dynamic> json) {
+    return StakeholderEntry(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      organization: json['organization']?.toString() ?? '',
+      role: json['role']?.toString() ?? '',
+      influence: json['influence']?.toString() ?? 'Medium',
+      interest: json['interest']?.toString() ?? 'Medium',
+      channel: json['channel']?.toString() ?? '',
+      contactInfo: json['contactInfo']?.toString() ?? '',
+      owner: json['owner']?.toString() ?? '',
+      notes: json['notes']?.toString() ?? '',
+      createdAt:
+          DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+      updatedAt:
+          DateTime.tryParse(json['updatedAt'] ?? '') ?? DateTime.now(),
+    );
+  }
+}
+
+class EngagementPlanEntry {
+  final String id;
+  final String stakeholder;
+  final String objective;
+  final String method;
+  final String frequency;
+  final String owner;
+  final String status;
+  final String nextTouchpoint;
+  final String notes;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  EngagementPlanEntry({
+    required this.id,
+    required this.stakeholder,
+    required this.objective,
+    required this.method,
+    required this.frequency,
+    required this.owner,
+    required this.status,
+    required this.nextTouchpoint,
+    required this.notes,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory EngagementPlanEntry.empty() {
+    final now = DateTime.now();
+    return EngagementPlanEntry(
+      id: now.microsecondsSinceEpoch.toString(),
+      stakeholder: '',
+      objective: '',
+      method: '',
+      frequency: '',
+      owner: '',
+      status: 'Planned',
+      nextTouchpoint: '',
+      notes: '',
+      createdAt: now,
+      updatedAt: now,
+    );
+  }
+
+  EngagementPlanEntry copyWith({
+    String? stakeholder,
+    String? objective,
+    String? method,
+    String? frequency,
+    String? owner,
+    String? status,
+    String? nextTouchpoint,
+    String? notes,
+    DateTime? updatedAt,
+  }) {
+    return EngagementPlanEntry(
+      id: id,
+      stakeholder: stakeholder ?? this.stakeholder,
+      objective: objective ?? this.objective,
+      method: method ?? this.method,
+      frequency: frequency ?? this.frequency,
+      owner: owner ?? this.owner,
+      status: status ?? this.status,
+      nextTouchpoint: nextTouchpoint ?? this.nextTouchpoint,
+      notes: notes ?? this.notes,
+      createdAt: createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'stakeholder': stakeholder,
+        'objective': objective,
+        'method': method,
+        'frequency': frequency,
+        'owner': owner,
+        'status': status,
+        'nextTouchpoint': nextTouchpoint,
+        'notes': notes,
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt.toIso8601String(),
+      };
+
+  factory EngagementPlanEntry.fromJson(Map<String, dynamic> json) {
+    return EngagementPlanEntry(
+      id: json['id']?.toString() ?? '',
+      stakeholder: json['stakeholder']?.toString() ?? '',
+      objective: json['objective']?.toString() ?? '',
+      method: json['method']?.toString() ?? '',
+      frequency: json['frequency']?.toString() ?? '',
+      owner: json['owner']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'Planned',
+      nextTouchpoint: json['nextTouchpoint']?.toString() ?? '',
+      notes: json['notes']?.toString() ?? '',
+      createdAt:
+          DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+      updatedAt:
+          DateTime.tryParse(json['updatedAt'] ?? '') ?? DateTime.now(),
+    );
+  }
+}
+
+enum QualityTargetStatus { onTrack, monitoring, offTrack }
+
+class QualityTarget {
+  final String id;
+  final String name;
+  final String metric;
+  final String target;
+  final String current;
+  final QualityTargetStatus status;
+
+  QualityTarget({
+    required this.id,
+    required this.name,
+    required this.metric,
+    required this.target,
+    required this.current,
+    required this.status,
+  });
+
+  factory QualityTarget.empty() {
+    return QualityTarget(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      name: '',
+      metric: '',
+      target: '',
+      current: '',
+      status: QualityTargetStatus.onTrack,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'metric': metric,
+        'target': target,
+        'current': current,
+        'status': status.index,
+      };
+
+  factory QualityTarget.fromJson(Map<String, dynamic> json) {
+    var statusValue = json['status'];
+    QualityTargetStatus status;
+    if (statusValue is int) {
+      status = QualityTargetStatus.values[statusValue];
+    } else {
+      status = QualityTargetStatus.onTrack;
+    }
+
+    return QualityTarget(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      metric: json['metric']?.toString() ?? '',
+      target: json['target']?.toString() ?? '',
+      current: json['current']?.toString() ?? '',
+      status: status,
+    );
+  }
+
+  QualityTarget copyWith({
+    String? name,
+    String? metric,
+    String? target,
+    String? current,
+    QualityTargetStatus? status,
+  }) {
+    return QualityTarget(
+      id: id,
+      name: name ?? this.name,
+      metric: metric ?? this.metric,
+      target: target ?? this.target,
+      current: current ?? this.current,
+      status: status ?? this.status,
+    );
+  }
+}
+
+class QaTechnique {
+  final String id;
+  final String name;
+  final String description;
+  final String frequency;
+  final String standards;
+
+  QaTechnique({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.frequency,
+    required this.standards,
+  });
+
+  factory QaTechnique.empty() {
+    return QaTechnique(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      name: '',
+      description: '',
+      frequency: '',
+      standards: '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'description': description,
+        'frequency': frequency,
+        'standards': standards,
+      };
+
+  factory QaTechnique.fromJson(Map<String, dynamic> json) {
+    return QaTechnique(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      frequency: json['frequency']?.toString() ?? '',
+      standards: json['standards']?.toString() ?? '',
+    );
+  }
+
+  QaTechnique copyWith({
+    String? name,
+    String? description,
+    String? frequency,
+    String? standards,
+  }) {
+    return QaTechnique(
+      id: id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      frequency: frequency ?? this.frequency,
+      standards: standards ?? this.standards,
+    );
+  }
+}
+
+class QcTechnique {
+  final String id;
+  final String name;
+  final String description;
+  final String frequency;
+
+  QcTechnique({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.frequency,
+  });
+
+  factory QcTechnique.empty() {
+    return QcTechnique(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      name: '',
+      description: '',
+      frequency: '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'description': description,
+        'frequency': frequency,
+      };
+
+  factory QcTechnique.fromJson(Map<String, dynamic> json) {
+    return QcTechnique(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      frequency: json['frequency']?.toString() ?? '',
+    );
+  }
+
+  QcTechnique copyWith({
+    String? name,
+    String? description,
+    String? frequency,
+  }) {
+    return QcTechnique(
+      id: id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      frequency: frequency ?? this.frequency,
+    );
+  }
+}
+
+class QualityManagementData {
+  final String qualityPlan;
+  final List<QualityTarget> targets;
+  final List<QaTechnique> qaTechniques;
+  final List<QcTechnique> qcTechniques;
+
+  QualityManagementData({
+    required this.qualityPlan,
+    required this.targets,
+    required this.qaTechniques,
+    required this.qcTechniques,
+  });
+
+  factory QualityManagementData.empty() {
+    return QualityManagementData(
+      qualityPlan: '',
+      targets: [],
+      qaTechniques: [],
+      qcTechniques: [],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'qualityPlan': qualityPlan,
+        'targets': targets.map((t) => t.toJson()).toList(),
+        'qaTechniques': qaTechniques.map((t) => t.toJson()).toList(),
+        'qcTechniques': qcTechniques.map((t) => t.toJson()).toList(),
+      };
+
+  factory QualityManagementData.fromJson(Map<String, dynamic> json) {
+    return QualityManagementData(
+      qualityPlan: json['qualityPlan']?.toString() ?? '',
+      targets: (json['targets'] as List?)
+              ?.map((e) => QualityTarget.fromJson(e))
+              .toList() ??
+          [],
+      qaTechniques: (json['qaTechniques'] as List?)
+              ?.map((e) => QaTechnique.fromJson(e))
+              .toList() ??
+          [],
+      qcTechniques: (json['qcTechniques'] as List?)
+              ?.map((e) => QcTechnique.fromJson(e))
+              .toList() ??
+          [],
+    );
+  }
+
+  QualityManagementData copyWith({
+    String? qualityPlan,
+    List<QualityTarget>? targets,
+    List<QaTechnique>? qaTechniques,
+    List<QcTechnique>? qcTechniques,
+  }) {
+    return QualityManagementData(
+      qualityPlan: qualityPlan ?? this.qualityPlan,
+      targets: targets ?? this.targets,
+      qaTechniques: qaTechniques ?? this.qaTechniques,
+      qcTechniques: qcTechniques ?? this.qcTechniques,
     );
   }
 }

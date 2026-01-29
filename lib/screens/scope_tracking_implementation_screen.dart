@@ -4,140 +4,256 @@ import 'package:ndu_project/screens/stakeholder_alignment_screen.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
-import 'package:ndu_project/widgets/responsive_scaffold.dart';
+import 'package:ndu_project/widgets/draggable_sidebar.dart';
+import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
-import 'package:ndu_project/services/project_insights_service.dart';
+import 'package:ndu_project/services/execution_phase_service.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/models/scope_tracking_item.dart';
+import 'package:ndu_project/widgets/scope_tracking_table_widget.dart';
+import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
 
 class ScopeTrackingImplementationScreen extends StatefulWidget {
   const ScopeTrackingImplementationScreen({super.key});
 
   static void open(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ScopeTrackingImplementationScreen()),
+      MaterialPageRoute(
+          builder: (_) => const ScopeTrackingImplementationScreen()),
     );
   }
 
   @override
-  State<ScopeTrackingImplementationScreen> createState() => _ScopeTrackingImplementationScreenState();
+  State<ScopeTrackingImplementationScreen> createState() =>
+      _ScopeTrackingImplementationScreenState();
 }
 
-class _ScopeTrackingImplementationScreenState extends State<ScopeTrackingImplementationScreen> {
-  final Set<String> _selectedFilters = {'All scope'};
+class _ScopeTrackingImplementationScreenState
+    extends State<ScopeTrackingImplementationScreen> {
+  final Set<String> _selectedFilters = {'All'};
+  List<ScopeTrackingItem> _items = [];
+  List<String> _availableRoles = [];
+  List<String> _scopeStatementDeliverables = [];
+  bool _isLoading = false;
 
-  static const List<String> _scopeStatusOptions = [
-    'On track',
-    'Variance',
-    'At risk',
-    'Pending',
-  ];
+  String? get _projectId {
+    try {
+      final provider = ProjectDataInherited.maybeOf(context);
+      return provider?.projectData.projectId;
+    } catch (e) {
+      return null;
+    }
+  }
 
-  static const List<String> _changeStatusOptions = ['Pending', 'Approved', 'Rejected'];
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadItems();
+      _loadAvailableRoles();
+      _loadScopeStatementDeliverables();
+    });
+  }
 
-  final List<_ScopeItem> _scopeItems = [
-    _ScopeItem('SC-301', 'Core platform rollout', 'On track', '0%', 'Engineering', 'Oct 18'),
-    _ScopeItem('SC-308', 'Reporting dashboards', 'Variance', '+6%', 'Analytics', 'Oct 22'),
-    _ScopeItem('SC-315', 'Integration hub', 'At risk', '+3%', 'Platform', 'Oct 20'),
-  ];
+  Future<void> _loadItems() async {
+    final projectId = _projectId;
+    if (projectId == null) return;
 
-  final List<_VarianceSignal> _varianceSignals = [
-    _VarianceSignal('Scope variance', '2 items exceed baseline by 5%.'),
-    _VarianceSignal('Change request backlog', '3 items awaiting approval.'),
-    _VarianceSignal('Dependency gap', 'Vendor milestone shifted by 2 weeks.'),
-  ];
+    setState(() => _isLoading = true);
+    try {
+      final items = await ExecutionPhaseService.loadScopeTrackingItems(
+          projectId: projectId);
+      if (mounted) {
+        setState(() {
+          _items = items;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading scope tracking items: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
-  final List<_ChangeItem> _changeItems = [
-    _ChangeItem('CR-019', 'Add analytics export', 'In Review', 'Oct 18'),
-    _ChangeItem('CR-021', 'Integrate vendor payment gateway', 'Approved', 'Oct 22'),
-    _ChangeItem('CR-024', 'Extend onboarding flow', 'Submitted', 'Oct 20'),
-  ];
+  Future<void> _loadAvailableRoles() async {
+    final projectId = _projectId;
+    if (projectId == null) return;
 
-  final List<_BaselineCheckpoint> _baselineItems = [
-    _BaselineCheckpoint('Milestone review', 'Ready', true),
-    _BaselineCheckpoint('Runbook refresh', 'In review', false),
-    _BaselineCheckpoint('Disaster recovery drill', 'Pending', false),
-  ];
+    try {
+      final staffRows =
+          await ExecutionPhaseService.loadStaffingRows(projectId: projectId);
+      if (mounted) {
+        setState(() {
+          _availableRoles = staffRows
+              .map((row) => row.role)
+              .where((role) => role.isNotEmpty)
+              .toSet()
+              .toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading staff roles: $e');
+    }
+  }
 
-  final Map<String, Color> _statColors = const {
-    'Blue': Color(0xFF2563EB),
-    'Green': Color(0xFF10B981),
-    'Orange': Color(0xFFF59E0B),
-    'Purple': Color(0xFF8B5CF6),
-  };
+  Future<void> _loadScopeStatementDeliverables() async {
+    final projectId = _projectId;
+    if (projectId == null) return;
 
-  final List<_StatCardData> _stats = [
-    _StatCardData('Scope items', '32', '4 critical', Color(0xFF2563EB)),
-    _StatCardData('Variance', '2.4%', 'Within guardrails', Color(0xFF10B981)),
-    _StatCardData('Change requests', '3', '1 pending', Color(0xFFF59E0B)),
-    _StatCardData('Acceptance', '84%', 'Stakeholder aligned', Color(0xFF8B5CF6)),
-  ];
+    try {
+      final deliverables =
+          await ExecutionPhaseService.loadScopeStatementDeliverables(
+              projectId: projectId);
+      if (mounted) {
+        setState(() {
+          _scopeStatementDeliverables = deliverables;
+        });
+        // Auto-populate scope items if none exist
+        if (_items.isEmpty && deliverables.isNotEmpty) {
+          _autoPopulateScopeItems(deliverables);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading scope statement deliverables: $e');
+    }
+  }
+
+  Future<void> _autoPopulateScopeItems(List<String> deliverables) async {
+    final projectId = _projectId;
+    if (projectId == null) return;
+
+    try {
+      final newItems = <ScopeTrackingItem>[];
+      for (final deliverable in deliverables.take(5)) {
+        // Limit to first 5 to avoid overwhelming
+        if (deliverable.trim().isNotEmpty) {
+          // Check if this scope item already exists
+          final exists =
+              _items.any((item) => item.scopeItem == deliverable.trim());
+          if (!exists) {
+            newItems.add(ScopeTrackingItem(
+              scopeItem: deliverable.trim(),
+              implementationStatus: 'Not Started',
+              owner: _availableRoles.isNotEmpty ? _availableRoles.first : '',
+              verificationMethod: '',
+            ));
+          }
+        }
+      }
+      if (newItems.isNotEmpty) {
+        setState(() {
+          _items.addAll(newItems);
+        });
+        await _saveItems();
+        // Auto-generate verification steps for new scope items
+        for (final item in newItems) {
+          _autoGenerateVerificationSteps(item);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error auto-populating scope items: $e');
+    }
+  }
+
+  Future<void> _autoGenerateVerificationSteps(ScopeTrackingItem item) async {
+    if (item.scopeItem.isEmpty) return;
+
+    try {
+      final provider = ProjectDataInherited.maybeOf(context);
+      if (provider == null) return;
+
+      final projectId = provider.projectData?.projectId;
+      if (projectId == null || projectId.isEmpty) return;
+
+      final projectData = provider.projectData;
+      if (projectData == null) return;
+
+      final projectContext =
+          ProjectDataHelper.buildExecutivePlanContext(projectData);
+      final designComponents = await ExecutionPhaseService.loadDesignComponents(
+        projectId: projectId,
+      );
+      final componentNames =
+          designComponents.map((c) => c.componentName).toList();
+
+      final openAiService = OpenAiServiceSecure();
+      final steps = await openAiService.generateVerificationSteps(
+        context: projectContext,
+        scopeItem: item.scopeItem,
+        designComponents: componentNames,
+      );
+
+      if (steps.isNotEmpty && mounted) {
+        setState(() {
+          final index = _items.indexWhere((i) => i.id == item.id);
+          if (index >= 0) {
+            _items[index] = item.copyWith(verificationSteps: steps);
+          }
+        });
+        await _saveItems();
+      }
+    } catch (e) {
+      debugPrint('Error auto-generating verification steps: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final bool isMobile = AppBreakpoints.isMobile(context);
+    final double horizontalPadding = isMobile ? 18 : 32;
     final isNarrow = MediaQuery.sizeOf(context).width < 980;
-    final padding = AppBreakpoints.pagePadding(context);
-    final provider = ProjectDataInherited.maybeOf(context);
-    final projectId = provider?.projectData.projectId;
 
-    if (projectId == null) {
-      return ResponsiveScaffold(
-        activeItemLabel: 'Scope Tracking Implementation',
-        backgroundColor: const Color(0xFFF5F7FB),
-        body: Center(
-          child: Text(
-            'Pick a project to load scope tracking metrics.',
-            style: TextStyle(color: Colors.grey[700], fontSize: 16),
-          ),
-        ),
-      );
-    }
-
-    return ResponsiveScaffold(
-      activeItemLabel: 'Scope Tracking Implementation',
+    return Scaffold(
       backgroundColor: const Color(0xFFF5F7FB),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: EdgeInsets.all(padding),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(isNarrow),
-                const SizedBox(height: 16),
-                _buildFilterChips(),
-                const SizedBox(height: 20),
-                _buildStatsHeader(),
-                const SizedBox(height: 12),
-                _buildStatsRow(isNarrow, projectId),
-                const SizedBox(height: 24),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildScopeRegister(projectId),
-                    const SizedBox(height: 20),
-                    _buildVariancePanel(),
-                    const SizedBox(height: 20),
-                    _buildChangeLogPanel(),
-                    const SizedBox(height: 20),
-                    _buildBaselinePanel(),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                LaunchPhaseNavigation(
-                  backLabel: 'Back: Agile Development Iterations',
-                  nextLabel: 'Next: Stakeholder Alignment',
-                  onBack: () => AgileDevelopmentIterationsScreen.open(context),
-                  onNext: () => StakeholderAlignmentScreen.open(context),
-                ),
-              ],
+      body: SafeArea(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DraggableSidebar(
+              openWidth: AppBreakpoints.sidebarWidth(context),
+              child: const InitiationLikeSidebar(
+                  activeItemLabel: 'Scope Tracking Implementation'),
             ),
-          ),
-          const KazAiChatBubble(),
-        ],
+            Expanded(
+              child: Stack(
+                children: [
+                  SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding, vertical: 28),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (_isLoading)
+                          const LinearProgressIndicator(minHeight: 2),
+                        if (_isLoading) const SizedBox(height: 16),
+                        _buildPageHeader(context),
+                        const SizedBox(height: 20),
+                        _buildFilterChips(context),
+                        const SizedBox(height: 24),
+                        _buildStatsRow(isNarrow),
+                        const SizedBox(height: 24),
+                        _buildScopeTable(),
+                        const SizedBox(height: 24),
+                        _buildFooterNavigation(context),
+                        const SizedBox(height: 48),
+                      ],
+                    ),
+                  ),
+                  const KazAiChatBubble(),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildHeader(bool isNarrow) {
+  Widget _buildPageHeader(BuildContext context) {
+    final isMobile = AppBreakpoints.isMobile(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -145,36 +261,45 @@ class _ScopeTrackingImplementationScreenState extends State<ScopeTrackingImpleme
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             color: const Color(0xFFFFC812),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(4),
           ),
           child: const Text(
             'SCOPE CONTROL',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Colors.black,
+              letterSpacing: 0.5,
+            ),
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   Text(
-                    'Scope Tracking Implementation',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                    'Scope Tracking & Implementation',
+                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF111827),
+                        ),
                   ),
-                  SizedBox(height: 6),
-                  Text(
-                    'Monitor scope delivery, variance, and change approvals during execution.',
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Monitor scope delivery, variance, and change approvals during execution. Ensure what is being built stays aligned with the original Scope Statement and Detailed Design.',
                     style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
                   ),
                 ],
               ),
             ),
-            if (!isNarrow) _buildHeaderActions(),
+            if (!isMobile) _buildHeaderActions(),
           ],
         ),
-        if (isNarrow) ...[
+        if (isMobile) ...[
           const SizedBox(height: 12),
           _buildHeaderActions(),
         ],
@@ -187,87 +312,31 @@ class _ScopeTrackingImplementationScreenState extends State<ScopeTrackingImpleme
       spacing: 10,
       runSpacing: 10,
       children: [
-        _actionButton(Icons.add, 'Add scope item', onPressed: () => _showScopeItemDialog()),
-        _actionButton(Icons.add_chart, 'Add stat', onPressed: () => _showStatDialog()),
-        _actionButton(Icons.sync_alt, 'Sync baseline'),
-        _actionButton(Icons.description_outlined, 'Export log'),
-        _primaryButton('Run scope review'),
-      ],
-    );
-  }
-
-  Widget _actionButton(IconData icon, String label, {VoidCallback? onPressed}) {
-    return OutlinedButton.icon(
-      onPressed: onPressed ?? () {},
-      icon: Icon(icon, size: 18, color: const Color(0xFF64748B)),
-      label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
-      style: OutlinedButton.styleFrom(
-        side: const BorderSide(color: Color(0xFFE2E8F0)),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-
-  Widget _primaryButton(String label) {
-    return ElevatedButton.icon(
-      onPressed: () {},
-      icon: const Icon(Icons.play_arrow, size: 18),
-      label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF0EA5E9),
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-
-  Widget _panelIconButton({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onPressed,
-  }) {
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: onPressed,
-      icon: Icon(icon, size: 18, color: const Color(0xFF64748B)),
-      padding: EdgeInsets.zero,
-      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-    );
-  }
-
-  Widget _cardIconButton({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onPressed,
-    Color color = const Color(0xFF64748B),
-  }) {
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: onPressed,
-      icon: Icon(icon, size: 16, color: color),
-      padding: EdgeInsets.zero,
-      constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-    );
-  }
-
-  Widget _buildStatsHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        const Text('Key stats', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
-        _panelIconButton(
-          icon: Icons.add,
-          tooltip: 'Add stat',
-          onPressed: () => _showStatDialog(),
+        FilledButton.icon(
+          onPressed: _showAddItemDialog,
+          icon: const Icon(Icons.add, size: 18),
+          label: const Text('Add Scope Item',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFF0EA5E9),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildFilterChips() {
-    const filters = ['All scope', 'On track', 'Variance', 'At risk', 'Pending'];
+  Widget _buildFilterChips(BuildContext context) {
+    const filters = [
+      'All',
+      'Not Started',
+      'In-Progress',
+      'Verified',
+      'Out-of-Scope'
+    ];
     return Wrap(
       spacing: 10,
       runSpacing: 10,
@@ -276,11 +345,8 @@ class _ScopeTrackingImplementationScreenState extends State<ScopeTrackingImpleme
         return GestureDetector(
           onTap: () {
             setState(() {
-              if (selected) {
-                _selectedFilters.remove(filter);
-              } else {
-                _selectedFilters.add(filter);
-              }
+              _selectedFilters.clear();
+              _selectedFilters.add(filter);
             });
           },
           child: Container(
@@ -304,24 +370,51 @@ class _ScopeTrackingImplementationScreenState extends State<ScopeTrackingImpleme
     );
   }
 
-  Widget _buildStatsRow(bool isNarrow, String projectId) {
-    return StreamBuilder<List<ScopeTrackingStat>>(
-      stream: ProjectInsightsService.streamScopeStats(projectId),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          final placeholders = List.generate(4, (_) => ScopeTrackingStat(label: '', value: '—', supporting: '', color: const Color(0xFFB1B5C3)));
-          return _statsLayout(isNarrow, placeholders);
-        }
-        final stats = snapshot.data ?? [];
-        if (stats.isEmpty) {
-          return _emptyPanelMessage('Scope metrics are not available yet.');
-        }
-        return _statsLayout(isNarrow, stats);
-      },
-    );
-  }
+  Widget _buildStatsRow(bool isNarrow) {
+    // Calculate metrics
+    final totalItems = _items.length;
+    final inProgressOrVerified = _items
+        .where((item) =>
+            item.implementationStatus == 'In-Progress' ||
+            item.implementationStatus == 'Verified')
+        .length;
+    final scopeAdherence = totalItems > 0
+        ? ((inProgressOrVerified / totalItems) * 100).round()
+        : 0;
 
-  Widget _statsLayout(bool isNarrow, List<ScopeTrackingStat> stats) {
+    // Count items not in original scope (scope creep)
+    final originalScopeItems = _scopeStatementDeliverables.toSet();
+    final identifiedCreep = _items
+        .where((item) => !originalScopeItems.contains(item.scopeItem))
+        .length;
+
+    // Count original items not started
+    final trackedItems = _items.map((item) => item.scopeItem).toSet();
+    final implementationGap = _scopeStatementDeliverables
+        .where((deliverable) => !trackedItems.contains(deliverable))
+        .length;
+
+    final stats = [
+      _StatCardData(
+        'Scope Adherence',
+        '$scopeAdherence%',
+        '$inProgressOrVerified of $totalItems items',
+        const Color(0xFF2563EB),
+      ),
+      _StatCardData(
+        'Identified Creep',
+        '$identifiedCreep',
+        'Items added outside scope',
+        const Color(0xFFF59E0B),
+      ),
+      _StatCardData(
+        'Implementation Gap',
+        '$implementationGap',
+        'Original items not started',
+        const Color(0xFFEF4444),
+      ),
+    ];
+
     if (isNarrow) {
       return Wrap(
         spacing: 12,
@@ -330,28 +423,18 @@ class _ScopeTrackingImplementationScreenState extends State<ScopeTrackingImpleme
       );
     }
     return Row(
-      children: stats.map((stat) => Expanded(
-        child: Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: _buildStatCard(stat),
-        ),
-      )).toList(),
+      children: stats
+          .map((stat) => Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: _buildStatCard(stat),
+                ),
+              ))
+          .toList(),
     );
   }
 
-  Widget _emptyPanelMessage(String message) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Text(message, style: const TextStyle(color: Color(0xFF6B7280))),
-    );
-  }
-
-  Widget _buildStatCard(ScopeTrackingStat data) {
+  Widget _buildStatCard(_StatCardData data) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -364,695 +447,29 @@ class _ScopeTrackingImplementationScreenState extends State<ScopeTrackingImpleme
         children: [
           Text(
             data.value,
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: data.color),
+            style: TextStyle(
+                fontSize: 20, fontWeight: FontWeight.w700, color: data.color),
           ),
           const SizedBox(height: 6),
-          Text(data.label, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+          Text(data.label,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
           const SizedBox(height: 6),
-          Text(data.supporting, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: data.color)),
+          Text(data.supporting,
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: data.color)),
         ],
       ),
     );
   }
 
-  Widget _buildScopeRegister(String projectId) {
-    return StreamBuilder<List<ScopeTrackingItem>>(
-      stream: ProjectInsightsService.streamScopeItems(projectId),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Padding(
-            padding: EdgeInsets.all(24),
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-        final items = snapshot.data ?? [];
-        if (items.isEmpty) {
-          return _emptyPanelMessage('No scope items recorded yet.');
-        }
-        final filtered = items.where((item) {
-          if (_selectedFilters.contains('All scope')) return true;
-          final normalized = item.status.trim();
-          return _selectedFilters.contains(normalized);
-        }).toList();
-        if (filtered.isEmpty) {
-          return _emptyPanelMessage('No scope items match the selected filters.');
-        }
-        return _PanelShell(
-          title: 'Scope register',
-          subtitle: 'Baseline delivery and variance tracking',
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _panelIconButton(
-                icon: Icons.add,
-                tooltip: 'Add scope item',
-                onPressed: () => _showScopeItemDialog(),
-              ),
-              const SizedBox(width: 6),
-              _actionButton(Icons.filter_list, 'Filter'),
-            ],
-          ),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                  child: DataTable(
-                    headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
-                    columnSpacing: 24,
-                    columns: const [
-                      DataColumn(label: Text('ID', style: TextStyle(fontWeight: FontWeight.w600))),
-                      DataColumn(label: Text('Scope item', style: TextStyle(fontWeight: FontWeight.w600))),
-                      DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
-                      DataColumn(label: Text('Variance', style: TextStyle(fontWeight: FontWeight.w600))),
-                      DataColumn(label: Text('Owner', style: TextStyle(fontWeight: FontWeight.w600))),
-                      DataColumn(label: Text('Next review', style: TextStyle(fontWeight: FontWeight.w600))),
-                    ],
-                    rows: filtered.map((item) {
-                      return DataRow(cells: [
-                        DataCell(Text(item.id, style: const TextStyle(fontSize: 12, color: Color(0xFF0EA5E9)))),
-                        DataCell(Text(item.title, style: const TextStyle(fontSize: 13))),
-                        DataCell(_statusChip(item.status)),
-                        DataCell(Text(item.variance, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
-                        DataCell(Text(item.owner, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)))),
-                        DataCell(Text(item.nextReview, style: const TextStyle(fontSize: 12))),
-                      ]);
-                    }).toList(),
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
+  Widget _buildScopeTable() {
+    final filteredItems = _items.where((item) {
+      if (_selectedFilters.contains('All')) return true;
+      return _selectedFilters.contains(item.implementationStatus);
+    }).toList();
 
-  Widget _buildVariancePanel() {
-    return _PanelShell(
-      title: 'Variance signals',
-      subtitle: 'Scope drift and dependency impacts',
-      trailing: _panelIconButton(
-        icon: Icons.add,
-        tooltip: 'Add variance signal',
-        onPressed: () => _showVarianceDialog(),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: _varianceSignals.map((signal) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(12),
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(signal.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 4),
-                      Text(signal.subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                    ],
-                  ),
-                ),
-                _cardIconButton(
-                  icon: Icons.edit,
-                  tooltip: 'Edit variance signal',
-                  onPressed: () => _showVarianceDialog(existing: signal),
-                ),
-                _cardIconButton(
-                  icon: Icons.delete_outline,
-                  tooltip: 'Delete variance signal',
-                  onPressed: () => _confirmDelete(
-                    label: 'variance signal "${signal.title}"',
-                    onDelete: () => setState(() => _varianceSignals.remove(signal)),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildChangeLogPanel() {
-    return _PanelShell(
-      title: 'Change log',
-      subtitle: 'Recent scope change requests',
-      trailing: _panelIconButton(
-        icon: Icons.add,
-        tooltip: 'Add change request',
-        onPressed: () => _showChangeDialog(),
-      ),
-      child: Column(
-        children: _changeItems.map((change) {
-          final color = change.status == 'Approved' ? const Color(0xFF10B981) : const Color(0xFFF59E0B);
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(change.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 4),
-                      Text(change.date, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(change.status, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
-                ),
-                const SizedBox(width: 8),
-                _cardIconButton(
-                  icon: Icons.edit,
-                  tooltip: 'Edit change request',
-                  onPressed: () => _showChangeDialog(existing: change),
-                ),
-                _cardIconButton(
-                  icon: Icons.delete_outline,
-                  tooltip: 'Delete change request',
-                  onPressed: () => _confirmDelete(
-                    label: 'change request "${change.id}"',
-                    onDelete: () => setState(() => _changeItems.remove(change)),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildBaselinePanel() {
-    return _PanelShell(
-      title: 'Baseline alignment',
-      subtitle: 'Scope checkpoints for sign-off',
-      trailing: _panelIconButton(
-        icon: Icons.add,
-        tooltip: 'Add baseline checkpoint',
-        onPressed: () => _showBaselineDialog(),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: _baselineItems.map((item) {
-          return _BaselineItem(
-            item.title,
-            item.status,
-            item.complete,
-            onEdit: () => _showBaselineDialog(existing: item),
-            onDelete: () => _confirmDelete(
-              label: 'baseline checkpoint "${item.title}"',
-              onDelete: () => setState(() => _baselineItems.remove(item)),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _statusChip(String label) {
-    Color color;
-    switch (label) {
-      case 'On track':
-        color = const Color(0xFF10B981);
-        break;
-      case 'Variance':
-        color = const Color(0xFFF59E0B);
-        break;
-      case 'At risk':
-        color = const Color(0xFFEF4444);
-        break;
-      default:
-        color = const Color(0xFF6366F1);
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
-    );
-  }
-
-  Future<void> _confirmDelete({required String label, required VoidCallback onDelete}) async {
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete item'),
-        content: Text('Delete $label? This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              onDelete();
-              Navigator.of(dialogContext).pop();
-            },
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _showScopeItemDialog({_ScopeItem? existing}) async {
-    final idController = TextEditingController(text: existing?.id ?? '');
-    final titleController = TextEditingController(text: existing?.title ?? '');
-    final varianceController = TextEditingController(text: existing?.variance ?? '');
-    final ownerController = TextEditingController(text: existing?.owner ?? '');
-    final reviewController = TextEditingController(text: existing?.reviewDate ?? '');
-    var status = existing?.status ?? _scopeStatusOptions.first;
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) => AlertDialog(
-            title: Text(existing == null ? 'Add scope item' : 'Edit scope item'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: idController,
-                    decoration: const InputDecoration(labelText: 'ID'),
-                  ),
-                  TextField(
-                    controller: titleController,
-                    decoration: const InputDecoration(labelText: 'Scope item'),
-                  ),
-                  DropdownButtonFormField<String>(
-                    initialValue: status,
-                    decoration: const InputDecoration(labelText: 'Status'),
-                    items: _scopeStatusOptions
-                        .map((option) => DropdownMenuItem(value: option, child: Text(option)))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setDialogState(() => status = value);
-                    },
-                  ),
-                  TextField(
-                    controller: varianceController,
-                    decoration: const InputDecoration(labelText: 'Variance'),
-                  ),
-                  TextField(
-                    controller: ownerController,
-                    decoration: const InputDecoration(labelText: 'Owner'),
-                  ),
-                  TextField(
-                    controller: reviewController,
-                    decoration: const InputDecoration(labelText: 'Next review'),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  final id = idController.text.trim();
-                  final title = titleController.text.trim();
-                  if (id.isEmpty || title.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('ID and Scope item are required.')),
-                    );
-                    return;
-                  }
-                  final updated = _ScopeItem(
-                    id,
-                    title,
-                    status,
-                    varianceController.text.trim(),
-                    ownerController.text.trim(),
-                    reviewController.text.trim(),
-                  );
-                  setState(() {
-                    if (existing == null) {
-                      _scopeItems.add(updated);
-                    } else {
-                      final index = _scopeItems.indexOf(existing);
-                      if (index >= 0) {
-                        _scopeItems[index] = updated;
-                      }
-                    }
-                  });
-                  Navigator.of(dialogContext).pop();
-                },
-                child: const Text('Save'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _showVarianceDialog({_VarianceSignal? existing}) async {
-    final titleController = TextEditingController(text: existing?.title ?? '');
-    final subtitleController = TextEditingController(text: existing?.subtitle ?? '');
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(existing == null ? 'Add variance signal' : 'Edit variance signal'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(labelText: 'Title'),
-              ),
-              TextField(
-                controller: subtitleController,
-                decoration: const InputDecoration(labelText: 'Detail'),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final title = titleController.text.trim();
-              if (title.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Title is required.')),
-                );
-                return;
-              }
-              final updated = _VarianceSignal(title, subtitleController.text.trim());
-              setState(() {
-                if (existing == null) {
-                  _varianceSignals.add(updated);
-                } else {
-                  final index = _varianceSignals.indexOf(existing);
-                  if (index >= 0) {
-                    _varianceSignals[index] = updated;
-                  }
-                }
-              });
-              Navigator.of(dialogContext).pop();
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _showChangeDialog({_ChangeItem? existing}) async {
-    final idController = TextEditingController(text: existing?.id ?? '');
-    final titleController = TextEditingController(text: existing?.title ?? '');
-    final dateController = TextEditingController(text: existing?.date ?? '');
-    var status = existing?.status ?? _changeStatusOptions.first;
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) => AlertDialog(
-            title: Text(existing == null ? 'Add change request' : 'Edit change request'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: idController,
-                    decoration: const InputDecoration(labelText: 'ID'),
-                  ),
-                  TextField(
-                    controller: titleController,
-                    decoration: const InputDecoration(labelText: 'Title'),
-                  ),
-                  DropdownButtonFormField<String>(
-                    initialValue: status,
-                    decoration: const InputDecoration(labelText: 'Status'),
-                    items: _changeStatusOptions
-                        .map((option) => DropdownMenuItem(value: option, child: Text(option)))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setDialogState(() => status = value);
-                    },
-                  ),
-                  TextField(
-                    controller: dateController,
-                    decoration: const InputDecoration(labelText: 'Date'),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  final id = idController.text.trim();
-                  final title = titleController.text.trim();
-                  if (id.isEmpty || title.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('ID and Title are required.')),
-                    );
-                    return;
-                  }
-                  final updated = _ChangeItem(
-                    id,
-                    title,
-                    status,
-                    dateController.text.trim(),
-                  );
-                  setState(() {
-                    if (existing == null) {
-                      _changeItems.add(updated);
-                    } else {
-                      final index = _changeItems.indexOf(existing);
-                      if (index >= 0) {
-                        _changeItems[index] = updated;
-                      }
-                    }
-                  });
-                  Navigator.of(dialogContext).pop();
-                },
-                child: const Text('Save'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _showBaselineDialog({_BaselineCheckpoint? existing}) async {
-    final titleController = TextEditingController(text: existing?.title ?? '');
-    final statusController = TextEditingController(text: existing?.status ?? '');
-    var complete = existing?.complete ?? false;
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) => AlertDialog(
-            title: Text(existing == null ? 'Add baseline checkpoint' : 'Edit baseline checkpoint'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: titleController,
-                    decoration: const InputDecoration(labelText: 'Title'),
-                  ),
-                  TextField(
-                    controller: statusController,
-                    decoration: const InputDecoration(labelText: 'Status'),
-                  ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Complete'),
-                    value: complete,
-                    onChanged: (value) => setDialogState(() => complete = value),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  final title = titleController.text.trim();
-                  if (title.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Title is required.')),
-                    );
-                    return;
-                  }
-                  final updated = _BaselineCheckpoint(
-                    title,
-                    statusController.text.trim(),
-                    complete,
-                  );
-                  setState(() {
-                    if (existing == null) {
-                      _baselineItems.add(updated);
-                    } else {
-                      final index = _baselineItems.indexOf(existing);
-                      if (index >= 0) {
-                        _baselineItems[index] = updated;
-                      }
-                    }
-                  });
-                  Navigator.of(dialogContext).pop();
-                },
-                child: const Text('Save'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _showStatDialog({_StatCardData? existing}) async {
-    final labelController = TextEditingController(text: existing?.label ?? '');
-    final valueController = TextEditingController(text: existing?.value ?? '');
-    final supportingController = TextEditingController(text: existing?.supporting ?? '');
-    var selectedColorName = _statColors.entries.firstWhere(
-      (entry) => entry.value == existing?.color,
-      orElse: () => _statColors.entries.first,
-    ).key;
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) => AlertDialog(
-            title: Text(existing == null ? 'Add stat' : 'Edit stat'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: labelController,
-                    decoration: const InputDecoration(labelText: 'Label'),
-                  ),
-                  TextField(
-                    controller: valueController,
-                    decoration: const InputDecoration(labelText: 'Value'),
-                  ),
-                  TextField(
-                    controller: supportingController,
-                    decoration: const InputDecoration(labelText: 'Supporting text'),
-                  ),
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedColorName,
-                    decoration: const InputDecoration(labelText: 'Accent color'),
-                    items: _statColors.keys
-                        .map((name) => DropdownMenuItem(value: name, child: Text(name)))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setDialogState(() => selectedColorName = value);
-                    },
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  final label = labelController.text.trim();
-                  final value = valueController.text.trim();
-                  if (label.isEmpty || value.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Label and Value are required.')),
-                    );
-                    return;
-                  }
-                  final updated = _StatCardData(
-                    label,
-                    value,
-                    supportingController.text.trim(),
-                    _statColors[selectedColorName] ?? const Color(0xFF64748B),
-                  );
-                  setState(() {
-                    if (existing == null) {
-                      _stats.add(updated);
-                    } else {
-                      final index = _stats.indexOf(existing);
-                      if (index >= 0) {
-                        _stats[index] = updated;
-                      }
-                    }
-                  });
-                  Navigator.of(dialogContext).pop();
-                },
-                child: const Text('Save'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _PanelShell extends StatelessWidget {
-  const _PanelShell({
-    required this.title,
-    required this.subtitle,
-    required this.child,
-    this.trailing,
-  });
-
-  final String title;
-  final String subtitle;
-  final Widget child;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1063,124 +480,226 @@ class _PanelShell extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 4),
-                    Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                  ],
-                ),
+          const Text('Scope Implementation Table',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          const Text(
+              'Track implementation status and verification for each scope item',
+              style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+          const SizedBox(height: 16),
+          ScopeTrackingTableWidget(
+            items: filteredItems,
+            availableRoles: _availableRoles,
+            onUpdated: (item) {
+              setState(() {
+                final index = _items.indexWhere((i) => i.id == item.id);
+                if (index >= 0) {
+                  _items[index] = item;
+                } else {
+                  _items.add(item);
+                }
+              });
+            },
+            onDeleted: (item) {
+              setState(() {
+                _items.removeWhere((i) => i.id == item.id);
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showAddItemDialog() async {
+    final scopeItemController = TextEditingController();
+    final verificationStepsController = AutoBulletTextController();
+    final trackingNotesController = TextEditingController();
+
+    String? selectedScopeItem;
+    String selectedStatus = 'Not Started';
+    String? selectedOwner;
+    String? selectedVerificationMethod;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: const Text('Add Scope Item'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: selectedScopeItem,
+                    decoration: const InputDecoration(
+                      labelText: 'Scope Item/Deliverable',
+                      hintText: 'Select from Scope Statement or enter new',
+                    ),
+                    items: [
+                      ..._scopeStatementDeliverables.map((deliverable) {
+                        return DropdownMenuItem<String>(
+                          value: deliverable,
+                          child: Text(deliverable),
+                        );
+                      }),
+                      const DropdownMenuItem<String>(
+                        value: '__NEW__',
+                        child: Text('+ Add New Item'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value == '__NEW__') {
+                        selectedScopeItem = null;
+                        scopeItemController.clear();
+                      } else {
+                        selectedScopeItem = value;
+                        scopeItemController.text = value ?? '';
+                      }
+                      setDialogState(() {});
+                    },
+                  ),
+                  if (selectedScopeItem == null ||
+                      selectedScopeItem == '__NEW__')
+                    TextField(
+                      controller: scopeItemController,
+                      decoration: const InputDecoration(
+                        labelText: 'Scope Item/Deliverable',
+                      ),
+                    ),
+                  DropdownButtonFormField<String>(
+                    value: selectedStatus,
+                    decoration: const InputDecoration(
+                        labelText: 'Implementation Status'),
+                    items: [
+                      'Not Started',
+                      'In-Progress',
+                      'Verified',
+                      'Out-of-Scope'
+                    ]
+                        .map((status) => DropdownMenuItem(
+                              value: status,
+                              child: Text(status),
+                            ))
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setDialogState(() => selectedStatus = value);
+                      }
+                    },
+                  ),
+                  DropdownButtonFormField<String>(
+                    value: selectedOwner,
+                    decoration: const InputDecoration(labelText: 'Owner'),
+                    items: _availableRoles.map((role) {
+                      return DropdownMenuItem<String>(
+                        value: role,
+                        child: Text(role),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setDialogState(() => selectedOwner = value);
+                    },
+                  ),
+                  DropdownButtonFormField<String>(
+                    value: selectedVerificationMethod,
+                    decoration:
+                        const InputDecoration(labelText: 'Verification Method'),
+                    items: ['Testing', 'UAT', 'Stakeholder Review']
+                        .map((method) => DropdownMenuItem(
+                              value: method,
+                              child: Text(method),
+                            ))
+                        .toList(),
+                    onChanged: (value) {
+                      setDialogState(() => selectedVerificationMethod = value);
+                    },
+                  ),
+                  TextField(
+                    controller: verificationStepsController,
+                    decoration: const InputDecoration(
+                      labelText: 'Verification Steps (use "." bullets)',
+                      hintText: 'Enter verification steps...',
+                    ),
+                    maxLines: 4,
+                  ),
+                  TextField(
+                    controller: trackingNotesController,
+                    decoration: const InputDecoration(
+                      labelText: 'Tracking Notes (prose, no bullets)',
+                      hintText: 'Enter tracking notes...',
+                    ),
+                    maxLines: 3,
+                  ),
+                ],
               ),
-              if (trailing != null) trailing!,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  final scopeItem = scopeItemController.text.trim();
+                  if (scopeItem.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Scope Item is required.')),
+                    );
+                    return;
+                  }
+                  final newItem = ScopeTrackingItem(
+                    scopeItem: scopeItem,
+                    implementationStatus: selectedStatus,
+                    owner: selectedOwner ?? '',
+                    verificationMethod: selectedVerificationMethod ?? '',
+                    verificationSteps: verificationStepsController.text.trim(),
+                    trackingNotes: trackingNotesController.text.trim(),
+                  );
+                  setState(() {
+                    _items.add(newItem);
+                  });
+                  await _saveItems();
+                  Navigator.of(dialogContext).pop();
+
+                  // Auto-generate verification steps if scope item is provided
+                  if (scopeItem.isNotEmpty &&
+                      verificationStepsController.text.trim().isEmpty) {
+                    _autoGenerateVerificationSteps(newItem);
+                  }
+                },
+                child: const Text('Add'),
+              ),
             ],
           ),
-          const SizedBox(height: 16),
-          child,
-        ],
-      ),
+        );
+      },
     );
   }
-}
 
-class _BaselineItem extends StatelessWidget {
-  const _BaselineItem(
-    this.title,
-    this.status,
-    this.complete, {
-    this.onEdit,
-    this.onDelete,
-  });
+  Future<void> _saveItems() async {
+    final projectId = _projectId;
+    if (projectId == null || projectId.isEmpty) return;
 
-  final String title;
-  final String status;
-  final bool complete;
-  final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
+    try {
+      await ExecutionPhaseService.saveScopeTrackingItems(
+        projectId: projectId,
+        items: _items,
+      );
+    } catch (e) {
+      debugPrint('Error saving scope tracking items: $e');
+    }
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    final color = complete ? const Color(0xFF10B981) : const Color(0xFFF59E0B);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          Icon(complete ? Icons.check_circle : Icons.schedule, size: 16, color: color),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                Text(status, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-              ],
-            ),
-          ),
-          if (onEdit != null)
-            IconButton(
-              tooltip: 'Edit baseline checkpoint',
-              onPressed: onEdit,
-              icon: const Icon(Icons.edit, size: 16, color: Color(0xFF64748B)),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-            ),
-          if (onDelete != null)
-            IconButton(
-              tooltip: 'Delete baseline checkpoint',
-              onPressed: onDelete,
-              icon: const Icon(Icons.delete_outline, size: 16, color: Color(0xFF64748B)),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-            ),
-        ],
-      ),
+  Widget _buildFooterNavigation(BuildContext context) {
+    return LaunchPhaseNavigation(
+      backLabel: 'Back: Agile Development Iterations',
+      nextLabel: 'Next: Stakeholder Alignment',
+      onBack: () => AgileDevelopmentIterationsScreen.open(context),
+      onNext: () => StakeholderAlignmentScreen.open(context),
     );
   }
-}
-
-class _ScopeItem {
-  const _ScopeItem(this.id, this.title, this.status, this.variance, this.owner, this.reviewDate);
-
-  final String id;
-  final String title;
-  final String status;
-  final String variance;
-  final String owner;
-  final String reviewDate;
-}
-
-class _VarianceSignal {
-  const _VarianceSignal(this.title, this.subtitle);
-
-  final String title;
-  final String subtitle;
-}
-
-class _ChangeItem {
-  const _ChangeItem(this.id, this.title, this.status, this.date);
-
-  final String id;
-  final String title;
-  final String status;
-  final String date;
-}
-
-class _BaselineCheckpoint {
-  const _BaselineCheckpoint(this.title, this.status, this.complete);
-
-  final String title;
-  final String status;
-  final bool complete;
 }
 
 class _StatCardData {

@@ -69,10 +69,24 @@ class TeamTrainingAndBuildingScreen extends StatelessWidget {
             Row(
               children: [
                 _yellowButton(
-                  label: 'Add Training Event',
+                  label: 'Add Onboarding',
+                  icon: Icons.checklist_rtl,
+                  onPressed: () async {
+                    final newActivity = TrainingActivity(title: 'New Onboarding', category: 'Onboarding', isMandatory: true);
+                    await ProjectDataHelper.saveAndNavigate(
+                      context: context,
+                      checkpoint: 'team_training',
+                      nextScreenBuilder: () => const TeamTrainingAndBuildingScreen(),
+                      dataUpdater: (d) => d.copyWith(trainingActivities: [...d.trainingActivities, newActivity]),
+                    );
+                  },
+                ),
+                const SizedBox(width: 12),
+                _yellowButton(
+                  label: 'Add Discipline Training',
                   icon: Icons.school_outlined,
                   onPressed: () async {
-                    final newActivity = TrainingActivity(title: 'New Training', category: 'Training');
+                    final newActivity = TrainingActivity(title: 'New Training', category: 'Discipline-Specific');
                     await ProjectDataHelper.saveAndNavigate(
                       context: context,
                       checkpoint: 'team_training',
@@ -94,6 +108,12 @@ class TeamTrainingAndBuildingScreen extends StatelessWidget {
                       dataUpdater: (d) => d.copyWith(trainingActivities: [...d.trainingActivities, newActivity]),
                     );
                   },
+                ),
+                const Spacer(),
+                _yellowButton(
+                  label: 'Onboarding Template',
+                  icon: Icons.auto_awesome,
+                  onPressed: () => _addOnboardingTemplate(context),
                 ),
               ],
             ),
@@ -137,39 +157,44 @@ class TeamTrainingAndBuildingScreen extends StatelessWidget {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Training & Development
+                      // Onboarding
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Training & Development', style: TextStyle(fontWeight: FontWeight.w700)),
+                            const Text('Onboarding', style: TextStyle(fontWeight: FontWeight.w700)),
                             const SizedBox(height: 4),
                             Text(
-                              'Continuous learning and skill development are essential for project success and professional growth.',
+                              'Mandatory steps to integrate new project members.',
                               style: TextStyle(fontSize: 12, color: Colors.grey[700]),
                             ),
                             const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(child: _StatTile(
-                                  icon: Icons.school_outlined, 
-                                  label: 'Total Training', 
-                                  value: ProjectDataHelper.getData(context).trainingActivities
-                                      .where((a) => a.category == 'Training').length.toString(),
-                                )),
-                                const SizedBox(width: 12),
-                                Expanded(child: _StatTile(
-                                  icon: Icons.verified_outlined, 
-                                  label: 'Completed', 
-                                  value: ProjectDataHelper.getData(context).trainingActivities
-                                      .where((a) => a.category == 'Training' && a.status == 'Completed').length.toString(),
-                                )),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
                             _UpcomingTrainingList(
                               activities: ProjectDataHelper.getData(context).trainingActivities
-                                  .where((a) => a.category == 'Training').toList(),
+                                  .where((a) => a.category == 'Onboarding').toList(),
+                              accent: Colors.green,
+                              onEdit: (activity) => _editActivity(context, activity),
+                              onDelete: (activity) => _deleteActivity(context, activity),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Discipline-Specific
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Discipline-Specific', style: TextStyle(fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Technical training tailored to specific roles and tasks.',
+                              style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                            ),
+                            const SizedBox(height: 12),
+                            _UpcomingTrainingList(
+                              activities: ProjectDataHelper.getData(context).trainingActivities
+                                  .where((a) => a.category == 'Discipline-Specific' || (a.category == 'Training' && a.category != 'Onboarding')).toList(),
                               accent: Colors.blue,
                               onEdit: (activity) => _editActivity(context, activity),
                               onDelete: (activity) => _deleteActivity(context, activity),
@@ -186,28 +211,10 @@ class TeamTrainingAndBuildingScreen extends StatelessWidget {
                             const Text('Team Building', style: TextStyle(fontWeight: FontWeight.w700)),
                             const SizedBox(height: 4),
                             Text(
-                              'Team building activities strengthen relationships and improve communication.',
+                              'Strengthen relationships and improve communication.',
                               style: TextStyle(fontSize: 12, color: Colors.grey[700]),
                             ),
                             const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(child: _StatTile(
-                                  icon: Icons.event_available_outlined, 
-                                  label: 'Team Events', 
-                                  value: ProjectDataHelper.getData(context).trainingActivities
-                                      .where((a) => a.category == 'Team Building').length.toString(),
-                                )),
-                                const SizedBox(width: 12),
-                                Expanded(child: _StatTile(
-                                  icon: Icons.check_circle_outline, 
-                                  label: 'Completed', 
-                                  value: ProjectDataHelper.getData(context).trainingActivities
-                                      .where((a) => a.category == 'Team Building' && a.status == 'Completed').length.toString(),
-                                )),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
                             _UpcomingTrainingList(
                               activities: ProjectDataHelper.getData(context).trainingActivities
                                   .where((a) => a.category == 'Team Building').toList(),
@@ -251,59 +258,102 @@ class TeamTrainingAndBuildingScreen extends StatelessWidget {
     final titleController = TextEditingController(text: activity.title);
     final dateController = TextEditingController(text: activity.date);
     final durationController = TextEditingController(text: activity.duration);
+    bool isMandatory = activity.isMandatory;
+    String category = activity.category;
+    if (category == 'Training') category = 'Discipline-Specific'; // Cleanup legacy
 
     showDialog(
       context: context,
-      builder: (context) => PremiumEditDialog(
-        title: 'Edit ${activity.category}',
-        icon: activity.category == 'Training' ? Icons.school_outlined : Icons.favorite_border,
-        onSave: () async {
-          final updated = List<TrainingActivity>.from(ProjectDataHelper.getData(context).trainingActivities);
-          final index = updated.indexWhere((a) => a.id == activity.id);
-          if (index != -1) {
-            updated[index] = activity.copyWith(
-              title: titleController.text.trim(),
-              date: dateController.text.trim(),
-              duration: durationController.text.trim(),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => PremiumEditDialog(
+          title: 'Edit Activity',
+          icon: category == 'Onboarding' ? Icons.checklist_rtl : (category == 'Team Building' ? Icons.favorite_border : Icons.school_outlined),
+          onSave: () async {
+            final updated = List<TrainingActivity>.from(ProjectDataHelper.getData(context).trainingActivities);
+            final index = updated.indexWhere((a) => a.id == activity.id);
+            if (index != -1) {
+              updated[index] = activity.copyWith(
+                title: titleController.text.trim(),
+                date: dateController.text.trim(),
+                duration: durationController.text.trim(),
+                isMandatory: isMandatory,
+                category: category,
+              );
+            }
+            Navigator.pop(context);
+            await ProjectDataHelper.saveAndNavigate(
+              context: context,
+              checkpoint: 'team_training',
+              nextScreenBuilder: () => const TeamTrainingAndBuildingScreen(),
+              dataUpdater: (d) => d.copyWith(trainingActivities: updated),
             );
-          }
-          Navigator.pop(context);
-          await ProjectDataHelper.saveAndNavigate(
-            context: context,
-            checkpoint: 'team_training',
-            nextScreenBuilder: () => const TeamTrainingAndBuildingScreen(),
-            dataUpdater: (d) => d.copyWith(trainingActivities: updated),
-          );
-        },
-        children: [
-          PremiumEditDialog.fieldLabel('Title'),
-          PremiumEditDialog.textField(controller: titleController, hint: 'Activity name...'),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    PremiumEditDialog.fieldLabel('Date'),
-                    PremiumEditDialog.textField(controller: dateController, hint: 'e.g. Q3 2024'),
-                  ],
-                ),
+          },
+          children: [
+            PremiumEditDialog.fieldLabel('Title'),
+            PremiumEditDialog.textField(controller: titleController, hint: 'Activity name...'),
+            const SizedBox(height: 16),
+            PremiumEditDialog.fieldLabel('Category'),
+            DropdownButtonFormField<String>(
+              value: category,
+              items: ['Onboarding', 'Discipline-Specific', 'Team Building'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+              onChanged: (v) => setDialogState(() => category = v!),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.grey[50],
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    PremiumEditDialog.fieldLabel('Duration / Interval'),
-                    PremiumEditDialog.textField(controller: durationController, hint: 'e.g. 2 hours'),
-                  ],
+            ),
+            const SizedBox(height: 16),
+            CheckboxListTile(
+              title: const Text('Mandatory Requirement', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              value: isMandatory,
+              onChanged: (v) => setDialogState(() => isMandatory = v!),
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PremiumEditDialog.fieldLabel('Date'),
+                      PremiumEditDialog.textField(controller: dateController, hint: 'e.g. Q3 2024'),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PremiumEditDialog.fieldLabel('Duration / Interval'),
+                      PremiumEditDialog.textField(controller: durationController, hint: 'e.g. 2 hours'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  void _addOnboardingTemplate(BuildContext context) async {
+    final template = [
+      TrainingActivity(title: 'Welcome Message & Introduction', category: 'Onboarding', isMandatory: true, duration: '30 mins'),
+      TrainingActivity(title: 'Project Overview & Objectives', category: 'Onboarding', isMandatory: true, duration: '1 hour'),
+      TrainingActivity(title: 'Roles & Responsibilities Review', category: 'Onboarding', isMandatory: true, duration: '45 mins'),
+      TrainingActivity(title: 'Meeting Cadence & Communication Channels', category: 'Onboarding', isMandatory: true, duration: '30 mins'),
+    ];
+
+    await ProjectDataHelper.saveAndNavigate(
+      context: context,
+      checkpoint: 'team_training',
+      nextScreenBuilder: () => const TeamTrainingAndBuildingScreen(),
+      dataUpdater: (d) => d.copyWith(trainingActivities: [...d.trainingActivities, ...template]),
     );
   }
 
@@ -521,7 +571,19 @@ class _UpcomingTrainingList extends StatelessWidget {
         children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(activity.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+              Row(
+                children: [
+                  Text(activity.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  if (activity.isMandatory) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(4)),
+                      child: Text('MANDATORY', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.red[700])),
+                    ),
+                  ],
+                ],
+              ),
               const SizedBox(height: 6),
               Row(children: [
                 const Icon(Icons.event_outlined, size: 18, color: Colors.grey),

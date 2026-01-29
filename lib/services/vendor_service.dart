@@ -6,15 +6,20 @@ class VendorModel {
   final String projectId;
   final String name;
   final String category;
+  final String criticality; // High, Medium, Low
   final String sla; // Service Level Agreement percentage
+  final double slaPerformance; // 0.0 to 1.0 for progress bar/star rating
+  final String leadTime; // e.g., "14 Days", "Immediate"
+  final String requiredDeliverables; // SLA Terms with "." bullet format
   final String rating; // A, B, C, etc.
   final String status; // Active, Watch, At risk, Onboard
   final String nextReview; // Date string
+  final String? contractId; // Link to contract
   final double onTimeDelivery; // 0.0 to 1.0
   final double incidentResponse; // 0.0 to 1.0
   final double qualityScore; // 0.0 to 1.0
   final double costAdherence; // 0.0 to 1.0
-  final String? notes;
+  final String? notes; // Prose, no bullets
   final String createdById;
   final String createdByEmail;
   final String createdByName;
@@ -26,10 +31,15 @@ class VendorModel {
     required this.projectId,
     required this.name,
     required this.category,
+    this.criticality = 'Medium',
     required this.sla,
+    this.slaPerformance = 0.0,
+    this.leadTime = '',
+    this.requiredDeliverables = '',
     required this.rating,
     required this.status,
     required this.nextReview,
+    this.contractId,
     required this.onTimeDelivery,
     required this.incidentResponse,
     required this.qualityScore,
@@ -46,10 +56,15 @@ class VendorModel {
         'projectId': projectId,
         'name': name,
         'category': category,
+        'criticality': criticality,
         'sla': sla,
+        'slaPerformance': slaPerformance,
+        'leadTime': leadTime,
+        'requiredDeliverables': requiredDeliverables,
         'rating': rating,
         'status': status,
         'nextReview': nextReview,
+        'contractId': contractId ?? '',
         'onTimeDelivery': onTimeDelivery,
         'incidentResponse': incidentResponse,
         'qualityScore': qualityScore,
@@ -81,10 +96,15 @@ class VendorModel {
       projectId: (data['projectId'] ?? '').toString(),
       name: (data['name'] ?? '').toString(),
       category: (data['category'] ?? '').toString(),
+      criticality: (data['criticality'] ?? 'Medium').toString(),
       sla: (data['sla'] ?? '0%').toString(),
+      slaPerformance: parseDouble(data['slaPerformance']),
+      leadTime: (data['leadTime'] ?? '').toString(),
+      requiredDeliverables: (data['requiredDeliverables'] ?? '').toString(),
       rating: (data['rating'] ?? 'C').toString(),
       status: (data['status'] ?? 'Active').toString(),
       nextReview: (data['nextReview'] ?? '').toString(),
+      contractId: data['contractId']?.toString(),
       onTimeDelivery: parseDouble(data['onTimeDelivery']),
       incidentResponse: parseDouble(data['incidentResponse']),
       qualityScore: parseDouble(data['qualityScore']),
@@ -100,18 +120,27 @@ class VendorModel {
 }
 
 class VendorService {
-  static CollectionReference<Map<String, dynamic>> _vendorsCol(String projectId) =>
-      FirebaseFirestore.instance.collection('projects').doc(projectId).collection('vendors');
+  static CollectionReference<Map<String, dynamic>> _vendorsCol(
+          String projectId) =>
+      FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('vendors');
 
   /// Create a new vendor
   static Future<String> createVendor({
     required String projectId,
     required String name,
     required String category,
+    String criticality = 'Medium',
     required String sla,
+    double slaPerformance = 0.0,
+    String leadTime = '',
+    String requiredDeliverables = '',
     required String rating,
     required String status,
     required String nextReview,
+    String? contractId,
     required double onTimeDelivery,
     required double incidentResponse,
     required double qualityScore,
@@ -124,17 +153,23 @@ class VendorService {
     final user = FirebaseAuth.instance.currentUser;
     final userId = createdById ?? user?.uid ?? '';
     final userEmail = createdByEmail ?? user?.email ?? '';
-    final userName = createdByName ?? user?.displayName ?? userEmail.split('@').first;
+    final userName =
+        createdByName ?? user?.displayName ?? userEmail.split('@').first;
 
     final payload = VendorModel(
       id: '',
       projectId: projectId,
       name: name,
       category: category,
+      criticality: criticality,
       sla: sla,
+      slaPerformance: slaPerformance,
+      leadTime: leadTime,
+      requiredDeliverables: requiredDeliverables,
       rating: rating,
       status: status,
       nextReview: nextReview,
+      contractId: contractId,
       onTimeDelivery: onTimeDelivery,
       incidentResponse: incidentResponse,
       qualityScore: qualityScore,
@@ -157,10 +192,15 @@ class VendorService {
     required String vendorId,
     String? name,
     String? category,
+    String? criticality,
     String? sla,
+    double? slaPerformance,
+    String? leadTime,
+    String? requiredDeliverables,
     String? rating,
     String? status,
     String? nextReview,
+    String? contractId,
     double? onTimeDelivery,
     double? incidentResponse,
     double? qualityScore,
@@ -173,12 +213,19 @@ class VendorService {
 
     if (name != null) updateData['name'] = name;
     if (category != null) updateData['category'] = category;
+    if (criticality != null) updateData['criticality'] = criticality;
     if (sla != null) updateData['sla'] = sla;
+    if (slaPerformance != null) updateData['slaPerformance'] = slaPerformance;
+    if (leadTime != null) updateData['leadTime'] = leadTime;
+    if (requiredDeliverables != null)
+      updateData['requiredDeliverables'] = requiredDeliverables;
     if (rating != null) updateData['rating'] = rating;
     if (status != null) updateData['status'] = status;
     if (nextReview != null) updateData['nextReview'] = nextReview;
+    if (contractId != null) updateData['contractId'] = contractId;
     if (onTimeDelivery != null) updateData['onTimeDelivery'] = onTimeDelivery;
-    if (incidentResponse != null) updateData['incidentResponse'] = incidentResponse;
+    if (incidentResponse != null)
+      updateData['incidentResponse'] = incidentResponse;
     if (qualityScore != null) updateData['qualityScore'] = qualityScore;
     if (costAdherence != null) updateData['costAdherence'] = costAdherence;
     if (notes != null) updateData['notes'] = notes;
@@ -195,7 +242,8 @@ class VendorService {
   }
 
   /// Stream all vendors for a project
-  static Stream<List<VendorModel>> streamVendors(String projectId, {int limit = 50}) {
+  static Stream<List<VendorModel>> streamVendors(String projectId,
+      {int limit = 50}) {
     return _vendorsCol(projectId)
         .orderBy('createdAt', descending: true)
         .limit(limit)

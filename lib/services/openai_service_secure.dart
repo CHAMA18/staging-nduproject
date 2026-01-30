@@ -4238,6 +4238,7 @@ Return JSON in this format:
     required String projectName,
     required String projectObjective,
     required String dimension,
+    String dimensionDescription = '',
     List<ProjectGoal>? goals,
     String contextNotes = '',
   }) async {
@@ -4265,6 +4266,7 @@ Return JSON in this format:
             projectName: projectName,
             projectObjective: projectObjective,
             dimension: dimension,
+            dimensionDescription: dimensionDescription,
             goals: goals,
             contextNotes: contextNotes,
           )
@@ -4311,42 +4313,47 @@ Return JSON in this format:
     required String projectName,
     required String projectObjective,
     required String dimension,
+    String dimensionDescription = '',
     List<ProjectGoal>? goals,
     required String contextNotes,
   }) {
     final goalsText = goals != null && goals.isNotEmpty
-        ? "\nProject Goals:\n${goals.map((g) => "- ${g.name}: ${g.description}").join("\n")}"
+        ? "\nProject Goals (IMPORTANT: Use these as Level 1 items):\n${goals.map((g) => "- ${g.name}: ${g.description}").join("\n")}"
+        : "";
+
+    final dimensionContext = dimensionDescription.isNotEmpty
+        ? "\nDimension Guidance: $dimensionDescription"
         : "";
 
     return '''
 Generate a Work Breakdown Structure (WBS) for:
 Project: $projectName
 Objective: $projectObjective$goalsText
-Segmentation Dimension: $dimension
+Segmentation Dimension: $dimension$dimensionContext
 
-Requirements:
-1. Break the project down into a hierarchical tree structure (2-3 levels deep).
-2. Level 1 should be the major phases or segments based on "$dimension".
-3. Level 2 and below should be specific deliverables or tasks.
-4. Each item MUST have a "title" and "description".
-5. Use "children" for sub-items.
-6. Use "dependencies" as a list of titles of sibling items that must be completed first.
+CRITICAL Requirements:
+1. Level 1 items MUST be named after the Project Goals listed above (if goals are provided).
+2. Level 2 items are specific milestones/deliverables for each goal - these will populate the project milestones.
+3. Each item MUST have a "title" and "description".
+4. Use "children" for sub-items.
+5. Use "dependencies" as a list of titles of sibling items that must be completed first.
+6. Keep the structure 2-3 levels deep.
 
 Return strict JSON only in this format:
 {
   "wbs": [
     {
-      "title": "Phase 1: Civil Works",
-      "description": "Foundation and structural elements",
+      "title": "Goal 1 Name Here",
+      "description": "Goal 1 description",
       "children": [
         {
-          "title": "Excavation",
-          "description": "Earthmoving and site preparation"
+          "title": "Milestone 1.1",
+          "description": "First deliverable for this goal"
         },
         {
-          "title": "Concrete Pouring",
-          "description": "Foundation base construction",
-          "dependencies": ["Excavation"]
+          "title": "Milestone 1.2",
+          "description": "Second deliverable for this goal",
+          "dependencies": ["Milestone 1.1"]
         }
       ]
     }

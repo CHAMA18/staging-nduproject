@@ -64,12 +64,33 @@ class _WorkBreakdownStructureBody extends StatefulWidget {
 
 class _WorkBreakdownStructureBodyState
     extends State<_WorkBreakdownStructureBody> {
-  final List<String> _criteriaOptions = const [
-    'Project Area',
-    'Discipline',
-    'Contract Type',
-    'Sub Scope',
+  static const List<Map<String, String>> _criteriaOptions = [
+    {
+      'value': 'Project Area',
+      'description': 'Segment work by functional zones or geographical regions',
+    },
+    {
+      'value': 'Discipline',
+      'description': 'Segment work by professional specialty or skill set',
+    },
+    {
+      'value': 'Contract Type',
+      'description': 'Segment by contractual boundaries and vendor agreements',
+    },
+    {
+      'value': 'Sub Scope',
+      'description': 'Segment into logical sub-projects or feature modules',
+    },
   ];
+
+  String _getDimensionDescription(String? value) {
+    if (value == null) return '';
+    final option = _criteriaOptions.firstWhere(
+      (o) => o['value'] == value,
+      orElse: () => {'value': '', 'description': ''},
+    );
+    return option['description'] ?? '';
+  }
 
   String? _selectedCriteriaA;
   bool _isAiLoading = false;
@@ -82,7 +103,7 @@ class _WorkBreakdownStructureBodyState
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final projectData = ProjectDataHelper.getData(context);
+      final projectData = ProjectDataHelper.getProvider(context).projectData;
       _selectedCriteriaA = projectData.wbsCriteriaA;
       _syncGoalContext(projectData);
 
@@ -271,7 +292,7 @@ class _WorkBreakdownStructureBodyState
   }
 
   Future<void> _handleGenerateWbsAi() async {
-    final projectData = ProjectDataHelper.getData(context);
+    final projectData = ProjectDataHelper.getProvider(context).projectData;
     final dimension = _selectedCriteriaA;
     if (dimension == null || dimension.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -293,13 +314,63 @@ class _WorkBreakdownStructureBodyState
         projectName: projectData.projectName,
         projectObjective: projectData.projectObjective,
         dimension: dimension,
+        dimensionDescription: _getDimensionDescription(dimension),
         goals: projectData.projectGoals,
       );
 
       if (generatedItems.isNotEmpty) {
         setState(() {
-          _wbsItems.addAll(generatedItems);
+          _wbsItems = generatedItems;
         });
+
+        // Map WBS items to Project Goals & Milestones
+        // Level 1 items (max 3) -> Planning Goals
+        // Level 2 items -> Milestones for that goal
+        final List<PlanningGoal> newPlanningGoals = [];
+        
+        for (int i = 0; i < generatedItems.length && i < 3; i++) {
+          final wbsItem = generatedItems[i];
+          
+          final milestones = wbsItem.children.map((child) {
+            return PlanningMilestone(
+              title: child.title,
+              status: 'In Progress',
+            );
+          }).toList();
+          
+          // Ensure at least one milestone exists
+          if (milestones.isEmpty) {
+            milestones.add(PlanningMilestone(title: 'Initial Milestone'));
+          }
+
+          newPlanningGoals.add(PlanningGoal(
+            goalNumber: i + 1,
+            title: wbsItem.title,
+            description: wbsItem.description,
+            milestones: milestones,
+          ));
+        }
+        
+        // Pad with empty goals if fewer than 3
+        while (newPlanningGoals.length < 3) {
+          newPlanningGoals.add(PlanningGoal(
+            goalNumber: newPlanningGoals.length + 1
+          ));
+        }
+
+        if (mounted) {
+          final provider = ProjectDataHelper.getProvider(context);
+          // Update both WBS and Planning Goals
+          provider.updateWBSData(wbsTree: _wbsItems);
+          provider.updatePlanningData(planningGoals: newPlanningGoals);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('WBS Structure updated and synced to Project Goals'),
+              backgroundColor: Color(0xFF059669),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -352,7 +423,7 @@ class _WorkBreakdownStructureBodyState
       required String? value,
       required ValueChanged<String?> onChanged}) {
     return SizedBox(
-      width: 160,
+      width: 280,
       child: DropdownButtonFormField<String>(
         initialValue: value,
         decoration: InputDecoration(
@@ -373,12 +444,23 @@ class _WorkBreakdownStructureBodyState
             color: _kSecondaryText),
         items: _criteriaOptions
             .map((option) => DropdownMenuItem<String>(
-                  value: option,
-                  child: Text(option,
-                      style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: _kPrimaryText)),
+                  value: option['value'],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(option['value']!,
+                          style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: _kPrimaryText)),
+                      Text(option['description']!,
+                          style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w400,
+                              color: _kSecondaryText)),
+                    ],
+                  ),
                 ))
             .toList(),
         onChanged: onChanged,
@@ -387,6 +469,16 @@ class _WorkBreakdownStructureBodyState
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: _kSecondaryText)),
+        selectedItemBuilder: (context) => _criteriaOptions
+            .map((option) => Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(option['value']!,
+                      style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: _kPrimaryText)),
+                ))
+            .toList(),
       ),
     );
   }

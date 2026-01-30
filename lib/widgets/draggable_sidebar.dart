@@ -139,41 +139,32 @@ class _DraggableSidebarState extends State<DraggableSidebar> {
           onHorizontalDragEnd: (_) => _handleDragEnd(),
           child: MouseRegion(
             cursor: SystemMouseCursors.resizeColumn,
-            child: Container(
-              width: 32,
-              height: double.infinity,
-              alignment: Alignment.center,
+            child: Tooltip(
+              message: collapsed ? 'Expand sidebar' : 'Collapse sidebar',
               child: Container(
-                width: 28,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
+                width: 32,
+                height: double.infinity,
+                alignment: Alignment.center,
+                child: Container(
+                  width: 28,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Icon(
+                      collapsed ? Icons.chevron_right : Icons.chevron_left,
+                      size: 20,
+                      color: const Color(0xFF6B7280),
                     ),
-                  ],
-                ),
-                // Remove the chevron icon per design request; keep a subtle grip
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: List.generate(4, (i) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Container(
-                          width: 8,
-                          height: 2,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.withOpacity(0.35),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                      );
-                    }),
                   ),
                 ),
               ),

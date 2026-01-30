@@ -211,50 +211,235 @@ class _OrganizationStaffingPlanScreenState extends State<OrganizationStaffingPla
   Widget build(BuildContext context) {
     final projectData = ProjectDataHelper.getData(context);
     final requirements = projectData.staffingRequirements;
+    final isMobile = AppBreakpoints.isMobile(context);
+    final horizontalPadding = isMobile ? 20.0 : 32.0;
 
-    final List<_MetricData> metrics = [
-      _MetricData('Total Staff', requirements.fold<int>(0, (sum, r) => sum + r.headcount).toString(), const Color(0xFFF59E0B)),
-      _MetricData('Positions', requirements.length.toString(), const Color(0xFF8B5CF6)),
-    ];
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9FAFC),
+      body: SafeArea(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DraggableSidebar(
+              openWidth: AppBreakpoints.sidebarWidth(context),
+              child: const InitiationLikeSidebar(
+                activeItemLabel: 'Organization Plan - Staffing Plan',
+              ),
+            ),
+            Expanded(
+              child: Stack(
+                children: [
+                  SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header row
+                        Row(
+                          children: [
+                            _CircleIconButton(
+                              icon: Icons.arrow_back_ios_new_rounded,
+                              onTap: () {
+                                final navIdx = PlanningPhaseNavigation.getPageIndex('organization_staffing_plan');
+                                if (navIdx > 0) {
+                                  final prevPage = PlanningPhaseNavigation.pages[navIdx - 1];
+                                  Navigator.pushReplacement(context, MaterialPageRoute(builder: prevPage.builder));
+                                } else {
+                                  Navigator.maybePop(context);
+                                }
+                              },
+                            ),
+                            const SizedBox(width: 12),
+                            _CircleIconButton(
+                              icon: Icons.arrow_forward_ios_rounded,
+                              onTap: () async {
+                                final navIndex = PlanningPhaseNavigation.getPageIndex('organization_staffing_plan');
+                                if (navIndex != -1 && navIndex < PlanningPhaseNavigation.pages.length - 1) {
+                                  final nextPage = PlanningPhaseNavigation.pages[navIndex + 1];
+                                  await ProjectDataHelper.saveAndNavigate(
+                                    context: context,
+                                    checkpoint: 'organization_staffing_plan',
+                                    nextScreenBuilder: () => nextPage.builder(context),
+                                    dataUpdater: (d) => d,
+                                  );
+                                }
+                              },
+                            ),
+                            const SizedBox(width: 16),
+                            const Text(
+                              'Staffing Plan',
+                              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                            ),
+                            const SizedBox(width: 24),
+                            ElevatedButton.icon(
+                              onPressed: () => _showSyncRolesDialog(context),
+                              icon: const Icon(Icons.sync, size: 16),
+                              label: const Text('Sync from Roles'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFFC107),
+                                foregroundColor: const Color(0xFF1F2933),
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            ElevatedButton.icon(
+                              onPressed: () async {
+                                final newReq = StaffingRequirement(title: 'New Position', startDate: 'TBD', endDate: 'TBD');
+                                await ProjectDataHelper.saveAndNavigate(
+                                  context: context,
+                                  checkpoint: 'organization_staffing_plan',
+                                  nextScreenBuilder: () => const OrganizationStaffingPlanScreen(),
+                                  dataUpdater: (d) => d.copyWith(staffingRequirements: [...d.staffingRequirements, newReq]),
+                                );
+                                setState(() {});
+                              },
+                              icon: const Icon(Icons.add, size: 16),
+                              label: const Text('Add Position'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFFC107),
+                                foregroundColor: const Color(0xFF1F2933),
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                            const Spacer(),
+                            const _UserChip(),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Plan resource needs, staffing timeline, and onboarding cadence.',
+                          style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+                        ),
+                        const SizedBox(height: 24),
 
-    final List<_SectionData> sections = requirements.asMap().entries.map<_SectionData>((entry) {
-      final index = entry.key;
-      final req = entry.value;
-      return _SectionData(
-        title: req.title,
-        subtitle: '${req.startDate} to ${req.endDate}',
-        statusRows: [
-          _StatusRowData('Person', req.personName.isEmpty ? 'TBD' : req.personName, Colors.black87),
-          _StatusRowData('Location', req.location.isEmpty ? 'TBD' : req.location, const Color(0xFF3B82F6)),
-          _StatusRowData('Type', '${req.employmentType} / ${req.employeeType}', const Color(0xFF6B7280)),
-          _StatusRowData('Status', req.status, req.status == 'Hired' ? const Color(0xFF10B981) : const Color(0xFFF59E0B)),
-        ],
-        onEdit: () => _editStaffing(context, index, req),
-        onDelete: () => _deleteStaffing(context, index),
-      );
-    }).toList();
+                        // Metrics row
+                        Row(
+                          children: [
+                            _MetricCard(label: 'Total Staff', value: requirements.fold<int>(0, (sum, r) => sum + r.headcount).toString(), accent: const Color(0xFFF59E0B)),
+                            const SizedBox(width: 16),
+                            _MetricCard(label: 'Positions', value: requirements.length.toString(), accent: const Color(0xFF8B5CF6)),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
 
-    return _PlanningSubsectionScreen(
-      config: _PlanningSubsectionConfig(
-        title: 'Staffing Plan',
-        subtitle: 'Plan resource needs, staffing timeline, and onboarding cadence.',
-        noteKey: 'planning_organization_staffing_plan',
-        checkpoint: 'organization_staffing_plan',
-        activeItemLabel: 'Organization Plan - Staffing Plan',
-        metrics: metrics,
-        sections: sections,
+                        // Staffing Table
+                        if (requirements.isEmpty)
+                          const _SectionEmptyState(
+                            title: 'No staffing positions yet',
+                            message: 'Add positions manually or sync from defined roles.',
+                            icon: Icons.group_outlined,
+                          )
+                        else
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: const Color(0xFFE5E7EB)),
+                              boxShadow: const [
+                                BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 6)),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  return SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: ConstrainedBox(
+                                      constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                                      child: DataTable(
+                                        dataRowMinHeight: 64.0,
+                                        dataRowMaxHeight: 64.0,
+                                        headingRowHeight: 56.0,
+                                        headingRowColor: WidgetStateProperty.all(const Color(0xFFF9FAFB)),
+                                        headingTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF374151)),
+                                        dataTextStyle: const TextStyle(fontSize: 13, color: Color(0xFF111827)),
+                                        columnSpacing: 40,
+                                        columns: const [
+                                          DataColumn(label: Text('Position')),
+                                          DataColumn(label: Text('Person')),
+                                          DataColumn(label: Text('Location')),
+                                          DataColumn(label: Text('Type')),
+                                          DataColumn(label: Text('Headcount')),
+                                          DataColumn(label: Text('Status')),
+                                          DataColumn(label: Text('Timeline')),
+                                          DataColumn(label: Text('Actions')),
+                                        ],
+                                        rows: requirements.asMap().entries.map((entry) {
+                                          final index = entry.key;
+                                          final req = entry.value;
+                                          return DataRow(
+                                            cells: [
+                                              DataCell(Text(req.title, style: const TextStyle(fontWeight: FontWeight.w600))),
+                                              DataCell(Text(req.personName.isEmpty ? 'TBD' : req.personName)),
+                                              DataCell(Text(req.location.isEmpty ? 'TBD' : req.location)),
+                                              DataCell(Text('${req.employmentType} / ${req.employeeType}')),
+                                              DataCell(Text(req.headcount.toString())),
+                                              DataCell(
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                                  decoration: BoxDecoration(
+                                                    color: req.status == 'Hired' ? const Color(0xFFD1FAE5) : const Color(0xFFFEF3C7),
+                                                    borderRadius: BorderRadius.circular(999),
+                                                  ),
+                                                  child: Text(
+                                                    req.status.isEmpty ? 'Open' : req.status,
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w700,
+                                                      color: req.status == 'Hired' ? const Color(0xFF059669) : const Color(0xFFD97706),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              DataCell(Text('${req.startDate} → ${req.endDate}')),
+                                              DataCell(
+                                                Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    IconButton(
+                                                      icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF6B7280)),
+                                                      onPressed: () => _editStaffing(context, index, req),
+                                                      padding: EdgeInsets.zero,
+                                                      constraints: const BoxConstraints(),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    IconButton(
+                                                      icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)),
+                                                      onPressed: () => _deleteStaffing(context, index),
+                                                      padding: EdgeInsets.zero,
+                                                      constraints: const BoxConstraints(),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 40),
+                      ],
+                    ),
+                  ),
+                  const Positioned(right: 24, bottom: 24, child: KazAiChatBubble()),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-      onAdd: () async {
-        final newReq = StaffingRequirement(title: 'New Position', startDate: 'TBD', endDate: 'TBD');
-        await ProjectDataHelper.saveAndNavigate(
-          context: context,
-          checkpoint: 'organization_staffing_plan',
-          nextScreenBuilder: () => const OrganizationStaffingPlanScreen(),
-          dataUpdater: (d) => d.copyWith(staffingRequirements: [...d.staffingRequirements, newReq]),
-        );
-        setState(() {});
-      },
-      onAddPredefined: () => _showSyncRolesDialog(context),
     );
   }
 

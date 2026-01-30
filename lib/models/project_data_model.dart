@@ -1659,6 +1659,8 @@ class SolutionAnalysisItem {
   List<String> technologies;
   List<String> infrastructure;
   List<CostItem> costs;
+  String? itConsiderationText;
+  String? infraConsiderationText;
 
   SolutionAnalysisItem({
     this.solutionTitle = '',
@@ -1668,6 +1670,8 @@ class SolutionAnalysisItem {
     List<String>? technologies,
     List<String>? infrastructure,
     List<CostItem>? costs,
+    this.itConsiderationText,
+    this.infraConsiderationText,
   })  : stakeholders = stakeholders ?? [],
         risks = risks ?? [],
         technologies = technologies ?? [],
@@ -1682,6 +1686,8 @@ class SolutionAnalysisItem {
         'technologies': technologies,
         'infrastructure': infrastructure,
         'costs': costs.map((c) => c.toJson()).toList(),
+        'itConsiderationText': itConsiderationText,
+        'infraConsiderationText': infraConsiderationText,
       };
 
   factory SolutionAnalysisItem.fromJson(Map<String, dynamic> json) {
@@ -1695,9 +1701,12 @@ class SolutionAnalysisItem {
       costs:
           (json['costs'] as List?)?.map((c) => CostItem.fromJson(c)).toList() ??
               [],
+      itConsiderationText: json['itConsiderationText'],
+      infraConsiderationText: json['infraConsiderationText'],
     );
   }
 }
+
 
 class CostItem {
   String item;
@@ -3131,17 +3140,138 @@ class QcTechnique {
   }
 }
 
+
+class MetricValue {
+  final String value;
+  final String unit;
+  final String change;
+  final String trendDirection; // "up", "down", "neutral"
+
+  MetricValue({
+    this.value = '',
+    this.unit = '',
+    this.change = '',
+    this.trendDirection = 'neutral',
+  });
+
+  factory MetricValue.empty() => MetricValue();
+
+  Map<String, dynamic> toJson() => {
+        'value': value,
+        'unit': unit,
+        'change': change,
+        'trendDirection': trendDirection,
+      };
+
+  factory MetricValue.fromJson(Map<String, dynamic> json) {
+    return MetricValue(
+      value: json['value']?.toString() ?? '',
+      unit: json['unit']?.toString() ?? '',
+      change: json['change']?.toString() ?? '',
+      trendDirection: json['trendDirection']?.toString() ?? 'neutral',
+    );
+  }
+
+  MetricValue copyWith({
+    String? value,
+    String? unit,
+    String? change,
+    String? trendDirection,
+  }) {
+    return MetricValue(
+      value: value ?? this.value,
+      unit: unit ?? this.unit,
+      change: change ?? this.change,
+      trendDirection: trendDirection ?? this.trendDirection,
+    );
+  }
+}
+
+class QualityMetrics {
+  final MetricValue defectDensity;
+  final MetricValue customerSatisfaction;
+  final MetricValue onTimeDelivery;
+  final List<double> defectTrendData;
+  final List<double> satisfactionTrendData;
+
+  QualityMetrics({
+    required this.defectDensity,
+    required this.customerSatisfaction,
+    required this.onTimeDelivery,
+    required this.defectTrendData,
+    required this.satisfactionTrendData,
+  });
+
+  factory QualityMetrics.empty() {
+    return QualityMetrics(
+      defectDensity: MetricValue.empty(),
+      customerSatisfaction: MetricValue.empty(),
+      onTimeDelivery: MetricValue.empty(),
+      defectTrendData: [],
+      satisfactionTrendData: [],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'defectDensity': defectDensity.toJson(),
+        'customerSatisfaction': customerSatisfaction.toJson(),
+        'onTimeDelivery': onTimeDelivery.toJson(),
+        'defectTrendData': defectTrendData,
+        'satisfactionTrendData': satisfactionTrendData,
+      };
+
+  factory QualityMetrics.fromJson(Map<String, dynamic> json) {
+    return QualityMetrics(
+      defectDensity: json['defectDensity'] != null 
+          ? MetricValue.fromJson(json['defectDensity']) 
+          : MetricValue.empty(),
+      customerSatisfaction: json['customerSatisfaction'] != null 
+          ? MetricValue.fromJson(json['customerSatisfaction']) 
+          : MetricValue.empty(),
+      onTimeDelivery: json['onTimeDelivery'] != null 
+          ? MetricValue.fromJson(json['onTimeDelivery']) 
+          : MetricValue.empty(),
+      defectTrendData: (json['defectTrendData'] as List?)
+              ?.map((e) => double.tryParse(e.toString()) ?? 0.0)
+              .toList() ??
+          [],
+      satisfactionTrendData: (json['satisfactionTrendData'] as List?)
+              ?.map((e) => double.tryParse(e.toString()) ?? 0.0)
+              .toList() ??
+          [],
+    );
+  }
+
+  QualityMetrics copyWith({
+    MetricValue? defectDensity,
+    MetricValue? customerSatisfaction,
+    MetricValue? onTimeDelivery,
+    List<double>? defectTrendData,
+    List<double>? satisfactionTrendData,
+  }) {
+    return QualityMetrics(
+      defectDensity: defectDensity ?? this.defectDensity,
+      customerSatisfaction: customerSatisfaction ?? this.customerSatisfaction,
+      onTimeDelivery: onTimeDelivery ?? this.onTimeDelivery,
+      defectTrendData: defectTrendData ?? this.defectTrendData,
+      satisfactionTrendData: satisfactionTrendData ?? this.satisfactionTrendData,
+    );
+  }
+}
+
 class QualityManagementData {
   final String qualityPlan;
   final List<QualityTarget> targets;
   final List<QaTechnique> qaTechniques;
   final List<QcTechnique> qcTechniques;
+  final QualityMetrics metrics;
 
   QualityManagementData({
     required this.qualityPlan,
     required this.targets,
     required this.qaTechniques,
     required this.qcTechniques,
+    required this.metrics,
   });
 
   factory QualityManagementData.empty() {
@@ -3150,6 +3280,7 @@ class QualityManagementData {
       targets: [],
       qaTechniques: [],
       qcTechniques: [],
+      metrics: QualityMetrics.empty(),
     );
   }
 
@@ -3158,6 +3289,7 @@ class QualityManagementData {
         'targets': targets.map((t) => t.toJson()).toList(),
         'qaTechniques': qaTechniques.map((t) => t.toJson()).toList(),
         'qcTechniques': qcTechniques.map((t) => t.toJson()).toList(),
+        'metrics': metrics.toJson(),
       };
 
   factory QualityManagementData.fromJson(Map<String, dynamic> json) {
@@ -3175,6 +3307,9 @@ class QualityManagementData {
               ?.map((e) => QcTechnique.fromJson(e))
               .toList() ??
           [],
+      metrics: json['metrics'] != null
+          ? QualityMetrics.fromJson(json['metrics'])
+          : QualityMetrics.empty(),
     );
   }
 
@@ -3183,12 +3318,14 @@ class QualityManagementData {
     List<QualityTarget>? targets,
     List<QaTechnique>? qaTechniques,
     List<QcTechnique>? qcTechniques,
+    QualityMetrics? metrics,
   }) {
     return QualityManagementData(
       qualityPlan: qualityPlan ?? this.qualityPlan,
       targets: targets ?? this.targets,
       qaTechniques: qaTechniques ?? this.qaTechniques,
       qcTechniques: qcTechniques ?? this.qcTechniques,
+      metrics: metrics ?? this.metrics,
     );
   }
 }

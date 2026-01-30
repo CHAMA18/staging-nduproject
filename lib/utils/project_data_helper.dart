@@ -498,8 +498,8 @@ class ProjectDataHelper {
   }
 
   /// Get project data from context
-  static ProjectDataModel getData(BuildContext context) {
-    return Provider.of<ProjectDataProvider>(context).projectData;
+  static ProjectDataModel getData(BuildContext context, {bool listen = true}) {
+    return Provider.of<ProjectDataProvider>(context, listen: listen).projectData;
   }
 
   /// Get provider from context

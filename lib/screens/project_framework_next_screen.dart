@@ -38,15 +38,47 @@ class _ProjectFrameworkNextScreenState extends State<ProjectFrameworkNextScreen>
   final List<List<_Milestone>> _goalMilestones = List.generate(3, (_) => [_Milestone()]);
   final List<bool> _isHighPriority = [false, false, false];
   
+  // FocusNodes for auto-save on blur
+  final List<FocusNode> _titleFocusNodes = List.generate(3, (_) => FocusNode());
+  final List<FocusNode> _descFocusNodes = List.generate(3, (_) => FocusNode());
+  final List<FocusNode> _yearFocusNodes = List.generate(3, (_) => FocusNode());
+  
   String _potentialSolution = '';
   String _projectObjective = '';
   String _currentFilter = 'View All';
+
+  /// Saves goal data to provider when focus is lost
+  void _saveData() {
+    if (!mounted) return;
+    
+    final planningGoals = <PlanningGoal>[];
+    for (int i = 0; i < 3; i++) {
+      final milestones = _goalMilestones[i].map((m) => PlanningMilestone(
+        title: m.titleController.text.trim(),
+        deadline: m.deadlineController.text.trim(),
+        status: m.status,
+      )).toList();
+      
+      planningGoals.add(PlanningGoal(
+        goalNumber: i + 1,
+        title: _goalTitleControllers[i].text.trim(),
+        description: _goalDescControllers[i].text.trim(),
+        targetYear: _goalYearControllers[i].text.trim(),
+        isHighPriority: _isHighPriority[i],
+        milestones: milestones,
+      ));
+    }
+    
+    ProjectDataHelper.getProvider(context).updateField(
+      (data) => data.copyWith(planningGoals: planningGoals),
+    );
+  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final projectData = ProjectDataHelper.getData(context);
+      final projectData = ProjectDataHelper.getProvider(context).projectData;
       
       // Populate from project goals
       if (projectData.projectGoals.isNotEmpty) {
@@ -109,6 +141,28 @@ class _ProjectFrameworkNextScreenState extends State<ProjectFrameworkNextScreen>
       // Setup nomenclature listeners
       for (int i = 0; i < 3; i++) {
         _setupGoalNomenclature(i);
+        // Manually trigger for pre-existing data
+        if (_goalDescControllers[i].text.isNotEmpty) {
+          final text = _goalDescControllers[i].text.trim();
+          final words = text.split(RegExp(r'\s+')).take(3);
+          final initials = words.where((w) => w.isNotEmpty).map((w) => w[0].toUpperCase()).join();
+          if (initials.isNotEmpty) {
+            _goalTitleControllers[i].text = 'G${i + 1} $initials';
+          }
+        }
+      }
+
+      // Setup focus listeners for auto-save on blur
+      for (int i = 0; i < 3; i++) {
+        _titleFocusNodes[i].addListener(() {
+          if (!_titleFocusNodes[i].hasFocus) _saveData();
+        });
+        _descFocusNodes[i].addListener(() {
+          if (!_descFocusNodes[i].hasFocus) _saveData();
+        });
+        _yearFocusNodes[i].addListener(() {
+          if (!_yearFocusNodes[i].hasFocus) _saveData();
+        });
       }
 
       setState(() {});
@@ -146,36 +200,7 @@ class _ProjectFrameworkNextScreenState extends State<ProjectFrameworkNextScreen>
     });
   }
 
-  void _copyGoal(int index) {
-    // Find first empty slot
-    int? targetIndex;
-    for (int i = 0; i < 3; i++) {
-      if (i != index && _goalTitleControllers[i].text.isEmpty && _goalDescControllers[i].text.isEmpty) {
-        targetIndex = i;
-        break;
-      }
-    }
 
-    if (targetIndex != null) {
-      setState(() {
-        _goalTitleControllers[targetIndex!].text = _goalTitleControllers[index].text;
-        _goalDescControllers[targetIndex].text = _goalDescControllers[index].text;
-        _goalYearControllers[targetIndex].text = _goalYearControllers[index].text;
-        _isHighPriority[targetIndex] = _isHighPriority[index];
-        _goalMilestones[targetIndex] = _goalMilestones[index].map((m) {
-          final newM = _Milestone();
-          newM.titleController.text = m.titleController.text;
-          newM.deadlineController.text = m.deadlineController.text;
-          newM.status = m.status;
-          return newM;
-        }).toList();
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No empty goal slots available to copy to.')),
-      );
-    }
-  }
 
   void _togglePriority(int index) {
     setState(() {
@@ -199,6 +224,16 @@ class _ProjectFrameworkNextScreenState extends State<ProjectFrameworkNextScreen>
         m.dispose();
       }
     }
+    // Dispose FocusNodes
+    for (var node in _titleFocusNodes) {
+      node.dispose();
+    }
+    for (var node in _descFocusNodes) {
+      node.dispose();
+    }
+    for (var node in _yearFocusNodes) {
+      node.dispose();
+    }
     super.dispose();
   }
 
@@ -214,17 +249,8 @@ class _ProjectFrameworkNextScreenState extends State<ProjectFrameworkNextScreen>
   }
 
   void _navigateToNext() async {
-    if (!_areAllGoalsFilled()) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please fill in all three goals before proceeding.'),
-            backgroundColor: Color(0xFFEF4444),
-          ),
-        );
-      }
-      return;
-    }
+    // Validation removed to match top navigation behavior
+
 
     final planningGoals = List.generate(3, (i) {
       return PlanningGoal(
@@ -298,13 +324,15 @@ class _ProjectFrameworkNextScreenState extends State<ProjectFrameworkNextScreen>
                         });
                       },
                       onClear: _clearGoal,
-                      onCopy: _copyGoal,
                       onTogglePriority: _togglePriority,
                       onDeleteMilestone: (goalIndex, milestoneIndex) {
                         setState(() {
                           _goalMilestones[goalIndex].removeAt(milestoneIndex);
                         });
                       },
+                      titleFocusNodes: _titleFocusNodes,
+                      descFocusNodes: _descFocusNodes,
+                      yearFocusNodes: _yearFocusNodes,
                     ),
                     const SizedBox(height: 48),
                     _MilestonesSection(
@@ -465,9 +493,11 @@ class _GoalsSection extends StatelessWidget {
     required this.currentFilter,
     required this.onAddMilestone,
     required this.onClear,
-    required this.onCopy,
     required this.onTogglePriority,
     required this.onDeleteMilestone,
+    required this.titleFocusNodes,
+    required this.descFocusNodes,
+    required this.yearFocusNodes,
   });
 
   final List<TextEditingController> titleControllers;
@@ -478,9 +508,11 @@ class _GoalsSection extends StatelessWidget {
   final String currentFilter;
   final void Function(int goalIndex) onAddMilestone;
   final void Function(int index) onClear;
-  final void Function(int index) onCopy;
   final void Function(int index) onTogglePriority;
   final void Function(int goalIndex, int milestoneIndex) onDeleteMilestone;
+  final List<FocusNode> titleFocusNodes;
+  final List<FocusNode> descFocusNodes;
+  final List<FocusNode> yearFocusNodes;
 
   @override
   Widget build(BuildContext context) {
@@ -504,18 +536,35 @@ class _GoalsSection extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(right: 18),
-                    child: _GoalCard(
-                      goalNumber: i + 1,
-                      titleController: titleControllers[i],
-                      descController: descControllers[i],
-                      yearController: yearControllers[i],
-                      milestones: goalMilestones[i],
-                      isHighPriority: isHighPriority[i],
-                      onAddMilestone: () => onAddMilestone(i),
-                      onClear: () => onClear(i),
-                      onCopy: () => onCopy(i),
-                      onTogglePriority: () => onTogglePriority(i),
-                      onDeleteMilestone: (mIndex) => onDeleteMilestone(i, mIndex),
+                    child: GestureDetector(
+                      onTap: () => _showExpandedGoalDialog(
+                        context,
+                        goalNumber: i + 1,
+                        titleController: titleControllers[i],
+                        descController: descControllers[i],
+                        yearController: yearControllers[i],
+                        milestones: goalMilestones[i],
+                        isHighPriority: isHighPriority[i],
+                        onAddMilestone: () => onAddMilestone(i),
+                        onClear: () => onClear(i),
+                        onTogglePriority: () => onTogglePriority(i),
+                        onDeleteMilestone: (mIndex) => onDeleteMilestone(i, mIndex),
+                      ),
+                      child: _GoalCard(
+                        goalNumber: i + 1,
+                        titleController: titleControllers[i],
+                        descController: descControllers[i],
+                        yearController: yearControllers[i],
+                        milestones: goalMilestones[i],
+                        isHighPriority: isHighPriority[i],
+                        onAddMilestone: () => onAddMilestone(i),
+                        onClear: () => onClear(i),
+                        onTogglePriority: () => onTogglePriority(i),
+                        onDeleteMilestone: (mIndex) => onDeleteMilestone(i, mIndex),
+                        titleFocusNode: titleFocusNodes[i],
+                        descFocusNode: descFocusNodes[i],
+                        yearFocusNode: yearFocusNodes[i],
+                      ),
                     ),
                   ),
                 )
@@ -526,13 +575,46 @@ class _GoalsSection extends StatelessWidget {
       ],
     );
   }
+
+  void _showExpandedGoalDialog(
+    BuildContext context, {
+    required int goalNumber,
+    required TextEditingController titleController,
+    required TextEditingController descController,
+    required TextEditingController yearController,
+    required List<_Milestone> milestones,
+    required bool isHighPriority,
+    required VoidCallback onAddMilestone,
+    required VoidCallback onClear,
+    required VoidCallback onTogglePriority,
+    required void Function(int) onDeleteMilestone,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) => _GoalCardExpandedDialog(
+        goalNumber: goalNumber,
+        titleController: titleController,
+        descController: descController,
+        yearController: yearController,
+        milestones: milestones,
+        isHighPriority: isHighPriority,
+        onAddMilestone: onAddMilestone,
+        onClear: onClear,
+        onTogglePriority: onTogglePriority,
+        onDeleteMilestone: onDeleteMilestone,
+      ),
+    );
+  }
 }
+
 
 class _Milestone {
   _Milestone() : titleController = TextEditingController(), deadlineController = TextEditingController();
   final TextEditingController titleController;
   final TextEditingController deadlineController;
-  String status = 'In Progress'; // Default status
+  String status = 'Not Started'; // Default status
+  DateTime? deadlineDate; // Stores actual date
 
   void dispose() {
     titleController.dispose();
@@ -540,7 +622,7 @@ class _Milestone {
   }
 }
 
-class _GoalCard extends StatelessWidget {
+class _GoalCard extends StatefulWidget {
   const _GoalCard({
     required this.goalNumber,
     required this.titleController,
@@ -550,9 +632,11 @@ class _GoalCard extends StatelessWidget {
     required this.isHighPriority,
     required this.onAddMilestone,
     required this.onClear,
-    required this.onCopy,
     required this.onTogglePriority,
     required this.onDeleteMilestone,
+    this.titleFocusNode,
+    this.descFocusNode,
+    this.yearFocusNode,
   });
 
   final int goalNumber;
@@ -563,9 +647,103 @@ class _GoalCard extends StatelessWidget {
   final bool isHighPriority;
   final VoidCallback onAddMilestone;
   final VoidCallback onClear;
-  final VoidCallback onCopy;
   final VoidCallback onTogglePriority;
   final void Function(int) onDeleteMilestone;
+  final FocusNode? titleFocusNode;
+  final FocusNode? descFocusNode;
+  final FocusNode? yearFocusNode;
+
+  @override
+  State<_GoalCard> createState() => _GoalCardState();
+}
+
+class _GoalCardState extends State<_GoalCard> {
+  DateTime? _targetCompletionDate;
+
+  @override
+  void initState() {
+    super.initState();
+    // Parse existing date from yearController if available
+    _parseTargetDate();
+  }
+
+  void _parseTargetDate() {
+    final text = widget.yearController.text.trim();
+    if (text.isNotEmpty) {
+      // Try to parse as year first
+      final year = int.tryParse(text);
+      if (year != null && year > 2000 && year < 2100) {
+        _targetCompletionDate = DateTime(year, 12, 31);
+      } else {
+        // Try to parse as full date
+        try {
+          _targetCompletionDate = DateTime.parse(text);
+        } catch (_) {}
+      }
+    }
+  }
+
+  Future<void> _pickTargetDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _targetCompletionDate ?? DateTime.now().add(const Duration(days: 365)),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: _kAccentColor,
+              onPrimary: _kPrimaryText,
+              surface: Colors.white,
+              onSurface: _kPrimaryText,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        _targetCompletionDate = picked;
+        widget.yearController.text = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+      });
+    }
+  }
+
+  Future<void> _pickMilestoneDate(_Milestone milestone) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: milestone.deadlineDate ?? DateTime.now().add(const Duration(days: 90)),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: _kAccentColor,
+              onPrimary: _kPrimaryText,
+              surface: Colors.white,
+              onSurface: _kPrimaryText,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        milestone.deadlineDate = picked;
+        milestone.deadlineController.text = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+      });
+    }
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'Select date';
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -584,9 +762,10 @@ class _GoalCard extends StatelessWidget {
             children: [
               Expanded(
                 child: TextField(
-                  controller: titleController,
+                  controller: widget.titleController,
+                  focusNode: widget.titleFocusNode,
                   decoration: InputDecoration(
-                    hintText: 'Goal $goalNumber Title',
+                    hintText: 'Goal ${widget.goalNumber} Title',
                     border: InputBorder.none,
                     isDense: true,
                     contentPadding: EdgeInsets.zero,
@@ -595,11 +774,11 @@ class _GoalCard extends StatelessWidget {
                 ),
               ),
               GestureDetector(
-                onTap: onTogglePriority,
+                onTap: widget.onTogglePriority,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isHighPriority ? const Color(0xFFFEE2E2) : Colors.grey[100], 
+                    color: widget.isHighPriority ? const Color(0xFFFEE2E2) : Colors.grey[100], 
                     borderRadius: BorderRadius.circular(999)
                   ),
                   child: Text(
@@ -607,19 +786,14 @@ class _GoalCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 11, 
                       fontWeight: FontWeight.w700, 
-                      color: isHighPriority ? const Color(0xFFDC2626) : Colors.grey[500]
+                      color: widget.isHighPriority ? const Color(0xFFDC2626) : Colors.grey[500]
                     )
                   ),
                 ),
               ),
               const SizedBox(width: 12),
               GestureDetector(
-                onTap: onCopy,
-                child: const Icon(Icons.content_copy_outlined, size: 18, color: _kSecondaryText),
-              ),
-              const SizedBox(width: 10),
-              GestureDetector(
-                onTap: onClear,
+                onTap: widget.onClear,
                 child: const Icon(Icons.delete_outline_rounded, size: 18, color: _kSecondaryText),
               ),
             ],
@@ -637,7 +811,8 @@ class _GoalCard extends StatelessWidget {
               border: Border.all(color: _kBorderColor),
             ),
             child: TextField(
-              controller: descController,
+              controller: widget.descController,
+              focusNode: widget.descFocusNode,
               decoration: const InputDecoration(
                 hintText: 'Enter description',
                 border: InputBorder.none,
@@ -650,28 +825,38 @@ class _GoalCard extends StatelessWidget {
           const SizedBox(height: 18),
           const Text('Target Completion', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _kSecondaryText)),
           const SizedBox(height: 8),
-          Container(
-            height: 52,
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.symmetric(horizontal: 18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: _kBorderColor),
-            ),
-            child: TextField(
-              controller: yearController,
-              decoration: const InputDecoration(
-                hintText: 'Year (e.g., 2025)',
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
+          GestureDetector(
+            onTap: _pickTargetDate,
+            child: Container(
+              height: 52,
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: _kBorderColor),
               ),
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _kPrimaryText),
+              child: Row(
+                children: [
+                  const Icon(Icons.calendar_today_outlined, size: 18, color: _kSecondaryText),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _targetCompletionDate != null ? _formatDate(_targetCompletionDate) : 'Select target date',
+                      style: TextStyle(
+                        fontSize: 15, 
+                        fontWeight: FontWeight.w600, 
+                        color: _targetCompletionDate != null ? _kPrimaryText : _kSecondaryText,
+                      ),
+                    ),
+                  ),
+                  const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: _kSecondaryText),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 20),
-          ...milestones.asMap().entries.map((entry) {
+          ...widget.milestones.asMap().entries.map((entry) {
             final index = entry.key;
             final milestone = entry.value;
             return Padding(
@@ -683,20 +868,20 @@ class _GoalCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(22),
                   border: Border.all(color: const Color(0xFFFFE0A3)),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
-                      child: const Icon(Icons.sync_rounded, size: 22, color: Color(0xFFF59E0B)),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          TextField(
+                    Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+                          child: const Icon(Icons.sync_rounded, size: 22, color: Color(0xFFF59E0B)),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: TextField(
                             controller: milestone.titleController,
                             decoration: const InputDecoration(
                               hintText: 'Milestone title',
@@ -706,43 +891,105 @@ class _GoalCard extends StatelessWidget {
                             ),
                             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _kPrimaryText),
                           ),
-                          const SizedBox(height: 4),
-                          TextField(
-                            controller: milestone.deadlineController,
-                            decoration: const InputDecoration(
-                              hintText: 'Deadline (e.g., July 15, 2025)',
-                              border: InputBorder.none,
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                            style: const TextStyle(fontSize: 12, color: _kSecondaryText, fontWeight: FontWeight.w500),
-                          ),
-                        ],
-                      ),
+                        ),
+                        GestureDetector(
+                          onTap: () => widget.onDeleteMilestone(index),
+                          child: const Icon(Icons.close_rounded, size: 18, color: _kSecondaryText),
+                        ),
+                      ],
                     ),
-                    StatefulBuilder(
-                      builder: (context, setState) {
-                        return PopupMenuButton<String>(
-                          initialValue: milestone.status,
-                          onSelected: (val) {
-                            setState(() => milestone.status = val);
-                          },
-                          child: Text(
-                            milestone.status,
-                            style: TextStyle(
-                              fontSize: 12, 
-                              fontWeight: FontWeight.w700, 
-                              color: milestone.status == 'Completed' ? const Color(0xFF10B981) 
-                               : (milestone.status == 'In Progress' ? const Color(0xFFEF4444) : Colors.grey)
-                            )
+                    const SizedBox(height: 12),
+                    // Date picker and status on same row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _pickMilestoneDate(milestone),
+                            child: Container(
+                              height: 36,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFFFFE0A3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.calendar_today_outlined, size: 14, color: _kSecondaryText),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      milestone.deadlineDate != null 
+                                          ? _formatDate(milestone.deadlineDate)
+                                          : 'Select deadline',
+                                      style: TextStyle(
+                                        fontSize: 12, 
+                                        fontWeight: FontWeight.w500, 
+                                        color: milestone.deadlineDate != null ? _kPrimaryText : _kSecondaryText,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(value: 'Not Started', child: Text('Not Started')),
-                            const PopupMenuItem(value: 'In Progress', child: Text('In Progress')),
-                            const PopupMenuItem(value: 'Completed', child: Text('Completed')),
-                          ],
-                        );
-                      }
+                        ),
+                        const SizedBox(width: 12),
+                        // Status dropdown on same row
+                        Container(
+                          height: 36,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFFFFE0A3)),
+                          ),
+                          child: PopupMenuButton<String>(
+                            initialValue: milestone.status,
+                            onSelected: (val) {
+                              setState(() => milestone.status = val);
+                            },
+                            offset: const Offset(0, 36),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: milestone.status == 'Completed' 
+                                        ? const Color(0xFF10B981) 
+                                        : (milestone.status == 'In Progress' 
+                                            ? const Color(0xFFEF4444) 
+                                            : Colors.grey),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  milestone.status,
+                                  style: TextStyle(
+                                    fontSize: 12, 
+                                    fontWeight: FontWeight.w600, 
+                                    color: milestone.status == 'Completed' 
+                                        ? const Color(0xFF10B981) 
+                                        : (milestone.status == 'In Progress' 
+                                            ? const Color(0xFFEF4444) 
+                                            : Colors.grey),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: _kSecondaryText),
+                              ],
+                            ),
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(value: 'Not Started', child: Text('Not Started')),
+                              const PopupMenuItem(value: 'In Progress', child: Text('In Progress')),
+                              const PopupMenuItem(value: 'Completed', child: Text('Completed')),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -754,14 +1001,13 @@ class _GoalCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               GestureDetector(
-                onTap: onAddMilestone,
+                onTap: widget.onAddMilestone,
                 child: const Text('+ Add Milestone', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kAccentColor)),
               ),
               GestureDetector(
-                onTap: onClear, // Originally 'Edit' - change to clear/edit actions if needed. Using Clear as requested.
+                onTap: widget.onClear,
                 child: const Text('Clear', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kPrimaryText)),
               ),
-              // Delete just clears it for now as per functionality
             ],
           ),
         ],
@@ -769,6 +1015,453 @@ class _GoalCard extends StatelessWidget {
     );
   }
 }
+
+
+class _GoalCardExpandedDialog extends StatefulWidget {
+  const _GoalCardExpandedDialog({
+    required this.goalNumber,
+    required this.titleController,
+    required this.descController,
+    required this.yearController,
+    required this.milestones,
+    required this.isHighPriority,
+    required this.onAddMilestone,
+    required this.onClear,
+    required this.onTogglePriority,
+    required this.onDeleteMilestone,
+  });
+
+  final int goalNumber;
+  final TextEditingController titleController;
+  final TextEditingController descController;
+  final TextEditingController yearController;
+  final List<_Milestone> milestones;
+  final bool isHighPriority;
+  final VoidCallback onAddMilestone;
+  final VoidCallback onClear;
+  final VoidCallback onTogglePriority;
+  final void Function(int) onDeleteMilestone;
+
+  @override
+  State<_GoalCardExpandedDialog> createState() => _GoalCardExpandedDialogState();
+}
+
+class _GoalCardExpandedDialogState extends State<_GoalCardExpandedDialog> {
+  DateTime? _targetCompletionDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _parseTargetDate();
+  }
+
+  void _parseTargetDate() {
+    final text = widget.yearController.text.trim();
+    if (text.isNotEmpty) {
+      final year = int.tryParse(text);
+      if (year != null && year > 2000 && year < 2100) {
+        _targetCompletionDate = DateTime(year, 12, 31);
+      } else {
+        try {
+          _targetCompletionDate = DateTime.parse(text);
+        } catch (_) {}
+      }
+    }
+  }
+
+  Future<void> _pickTargetDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _targetCompletionDate ?? DateTime.now().add(const Duration(days: 365)),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: _kAccentColor,
+              onPrimary: _kPrimaryText,
+              surface: Colors.white,
+              onSurface: _kPrimaryText,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        _targetCompletionDate = picked;
+        widget.yearController.text = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+      });
+    }
+  }
+
+  Future<void> _pickMilestoneDate(_Milestone milestone) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: milestone.deadlineDate ?? DateTime.now().add(const Duration(days: 90)),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: _kAccentColor,
+              onPrimary: _kPrimaryText,
+              surface: Colors.white,
+              onSurface: _kPrimaryText,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        milestone.deadlineDate = picked;
+        milestone.deadlineController.text = '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+      });
+    }
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'Select date';
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      backgroundColor: Colors.white,
+      child: Container(
+        width: 650,
+        constraints: const BoxConstraints(maxHeight: 700),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFF7E6),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: widget.titleController,
+                      decoration: InputDecoration(
+                        hintText: 'Goal ${widget.goalNumber} Title',
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: _kPrimaryText),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: widget.onTogglePriority,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: widget.isHighPriority ? const Color(0xFFFEE2E2) : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        'High priority',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: widget.isHighPriority ? const Color(0xFFDC2626) : Colors.grey[500],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded, color: _kSecondaryText),
+                  ),
+                ],
+              ),
+            ),
+            // Body
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Description', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _kSecondaryText)),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9FAFB),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: _kBorderColor),
+                      ),
+                      child: TextField(
+                        controller: widget.descController,
+                        minLines: 4,
+                        maxLines: 6,
+                        decoration: const InputDecoration(
+                          hintText: 'Enter a detailed description of this goal...',
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _kPrimaryText),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text('Target Completion', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _kSecondaryText)),
+                    const SizedBox(height: 10),
+                    GestureDetector(
+                      onTap: _pickTargetDate,
+                      child: Container(
+                        height: 56,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: _kBorderColor),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_today_outlined, size: 20, color: _kSecondaryText),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Text(
+                                _targetCompletionDate != null ? _formatDate(_targetCompletionDate) : 'Select target date',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: _targetCompletionDate != null ? _kPrimaryText : _kSecondaryText,
+                                ),
+                              ),
+                            ),
+                            const Icon(Icons.keyboard_arrow_down_rounded, size: 22, color: _kSecondaryText),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    Row(
+                      children: [
+                        const Text('Milestones', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _kSecondaryText)),
+                        const Spacer(),
+                        GestureDetector(
+                          onTap: () {
+                            widget.onAddMilestone();
+                            setState(() {});
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: _kAccentColor,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.add, size: 16, color: _kPrimaryText),
+                                SizedBox(width: 6),
+                                Text('Add Milestone', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _kPrimaryText)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    ...widget.milestones.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final milestone = entry.value;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 14),
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF7E6),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: const Color(0xFFFFE0A3)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+                                  child: const Icon(Icons.flag_outlined, size: 22, color: Color(0xFFF59E0B)),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: TextField(
+                                    controller: milestone.titleController,
+                                    decoration: const InputDecoration(
+                                      hintText: 'Milestone title',
+                                      border: InputBorder.none,
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.zero,
+                                    ),
+                                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _kPrimaryText),
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () {
+                                    widget.onDeleteMilestone(index);
+                                    setState(() {});
+                                  },
+                                  child: const Icon(Icons.delete_outline_rounded, size: 20, color: _kSecondaryText),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => _pickMilestoneDate(milestone),
+                                    child: Container(
+                                      height: 44,
+                                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: const Color(0xFFFFE0A3)),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.calendar_today_outlined, size: 16, color: _kSecondaryText),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              milestone.deadlineDate != null
+                                                  ? _formatDate(milestone.deadlineDate)
+                                                  : 'Select deadline',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w500,
+                                                color: milestone.deadlineDate != null ? _kPrimaryText : _kSecondaryText,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Container(
+                                  height: 44,
+                                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: const Color(0xFFFFE0A3)),
+                                  ),
+                                  child: PopupMenuButton<String>(
+                                    initialValue: milestone.status,
+                                    onSelected: (val) {
+                                      setState(() => milestone.status = val);
+                                    },
+                                    offset: const Offset(0, 44),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          width: 10,
+                                          height: 10,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: milestone.status == 'Completed'
+                                                ? const Color(0xFF10B981)
+                                                : (milestone.status == 'In Progress'
+                                                    ? const Color(0xFFEF4444)
+                                                    : Colors.grey),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          milestone.status,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: milestone.status == 'Completed'
+                                                ? const Color(0xFF10B981)
+                                                : (milestone.status == 'In Progress'
+                                                    ? const Color(0xFFEF4444)
+                                                    : Colors.grey),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: _kSecondaryText),
+                                      ],
+                                    ),
+                                    itemBuilder: (context) => [
+                                      const PopupMenuItem(value: 'Not Started', child: Text('Not Started')),
+                                      const PopupMenuItem(value: 'In Progress', child: Text('In Progress')),
+                                      const PopupMenuItem(value: 'Completed', child: Text('Completed')),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ),
+            // Footer
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 18),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
+                border: Border(top: BorderSide(color: _kBorderColor.withOpacity(0.5))),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      widget.onClear();
+                      setState(() {});
+                    },
+                    child: const Text('Clear', style: TextStyle(color: _kSecondaryText, fontWeight: FontWeight.w600)),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _kAccentColor,
+                      foregroundColor: _kPrimaryText,
+                      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 0,
+                    ),
+                    child: const Text('Done', style: TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 
 class _MilestonesSection extends StatelessWidget {
   const _MilestonesSection({

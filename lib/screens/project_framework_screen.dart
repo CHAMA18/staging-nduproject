@@ -35,12 +35,16 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
   final List<_Goal> _goals = [_Goal(id: 1, name: 'Goal 1', framework: null)];
   late TextEditingController _projectNameController;
   late TextEditingController _projectObjectiveController;
+  late FocusNode _projectNameFocus;
+  late FocusNode _projectObjectiveFocus;
 
   @override
   void initState() {
     super.initState();
     _projectNameController = TextEditingController();
     _projectObjectiveController = TextEditingController();
+    _projectNameFocus = FocusNode()..addListener(_onFocusChange);
+    _projectObjectiveFocus = FocusNode()..addListener(_onFocusChange);
     
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final projectData = ProjectDataHelper.getData(context);
@@ -60,6 +64,7 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
             framework: goal.framework,
             description: goal.description,
           );
+          _attachGoalListeners(g);
           _goals.add(g);
           _setupGoalNomenclature(g);
         }
@@ -75,12 +80,14 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
               name: planGoal.title,
               description: planGoal.description.isNotEmpty ? planGoal.description : null,
               framework: null);
+            _attachGoalListeners(g);
             _goals.add(g);
             _setupGoalNomenclature(g);
           }
         }
         if (_goals.isEmpty) {
            final g = _Goal(id: 1, name: 'Goal 1', framework: null);
+           _attachGoalListeners(g);
            _goals.add(g);
            _setupGoalNomenclature(g);
         }
@@ -99,10 +106,49 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
     });
   }
 
+  void _onFocusChange() {
+    if (!_projectNameFocus.hasFocus && !_projectObjectiveFocus.hasFocus) {
+       _saveData();
+    }
+  }
+
+  void _attachGoalListeners(_Goal goal) {
+    goal.nameFocus.addListener(() {
+      if (!goal.nameFocus.hasFocus) _saveData();
+    });
+    goal.descFocus.addListener(() {
+      if (!goal.descFocus.hasFocus) _saveData();
+    });
+  }
+
+  Future<void> _saveData() async {
+    if (!mounted) return;
+    
+    final projectGoals = _goals.map((g) => ProjectGoal(
+      name: g.nameController.text.trim(),
+      description: g.controller.text.trim(),
+      framework: g.framework,
+    )).toList();
+
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'project_framework',
+      dataUpdater: (data) => data.copyWith(
+        projectName: _projectNameController.text.trim(),
+        projectObjective: _projectObjectiveController.text.trim(),
+        overallFramework: _selectedOverallFramework,
+        projectGoals: projectGoals,
+      ),
+      showSnackbar: false,
+    );
+  }
+
   @override
   void dispose() {
     _projectNameController.dispose();
     _projectObjectiveController.dispose();
+    _projectNameFocus.dispose();
+    _projectObjectiveFocus.dispose();
     for (var goal in _goals) {
       goal.dispose();
     }
@@ -135,9 +181,11 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
             ? _selectedOverallFramework 
             : null
       );
+      _attachGoalListeners(g);
       _goals.add(g);
       _setupGoalNomenclature(g);
     });
+    _saveData();
   }
 
   void _setupGoalNomenclature(_Goal goal) {
@@ -200,7 +248,7 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
       return;
     }
 
-    final isBasicPlan = ProjectDataHelper.getData(context).isBasicPlanProject;
+    final isBasicPlan = ProjectDataHelper.getProvider(context).projectData.isBasicPlanProject;
     
     // Use SidebarNavigationService to find the next accessible step given the current checkpoint 'project_framework'
     final nextItem = SidebarNavigationService.instance.getNextAccessibleItem('project_framework', isBasicPlan);
@@ -266,6 +314,8 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
                               _MainContentCard(
                                 projectNameController: _projectNameController,
                                 projectObjectiveController: _projectObjectiveController,
+                                projectNameFocus: _projectNameFocus,
+                                projectObjectiveFocus: _projectObjectiveFocus,
                                 selectedOverallFramework: _selectedOverallFramework,
                                 onOverallFrameworkChanged: (value) {
                                   setState(() {
@@ -277,15 +327,20 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
                                       }
                                     }
                                   });
+                                  _saveData();
                                 },
                                 goals: _goals,
                                 onGoalFrameworkChanged: (goalId, framework) {
                                   setState(() {
                                     _goals.firstWhere((g) => g.id == goalId).framework = framework;
                                   });
+                                  _saveData();
                                 },
                                 onAddGoal: _addGoal,
-                                onDeleteGoal: _deleteGoal,
+                                onDeleteGoal: (goalId) {
+                                   _deleteGoal(goalId);
+                                   _saveData();
+                                },
                               ),
                               const SizedBox(height: 24),
                               LaunchPhaseNavigation(
@@ -315,16 +370,22 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
 class _Goal {
   _Goal({required this.id, String? name, this.framework, String? description}) 
       : controller = TextEditingController(text: description),
-        nameController = TextEditingController(text: name);
+        nameController = TextEditingController(text: name),
+        nameFocus = FocusNode(),
+        descFocus = FocusNode();
 
   final int id;
   final TextEditingController nameController;
   final TextEditingController controller;
+  final FocusNode nameFocus;
+  final FocusNode descFocus;
   String? framework;
   
   void dispose() {
     nameController.dispose();
     controller.dispose();
+    nameFocus.dispose();
+    descFocus.dispose();
   }
 }
 
@@ -332,6 +393,8 @@ class _MainContentCard extends StatelessWidget {
   const _MainContentCard({
     required this.projectNameController,
     required this.projectObjectiveController,
+    required this.projectNameFocus,
+    required this.projectObjectiveFocus,
     required this.selectedOverallFramework,
     required this.onOverallFrameworkChanged,
     required this.goals,
@@ -342,6 +405,8 @@ class _MainContentCard extends StatelessWidget {
 
   final TextEditingController projectNameController;
   final TextEditingController projectObjectiveController;
+  final FocusNode projectNameFocus;
+  final FocusNode projectObjectiveFocus;
   final String? selectedOverallFramework;
   final ValueChanged<String?> onOverallFrameworkChanged;
   final List<_Goal> goals;
@@ -376,13 +441,13 @@ class _MainContentCard extends StatelessWidget {
           // Project Name
           const Text('Project Name', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
           const SizedBox(height: 8),
-          _roundedField(controller: projectNameController, hint: 'Enter project name...'),
+          _roundedField(controller: projectNameController, focusNode: projectNameFocus, hint: 'Enter project name...'),
           const SizedBox(height: 24),
 
           // Project Objective
           const Text('Project Objective', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
           const SizedBox(height: 8),
-          _roundedField(controller: projectObjectiveController, hint: 'What is the main objective of this project?', minLines: 4),
+          _roundedField(controller: projectObjectiveController, focusNode: projectObjectiveFocus, hint: 'What is the main objective of this project?', minLines: 4),
           const SizedBox(height: 48),
 
           const Divider(height: 1, color: Color(0xFFE5E7EB)),
@@ -479,9 +544,19 @@ class _GoalsSection extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Project Goals',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Project Goals',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Breakdown the project objective into attainable areas',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF6B7280)),
+                ),
+              ],
             ),
             ElevatedButton(
               onPressed: onAddGoal,
@@ -542,6 +617,7 @@ class _GoalCard extends StatelessWidget {
                 width: 120,
                 child: TextField(
                   controller: goal.nameController,
+                  focusNode: goal.nameFocus,
                   decoration: const InputDecoration(
                     isDense: true,
                     contentPadding: EdgeInsets.zero,
@@ -563,6 +639,7 @@ class _GoalCard extends StatelessWidget {
                   ),
                   child: TextField(
                     controller: goal.controller,
+                    focusNode: goal.descFocus,
                     decoration: const InputDecoration(
                       isDense: true,
                       contentPadding: EdgeInsets.zero,
@@ -645,7 +722,7 @@ class _BottomOverlay extends StatelessWidget {
   }
 }
 
-Widget _roundedField({required TextEditingController controller, required String hint, int minLines = 1}) {
+Widget _roundedField({required TextEditingController controller, FocusNode? focusNode, required String hint, int minLines = 1}) {
   return Container(
     width: double.infinity,
     decoration: BoxDecoration(
@@ -656,6 +733,7 @@ Widget _roundedField({required TextEditingController controller, required String
     padding: const EdgeInsets.all(14),
     child: TextField(
       controller: controller,
+      focusNode: focusNode,
       minLines: minLines,
       maxLines: null,
       decoration: InputDecoration(

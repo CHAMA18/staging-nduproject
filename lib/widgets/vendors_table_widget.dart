@@ -31,125 +31,132 @@ class VendorsTableWidget extends StatelessWidget {
       );
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
-        columnSpacing: 16,
-        headingRowHeight: 40,
-        dataRowMinHeight: 48,
-        dataRowMaxHeight: 72,
-        columns: const [
-          DataColumn(
-            label: Center(
-              child: Text('Vendor Name',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF111827))),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minWidth: constraints.maxWidth > 0 ? constraints.maxWidth : 900,
+              ),
+              child: DataTable(
+                headingRowColor:
+                    WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                columnSpacing: 24,
+                horizontalMargin: 20,
+                headingRowHeight: 56,
+                dataRowMinHeight: 52,
+                dataRowMaxHeight: 80,
+                columns: const [
+                  DataColumn(
+                    label: Text('Vendor Name',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151))),
+                  ),
+                  DataColumn(
+                    label: Text('Category',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151))),
+                  ),
+                  DataColumn(
+                    label: Text('Criticality',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151))),
+                  ),
+                  DataColumn(
+                    label: Text('SLA Performance',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151))),
+                  ),
+                  DataColumn(
+                    label: Text('Lead Time',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151))),
+                  ),
+                  DataColumn(
+                    label: Text('Actions',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151))),
+                  ),
+                ],
+                rows: vendors.map((vendor) {
+                  return DataRow(
+                    cells: [
+                      DataCell(
+                        _VendorRowWidget(
+                          vendor: vendor,
+                          onUpdated: onUpdated,
+                          onDeleted: onDeleted,
+                          column: 'name',
+                        ),
+                      ),
+                      DataCell(
+                        _VendorRowWidget(
+                          vendor: vendor,
+                          onUpdated: onUpdated,
+                          onDeleted: onDeleted,
+                          column: 'category',
+                        ),
+                      ),
+                      DataCell(
+                        _VendorRowWidget(
+                          vendor: vendor,
+                          onUpdated: onUpdated,
+                          onDeleted: onDeleted,
+                          column: 'criticality',
+                        ),
+                      ),
+                      DataCell(
+                        _VendorRowWidget(
+                          vendor: vendor,
+                          onUpdated: onUpdated,
+                          onDeleted: onDeleted,
+                          column: 'sla',
+                        ),
+                      ),
+                      DataCell(
+                        _VendorRowWidget(
+                          vendor: vendor,
+                          onUpdated: onUpdated,
+                          onDeleted: onDeleted,
+                          column: 'leadTime',
+                        ),
+                      ),
+                      DataCell(
+                        _VendorRowWidget(
+                          vendor: vendor,
+                          onUpdated: onUpdated,
+                          onDeleted: onDeleted,
+                          column: 'actions',
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
             ),
           ),
-          DataColumn(
-            label: Center(
-              child: Text('Category',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF111827))),
-            ),
-          ),
-          DataColumn(
-            label: Center(
-              child: Text('Criticality',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF111827))),
-            ),
-          ),
-          DataColumn(
-            label: Center(
-              child: Text('SLA Performance',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF111827))),
-            ),
-          ),
-          DataColumn(
-            label: Center(
-              child: Text('Lead Time',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF111827))),
-            ),
-          ),
-          DataColumn(
-            label: Center(
-              child: Text('Actions',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF111827))),
-            ),
-          ),
-        ],
-        rows: vendors.map((vendor) {
-          return DataRow(
-            cells: [
-              DataCell(
-                _VendorRowWidget(
-                  vendor: vendor,
-                  onUpdated: onUpdated,
-                  onDeleted: onDeleted,
-                  column: 'name',
-                ),
-              ),
-              DataCell(
-                _VendorRowWidget(
-                  vendor: vendor,
-                  onUpdated: onUpdated,
-                  onDeleted: onDeleted,
-                  column: 'category',
-                ),
-              ),
-              DataCell(
-                _VendorRowWidget(
-                  vendor: vendor,
-                  onUpdated: onUpdated,
-                  onDeleted: onDeleted,
-                  column: 'criticality',
-                ),
-              ),
-              DataCell(
-                _VendorRowWidget(
-                  vendor: vendor,
-                  onUpdated: onUpdated,
-                  onDeleted: onDeleted,
-                  column: 'sla',
-                ),
-              ),
-              DataCell(
-                _VendorRowWidget(
-                  vendor: vendor,
-                  onUpdated: onUpdated,
-                  onDeleted: onDeleted,
-                  column: 'leadTime',
-                ),
-              ),
-              DataCell(
-                _VendorRowWidget(
-                  vendor: vendor,
-                  onUpdated: onUpdated,
-                  onDeleted: onDeleted,
-                  column: 'actions',
-                ),
-              ),
-            ],
-          );
-        }).toList(),
-      ),
+        );
+      },
     );
   }
 }

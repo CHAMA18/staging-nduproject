@@ -497,9 +497,14 @@ class ProjectDataHelper {
     return buf.toString().trim();
   }
 
-  /// Get project data from context
-  static ProjectDataModel getData(BuildContext context, {bool listen = true}) {
+  /// Get project data from context (non-listening by default, safe for event handlers)
+  static ProjectDataModel getData(BuildContext context, {bool listen = false}) {
     return Provider.of<ProjectDataProvider>(context, listen: listen).projectData;
+  }
+  
+  /// Get project data with listening (use only in build methods)
+  static ProjectDataModel getDataListening(BuildContext context) {
+    return Provider.of<ProjectDataProvider>(context).projectData;
   }
 
   /// Get provider from context
@@ -612,6 +617,8 @@ class ProjectDataHelper {
     String? personnel,
     String? infrastructure,
     String? contracts,
+    String? milestoneStartDate,
+    String? milestoneEndDate,
     List<RequirementItem>? requirementItems,
     // Added optional list fields so screens can update persisted lists centrally
     List<ScenarioRecord>? scenarioMatrixItems,
@@ -640,6 +647,8 @@ class ProjectDataHelper {
       personnel: personnel ?? current.personnel,
       infrastructure: infrastructure ?? current.infrastructure,
       contracts: contracts ?? current.contracts,
+      milestoneStartDate: milestoneStartDate ?? current.milestoneStartDate,
+      milestoneEndDate: milestoneEndDate ?? current.milestoneEndDate,
       requirementItems: requirementItems ?? current.requirementItems,
       // Preserve or replace list fields
       scenarioMatrixItems: scenarioMatrixItems ?? current.scenarioMatrixItems,

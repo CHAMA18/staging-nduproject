@@ -94,9 +94,9 @@ class _TableHeaderCell extends StatelessWidget {
         label,
         textAlign: TextAlign.center,
         style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: Color(0xFF6B7280),
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF374151),
           letterSpacing: 0.2,
         ),
       ),
@@ -611,12 +611,12 @@ class _ContractRowWidgetState extends State<_ContractRowWidget> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
-                    flex: 2,
+                    flex: 3,
                     child: InlineEditableText(
                       value: _contract.name,
                       hint: 'Vendor/Party Name',
@@ -762,7 +762,7 @@ class _ContractRowWidgetState extends State<_ContractRowWidget> {
                     ),
                   ),
                   Expanded(
-                    flex: 1,
+                    flex: 2,
                     child: Center(
                       child: _isHovering
                           ? Row(

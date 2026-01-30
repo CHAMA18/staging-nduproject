@@ -19,6 +19,7 @@ import 'package:ndu_project/screens/front_end_planning_contract_vendor_quotes_sc
 import 'package:ndu_project/screens/front_end_planning_procurement_screen.dart';
 import 'package:ndu_project/screens/front_end_planning_security.dart';
 import 'package:ndu_project/screens/front_end_planning_allowance.dart';
+import 'package:ndu_project/screens/front_end_planning_milestone.dart';
 import 'package:ndu_project/screens/front_end_planning_summary.dart';
 import 'package:ndu_project/screens/project_charter_screen.dart';
 import 'package:ndu_project/screens/ssher_stacked_screen.dart';
@@ -466,6 +467,10 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
       return;
     }
     _navigateWithCheckpoint('fep_allowance', const FrontEndPlanningAllowanceScreen());
+  }
+
+  void _openMilestone() {
+    _navigateWithCheckpoint('fep_milestone', const FrontEndPlanningMilestoneScreen());
   }
 
   void _showLockedItemMessage(String itemName) {
@@ -1435,7 +1440,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
                     isActive: widget.activeItemLabel == 'Front End Planning',
                   ),
                   if (_frontEndExpanded) ...[
-                    _buildSubSubMenuItem('Summary', onTap: _openSummary, isActive: widget.activeItemLabel == 'Summary'),
+                    _buildSubSubMenuItem('Details', onTap: _openSummary, isActive: widget.activeItemLabel == 'Details'),
                     _buildSubSubMenuItem('Project Requirements', onTap: _openFrontEndRequirements, isActive: widget.activeItemLabel == 'Project Requirements'),
                     _buildSubSubMenuItem('Project Risks', onTap: _openFrontEndRisks, isActive: widget.activeItemLabel == 'Project Risks'),
                     _buildSubSubMenuItem('Project Opportunities', onTap: _openFrontEndOpportunities, isActive: widget.activeItemLabel == 'Project Opportunities'),
@@ -1451,6 +1456,11 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
                       onTap: lockSecurity ? null : _openSecurity,
                       isActive: widget.activeItemLabel == 'Security',
                       isDisabled: lockSecurity,
+                    ),
+                    _buildSubSubMenuItem(
+                      'Milestone',
+                      onTap: _openMilestone,
+                      isActive: widget.activeItemLabel == 'Milestone',
                     ),
                     _buildSubSubMenuItem(
                       'Allowance',

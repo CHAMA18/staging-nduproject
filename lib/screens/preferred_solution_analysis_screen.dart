@@ -970,11 +970,6 @@ class _PreferredSolutionAnalysisScreenState
         const SizedBox(height: 16),
         _buildHeaderRow(),
         const SizedBox(height: 16),
-        if (hasSelection) ...[
-          const SizedBox(height: 16),
-          _buildSelectedSolutionIndicator(projectData),
-        ],
-        const SizedBox(height: 16),
         _buildNotesField(),
         const SizedBox(height: 20),
         if (_isLoading) _buildLoadingBlock(),
@@ -1870,82 +1865,488 @@ class _PreferredSolutionAnalysisScreenState
     final provider = ProjectDataHelper.getProvider(context);
     final projectData = provider.projectData;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final preferredAnalysis = projectData.preferredSolutionAnalysis;
-        final selectedId = preferredAnalysis?.selectedSolutionId;
-        final selectedIndex = preferredAnalysis?.selectedSolutionIndex;
-        final selectedTitle = preferredAnalysis?.selectedSolutionTitle ?? '';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Side-by-side Comparison Table Header
+        const Text(
+          'Side-by-side Solution Comparison',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF111827),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Click on any cell or "View more" to see full details. Click solution header to view complete analysis.',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Comparison Table - fills available width
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final availableWidth = constraints.maxWidth;
+            // Calculate minimum width needed (for horizontal scroll fallback)
+            final minTableWidth = 120.0 + (250.0 * _analysis.length);
+            final needsScroll = minTableWidth > availableWidth;
+            
+            return Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: needsScroll
+                    ? Scrollbar(
+                        thumbVisibility: true,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: SizedBox(
+                            width: minTableWidth,
+                            child: _buildComparisonTableFillWidth(projectData, minTableWidth),
+                          ),
+                        ),
+                      )
+                    : _buildComparisonTableFillWidth(projectData, availableWidth),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
 
-        // Vertical card stack - single column layout
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+  Widget _buildComparisonTable(ProjectDataModel projectData) {
+    // Define the categories for comparison
+    final categories = [
+      'Solution Description',
+      'Risk Identification',
+      'IT Considerations',
+      'Infrastructure Considerations',
+      'Core Stakeholders',
+      'Cost Benefit Analysis Overview',
+    ];
+
+    // Responsive column widths based on screen size
+    final screenWidth = MediaQuery.of(context).size.width;
+    final categoryWidth = screenWidth < 900 ? 120.0 : 150.0;
+    // Calculate minimum width for each solution column
+    final solutionColumnMinWidth = 280.0;
+    final totalMinWidth = categoryWidth + (solutionColumnMinWidth * _analysis.length);
+    
+    return ConstrainedBox(
+      constraints: BoxConstraints(minWidth: totalMinWidth),
+      child: Table(
+        border: TableBorder(
+          horizontalInside: BorderSide(color: Colors.grey.shade200),
+          verticalInside: BorderSide(color: Colors.grey.shade200),
+        ),
+        defaultVerticalAlignment: TableCellVerticalAlignment.top,
+        columnWidths: {
+          0: FixedColumnWidth(categoryWidth),
+          for (int i = 0; i < _analysis.length; i++)
+            i + 1: const FlexColumnWidth(1),
+        },
+        children: [
+          // Header Row
+          TableRow(
+            decoration: const BoxDecoration(
+              color: Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
+              ),
+            ),
+            children: [
+              _buildTableHeaderCell('Category'),
+              for (int i = 0; i < _analysis.length; i++)
+                _buildSolutionHeaderCell(i, _analysis[i].solution.title),
+            ],
+          ),
+          // Data Rows
+          for (final category in categories)
+            TableRow(
+              children: [
+                _buildCategoryCellClickable(category),
+                for (int i = 0; i < _analysis.length; i++)
+                  _buildExpandableComparisonCell(
+                    category: category,
+                    index: i,
+                    analysis: _analysis[i],
+                    projectData: projectData,
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildComparisonTableFillWidth(ProjectDataModel projectData, double tableWidth) {
+    // Define the categories for comparison
+    final categories = [
+      'Solution Description',
+      'Risk Identification',
+      'IT Considerations',
+      'Infrastructure Considerations',
+      'Core Stakeholders',
+      'Cost Benefit Analysis Overview',
+    ];
+
+    // Category column: ~15% of table width (min 100, max 180)
+    final categoryWidth = (tableWidth * 0.15).clamp(100.0, 180.0);
+    // Solution columns split remaining width equally
+    final remainingWidth = tableWidth - categoryWidth;
+    final solutionColumnWidth = remainingWidth / _analysis.length;
+    
+    return Table(
+      border: TableBorder(
+        horizontalInside: BorderSide(color: Colors.grey.shade200),
+        verticalInside: BorderSide(color: Colors.grey.shade200),
+      ),
+      defaultVerticalAlignment: TableCellVerticalAlignment.top,
+      columnWidths: {
+        0: FixedColumnWidth(categoryWidth),
+        for (int i = 0; i < _analysis.length; i++)
+          i + 1: FixedColumnWidth(solutionColumnWidth),
+      },
+      children: [
+        // Header Row
+        TableRow(
+          decoration: const BoxDecoration(
+            color: Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(12),
+              topRight: Radius.circular(12),
+            ),
+          ),
           children: [
-            for (int index = 0; index < _analysis.length; index++)
-              Padding(
-                padding: EdgeInsets.only(
-                  bottom: index < _analysis.length - 1 ? 16 : 0,
+            _buildTableHeaderCell('Category'),
+            for (int i = 0; i < _analysis.length; i++)
+              _buildSolutionHeaderCell(i, _analysis[i].solution.title),
+          ],
+        ),
+        // Data Rows
+        for (final category in categories)
+          TableRow(
+            children: [
+              _buildCategoryCellClickable(category),
+              for (int i = 0; i < _analysis.length; i++)
+                _buildExpandableComparisonCell(
+                  category: category,
+                  index: i,
+                  analysis: _analysis[i],
+                  projectData: projectData,
                 ),
-                child: Builder(
-                  builder: (context) {
-                    final analysis = _analysis[index];
-                    // Get summary data for this solution
-                    final riskCount = analysis.risks.length;
-                    final itCount = analysis.technologies.length;
-                    final infraStatus = analysis.infrastructure.isNotEmpty ? 'Specified' : 'Not specified';
-                    final stakeholderCount = (analysis.internalStakeholders?.length ?? 0) + 
-                                           (analysis.externalStakeholders?.length ?? 0);
-                    final cbaRows = _getCbaCostRowsForSolution(projectData, analysis.solution.title);
-                    final costBenefitSummary = cbaRows.isNotEmpty 
-                        ? '\$${cbaRows.fold<double>(0, (sum, row) => sum + (double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0)).toStringAsFixed(0)}'
-                        : 'Not calculated';
-                    final scopeBrief = analysis.solution.description.length > 100 
-                        ? '${analysis.solution.description.substring(0, 100)}...'
-                        : analysis.solution.description;
-
-                    // Check if selected: Primary by index, fallback to UUID, then title
-                    bool isSelected = false;
-                    if (selectedIndex != null && selectedIndex == index) {
-                      isSelected = true;
-                    } else if (selectedId != null && index < projectData.potentialSolutions.length) {
-                      isSelected = projectData.potentialSolutions[index].id == selectedId;
-                    } else if (selectedTitle.isNotEmpty) {
-                      isSelected = _matchSolutionTitle(selectedTitle, analysis.solution.title);
-                    }
-
-                    return SolutionCard(
-                      solution: PotentialSolution(
-                        id: index < projectData.potentialSolutions.length
-                            ? projectData.potentialSolutions[index].id
-                            : 'temp_$index',
-                        number: index + 1,
-                        title: analysis.solution.title,
-                        description: analysis.solution.description,
+            ],
+          ),
+      ],
+    );
+  }
+  
+  // Track expanded state for each cell
+  final Map<String, bool> _expandedCells = {};
+  
+  String _getCellKey(String category, int index) => '${category}_$index';
+  
+  Widget _buildExpandableComparisonCell({
+    required String category,
+    required int index,
+    required _SolutionAnalysisData analysis,
+    required ProjectDataModel projectData,
+  }) {
+    final fullContent = _getFullCellContent(category, index, analysis, projectData);
+    final cellKey = _getCellKey(category, index);
+    final isExpanded = _expandedCells[cellKey] ?? false;
+    
+    // Check if content needs expansion (more than ~150 chars or 4 lines)
+    final needsExpansion = fullContent.length > 150 || fullContent.split('\n').length > 4;
+    final displayContent = isExpanded || !needsExpansion 
+        ? fullContent 
+        : _truncateContent(fullContent);
+    
+    return InkWell(
+      onTap: () => _navigateToSolutionDetails(index),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        constraints: const BoxConstraints(minHeight: 100),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              displayContent,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF4B5563),
+                height: 1.5,
+              ),
+              softWrap: true,
+            ),
+            if (needsExpansion) ...[
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _expandedCells[cellKey] = !isExpanded;
+                  });
+                },
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      isExpanded ? 'Show less' : 'View more',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF2563EB),
                       ),
-                      riskCount: riskCount,
-                      itConsiderationsCount: itCount,
-                      infrastructureStatus: infraStatus,
-                      costBenefitSummary: costBenefitSummary,
-                      stakeholderCount: stakeholderCount,
-                      scopeBrief: scopeBrief,
-                      onViewDetails: () => _navigateToSolutionDetails(index),
-                      onSelectPreferred: _isSavingPreferredSelection
-                          ? () {}
-                          : () => _confirmSelectPreferredFromCard(
-                                index: index,
-                                title: analysis.solution.title,
-                              ),
-                      isSelected: false, // Don't show visual selection state on cards
-                      isSaving: _isSavingPreferredSelection && _savingPreferredIndex == index,
-                    );
-                  },
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      size: 14,
+                      color: const Color(0xFF2563EB),
+                    ),
+                  ],
                 ),
               ),
+            ],
           ],
-        );
-      },
+        ),
+      ),
     );
+  }
+  
+  String _truncateContent(String content) {
+    final lines = content.split('\n');
+    if (lines.length > 4) {
+      return '${lines.take(4).join('\n')}...';
+    }
+    if (content.length > 150) {
+      return '${content.substring(0, 150)}...';
+    }
+    return content;
+  }
+  
+  String _getFullCellContent(
+    String category,
+    int index,
+    _SolutionAnalysisData analysis,
+    ProjectDataModel projectData,
+  ) {
+    switch (category) {
+      case 'Solution Description':
+        final desc = analysis.solution.description;
+        return desc.isNotEmpty ? desc : 'No description available';
+      
+      case 'Risk Identification':
+        final risks = analysis.risks;
+        if (risks.isEmpty) return 'No risks identified';
+        return risks.map((r) => '• $r').join('\n');
+      
+      case 'IT Considerations':
+        final tech = analysis.technologies;
+        if (tech.isEmpty) return 'No IT considerations';
+        return tech.map((t) => '• $t').join('\n');
+      
+      case 'Infrastructure Considerations':
+        final infra = analysis.infrastructure;
+        if (infra.isEmpty) return 'No infrastructure considerations';
+        return infra.map((i) => '• $i').join('\n');
+      
+      case 'Core Stakeholders':
+        final internal = analysis.internalStakeholders ?? [];
+        final external = analysis.externalStakeholders ?? [];
+        final lines = <String>[];
+        if (internal.isNotEmpty) {
+          lines.add('Internal:');
+          lines.addAll(internal.map((s) => '• $s'));
+        }
+        if (external.isNotEmpty) {
+          if (lines.isNotEmpty) lines.add('');
+          lines.add('External:');
+          lines.addAll(external.map((s) => '• $s'));
+        }
+        return lines.isEmpty ? 'No stakeholders identified' : lines.join('\n');
+      
+      case 'Cost Benefit Analysis Overview':
+        final cbaRows = _getCbaCostRowsForSolution(projectData, analysis.solution.title);
+        if (cbaRows.isEmpty) return 'No cost analysis available';
+        final totalCost = cbaRows.fold<double>(
+          0, 
+          (sum, row) => sum + (double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0)
+        );
+        final items = cbaRows.map((r) => '• ${r.itemName}: ${r.cost}').join('\n');
+        return 'Total: \$${totalCost.toStringAsFixed(0)}\n\n$items';
+      
+      default:
+        return '';
+    }
+  }
+
+  Widget _buildTableHeaderCell(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF374151),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSolutionHeaderCell(int index, String title) {
+    final displayTitle = title.isNotEmpty ? title : 'Solution ${index + 1}';
+    return InkWell(
+      onTap: () => _navigateToSolutionDetails(index),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 24,
+              height: 24,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF59E0B),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  '${index + 1}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                displayTitle,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF111827),
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryCellClickable(String category) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Text(
+        category,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: Color(0xFF374151),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildComparisonCellClickable({
+    required String category,
+    required int index,
+    required _SolutionAnalysisData analysis,
+    required ProjectDataModel projectData,
+  }) {
+    final content = _getCellContent(category, index, analysis, projectData);
+    
+    return InkWell(
+      onTap: () => _navigateToSolutionDetails(index),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        constraints: const BoxConstraints(minHeight: 80),
+        child: SelectableText(
+          content,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Color(0xFF4B5563),
+            height: 1.5,
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getCellContent(
+    String category,
+    int index,
+    _SolutionAnalysisData analysis,
+    ProjectDataModel projectData,
+  ) {
+    switch (category) {
+      case 'Solution Description':
+        final desc = analysis.solution.description;
+        // Show more text on larger screens
+        final maxLength = MediaQuery.of(context).size.width > 1200 ? 300 : 200;
+        return desc.isNotEmpty 
+            ? (desc.length > maxLength ? '${desc.substring(0, maxLength)}...' : desc)
+            : 'No description available';
+      
+      case 'Risk Identification':
+        final risks = analysis.risks;
+        if (risks.isEmpty) return 'No risks identified';
+        return risks.take(3).map((r) => '- $r').join('\n');
+      
+      case 'IT Considerations':
+        final tech = analysis.technologies;
+        if (tech.isEmpty) return 'No IT considerations';
+        return tech.take(3).map((t) => '- $t').join('\n');
+      
+      case 'Infrastructure Considerations':
+        final infra = analysis.infrastructure;
+        if (infra.isEmpty) return 'No infrastructure considerations';
+        return infra.take(3).map((i) => '- $i').join('\n');
+      
+      case 'Core Stakeholders':
+        final internal = analysis.internalStakeholders ?? [];
+        final external = analysis.externalStakeholders ?? [];
+        final allStakeholders = [...internal, ...external];
+        if (allStakeholders.isEmpty) return 'No stakeholders identified';
+        return allStakeholders.take(3).map((s) => '- $s').join('\n');
+      
+      case 'Cost Benefit Analysis Overview':
+        final cbaRows = _getCbaCostRowsForSolution(projectData, analysis.solution.title);
+        if (cbaRows.isEmpty) return 'No cost analysis available';
+        final totalCost = cbaRows.fold<double>(
+          0, 
+          (sum, row) => sum + (double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0)
+        );
+        final items = cbaRows.take(3).map((r) => '- ${r.itemName}: ${r.cost}').join('\n');
+        return 'Project Value: ${projectData.preferredSolutionAnalysis?.solutionAnalyses.isEmpty ?? true ? "Not set" : "\$${totalCost.toStringAsFixed(0)}"}\n$items';
+      
+      default:
+        return '';
+    }
   }
 
   bool _isSavingPreferredSelection = false;
@@ -4247,7 +4648,7 @@ class _ComparisonContent extends StatelessWidget {
   }
 }
 
-class PreferredSolutionDetailsScreen extends StatelessWidget {
+class PreferredSolutionDetailsScreen extends StatefulWidget {
   const PreferredSolutionDetailsScreen({
     super.key,
     required this.analysis,
@@ -4258,6 +4659,15 @@ class PreferredSolutionDetailsScreen extends StatelessWidget {
   final _SolutionAnalysisData analysis;
   final int index;
   final Future<void> Function() onSelectPreferred;
+
+  @override
+  State<PreferredSolutionDetailsScreen> createState() => _PreferredSolutionDetailsScreenState();
+}
+
+class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetailsScreen> {
+  _SolutionAnalysisData get analysis => widget.analysis;
+  int get index => widget.index;
+  Future<void> Function() get onSelectPreferred => widget.onSelectPreferred;
 
   Widget _buildCbaDataTable(List<CostRowData> cbaRows, String currency) {
     if (cbaRows.isEmpty) {
@@ -4426,6 +4836,417 @@ class PreferredSolutionDetailsScreen extends StatelessWidget {
     );
   }
 
+  // Calculate stats for overview card
+  int get _riskCount => analysis.risks.length;
+  int get _techCount => analysis.technologies.length;
+  int get _infraCount => analysis.infrastructure.length;
+  int get _stakeholderCount => 
+      (analysis.internalStakeholders?.length ?? 0) + 
+      (analysis.externalStakeholders?.length ?? 0) +
+      (analysis.stakeholders.length);
+
+  Widget _buildOverviewCard(bool isSelected, List<CostRowData> cbaRows) {
+    final totalCost = cbaRows.fold<double>(
+      0, 
+      (sum, row) => sum + (double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0)
+    );
+    
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFFF59E0B).withValues(alpha: 0.1),
+            const Color(0xFFF59E0B).withValues(alpha: 0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    '${index + 1}',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      analysis.solution.title.isNotEmpty 
+                          ? analysis.solution.title 
+                          : 'Solution ${index + 1}',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                    if (isSelected)
+                      Container(
+                        margin: const EdgeInsets.only(top: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check_circle, size: 14, color: Colors.white),
+                            SizedBox(width: 4),
+                            Text(
+                              'Preferred Solution',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (analysis.solution.description.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              analysis.solution.description.length > 200 
+                  ? '${analysis.solution.description.substring(0, 200)}...'
+                  : analysis.solution.description,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[700],
+                height: 1.5,
+              ),
+            ),
+          ],
+          const SizedBox(height: 20),
+          // Stats row
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _buildStatChip(Icons.warning_amber, '$_riskCount Risks', 
+                  _riskCount > 0 ? const Color(0xFFEF4444) : Colors.grey),
+              _buildStatChip(Icons.computer, '$_techCount Technologies', 
+                  _techCount > 0 ? const Color(0xFF3B82F6) : Colors.grey),
+              _buildStatChip(Icons.construction, '$_infraCount Infrastructure', 
+                  _infraCount > 0 ? const Color(0xFF8B5CF6) : Colors.grey),
+              _buildStatChip(Icons.people, '$_stakeholderCount Stakeholders', 
+                  _stakeholderCount > 0 ? const Color(0xFF10B981) : Colors.grey),
+              if (cbaRows.isNotEmpty)
+                _buildStatChip(Icons.attach_money, '\$${totalCost.toStringAsFixed(0)}', 
+                    const Color(0xFFF59E0B)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatChip(IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEnhancedRisksSection() {
+    if (analysis.risks.isEmpty) {
+      return _buildEmptyState('No risks identified', Icons.check_circle, Colors.green);
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (int i = 0; i < analysis.risks.length; i++)
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF2F2),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFFECACA)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '${i + 1}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    analysis.risks[i],
+                    style: const TextStyle(fontSize: 14, height: 1.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildEnhancedTechSection() {
+    if (analysis.technologies.isEmpty && (analysis.itConsiderationText?.isEmpty ?? true)) {
+      return _buildEmptyState('No IT considerations recorded', Icons.computer, Colors.blue);
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (analysis.itConsiderationText?.isNotEmpty == true) ...[
+          Text(
+            analysis.itConsiderationText!,
+            style: const TextStyle(fontSize: 14, height: 1.5),
+          ),
+          if (analysis.technologies.isNotEmpty) const SizedBox(height: 16),
+        ],
+        if (analysis.technologies.isNotEmpty) ...[
+          const Text(
+            'Technologies & Tools:',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: analysis.technologies.map((tech) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.code, size: 14, color: Color(0xFF3B82F6)),
+                  const SizedBox(width: 6),
+                  Text(
+                    tech,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF1E40AF),
+                    ),
+                  ),
+                ],
+              ),
+            )).toList(),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildEnhancedInfraSection() {
+    if (analysis.infrastructure.isEmpty && (analysis.infraConsiderationText?.isEmpty ?? true)) {
+      return _buildEmptyState('No infrastructure considerations', Icons.construction, Colors.purple);
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (analysis.infraConsiderationText?.isNotEmpty == true) ...[
+          Text(
+            analysis.infraConsiderationText!,
+            style: const TextStyle(fontSize: 14, height: 1.5),
+          ),
+          if (analysis.infrastructure.isNotEmpty) const SizedBox(height: 16),
+        ],
+        if (analysis.infrastructure.isNotEmpty)
+          for (final item in analysis.infrastructure)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F3FF),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFDDD6FE)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle, size: 18, color: Color(0xFF8B5CF6)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(item, style: const TextStyle(fontSize: 14)),
+                  ),
+                ],
+              ),
+            ),
+      ],
+    );
+  }
+
+  Widget _buildEnhancedStakeholdersSection() {
+    final hasStakeholders = analysis.stakeholders.isNotEmpty ||
+        (analysis.internalStakeholders?.isNotEmpty ?? false) ||
+        (analysis.externalStakeholders?.isNotEmpty ?? false);
+    
+    if (!hasStakeholders) {
+      return _buildEmptyState('No stakeholders identified', Icons.people, Colors.teal);
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (analysis.externalStakeholders?.isNotEmpty ?? false) ...[
+          _buildStakeholderGroup('External Stakeholders', analysis.externalStakeholders!, const Color(0xFF059669)),
+          const SizedBox(height: 16),
+        ],
+        if (analysis.internalStakeholders?.isNotEmpty ?? false)
+          _buildStakeholderGroup('Internal Stakeholders', analysis.internalStakeholders!, const Color(0xFF0891B2)),
+        if (analysis.stakeholders.isNotEmpty && 
+            (analysis.externalStakeholders?.isEmpty ?? true) && 
+            (analysis.internalStakeholders?.isEmpty ?? true))
+          _buildStakeholderGroup('Stakeholders', analysis.stakeholders, const Color(0xFF10B981)),
+      ],
+    );
+  }
+
+  Widget _buildStakeholderGroup(String title, List<String> stakeholders, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '(${stakeholders.length})',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: stakeholders.map((s) => Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: color.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.person, size: 16, color: color),
+                const SizedBox(width: 6),
+                Text(
+                  s,
+                  style: TextStyle(fontSize: 13, color: color.withValues(alpha: 0.8)),
+                ),
+              ],
+            ),
+          )).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState(String message, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 24, color: color.withValues(alpha: 0.5)),
+          const SizedBox(width: 12),
+          Text(
+            message,
+            style: TextStyle(
+              fontSize: 14,
+              color: color.withValues(alpha: 0.7),
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = ProjectDataHelper.getProvider(context);
@@ -4453,199 +5274,287 @@ class PreferredSolutionDetailsScreen extends StatelessWidget {
         .toList();
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
-        title: Text('Solution #${index + 1}: ${analysis.solution.title}'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF374151)),
+          onPressed: () => Navigator.of(context).pop(),
+          tooltip: 'Back to Comparison',
+        ),
+        title: Text(
+          'Solution Details',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF111827),
+          ),
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.compare_arrows, size: 18, color: Color(0xFF6B7280)),
+            label: const Text('Back to Comparison', style: TextStyle(color: Color(0xFF6B7280))),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: Column(
         children: [
-          if (isSelected)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              color: const Color(0xFFFFF7CC),
-              child: const Text(
-                'This is your preferred solution.',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // CBA Table at TOP (first section)
-                  SolutionDetailSection(
-                    title: 'Cost Benefit Analysis',
+                  // Overview Card
+                  _buildOverviewCard(isSelected, cbaRows),
+                  
+                  // Cost Benefit Analysis - Always Expanded
+                  _buildSectionCard(
                     icon: Icons.attach_money,
+                    iconColor: const Color(0xFFF59E0B),
+                    title: 'Cost Benefit Analysis',
+                    subtitle: cbaRows.isEmpty ? 'No data available' : '${cbaRows.length} cost items',
                     initiallyExpanded: true,
                     content: cbaRows.isEmpty
-                        ? const Text('No cost analysis available.',
-                            style: TextStyle(fontSize: 14))
+                        ? _buildEmptyState('No cost analysis available', Icons.attach_money, Colors.amber)
                         : _buildCbaDataTable(cbaRows, projectData.costBenefitCurrency),
                   ),
-                  // Risks & IT Considerations
-                  SolutionDetailSection(
+                  
+                  // Risks Identified
+                  _buildSectionCard(
+                    icon: Icons.warning_amber,
+                    iconColor: const Color(0xFFEF4444),
                     title: 'Risks Identified',
-                    icon: Icons.warning,
-                    content: analysis.risks.isEmpty
-                        ? const Text('No risks identified.',
-                            style: TextStyle(fontSize: 14))
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: analysis.risks
-                                .map((risk) => Padding(
-                                      padding:
-                                          const EdgeInsets.only(bottom: 8),
-                                      child: Text('. $risk',
-                                          style: const TextStyle(fontSize: 14)),
-                                    ))
-                                .toList(),
-                          ),
+                    subtitle: analysis.risks.isEmpty ? 'No risks' : '${analysis.risks.length} risks identified',
+                    initiallyExpanded: analysis.risks.isNotEmpty,
+                    content: _buildEnhancedRisksSection(),
                   ),
-                  SolutionDetailSection(
-                    title: 'IT Considerations',
+                  
+                  // IT Considerations
+                  _buildSectionCard(
                     icon: Icons.computer,
-                    content: analysis.itConsiderationText?.isNotEmpty == true
-                        ? Text(analysis.itConsiderationText!,
-                            style: const TextStyle(fontSize: 14, height: 1.5))
-                        : (analysis.technologies.isEmpty
-                            ? const Text('No IT considerations recorded.',
-                                style: TextStyle(fontSize: 14))
-                            : Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: analysis.technologies
-                                    .map((tech) => Padding(
-                                          padding: const EdgeInsets.only(
-                                              bottom: 8),
-                                          child: Text('. $tech',
-                                              style: const TextStyle(
-                                                  fontSize: 14)),
-                                        ))
-                                    .toList(),
-                              )),
+                    iconColor: const Color(0xFF3B82F6),
+                    title: 'IT Considerations',
+                    subtitle: analysis.technologies.isEmpty ? 'No data' : '${analysis.technologies.length} technologies',
+                    initiallyExpanded: analysis.technologies.isNotEmpty,
+                    content: _buildEnhancedTechSection(),
                   ),
-                  SolutionDetailSection(
-                    title: 'Infrastructure Considerations',
+                  
+                  // Infrastructure
+                  _buildSectionCard(
                     icon: Icons.construction,
-                    content: analysis.infraConsiderationText?.isNotEmpty == true
-                        ? Text(analysis.infraConsiderationText!,
-                            style: const TextStyle(fontSize: 14, height: 1.5))
-                        : (analysis.infrastructure.isEmpty
-                            ? const Text(
-                                'No infrastructure considerations recorded.',
-                                style: TextStyle(fontSize: 14))
-                            : Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: analysis.infrastructure
-                                    .map((infra) => Padding(
-                                          padding: const EdgeInsets.only(
-                                              bottom: 8),
-                                          child: Text('. $infra',
-                                              style: const TextStyle(
-                                                  fontSize: 14)),
-                                        ))
-                                    .toList(),
-                              )),
+                    iconColor: const Color(0xFF8B5CF6),
+                    title: 'Infrastructure Considerations',
+                    subtitle: analysis.infrastructure.isEmpty ? 'No data' : '${analysis.infrastructure.length} items',
+                    initiallyExpanded: analysis.infrastructure.isNotEmpty,
+                    content: _buildEnhancedInfraSection(),
                   ),
-                  // Core Stakeholders - External FIRST, Internal SECOND
-                  SolutionDetailSection(
-                    title: 'Core Stakeholders',
+                  
+                  // Stakeholders
+                  _buildSectionCard(
                     icon: Icons.people,
-                    content: (analysis.stakeholders.isEmpty &&
-                            (analysis.internalStakeholders?.isEmpty ?? true) &&
-                            (analysis.externalStakeholders?.isEmpty ?? true))
-                        ? const Text('No stakeholders identified.',
-                            style: TextStyle(fontSize: 14))
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // External Stakeholders FIRST
-                              if (analysis.externalStakeholders?.isNotEmpty ==
-                                  true) ...[
-                                const Text('External Stakeholders:',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 14)),
-                                const SizedBox(height: 6),
-                                for (final s in analysis.externalStakeholders!)
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 8),
-                                    child: Text('. $s',
-                                        style:
-                                            const TextStyle(fontSize: 14)),
-                                  ),
-                                const SizedBox(height: 12),
-                              ],
-                              // Internal Stakeholders SECOND
-                              if (analysis.internalStakeholders?.isNotEmpty ==
-                                  true) ...[
-                                const Text('Internal Stakeholders:',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 14)),
-                                const SizedBox(height: 6),
-                                for (final s in analysis.internalStakeholders!)
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 8),
-                                    child: Text('. $s',
-                                        style:
-                                            const TextStyle(fontSize: 14)),
-                                  ),
-                              ],
-                              // Combined stakeholders (if any) - show last
-                              if (analysis.stakeholders.isNotEmpty &&
-                                  (analysis.externalStakeholders?.isEmpty ?? true) &&
-                                  (analysis.internalStakeholders?.isEmpty ?? true))
-                                for (final s in analysis.stakeholders)
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 8),
-                                    child: Text('. $s',
-                                        style: const TextStyle(fontSize: 14)),
-                                  ),
-                            ],
-                          ),
+                    iconColor: const Color(0xFF10B981),
+                    title: 'Core Stakeholders',
+                    subtitle: _stakeholderCount == 0 ? 'No stakeholders' : '$_stakeholderCount stakeholders',
+                    initiallyExpanded: _stakeholderCount > 0,
+                    content: _buildEnhancedStakeholdersSection(),
                   ),
-                  // Scope Statement - Clean prose, no bullets
-                  SolutionDetailSection(
-                    title: 'Scope Statement',
+                  
+                  // Scope Statement
+                  _buildSectionCard(
                     icon: Icons.description,
-                    content: Text(
-                      analysis.solution.description.isNotEmpty
-                          ? analysis.solution.description
-                          : 'No scope statement provided.',
-                      style: const TextStyle(fontSize: 14, height: 1.5),
-                    ),
+                    iconColor: const Color(0xFF6366F1),
+                    title: 'Scope Statement',
+                    subtitle: analysis.solution.description.isEmpty ? 'Not provided' : 'View full scope',
+                    initiallyExpanded: analysis.solution.description.isNotEmpty,
+                    content: analysis.solution.description.isNotEmpty
+                        ? Text(
+                            analysis.solution.description,
+                            style: const TextStyle(fontSize: 14, height: 1.6),
+                          )
+                        : _buildEmptyState('No scope statement provided', Icons.description, Colors.indigo),
                   ),
+                  
+                  const SizedBox(height: 100), // Space for bottom buttons
                 ],
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(16),
+          // Bottom action buttons
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(top: BorderSide(color: Colors.grey.shade200)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
             child: Row(
               children: [
-                OutlinedButton(
+                OutlinedButton.icon(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: Text(isSelected
-                      ? 'Back to Change Selection'
-                      : 'Back to Selection'),
+                  icon: const Icon(Icons.arrow_back, size: 18),
+                  label: const Text('Back to Selection'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  ),
                 ),
                 const Spacer(),
                 FilledButton.icon(
                   onPressed: () async => onSelectPreferred(),
-                  icon: const Icon(Icons.check),
+                  icon: const Icon(Icons.check_circle),
                   label: Text(isSelected
-                      ? 'Continue to Next Phase'
+                      ? 'Select as Preferred & Continue'
                       : 'Select as Preferred & Continue'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFD700),
-                    foregroundColor: Colors.black,
+                    backgroundColor: const Color(0xFFF59E0B),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                   ),
                 ),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionCard({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required Widget content,
+    bool initiallyExpanded = false,
+  }) {
+    return _ExpandableSectionCard(
+      icon: icon,
+      iconColor: iconColor,
+      title: title,
+      subtitle: subtitle,
+      content: content,
+      initiallyExpanded: initiallyExpanded,
+    );
+  }
+}
+
+class _ExpandableSectionCard extends StatefulWidget {
+  const _ExpandableSectionCard({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.content,
+    this.initiallyExpanded = false,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final Widget content;
+  final bool initiallyExpanded;
+
+  @override
+  State<_ExpandableSectionCard> createState() => _ExpandableSectionCardState();
+}
+
+class _ExpandableSectionCardState extends State<_ExpandableSectionCard> {
+  late bool _isExpanded;
+
+  @override
+  void initState() {
+    super.initState();
+    _isExpanded = widget.initiallyExpanded;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () => setState(() => _isExpanded = !_isExpanded),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: widget.iconColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(widget.icon, size: 22, color: widget.iconColor),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF111827),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          widget.subtitle,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    _isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                    color: Colors.grey[500],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_isExpanded)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Divider(color: Colors.grey.shade200),
+                  const SizedBox(height: 12),
+                  widget.content,
+                ],
+              ),
+            ),
         ],
       ),
     );

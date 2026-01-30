@@ -13,6 +13,11 @@ class ProjectDataModel {
   String charterConstraints;
   String charterProjectManagerName;
   String charterProjectSponsorName;
+  String charterEmail;
+  String charterPhone;
+  String charterOrganizationalUnit;
+  String charterGreenBelt;
+  String charterBlackBelt;
   List<String> tags;
   List<PotentialSolution> potentialSolutions;
   List<SolutionRisk> solutionRisks;
@@ -118,6 +123,11 @@ class ProjectDataModel {
     this.charterConstraints = '',
     this.charterProjectManagerName = '',
     this.charterProjectSponsorName = '',
+    this.charterEmail = '',
+    this.charterPhone = '',
+    this.charterOrganizationalUnit = '',
+    this.charterGreenBelt = '',
+    this.charterBlackBelt = '',
     this.tags = const [],
     List<PotentialSolution>? potentialSolutions,
     List<SolutionRisk>? solutionRisks,
@@ -207,6 +217,11 @@ class ProjectDataModel {
     String? charterConstraints,
     String? charterProjectManagerName,
     String? charterProjectSponsorName,
+    String? charterEmail,
+    String? charterPhone,
+    String? charterOrganizationalUnit,
+    String? charterGreenBelt,
+    String? charterBlackBelt,
     List<String>? tags,
     List<PotentialSolution>? potentialSolutions,
     List<SolutionRisk>? solutionRisks,
@@ -267,6 +282,11 @@ class ProjectDataModel {
           charterProjectManagerName ?? this.charterProjectManagerName,
       charterProjectSponsorName:
           charterProjectSponsorName ?? this.charterProjectSponsorName,
+      charterEmail: charterEmail ?? this.charterEmail,
+      charterPhone: charterPhone ?? this.charterPhone,
+      charterOrganizationalUnit: charterOrganizationalUnit ?? this.charterOrganizationalUnit,
+      charterGreenBelt: charterGreenBelt ?? this.charterGreenBelt,
+      charterBlackBelt: charterBlackBelt ?? this.charterBlackBelt,
       tags: tags ?? this.tags,
       potentialSolutions: potentialSolutions ?? this.potentialSolutions,
       solutionRisks: solutionRisks ?? this.solutionRisks,
@@ -346,6 +366,11 @@ class ProjectDataModel {
       'charterConstraints': charterConstraints,
       'charterProjectManagerName': charterProjectManagerName,
       'charterProjectSponsorName': charterProjectSponsorName,
+      'charterEmail': charterEmail,
+      'charterPhone': charterPhone,
+      'charterOrganizationalUnit': charterOrganizationalUnit,
+      'charterGreenBelt': charterGreenBelt,
+      'charterBlackBelt': charterBlackBelt,
       'tags': tags,
       'potentialSolutions': potentialSolutions.map((s) => s.toJson()).toList(),
       'solutionRisks': solutionRisks.map((r) => r.toJson()).toList(),
@@ -503,6 +528,11 @@ class ProjectDataModel {
           json['charterProjectManagerName']?.toString() ?? '',
       charterProjectSponsorName:
           json['charterProjectSponsorName']?.toString() ?? '',
+      charterEmail: json['charterEmail']?.toString() ?? '',
+      charterPhone: json['charterPhone']?.toString() ?? '',
+      charterOrganizationalUnit: json['charterOrganizationalUnit']?.toString() ?? '',
+      charterGreenBelt: json['charterGreenBelt']?.toString() ?? '',
+      charterBlackBelt: json['charterBlackBelt']?.toString() ?? '',
       tags: (json['tags'] as List?)?.map((e) => e.toString()).toList() ?? [],
       potentialSolutions:
           safeParseList('potentialSolutions', PotentialSolution.fromJson),
@@ -1017,6 +1047,9 @@ class FrontEndPlanningData {
   String personnel;
   String infrastructure;
   String contracts;
+  // Milestone date fields
+  String milestoneStartDate;
+  String milestoneEndDate;
   List<RequirementItem> requirementItems;
   // Persisted scenario matrix items
   List<ScenarioRecord> scenarioMatrixItems;
@@ -1047,6 +1080,8 @@ class FrontEndPlanningData {
     this.personnel = '',
     this.infrastructure = '',
     this.contracts = '',
+    this.milestoneStartDate = '',
+    this.milestoneEndDate = '',
     List<RequirementItem>? requirementItems,
     List<ScenarioRecord>? scenarioMatrixItems,
     List<RoleItem>? securityRoles,
@@ -1084,6 +1119,8 @@ class FrontEndPlanningData {
         'personnel': personnel,
         'infrastructure': infrastructure,
         'contracts': contracts,
+        'milestoneStartDate': milestoneStartDate,
+        'milestoneEndDate': milestoneEndDate,
         'requirementsItems':
             requirementItems.map((item) => item.toJson()).toList(),
         'riskRegisterItems':
@@ -1121,6 +1158,8 @@ class FrontEndPlanningData {
       personnel: json['personnel'] ?? '',
       infrastructure: json['infrastructure'] ?? '',
       contracts: json['contracts'] ?? '',
+      milestoneStartDate: json['milestoneStartDate'] ?? '',
+      milestoneEndDate: json['milestoneEndDate'] ?? '',
       requirementItems: (json['requirementsItems'] as List?)
               ?.map((item) =>
                   RequirementItem.fromJson(item as Map<String, dynamic>))

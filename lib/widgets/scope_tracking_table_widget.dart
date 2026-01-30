@@ -35,128 +35,141 @@ class ScopeTrackingTableWidget extends StatelessWidget {
       );
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
-        columnSpacing: 16,
-        headingRowHeight: 40,
-        dataRowMinHeight: 48,
-        dataRowMaxHeight: 120,
-        columns: const [
-          DataColumn(
-            label: Center(
-              child: Text('Scope Item/Deliverable',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF111827))),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minWidth:
+                    constraints.maxWidth > 0 ? constraints.maxWidth : 1000,
+              ),
+              child: DataTable(
+                headingRowColor:
+                    WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                columnSpacing: 20,
+                horizontalMargin: 16,
+                headingRowHeight: 56,
+                dataRowMinHeight: 52,
+                dataRowMaxHeight: 120,
+                columns: const [
+                  DataColumn(
+                    label: Text('Scope Item/Deliverable',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151))),
+                  ),
+                  DataColumn(
+                    label: Text('Status',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151))),
+                  ),
+                  DataColumn(
+                    label: Text('Owner',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151))),
+                  ),
+                  DataColumn(
+                    label: Text('Verification',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151))),
+                  ),
+                  DataColumn(
+                    label: Text('Verification Steps',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151))),
+                  ),
+                  DataColumn(
+                    label: Text('Tracking Notes',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151))),
+                  ),
+                  DataColumn(
+                    label: Text('Actions',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151))),
+                  ),
+                ],
+                rows: items.map((item) {
+                  return DataRow(
+                    cells: [
+                      DataCell(_ScopeTrackingRowWidget(
+                        item: item,
+                        column: _ScopeTrackingColumn.scopeItem,
+                        availableRoles: availableRoles,
+                        onUpdated: onUpdated,
+                        onDeleted: onDeleted,
+                      )),
+                      DataCell(_ScopeTrackingRowWidget(
+                        item: item,
+                        column: _ScopeTrackingColumn.implementationStatus,
+                        availableRoles: availableRoles,
+                        onUpdated: onUpdated,
+                        onDeleted: onDeleted,
+                      )),
+                      DataCell(_ScopeTrackingRowWidget(
+                        item: item,
+                        column: _ScopeTrackingColumn.owner,
+                        availableRoles: availableRoles,
+                        onUpdated: onUpdated,
+                        onDeleted: onDeleted,
+                      )),
+                      DataCell(_ScopeTrackingRowWidget(
+                        item: item,
+                        column: _ScopeTrackingColumn.verificationMethod,
+                        availableRoles: availableRoles,
+                        onUpdated: onUpdated,
+                        onDeleted: onDeleted,
+                      )),
+                      DataCell(_ScopeTrackingRowWidget(
+                        item: item,
+                        column: _ScopeTrackingColumn.verificationSteps,
+                        availableRoles: availableRoles,
+                        onUpdated: onUpdated,
+                        onDeleted: onDeleted,
+                      )),
+                      DataCell(_ScopeTrackingRowWidget(
+                        item: item,
+                        column: _ScopeTrackingColumn.trackingNotes,
+                        availableRoles: availableRoles,
+                        onUpdated: onUpdated,
+                        onDeleted: onDeleted,
+                      )),
+                      DataCell(_ScopeTrackingRowWidget(
+                        item: item,
+                        column: _ScopeTrackingColumn.actions,
+                        availableRoles: availableRoles,
+                        onUpdated: onUpdated,
+                        onDeleted: onDeleted,
+                      )),
+                    ],
+                  );
+                }).toList(),
+              ),
             ),
           ),
-          DataColumn(
-            label: Center(
-              child: Text('Implementation Status',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF111827))),
-            ),
-          ),
-          DataColumn(
-            label: Center(
-              child: Text('Owner',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF111827))),
-            ),
-          ),
-          DataColumn(
-            label: Center(
-              child: Text('Verification Method',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF111827))),
-            ),
-          ),
-          DataColumn(
-            label: Center(
-              child: Text('Verification Steps',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF111827))),
-            ),
-          ),
-          DataColumn(
-            label: Center(
-              child: Text('Tracking Notes',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF111827))),
-            ),
-          ),
-          DataColumn(
-            label: Center(
-              child: Text('Actions',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF111827))),
-            ),
-          ),
-        ],
-        rows: items.map((item) {
-          return DataRow(
-            cells: [
-              DataCell(_ScopeTrackingRowWidget(
-                item: item,
-                column: _ScopeTrackingColumn.scopeItem,
-                availableRoles: availableRoles,
-                onUpdated: onUpdated,
-                onDeleted: onDeleted,
-              )),
-              DataCell(_ScopeTrackingRowWidget(
-                item: item,
-                column: _ScopeTrackingColumn.implementationStatus,
-                availableRoles: availableRoles,
-                onUpdated: onUpdated,
-                onDeleted: onDeleted,
-              )),
-              DataCell(_ScopeTrackingRowWidget(
-                item: item,
-                column: _ScopeTrackingColumn.owner,
-                availableRoles: availableRoles,
-                onUpdated: onUpdated,
-                onDeleted: onDeleted,
-              )),
-              DataCell(_ScopeTrackingRowWidget(
-                item: item,
-                column: _ScopeTrackingColumn.verificationMethod,
-                availableRoles: availableRoles,
-                onUpdated: onUpdated,
-                onDeleted: onDeleted,
-              )),
-              DataCell(_ScopeTrackingRowWidget(
-                item: item,
-                column: _ScopeTrackingColumn.trackingNotes,
-                availableRoles: availableRoles,
-                onUpdated: onUpdated,
-                onDeleted: onDeleted,
-              )),
-              DataCell(_ScopeTrackingRowWidget(
-                item: item,
-                column: _ScopeTrackingColumn.actions,
-                availableRoles: availableRoles,
-                onUpdated: onUpdated,
-                onDeleted: onDeleted,
-              )),
-            ],
-          );
-        }).toList(),
-      ),
+        );
+      },
     );
   }
 }

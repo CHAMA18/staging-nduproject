@@ -255,9 +255,9 @@ class _TeamMeetingsResourceGridState extends State<TeamMeetingsResourceGrid> {
       children: [
         // Table Header
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           decoration: const BoxDecoration(
-            color: Color(0xFFF3F4F6),
+            color: Color(0xFFF8FAFC),
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(12),
               topRight: Radius.circular(12),
@@ -266,11 +266,11 @@ class _TeamMeetingsResourceGridState extends State<TeamMeetingsResourceGrid> {
           child: Row(
             children: [
               _TableHeaderCell('Meeting Type', flex: 2),
-              _TableHeaderCell('Frequency', flex: 1),
-              _TableHeaderCell('Key Participants', flex: 2),
-              _TableHeaderCell('Duration (Hrs)', flex: 1),
-              _TableHeaderCell('Meeting Objective', flex: 3),
-              _TableHeaderCell('Action', flex: 1),
+              _TableHeaderCell('Frequency', flex: 2),
+              _TableHeaderCell('Key Participants', flex: 3),
+              _TableHeaderCell('Duration', flex: 1),
+              _TableHeaderCell('Meeting Objective', flex: 4),
+              _TableHeaderCell('Actions', flex: 1),
             ],
           ),
         ),
@@ -374,9 +374,9 @@ class _TableHeaderCell extends StatelessWidget {
         label,
         textAlign: TextAlign.center,
         style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: Color(0xFF6B7280),
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF374151),
           letterSpacing: 0.2,
         ),
       ),
@@ -738,9 +738,9 @@ class _MeetingRowWidgetState extends State<_MeetingRowWidget> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
                     flex: 2,
@@ -762,7 +762,7 @@ class _MeetingRowWidgetState extends State<_MeetingRowWidget> {
                     ),
                   ),
                   Expanded(
-                    flex: 1,
+                    flex: 2,
                     child: _DropdownCell(
                       value: _meeting.frequency,
                       items: const ['Daily', 'Weekly', 'Bi-Weekly', 'Monthly'],
@@ -772,7 +772,7 @@ class _MeetingRowWidgetState extends State<_MeetingRowWidget> {
                     ),
                   ),
                   Expanded(
-                    flex: 2,
+                    flex: 3,
                     child: _MultiSelectCell(
                       selectedRoles: _meeting.keyParticipants,
                       availableRoles: widget.availableRoles,
@@ -790,7 +790,7 @@ class _MeetingRowWidgetState extends State<_MeetingRowWidget> {
                     ),
                   ),
                   Expanded(
-                    flex: 3,
+                    flex: 4,
                     child: _ObjectiveCell(
                       value: _meeting.meetingObjective,
                       hint: 'Meeting objective...',

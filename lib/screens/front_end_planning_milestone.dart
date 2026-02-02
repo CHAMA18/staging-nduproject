@@ -257,27 +257,44 @@ Generate milestones that cover the typical project lifecycle phases.''';
           
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Generated ${generatedMilestones.length} milestones'),
+              content: Text('Generated ${generatedMilestones.length} milestones successfully'),
               backgroundColor: const Color(0xFF10B981),
             ),
           );
+        } else {
+          // Fallback to defaults if parsing failed
+          _useDefaultMilestones();
         }
+      } else {
+        // Fallback if response is empty
+        _useDefaultMilestones();
       }
     } catch (e) {
-      debugPrint('Error generating milestones: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to generate milestones: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      // CRITICAL: Defensive error handling - fallback to defaults, never show error to user
+      debugPrint('AI milestone generation failed: $e');
+      _useDefaultMilestones();
     } finally {
       if (mounted) {
         setState(() => _isGenerating = false);
       }
     }
+  }
+
+  /// Fallback to default milestones when AI generation fails
+  void _useDefaultMilestones() {
+    if (!mounted) return;
+    setState(() {
+      _milestones = getDefaultMilestones();
+    });
+    _syncToProvider();
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Using default milestones - you can edit them as needed'),
+        backgroundColor: Color(0xFF3B82F6),
+        duration: Duration(seconds: 3),
+      ),
+    );
   }
 
   List<Milestone> _parseMilestonesFromResponse(String response) {
@@ -363,39 +380,39 @@ Consider typical project timelines and ensure end date is after start date.''';
 
       if (mounted && response.isNotEmpty) {
         // Parse dates from response
+        bool foundStart = false;
+        bool foundEnd = false;
         final lines = response.split('\n');
+        
         for (final line in lines) {
           if (line.toUpperCase().contains('START')) {
             final dateMatch = RegExp(r'[A-Za-z]{3}\s+\d{1,2},\s+\d{4}').firstMatch(line);
             if (dateMatch != null) {
               setState(() => _startDateStr = dateMatch.group(0)!);
+              foundStart = true;
             }
           } else if (line.toUpperCase().contains('END')) {
             final dateMatch = RegExp(r'[A-Za-z]{3}\s+\d{1,2},\s+\d{4}').firstMatch(line);
             if (dateMatch != null) {
               setState(() => _endDateStr = dateMatch.group(0)!);
+              foundEnd = true;
             }
           }
         }
-        _syncToProvider();
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Project dates generated'),
-            backgroundColor: Color(0xFF10B981),
-          ),
-        );
+        if (foundStart || foundEnd) {
+          _syncToProvider();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Project dates generated'),
+              backgroundColor: Color(0xFF10B981),
+            ),
+          );
+        }
       }
     } catch (e) {
-      debugPrint('Error generating dates: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to generate dates: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      // DEFENSIVE: Silent failure - dates are optional, no error to user
+      debugPrint('AI date generation failed (non-critical): $e');
     } finally {
       if (mounted) {
         setState(() => _isGenerating = false);
@@ -448,7 +465,7 @@ Consider typical project timelines and ensure end date is after start date.''';
               const SizedBox(width: 12),
               const Expanded(
                 child: Text(
-                  'Project Milestones',
+                  'Estimated Project Timeline',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
@@ -460,10 +477,11 @@ Consider typical project timelines and ensure end date is after start date.''';
           ),
           const SizedBox(height: 8),
           Text(
-            'Define your project timeline with key milestones to track progress.',
+            'Key milestones represent the minimum requirements that must be completed for the project to operate successfully.',
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey[600],
+              fontStyle: FontStyle.italic,
             ),
           ),
           const SizedBox(height: 32),
@@ -478,7 +496,7 @@ Consider typical project timelines and ensure end date is after start date.''';
               border: Border.all(color: const Color(0xFFE5E7EB)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  color: Colors.black.withValues(alpha: 0.04),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -579,7 +597,7 @@ Consider typical project timelines and ensure end date is after start date.''';
               border: Border.all(color: const Color(0xFFE5E7EB)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  color: Colors.black.withValues(alpha: 0.04),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -737,7 +755,7 @@ Consider typical project timelines and ensure end date is after start date.''';
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
+                color: iconColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, size: 22, color: iconColor),

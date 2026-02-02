@@ -268,9 +268,11 @@ class _ContentEditDialogState extends State<_ContentEditDialog> {
   Future<void> _saveContent() async {
     final newValue = _controller.text.trim();
     if (newValue.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Content cannot be empty')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Content cannot be empty')),
+        );
+      }
       return;
     }
 

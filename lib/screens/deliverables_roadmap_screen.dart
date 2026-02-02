@@ -130,7 +130,7 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
         boxShadow: [
           if (background == Colors.white)
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -157,7 +157,7 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
         const SizedBox(width: 10),
         _buildArrowButton(
           icon: Icons.autorenew,
-          background: _kAccent.withOpacity(0.2),
+          background: _kAccent.withValues(alpha: 0.2),
           borderColor: _kAccent,
           iconColor: const Color(0xFFD97706),
         ),
@@ -220,7 +220,7 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Text(
@@ -250,7 +250,7 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
             border: Border.all(color: Colors.white),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 12,
                 offset: const Offset(0, 6),
               ),
@@ -432,7 +432,7 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
                       border: Border.all(color: _kCardBorder),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.06),
+                          color: Colors.black.withValues(alpha: 0.06),
                           blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),

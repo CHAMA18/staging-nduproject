@@ -1225,7 +1225,7 @@ class _TimelineListRow extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
+                  color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -1490,7 +1490,7 @@ class _TimelineRow extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: item.color.withOpacity(0.18),
+              color: item.color.withValues(alpha: 0.18),
               blurRadius: 18,
               offset: const Offset(0, 10),
             ),
@@ -1509,8 +1509,8 @@ class _TimelineRow extends StatelessWidget {
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                     colors: [
-                      Colors.white.withOpacity(0.18),
-                      Colors.white.withOpacity(0.05),
+                      Colors.white.withValues(alpha: 0.18),
+                      Colors.white.withValues(alpha: 0.05),
                     ],
                   ),
                 ),
@@ -1536,7 +1536,7 @@ class _TimelineRow extends StatelessWidget {
                     Container(
                       height: 6,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.22),
+                        color: Colors.white.withValues(alpha: 0.22),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Align(
@@ -1627,7 +1627,7 @@ class _BadgeStyle {
     required this.label,
     required this.textColor,
     required this.backgroundColor,
-    this.borderColor,
+    this.borderColor, // Optional border color
   });
 
   final String label;

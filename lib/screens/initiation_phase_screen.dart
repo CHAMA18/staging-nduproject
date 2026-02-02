@@ -919,8 +919,8 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     }
 
     final borderColor = hasError
-        ? Colors.red.withOpacity(0.2)
-        : Colors.grey.withOpacity(0.2);
+        ? Colors.red.withValues(alpha: 0.2)
+        : Colors.grey.withValues(alpha: 0.2);
     final canRefresh = !loading && OpenAiConfig.isConfigured;
 
     return Container(
@@ -932,7 +932,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
         border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1029,7 +1029,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
         decoration: BoxDecoration(
           color: const Color(0xFFF8F9FB),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.withOpacity(0.22)),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.22)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1096,7 +1096,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.withOpacity(0.2)),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
           ),
           child: Icon(icon, size: 16, color: const Color(0xFF64748B)),
         ),

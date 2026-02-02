@@ -402,8 +402,18 @@ class _AgileTaskRowWidgetState extends State<_AgileTaskRowWidget> {
                 projectId: projectId,
                 tasks: tasks,
               );
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Task restored')),
+                );
+              }
             } catch (e) {
               debugPrint('Error undoing delete: $e');
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error restoring task: $e')),
+                );
+              }
             }
           },
         ),

@@ -10,6 +10,7 @@ import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
+import 'package:ndu_project/widgets/expandable_text.dart';
 
 class ProjectCharterScreen extends StatefulWidget {
   const ProjectCharterScreen({super.key});
@@ -32,11 +33,8 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
   late final OpenAiServiceSecure _openAi;
   final TextEditingController _projectManagerController = TextEditingController();
   final TextEditingController _projectSponsorController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _organizationalUnitController = TextEditingController();
-  final TextEditingController _greenBeltController = TextEditingController();
-  final TextEditingController _blackBeltController = TextEditingController();
   bool _isSavingData = false;
 
   @override
@@ -90,11 +88,8 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
     }
     
     // Load other fields
-    _emailController.text = data.charterEmail;
     _phoneController.text = data.charterPhone;
     _organizationalUnitController.text = data.charterOrganizationalUnit;
-    _greenBeltController.text = data.charterGreenBelt;
-    _blackBeltController.text = data.charterBlackBelt;
     
     // Auto-save if we auto-filled anything
     if (_projectManagerController.text.isNotEmpty || _projectSponsorController.text.isNotEmpty) {
@@ -108,11 +103,8 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
   void dispose() {
     _projectManagerController.dispose();
     _projectSponsorController.dispose();
-    _emailController.dispose();
     _phoneController.dispose();
     _organizationalUnitController.dispose();
-    _greenBeltController.dispose();
-    _blackBeltController.dispose();
     super.dispose();
   }
 
@@ -125,11 +117,8 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
       (data) => data.copyWith(
         charterProjectManagerName: _projectManagerController.text.trim(),
         charterProjectSponsorName: _projectSponsorController.text.trim(),
-        charterEmail: _emailController.text.trim(),
         charterPhone: _phoneController.text.trim(),
         charterOrganizationalUnit: _organizationalUnitController.text.trim(),
-        charterGreenBelt: _greenBeltController.text.trim(),
-        charterBlackBelt: _blackBeltController.text.trim(),
       ),
     );
     await provider.saveToFirebase(checkpoint: 'project_charter');
@@ -373,6 +362,8 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
         children: [
           _buildGeneralProjectInfo(),
           const SizedBox(height: 16),
+          _buildProjectMetricsSection(),
+          const SizedBox(height: 16),
           _buildProjectOverviewSection(),
           const SizedBox(height: 16),
           _buildProjectScopeSection(),
@@ -403,6 +394,8 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildGeneralProjectInfo(),
+              const SizedBox(height: 16),
+              _buildProjectMetricsSection(),
               const SizedBox(height: 16),
               _buildProjectOverviewSection(),
               const SizedBox(height: 16),
@@ -462,14 +455,9 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          // Row 2: Email, Phone, Organizational Unit
+          // Row 2: Phone, Organizational Unit, Start Date
           Row(
             children: [
-              Expanded(
-                flex: 2,
-                child: _buildEditableField('EMAIL', _emailController, _saveAllFields),
-              ),
-              const SizedBox(width: 12),
               Expanded(
                 child: _buildEditableField('PHONE', _phoneController, _saveAllFields),
               ),
@@ -478,33 +466,18 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
                 flex: 2,
                 child: _buildEditableField('ORGANIZATIONAL UNIT(S)', _organizationalUnitController, _saveAllFields),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // Row 3: Green Belt, Dates, Savings
-          Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: _buildEditableField('GREEN BELTS ASSIGNED', _greenBeltController, _saveAllFields),
-              ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildInfoField('EXPECTED START DATE', _formatDate(_projectData?.createdAt)),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildInfoField('EXPECTED COMPLETION', _extractEndDate(_projectData)),
-              ),
             ],
           ),
           const SizedBox(height: 12),
-          // Row 4: Black Belt, Savings, Costs
+          // Row 3: Completion Date, Savings, Costs
           Row(
             children: [
               Expanded(
-                flex: 2,
-                child: _buildEditableField('BLACK BELTS ASSIGNED', _blackBeltController, _saveAllFields),
+                child: _buildInfoField('EXPECTED COMPLETION', _extractEndDate(_projectData)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -660,14 +633,24 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
                 bottomRight: Radius.circular(4),
               ),
             ),
-            child: Text(
-              content.isEmpty ? '—' : content,
-              style: const TextStyle(
-                fontSize: 10,
-                height: 1.5,
-                color: Color(0xFF333333),
-              ),
-            ),
+            child: content.isEmpty
+                ? const Text(
+                    '—',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFF999999),
+                    ),
+                  )
+                : ExpandableText(
+                    text: content,
+                    maxLines: 8,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      height: 1.5,
+                      color: Color(0xFF333333),
+                    ),
+                    expandButtonColor: const Color(0xFFF59E0B),
+                  ),
           ),
         ),
       ],
@@ -1101,30 +1084,111 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
                 bottomRight: Radius.circular(4),
               ),
             ),
-            child: Text(
-              content.isEmpty ? '—' : content,
-              style: const TextStyle(fontSize: 9, color: Color(0xFF333333)),
-            ),
+            child: content.isEmpty
+                ? const Text(
+                    '—',
+                    style: TextStyle(fontSize: 9, color: Color(0xFF999999)),
+                  )
+                : ExpandableText(
+                    text: content,
+                    maxLines: 8,
+                    style: const TextStyle(fontSize: 9, color: Color(0xFF333333)),
+                    expandButtonColor: const Color(0xFFF59E0B),
+                  ),
           ),
         ),
       ],
     );
   }
 
-  // ==================== RISKS, CONSTRAINTS, ASSUMPTIONS ====================
-  Widget _buildRisksConstraintsAssumptionsSection() {
-    return _CharterSection(
-      title: 'RISKS, CONSTRAINTS, AND ASSUMPTIONS',
-      backgroundColor: Colors.white,
-      child: Column(
-        children: [
-          _buildYellowSmallLabeledField('RISKS', _extractRisks(_projectData)),
-          const SizedBox(height: 8),
-          _buildYellowSmallLabeledField('CONSTRAINTS', _projectData?.charterConstraints ?? 'Not specified'),
-          const SizedBox(height: 8),
-          _buildYellowSmallLabeledField('ASSUMPTIONS', _projectData?.charterAssumptions ?? 'Not specified'),
+  // ==================== RISKS (PROMINENT) ====================
+  Widget _buildRisksSection() {
+    final risks = _extractRisks(_projectData);
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        border: Border.all(color: Colors.red.shade300, width: 2),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.red.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Prominent header with warning icon
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red.shade100,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(6),
+                topRight: Radius.circular(6),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.red.shade700, size: 24),
+                const SizedBox(width: 8),
+                Text(
+                  'PROJECT RISKS',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.red.shade700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Risks content
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: risks.isEmpty
+                ? Text(
+                    'No risks identified',
+                    style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontStyle: FontStyle.italic),
+                  )
+                : Text(
+                    risks,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      height: 1.5,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==================== CONSTRAINTS AND ASSUMPTIONS ====================
+  Widget _buildRisksConstraintsAssumptionsSection() {
+    return Column(
+      children: [
+        // Prominent Risks section
+        _buildRisksSection(),
+        const SizedBox(height: 16),
+        // Constraints and Assumptions
+        _CharterSection(
+          title: 'CONSTRAINTS AND ASSUMPTIONS',
+          backgroundColor: Colors.white,
+          child: Column(
+            children: [
+              _buildYellowSmallLabeledField('CONSTRAINTS', _projectData?.charterConstraints ?? 'Not specified'),
+              const SizedBox(height: 8),
+              _buildYellowSmallLabeledField('ASSUMPTIONS', _projectData?.charterAssumptions ?? 'Not specified'),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -1554,6 +1618,163 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
     }
     return risks.take(3).join('. ');
   }
+
+  // ==================== VISUAL METRIC CARDS ====================
+  Widget _buildProjectMetricsSection() {
+    return _CharterSection(
+      title: 'PROJECT METRICS AT A GLANCE',
+      backgroundColor: Colors.white,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 600;
+          
+          if (isMobile) {
+            // Stack vertically on mobile
+            return Column(
+              children: [
+                _buildMetricCard(
+                  'Est. Savings',
+                  _formatCurrency(_projectData?.expectedAnnualProjectSavings ?? '0'),
+                  Icons.trending_up,
+                  const Color(0xFF10B981),
+                ),
+                const SizedBox(height: 12),
+                _buildMetricCard(
+                  'Est. Costs',
+                  _formatCurrency(_projectData?.estimatedProjectCost ?? '0'),
+                  Icons.account_balance_wallet,
+                  const Color(0xFFF59E0B),
+                ),
+                const SizedBox(height: 12),
+                _buildMetricCard(
+                  'Duration',
+                  _calculateDuration(
+                    _projectData?.charterStartDate,
+                    _projectData?.charterCompletionDate,
+                  ),
+                  Icons.calendar_today,
+                  const Color(0xFF3B82F6),
+                ),
+              ],
+            );
+          }
+          
+          // Row layout for desktop
+          return Row(
+            children: [
+              Expanded(
+                child: _buildMetricCard(
+                  'Est. Savings',
+                  _formatCurrency(_projectData?.expectedAnnualProjectSavings ?? '0'),
+                  Icons.trending_up,
+                  const Color(0xFF10B981),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildMetricCard(
+                  'Est. Costs',
+                  _formatCurrency(_projectData?.estimatedProjectCost ?? '0'),
+                  Icons.account_balance_wallet,
+                  const Color(0xFFF59E0B),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildMetricCard(
+                  'Duration',
+                  _calculateDuration(
+                    _projectData?.charterStartDate,
+                    _projectData?.charterCompletionDate,
+                  ),
+                  Icons.calendar_today,
+                  const Color(0xFF3B82F6),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildMetricCard(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.25), width: 1.5),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 32),
+          const SizedBox(height: 10),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatCurrency(String value) {
+    if (value.isEmpty || value == '0') return '\$0';
+    // Remove any existing currency symbols and commas
+    final cleanValue = value.replaceAll(RegExp(r'[^\d.]'), '');
+    final number = double.tryParse(cleanValue);
+    if (number == null) return '\$$value';
+    
+    // Format with thousands separator
+    if (number >= 1000000) {
+      return '\$${(number / 1000000).toStringAsFixed(1)}M';
+    } else if (number >= 1000) {
+      return '\$${(number / 1000).toStringAsFixed(0)}K';
+    } else {
+      return '\$${number.toStringAsFixed(0)}';
+    }
+  }
+
+  String _calculateDuration(String? start, String? end) {
+    if (start == null || end == null || start.isEmpty || end.isEmpty) {
+      return 'TBD';
+    }
+    try {
+      final startDate = DateFormat('MMM dd, yyyy').parse(start);
+      final endDate = DateFormat('MMM dd, yyyy').parse(end);
+      final days = endDate.difference(startDate).inDays;
+      
+      if (days < 0) return 'TBD';
+      if (days == 0) return '1 day';
+      if (days < 30) return '$days days';
+      if (days < 365) {
+        final months = (days / 30).round();
+        return months == 1 ? '1 month' : '$months months';
+      }
+      final years = (days / 365).toStringAsFixed(1);
+      return years == '1.0' ? '1 year' : '$years years';
+    } catch (e) {
+      return 'TBD';
+    }
+  }
 }
 
 // ==================== CHARTER SECTION WIDGET ====================
@@ -1609,4 +1830,5 @@ class _CharterSection extends StatelessWidget {
       ),
     );
   }
-}
+
+

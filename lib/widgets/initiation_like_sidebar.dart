@@ -1071,7 +1071,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: isHighlighted ? primary.withOpacity(0.12) : Colors.transparent,
+              color: isHighlighted ? primary.withValues(alpha: 0.12) : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -1114,7 +1114,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: isHighlighted ? primary.withOpacity(0.10) : Colors.transparent,
+              color: isHighlighted ? primary.withValues(alpha: 0.10) : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -1153,7 +1153,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: isHighlighted ? primary.withOpacity(0.10) : Colors.transparent,
+            color: isHighlighted ? primary.withValues(alpha: 0.10) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -1194,7 +1194,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
             decoration: BoxDecoration(
-              color: isHighlighted ? primary.withOpacity(0.08) : Colors.transparent,
+              color: isHighlighted ? primary.withValues(alpha: 0.08) : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -1237,7 +1237,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: isActive ? primary.withOpacity(0.12) : Colors.transparent,
+            color: isActive ? primary.withValues(alpha: 0.12) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -1274,7 +1274,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
-          right: BorderSide(color: Colors.grey.withOpacity(0.25), width: 0.8),
+          right: BorderSide(color: Colors.grey.withValues(alpha: 0.25), width: 0.8),
         ),
       ),
       child: Column(
@@ -1325,11 +1325,11 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
                   style: const TextStyle(color: Color(0xFF1A1D1F), fontSize: 14, fontWeight: FontWeight.w500),
                   decoration: InputDecoration(
                     hintText: 'Search menu...',
-                    hintStyle: TextStyle(color: const Color(0xFF6B7280).withOpacity(0.6), fontSize: 14),
-                    prefixIcon: Icon(Icons.search_rounded, color: const Color(0xFF6B7280).withOpacity(0.7), size: 20),
+                    hintStyle: TextStyle(color: const Color(0xFF6B7280).withValues(alpha: 0.6), fontSize: 14),
+                    prefixIcon: Icon(Icons.search_rounded, color: const Color(0xFF6B7280).withValues(alpha: 0.7), size: 20),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
-                            icon: Icon(Icons.clear_rounded, color: const Color(0xFF6B7280).withOpacity(0.7), size: 18),
+                            icon: Icon(Icons.clear_rounded, color: const Color(0xFF6B7280).withValues(alpha: 0.7), size: 18),
                             onPressed: () {
                               _searchController.clear();
                               setState(() => _searchQuery = '');
@@ -2363,11 +2363,11 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.search_off_rounded, color: const Color(0xFF6B7280).withOpacity(0.4), size: 40),
+              Icon(Icons.search_off_rounded, color: const Color(0xFF6B7280).withValues(alpha: 0.4), size: 40),
               const SizedBox(height: 12),
               Text(
                 'No results found',
-                style: TextStyle(color: const Color(0xFF6B7280).withOpacity(0.6), fontSize: 13, fontWeight: FontWeight.w500),
+                style: TextStyle(color: const Color(0xFF6B7280).withValues(alpha: 0.6), fontSize: 13, fontWeight: FontWeight.w500),
               ),
             ],
           ),

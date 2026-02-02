@@ -269,7 +269,7 @@ class _LandingScreenState extends State<LandingScreen>
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        LightModeColors.accent.withOpacity(0.38),
+                        LightModeColors.accent.withValues(alpha: 0.38),
                         Colors.transparent,
                       ],
                     ),
@@ -286,7 +286,7 @@ class _LandingScreenState extends State<LandingScreen>
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        Colors.white.withOpacity(0.08),
+                        Colors.white.withValues(alpha: 0.08),
                         Colors.transparent,
                       ],
                     ),
@@ -496,11 +496,11 @@ class _LandingScreenState extends State<LandingScreen>
                     vertical: 12),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(18),
-                  color: Colors.black.withOpacity(0.82),
-                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                  color: Colors.black.withValues(alpha: 0.82),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.4),
+                      color: Colors.black.withValues(alpha: 0.4),
                       blurRadius: 30,
                       offset: const Offset(0, 18),
                     ),
@@ -587,10 +587,10 @@ class _LandingScreenState extends State<LandingScreen>
               end: Alignment.bottomRight,
               colors: [Color(0xFF141414), Color(0xFF050505)],
             ),
-            border: Border.all(color: Colors.white.withOpacity(0.08)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.35),
+                color: Colors.black.withValues(alpha: 0.35),
                 blurRadius: 60,
                 offset: const Offset(0, 36),
               ),
@@ -608,7 +608,7 @@ class _LandingScreenState extends State<LandingScreen>
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        LightModeColors.accent.withOpacity(0.32),
+                        LightModeColors.accent.withValues(alpha: 0.32),
                         Colors.transparent
                       ],
                     ),
@@ -672,22 +672,22 @@ class _LandingScreenState extends State<LandingScreen>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.08),
+            color: Colors.white.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withOpacity(0.14)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.auto_awesome,
-                  size: 18, color: LightModeColors.accent.withOpacity(0.95)),
+                  size: 18, color: LightModeColors.accent.withValues(alpha: 0.95)),
               const SizedBox(width: 8),
               Text(
                 'Project management powered by KAZ AI',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white.withOpacity(0.88),
+                  color: Colors.white.withValues(alpha: 0.88),
                 ),
               ),
             ],
@@ -720,7 +720,7 @@ class _LandingScreenState extends State<LandingScreen>
           style: TextStyle(
             fontSize: isDesktop ? 20 : 18,
             height: 1.6,
-            color: Colors.white.withOpacity(0.7),
+            color: Colors.white.withValues(alpha: 0.7),
           ),
         ),
         const SizedBox(height: 24),
@@ -745,7 +745,7 @@ class _LandingScreenState extends State<LandingScreen>
                       selectedColor: LightModeColors.accent,
                       backgroundColor: LightModeColors.accent,
                       side: BorderSide(
-                          color: LightModeColors.accent.withOpacity(0.4),
+                          color: LightModeColors.accent.withValues(alpha: 0.4),
                           width: 1.5),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20)),
@@ -762,10 +762,10 @@ class _LandingScreenState extends State<LandingScreen>
                         fontSize: 13,
                       ),
                       selected: false,
-                      selectedColor: Colors.white.withOpacity(0.85),
-                      backgroundColor: Colors.white.withOpacity(0.85),
+                      selectedColor: Colors.white.withValues(alpha: 0.85),
+                      backgroundColor: Colors.white.withValues(alpha: 0.85),
                       side: BorderSide(
-                          color: Colors.white.withOpacity(0.3), width: 1),
+                          color: Colors.white.withValues(alpha: 0.3), width: 1),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(18)),
                       padding: const EdgeInsets.symmetric(
@@ -800,11 +800,11 @@ class _LandingScreenState extends State<LandingScreen>
             OutlinedButton(
               onPressed: () => _scrollTo(_platformKey),
               style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white.withOpacity(0.92),
+                foregroundColor: Colors.white.withValues(alpha: 0.92),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
                 side: BorderSide(
-                    color: Colors.white.withOpacity(0.26), width: 1.6),
+                    color: Colors.white.withValues(alpha: 0.26), width: 1.6),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
               ),
@@ -839,7 +839,7 @@ class _LandingScreenState extends State<LandingScreen>
           ),
         ),
         const SizedBox(height: 36),
-        Divider(color: Colors.white.withOpacity(0.12)),
+        Divider(color: Colors.white.withValues(alpha: 0.12)),
         const SizedBox(height: 28),
         Wrap(
           spacing: 24,
@@ -901,10 +901,10 @@ class _LandingScreenState extends State<LandingScreen>
                 end: Alignment.bottomRight,
                 colors: [Color(0xFF171717), Color(0xFF060606)],
               ),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.35),
+                  color: Colors.black.withValues(alpha: 0.35),
                   blurRadius: 40,
                   offset: const Offset(0, 28),
                 ),
@@ -922,7 +922,7 @@ class _LandingScreenState extends State<LandingScreen>
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
                         colors: [
-                          LightModeColors.accent.withOpacity(0.45),
+                          LightModeColors.accent.withValues(alpha: 0.45),
                           Colors.transparent
                         ],
                       ),
@@ -1147,11 +1147,11 @@ class _LandingScreenState extends State<LandingScreen>
       padding: const EdgeInsets.all(26),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(26),
-        color: Colors.white.withOpacity(0.08),
-        border: Border.all(color: Colors.white.withOpacity(0.16)),
+        color: Colors.white.withValues(alpha: 0.08),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
+            color: Colors.black.withValues(alpha: 0.25),
             blurRadius: 26,
             offset: const Offset(0, 24),
           ),
@@ -1166,8 +1166,8 @@ class _LandingScreenState extends State<LandingScreen>
               borderRadius: BorderRadius.circular(18),
               gradient: LinearGradient(
                 colors: [
-                  LightModeColors.accent.withOpacity(0.95),
-                  LightModeColors.accent.withOpacity(0.65),
+                  LightModeColors.accent.withValues(alpha: 0.95),
+                  LightModeColors.accent.withValues(alpha: 0.65),
                 ],
               ),
             ),
@@ -1178,7 +1178,7 @@ class _LandingScreenState extends State<LandingScreen>
           Text(
             'Executive Program Command',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
               fontWeight: FontWeight.w800,
               fontSize: 20,
             ),
@@ -1187,7 +1187,7 @@ class _LandingScreenState extends State<LandingScreen>
           Text(
             'World-class orchestration designed for enterprise delivery teams.',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.72),
+              color: Colors.white.withValues(alpha: 0.72),
               height: 1.5,
               fontSize: 13,
             ),
@@ -1197,8 +1197,8 @@ class _LandingScreenState extends State<LandingScreen>
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              color: Colors.white.withOpacity(0.05),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              color: Colors.white.withValues(alpha: 0.05),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1206,13 +1206,13 @@ class _LandingScreenState extends State<LandingScreen>
                 Row(
                   children: [
                     Icon(Icons.auto_awesome_mosaic_rounded,
-                        color: LightModeColors.accent.withOpacity(0.92),
+                        color: LightModeColors.accent.withValues(alpha: 0.92),
                         size: 18),
                     const SizedBox(width: 10),
                     Text(
                       'Delivery view',
                       style: TextStyle(
-                          color: Colors.white.withOpacity(0.85),
+                          color: Colors.white.withValues(alpha: 0.85),
                           fontWeight: FontWeight.w700,
                           fontSize: 13),
                     ),
@@ -1229,9 +1229,9 @@ class _LandingScreenState extends State<LandingScreen>
                               horizontal: 14, vertical: 10),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(14),
-                            color: Colors.white.withOpacity(0.06),
+                            color: Colors.white.withValues(alpha: 0.06),
                             border: Border.all(
-                                color: Colors.white.withOpacity(0.12)),
+                                color: Colors.white.withValues(alpha: 0.12)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1243,15 +1243,15 @@ class _LandingScreenState extends State<LandingScreen>
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(10),
                                   color:
-                                      LightModeColors.accent.withOpacity(0.15),
+                                      LightModeColors.accent.withValues(alpha: 0.15),
                                   border: Border.all(
                                       color: LightModeColors.accent
-                                          .withOpacity(0.3)),
+                                          .withValues(alpha: 0.3)),
                                 ),
                                 child: Text(
                                   segment['title']!,
                                   style: TextStyle(
-                                    color: Colors.white.withOpacity(0.9),
+                                    color: Colors.white.withValues(alpha: 0.9),
                                     fontWeight: FontWeight.w700,
                                     fontSize: 13,
                                   ),
@@ -1270,16 +1270,16 @@ class _LandingScreenState extends State<LandingScreen>
                                         decoration: BoxDecoration(
                                           borderRadius:
                                               BorderRadius.circular(8),
-                                          color: Colors.white.withOpacity(0.08),
+                                          color: Colors.white.withValues(alpha: 0.08),
                                           border: Border.all(
                                               color: Colors.white
-                                                  .withOpacity(0.12)),
+                                                  .withValues(alpha: 0.12)),
                                         ),
                                         child: Text(
                                           method,
                                           style: TextStyle(
                                             color:
-                                                Colors.white.withOpacity(0.7),
+                                                Colors.white.withValues(alpha: 0.7),
                                             fontSize: 11,
                                           ),
                                         ),
@@ -1307,18 +1307,18 @@ class _LandingScreenState extends State<LandingScreen>
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
-        color: color.withOpacity(0.1),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: color.withValues(alpha: 0.1),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 18, color: color.withOpacity(0.9)),
+          Icon(icon, size: 18, color: color.withValues(alpha: 0.9)),
           const SizedBox(width: 8),
           Text(
             label,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.85),
+              color: Colors.white.withValues(alpha: 0.85),
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1332,8 +1332,8 @@ class _LandingScreenState extends State<LandingScreen>
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
-        color: Colors.white.withOpacity(0.08),
-        border: Border.all(color: Colors.white.withOpacity(0.14)),
+        color: Colors.white.withValues(alpha: 0.08),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1348,8 +1348,8 @@ class _LandingScreenState extends State<LandingScreen>
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
                     colors: [
-                      const Color(0xFF8B5CF6).withOpacity(0.9),
-                      const Color(0xFFD946EF).withOpacity(0.7),
+                      const Color(0xFF8B5CF6).withValues(alpha: 0.9),
+                      const Color(0xFFD946EF).withValues(alpha: 0.7),
                     ],
                   ),
                 ),
@@ -1364,7 +1364,7 @@ class _LandingScreenState extends State<LandingScreen>
                     Text(
                       'Portfolios',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.92),
+                        color: Colors.white.withValues(alpha: 0.92),
                         fontWeight: FontWeight.w800,
                         fontSize: 16,
                       ),
@@ -1373,7 +1373,7 @@ class _LandingScreenState extends State<LandingScreen>
                     Text(
                       'Strategic guardrails balancing investments, resources, and readiness.',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.72),
+                        color: Colors.white.withValues(alpha: 0.72),
                         fontSize: 12,
                         height: 1.45,
                       ),
@@ -1407,8 +1407,8 @@ class _LandingScreenState extends State<LandingScreen>
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        color: Colors.white.withOpacity(0.08),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        color: Colors.white.withValues(alpha: 0.08),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1417,7 +1417,7 @@ class _LandingScreenState extends State<LandingScreen>
           Text(
             'Critical path',
             style:
-                TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
+                TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13),
           ),
           const SizedBox(height: 12),
           _timelineRow('Initiation', 'Complete', true),
@@ -1441,8 +1441,8 @@ class _LandingScreenState extends State<LandingScreen>
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: done
-                ? LightModeColors.accent.withOpacity(0.95)
-                : Colors.white.withOpacity(0.3),
+                ? LightModeColors.accent.withValues(alpha: 0.95)
+                : Colors.white.withValues(alpha: 0.3),
           ),
         ),
         const SizedBox(width: 12),
@@ -1453,7 +1453,7 @@ class _LandingScreenState extends State<LandingScreen>
               Text(
                 title,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
                 ),
@@ -1461,7 +1461,7 @@ class _LandingScreenState extends State<LandingScreen>
               Text(
                 subtitle,
                 style: TextStyle(
-                    color: Colors.white.withOpacity(0.6), fontSize: 12),
+                    color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
               ),
             ],
           ),
@@ -1549,10 +1549,10 @@ class _LandingScreenState extends State<LandingScreen>
           end: Alignment.bottomRight,
           colors: [Color(0xFF141414), Color(0xFF060606)],
         ),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.45),
+            color: Colors.black.withValues(alpha: 0.45),
             blurRadius: 36,
             offset: const Offset(0, 24),
           ),
@@ -1591,8 +1591,8 @@ class _LandingScreenState extends State<LandingScreen>
                             borderRadius: BorderRadius.circular(12),
                             gradient: LinearGradient(
                               colors: [
-                                LightModeColors.accent.withOpacity(0.9),
-                                LightModeColors.accent.withOpacity(0.65),
+                                LightModeColors.accent.withValues(alpha: 0.9),
+                                LightModeColors.accent.withValues(alpha: 0.65),
                               ],
                             ),
                           ),
@@ -1617,7 +1617,7 @@ class _LandingScreenState extends State<LandingScreen>
                                 item.description,
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: Colors.white.withOpacity(0.78),
+                                  color: Colors.white.withValues(alpha: 0.78),
                                   height: 1.5,
                                 ),
                               ),
@@ -1723,10 +1723,10 @@ class _LandingScreenState extends State<LandingScreen>
           end: Alignment.bottomRight,
           colors: [Color(0xFF121212), Color(0xFF050505)],
         ),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.45),
+            color: Colors.black.withValues(alpha: 0.45),
             blurRadius: 60,
             offset: const Offset(0, 34),
           ),
@@ -1751,7 +1751,7 @@ class _LandingScreenState extends State<LandingScreen>
             'Each phase is incorporates project delivery best practices as the blueprint for a successful project',
             style: TextStyle(
               fontSize: 18,
-              color: Colors.white.withOpacity(0.75),
+              color: Colors.white.withValues(alpha: 0.75),
               height: 1.6,
             ),
           ),
@@ -1834,10 +1834,10 @@ class _LandingScreenState extends State<LandingScreen>
           end: Alignment.bottomCenter,
           colors: [Color(0xFF121212), Color(0xFF060606)],
         ),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.32),
+            color: Colors.black.withValues(alpha: 0.32),
             blurRadius: 48,
             offset: const Offset(0, 32),
           ),
@@ -1861,7 +1861,7 @@ class _LandingScreenState extends State<LandingScreen>
             'Efficient workflows that incorporate pertinent aspects of projects and programs.',
             style: TextStyle(
               fontSize: 17,
-              color: Colors.white.withOpacity(0.72),
+              color: Colors.white.withValues(alpha: 0.72),
               height: 1.6,
             ),
           ),
@@ -1927,10 +1927,10 @@ class _LandingScreenState extends State<LandingScreen>
           end: Alignment.bottomRight,
           colors: [Color(0xFF121212), Color(0xFF050505)],
         ),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.45),
+            color: Colors.black.withValues(alpha: 0.45),
             blurRadius: 54,
             offset: const Offset(0, 32),
           ),
@@ -1989,7 +1989,7 @@ class _LandingScreenState extends State<LandingScreen>
           'KAZ AI is wired into each workspace, turning your planning artifacts into conversational intelligence.',
           style: TextStyle(
             fontSize: 17,
-            color: Colors.white.withOpacity(0.78),
+            color: Colors.white.withValues(alpha: 0.78),
             height: 1.6,
           ),
         ),
@@ -2018,19 +2018,19 @@ class _LandingScreenState extends State<LandingScreen>
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            color: Colors.white.withOpacity(0.08),
-            border: Border.all(color: Colors.white.withOpacity(0.12)),
+            color: Colors.white.withValues(alpha: 0.08),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
           ),
           child: Row(
             children: [
               Icon(Icons.lock_rounded,
-                  color: LightModeColors.accent.withOpacity(0.95)),
+                  color: LightModeColors.accent.withValues(alpha: 0.95)),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'KAZ AI follows your governance rules—keeping approvals tracked, content scoped, and data secure.',
                   style: TextStyle(
-                      color: Colors.white.withOpacity(0.82),
+                      color: Colors.white.withValues(alpha: 0.82),
                       fontWeight: FontWeight.w600),
                 ),
               ),
@@ -2050,10 +2050,10 @@ class _LandingScreenState extends State<LandingScreen>
           end: Alignment.bottomRight,
           colors: [Color(0xFF0C0C0C), Color(0xFF191919)],
         ),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 40,
             offset: const Offset(0, 28),
           ),
@@ -2069,8 +2069,8 @@ class _LandingScreenState extends State<LandingScreen>
                   const BorderRadius.vertical(top: Radius.circular(28)),
               gradient: LinearGradient(
                 colors: [
-                  LightModeColors.accent.withOpacity(0.85),
-                  LightModeColors.accent.withOpacity(0.55)
+                  LightModeColors.accent.withValues(alpha: 0.85),
+                  LightModeColors.accent.withValues(alpha: 0.55)
                 ],
               ),
             ),
@@ -2081,7 +2081,7 @@ class _LandingScreenState extends State<LandingScreen>
                   height: 40,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.15),
+                    color: Colors.white.withValues(alpha: 0.15),
                   ),
                   child: const Icon(Icons.smart_toy_rounded,
                       color: Color(0xFF1F2937)),
@@ -2106,7 +2106,7 @@ class _LandingScreenState extends State<LandingScreen>
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
-                    color: Colors.white.withOpacity(0.18),
+                    color: Colors.white.withValues(alpha: 0.18),
                   ),
                   child: const Text('Online',
                       style: TextStyle(
@@ -2136,10 +2136,10 @@ class _LandingScreenState extends State<LandingScreen>
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(18),
                             color: bubble.role == 'You'
-                                ? Colors.white.withOpacity(0.14)
-                                : Colors.white.withOpacity(0.08),
+                                ? Colors.white.withValues(alpha: 0.14)
+                                : Colors.white.withValues(alpha: 0.08),
                             border: Border.all(
-                                color: Colors.white.withOpacity(0.12)),
+                                color: Colors.white.withValues(alpha: 0.12)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2148,9 +2148,9 @@ class _LandingScreenState extends State<LandingScreen>
                                 bubble.role,
                                 style: TextStyle(
                                   color: bubble.role == 'You'
-                                      ? Colors.white.withOpacity(0.85)
+                                      ? Colors.white.withValues(alpha: 0.85)
                                       : LightModeColors.accent
-                                          .withOpacity(0.95),
+                                          .withValues(alpha: 0.95),
                                   fontWeight: FontWeight.w700,
                                   fontSize: 13,
                                 ),
@@ -2159,7 +2159,7 @@ class _LandingScreenState extends State<LandingScreen>
                               Text(
                                 bubble.message,
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.86),
+                                  color: Colors.white.withValues(alpha: 0.86),
                                   height: 1.5,
                                   fontSize: 14,
                                 ),
@@ -2178,9 +2178,9 @@ class _LandingScreenState extends State<LandingScreen>
             decoration: BoxDecoration(
               borderRadius:
                   const BorderRadius.vertical(bottom: Radius.circular(28)),
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               border: Border(
-                  top: BorderSide(color: Colors.white.withOpacity(0.08))),
+                  top: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
             ),
             child: Row(
               children: [
@@ -2190,20 +2190,20 @@ class _LandingScreenState extends State<LandingScreen>
                         horizontal: 18, vertical: 14),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
-                      color: Colors.white.withOpacity(0.08),
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      color: Colors.white.withValues(alpha: 0.08),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                     ),
                     child: Row(
                       children: [
                         Icon(Icons.bolt_rounded,
-                            color: LightModeColors.accent.withOpacity(0.9),
+                            color: LightModeColors.accent.withValues(alpha: 0.9),
                             size: 18),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             'Ask KAZ AI how to accelerate this week\'s milestone...',
                             style: TextStyle(
-                                color: Colors.white.withOpacity(0.7),
+                                color: Colors.white.withValues(alpha: 0.7),
                                 fontSize: 13),
                           ),
                         ),
@@ -2218,8 +2218,8 @@ class _LandingScreenState extends State<LandingScreen>
                     borderRadius: BorderRadius.circular(16),
                     gradient: LinearGradient(
                       colors: [
-                        LightModeColors.accent.withOpacity(0.95),
-                        LightModeColors.accent.withOpacity(0.7)
+                        LightModeColors.accent.withValues(alpha: 0.95),
+                        LightModeColors.accent.withValues(alpha: 0.7)
                       ],
                     ),
                   ),
@@ -2267,10 +2267,10 @@ class _LandingScreenState extends State<LandingScreen>
           end: Alignment.bottomRight,
           colors: [Color(0xFF121212), Color(0xFF070707)],
         ),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.28),
+            color: Colors.black.withValues(alpha: 0.28),
             blurRadius: 40,
             offset: const Offset(0, 28),
           ),
@@ -2334,10 +2334,10 @@ class _LandingScreenState extends State<LandingScreen>
           end: Alignment.bottomRight,
           colors: [Color(0xFF111111), Color(0xFF040404)],
         ),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.45),
+            color: Colors.black.withValues(alpha: 0.45),
             blurRadius: 44,
             offset: const Offset(0, 28),
           ),
@@ -2360,7 +2360,7 @@ class _LandingScreenState extends State<LandingScreen>
             'Start a free trial and access every workspace, KAZ AI, and executive-ready report.',
             textAlign: TextAlign.center,
             style:
-                TextStyle(fontSize: 17, color: Colors.white.withOpacity(0.78)),
+                TextStyle(fontSize: 17, color: Colors.white.withValues(alpha: 0.78)),
           ),
           const SizedBox(height: 32),
           Wrap(
@@ -2487,7 +2487,7 @@ class _LandingScreenState extends State<LandingScreen>
                 term.content,
                 style: TextStyle(
                   fontSize: 15,
-                  color: Colors.white.withOpacity(0.78),
+                  color: Colors.white.withValues(alpha: 0.78),
                   height: 1.7,
                 ),
               ),
@@ -2578,7 +2578,7 @@ class _LandingScreenState extends State<LandingScreen>
                 section.content,
                 style: TextStyle(
                   fontSize: 15,
-                  color: Colors.white.withOpacity(0.78),
+                  color: Colors.white.withValues(alpha: 0.78),
                   height: 1.7,
                 ),
               ),
@@ -2600,7 +2600,7 @@ class _LandingScreenState extends State<LandingScreen>
           decoration: BoxDecoration(
             color: const Color(0xFF040404),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
           ),
           child: Column(
             children: [
@@ -2609,7 +2609,7 @@ class _LandingScreenState extends State<LandingScreen>
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   border: Border(
-                    bottom: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                   ),
                 ),
                 child: Row(
@@ -2631,7 +2631,7 @@ class _LandingScreenState extends State<LandingScreen>
                             'Last updated: ${DateTime.now().year}',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.white.withOpacity(0.6),
+                              color: Colors.white.withValues(alpha: 0.6),
                             ),
                           ),
                         ],
@@ -2669,7 +2669,7 @@ class _LandingScreenState extends State<LandingScreen>
           decoration: BoxDecoration(
             color: const Color(0xFF040404),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
           ),
           child: Column(
             children: [
@@ -2678,7 +2678,7 @@ class _LandingScreenState extends State<LandingScreen>
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   border: Border(
-                    bottom: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                   ),
                 ),
                 child: Row(
@@ -2700,7 +2700,7 @@ class _LandingScreenState extends State<LandingScreen>
                             'Last updated: ${DateTime.now().year}',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.white.withOpacity(0.6),
+                              color: Colors.white.withValues(alpha: 0.6),
                             ),
                           ),
                         ],
@@ -2724,7 +2724,7 @@ class _LandingScreenState extends State<LandingScreen>
                         'NDU Project ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform.',
                         style: TextStyle(
                           fontSize: 16,
-                          color: Colors.white.withOpacity(0.78),
+                          color: Colors.white.withValues(alpha: 0.78),
                           height: 1.6,
                         ),
                       ),
@@ -2819,7 +2819,7 @@ class _LandingScreenState extends State<LandingScreen>
         Text(
           'Ndu Project is a project delivery platform that enables organizations to save money on projects via robust planning, integrated design, and flawless execution.',
           style: TextStyle(
-            color: Colors.white.withOpacity(0.68),
+            color: Colors.white.withValues(alpha: 0.68),
             fontSize: 15,
             height: 1.6,
           ),
@@ -2833,8 +2833,8 @@ class _LandingScreenState extends State<LandingScreen>
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(18),
-                color: Colors.white.withOpacity(0.05),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                color: Colors.white.withValues(alpha: 0.05),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
               ),
               child: stack
                   ? Column(
@@ -2849,8 +2849,8 @@ class _LandingScreenState extends State<LandingScreen>
                                 borderRadius: BorderRadius.circular(14),
                                 gradient: LinearGradient(
                                   colors: [
-                                    LightModeColors.accent.withOpacity(0.9),
-                                    LightModeColors.accent.withOpacity(0.65),
+                                    LightModeColors.accent.withValues(alpha: 0.9),
+                                    LightModeColors.accent.withValues(alpha: 0.65),
                                   ],
                                 ),
                               ),
@@ -2865,7 +2865,7 @@ class _LandingScreenState extends State<LandingScreen>
                                   Text(
                                     'Consult with an expert',
                                     style: TextStyle(
-                                      color: Colors.white.withOpacity(0.88),
+                                      color: Colors.white.withValues(alpha: 0.88),
                                       fontWeight: FontWeight.w700,
                                       fontSize: 15,
                                     ),
@@ -2874,7 +2874,7 @@ class _LandingScreenState extends State<LandingScreen>
                                   Text(
                                     'Expert guidance to optimize your project outcomes.',
                                     style: TextStyle(
-                                        color: Colors.white.withOpacity(0.6),
+                                        color: Colors.white.withValues(alpha: 0.6),
                                         fontSize: 13),
                                   ),
                                 ],
@@ -2915,8 +2915,8 @@ class _LandingScreenState extends State<LandingScreen>
                             borderRadius: BorderRadius.circular(14),
                             gradient: LinearGradient(
                               colors: [
-                                LightModeColors.accent.withOpacity(0.9),
-                                LightModeColors.accent.withOpacity(0.65),
+                                LightModeColors.accent.withValues(alpha: 0.9),
+                                LightModeColors.accent.withValues(alpha: 0.65),
                               ],
                             ),
                           ),
@@ -2931,7 +2931,7 @@ class _LandingScreenState extends State<LandingScreen>
                               Text(
                                 'Consult with an expert',
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.88),
+                                  color: Colors.white.withValues(alpha: 0.88),
                                   fontWeight: FontWeight.w700,
                                   fontSize: 15,
                                 ),
@@ -2940,7 +2940,7 @@ class _LandingScreenState extends State<LandingScreen>
                               Text(
                                 'Expert guidance to optimize your project outcomes.',
                                 style: TextStyle(
-                                    color: Colors.white.withOpacity(0.6),
+                                    color: Colors.white.withValues(alpha: 0.6),
                                     fontSize: 13),
                               ),
                             ],
@@ -2994,7 +2994,7 @@ class _LandingScreenState extends State<LandingScreen>
           end: Alignment.bottomRight,
           colors: [Color(0xFF040404), Color(0xFF080808), Color(0xFF040404)],
         ),
-        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.08))),
+        border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
       ),
       child: Column(
         crossAxisAlignment:
@@ -3025,7 +3025,7 @@ class _LandingScreenState extends State<LandingScreen>
             padding: const EdgeInsets.symmetric(vertical: 22),
             decoration: BoxDecoration(
               border: Border(
-                  top: BorderSide(color: Colors.white.withOpacity(0.08))),
+                  top: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
             ),
             child: Column(
               crossAxisAlignment: isMobile
@@ -3046,7 +3046,7 @@ class _LandingScreenState extends State<LandingScreen>
                 Text(
                   '© 2025 NDU Project. Engineered for leaders building the next wave of critical programs.',
                   style: TextStyle(
-                      color: Colors.white.withOpacity(0.55), fontSize: 13),
+                      color: Colors.white.withValues(alpha: 0.55), fontSize: 13),
                   textAlign: isMobile ? TextAlign.center : TextAlign.left,
                 ),
                 const SizedBox(height: 12),
@@ -3066,17 +3066,17 @@ class _LandingScreenState extends State<LandingScreen>
                         child: Text(
                           'Terms and Conditions',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
+                            color: Colors.white.withValues(alpha: 0.7),
                             fontSize: 13,
                             decoration: TextDecoration.underline,
-                            decorationColor: Colors.white.withOpacity(0.7),
+                            decorationColor: Colors.white.withValues(alpha: 0.7),
                           ),
                         ),
                       ),
                       Text(
                         '•',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
+                          color: Colors.white.withValues(alpha: 0.5),
                           fontSize: 13,
                         ),
                       ),
@@ -3090,10 +3090,10 @@ class _LandingScreenState extends State<LandingScreen>
                         child: Text(
                           'Privacy Policy',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
+                            color: Colors.white.withValues(alpha: 0.7),
                             fontSize: 13,
                             decoration: TextDecoration.underline,
-                            decorationColor: Colors.white.withOpacity(0.7),
+                            decorationColor: Colors.white.withValues(alpha: 0.7),
                           ),
                         ),
                       ),
@@ -3178,7 +3178,7 @@ class _FAQSectionWidgetState extends State<_FAQSectionWidget> {
             'Find answers to common questions about NDU Project',
             style: TextStyle(
               fontSize: 18,
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(height: 48),
@@ -3191,8 +3191,8 @@ class _FAQSectionWidgetState extends State<_FAQSectionWidget> {
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
-                color: Colors.white.withOpacity(0.05),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                color: Colors.white.withValues(alpha: 0.05),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
               ),
               child: Theme(
                 data: Theme.of(context)
@@ -3213,7 +3213,7 @@ class _FAQSectionWidgetState extends State<_FAQSectionWidget> {
                     isExpanded
                         ? Icons.keyboard_arrow_up_rounded
                         : Icons.keyboard_arrow_down_rounded,
-                    color: Colors.white.withOpacity(0.7),
+                    color: Colors.white.withValues(alpha: 0.7),
                   ),
                   onExpansionChanged: (expanded) {
                     setState(() {
@@ -3225,7 +3225,7 @@ class _FAQSectionWidgetState extends State<_FAQSectionWidget> {
                       faq.answer,
                       style: TextStyle(
                         fontSize: 15,
-                        color: Colors.white.withOpacity(0.78),
+                        color: Colors.white.withValues(alpha: 0.78),
                         height: 1.6,
                       ),
                     ),
@@ -3274,22 +3274,22 @@ class _DeliveryIllustrationCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            data.colors.first.withOpacity(0.32),
-            data.colors.last.withOpacity(0.16),
-            data.colors.first.withOpacity(0.08),
+            data.colors.first.withValues(alpha: 0.32),
+            data.colors.last.withValues(alpha: 0.16),
+            data.colors.first.withValues(alpha: 0.08),
           ],
         ),
         border:
-            Border.all(color: data.colors.first.withOpacity(0.35), width: 1.5),
+            Border.all(color: data.colors.first.withValues(alpha: 0.35), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: data.colors.last.withOpacity(0.35),
+            color: data.colors.last.withValues(alpha: 0.35),
             blurRadius: 32,
             offset: const Offset(0, 16),
             spreadRadius: 2,
           ),
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
+            color: Colors.black.withValues(alpha: 0.25),
             blurRadius: 48,
             offset: const Offset(0, 24),
           ),
@@ -3307,7 +3307,7 @@ class _DeliveryIllustrationCard extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    data.colors.first.withOpacity(0.25),
+                    data.colors.first.withValues(alpha: 0.25),
                     Colors.transparent,
                   ],
                 ),
@@ -3326,15 +3326,15 @@ class _DeliveryIllustrationCard extends StatelessWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      data.colors.first.withOpacity(0.9),
-                      data.colors.last.withOpacity(0.7),
+                      data.colors.first.withValues(alpha: 0.9),
+                      data.colors.last.withValues(alpha: 0.7),
                     ],
                   ),
                   border: Border.all(
-                      color: Colors.white.withOpacity(0.3), width: 2),
+                      color: Colors.white.withValues(alpha: 0.3), width: 2),
                   boxShadow: [
                     BoxShadow(
-                      color: data.colors.last.withOpacity(0.4),
+                      color: data.colors.last.withValues(alpha: 0.4),
                       blurRadius: 16,
                       offset: const Offset(0, 8),
                     ),
@@ -3367,7 +3367,7 @@ class _DeliveryIllustrationCard extends StatelessWidget {
               Text(
                 data.description,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.85),
+                  color: Colors.white.withValues(alpha: 0.85),
                   height: 1.5,
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
@@ -3386,12 +3386,12 @@ class _DeliveryIllustrationCard extends StatelessWidget {
                             horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(14),
-                          color: Colors.white.withOpacity(0.18),
+                          color: Colors.white.withValues(alpha: 0.18),
                           border: Border.all(
-                              color: Colors.white.withOpacity(0.3), width: 1),
+                              color: Colors.white.withValues(alpha: 0.3), width: 1),
                           boxShadow: [
                             BoxShadow(
-                              color: data.colors.first.withOpacity(0.15),
+                              color: data.colors.first.withValues(alpha: 0.15),
                               blurRadius: 8,
                               offset: const Offset(0, 4),
                             ),
@@ -3436,11 +3436,11 @@ class _HeroActionButton extends StatelessWidget {
     final BoxDecoration decoration = isSecondary
         ? BoxDecoration(
             borderRadius: radius,
-            color: Colors.white.withOpacity(0.08),
-            border: Border.all(color: Colors.white.withOpacity(0.18)),
+            color: Colors.white.withValues(alpha: 0.08),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.18),
+                color: Colors.black.withValues(alpha: 0.18),
                 blurRadius: 18,
                 offset: const Offset(0, 14),
               ),
@@ -3450,13 +3450,13 @@ class _HeroActionButton extends StatelessWidget {
             borderRadius: radius,
             gradient: LinearGradient(
               colors: [
-                LightModeColors.accent.withOpacity(0.95),
-                LightModeColors.accent.withOpacity(0.75),
+                LightModeColors.accent.withValues(alpha: 0.95),
+                LightModeColors.accent.withValues(alpha: 0.75),
               ],
             ),
             boxShadow: [
               BoxShadow(
-                color: LightModeColors.accent.withOpacity(0.35),
+                color: LightModeColors.accent.withValues(alpha: 0.35),
                 blurRadius: 20,
                 offset: const Offset(0, 18),
               ),
@@ -3464,7 +3464,7 @@ class _HeroActionButton extends StatelessWidget {
           );
 
     final Color textColor =
-        isSecondary ? Colors.white.withOpacity(0.88) : const Color(0xFF14213D);
+        isSecondary ? Colors.white.withValues(alpha: 0.88) : const Color(0xFF14213D);
 
     return Material(
       color: Colors.transparent,
@@ -3517,7 +3517,7 @@ class _HeroActionButton extends StatelessWidget {
                   ),
                   const SizedBox(width: 10),
                   Icon(Icons.arrow_outward_rounded,
-                      size: 18, color: textColor.withOpacity(0.9)),
+                      size: 18, color: textColor.withValues(alpha: 0.9)),
                 ],
               );
             },
@@ -3540,18 +3540,18 @@ class _HeroMetricChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: Colors.white.withOpacity(0.08),
-        border: Border.all(color: Colors.white.withOpacity(0.14)),
+        color: Colors.white.withValues(alpha: 0.08),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: LightModeColors.accent.withOpacity(0.9), size: 18),
+          Icon(icon, color: LightModeColors.accent.withValues(alpha: 0.9), size: 18),
           const SizedBox(width: 10),
           Text(
             label,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.86),
+              color: Colors.white.withValues(alpha: 0.86),
               fontWeight: FontWeight.w600,
               fontSize: 13,
             ),
@@ -3597,7 +3597,7 @@ class _FooterColumn extends StatelessWidget {
         Text(
           data.title,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.85),
+            color: Colors.white.withValues(alpha: 0.85),
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
@@ -3611,7 +3611,7 @@ class _FooterColumn extends StatelessWidget {
               style: TextButton.styleFrom(
                 padding: EdgeInsets.zero,
                 alignment: Alignment.centerLeft,
-                foregroundColor: Colors.white.withOpacity(0.68),
+                foregroundColor: Colors.white.withValues(alpha: 0.68),
                 textStyle:
                     const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
               ),
@@ -3635,13 +3635,13 @@ class _FooterPill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: Colors.white.withOpacity(0.08),
-        border: Border.all(color: Colors.white.withOpacity(0.12)),
+        color: Colors.white.withValues(alpha: 0.08),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       ),
       child: Text(
         text,
         style: TextStyle(
-            color: Colors.white.withOpacity(0.68),
+            color: Colors.white.withValues(alpha: 0.68),
             fontSize: 13,
             fontWeight: FontWeight.w600),
       ),
@@ -3666,10 +3666,10 @@ class _SocialButton extends StatelessWidget {
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            color: Colors.white.withOpacity(0.08),
-            border: Border.all(color: Colors.white.withOpacity(0.12)),
+            color: Colors.white.withValues(alpha: 0.08),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
           ),
-          child: Icon(icon, color: Colors.white.withOpacity(0.8), size: 18),
+          child: Icon(icon, color: Colors.white.withValues(alpha: 0.8), size: 18),
         ),
       ),
     );
@@ -3687,13 +3687,13 @@ class _TrustedByBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: Colors.white.withOpacity(0.08),
-        border: Border.all(color: Colors.white.withOpacity(0.18)),
+        color: Colors.white.withValues(alpha: 0.08),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
       ),
       child: Text(
         label,
         style: TextStyle(
-            color: Colors.white.withOpacity(0.75),
+            color: Colors.white.withValues(alpha: 0.75),
             fontSize: 13,
             fontWeight: FontWeight.w600),
       ),
@@ -3757,11 +3757,11 @@ class _CapabilityCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            data.gradient.first.withOpacity(0.22),
+            data.gradient.first.withValues(alpha: 0.22),
             const Color(0xFF090909)
           ],
         ),
-        border: Border.all(color: Colors.white.withOpacity(0.12)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3773,8 +3773,8 @@ class _CapabilityCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               gradient: LinearGradient(
                 colors: [
-                  data.gradient.first.withOpacity(0.9),
-                  data.gradient.last.withOpacity(0.8)
+                  data.gradient.first.withValues(alpha: 0.9),
+                  data.gradient.last.withValues(alpha: 0.8)
                 ],
               ),
             ),
@@ -3794,7 +3794,7 @@ class _CapabilityCard extends StatelessWidget {
             data.description,
             style: TextStyle(
               fontSize: 15,
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withValues(alpha: 0.8),
               height: 1.6,
             ),
           ),
@@ -3811,14 +3811,14 @@ class _CapabilityCard extends StatelessWidget {
                     margin: const EdgeInsets.only(top: 6, right: 10),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: data.gradient.first.withOpacity(0.9),
+                      color: data.gradient.first.withValues(alpha: 0.9),
                     ),
                   ),
                   Expanded(
                     child: Text(
                       bullet,
                       style: TextStyle(
-                          color: Colors.white.withOpacity(0.78),
+                          color: Colors.white.withValues(alpha: 0.78),
                           fontSize: 14,
                           height: 1.6),
                     ),
@@ -3858,8 +3858,8 @@ class _WorkflowCard extends StatelessWidget {
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
-        color: Colors.white.withOpacity(0.04),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        color: Colors.white.withValues(alpha: 0.04),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3868,8 +3868,8 @@ class _WorkflowCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              color: Colors.white.withOpacity(0.08),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              color: Colors.white.withValues(alpha: 0.08),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
             child: Text(
               step.step,
@@ -3887,7 +3887,7 @@ class _WorkflowCard extends StatelessWidget {
           Text(
             step.description,
             style: TextStyle(
-                color: Colors.white.withOpacity(0.72),
+                color: Colors.white.withValues(alpha: 0.72),
                 height: 1.6,
                 fontSize: 14),
           ),
@@ -3896,8 +3896,8 @@ class _WorkflowCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(18),
-              color: Colors.white.withOpacity(0.06),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              color: Colors.white.withValues(alpha: 0.06),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
             child: Row(
               children: [
@@ -3908,7 +3908,7 @@ class _WorkflowCard extends StatelessWidget {
                   child: Text(
                     step.spotlight,
                     style: TextStyle(
-                        color: Colors.white.withOpacity(0.82), fontSize: 13),
+                        color: Colors.white.withValues(alpha: 0.82), fontSize: 13),
                   ),
                 ),
               ],
@@ -3943,7 +3943,7 @@ class _KazAiBullet extends StatelessWidget {
           height: 32,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            color: Colors.white.withOpacity(0.12),
+            color: Colors.white.withValues(alpha: 0.12),
           ),
           child: const Icon(Icons.check_rounded, color: Colors.white, size: 18),
         ),
@@ -3963,7 +3963,7 @@ class _KazAiBullet extends StatelessWidget {
               Text(
                 subtitle,
                 style: TextStyle(
-                    color: Colors.white.withOpacity(0.78),
+                    color: Colors.white.withValues(alpha: 0.78),
                     height: 1.6,
                     fontSize: 14),
               ),
@@ -3995,8 +3995,8 @@ class _TestimonialCard extends StatelessWidget {
       padding: const EdgeInsets.all(26),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
-        color: Colors.white.withOpacity(0.06),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        color: Colors.white.withValues(alpha: 0.06),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -4006,7 +4006,7 @@ class _TestimonialCard extends StatelessWidget {
           Text(
             data.quote,
             style: TextStyle(
-                color: Colors.white.withOpacity(0.85),
+                color: Colors.white.withValues(alpha: 0.85),
                 height: 1.6,
                 fontSize: 15),
           ),
@@ -4019,7 +4019,7 @@ class _TestimonialCard extends StatelessWidget {
           Text(
             data.company,
             style:
-                TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
+                TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
           ),
         ],
       ),

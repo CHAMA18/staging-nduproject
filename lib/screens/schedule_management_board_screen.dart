@@ -194,7 +194,7 @@ class _NotesArea extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 24, offset: const Offset(0, 12)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 24, offset: const Offset(0, 12)),
         ],
       ),
       child: TextField(
@@ -261,7 +261,7 @@ class _ScheduleToolbar extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 12)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20, offset: const Offset(0, 12)),
         ],
       ),
       child: isMobile
@@ -382,7 +382,7 @@ class _WorkBreakdownStructure extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 24, offset: const Offset(0, 12)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 24, offset: const Offset(0, 12)),
         ],
       ),
       child: isMobile
@@ -424,7 +424,7 @@ class _TimelineTabs extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 18, offset: const Offset(0, 10)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 18, offset: const Offset(0, 10)),
         ],
       ),
       child: isMobile
@@ -467,7 +467,7 @@ class _TimelineTab extends StatelessWidget {
         color: selected ? theme.colorScheme.primary : Colors.grey[100],
         borderRadius: BorderRadius.circular(999),
         boxShadow: selected
-            ? [BoxShadow(color: theme.colorScheme.primary.withOpacity(0.32), blurRadius: 16, offset: const Offset(0, 8))]
+            ? [BoxShadow(color: theme.colorScheme.primary.withValues(alpha: 0.32), blurRadius: 16, offset: const Offset(0, 8))]
             : null,
       ),
       child: Text(
@@ -581,7 +581,7 @@ class _KanbanColumn extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.white.withOpacity(0.4)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
               ),
               child: Center(
                 child: Text('No items yet', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[500])),
@@ -616,7 +616,7 @@ class _KanbanCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 18, offset: const Offset(0, 12)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 18, offset: const Offset(0, 12)),
         ],
       ),
       child: Column(
@@ -636,7 +636,7 @@ class _KanbanCard extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 18,
-                backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
                 child: Text(
                   card.assigneeInitials,
                   style: theme.textTheme.labelLarge?.copyWith(
@@ -701,7 +701,7 @@ class _BoardFooter extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 22, offset: const Offset(0, 10)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 22, offset: const Offset(0, 10)),
         ],
       ),
       child: isMobile
@@ -791,7 +791,7 @@ class _StatusPill extends StatelessWidget {
     final color = _resolveColor(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(999)),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(999)),
       child: Text(
         label,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -855,7 +855,7 @@ class _ProgressIndicator extends StatelessWidget {
           child: LinearProgressIndicator(
             value: progress.clamp(0.02, 1.0),
             minHeight: 8,
-            backgroundColor: color.withOpacity(0.12),
+            backgroundColor: color.withValues(alpha: 0.12),
             valueColor: AlwaysStoppedAnimation<Color>(color),
           ),
         ),
@@ -878,7 +878,7 @@ class _SoftBadge extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(999),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 16, offset: const Offset(0, 8)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 8)),
         ],
       ),
       child: Row(
@@ -936,7 +936,7 @@ class _WbsLane extends StatelessWidget {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(color: badgeColor.withOpacity(0.12), borderRadius: BorderRadius.circular(999)),
+          decoration: BoxDecoration(color: badgeColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(999)),
           child: Text(badgeLabel, style: theme.textTheme.labelLarge?.copyWith(color: badgeColor, fontWeight: FontWeight.w700)),
         ),
         const SizedBox(height: 12),

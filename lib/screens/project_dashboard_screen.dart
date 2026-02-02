@@ -89,7 +89,7 @@ class _ProjectDashboardScreenState extends State<ProjectDashboardScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: scheme.primary.withOpacity(0.1),
+                  color: scheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(Icons.create_new_folder,
@@ -121,7 +121,7 @@ class _ProjectDashboardScreenState extends State<ProjectDashboardScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     filled: true,
-                    fillColor: scheme.surfaceContainerHighest.withOpacity(0.3),
+                    fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
@@ -188,7 +188,7 @@ class _ProjectDashboardScreenState extends State<ProjectDashboardScreen> {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.15),
+                color: Colors.black.withValues(alpha: 0.15),
                 blurRadius: 18,
                 offset: const Offset(0, 12),
               ),
@@ -531,7 +531,7 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
             border: Border.all(color: Colors.grey.shade300),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -589,7 +589,7 @@ class _ProjectHeaderState extends State<_ProjectHeader> {
                         backgroundColor: Colors.blue.shade600,
                         foregroundColor: Colors.white,
                         elevation: 2,
-                        shadowColor: Colors.black.withOpacity(0.1),
+                        shadowColor: Colors.black.withValues(alpha: 0.1),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 26, vertical: 18),
                         shape: RoundedRectangleBorder(
@@ -1982,7 +1982,7 @@ class _GroupProjectsCardState extends State<_GroupProjectsCard> {
                           backgroundColor: const Color(0xFF111111),
                           foregroundColor: Colors.white,
                           elevation: selectedCount == 3 ? 10 : 0,
-                          shadowColor: Colors.black.withOpacity(0.3),
+                          shadowColor: Colors.black.withValues(alpha: 0.3),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 28, vertical: 22),
                           shape: RoundedRectangleBorder(
@@ -2322,7 +2322,7 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.15),
+                color: Colors.black.withValues(alpha: 0.15),
                 blurRadius: 24,
                 offset: const Offset(0, 12),
               ),
@@ -3091,14 +3091,14 @@ class _SelectableProjectRowFromFirebase extends StatelessWidget {
           boxShadow: selected
               ? [
                   BoxShadow(
-                    color: const Color(0xFFFFC14A).withOpacity(0.4),
+                    color: const Color(0xFFFFC14A).withValues(alpha: 0.4),
                     blurRadius: 28,
                     offset: const Offset(0, 14),
                   ),
                 ]
               : [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 22,
                     offset: const Offset(0, 12),
                   ),

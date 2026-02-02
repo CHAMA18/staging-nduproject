@@ -375,12 +375,12 @@ class _Header extends StatelessWidget {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(40),
                       color: Colors.white,
-                      border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                      border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
                       boxShadow: [
                         BoxShadow(
                           offset: const Offset(0, 12),
                           blurRadius: 24,
-                          color: Colors.black.withOpacity(0.08),
+                          color: Colors.black.withValues(alpha: 0.08),
                         ),
                       ],
                     ),
@@ -1001,7 +1001,7 @@ class _RollupCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(26)),
                     textStyle: const TextStyle(fontWeight: FontWeight.w700),
                     elevation: 4,
-                    shadowColor: const Color(0xFFFFC812).withOpacity(0.45),
+                    shadowColor: const Color(0xFFFFC812).withValues(alpha: 0.45),
                   ),
                   child: const Text('Roll up to portfolio'),
                 ),
@@ -1353,7 +1353,7 @@ class _InterfaceRow extends StatelessWidget {
             children: [
               _BadgePill(
                   text: item.riskLabel,
-                  color: item.riskColor.withOpacity(0.18),
+                  color: item.riskColor.withValues(alpha: 0.18),
                   textColor: item.riskColor),
               const SizedBox(height: 12),
               IconButton(onPressed: () {}, icon: const Icon(Icons.more_horiz)),
@@ -1465,7 +1465,7 @@ class _Surface extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 22,
               offset: const Offset(0, 12)),
         ],
@@ -1566,7 +1566,7 @@ class _Pill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.16),
+        color: color.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Text(
@@ -1673,7 +1673,7 @@ class _PrimaryButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         textStyle: const TextStyle(fontWeight: FontWeight.w700),
         elevation: 4,
-        shadowColor: const Color(0xFFFFC812).withOpacity(0.45),
+        shadowColor: const Color(0xFFFFC812).withValues(alpha: 0.45),
       ),
       child: Text(label),
     );

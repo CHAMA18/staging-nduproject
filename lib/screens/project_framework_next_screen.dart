@@ -1428,7 +1428,7 @@ class _GoalCardExpandedDialogState extends State<_GoalCardExpandedDialog> {
               decoration: BoxDecoration(
                 color: Colors.grey[50],
                 borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
-                border: Border(top: BorderSide(color: _kBorderColor.withOpacity(0.5))),
+                border: Border(top: BorderSide(color: _kBorderColor.withValues(alpha: 0.5))),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -1547,7 +1547,7 @@ class _MilestonesSection extends StatelessWidget {
                 Container(
                   decoration: BoxDecoration(
                     border: Border(
-                      bottom: BorderSide(color: _kBorderColor.withOpacity(index == rows.length - 1 ? 0 : 0.6)),
+                      bottom: BorderSide(color: _kBorderColor.withValues(alpha: index == rows.length - 1 ? 0 : 0.6)),
                     ),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -1665,9 +1665,9 @@ class _GoalFilterChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
       decoration: BoxDecoration(
-        color: isSelected ? data.color : data.color.withOpacity(0.18),
+        color: isSelected ? data.color : data.color.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(22),
-        border: isSelected ? null : Border.all(color: data.color.withOpacity(0.3)),
+        border: isSelected ? null : Border.all(color: data.color.withValues(alpha: 0.3)),
       ),
       child: Text(
         data.label, 

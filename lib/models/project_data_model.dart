@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+
 /// Comprehensive project data model that captures all information across the application flow
 class ProjectDataModel {
   // Initiation Phase Data
@@ -906,6 +907,43 @@ class Milestone {
     );
   }
 }
+
+/// Returns default milestones for fallback when AI generation fails
+List<Milestone> getDefaultMilestones() {
+  return [
+    Milestone(
+      name: 'Project Kickoff',
+      discipline: 'All',
+      dueDate: '',
+      comments: 'Official project initiation and team mobilization',
+    ),
+    Milestone(
+      name: 'Planning Completion',
+      discipline: 'Planning, Management',
+      dueDate: '',
+      comments: 'All planning documents finalized and approved',
+    ),
+    Milestone(
+      name: 'Execution Start',
+      discipline: 'All',
+      dueDate: '',
+      comments: 'Begin implementation of project deliverables',
+    ),
+    Milestone(
+      name: 'Execution Completion',
+      discipline: 'All',
+      dueDate: '',
+      comments: 'All deliverables completed and ready for launch',
+    ),
+    Milestone(
+      name: 'Project Launch',
+      discipline: 'All',
+      dueDate: '',
+      comments: 'Go-live and transition to operations',
+    ),
+  ];
+}
+
 
 class WorkItem {
   String id;

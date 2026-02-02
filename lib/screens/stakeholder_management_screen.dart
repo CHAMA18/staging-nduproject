@@ -561,7 +561,7 @@ class _MetricCard extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: accentColor.withOpacity(0.12),
+              color: accentColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(icon, color: accentColor, size: 26),
@@ -813,7 +813,7 @@ class _InfluenceInterestMatrix extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: accentColor.withOpacity(0.2)),
+        border: Border.all(color: accentColor.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -842,7 +842,7 @@ class _InfluenceInterestMatrix extends StatelessWidget {
                 ? Center(
                     child: Text(
                       'None',
-                      style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: accentColor.withOpacity(0.5)),
+                      style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: accentColor.withValues(alpha: 0.5)),
                     ),
                   )
                 : SingleChildScrollView(
@@ -862,13 +862,13 @@ class _InfluenceInterestMatrix extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.7),
+        color: Colors.white.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.1)),
+        border: Border.all(color: color.withValues(alpha: 0.1)),
       ),
       child: Text(
         s.name.isEmpty ? 'Unnamed' : s.name,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: color.withOpacity(0.8)),
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: color.withValues(alpha: 0.8)),
       ),
     );
   }

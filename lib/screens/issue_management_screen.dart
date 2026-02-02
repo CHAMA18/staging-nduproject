@@ -355,7 +355,7 @@ class _MetricCard extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: metric.color.withOpacity(0.12),
+              color: metric.color.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(metric.icon, size: 22, color: metric.color),
@@ -371,7 +371,7 @@ class _MetricCard extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 metric.label,
-                style: TextStyle(fontSize: 13, color: metric.color.withOpacity(0.8), fontWeight: FontWeight.w500),
+                style: TextStyle(fontSize: 13, color: metric.color.withValues(alpha: 0.8), fontWeight: FontWeight.w500),
               ),
             ],
           ),

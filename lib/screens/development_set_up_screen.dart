@@ -440,11 +440,11 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
           labelText: 'Status',
           labelStyle: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
           filled: true,
-          fillColor: color.withOpacity(0.12),
+          fillColor: color.withValues(alpha: 0.12),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(color: color.withOpacity(0.5)),
+            borderSide: BorderSide(color: color.withValues(alpha: 0.5)),
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         ),

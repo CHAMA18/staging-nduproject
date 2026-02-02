@@ -3847,7 +3847,7 @@ class _ProjectOptionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final borderColor =
-        isSelected ? const Color(0xFFFFD700) : Colors.grey.withOpacity(0.2);
+        isSelected ? const Color(0xFFFFD700) : Colors.grey.withValues(alpha: 0.2);
     final background = isSelected ? const Color(0xFFFFF8DC) : Colors.white;
 
     return Container(
@@ -3858,7 +3858,7 @@ class _ProjectOptionCard extends StatelessWidget {
         border: Border.all(color: borderColor, width: 1.4),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             offset: const Offset(0, 8),
             blurRadius: 16,
           ),
@@ -4718,7 +4718,7 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
                   decoration: BoxDecoration(
                     color: Colors.grey.shade200,
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.grey.withOpacity(0.35)),
+                    border: Border.all(color: Colors.grey.withValues(alpha: 0.35)),
                   ),
                   child: Row(
                     children: [
@@ -4767,7 +4767,7 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.grey.withOpacity(0.25)),
+                    border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
                   ),
                   child: Column(
                     children: [
@@ -4777,7 +4777,7 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
                           decoration: BoxDecoration(
                             border: Border(
                               top: i > 0
-                                  ? BorderSide(color: Colors.grey.withOpacity(0.2))
+                                  ? BorderSide(color: Colors.grey.withValues(alpha: 0.2))
                                   : BorderSide.none,
                             ),
                           ),

@@ -441,6 +441,24 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
   // --- Start of Chart Widgets ---
 
   Widget _buildTentativeScheduleChart() {
+    final start = _projectData?.createdAt ?? DateTime.now();
+    // Try to find end date from milestones or fallback
+    DateTime end = DateTime.now().add(const Duration(days: 90)); // Default 3 months
+    
+    final milestones = _projectData?.keyMilestones ?? [];
+    if (milestones.isNotEmpty) {
+      // Sort to find last milestone
+       final sorted = List<Milestone>.from(milestones)
+        ..sort((a, b) => (a.date ?? DateTime.now()).compareTo(b.date ?? DateTime.now()));
+      if (sorted.isNotEmpty && sorted.last.date != null) {
+        end = sorted.last.date!;
+      }
+    }
+
+    if (end.isBefore(start)) end = start.add(const Duration(days: 1));
+
+    final totalDuration = end.difference(start).inDays;
+
     return _CharterSection(
       title: 'TIMELINE OVERVIEW',
       backgroundColor: Colors.white,
@@ -449,17 +467,62 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Simple visual representation of phase progression
             Expanded(
-              child: Row(
+              child: Stack(
+                alignment: Alignment.centerLeft,
                 children: [
-                  _buildPhaseBar('Init', Colors.blue, 0.2),
-                  const SizedBox(width: 2),
-                  _buildPhaseBar('Plan', Colors.green, 0.3),
-                  const SizedBox(width: 2),
-                  _buildPhaseBar('Exec', Colors.orange, 0.4),
-                  const SizedBox(width: 2),
-                  _buildPhaseBar('Close', Colors.grey, 0.1),
+                  // Base Timeline Bar
+                  Container(
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  // Progress Fill (approximated by current time vs start/end)
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final now = DateTime.now();
+                      if (now.isBefore(start)) return const SizedBox();
+                      
+                      final elapsed = now.difference(start).inDays;
+                      final progress = (elapsed / totalDuration).clamp(0.0, 1.0);
+                      
+                      return Container(
+                        width: constraints.maxWidth * progress,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      );
+                    },
+                  ),
+                  // Milestones Markers
+                  if (milestones.isNotEmpty)
+                    ...milestones.map((m) {
+                      if (m.date == null) return const SizedBox();
+                      final offset = m.date!.difference(start).inDays;
+                      final pct = (offset / totalDuration).clamp(0.0, 1.0);
+                      
+                      return Align(
+                        alignment: Alignment(pct * 2 - 1, -0.5), // Map 0..1 to -1..1
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 2,
+                              height: 12,
+                              color: Colors.black,
+                            ),
+                            Text(
+                              m.title.length > 10 ? '${m.title.substring(0, 8)}...' : m.title,
+                              style: const TextStyle(fontSize: 8),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
                 ],
               ),
             ),
@@ -467,8 +530,8 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Start: ${_formatDate(_projectData?.createdAt)}', style: const TextStyle(fontSize: 10)),
-                Text('End: ${_extractEndDate(_projectData)}', style: const TextStyle(fontSize: 10)),
+                Text('Start: ${_formatDate(start)}', style: const TextStyle(fontSize: 10)),
+                Text('End: ${_formatDate(end)}', style: const TextStyle(fontSize: 10)),
               ],
             ),
           ],
@@ -477,38 +540,36 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
     );
   }
 
-  Widget _buildPhaseBar(String label, Color color, double flex) {
-    return Expanded(
-      flex: (flex * 10).toInt(),
-      child: Column(
-        children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: color.withOpacity(0.5)),
-              ),
-              child: Center(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
-              ),
+  Widget _buildCostDistributionChart() {
+    final items = _projectData?.costEstimateItems ?? [];
+    
+    if (items.isEmpty) {
+       return _CharterSection(
+        title: 'COST DISTRIBUTION',
+        backgroundColor: Colors.white,
+        child: Container(
+          height: 150,
+          padding: const EdgeInsets.all(16),
+          child: const Center(
+            child: Text(
+              'No cost estimates available yet.',
+              style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      );
+    }
 
-  Widget _buildCostDistributionChart() {
-     // Extract values for a simple visualization
-    // Note: In a real app this would parse the actual doubles.
+    final total = items.fold(0.0, (sum, item) => sum + item.amount);
+    
+    // Group small items into "Other"
+    final sortedItems = List<CostEstimateItem>.from(items)
+      ..sort((a, b) => b.amount.compareTo(a.amount));
+    
+    final topItems = sortedItems.take(4).toList(); // Top 4
+    final otherItems = sortedItems.skip(4).toList();
+    final otherTotal = otherItems.fold(0.0, (sum, item) => sum + item.amount);
+
     return _CharterSection(
       title: 'COST DISTRIBUTION',
       backgroundColor: Colors.white,
@@ -517,16 +578,17 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            // Cost Cake Plot (Simulated with Stacked Bars for simplicity without external libs)
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildCostBarRow('Labor', 0.5, Colors.blue),
-                  const SizedBox(height: 8),
-                  _buildCostBarRow('Materials', 0.3, Colors.orange),
-                  const SizedBox(height: 8),
-                  _buildCostBarRow('Contingency', 0.2, Colors.purple),
+                  ...topItems.map((item) => _buildCostBarRow(
+                    item.title.isNotEmpty ? item.title : 'Untitled Item',
+                    total > 0 ? item.amount / total : 0,
+                    _getColorForIndex(sortedItems.indexOf(item)),
+                  )),
+                  if (otherTotal > 0)
+                    _buildCostBarRow('Other', otherTotal / total, Colors.grey),
                 ],
               ),
             ),
@@ -535,25 +597,40 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
       ),
     );
   }
+  
+  Color _getColorForIndex(int index) {
+    const colors = [Colors.blue, Colors.orange, Colors.purple, Colors.green, Colors.red];
+    return colors[index % colors.length];
+  }
 
   Widget _buildCostBarRow(String label, double pct, Color color) {
-    return Row(
-      children: [
-        SizedBox(width: 70, child: Text(label, style: const TextStyle(fontSize: 10))),
-        Expanded(
-          child: Stack(
-            children: [
-              Container(height: 12, color: Colors.grey[100]),
-              FractionallySizedBox(
-                widthFactor: pct,
-                child: Container(height: 12, color: color),
-              ),
-            ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4.0),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 70, 
+            child: Text(
+              label, 
+              style: const TextStyle(fontSize: 10), 
+              overflow: TextOverflow.ellipsis
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
-        Text('${(pct * 100).toInt()}%', style: const TextStyle(fontSize: 10)),
-      ],
+          Expanded(
+            child: Stack(
+              children: [
+                Container(height: 8, color: Colors.grey[100]),
+                FractionallySizedBox(
+                  widthFactor: pct,
+                  child: Container(height: 8, color: color),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text('${(pct * 100).toInt()}%', style: const TextStyle(fontSize: 10)),
+        ],
+      ),
     );
   }
 

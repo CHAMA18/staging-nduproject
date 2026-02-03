@@ -435,4 +435,4 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
       ],
     );
   }
-
+}

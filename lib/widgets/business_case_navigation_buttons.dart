@@ -107,7 +107,7 @@ class _NavigationButton extends StatelessWidget {
         backgroundColor: isForward ? accentColor : Colors.white,
         foregroundColor: primaryText,
         elevation: 2,
-        shadowColor: Colors.black.withOpacity(0.1),
+        shadowColor: Colors.black.withValues(alpha: 0.1),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         minimumSize: minWidth == null ? null : Size(minWidth!, 48),
         shape: RoundedRectangleBorder(

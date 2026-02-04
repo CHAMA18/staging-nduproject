@@ -1655,9 +1655,9 @@ class _QuoteStatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(0.26)),
+        border: Border.all(color: color.withValues(alpha: 0.26)),
       ),
       child: Text(
         label,
@@ -1729,12 +1729,10 @@ class _LabeledField extends StatelessWidget {
   const _LabeledField({
     required this.label,
     required this.child,
-    this.helper,
   });
 
   final String label;
   final Widget child;
-  final String? helper;
 
   @override
   Widget build(BuildContext context) {
@@ -1748,13 +1746,6 @@ class _LabeledField extends StatelessWidget {
               fontWeight: FontWeight.w600,
               color: Color(0xFF111827)),
         ),
-        if (helper != null) ...[
-          const SizedBox(height: 4),
-          Text(
-            helper!,
-            style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
-          ),
-        ],
         const SizedBox(height: 12),
         child,
       ],
@@ -2829,7 +2820,7 @@ class _ContractMetricCard extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: metric.accentColor.withOpacity(0.12),
+              color: metric.accentColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(metric.icon, color: metric.accentColor, size: 22),
@@ -3052,9 +3043,9 @@ class _StatusPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(0.32)),
+        border: Border.all(color: color.withValues(alpha: 0.32)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -6193,7 +6184,7 @@ class _ContractStatusChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.14),
+          color: color.withValues(alpha: 0.14),
           borderRadius: BorderRadius.circular(999),
         ),
         child: Text(label,
@@ -6956,7 +6947,7 @@ class _ContractMilestoneCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final Color background = data.emphasize
         ? const Color(0xFFFFF5F5)
-        : data.accentColor.withOpacity(0.08);
+        : data.accentColor.withValues(alpha: 0.08);
     final Color textColor =
         data.emphasize ? const Color(0xFFB91C1C) : const Color(0xFF1F2937);
 
@@ -6965,7 +6956,7 @@ class _ContractMilestoneCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: data.accentColor.withOpacity(0.2)),
+        border: Border.all(color: data.accentColor.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -7718,7 +7709,7 @@ class _ContractDocumentRow extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: data.accentColor.withOpacity(0.12),
+              color: data.accentColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(data.icon, color: data.accentColor, size: 22),

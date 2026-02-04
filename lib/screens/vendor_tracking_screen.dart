@@ -727,7 +727,7 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                 ],
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: selectedCategory,
+                  initialValue: selectedCategory,
                   decoration: const InputDecoration(labelText: 'Category *'),
                   items: const [
                     'Logistics',
@@ -747,7 +747,7 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: selectedCriticality,
+                  initialValue: selectedCriticality,
                   decoration: const InputDecoration(labelText: 'Criticality *'),
                   items: const ['High', 'Medium', 'Low']
                       .map((crit) =>
@@ -808,7 +808,7 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
                 if (contracts.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String?>(
-                    value: selectedContractId,
+                    initialValue: selectedContractId,
                     decoration: const InputDecoration(
                         labelText: 'Linked Contract (Optional)'),
                     items: [

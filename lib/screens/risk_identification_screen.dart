@@ -1188,7 +1188,8 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
                           Text(solution.description,
                               style: const TextStyle(
                                   fontSize: 12, color: Colors.grey),
-                              maxLines: 3,
+                              maxLines: 5,
+                              softWrap: true,
                               overflow: TextOverflow.ellipsis),
                         ]
                       ]),

@@ -9,7 +9,6 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
-import 'package:ndu_project/screens/project_framework_screen.dart';
 import 'package:ndu_project/screens/issue_management_screen.dart';
 import 'package:ndu_project/screens/ssher_stacked_screen.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
@@ -204,6 +203,7 @@ class _ChangeManagementScreenState extends State<ChangeManagementScreen> {
                                     context: context,
                                     builder: (ctx) => NewChangeRequestDialog(projectId: ProjectDataHelper.getData(context).projectId),
                                   );
+                                  if (!context.mounted) return;
                                   if (result != null) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
@@ -391,59 +391,14 @@ class _UserChip extends StatelessWidget {
   }
 }
 
-class _OutlinedButton extends StatelessWidget {
-  const _OutlinedButton({required this.label, this.onPressed});
-
-  final String label;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        backgroundColor: Colors.white,
-        side: const BorderSide(color: Color(0xFFE5E7EB)),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        foregroundColor: const Color(0xFF111827),
-        textStyle: const TextStyle(fontWeight: FontWeight.w600),
-      ),
-      child: Text(label),
-    );
-  }
-}
-
-class _YellowButton extends StatelessWidget {
-  const _YellowButton({required this.label, this.onPressed});
-
-  final String label;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFFFFD54F),
-        foregroundColor: const Color(0xFF111827),
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        textStyle: const TextStyle(fontWeight: FontWeight.w600),
-      ),
-      child: Text(label),
-    );
-  }
-}
-
 
 class _StepTile extends StatelessWidget {
   final int step;
   final String title;
   final String subtitle;
+  final VoidCallback? onPressed;
   const _StepTile(
-      {required this.step, required this.title, required this.subtitle});
+      {required this.step, required this.title, required this.subtitle, this.onPressed});
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -585,7 +540,6 @@ class _ChangeRequestsTable extends StatefulWidget {
 class _ChangeRequestsTableState extends State<_ChangeRequestsTable> {
   final Set<String> _statusFilters = {'Pending', 'Approved', 'Rejected'};
   final List<String> _allStatuses = const ['Pending', 'Approved', 'Rejected'];
-  List<ChangeRequest> _latestItems = [];
 
   Future<void> openFilterDialog(BuildContext context) async {
     final selected = Set<String>.from(_statusFilters);
@@ -657,13 +611,6 @@ class _ChangeRequestsTableState extends State<_ChangeRequestsTable> {
     return '${d.year}-${two(d.month)}-${two(d.day)}';
   }
 
-  String _escapeCsv(String value) {
-    final needsQuotes =
-        value.contains(',') || value.contains('"') || value.contains('\n');
-    final escaped = value.replaceAll('"', '""');
-    return needsQuotes ? '"$escaped"' : escaped;
-  }
-
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -723,7 +670,6 @@ class _ChangeRequestsTableState extends State<_ChangeRequestsTable> {
                         );
                       }
                       final items = snapshot.data ?? [];
-                      _latestItems = items;
                       final filtered = items
                           .where((item) => _statusFilters.contains(item.status))
                           .toList();

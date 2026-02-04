@@ -217,15 +217,17 @@ class VendorService {
     if (sla != null) updateData['sla'] = sla;
     if (slaPerformance != null) updateData['slaPerformance'] = slaPerformance;
     if (leadTime != null) updateData['leadTime'] = leadTime;
-    if (requiredDeliverables != null)
+    if (requiredDeliverables != null) {
       updateData['requiredDeliverables'] = requiredDeliverables;
+    }
     if (rating != null) updateData['rating'] = rating;
     if (status != null) updateData['status'] = status;
     if (nextReview != null) updateData['nextReview'] = nextReview;
     if (contractId != null) updateData['contractId'] = contractId;
     if (onTimeDelivery != null) updateData['onTimeDelivery'] = onTimeDelivery;
-    if (incidentResponse != null)
+    if (incidentResponse != null) {
       updateData['incidentResponse'] = incidentResponse;
+    }
     if (qualityScore != null) updateData['qualityScore'] = qualityScore;
     if (costAdherence != null) updateData['costAdherence'] = costAdherence;
     if (notes != null) updateData['notes'] = notes;

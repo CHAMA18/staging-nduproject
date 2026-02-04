@@ -200,7 +200,7 @@ class _CircularIconButton extends StatelessWidget {
     final theme = Theme.of(context);
     return Material(
       shape: const CircleBorder(),
-      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.05),
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: onTap,
@@ -230,7 +230,7 @@ class _UserChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -241,7 +241,7 @@ class _UserChip extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+            backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
             child: Text(
               _initials(name),
               style: TextStyle(
@@ -320,7 +320,7 @@ class _GroupsTabs extends StatelessWidget {
                 child: Container(
                   decoration: BoxDecoration(
                     color:
-                        Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                        Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(32),
                     border: Border.all(
                         color: Theme.of(context).colorScheme.primary, width: 2),
@@ -389,7 +389,7 @@ class _ContractList extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 24,
             offset: const Offset(0, 12),
           ),
@@ -441,7 +441,6 @@ class _ContractList extends StatelessWidget {
 class _ControlButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final spacing = AppBreakpoints.isMobile(context) ? 12.0 : 16.0;
     return Wrap(
       spacing: spacing,
@@ -479,9 +478,7 @@ class _GhostButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final foreground = isSecondary
-        ? theme.colorScheme.onSurface.withOpacity(0.8)
-        : theme.colorScheme.primary;
+    final foreground = theme.colorScheme.primary;
     return OutlinedButton.icon(
       onPressed: onPressed,
       icon: Icon(icon, size: 18, color: foreground),
@@ -491,9 +488,7 @@ class _GhostButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         side: BorderSide(color: AppSemanticColors.border),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        backgroundColor: isSecondary
-            ? Colors.white
-            : theme.colorScheme.primary.withOpacity(0.04),
+        backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.04),
       ),
     );
   }
@@ -629,8 +624,8 @@ class _ContractRowTile extends StatelessWidget {
           value: row.progress == 0 ? 0.01 : row.progress / 100,
           minHeight: 8,
           borderRadius: BorderRadius.circular(20),
-          color: theme.colorScheme.primary.withOpacity(0.8),
-          backgroundColor: theme.colorScheme.primary.withOpacity(0.12),
+          color: theme.colorScheme.primary.withValues(alpha: 0.8),
+          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.12),
         ),
         const SizedBox(height: 6),
         Text('${row.progress}%',
@@ -686,7 +681,7 @@ class _ContractRowTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 14,
               offset: const Offset(0, 6)),
         ],

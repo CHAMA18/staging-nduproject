@@ -231,9 +231,9 @@ class _TableHeaderCell extends StatelessWidget {
         label,
         textAlign: TextAlign.center,
         style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: Color(0xFF6B7280),
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF374151),
           letterSpacing: 0.2,
         ),
       ),
@@ -291,30 +291,30 @@ class _StatusReportRowWidgetState extends State<_StatusReportRowWidget> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               child: Row(
                 children: [
                   Expanded(
-                    flex: 2,
+                    flex: 3,
                     child: InlineEditableText(
                       value: _report.reportType,
                       hint: 'Report type',
                       onChanged: (v) =>
                           _update(_report.copyWith(reportType: v)),
                       style: const TextStyle(
-                          fontSize: 11, color: Color(0xFF111827)),
+                          fontSize: 12, color: Color(0xFF111827)),
                       textAlign: TextAlign.left,
                     ),
                   ),
                   Expanded(
-                    flex: 2,
+                    flex: 3,
                     child: InlineEditableText(
                       value: _report.stakeholder,
                       hint: 'Stakeholder',
                       onChanged: (v) =>
                           _update(_report.copyWith(stakeholder: v)),
                       style: const TextStyle(
-                          fontSize: 11, color: Color(0xFF111827)),
+                          fontSize: 12, color: Color(0xFF111827)),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -324,7 +324,7 @@ class _StatusReportRowWidgetState extends State<_StatusReportRowWidget> {
                       child: Text(
                         DateFormat('MMM d, yyyy').format(_report.reportDate),
                         style: const TextStyle(
-                            fontSize: 11, color: Color(0xFF111827)),
+                            fontSize: 12, color: Color(0xFF111827)),
                       ),
                     ),
                   ),
@@ -333,7 +333,7 @@ class _StatusReportRowWidgetState extends State<_StatusReportRowWidget> {
                     child: Center(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
+                            horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: _report.status == 'Sent'
                               ? const Color(0xFF10B981).withValues(alpha: 0.1)
@@ -342,7 +342,7 @@ class _StatusReportRowWidgetState extends State<_StatusReportRowWidget> {
                                       .withValues(alpha: 0.1)
                                   : const Color(0xFF2563EB)
                                       .withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           _report.status,
@@ -360,7 +360,7 @@ class _StatusReportRowWidgetState extends State<_StatusReportRowWidget> {
                     ),
                   ),
                   Expanded(
-                    flex: 1,
+                    flex: 2,
                     child: Center(
                       child: _isHovering
                           ? Row(

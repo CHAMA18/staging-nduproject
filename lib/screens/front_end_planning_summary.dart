@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
-import 'package:ndu_project/widgets/draggable_sidebar.dart';
-import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/screens/front_end_planning_requirements_screen.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
@@ -128,48 +126,36 @@ class _FrontEndPlanningSummaryScreenState extends State<FrontEndPlanningSummaryS
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return ResponsiveScaffold(
+      activeItemLabel: 'Summary',
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            DraggableSidebar(
-              openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(activeItemLabel: 'Summary'),
-            ),
-            Expanded(
-              child: Stack(
-                children: [
-                  const AdminEditToggle(),
-                  Column(
+      floatingActionButton: const KazAiChatBubble(),
+      body: Stack(
+        children: [
+          const AdminEditToggle(),
+          Column(
+            children: [
+              const FrontEndPlanningHeader(),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const FrontEndPlanningHeader(),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                        _roundedField(controller: _notes, hint: 'Input your notes here...', minLines: 3),
-                        const SizedBox(height: 24),
-                        const _SectionTitle(),
-                        const SizedBox(height: 18),
-                        _SummaryPanel(controller: _summaryNotes),
-                              const SizedBox(height: 140),
-                            ],
-                          ),
-                        ),
-                      ),
+                      _roundedField(controller: _notes, hint: 'Input your notes here...', minLines: 3),
+                      const SizedBox(height: 24),
+                      const _SectionTitle(),
+                      const SizedBox(height: 18),
+                      _SummaryPanel(controller: _summaryNotes),
+                      const SizedBox(height: 140),
                     ],
                   ),
-                  _BottomOverlay(summaryController: _summaryNotes),
-                  const KazAiChatBubble(),
-                ],
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+          _BottomOverlay(summaryController: _summaryNotes),
+        ],
       ),
     );
   }

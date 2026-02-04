@@ -1121,7 +1121,8 @@ class _InfrastructureConsiderationsScreenState
                           Text(s.description,
                               style: const TextStyle(
                                   fontSize: 12, color: Colors.grey),
-                              maxLines: 3,
+                              maxLines: 5,
+                              softWrap: true,
                               overflow: TextOverflow.ellipsis),
                         ]
                       ]),

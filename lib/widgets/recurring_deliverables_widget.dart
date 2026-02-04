@@ -183,9 +183,9 @@ class _RecurringDeliverablesWidgetState
               children: [
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   decoration: const BoxDecoration(
-                    color: Color(0xFFF3F4F6),
+                    color: Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(12),
                       topRight: Radius.circular(12),
@@ -193,11 +193,11 @@ class _RecurringDeliverablesWidgetState
                   ),
                   child: Row(
                     children: [
-                      _TableHeaderCell('Recurring Item', flex: 3),
+                      _TableHeaderCell('Recurring Item', flex: 4),
                       _TableHeaderCell('Frequency', flex: 2),
                       _TableHeaderCell('Next Occurrence', flex: 2),
                       _TableHeaderCell('Status', flex: 2),
-                      _TableHeaderCell('Action', flex: 1),
+                      _TableHeaderCell('Actions', flex: 2),
                     ],
                   ),
                 ),
@@ -233,9 +233,9 @@ class _TableHeaderCell extends StatelessWidget {
         label,
         textAlign: TextAlign.center,
         style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: Color(0xFF6B7280),
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF374151),
           letterSpacing: 0.2,
         ),
       ),
@@ -293,17 +293,17 @@ class _RecurringRowWidgetState extends State<_RecurringRowWidget> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               child: Row(
                 children: [
                   Expanded(
-                    flex: 3,
+                    flex: 4,
                     child: InlineEditableText(
                       value: _item.title,
                       hint: 'Recurring item title',
                       onChanged: (v) => _update(_item.copyWith(title: v)),
                       style: const TextStyle(
-                          fontSize: 11, color: Color(0xFF111827)),
+                          fontSize: 12, color: Color(0xFF111827)),
                       textAlign: TextAlign.left,
                     ),
                   ),
@@ -324,7 +324,7 @@ class _RecurringRowWidgetState extends State<_RecurringRowWidget> {
                             .map((f) => DropdownMenuItem(
                                   value: f,
                                   child: Text(f,
-                                      style: const TextStyle(fontSize: 11)),
+                                      style: const TextStyle(fontSize: 12)),
                                 ))
                             .toList(),
                         onChanged: (v) {
@@ -344,7 +344,7 @@ class _RecurringRowWidgetState extends State<_RecurringRowWidget> {
                                 .format(_item.nextOccurrence!)
                             : 'Not set',
                         style: const TextStyle(
-                            fontSize: 11, color: Color(0xFF111827)),
+                            fontSize: 12, color: Color(0xFF111827)),
                       ),
                     ),
                   ),
@@ -353,12 +353,12 @@ class _RecurringRowWidgetState extends State<_RecurringRowWidget> {
                     child: Center(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
+                            horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: _item.status == 'Active'
                               ? const Color(0xFF10B981).withValues(alpha: 0.1)
                               : const Color(0xFF9CA3AF).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           _item.status,
@@ -374,7 +374,7 @@ class _RecurringRowWidgetState extends State<_RecurringRowWidget> {
                     ),
                   ),
                   Expanded(
-                    flex: 1,
+                    flex: 2,
                     child: Center(
                       child: _isHovering
                           ? Row(

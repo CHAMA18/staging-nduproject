@@ -315,7 +315,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
         border: Border.all(color: AppSemanticColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -397,7 +397,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
         border: Border.all(color: AppSemanticColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -474,7 +474,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
         border: Border.all(color: AppSemanticColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -578,9 +578,9 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.12),
+            color: color.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: color.withOpacity(0.2)),
+            border: Border.all(color: color.withValues(alpha: 0.2)),
           ),
           child: Icon(icon, color: color, size: 22),
         ),

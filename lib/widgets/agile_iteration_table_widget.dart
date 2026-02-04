@@ -34,119 +34,126 @@ class AgileIterationTableWidget extends StatelessWidget {
       );
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
-        columnSpacing: 16,
-        headingRowHeight: 40,
-        dataRowMinHeight: 48,
-        dataRowMaxHeight: 120,
-        columns: const [
-          DataColumn(
-            label: Center(
-              child: Text('User Story/Task',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF111827))),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minWidth: constraints.maxWidth > 0 ? constraints.maxWidth : 900,
+              ),
+              child: DataTable(
+                headingRowColor:
+                    WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                columnSpacing: 24,
+                horizontalMargin: 20,
+                headingRowHeight: 56,
+                dataRowMinHeight: 52,
+                dataRowMaxHeight: 120,
+                columns: const [
+                  DataColumn(
+                    label: Text('User Story/Task',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151))),
+                  ),
+                  DataColumn(
+                    label: Text('Assigned Role',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151))),
+                  ),
+                  DataColumn(
+                    label: Text('Story Points',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151))),
+                  ),
+                  DataColumn(
+                    label: Text('Priority',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151))),
+                  ),
+                  DataColumn(
+                    label: Text('Status',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151))),
+                  ),
+                  DataColumn(
+                    label: Text('Actions',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151))),
+                  ),
+                ],
+                rows: tasks.map((task) {
+                  return DataRow(
+                    cells: [
+                      DataCell(_AgileTaskRowWidget(
+                        task: task,
+                        column: _AgileTaskColumn.userStory,
+                        availableRoles: availableRoles,
+                        onUpdated: onUpdated,
+                        onDeleted: onDeleted,
+                      )),
+                      DataCell(_AgileTaskRowWidget(
+                        task: task,
+                        column: _AgileTaskColumn.assignedRole,
+                        availableRoles: availableRoles,
+                        onUpdated: onUpdated,
+                        onDeleted: onDeleted,
+                      )),
+                      DataCell(_AgileTaskRowWidget(
+                        task: task,
+                        column: _AgileTaskColumn.storyPoints,
+                        availableRoles: availableRoles,
+                        onUpdated: onUpdated,
+                        onDeleted: onDeleted,
+                      )),
+                      DataCell(_AgileTaskRowWidget(
+                        task: task,
+                        column: _AgileTaskColumn.priority,
+                        availableRoles: availableRoles,
+                        onUpdated: onUpdated,
+                        onDeleted: onDeleted,
+                      )),
+                      DataCell(_AgileTaskRowWidget(
+                        task: task,
+                        column: _AgileTaskColumn.status,
+                        availableRoles: availableRoles,
+                        onUpdated: onUpdated,
+                        onDeleted: onDeleted,
+                      )),
+                      DataCell(_AgileTaskRowWidget(
+                        task: task,
+                        column: _AgileTaskColumn.actions,
+                        availableRoles: availableRoles,
+                        onUpdated: onUpdated,
+                        onDeleted: onDeleted,
+                      )),
+                    ],
+                  );
+                }).toList(),
+              ),
             ),
           ),
-          DataColumn(
-            label: Center(
-              child: Text('Assigned Role',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF111827))),
-            ),
-          ),
-          DataColumn(
-            label: Center(
-              child: Text('Story Points',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF111827))),
-            ),
-          ),
-          DataColumn(
-            label: Center(
-              child: Text('Priority',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF111827))),
-            ),
-          ),
-          DataColumn(
-            label: Center(
-              child: Text('Status',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF111827))),
-            ),
-          ),
-          DataColumn(
-            label: Center(
-              child: Text('Actions',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF111827))),
-            ),
-          ),
-        ],
-        rows: tasks.map((task) {
-          return DataRow(
-            cells: [
-              DataCell(_AgileTaskRowWidget(
-                task: task,
-                column: _AgileTaskColumn.userStory,
-                availableRoles: availableRoles,
-                onUpdated: onUpdated,
-                onDeleted: onDeleted,
-              )),
-              DataCell(_AgileTaskRowWidget(
-                task: task,
-                column: _AgileTaskColumn.assignedRole,
-                availableRoles: availableRoles,
-                onUpdated: onUpdated,
-                onDeleted: onDeleted,
-              )),
-              DataCell(_AgileTaskRowWidget(
-                task: task,
-                column: _AgileTaskColumn.storyPoints,
-                availableRoles: availableRoles,
-                onUpdated: onUpdated,
-                onDeleted: onDeleted,
-              )),
-              DataCell(_AgileTaskRowWidget(
-                task: task,
-                column: _AgileTaskColumn.priority,
-                availableRoles: availableRoles,
-                onUpdated: onUpdated,
-                onDeleted: onDeleted,
-              )),
-              DataCell(_AgileTaskRowWidget(
-                task: task,
-                column: _AgileTaskColumn.status,
-                availableRoles: availableRoles,
-                onUpdated: onUpdated,
-                onDeleted: onDeleted,
-              )),
-              DataCell(_AgileTaskRowWidget(
-                task: task,
-                column: _AgileTaskColumn.actions,
-                availableRoles: availableRoles,
-                onUpdated: onUpdated,
-                onDeleted: onDeleted,
-              )),
-            ],
-          );
-        }).toList(),
-      ),
+        );
+      },
     );
   }
 }
@@ -298,9 +305,7 @@ class _AgileTaskRowWidgetState extends State<_AgileTaskRowWidget> {
   }
 
   void _updateTask(AgileTask updated) {
-    if (_previousState == null) {
-      _previousState = widget.task;
-    }
+    _previousState ??= widget.task;
     widget.onUpdated(updated);
     _debouncer.run(() async {
       final projectId =
@@ -395,8 +400,18 @@ class _AgileTaskRowWidgetState extends State<_AgileTaskRowWidget> {
                 projectId: projectId,
                 tasks: tasks,
               );
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Task restored')),
+                );
+              }
             } catch (e) {
               debugPrint('Error undoing delete: $e');
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error restoring task: $e')),
+                );
+              }
             }
           },
         ),

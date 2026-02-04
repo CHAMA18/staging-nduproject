@@ -15,6 +15,7 @@ import 'package:ndu_project/screens/front_end_planning_contract_vendor_quotes_sc
 import 'package:ndu_project/screens/front_end_planning_procurement_screen.dart';
 import 'package:ndu_project/screens/front_end_planning_security.dart';
 import 'package:ndu_project/screens/front_end_planning_allowance.dart';
+import 'package:ndu_project/screens/front_end_planning_milestone.dart';
 import 'package:ndu_project/screens/project_charter_screen.dart';
 import 'package:ndu_project/screens/project_framework_screen.dart';
 import 'package:ndu_project/screens/work_breakdown_structure_screen.dart';
@@ -177,6 +178,8 @@ class NavigationRouteResolver {
         return const FrontEndPlanningSecurityScreen();
       case 'fep_allowance':
         return const FrontEndPlanningAllowanceScreen();
+      case 'fep_milestone':
+        return const FrontEndPlanningMilestoneScreen();
       case 'project_charter':
         return const ProjectCharterScreen();
 

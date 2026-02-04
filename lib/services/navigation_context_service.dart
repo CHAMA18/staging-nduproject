@@ -23,13 +23,13 @@ class NavigationContextService {
     if (kDebugMode) debugPrint('NavigationContextService: last admin dashboard -> $routeName');
   }
 
-  /// Navigates to the landing page when the logo is tapped.
+  /// Navigates to the dashboard when the logo is tapped.
   /// Provides consistent behavior across all screens.
   void navigateFromLogo(BuildContext context) {
     try {
-      if (kDebugMode) debugPrint('Logo tap -> navigating to landing page');
-      // Use go() with path instead of goNamed to avoid router context issues
-      context.go('/');
+      if (kDebugMode) debugPrint('Logo tap -> navigating to dashboard');
+      // Navigate to dashboard instead of landing page
+      context.go('/dashboard');
     } catch (e, st) {
       debugPrint('NavigationContextService.navigateFromLogo error: $e\n$st');
     }

@@ -12,7 +12,6 @@ import 'package:ndu_project/widgets/content_text.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
-import 'package:ndu_project/services/project_route_registry.dart';
 import 'package:ndu_project/utils/ssher_export_helper.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'package:ndu_project/services/user_service.dart';

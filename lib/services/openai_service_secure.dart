@@ -312,6 +312,50 @@ class OpenAiServiceSecure {
   OpenAiServiceSecure({http.Client? client})
       : _client = client ?? http.Client();
 
+  Future<String> generateCompletion(
+    String prompt, {
+    int maxTokens = 1200,
+    double temperature = 0.4,
+  }) async {
+    final trimmedPrompt = prompt.trim();
+    if (trimmedPrompt.isEmpty) return '';
+    if (!OpenAiConfig.isConfigured) {
+      throw const OpenAiNotConfiguredException();
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'messages': [
+        {
+          'role': 'system',
+          'content': 'Return only the response text.'
+        },
+        {'role': 'user', 'content': trimmedPrompt},
+      ],
+    });
+
+    final response = await _client
+        .post(uri, headers: headers, body: body)
+        .timeout(const Duration(seconds: 16));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+          'OpenAI error ${response.statusCode}: ${response.body}');
+    }
+    final data =
+        jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final content =
+        (data['choices'] as List).first['message']['content'] as String;
+    return content.trim();
+  }
+
   // Generate a concise section text for Front End Planning pages based on full project context.
   // Returns a rich paragraph suitable for a multi-line TextField. If API is not configured,
   // falls back to a short heuristic summary from the provided context.

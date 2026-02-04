@@ -159,7 +159,7 @@ class DonutChart extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '${data.fold<double>(0, (sum, d) => sum + (d['value'] as num).toDouble()).toStringAsFixed(0)}',
+                data.fold<double>(0, (sum, d) => sum + (d['value'] as num).toDouble()).toStringAsFixed(0),
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,

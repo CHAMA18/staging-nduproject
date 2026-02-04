@@ -761,11 +761,11 @@ class _MetricCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     this.height,
-    this.badges = const [],
+    List<_Badge>? badges,
     this.progress,
     this.footer,
     this.footerIcon,
-  });
+  }) : badges = badges ?? const [];
 
   final String title;
   final String subtitle;

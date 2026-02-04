@@ -270,7 +270,7 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
       _StatCardData(
           'Integration Readiness',
           '$integrationReadiness%',
-          '${integrationCount}/${totalComponents} mapped',
+          '$integrationCount/$totalComponents mapped',
           const Color(0xFF6366F1)),
     ];
 
@@ -368,14 +368,18 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
   List<DesignComponent> _filterComponents(List<DesignComponent> components) {
     if (_selectedFilters.contains('All packages')) return components;
     return components.where((c) {
-      if (_selectedFilters.contains('Ready') && c.status == 'Approved')
+      if (_selectedFilters.contains('Ready') && c.status == 'Approved') {
         return true;
-      if (_selectedFilters.contains('In review') && c.status == 'Reviewed')
+      }
+      if (_selectedFilters.contains('In review') && c.status == 'Reviewed') {
         return true;
-      if (_selectedFilters.contains('Draft') && c.status == 'Draft')
+      }
+      if (_selectedFilters.contains('Draft') && c.status == 'Draft') {
         return true;
-      if (_selectedFilters.contains('Pending') && c.status == 'Draft')
+      }
+      if (_selectedFilters.contains('Pending') && c.status == 'Draft') {
         return true;
+      }
       return false;
     }).toList();
   }
@@ -463,7 +467,7 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: selectedCategory,
+                    initialValue: selectedCategory,
                     decoration: const InputDecoration(
                         labelText: 'Category *', isDense: true),
                     items: const [
@@ -504,7 +508,7 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: selectedStatus,
+                    initialValue: selectedStatus,
                     decoration: const InputDecoration(
                         labelText: 'Status *', isDense: true),
                     items: const ['Draft', 'Reviewed', 'Approved']

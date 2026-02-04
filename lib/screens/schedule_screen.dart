@@ -745,8 +745,7 @@ class _WbsTreeTile extends StatelessWidget {
                               color: badge.backgroundColor,
                               borderRadius: BorderRadius.circular(999),
                               border: Border.all(
-                                  color:
-                                      badge.borderColor ?? Colors.transparent),
+                                  color: badge.borderColor),
                             ),
                             child: Text(
                               badge.label,
@@ -1225,7 +1224,7 @@ class _TimelineListRow extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
+                  color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -1490,7 +1489,7 @@ class _TimelineRow extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: item.color.withOpacity(0.18),
+              color: item.color.withValues(alpha: 0.18),
               blurRadius: 18,
               offset: const Offset(0, 10),
             ),
@@ -1509,8 +1508,8 @@ class _TimelineRow extends StatelessWidget {
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                     colors: [
-                      Colors.white.withOpacity(0.18),
-                      Colors.white.withOpacity(0.05),
+                      Colors.white.withValues(alpha: 0.18),
+                      Colors.white.withValues(alpha: 0.05),
                     ],
                   ),
                 ),
@@ -1536,7 +1535,7 @@ class _TimelineRow extends StatelessWidget {
                     Container(
                       height: 6,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.22),
+                        color: Colors.white.withValues(alpha: 0.22),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Align(
@@ -1627,23 +1626,21 @@ class _BadgeStyle {
     required this.label,
     required this.textColor,
     required this.backgroundColor,
-    this.borderColor,
-  });
+  }) : borderColor = Colors.transparent;
 
   final String label;
   final Color textColor;
   final Color backgroundColor;
-  final Color? borderColor;
+  final Color borderColor;
 }
 
 class _WbsNode {
   const _WbsNode({
     required this.title,
-    this.duration,
-    this.badges = const [],
-    this.children = const [],
-    this.highlight = false,
-  });
+  })  : duration = null,
+        badges = const [],
+        children = const [],
+        highlight = false;
 
   final String title;
   final String? duration;
@@ -1659,20 +1656,9 @@ class _TimelineItem {
     required this.startWeek,
     required this.durationWeeks,
     required this.color,
-    this.progress = 0,
-    this.isCritical = false,
-    this.isMilestone = false,
-  });
-
-  const _TimelineItem.milestone({
-    required this.label,
-    required this.startWeek,
-    required this.color,
-  })  : progressLabel = label,
-        durationWeeks = 1,
-        progress = 0,
+  })  : progress = 0,
         isCritical = false,
-        isMilestone = true;
+        isMilestone = false;
 
   final String label;
   final String progressLabel;

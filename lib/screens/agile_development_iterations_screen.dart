@@ -10,7 +10,6 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/execution_phase_service.dart';
 import 'package:ndu_project/models/agile_task.dart';
-import 'package:ndu_project/models/staffing_row.dart';
 import 'package:ndu_project/widgets/agile_iteration_table_widget.dart';
 import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
 
@@ -437,7 +436,7 @@ class _AgileDevelopmentIterationsScreenState
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _availableRoles.isEmpty
+                initialValue: _availableRoles.isEmpty
                     ? null
                     : (_availableRoles.contains(selectedRole)
                         ? selectedRole
@@ -451,7 +450,7 @@ class _AgileDevelopmentIterationsScreenState
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(
-                value: selectedStoryPoints,
+                initialValue: selectedStoryPoints,
                 decoration: const InputDecoration(labelText: 'Story Points *'),
                 items: const [1, 2, 3, 5, 8].map((points) {
                   return DropdownMenuItem<int>(
@@ -461,7 +460,7 @@ class _AgileDevelopmentIterationsScreenState
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: selectedPriority,
+                initialValue: selectedPriority,
                 decoration: const InputDecoration(labelText: 'Priority *'),
                 items: const ['Critical', 'High', 'Medium', 'Low'].map((p) {
                   return DropdownMenuItem<String>(value: p, child: Text(p));
@@ -470,7 +469,7 @@ class _AgileDevelopmentIterationsScreenState
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: selectedStatus,
+                initialValue: selectedStatus,
                 decoration: const InputDecoration(labelText: 'Status *'),
                 items:
                     const ['To-Do', 'In-Progress', 'Testing', 'Done'].map((s) {

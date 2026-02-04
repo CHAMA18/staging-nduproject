@@ -420,7 +420,7 @@ class _StakeholderAlignmentScreenState
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<String>(
-                    value: selectedStakeholder,
+                    initialValue: selectedStakeholder,
                     decoration: const InputDecoration(
                       labelText: 'Stakeholder Name/Role',
                       hintText: 'Select from Core Stakeholders or enter new',
@@ -469,7 +469,7 @@ class _StakeholderAlignmentScreenState
                     ),
                   ],
                   DropdownButtonFormField<String>(
-                    value: selectedStatus,
+                    initialValue: selectedStatus,
                     decoration:
                         const InputDecoration(labelText: 'Alignment Status'),
                     items: ['Aligned', 'Neutral', 'Concerned', 'Resistent']
@@ -485,7 +485,7 @@ class _StakeholderAlignmentScreenState
                     },
                   ),
                   DropdownButtonFormField<String>(
-                    value: selectedKeyInterest,
+                    initialValue: selectedKeyInterest,
                     decoration:
                         const InputDecoration(labelText: 'Key Interest/Value'),
                     items: [
@@ -614,11 +614,10 @@ class _StakeholderAlignmentScreenState
       final provider = ProjectDataInherited.maybeOf(context);
       if (provider == null) return;
 
-      final projectId = provider.projectData?.projectId;
+      final projectId = provider.projectData.projectId;
       if (projectId == null || projectId.isEmpty) return;
 
       final projectData = provider.projectData;
-      if (projectData == null) return;
 
       final projectContext =
           ProjectDataHelper.buildExecutivePlanContext(projectData);

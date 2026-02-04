@@ -165,11 +165,10 @@ class _ScopeTrackingImplementationScreenState
       final provider = ProjectDataInherited.maybeOf(context);
       if (provider == null) return;
 
-      final projectId = provider.projectData?.projectId;
+      final projectId = provider.projectData.projectId;
       if (projectId == null || projectId.isEmpty) return;
 
       final projectData = provider.projectData;
-      if (projectData == null) return;
 
       final projectContext =
           ProjectDataHelper.buildExecutivePlanContext(projectData);
@@ -532,7 +531,7 @@ class _ScopeTrackingImplementationScreenState
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<String>(
-                    value: selectedScopeItem,
+                    initialValue: selectedScopeItem,
                     decoration: const InputDecoration(
                       labelText: 'Scope Item/Deliverable',
                       hintText: 'Select from Scope Statement or enter new',
@@ -569,7 +568,7 @@ class _ScopeTrackingImplementationScreenState
                       ),
                     ),
                   DropdownButtonFormField<String>(
-                    value: selectedStatus,
+                    initialValue: selectedStatus,
                     decoration: const InputDecoration(
                         labelText: 'Implementation Status'),
                     items: [
@@ -590,7 +589,7 @@ class _ScopeTrackingImplementationScreenState
                     },
                   ),
                   DropdownButtonFormField<String>(
-                    value: selectedOwner,
+                    initialValue: selectedOwner,
                     decoration: const InputDecoration(labelText: 'Owner'),
                     items: _availableRoles.map((role) {
                       return DropdownMenuItem<String>(
@@ -603,7 +602,7 @@ class _ScopeTrackingImplementationScreenState
                     },
                   ),
                   DropdownButtonFormField<String>(
-                    value: selectedVerificationMethod,
+                    initialValue: selectedVerificationMethod,
                     decoration:
                         const InputDecoration(labelText: 'Verification Method'),
                     items: ['Testing', 'UAT', 'Stakeholder Review']

@@ -301,9 +301,9 @@ class _DeliverablesTrackingWidgetState
       children: [
         // Table Header
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           decoration: const BoxDecoration(
-            color: Color(0xFFF3F4F6),
+            color: Color(0xFFF8FAFC),
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(12),
               topRight: Radius.circular(12),
@@ -311,11 +311,11 @@ class _DeliverablesTrackingWidgetState
           ),
           child: Row(
             children: [
-              _TableHeaderCell('Deliverable', flex: 3),
+              _TableHeaderCell('Deliverable', flex: 4),
               _TableHeaderCell('Owner', flex: 2),
               _TableHeaderCell('Due Date', flex: 2),
               _TableHeaderCell('Status', flex: 2),
-              _TableHeaderCell('Action', flex: 1),
+              _TableHeaderCell('Actions', flex: 2),
             ],
           ),
         ),
@@ -478,7 +478,7 @@ class _DeliverableRowWidgetState extends State<_DeliverableRowWidget> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: selectedStatus.isEmpty ? null : selectedStatus,
+                    initialValue: selectedStatus.isEmpty ? null : selectedStatus,
                     decoration: const InputDecoration(
                       labelText: 'Status',
                       isDense: true,
@@ -571,19 +571,19 @@ class _DeliverableRowWidgetState extends State<_DeliverableRowWidget> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
-                    flex: 3,
+                    flex: 4,
                     child: InlineEditableText(
                       value: _deliverable.title,
                       hint: 'Deliverable title',
                       onChanged: (v) =>
                           _updateDeliverable(_deliverable.copyWith(title: v)),
                       style: const TextStyle(
-                          fontSize: 11, color: Color(0xFF111827)),
+                          fontSize: 12, color: Color(0xFF111827)),
                       textAlign: TextAlign.left,
                     ),
                   ),
@@ -595,7 +595,7 @@ class _DeliverableRowWidgetState extends State<_DeliverableRowWidget> {
                       onChanged: (v) =>
                           _updateDeliverable(_deliverable.copyWith(owner: v)),
                       style: const TextStyle(
-                          fontSize: 11, color: Color(0xFF111827)),
+                          fontSize: 12, color: Color(0xFF111827)),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -608,7 +608,7 @@ class _DeliverableRowWidgetState extends State<_DeliverableRowWidget> {
                                 .format(_deliverable.dueDate!)
                             : 'Not set',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           color: _deliverable.isOverdue
                               ? const Color(0xFFEF4444)
                               : _deliverable.isAtRisk
@@ -627,11 +627,11 @@ class _DeliverableRowWidgetState extends State<_DeliverableRowWidget> {
                     child: Center(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
+                            horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: _getStatusColor(_deliverable.status)
                               .withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           _deliverable.status,
@@ -645,7 +645,7 @@ class _DeliverableRowWidgetState extends State<_DeliverableRowWidget> {
                     ),
                   ),
                   Expanded(
-                    flex: 1,
+                    flex: 2,
                     child: Center(
                       child: _isHovering
                           ? Row(

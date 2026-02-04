@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+
 /// Comprehensive project data model that captures all information across the application flow
 class ProjectDataModel {
   // Initiation Phase Data
@@ -8,11 +9,23 @@ class ProjectDataModel {
   String solutionDescription;
   String businessCase;
   String notes;
+
+  // Strategic Planning Data (editable in Project Details)
+  List<String> assumptions;
+  List<String> constraints;
+  List<String> outOfScope;
+  List<String> opportunities;
+
   // Project Charter (editable in Project Charter screen)
   String charterAssumptions;
   String charterConstraints;
   String charterProjectManagerName;
   String charterProjectSponsorName;
+  String charterEmail;
+  String charterPhone;
+  String charterOrganizationalUnit;
+  String charterGreenBelt;
+  String charterBlackBelt;
   List<String> tags;
   List<PotentialSolution> potentialSolutions;
   List<SolutionRisk> solutionRisks;
@@ -118,6 +131,11 @@ class ProjectDataModel {
     this.charterConstraints = '',
     this.charterProjectManagerName = '',
     this.charterProjectSponsorName = '',
+    this.charterEmail = '',
+    this.charterPhone = '',
+    this.charterOrganizationalUnit = '',
+    this.charterGreenBelt = '',
+    this.charterBlackBelt = '',
     this.tags = const [],
     List<PotentialSolution>? potentialSolutions,
     List<SolutionRisk>? solutionRisks,
@@ -131,6 +149,10 @@ class ProjectDataModel {
     Map<String, String>? planningNotes,
     this.wbsCriteriaA,
     this.wbsCriteriaB,
+    List<String>? assumptions,
+    List<String>? constraints,
+    List<String>? outOfScope,
+    List<String>? opportunities,
     List<List<WorkItem>>? goalWorkItems,
     List<WorkItem>? wbsTree,
     List<IssueLogItem>? issueLogItems,
@@ -168,6 +190,10 @@ class ProjectDataModel {
   })  : potentialSolutions = potentialSolutions ?? [],
         solutionRisks = solutionRisks ?? [],
         projectGoals = projectGoals ?? [],
+        assumptions = assumptions ?? [],
+        constraints = constraints ?? [],
+        outOfScope = outOfScope ?? [],
+        opportunities = opportunities ?? [],
         planningGoals = planningGoals ??
             List.generate(3, (i) => PlanningGoal(goalNumber: i + 1)),
         keyMilestones = keyMilestones ?? [],
@@ -207,6 +233,11 @@ class ProjectDataModel {
     String? charterConstraints,
     String? charterProjectManagerName,
     String? charterProjectSponsorName,
+    String? charterEmail,
+    String? charterPhone,
+    String? charterOrganizationalUnit,
+    String? charterGreenBelt,
+    String? charterBlackBelt,
     List<String>? tags,
     List<PotentialSolution>? potentialSolutions,
     List<SolutionRisk>? solutionRisks,
@@ -218,6 +249,10 @@ class ProjectDataModel {
     List<PlanningGoal>? planningGoals,
     List<Milestone>? keyMilestones,
     Map<String, String>? planningNotes,
+    List<String>? assumptions,
+    List<String>? constraints,
+    List<String>? outOfScope,
+    List<String>? opportunities,
     String? wbsCriteriaA,
     String? wbsCriteriaB,
     List<List<WorkItem>>? goalWorkItems,
@@ -267,6 +302,11 @@ class ProjectDataModel {
           charterProjectManagerName ?? this.charterProjectManagerName,
       charterProjectSponsorName:
           charterProjectSponsorName ?? this.charterProjectSponsorName,
+      charterEmail: charterEmail ?? this.charterEmail,
+      charterPhone: charterPhone ?? this.charterPhone,
+      charterOrganizationalUnit: charterOrganizationalUnit ?? this.charterOrganizationalUnit,
+      charterGreenBelt: charterGreenBelt ?? this.charterGreenBelt,
+      charterBlackBelt: charterBlackBelt ?? this.charterBlackBelt,
       tags: tags ?? this.tags,
       potentialSolutions: potentialSolutions ?? this.potentialSolutions,
       solutionRisks: solutionRisks ?? this.solutionRisks,
@@ -279,6 +319,10 @@ class ProjectDataModel {
       planningGoals: planningGoals ?? this.planningGoals,
       keyMilestones: keyMilestones ?? this.keyMilestones,
       planningNotes: planningNotes ?? this.planningNotes,
+      assumptions: assumptions ?? this.assumptions,
+      constraints: constraints ?? this.constraints,
+      outOfScope: outOfScope ?? this.outOfScope,
+      opportunities: opportunities ?? this.opportunities,
       wbsCriteriaA: wbsCriteriaA ?? this.wbsCriteriaA,
       wbsCriteriaB: wbsCriteriaB ?? this.wbsCriteriaB,
       goalWorkItems: goalWorkItems ?? this.goalWorkItems,
@@ -342,10 +386,19 @@ class ProjectDataModel {
       'solutionDescription': solutionDescription,
       'businessCase': businessCase,
       'notes': notes,
+      'assumptions': assumptions,
+      'constraints': constraints,
+      'outOfScope': outOfScope,
+      'opportunities': opportunities,
       'charterAssumptions': charterAssumptions,
       'charterConstraints': charterConstraints,
       'charterProjectManagerName': charterProjectManagerName,
       'charterProjectSponsorName': charterProjectSponsorName,
+      'charterEmail': charterEmail,
+      'charterPhone': charterPhone,
+      'charterOrganizationalUnit': charterOrganizationalUnit,
+      'charterGreenBelt': charterGreenBelt,
+      'charterBlackBelt': charterBlackBelt,
       'tags': tags,
       'potentialSolutions': potentialSolutions.map((s) => s.toJson()).toList(),
       'solutionRisks': solutionRisks.map((r) => r.toJson()).toList(),
@@ -497,12 +550,21 @@ class ProjectDataModel {
       solutionDescription: json['solutionDescription']?.toString() ?? '',
       businessCase: json['businessCase']?.toString() ?? '',
       notes: json['notes']?.toString() ?? '',
+      assumptions: (json['assumptions'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      constraints: (json['constraints'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      outOfScope: (json['outOfScope'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      opportunities: (json['opportunities'] as List?)?.map((e) => e.toString()).toList() ?? [],
       charterAssumptions: json['charterAssumptions']?.toString() ?? '',
       charterConstraints: json['charterConstraints']?.toString() ?? '',
       charterProjectManagerName:
           json['charterProjectManagerName']?.toString() ?? '',
       charterProjectSponsorName:
           json['charterProjectSponsorName']?.toString() ?? '',
+      charterEmail: json['charterEmail']?.toString() ?? '',
+      charterPhone: json['charterPhone']?.toString() ?? '',
+      charterOrganizationalUnit: json['charterOrganizationalUnit']?.toString() ?? '',
+      charterGreenBelt: json['charterGreenBelt']?.toString() ?? '',
+      charterBlackBelt: json['charterBlackBelt']?.toString() ?? '',
       tags: (json['tags'] as List?)?.map((e) => e.toString()).toList() ?? [],
       potentialSolutions:
           safeParseList('potentialSolutions', PotentialSolution.fromJson),
@@ -877,6 +939,43 @@ class Milestone {
   }
 }
 
+/// Returns default milestones for fallback when AI generation fails
+List<Milestone> getDefaultMilestones() {
+  return [
+    Milestone(
+      name: 'Project Kickoff',
+      discipline: 'All',
+      dueDate: '',
+      comments: 'Official project initiation and team mobilization',
+    ),
+    Milestone(
+      name: 'Planning Completion',
+      discipline: 'Planning, Management',
+      dueDate: '',
+      comments: 'All planning documents finalized and approved',
+    ),
+    Milestone(
+      name: 'Execution Start',
+      discipline: 'All',
+      dueDate: '',
+      comments: 'Begin implementation of project deliverables',
+    ),
+    Milestone(
+      name: 'Execution Completion',
+      discipline: 'All',
+      dueDate: '',
+      comments: 'All deliverables completed and ready for launch',
+    ),
+    Milestone(
+      name: 'Project Launch',
+      discipline: 'All',
+      dueDate: '',
+      comments: 'Go-live and transition to operations',
+    ),
+  ];
+}
+
+
 class WorkItem {
   String id;
   String parentId;
@@ -1017,6 +1116,9 @@ class FrontEndPlanningData {
   String personnel;
   String infrastructure;
   String contracts;
+  // Milestone date fields
+  String milestoneStartDate;
+  String milestoneEndDate;
   List<RequirementItem> requirementItems;
   // Persisted scenario matrix items
   List<ScenarioRecord> scenarioMatrixItems;
@@ -1047,6 +1149,8 @@ class FrontEndPlanningData {
     this.personnel = '',
     this.infrastructure = '',
     this.contracts = '',
+    this.milestoneStartDate = '',
+    this.milestoneEndDate = '',
     List<RequirementItem>? requirementItems,
     List<ScenarioRecord>? scenarioMatrixItems,
     List<RoleItem>? securityRoles,
@@ -1084,6 +1188,8 @@ class FrontEndPlanningData {
         'personnel': personnel,
         'infrastructure': infrastructure,
         'contracts': contracts,
+        'milestoneStartDate': milestoneStartDate,
+        'milestoneEndDate': milestoneEndDate,
         'requirementsItems':
             requirementItems.map((item) => item.toJson()).toList(),
         'riskRegisterItems':
@@ -1121,6 +1227,8 @@ class FrontEndPlanningData {
       personnel: json['personnel'] ?? '',
       infrastructure: json['infrastructure'] ?? '',
       contracts: json['contracts'] ?? '',
+      milestoneStartDate: json['milestoneStartDate'] ?? '',
+      milestoneEndDate: json['milestoneEndDate'] ?? '',
       requirementItems: (json['requirementsItems'] as List?)
               ?.map((item) =>
                   RequirementItem.fromJson(item as Map<String, dynamic>))
@@ -1180,17 +1288,20 @@ class FrontEndPlanningData {
 class RiskRegisterItem {
   String riskName;
   String impactLevel;
+  String likelihood;
   String mitigationStrategy;
 
   RiskRegisterItem({
     this.riskName = '',
     this.impactLevel = '',
+    this.likelihood = '',
     this.mitigationStrategy = '',
   });
 
   Map<String, dynamic> toJson() => {
         'riskName': riskName,
         'impactLevel': impactLevel,
+        'likelihood': likelihood,
         'mitigationStrategy': mitigationStrategy,
       };
 
@@ -1198,6 +1309,7 @@ class RiskRegisterItem {
     return RiskRegisterItem(
       riskName: json['riskName'] ?? '',
       impactLevel: json['impactLevel'] ?? '',
+      likelihood: json['likelihood'] ?? '',
       mitigationStrategy: json['mitigationStrategy'] ?? '',
     );
   }

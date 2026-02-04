@@ -987,10 +987,10 @@ class _SummaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withOpacity(0.2)),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
@@ -1055,11 +1055,11 @@ class _TabButton extends StatelessWidget {
         color: isActive ? activeColor : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-            color: isActive ? activeColor : Colors.grey.withOpacity(0.2)),
+            color: isActive ? activeColor : Colors.grey.withValues(alpha: 0.2)),
         boxShadow: isActive
             ? [
                 BoxShadow(
-                  color: const Color(0xFFFFD700).withOpacity(0.3),
+                  color: const Color(0xFFFFD700).withValues(alpha: 0.3),
                   blurRadius: 12,
                   offset: const Offset(0, 6),
                 ),

@@ -40,6 +40,7 @@ class _IssueManagementScreenState extends State<IssueManagementScreen> {
       context: context,
       builder: (dialogContext) => const _NewIssueDialog(),
     );
+    if (!mounted) return;
     if (entry == null) return;
     await ProjectDataHelper.updateAndSave(
       context: context,
@@ -55,6 +56,7 @@ class _IssueManagementScreenState extends State<IssueManagementScreen> {
       context: context,
       builder: (dialogContext) => _NewIssueDialog(existingIssue: existing),
     );
+    if (!mounted) return;
     if (updated == null) return;
     await ProjectDataHelper.updateAndSave(
       context: context,
@@ -355,7 +357,7 @@ class _MetricCard extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: metric.color.withOpacity(0.12),
+              color: metric.color.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(metric.icon, size: 22, color: metric.color),
@@ -371,7 +373,7 @@ class _MetricCard extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 metric.label,
-                style: TextStyle(fontSize: 13, color: metric.color.withOpacity(0.8), fontWeight: FontWeight.w500),
+                style: TextStyle(fontSize: 13, color: metric.color.withValues(alpha: 0.8), fontWeight: FontWeight.w500),
               ),
             ],
           ),
@@ -630,6 +632,7 @@ class _ProjectIssuesLogCard extends StatelessWidget {
                                       ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
                                     ],
                                   ));
+                          if (!context.mounted) return;
                           if (confirmed == true) {
                             await ProjectDataHelper.updateAndSave(
                                 context: context,
@@ -1096,30 +1099,6 @@ class _YellowButton extends StatelessWidget {
         textStyle: const TextStyle(fontWeight: FontWeight.w600),
       ),
       child: Text(label),
-    );
-  }
-}
-
-class _OutlinedButton extends StatelessWidget {
-  const _OutlinedButton({required this.label, this.onPressed});
-
-  final String label;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        backgroundColor: Colors.white,
-        side: const BorderSide(color: Color(0xFFE5E7EB)),
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
-      ),
     );
   }
 }

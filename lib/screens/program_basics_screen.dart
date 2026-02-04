@@ -6,11 +6,12 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/widgets/bullet_point_editor.dart';
 
 const Color _kAccentColor = Color(0xFFFFC812);
 const Color _kTextPrimary = Color(0xFF1A1D1F);
 const Color _kTextSecondary = Color(0xFF6B7280);
-const Color _kSurfaceBackground = Color(0xFFF7F8FC);
 const Color _kSurfaceBorder = Color(0xFFE4E7EC);
 
 /// Program basics workspace mirroring provided design.
@@ -346,25 +347,22 @@ class _CircularNavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: background,
-          shape: BoxShape.circle,
-          border: Border.all(color: borderColor),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Icon(icon, color: iconColor, size: 18),
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: background,
+        shape: BoxShape.circle,
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
+      child: Icon(icon, color: iconColor, size: 18),
     );
   }
 }
@@ -435,19 +433,57 @@ class _ProjectDetailsContentState
       padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 36),
       child: LayoutBuilder(
         builder: (context, constraints) {
+          final provider = ProjectDataHelper.getProvider(context);
+          final data = provider.projectData;
           return SingleChildScrollView(
             child: ConstrainedBox(
               constraints: BoxConstraints(minHeight: constraints.maxHeight),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  _FrameworkHeader(),
-                  SizedBox(height: 28),
-                  _NotesInput(),
-                  SizedBox(height: 28),
-                  _FrameworkDetailCard(),
-                  SizedBox(height: 32),
-                  _NextButton(),
+                children: [
+                  const _FrameworkHeader(),
+                  const SizedBox(height: 28),
+                  _NotesInput(
+                    initialValue: data.notes,
+                    onChanged: (val) {
+                      provider.updateInitiationData(notes: val);
+                      provider.saveToFirebase(checkpoint: 'project_details_notes');
+                    },
+                  ),
+                  const SizedBox(height: 28),
+                  BulletPointEditor(
+                    title: 'Assumptions',
+                    subtitle: 'Key assumptions for the project charter.',
+                    items: data.assumptions,
+                    onChanged: (val) {
+                      provider.updateField((d) => d.copyWith(assumptions: val));
+                      provider.saveToFirebase(checkpoint: 'project_details_assumptions');
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  BulletPointEditor(
+                    title: 'Constraints',
+                    subtitle: 'Limitations and constraints.',
+                    items: data.constraints,
+                    onChanged: (val) {
+                      provider.updateField((d) => d.copyWith(constraints: val));
+                      provider.saveToFirebase(checkpoint: 'project_details_constraints');
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  BulletPointEditor(
+                    title: 'Out of Scope',
+                    subtitle: 'What is explicitly excluded.',
+                    items: data.outOfScope,
+                    onChanged: (val) {
+                      provider.updateField((d) => d.copyWith(outOfScope: val));
+                      provider.saveToFirebase(checkpoint: 'project_details_outofscope');
+                    },
+                  ),
+                  const SizedBox(height: 28),
+                  const _FrameworkDetailCard(),
+                  const SizedBox(height: 32),
+                  const _NextButton(),
                 ],
               ),
             ),
@@ -617,11 +653,16 @@ class _ProfileSummaryText extends StatelessWidget {
 }
 
 class _NotesInput extends StatelessWidget {
-  const _NotesInput();
+  const _NotesInput({this.initialValue = '', this.onChanged});
+
+  final String initialValue;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return TextFormField(
+      initialValue: initialValue,
+      onChanged: onChanged,
       // Allow the Notes field to grow with content with no character/line cap
       minLines: 5,
       maxLines: null,

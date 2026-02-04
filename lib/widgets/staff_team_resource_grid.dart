@@ -335,9 +335,9 @@ class _StaffTeamResourceGridState extends State<StaffTeamResourceGrid> {
       children: [
         // Table Header
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           decoration: const BoxDecoration(
-            color: Color(0xFFF3F4F6),
+            color: Color(0xFFF8FAFC),
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(12),
               topRight: Radius.circular(12),
@@ -345,15 +345,15 @@ class _StaffTeamResourceGridState extends State<StaffTeamResourceGrid> {
           ),
           child: Row(
             children: [
-              _TableHeaderCell('Role', flex: 3),
+              _TableHeaderCell('Role', flex: 4),
               _TableHeaderCell('Qty', flex: 1),
-              _TableHeaderCell('Type', flex: 1),
-              _TableHeaderCell('Start', flex: 2),
-              _TableHeaderCell('Duration', flex: 1),
+              _TableHeaderCell('Type', flex: 2),
+              _TableHeaderCell('Start Date', flex: 2),
+              _TableHeaderCell('Duration', flex: 2),
               _TableHeaderCell('Monthly Cost', flex: 2),
               _TableHeaderCell('Subtotal', flex: 2),
               _TableHeaderCell('Status', flex: 2),
-              _TableHeaderCell('Action', flex: 1),
+              _TableHeaderCell('Actions', flex: 1),
             ],
           ),
         ),
@@ -496,9 +496,9 @@ class _TableHeaderCell extends StatelessWidget {
         label,
         textAlign: TextAlign.center,
         style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: Color(0xFF6B7280),
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF374151),
           letterSpacing: 0.2,
         ),
       ),
@@ -556,12 +556,12 @@ class _StaffingRowWidgetState extends State<_StaffingRowWidget> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
-                    flex: 3,
+                    flex: 4,
                     child: _EditableCell(
                       value: _row.role,
                       hint: 'Role / capability',
@@ -580,7 +580,7 @@ class _StaffingRowWidgetState extends State<_StaffingRowWidget> {
                     ),
                   ),
                   Expanded(
-                    flex: 1,
+                    flex: 2,
                     child: Center(
                       child: DropdownButton<bool>(
                         value: _row.isInternal,
@@ -611,7 +611,7 @@ class _StaffingRowWidgetState extends State<_StaffingRowWidget> {
                     ),
                   ),
                   Expanded(
-                    flex: 1,
+                    flex: 2,
                     child: _EditableCell(
                       value: _row.durationMonths,
                       hint: 'Months',
@@ -637,10 +637,10 @@ class _StaffingRowWidgetState extends State<_StaffingRowWidget> {
                     child: Center(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
+                            horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: const Color(0xFFEEF2FF),
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           _row.status,

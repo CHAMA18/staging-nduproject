@@ -274,7 +274,7 @@ class _TeamRolesResponsibilitiesScreenState
                             border: Border.all(color: const Color(0xFFE5E7EB)),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.02),
+                                color: Colors.black.withValues(alpha: 0.02),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
                               ),
@@ -852,7 +852,7 @@ class _TeamRolesResponsibilitiesScreenState
     if (projectId == null || projectId.isEmpty) return;
     final result = await showDialog<_RoleCardData>(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.2),
+      barrierColor: Colors.black.withValues(alpha: 0.2),
       builder: (_) => _TeamMemberDialog(initialData: existingData),
     );
 
@@ -1736,7 +1736,7 @@ class _WorkProgressEntryEditor extends StatelessWidget {
                   onPressed: onRemove,
                   splashRadius: 22,
                   icon: Icon(Icons.delete_outline,
-                      color: colors.error.withOpacity(0.85)),
+                      color: colors.error.withValues(alpha: 0.85)),
                 ),
             ],
           ),
@@ -1750,7 +1750,7 @@ class _WorkProgressEntryEditor extends StatelessWidget {
               hintText: 'e.g. Draft integration plan',
               prefixIcon: Icon(Icons.task_alt_outlined, color: colors.primary),
               filled: true,
-              fillColor: colors.surfaceContainerHighest.withOpacity(0.4),
+              fillColor: colors.surfaceContainerHighest.withValues(alpha: 0.4),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
               border: OutlineInputBorder(
@@ -1788,7 +1788,7 @@ class _WorkProgressEntryEditor extends StatelessWidget {
               labelText: 'Status',
               prefixIcon: Icon(Icons.flag_outlined, color: colors.primary),
               filled: true,
-              fillColor: colors.surfaceContainerHighest.withOpacity(0.4),
+              fillColor: colors.surfaceContainerHighest.withValues(alpha: 0.4),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
               border: OutlineInputBorder(
@@ -1912,7 +1912,7 @@ class _TeamMemberDialogState extends State<_TeamMemberDialog> {
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: colors.primary.withOpacity(0.12),
+                          color: colors.primary.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Icon(Icons.group_add_outlined,
@@ -2409,8 +2409,6 @@ class _DialogTextField extends StatelessWidget {
   final IconData? icon;
   final TextInputType? keyboardType;
   final int maxLines;
-  final ValueChanged<String>? onChanged;
-  final Widget? suffixIcon;
 
   const _DialogTextField({
     required this.controller,
@@ -2419,8 +2417,6 @@ class _DialogTextField extends StatelessWidget {
     this.icon,
     this.keyboardType,
     this.maxLines = 1,
-    this.onChanged,
-    this.suffixIcon,
   });
 
   @override
@@ -2438,15 +2434,13 @@ class _DialogTextField extends StatelessWidget {
       keyboardType: keyboardType,
       maxLines: maxLines,
       style: theme.textTheme.bodyMedium?.copyWith(color: colors.onSurface),
-      onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         prefixIcon: icon == null ? null : Icon(icon, color: colors.primary),
-        suffixIcon: suffixIcon,
         alignLabelWithHint: maxLines > 1,
         filled: true,
-        fillColor: colors.surfaceContainerHighest.withOpacity(0.4),
+        fillColor: colors.surfaceContainerHighest.withValues(alpha: 0.4),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
         labelStyle: labelStyle,
@@ -2470,24 +2464,19 @@ class _ChoicePills extends StatelessWidget {
     required this.options,
     required this.selectedValue,
     required this.onChanged,
-    this.pillColor,
-    this.selectedColor,
   });
 
   final String label;
   final List<String> options;
   final String selectedValue;
   final ValueChanged<String> onChanged;
-  final Color? pillColor;
-  final Color? selectedColor;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final chipColor =
-        pillColor ?? colors.surfaceContainerHighest.withOpacity(0.6);
-    final activeColor = selectedColor ?? colors.primary;
+    final chipColor = colors.surfaceContainerHighest.withValues(alpha: 0.6);
+    final activeColor = colors.primary;
     final labelStyle = theme.textTheme.labelMedium?.copyWith(
       fontWeight: FontWeight.w600,
       color: colors.onSurfaceVariant,
@@ -2585,7 +2574,7 @@ class _DateSelector extends StatelessWidget {
         decoration: InputDecoration(
           labelText: label,
           filled: true,
-          fillColor: colors.surfaceContainerHighest.withOpacity(0.4),
+          fillColor: colors.surfaceContainerHighest.withValues(alpha: 0.4),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
           labelStyle: labelStyle,

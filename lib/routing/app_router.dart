@@ -35,6 +35,7 @@ import 'package:ndu_project/screens/front_end_planning_technology_screen.dart';
 import 'package:ndu_project/screens/front_end_planning_technology_personnel_screen.dart';
 import 'package:ndu_project/screens/front_end_planning_risks_screen.dart';
 import 'package:ndu_project/screens/front_end_planning_allowance.dart';
+import 'package:ndu_project/screens/front_end_planning_milestone.dart';
 import 'package:ndu_project/screens/front_end_planning_opportunities_screen.dart';
 import 'package:ndu_project/screens/front_end_planning_summary.dart';
 import 'package:ndu_project/screens/front_end_planning_summary_end.dart';
@@ -151,6 +152,7 @@ class AppRoutes {
   static const fepTechnologyPersonnel = 'fep-technology-personnel';
   static const fepRisks = 'fep-risks';
   static const fepAllowance = 'fep-allowance';
+  static const fepMilestone = 'fep-milestone';
   static const fepOpportunities = 'fep-opportunities';
   static const fepSummary = 'fep-summary';
   static const fepSummaryEnd = 'fep-summary-end';
@@ -389,6 +391,7 @@ class AppRouter {
       GoRoute(name: AppRoutes.fepTechnologyPersonnel, path: '/${AppRoutes.fepTechnologyPersonnel}', builder: (c, s) => const FrontEndPlanningTechnologyPersonnelScreen()),
       GoRoute(name: AppRoutes.fepRisks, path: '/${AppRoutes.fepRisks}', builder: (c, s) => const FrontEndPlanningRisksScreen()),
       GoRoute(name: AppRoutes.fepAllowance, path: '/${AppRoutes.fepAllowance}', builder: (c, s) => const FrontEndPlanningAllowanceScreen()),
+      GoRoute(name: AppRoutes.fepMilestone, path: '/${AppRoutes.fepMilestone}', builder: (c, s) => const FrontEndPlanningMilestoneScreen()),
       GoRoute(name: AppRoutes.fepOpportunities, path: '/${AppRoutes.fepOpportunities}', builder: (c, s) => const FrontEndPlanningOpportunitiesScreen()),
       GoRoute(name: AppRoutes.fepSummary, path: '/${AppRoutes.fepSummary}', builder: (c, s) => const FrontEndPlanningSummaryScreen()),
       GoRoute(name: AppRoutes.fepSummaryEnd, path: '/${AppRoutes.fepSummaryEnd}', builder: (c, s) => const FrontEndPlanningSummaryEndScreen()),

@@ -526,10 +526,10 @@ class _MetricCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: summary.backgroundColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: summary.accentColor.withOpacity(0.12)),
+        border: Border.all(color: summary.accentColor.withValues(alpha: 0.12)),
         boxShadow: [
           BoxShadow(
-            color: summary.accentColor.withOpacity(0.08),
+            color: summary.accentColor.withValues(alpha: 0.08),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -544,7 +544,7 @@ class _MetricCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: summary.accentColor.withOpacity(0.3)),
+                border: Border.all(color: summary.accentColor.withValues(alpha: 0.3)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -562,7 +562,7 @@ class _MetricCard extends StatelessWidget {
           ],
           Text(
             summary.title,
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: summary.accentColor.withOpacity(0.9)),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: summary.accentColor.withValues(alpha: 0.9)),
           ),
           const SizedBox(height: 12),
           Text(
@@ -1018,8 +1018,8 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    accent.withOpacity(0.16),
-                    accent.withOpacity(0.05),
+                    accent.withValues(alpha: 0.16),
+                    accent.withValues(alpha: 0.05),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -1032,7 +1032,7 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: accent.withOpacity(0.15),
+                      color: accent.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Icon(_isEditing ? Icons.edit_outlined : Icons.add_circle_outline, color: accent),

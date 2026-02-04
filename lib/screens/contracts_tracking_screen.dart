@@ -569,10 +569,12 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
             daysUntilRenewal > 0 &&
             c.status != 'Expired';
       }
-      if (_selectedFilters.contains('Pending sign-off') && c.status == 'Draft')
+      if (_selectedFilters.contains('Pending sign-off') && c.status == 'Draft') {
         return true;
-      if (_selectedFilters.contains('Archived') && c.status == 'Expired')
+      }
+      if (_selectedFilters.contains('Archived') && c.status == 'Expired') {
         return true;
+      }
       return false;
     }).toList();
   }
@@ -1135,7 +1137,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: contractTypeController.text.isEmpty
+                  initialValue: contractTypeController.text.isEmpty
                       ? null
                       : contractTypeController.text,
                   decoration: const InputDecoration(
@@ -1171,7 +1173,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: selectedStatus.isEmpty ? null : selectedStatus,
+                  initialValue: selectedStatus.isEmpty ? null : selectedStatus,
                   decoration: const InputDecoration(
                     labelText: 'Status *',
                     isDense: true,

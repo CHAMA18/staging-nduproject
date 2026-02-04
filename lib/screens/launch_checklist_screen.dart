@@ -512,7 +512,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
               border: Border.all(color: const Color(0xFFE5E7EB)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
+                  color: Colors.black.withValues(alpha: 0.03),
                   blurRadius: 14,
                   offset: const Offset(0, 8),
                 ),
@@ -579,7 +579,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 18,
             offset: const Offset(0, 12),
           ),
@@ -643,7 +643,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                     }),
                     showCheckmark: false,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                    selectedColor: primary.withOpacity(0.12),
+                    selectedColor: primary.withValues(alpha: 0.12),
                     backgroundColor: const Color(0xFFF3F4F6),
                     labelStyle: TextStyle(
                       fontWeight: _selectedFocusFilters.contains(option) ? FontWeight.w700 : FontWeight.w500,
@@ -699,7 +699,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 22,
             offset: const Offset(0, 16),
           ),
@@ -883,7 +883,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: metric.accentColor.withOpacity(0.12),
+                      color: metric.accentColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(_iconForKey(metric.iconKey), size: 20, color: metric.accentColor),
@@ -1294,7 +1294,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 22,
             offset: const Offset(0, 16),
           ),
@@ -1474,7 +1474,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 18,
             offset: const Offset(0, 14),
           ),
@@ -1535,7 +1535,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: stage.accent.withOpacity(0.15),
+                      color: stage.accent.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(_iconForKey(stage.iconKey), color: stage.accent, size: 18),
@@ -1626,7 +1626,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 16,
             offset: const Offset(0, 14),
           ),
@@ -1662,7 +1662,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: item.accent.withOpacity(0.16),
+                        color: item.accent.withValues(alpha: 0.16),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(_iconForKey(item.iconKey), color: item.accent, size: 18),
@@ -2066,7 +2066,7 @@ class _LaunchInsightCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 16,
             offset: const Offset(0, 12),
           ),
@@ -2101,7 +2101,7 @@ class _LaunchInsightCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: data.tagColor.withOpacity(0.12),
+                  color: data.tagColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: SizedBox(
@@ -2131,7 +2131,7 @@ class _LaunchInsightCard extends StatelessWidget {
                     width: 30,
                     height: 30,
                     decoration: BoxDecoration(
-                      color: entry.iconColor.withOpacity(0.14),
+                      color: entry.iconColor.withValues(alpha: 0.14),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(_iconForKey(entry.iconKey), color: entry.iconColor, size: 16),

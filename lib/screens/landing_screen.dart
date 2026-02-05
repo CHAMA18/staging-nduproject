@@ -2,7 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:ndu_project/providers/app_content_provider.dart';
-import 'package:ndu_project/screens/create_account_screen.dart';
+
 import 'package:ndu_project/screens/pricing_screen.dart';
 import 'package:ndu_project/screens/sign_in_screen.dart';
 import 'package:ndu_project/services/access_policy.dart';
@@ -2895,11 +2895,8 @@ class _LandingScreenState extends State<LandingScreen>
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const CreateAccountScreen()),
-                            ),
+                            onPressed: () => _launchExternalLink(
+                                'https://calendly.com/chimmie-nduproject'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
                               foregroundColor: const Color(0xFF111827),
@@ -2957,11 +2954,8 @@ class _LandingScreenState extends State<LandingScreen>
                         ),
                         const SizedBox(width: 16),
                         ElevatedButton(
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const CreateAccountScreen()),
-                          ),
+                          onPressed: () => _launchExternalLink(
+                              'https://calendly.com/chimmie-nduproject'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
                             foregroundColor: const Color(0xFF111827),

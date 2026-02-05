@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/screens/requirements_implementation_screen.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/theme.dart';
@@ -12,13 +13,12 @@ import 'package:ndu_project/services/architecture_service.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/utils/phase_transition_helper.dart';
-import 'package:ndu_project/utils/project_data_helper.dart';
-import 'package:ndu_project/screens/execution_plan_screen.dart';
-import 'package:ndu_project/screens/front_end_planning_technology_screen.dart';
 import 'package:ndu_project/widgets/whiteboard_canvas.dart';
 import 'package:ndu_project/widgets/chart_builder_workspace.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:ndu_project/widgets/design_management_widgets.dart';
+import 'package:ndu_project/widgets/design_phase_progress_indicator.dart';
 
 class DesignPhaseScreen extends StatefulWidget {
   const DesignPhaseScreen(
@@ -118,15 +118,6 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
         _loadPersisted(pid);
         // Save this page as the last visited page for the project
         await ProjectNavigationService.instance.saveLastPage(pid, 'design');
-      }
-      if (mounted) {
-        // Ensure checkpoint is updated so navigation locks respect sidebar order.
-        await ProjectDataHelper.updateAndSave(
-          context: context,
-          checkpoint: 'design',
-          dataUpdater: (d) => d,
-          showSnackbar: false,
-        );
       }
     });
   }
@@ -305,31 +296,10 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
       activeItemLabel: widget.activeItemLabel,
       body: Column(
         children: [
-          PlanningPhaseHeader(
+          const PlanningPhaseHeader(
             title: 'Design',
             showImportButton: false,
             showContentButton: false,
-            onBack: () async {
-              await ProjectDataHelper.saveAndNavigate(
-                context: context,
-                checkpoint: 'design',
-                nextScreenBuilder: () => const ExecutionPlanScreen(),
-                dataUpdater: (d) => d,
-                destinationCheckpoint: 'execution_plan',
-                destinationName: 'Execution Plan',
-              );
-            },
-            onForward: () async {
-              await ProjectDataHelper.saveAndNavigate(
-                context: context,
-                checkpoint: 'design',
-                nextScreenBuilder: () =>
-                    const FrontEndPlanningTechnologyScreen(),
-                dataUpdater: (d) => d,
-                destinationCheckpoint: 'technology',
-                destinationName: 'Technology',
-              );
-            },
           ),
           Expanded(
             child: SingleChildScrollView(
@@ -368,6 +338,8 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                           style: TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                         const SizedBox(height: 16),
+                        _buildManagementCards(),
+                        const SizedBox(height: 24),
                         _buildEditorSection(),
                       ],
                     )
@@ -385,6 +357,8 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                           style: TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                         const SizedBox(height: 16),
+                        _buildManagementCards(),
+                        const SizedBox(height: 24),
                         _buildEditorSection(),
                       ],
                     ),
@@ -394,29 +368,13 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
           ),
           const SizedBox(height: 24),
           LaunchPhaseNavigation(
-            backLabel: 'Back: Execution Plan',
-            nextLabel: 'Next: Technology',
-            onBack: () async {
-              await ProjectDataHelper.saveAndNavigate(
-                context: context,
-                checkpoint: 'design',
-                nextScreenBuilder: () => const ExecutionPlanScreen(),
-                dataUpdater: (d) => d,
-                destinationCheckpoint: 'execution_plan',
-                destinationName: 'Execution Plan',
-              );
-            },
-            onNext: () async {
-              await ProjectDataHelper.saveAndNavigate(
-                context: context,
-                checkpoint: 'design',
-                nextScreenBuilder: () =>
-                    const FrontEndPlanningTechnologyScreen(),
-                dataUpdater: (d) => d,
-                destinationCheckpoint: 'technology',
-                destinationName: 'Technology',
-              );
-            },
+            backLabel: 'Back: Design overview',
+            nextLabel: 'Next: Requirements Implementation',
+            onBack: () => Navigator.of(context).maybePop(),
+            onNext: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                  builder: (_) => const RequirementsImplementationScreen()),
+            ),
           ),
         ],
       ),
@@ -869,151 +827,32 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
   }
 
   Widget _buildManagementCards() {
-    return SizedBox(
-      height: 200, // Fixed height for cards
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: _buildCard(
-              title: 'Design Specifications',
-              subtitle:
-                  'Identify all applicable Industry, Company and Project specifications for each project requirement here.',
-              content: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 12),
-                  const Text(
-                    '5',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  const Text(
-                    'Active requirements',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildStatusRow('Defined', '3', true),
-                  _buildStatusRow('Validated', '', false),
-                  _buildStatusRow('Implemented', '', false),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: _buildCard(
-              title: 'Design Documents',
-              subtitle:
-                  'Identify design deliverables. Create, upload and/or link them.',
-              content: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(child: _buildActionButton('Design Input', true)),
-                      const SizedBox(width: 8),
-                      Expanded(
-                          child: _buildActionButton('Design Output', true)),
-                    ],
-                  )
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: _buildCard(
-              title: 'Design Tools',
-              subtitle: 'Hub for core design documents, templates, etc.',
-              content: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(child: _buildActionButton('Tools', true)),
-                      const SizedBox(width: 8),
-                      Expanded(
-                          child: _buildActionButton('External Tools', true)),
-                    ],
-                  )
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCard(
-      {required String title,
-      required String subtitle,
-      required Widget content}) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title,
-              style:
-                  const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Expanded(child: content),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusRow(String label, String count, bool isBold) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.black87,
-              fontWeight: isBold ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-          if (count.isNotEmpty)
-            Text(
-              count,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButton(String label, bool isYellow) {
-    return ElevatedButton(
-      onPressed: () {},
-      style: ElevatedButton.styleFrom(
-        backgroundColor: isYellow ? const Color(0xFFFFD700) : Colors.white,
-        foregroundColor: Colors.black87,
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-        textAlign: TextAlign.center,
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isBroad = constraints.maxWidth > 1100;
+        if (isBroad) {
+          return const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: DesignPhaseProgressIndicator()),
+              SizedBox(width: 16),
+              Expanded(child: DesignDocumentsCard()),
+              SizedBox(width: 16),
+              Expanded(child: DesignToolsCard()),
+            ],
+          );
+        } else {
+          return const Column(
+            children: [
+              DesignPhaseProgressIndicator(),
+              SizedBox(height: 16),
+              DesignDocumentsCard(),
+              SizedBox(height: 16),
+              DesignToolsCard(),
+            ],
+          );
+        }
+      },
     );
   }
 

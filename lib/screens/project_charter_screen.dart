@@ -12,6 +12,7 @@ import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
 import 'package:ndu_project/widgets/expandable_text.dart';
 import 'package:ndu_project/screens/project_charter_sections.dart';
+import 'package:ndu_project/screens/project_charter_sections_extended.dart';
 
 class ProjectCharterScreen extends StatefulWidget {
   const ProjectCharterScreen({super.key});
@@ -32,12 +33,6 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
   ProjectDataModel? _projectData;
   bool _isGenerating = false;
   late final OpenAiServiceSecure _openAi;
-  final TextEditingController _projectManagerController = TextEditingController();
-  final TextEditingController _projectSponsorController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _organizationalUnitController = TextEditingController();
-  bool _isSavingData = false;
-
   @override
   void initState() {
     super.initState();
@@ -49,9 +44,6 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
         setState(() {
           _projectData = provider.projectData;
         });
-        
-        // Load existing values or auto-fill from project data
-        _loadAndAutoFillFields(provider.projectData);
 
         // Auto-generate charter content if needed
         if (_projectData != null) {
@@ -61,75 +53,9 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
     });
   }
 
-  void _loadAndAutoFillFields(ProjectDataModel data) {
-    // Project Manager - try to extract from team members if empty
-    if (data.charterProjectManagerName.isNotEmpty) {
-      _projectManagerController.text = data.charterProjectManagerName;
-    } else {
-      final manager = data.teamMembers.firstWhere(
-        (m) => m.role.toLowerCase().contains('manager') || m.role.toLowerCase().contains('pm'),
-        orElse: () => TeamMember(),
-      );
-      if (manager.name.isNotEmpty) {
-        _projectManagerController.text = manager.name;
-      }
-    }
-    
-    // Project Sponsor - try to extract from team members if empty
-    if (data.charterProjectSponsorName.isNotEmpty) {
-      _projectSponsorController.text = data.charterProjectSponsorName;
-    } else {
-      final sponsor = data.teamMembers.firstWhere(
-        (m) => m.role.toLowerCase().contains('sponsor') || m.role.toLowerCase().contains('executive'),
-        orElse: () => TeamMember(),
-      );
-      if (sponsor.name.isNotEmpty) {
-        _projectSponsorController.text = sponsor.name;
-      }
-    }
-    
-    // Load other fields
-    _phoneController.text = data.charterPhone;
-    _organizationalUnitController.text = data.charterOrganizationalUnit;
-    
-    // Auto-save if we auto-filled anything
-    if (_projectManagerController.text.isNotEmpty || _projectSponsorController.text.isNotEmpty) {
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) _saveAllFields();
-      });
-    }
-  }
-
   @override
   void dispose() {
-    _projectManagerController.dispose();
-    _projectSponsorController.dispose();
-    _phoneController.dispose();
-    _organizationalUnitController.dispose();
     super.dispose();
-  }
-
-  Future<void> _saveAllFields() async {
-    if (!mounted || _isSavingData) return;
-    setState(() => _isSavingData = true);
-    
-    final provider = ProjectDataInherited.of(context);
-    provider.updateField(
-      (data) => data.copyWith(
-        charterProjectManagerName: _projectManagerController.text.trim(),
-        charterProjectSponsorName: _projectSponsorController.text.trim(),
-        charterPhone: _phoneController.text.trim(),
-        charterOrganizationalUnit: _organizationalUnitController.text.trim(),
-      ),
-    );
-    await provider.saveToFirebase(checkpoint: 'project_charter');
-    
-    if (mounted) {
-      setState(() {
-        _isSavingData = false;
-        _projectData = provider.projectData;
-      });
-    }
   }
 
   Future<void> _regenerateAllCharter() async {
@@ -159,7 +85,10 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
     final needsAssumptions = _projectData!.charterAssumptions.trim().isEmpty;
     final needsConstraints = _projectData!.charterConstraints.trim().isEmpty;
 
-    if (!needsOverview && !needsGoals && !needsAssumptions && !needsConstraints) {
+    if (!needsOverview &&
+        !needsGoals &&
+        !needsAssumptions &&
+        !needsConstraints) {
       return;
     }
 
@@ -207,7 +136,8 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
               final lines = goalsText
                   .split('\n')
                   .map((l) => l.trim())
-                  .where((l) => l.isNotEmpty && !l.startsWith('-') && !l.startsWith('•'))
+                  .where((l) =>
+                      l.isNotEmpty && !l.startsWith('-') && !l.startsWith('•'))
                   .take(5)
                   .toList();
 
@@ -216,7 +146,9 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
                 final newGoals = lines.map((line) {
                   final cleanLine = line.replaceAll(RegExp(r'^[-•]\s*'), '');
                   return ProjectGoal(
-                    name: cleanLine.length > 50 ? cleanLine.substring(0, 50) : cleanLine,
+                    name: cleanLine.length > 50
+                        ? cleanLine.substring(0, 50)
+                        : cleanLine,
                     description: cleanLine.length > 50 ? cleanLine : '',
                   );
                 }).toList();
@@ -248,7 +180,8 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
                 maxTokens: 320,
               );
               if (mounted && assumptions.trim().isNotEmpty) {
-                provider.updateField((data) => data.copyWith(charterAssumptions: assumptions.trim()));
+                provider.updateField((data) =>
+                    data.copyWith(charterAssumptions: assumptions.trim()));
               }
             } catch (e) {
               debugPrint('Error generating charter assumptions: $e');
@@ -262,7 +195,8 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
                 maxTokens: 320,
               );
               if (mounted && constraints.trim().isNotEmpty) {
-                provider.updateField((data) => data.copyWith(charterConstraints: constraints.trim()));
+                provider.updateField((data) =>
+                    data.copyWith(charterConstraints: constraints.trim()));
               }
             } catch (e) {
               debugPrint('Error generating charter constraints: $e');
@@ -330,7 +264,8 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
                       ),
                       PageRegenerateAllButton(
                         onRegenerateAll: () async {
-                          final confirmed = await showRegenerateAllConfirmation(context);
+                          final confirmed =
+                              await showRegenerateAllConfirmation(context);
                           if (confirmed && mounted) {
                             await _regenerateAllCharter();
                           }
@@ -362,7 +297,8 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.desktop_mac_outlined, size: 64, color: Colors.grey),
+            const Icon(Icons.desktop_mac_outlined,
+                size: 64, color: Colors.grey),
             const SizedBox(height: 16),
             const Text(
               'Desktop View Required',
@@ -391,15 +327,15 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
         // 1. Executive Summary
         CharterExecutiveSummary(data: _projectData),
         const SizedBox(height: 24),
-        
+
         // 2. Visual Overview (Charts in Row)
         Row(
-           crossAxisAlignment: CrossAxisAlignment.start,
-           children: [
-             Expanded(child: CharterTimelineChart(data: _projectData)),
-             const SizedBox(width: 24),
-             Expanded(child: CharterCostChart(data: _projectData)),
-           ],
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: CharterTimelineChart(data: _projectData)),
+            const SizedBox(width: 24),
+            Expanded(child: CharterCostChart(data: _projectData)),
+          ],
         ),
         const SizedBox(height: 24),
 
@@ -409,12 +345,12 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
 
         // 4. Definition & Scope (Row)
         Row(
-           crossAxisAlignment: CrossAxisAlignment.start,
-           children: [
-             Expanded(child: CharterProjectDefinition(data: _projectData)),
-             const SizedBox(width: 24),
-             Expanded(child: CharterScope(data: _projectData)),
-           ],
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: CharterProjectDefinition(data: _projectData)),
+            const SizedBox(width: 24),
+            Expanded(child: CharterScope(data: _projectData)),
+          ],
         ),
         const SizedBox(height: 24),
 
@@ -422,15 +358,50 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
         CharterRisks(data: _projectData),
         const SizedBox(height: 24),
 
-        // 6. Schedule & Resources
+        // 6. IT & Infrastrucutre Considerations (Row)
         Row(
-           crossAxisAlignment: CrossAxisAlignment.start,
-           children: [
-             Expanded(flex: 3, child: CharterScheduleTable(data: _projectData)),
-             const SizedBox(width: 24),
-             Expanded(flex: 2, child: CharterResources(data: _projectData)),
-           ],
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: CharterITConsiderations(data: _projectData)),
+            const SizedBox(width: 24),
+            Expanded(
+                child: CharterInfrastructureConsiderations(data: _projectData)),
+          ],
         ),
+        const SizedBox(height: 24),
+
+        // 7. Schedule & Resources
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(flex: 3, child: CharterScheduleTable(data: _projectData)),
+            const SizedBox(width: 24),
+            Expanded(flex: 2, child: CharterResources(data: _projectData)),
+          ],
+        ),
+        const SizedBox(height: 24),
+
+        // 8. Stakeholders
+        CharterStakeholders(data: _projectData),
+        const SizedBox(height: 48),
+
+        // 9. Contractors & Vendors
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: CharterContractors(data: _projectData)),
+            const SizedBox(width: 24),
+            Expanded(child: CharterVendors(data: _projectData)),
+          ],
+        ),
+        const SizedBox(height: 24),
+
+        // 10. Security
+        CharterSecurity(data: _projectData),
+        const SizedBox(height: 24),
+
+        // 11. Approvals
+        CharterApprovals(data: _projectData),
         const SizedBox(height: 48),
       ],
     );

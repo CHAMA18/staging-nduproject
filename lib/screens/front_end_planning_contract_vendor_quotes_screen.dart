@@ -38,39 +38,48 @@ class FrontEndPlanningContractVendorQuotesScreen extends StatefulWidget {
 class _FrontEndPlanningContractVendorQuotesScreenState
     extends State<FrontEndPlanningContractVendorQuotesScreen> {
   final TextEditingController _notesController = TextEditingController();
-  // removed _contractsController
-  
-  late Stream<List<ProcurementItemModel>> _itemsStream;
-  late Stream<List<ContractModel>> _contractsStream;
+
+  Stream<List<ProcurementItemModel>>? _itemsStream;
+  Stream<List<ContractModel>>? _contractsStream;
   bool _generating = false;
+  String? _lastProjectId;
 
   @override
   void initState() {
     super.initState();
     ApiKeyManager.initializeApiKey();
-    // Initialize streams
+    // Streams are now handled in didChangeDependencies to react to ProjectId changes
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     final projectData = ProjectDataHelper.getData(context);
     final projectId = projectData.projectId;
-    
-    if (projectId != null && projectId.isNotEmpty) {
+
+    // Only update streams if projectId has changed and is valid
+    if (projectId != _lastProjectId &&
+        projectId != null &&
+        projectId.isNotEmpty) {
+      _lastProjectId = projectId;
       _itemsStream = ProcurementService.streamItems(projectId);
       _contractsStream = ProcurementService.streamContracts(projectId);
-    } else {
-      // Initialize with empty streams to prevent unsafe usage errors before build handles the UI
-      _itemsStream = Stream.value([]);
-      _contractsStream = Stream.value([]);
     }
-    
-    // safe refresh
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-       if (mounted) setState(() {});
-    });
   }
 
   Future<void> _openAddContractDialog() async {
-    final categoryOptions = const [
-        'Construction', 'Services', 'Consulting'
-    ];
+    final projectData = ProjectDataHelper.getData(context);
+    final projectId = projectData.projectId;
+
+    if (projectId == null || projectId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Project not initialized. Cannot add contract.')),
+      );
+      return;
+    }
+
+    final categoryOptions = const ['Construction', 'Services', 'Consulting'];
     final result = await showDialog<ContractModel>(
       context: context,
       barrierDismissible: true,
@@ -82,11 +91,24 @@ class _FrontEndPlanningContractVendorQuotesScreenState
     );
 
     if (result != null) {
-      await ProcurementService.createContract(result);
+      // Ensure the result has the correct projectId before creating
+      final contractToSave = result.copyWith(projectId: projectId);
+      await ProcurementService.createContract(contractToSave);
     }
   }
 
   Future<void> _openAddItemDialog() async {
+    final projectData = ProjectDataHelper.getData(context);
+    final projectId = projectData.projectId;
+
+    if (projectId == null || projectId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Project not initialized. Cannot add item.')),
+      );
+      return;
+    }
+
     final categoryOptions = const [
       'Materials',
       'Equipment',
@@ -114,14 +136,16 @@ class _FrontEndPlanningContractVendorQuotesScreenState
 
     if (result != null) {
       try {
-        // We pass the project ID from the result or context. 
-        // Result has a temp ID. Service creates real ID.
-        // We need to ensure result.projectId is set.
-        // The dialog might set it to 'project-1' by default (based on my reading of _AddItemDialog).
-        await ProcurementService.createItem(result);
-        // Stream will update automatically.
+        // Ensure the result has the correct projectId before creating
+        final itemToSave = result.copyWith(projectId: projectId);
+        await ProcurementService.createItem(itemToSave);
       } catch (e) {
         debugPrint('Error creating item: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error creating item: $e')),
+          );
+        }
       }
     }
   }
@@ -139,17 +163,28 @@ class _FrontEndPlanningContractVendorQuotesScreenState
   }
 
   Future<void> _regenerateAllContracts() async {
+    final projectData = ProjectDataHelper.getData(context);
+    final projectId = projectData.projectId;
+
+    if (projectId == null || projectId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Project not initialized. Cannot generate items.')),
+      );
+      return;
+    }
+
     setState(() => _generating = true);
     try {
-      final data = ProjectDataHelper.getData(context);
-      final projectDescription = data.solutionDescription.isNotEmpty
-          ? data.solutionDescription
-          : data.businessCase;
+      final projectDescription = projectData.solutionDescription.isNotEmpty
+          ? projectData.solutionDescription
+          : projectData.businessCase;
       final contextText =
-          'Project: ${data.projectName}. Description: $projectDescription. '
-          'Objective: ${data.projectObjective}. Solution: ${data.solutionDescription}.';
+          'Project: ${projectData.projectName}. Description: $projectDescription. '
+          'Objective: ${projectData.projectObjective}. Solution: ${projectData.solutionDescription}.';
 
-      final prompt = 'Generate a breakdown of detailed contracts and procurement items needed for this project. '
+      final prompt =
+          'Generate a breakdown of detailed contracts and procurement items needed for this project. '
           'Return a JSON object with two keys: "contracts" and "procurement_items". '
           'Both should be arrays of objects. '
           'For "contracts": "title" (string), "description" (string), "contractor" (string, potential name), "cost" (number), "duration" (string). '
@@ -165,41 +200,41 @@ class _FrontEndPlanningContractVendorQuotesScreenState
         debugPrint('JSON decode error, attempting fallback cleanup: $e');
         throw Exception('AI returned invalid data format.');
       }
-      
-      final projectId = ProjectDataHelper.getData(context).projectId ?? 'project-1';
 
       if (parsed.containsKey('contracts') && parsed['contracts'] is List) {
         final List<dynamic> contracts = parsed['contracts'];
         for (final item in contracts) {
-           if (item is Map<String, dynamic>) {
-             final contract = ContractModel(
-               id: '',
-               projectId: projectId,
-               title: item['title'] ?? 'Contract',
-               description: item['description'] ?? '',
-               contractorName: item['contractor'] ?? 'To be determined',
-               estimatedCost: (item['cost'] as num?)?.toDouble() ?? 0.0,
-               duration: item['duration'] ?? 'TBD',
-               status: 'Draft',
-               createdAt: DateTime.now(),
-             );
-             await ProcurementService.createContract(contract);
-           }
+          if (item is Map<String, dynamic>) {
+            final contract = ContractModel(
+              id: '',
+              projectId: projectId,
+              title: item['title'] ?? 'Contract',
+              description: item['description'] ?? '',
+              contractorName: item['contractor'] ?? 'To be determined',
+              estimatedCost: (item['cost'] as num?)?.toDouble() ?? 0.0,
+              duration: item['duration'] ?? 'TBD',
+              status: 'Draft',
+              createdAt: DateTime.now(),
+            );
+            await ProcurementService.createContract(contract);
+          }
         }
       }
 
-      if (parsed.containsKey('procurement_items') && parsed['procurement_items'] is List) {
+      if (parsed.containsKey('procurement_items') &&
+          parsed['procurement_items'] is List) {
         final List<dynamic> items = parsed['procurement_items'];
         for (final item in items) {
           if (item is Map<String, dynamic>) {
             final newItem = ProcurementItemModel(
-              id: '', 
+              id: '',
               projectId: projectId,
               name: item['name'] ?? 'New Item',
-              description: item['category'] ?? '', // Description often fits here if brief
+              description: item['category'] ??
+                  '', // Description often fits here if brief
               category: item['category'] ?? 'Equipment',
               budget: (item['budget'] as num?)?.toDouble() ?? 0.0,
-              notes: item['potential_vendors'] ?? '', 
+              notes: item['potential_vendors'] ?? '',
               status: ProcurementItemStatus.planning,
               createdAt: DateTime.now(),
               updatedAt: DateTime.now(),
@@ -208,10 +243,12 @@ class _FrontEndPlanningContractVendorQuotesScreenState
           }
         }
       }
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Contractors and Vendors auto-populated successfully!')),
+          const SnackBar(
+              content:
+                  Text('Contractors and Vendors auto-populated successfully!')),
         );
       }
     } catch (e) {
@@ -246,8 +283,8 @@ class _FrontEndPlanningContractVendorQuotesScreenState
               const FrontEndPlanningHeader(),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 32, vertical: 24),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -264,7 +301,8 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 EditableContentText(
-                                  contentKey: 'fep_contract_vendor_quotes_title',
+                                  contentKey:
+                                      'fep_contract_vendor_quotes_title',
                                   fallback: 'Contract and Vendor Quotes',
                                   category: 'front_end_planning',
                                   style: TextStyle(
@@ -275,8 +313,10 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                                 ),
                                 SizedBox(height: 6),
                                 EditableContentText(
-                                  contentKey: 'fep_contract_vendor_quotes_subtitle',
-                                  fallback: 'Manage your contractors and vendors below.',
+                                  contentKey:
+                                      'fep_contract_vendor_quotes_subtitle',
+                                  fallback:
+                                      'Manage your contractors and vendors below.',
                                   category: 'front_end_planning',
                                   style: TextStyle(
                                     fontSize: 14,
@@ -288,7 +328,8 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                           ),
                           PageRegenerateAllButton(
                             onRegenerateAll: () async {
-                              final confirmed = await showRegenerateAllConfirmation(context);
+                              final confirmed =
+                                  await showRegenerateAllConfirmation(context);
                               if (confirmed && mounted) {
                                 await _regenerateAllContracts();
                               }
@@ -303,7 +344,8 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                       ),
                       const SizedBox(height: 18),
                       // Check for Project ID
-                      if (ProjectDataHelper.getData(context).projectId == null) ...[
+                      if (ProjectDataHelper.getData(context).projectId ==
+                          null) ...[
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(24),
@@ -314,11 +356,15 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                           ),
                           child: Column(
                             children: [
-                              const Icon(Icons.warning_amber_rounded, size: 48, color: Color(0xFFDC2626)),
+                              const Icon(Icons.warning_amber_rounded,
+                                  size: 48, color: Color(0xFFDC2626)),
                               const SizedBox(height: 16),
                               const Text(
                                 'Project Not Initialized',
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF991B1B)),
+                                style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF991B1B)),
                               ),
                               const SizedBox(height: 8),
                               const Text(
@@ -330,91 +376,99 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                           ),
                         ),
                       ] else ...[
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Active Contracts',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF111827),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Active Contracts',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF111827),
+                              ),
                             ),
-                          ),
-                          ElevatedButton.icon(
-                            onPressed: _openAddContractDialog,
-                            icon: const Icon(Icons.add, size: 16),
-                            label: const Text('Add Contract'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFEFF6FF),
-                              foregroundColor: const Color(0xFF2563EB),
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)),
+                            ElevatedButton.icon(
+                              onPressed: _openAddContractDialog,
+                              icon: const Icon(Icons.add, size: 16),
+                              label: const Text('Add Contract'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFEFF6FF),
+                                foregroundColor: const Color(0xFF2563EB),
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8)),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      StreamBuilder<List<ContractModel>>(
-                        stream: _contractsStream,
-                        builder: (context, snapshot) {
-                          if (snapshot.hasError) return Text('Error: ${snapshot.error}');
-                          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                          return ContractsTable(contracts: snapshot.data!);
-                        },
-                      ),
-                      
-                      const SizedBox(height: 32),
-                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Procurement & Vendors',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF111827),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        StreamBuilder<List<ContractModel>>(
+                          stream: _contractsStream,
+                          builder: (context, snapshot) {
+                            if (snapshot.hasError) {
+                              return Text('Error: ${snapshot.error}');
+                            }
+                            if (!snapshot.hasData) {
+                              return const Center(
+                                  child: CircularProgressIndicator());
+                            }
+                            return ContractsTable(contracts: snapshot.data!);
+                          },
+                        ),
+                        const SizedBox(height: 32),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Procurement & Vendors',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF111827),
+                              ),
                             ),
-                          ),
-                          ElevatedButton.icon(
-                            onPressed: _openAddItemDialog,
-                            icon: const Icon(Icons.add, size: 16),
-                            label: const Text('Add Item'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFEFF6FF),
-                              foregroundColor: const Color(0xFF2563EB),
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)),
+                            ElevatedButton.icon(
+                              onPressed: _openAddItemDialog,
+                              icon: const Icon(Icons.add, size: 16),
+                              label: const Text('Add Item'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFEFF6FF),
+                                foregroundColor: const Color(0xFF2563EB),
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8)),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      StreamBuilder<List<ProcurementItemModel>>(
-                        stream: _itemsStream,
-                        builder: (context, snapshot) {
-                          if (snapshot.hasError) {
-                            return Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                  color: const Color(0xFFFEF2F2),
-                                  borderRadius: BorderRadius.circular(8)),
-                              child: Text('Error loading items: ${snapshot.error}',
-                                  style: const TextStyle(color: Color(0xFFDC2626))),
-                            );
-                          }
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const Center(child: CircularProgressIndicator());
-                          }
-                          final items = snapshot.data ?? [];
-                          return ProcurementTable(items: items);
-                        },
-                      ),
-                      const SizedBox(height: 140),
-                    ], // Close else block
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        StreamBuilder<List<ProcurementItemModel>>(
+                          stream: _itemsStream,
+                          builder: (context, snapshot) {
+                            if (snapshot.hasError) {
+                              return Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                    color: const Color(0xFFFEF2F2),
+                                    borderRadius: BorderRadius.circular(8)),
+                                child: Text(
+                                    'Error loading items: ${snapshot.error}',
+                                    style: const TextStyle(
+                                        color: Color(0xFFDC2626))),
+                              );
+                            }
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Center(
+                                  child: CircularProgressIndicator());
+                            }
+                            final items = snapshot.data ?? [];
+                            return ProcurementTable(items: items);
+                          },
+                        ),
+                        const SizedBox(height: 140),
+                      ], // Close else block
                     ],
                   ),
                 ),
@@ -435,8 +489,6 @@ class _FrontEndPlanningContractVendorQuotesScreenState
     );
   }
 }
-
-
 
 class _BottomOverlay extends StatelessWidget {
   const _BottomOverlay({required this.onNext});

@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:ndu_project/models/design_phase_models.dart';
+import 'package:ndu_project/services/design_phase_service.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/screens/development_set_up_screen.dart';
 import 'package:pdf/pdf.dart';
@@ -13,65 +16,75 @@ class TechnicalAlignmentScreen extends StatefulWidget {
   const TechnicalAlignmentScreen({super.key});
 
   @override
-  State<TechnicalAlignmentScreen> createState() => _TechnicalAlignmentScreenState();
+  State<TechnicalAlignmentScreen> createState() =>
+      _TechnicalAlignmentScreenState();
 }
 
 class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
   final TextEditingController _notesController = TextEditingController();
+  Timer? _saveDebounce;
+  bool _suspendSave = false;
 
-  final List<_ConstraintRow> _constraints = [
-    _ConstraintRow(
+  final List<ConstraintRow> _constraints = [
+    ConstraintRow(
       constraint: 'Platform & stack boundaries',
-      guardrail: 'Approved languages, frameworks, hosting, and security baselines.',
+      guardrail:
+          'Approved languages, frameworks, hosting, and security baselines.',
       owner: 'Platform',
       status: 'In review',
     ),
-    _ConstraintRow(
+    ConstraintRow(
       constraint: 'Regulatory & compliance',
-      guardrail: 'Industry regulations (PCI, HIPAA, GDPR) and required controls.',
+      guardrail:
+          'Industry regulations (PCI, HIPAA, GDPR) and required controls.',
       owner: 'Security',
       status: 'Aligned',
     ),
-    _ConstraintRow(
+    ConstraintRow(
       constraint: 'Performance & scale targets',
-      guardrail: 'Expected users, peak load, latency targets, and data growth assumptions.',
+      guardrail:
+          'Expected users, peak load, latency targets, and data growth assumptions.',
       owner: 'Engineering',
       status: 'Draft',
     ),
   ];
 
-  final List<_RequirementMappingRow> _mappings = [
-    _RequirementMappingRow(
+  final List<RequirementMappingRow> _mappings = [
+    RequirementMappingRow(
       requirement: 'Account lifecycle & access',
       approach: 'Central auth service, scoped tokens, standardized role model.',
       status: 'Aligned',
     ),
-    _RequirementMappingRow(
+    RequirementMappingRow(
       requirement: 'Data residency & privacy',
-      approach: 'Regional data stores, encryption at rest/in transit, retention policies.',
+      approach:
+          'Regional data stores, encryption at rest/in transit, retention policies.',
       status: 'In review',
     ),
-    _RequirementMappingRow(
+    RequirementMappingRow(
       requirement: 'Operational visibility',
-      approach: 'Unified logging, metrics, tracing, and alerting across services.',
+      approach:
+          'Unified logging, metrics, tracing, and alerting across services.',
       status: 'Draft',
     ),
   ];
 
-  final List<_DependencyDecisionRow> _dependencies = [
-    _DependencyDecisionRow(
+  final List<DependencyDecisionRow> _dependencies = [
+    DependencyDecisionRow(
       item: 'External systems & contracts',
-      detail: 'Which vendors, APIs, or internal platforms this work depends on.',
+      detail:
+          'Which vendors, APIs, or internal platforms this work depends on.',
       owner: 'Integration',
       status: 'Pending',
     ),
-    _DependencyDecisionRow(
+    DependencyDecisionRow(
       item: 'Critical technical decisions',
-      detail: 'Architectural choices the team must agree on before implementation.',
+      detail:
+          'Architectural choices the team must agree on before implementation.',
       owner: 'Architecture',
       status: 'In review',
     ),
-    _DependencyDecisionRow(
+    DependencyDecisionRow(
       item: 'Risks & mitigation options',
       detail: 'Where the design might fail and how you plan to reduce impact.',
       owner: 'Engineering',
@@ -79,19 +92,112 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     ),
   ];
 
-  final List<String> _statusOptions = const ['Aligned', 'In review', 'Draft', 'Pending'];
+  final List<String> _statusOptions = const [
+    'Aligned',
+    'In review',
+    'Draft',
+    'Pending'
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _notesController.addListener(_onNotesChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadFromFirestore());
+  }
 
   @override
   void dispose() {
+    _notesController.removeListener(_onNotesChanged);
     _notesController.dispose();
+    _saveDebounce?.cancel();
     super.dispose();
+  }
+
+  void _onNotesChanged() {
+    if (_suspendSave) return;
+    _scheduleSave();
+  }
+
+  Future<void> _loadFromFirestore() async {
+    final provider = ProjectDataInherited.maybeOf(context);
+    final projectId = provider?.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+
+    try {
+      final data =
+          await DesignPhaseService.instance.loadTechnicalAlignment(projectId);
+
+      _suspendSave = true;
+      if (mounted) {
+        setState(() {
+          _notesController.text = data['notes']?.toString() ?? '';
+
+          if (data['constraints'] != null) {
+            _constraints.clear();
+            _constraints.addAll((data['constraints'] as List)
+                .map((e) => ConstraintRow.fromMap(e as Map<String, dynamic>)));
+          }
+
+          if (data['mappings'] != null) {
+            _mappings.clear();
+            _mappings.addAll((data['mappings'] as List).map((e) =>
+                RequirementMappingRow.fromMap(e as Map<String, dynamic>)));
+          }
+
+          if (data['dependencies'] != null) {
+            _dependencies.clear();
+            _dependencies.addAll((data['dependencies'] as List).map((e) =>
+                DependencyDecisionRow.fromMap(e as Map<String, dynamic>)));
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading technical alignment: $e');
+    } finally {
+      _suspendSave = false;
+    }
+  }
+
+  void _scheduleSave() {
+    _saveDebounce?.cancel();
+    _saveDebounce = Timer(const Duration(milliseconds: 1000), _saveToFirestore);
+  }
+
+  Future<void> _saveToFirestore() async {
+    final provider = ProjectDataInherited.maybeOf(context);
+    final projectId = provider?.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+
+    try {
+      await DesignPhaseService.instance.saveTechnicalAlignment(
+        projectId,
+        notes: _notesController.text,
+        constraints: _constraints,
+        mappings: _mappings,
+        dependencies: _dependencies,
+      );
+    } catch (e) {
+      debugPrint('Error saving technical alignment: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
     final padding = AppBreakpoints.pagePadding(context);
-    final ownerOptions = _ownerOptions();
+
+    // Get team members from provider
+    final provider = ProjectDataInherited.maybeOf(context);
+    final List<String> ownerOptions = provider?.projectData.teamMembers
+            .map((m) => m.name)
+            .where((n) => n.isNotEmpty)
+            .toList() ??
+        [];
+
+    if (ownerOptions.isEmpty) {
+      ownerOptions.add('Unassigned');
+    }
 
     return ResponsiveScaffold(
       activeItemLabel: 'Technical Alignment',
@@ -144,11 +250,16 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                     ),
                     child: TextField(
                       controller: _notesController,
-                      maxLines: 2,
-                      style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
+                      maxLines: null,
+                      minLines: 3,
+                      keyboardType: TextInputType.multiline,
+                      style: const TextStyle(
+                          fontSize: 14, color: Color(0xFF1F2937)),
                       decoration: InputDecoration(
-                        hintText: 'Input your notes here 9 (key constraints, assumptions, dependencies, and open technical questions)',
-                        hintStyle: TextStyle(color: Colors.grey[500], fontSize: 13),
+                        hintText:
+                            'Input your notes here (key constraints, assumptions, dependencies, and open technical questions)',
+                        hintStyle:
+                            TextStyle(color: Colors.grey[500], fontSize: 13),
                         border: InputBorder.none,
                         isDense: true,
                         contentPadding: EdgeInsets.zero,
@@ -182,12 +293,14 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.lightbulb_outline, size: 18, color: LightModeColors.accent),
+                      Icon(Icons.lightbulb_outline,
+                          size: 18, color: LightModeColors.accent),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Document decisions at the level of contracts and constraints. Detailed implementation choices can live with engineering once the direction is clear.',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          style:
+                              TextStyle(fontSize: 12, color: Colors.grey[600]),
                         ),
                       ),
                     ],
@@ -223,18 +336,20 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             icon: Icons.policy_outlined,
             color: const Color(0xFF1D4ED8),
             title: 'Constraints & guardrails',
-            subtitle: 'World-class guardrails that clarify what must never drift.',
+            subtitle:
+                'World-class guardrails that clarify what must never drift.',
             actionLabel: 'Add constraint',
             onAction: () {
               setState(() {
                 _constraints.add(
-                  _ConstraintRow(
+                  ConstraintRow(
                     constraint: '',
                     guardrail: '',
                     owner: '',
                     status: 'Draft',
                   ),
                 );
+                _scheduleSave();
               });
             },
           ),
@@ -245,7 +360,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
               _TableColumn(label: 'Guardrail', flex: 5),
               _TableColumn(label: 'Owner', flex: 2),
               _TableColumn(label: 'Status', flex: 2),
-              _TableColumn(label: 'Action', flex: 2, alignment: Alignment.center),
+              _TableColumn(
+                  label: 'Action', flex: 2, alignment: Alignment.center),
             ],
           ),
           const SizedBox(height: 10),
@@ -256,13 +372,14 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
               onAction: () {
                 setState(() {
                   _constraints.add(
-                    _ConstraintRow(
+                    ConstraintRow(
                       constraint: '',
                       guardrail: '',
                       owner: '',
                       status: 'Draft',
                     ),
                   );
+                  _scheduleSave();
                 });
               },
             )
@@ -303,17 +420,19 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             icon: Icons.swap_horiz_outlined,
             color: const Color(0xFF0F766E),
             title: 'Requirements → solution mapping',
-            subtitle: 'Exceptional clarity on how requirements become technical choices.',
+            subtitle:
+                'Exceptional clarity on how requirements become technical choices.',
             actionLabel: 'Add mapping',
             onAction: () {
               setState(() {
                 _mappings.add(
-                  _RequirementMappingRow(
+                  RequirementMappingRow(
                     requirement: '',
                     approach: '',
                     status: 'Draft',
                   ),
                 );
+                _scheduleSave();
               });
             },
           ),
@@ -323,23 +442,26 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
               _TableColumn(label: 'Requirement', flex: 3),
               _TableColumn(label: 'Technical approach', flex: 5),
               _TableColumn(label: 'Status', flex: 2),
-              _TableColumn(label: 'Action', flex: 2, alignment: Alignment.center),
+              _TableColumn(
+                  label: 'Action', flex: 2, alignment: Alignment.center),
             ],
           ),
           const SizedBox(height: 10),
           if (_mappings.isEmpty)
             _buildEmptyTableState(
-              message: 'No mappings yet. Add the first requirement-to-solution entry.',
+              message:
+                  'No mappings yet. Add the first requirement-to-solution entry.',
               actionLabel: 'Add mapping',
               onAction: () {
                 setState(() {
                   _mappings.add(
-                    _RequirementMappingRow(
+                    RequirementMappingRow(
                       requirement: '',
                       approach: '',
                       status: 'Draft',
                     ),
                   );
+                  _scheduleSave();
                 });
               },
             )
@@ -380,18 +502,20 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             icon: Icons.hub_outlined,
             color: const Color(0xFF9333EA),
             title: 'Dependencies & decisions',
-            subtitle: 'World-class visibility into what must land before build.',
+            subtitle:
+                'World-class visibility into what must land before build.',
             actionLabel: 'Add dependency',
             onAction: () {
               setState(() {
                 _dependencies.add(
-                  _DependencyDecisionRow(
+                  DependencyDecisionRow(
                     item: '',
                     detail: '',
                     owner: '',
                     status: 'Draft',
                   ),
                 );
+                _scheduleSave();
               });
             },
           ),
@@ -402,24 +526,27 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
               _TableColumn(label: 'Detail', flex: 5),
               _TableColumn(label: 'Owner', flex: 2),
               _TableColumn(label: 'Status', flex: 2),
-              _TableColumn(label: 'Action', flex: 2, alignment: Alignment.center),
+              _TableColumn(
+                  label: 'Action', flex: 2, alignment: Alignment.center),
             ],
           ),
           const SizedBox(height: 10),
           if (_dependencies.isEmpty)
             _buildEmptyTableState(
-              message: 'No dependencies yet. Add the first decision or external dependency.',
+              message:
+                  'No dependencies yet. Add the first decision or external dependency.',
               actionLabel: 'Add dependency',
               onAction: () {
                 setState(() {
                   _dependencies.add(
-                    _DependencyDecisionRow(
+                    DependencyDecisionRow(
                       item: '',
                       detail: '',
                       owner: '',
                       status: 'Draft',
                     ),
                   );
+                  _scheduleSave();
                 });
               },
             )
@@ -445,7 +572,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                 backgroundColor: LightModeColors.accent,
                 foregroundColor: Colors.black87,
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
               ),
             ),
           ),
@@ -470,9 +598,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
               status.isEmpty) {
             return '';
           }
-          final base = guardrail.isEmpty
-              ? constraint
-              : '$constraint — $guardrail';
+          final base =
+              guardrail.isEmpty ? constraint : '$constraint — $guardrail';
           final ownerLabel = owner.isEmpty ? '' : 'Owner: $owner';
           final statusLabel = status.isEmpty ? '' : 'Status: $status';
           final meta = [ownerLabel, statusLabel]
@@ -504,7 +631,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
           final detail = row.detail.trim();
           final owner = row.owner.trim();
           final status = row.status.trim();
-          if (item.isEmpty && detail.isEmpty && owner.isEmpty && status.isEmpty) {
+          if (item.isEmpty &&
+              detail.isEmpty &&
+              owner.isEmpty &&
+              status.isEmpty) {
             return '';
           }
           final base = detail.isEmpty ? item : '$item — $detail';
@@ -603,9 +733,12 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              Text(title,
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 4),
-              Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              Text(subtitle,
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600])),
             ],
           ),
         ),
@@ -656,7 +789,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
   }
 
   Widget _buildConstraintRow(
-    _ConstraintRow row, {
+    ConstraintRow row, {
     required int index,
     required bool isStriped,
     required List<String> ownerOptions,
@@ -675,7 +808,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             child: _buildTableField(
               initialValue: row.constraint,
               hintText: 'Constraint',
-              onChanged: (value) => row.constraint = value,
+              onChanged: (value) {
+                row.constraint = value;
+                _scheduleSave();
+              },
             ),
           ),
           const SizedBox(width: 10),
@@ -684,8 +820,12 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             child: _buildTableField(
               initialValue: row.guardrail,
               hintText: 'Guardrail',
-              maxLines: 2,
-              onChanged: (value) => row.guardrail = value,
+              maxLines: null,
+              minLines: 1,
+              onChanged: (value) {
+                row.guardrail = value;
+                _scheduleSave();
+              },
             ),
           ),
           const SizedBox(width: 10),
@@ -694,7 +834,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             child: _buildOwnerDropdown(
               value: row.owner,
               options: ownerOptions,
-              onChanged: (value) => row.owner = value,
+              onChanged: (value) {
+                row.owner = value;
+                _scheduleSave();
+              },
             ),
           ),
           const SizedBox(width: 10),
@@ -702,7 +845,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             flex: 2,
             child: _buildStatusDropdown(
               value: row.status,
-              onChanged: (value) => setState(() => _constraints[index].status = value),
+              onChanged: (value) {
+                setState(() => _constraints[index].status = value);
+                _scheduleSave();
+              },
               accent: const Color(0xFF1D4ED8),
             ),
           ),
@@ -714,7 +860,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
               child: _buildDeleteAction(() async {
                 final confirmed = await _confirmDelete('constraint');
                 if (!confirmed) return;
-                setState(() => _constraints.removeAt(index));
+                setState(() {
+                  _constraints.removeAt(index);
+                  _scheduleSave();
+                });
               }),
             ),
           ),
@@ -723,7 +872,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     );
   }
 
-  Widget _buildMappingRow(_RequirementMappingRow row, {required int index, required bool isStriped}) {
+  Widget _buildMappingRow(RequirementMappingRow row,
+      {required int index, required bool isStriped}) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -738,7 +888,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             child: _buildTableField(
               initialValue: row.requirement,
               hintText: 'Requirement',
-              onChanged: (value) => row.requirement = value,
+              onChanged: (value) {
+                row.requirement = value;
+                _scheduleSave();
+              },
             ),
           ),
           const SizedBox(width: 10),
@@ -747,8 +900,12 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             child: _buildTableField(
               initialValue: row.approach,
               hintText: 'Technical approach',
-              maxLines: 2,
-              onChanged: (value) => row.approach = value,
+              maxLines: null,
+              minLines: 1,
+              onChanged: (value) {
+                row.approach = value;
+                _scheduleSave();
+              },
             ),
           ),
           const SizedBox(width: 10),
@@ -756,7 +913,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             flex: 2,
             child: _buildStatusDropdown(
               value: row.status,
-              onChanged: (value) => setState(() => _mappings[index].status = value),
+              onChanged: (value) {
+                setState(() => _mappings[index].status = value);
+                _scheduleSave();
+              },
               accent: const Color(0xFF0F766E),
             ),
           ),
@@ -768,7 +928,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
               child: _buildDeleteAction(() async {
                 final confirmed = await _confirmDelete('mapping');
                 if (!confirmed) return;
-                setState(() => _mappings.removeAt(index));
+                setState(() {
+                  _mappings.removeAt(index);
+                  _scheduleSave();
+                });
               }),
             ),
           ),
@@ -778,7 +941,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
   }
 
   Widget _buildDependencyRow(
-    _DependencyDecisionRow row, {
+    DependencyDecisionRow row, {
     required int index,
     required bool isStriped,
     required List<String> ownerOptions,
@@ -797,7 +960,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             child: _buildTableField(
               initialValue: row.item,
               hintText: 'Dependency or decision',
-              onChanged: (value) => row.item = value,
+              onChanged: (value) {
+                row.item = value;
+                _scheduleSave();
+              },
             ),
           ),
           const SizedBox(width: 10),
@@ -806,8 +972,12 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             child: _buildTableField(
               initialValue: row.detail,
               hintText: 'Detail',
-              maxLines: 2,
-              onChanged: (value) => row.detail = value,
+              maxLines: null,
+              minLines: 1,
+              onChanged: (value) {
+                row.detail = value;
+                _scheduleSave();
+              },
             ),
           ),
           const SizedBox(width: 10),
@@ -816,7 +986,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             child: _buildOwnerDropdown(
               value: row.owner,
               options: ownerOptions,
-              onChanged: (value) => row.owner = value,
+              onChanged: (value) {
+                row.owner = value;
+                _scheduleSave();
+              },
             ),
           ),
           const SizedBox(width: 10),
@@ -824,7 +997,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
             flex: 2,
             child: _buildStatusDropdown(
               value: row.status,
-              onChanged: (value) => setState(() => _dependencies[index].status = value),
+              onChanged: (value) {
+                setState(() => _dependencies[index].status = value);
+                _scheduleSave();
+              },
               accent: const Color(0xFF9333EA),
             ),
           ),
@@ -836,7 +1012,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
               child: _buildDeleteAction(() async {
                 final confirmed = await _confirmDelete('dependency');
                 if (!confirmed) return;
-                setState(() => _dependencies.removeAt(index));
+                setState(() {
+                  _dependencies.removeAt(index);
+                  _scheduleSave();
+                });
               }),
             ),
           ),
@@ -848,15 +1027,16 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
   Widget _buildTableField({
     required String initialValue,
     required String hintText,
-    int maxLines = 1,
+    int? maxLines,
+    int minLines = 1,
     ValueChanged<String>? onChanged,
   }) {
     return TextFormField(
       initialValue: initialValue,
-      minLines: 1,
-      maxLines: null,
-      textAlign: TextAlign.center,
-      textAlignVertical: TextAlignVertical.center,
+      minLines: minLines,
+      maxLines: maxLines,
+      textAlign: TextAlign.start,
+      textAlignVertical: TextAlignVertical.top,
       keyboardType: TextInputType.multiline,
       style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
       onChanged: onChanged,
@@ -866,7 +1046,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
         isDense: true,
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
@@ -913,7 +1094,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
         isDense: true,
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
@@ -934,7 +1116,9 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     final provider = ProjectDataInherited.maybeOf(context);
     final members = provider?.projectData.teamMembers ?? [];
     final names = members
-        .map((member) => member.name.trim().isNotEmpty ? member.name.trim() : member.email.trim())
+        .map((member) => member.name.trim().isNotEmpty
+            ? member.name.trim()
+            : member.email.trim())
         .where((value) => value.isNotEmpty)
         .toList();
     if (names.isEmpty) return const ['Owner'];
@@ -975,7 +1159,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
         isDense: true,
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
@@ -1038,8 +1223,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
               backgroundColor: accent,
               foregroundColor: onAccent,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              shape:
-                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
               elevation: 0,
             ),
           ),
@@ -1100,7 +1285,8 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFFB91C1C)),
+            style:
+                TextButton.styleFrom(foregroundColor: const Color(0xFFB91C1C)),
             child: const Text('Delete'),
           ),
         ],
@@ -1143,7 +1329,6 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
       ),
     );
   }
-
 }
 
 class _TableColumn {
@@ -1156,44 +1341,4 @@ class _TableColumn {
   final String label;
   final int flex;
   final Alignment alignment;
-}
-
-class _ConstraintRow {
-  _ConstraintRow({
-    required this.constraint,
-    required this.guardrail,
-    required this.owner,
-    required this.status,
-  });
-
-  String constraint;
-  String guardrail;
-  String owner;
-  String status;
-}
-
-class _RequirementMappingRow {
-  _RequirementMappingRow({
-    required this.requirement,
-    required this.approach,
-    required this.status,
-  });
-
-  String requirement;
-  String approach;
-  String status;
-}
-
-class _DependencyDecisionRow {
-  _DependencyDecisionRow({
-    required this.item,
-    required this.detail,
-    required this.owner,
-    required this.status,
-  });
-
-  String item;
-  String detail;
-  String owner;
-  String status;
 }

@@ -19,6 +19,7 @@ import 'package:ndu_project/screens/front_end_planning_contract_vendor_quotes_sc
 import 'package:ndu_project/screens/front_end_planning_procurement_screen.dart';
 import 'package:ndu_project/screens/front_end_planning_security.dart';
 import 'package:ndu_project/screens/front_end_planning_allowance.dart';
+import 'package:ndu_project/screens/front_end_planning_milestone.dart';
 import 'package:ndu_project/screens/front_end_planning_summary.dart';
 import 'package:ndu_project/screens/project_charter_screen.dart';
 import 'package:ndu_project/screens/ssher_stacked_screen.dart';
@@ -483,6 +484,11 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     }
     _navigateWithCheckpoint(
         'fep_allowance', const FrontEndPlanningAllowanceScreen());
+  }
+
+  void _openMilestone() {
+    _navigateWithCheckpoint(
+        'fep_milestone', const FrontEndPlanningMilestoneScreen());
   }
 
   void _showLockedItemMessage(String itemName) {
@@ -1157,7 +1163,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: isHighlighted
-                  ? primary.withOpacity(0.12)
+                  ? primary.withValues(alpha: 0.12)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
@@ -1206,7 +1212,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: isHighlighted
-                  ? primary.withOpacity(0.10)
+                  ? primary.withValues(alpha: 0.10)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
@@ -1257,8 +1263,9 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color:
-                isHighlighted ? primary.withOpacity(0.10) : Colors.transparent,
+            color: isHighlighted
+                ? primary.withValues(alpha: 0.10)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -1315,7 +1322,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
             decoration: BoxDecoration(
               color: isHighlighted
-                  ? primary.withOpacity(0.08)
+                  ? primary.withValues(alpha: 0.08)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
@@ -1365,7 +1372,8 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: isActive ? primary.withOpacity(0.12) : Colors.transparent,
+            color:
+                isActive ? primary.withValues(alpha: 0.12) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -1407,7 +1415,8 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
-          right: BorderSide(color: Colors.grey.withOpacity(0.25), width: 0.8),
+          right: BorderSide(
+              color: Colors.grey.withValues(alpha: 0.25), width: 0.8),
         ),
       ),
       child: Column(
@@ -1466,15 +1475,16 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
                   decoration: InputDecoration(
                     hintText: 'Search menu...',
                     hintStyle: TextStyle(
-                        color: const Color(0xFF6B7280).withOpacity(0.6),
+                        color: const Color(0xFF6B7280).withValues(alpha: 0.6),
                         fontSize: 14),
                     prefixIcon: Icon(Icons.search_rounded,
-                        color: const Color(0xFF6B7280).withOpacity(0.7),
+                        color: const Color(0xFF6B7280).withValues(alpha: 0.7),
                         size: 20),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
                             icon: Icon(Icons.clear_rounded,
-                                color: const Color(0xFF6B7280).withOpacity(0.7),
+                                color: const Color(0xFF6B7280)
+                                    .withValues(alpha: 0.7),
                                 size: 18),
                             onPressed: () {
                               _searchController.clear();
@@ -1619,9 +1629,9 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
           isActive: widget.activeItemLabel == 'Front End Planning',
         ),
         if (_frontEndExpanded) ...[
-          _buildSubSubMenuItem('Summary',
+          _buildSubSubMenuItem('Details',
               onTap: _openSummary,
-              isActive: widget.activeItemLabel == 'Summary'),
+              isActive: widget.activeItemLabel == 'Details'),
           _buildSubSubMenuItem('Project Requirements',
               onTap: _openFrontEndRequirements,
               isActive: widget.activeItemLabel == 'Project Requirements'),
@@ -1645,6 +1655,11 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
             onTap: lockSecurity ? null : _openSecurity,
             isActive: widget.activeItemLabel == 'Security',
             isDisabled: lockSecurity,
+          ),
+          _buildSubSubMenuItem(
+            'Milestone',
+            onTap: _openMilestone,
+            isActive: widget.activeItemLabel == 'Milestone',
           ),
           _buildSubSubMenuItem(
             'Allowance',
@@ -1671,15 +1686,15 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
         _buildSubMenuItem('Project Details',
             onTap: _openProjectFramework,
             isActive: widget.activeItemLabel == 'Project Details'),
-        _buildSubMenuItem('Project Goals & Milestones',
-            onTap: _openProjectGoalsMilestones,
-            isActive: widget.activeItemLabel == 'Project Goals & Milestones'),
         _buildSubMenuItem(
           'Work Breakdown Structure',
           onTap: lockWorkBreakdown ? null : _openWorkBreakdownStructure,
           isActive: widget.activeItemLabel == 'Work Breakdown Structure',
           isDisabled: lockWorkBreakdown,
         ),
+        _buildSubMenuItem('Project Goals & Milestones',
+            onTap: _openProjectGoalsMilestones,
+            isActive: widget.activeItemLabel == 'Project Goals & Milestones'),
         _buildSubMenuItem('Requirements',
             onTap: _openPlanningRequirements,
             isActive: widget.activeItemLabel == 'Requirements'),
@@ -1727,16 +1742,12 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
             _sharedExecutionPlanExpanded = _executionPlanExpanded;
           }),
           isActive: widget.activeItemLabel == 'Execution Plan' ||
-              widget.activeItemLabel == 'Execution Plan Overview' ||
               widget.activeItemLabel == 'Execution Plan - Construction Plan' ||
               widget.activeItemLabel ==
                   'Execution Plan - Infrastructure Plan' ||
               widget.activeItemLabel == 'Execution Plan - Agile Delivery Plan',
         ),
         if (_executionPlanExpanded) ...[
-          _buildSubSubMenuItem('Execution Plan Overview',
-              onTap: _openExecutionPlan,
-              isActive: widget.activeItemLabel == 'Execution Plan Overview'),
           _buildSubSubMenuItem('Construction Plan',
               onTap: _openExecutionPlanConstructionPlan,
               isActive: widget.activeItemLabel ==
@@ -1941,9 +1952,9 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
         _buildSubMenuItem('Design Management',
             onTap: _openDesignManagement,
             isActive: widget.activeItemLabel == 'Design Management'),
-        _buildSubMenuItem('Requirements Implementation',
+        _buildSubMenuItem('Design Specifications',
             onTap: _openRequirementsImplementation,
-            isActive: widget.activeItemLabel == 'Requirements Implementation'),
+            isActive: widget.activeItemLabel == 'Design Specifications'),
         _buildSubMenuItem('Technical Alignment',
             onTap: _openTechnicalAlignment,
             isActive: widget.activeItemLabel == 'Technical Alignment'),
@@ -3017,12 +3028,13 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.search_off_rounded,
-                  color: const Color(0xFF6B7280).withOpacity(0.4), size: 40),
+                  color: const Color(0xFF6B7280).withValues(alpha: 0.4),
+                  size: 40),
               const SizedBox(height: 12),
               Text(
                 'No results found',
                 style: TextStyle(
-                    color: const Color(0xFF6B7280).withOpacity(0.6),
+                    color: const Color(0xFF6B7280).withValues(alpha: 0.6),
                     fontSize: 13,
                     fontWeight: FontWeight.w500),
               ),

@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-
 /// Comprehensive project data model that captures all information across the application flow
 class ProjectDataModel {
   // Initiation Phase Data
@@ -21,12 +20,16 @@ class ProjectDataModel {
   String charterConstraints;
   String charterProjectManagerName;
   String charterProjectSponsorName;
+  String charterReviewedBy; // Added
+  DateTime? charterApprovalDate; // Added
   String charterEmail;
   String charterPhone;
   String charterOrganizationalUnit;
   String charterGreenBelt;
   String charterBlackBelt;
   List<String> tags;
+  List<Contractor> contractors; // Added
+  List<Vendor> vendors; // Added
   List<PotentialSolution> potentialSolutions;
   List<SolutionRisk> solutionRisks;
   PreferredSolutionAnalysis? preferredSolutionAnalysis;
@@ -91,6 +94,9 @@ class ProjectDataModel {
   // Design Deliverables Data
   DesignDeliverablesData designDeliverablesData;
 
+  // Design Management Data
+  DesignManagementData? designManagementData;
+
   // Execution Phase Data
   ExecutionPhaseData? executionPhaseData;
 
@@ -131,12 +137,17 @@ class ProjectDataModel {
     this.charterConstraints = '',
     this.charterProjectManagerName = '',
     this.charterProjectSponsorName = '',
+    this.charterReviewedBy = '',
+    this.charterApprovalDate,
+    this.designManagementData,
     this.charterEmail = '',
     this.charterPhone = '',
     this.charterOrganizationalUnit = '',
     this.charterGreenBelt = '',
     this.charterBlackBelt = '',
     this.tags = const [],
+    List<Contractor>? contractors,
+    List<Vendor>? vendors,
     List<PotentialSolution>? potentialSolutions,
     List<SolutionRisk>? solutionRisks,
     this.preferredSolutionAnalysis,
@@ -189,6 +200,8 @@ class ProjectDataModel {
     String? preferredSolutionId,
   })  : potentialSolutions = potentialSolutions ?? [],
         solutionRisks = solutionRisks ?? [],
+        contractors = contractors ?? [],
+        vendors = vendors ?? [],
         projectGoals = projectGoals ?? [],
         assumptions = assumptions ?? [],
         constraints = constraints ?? [],
@@ -233,12 +246,16 @@ class ProjectDataModel {
     String? charterConstraints,
     String? charterProjectManagerName,
     String? charterProjectSponsorName,
+    String? charterReviewedBy,
+    DateTime? charterApprovalDate,
     String? charterEmail,
     String? charterPhone,
     String? charterOrganizationalUnit,
     String? charterGreenBelt,
     String? charterBlackBelt,
     List<String>? tags,
+    List<Contractor>? contractors,
+    List<Vendor>? vendors,
     List<PotentialSolution>? potentialSolutions,
     List<SolutionRisk>? solutionRisks,
     PreferredSolutionAnalysis? preferredSolutionAnalysis,
@@ -274,6 +291,7 @@ class ProjectDataModel {
     List<StaffingRequirement>? staffingRequirements,
     List<TrainingActivity>? trainingActivities,
     DesignDeliverablesData? designDeliverablesData,
+    DesignManagementData? designManagementData,
     ExecutionPhaseData? executionPhaseData,
     bool? isBasicPlanProject,
     Map<String, int>? aiUsageCounts,
@@ -302,12 +320,18 @@ class ProjectDataModel {
           charterProjectManagerName ?? this.charterProjectManagerName,
       charterProjectSponsorName:
           charterProjectSponsorName ?? this.charterProjectSponsorName,
+      charterReviewedBy: charterReviewedBy ?? this.charterReviewedBy,
+      charterApprovalDate: charterApprovalDate ?? this.charterApprovalDate,
+      designManagementData: designManagementData ?? this.designManagementData,
       charterEmail: charterEmail ?? this.charterEmail,
       charterPhone: charterPhone ?? this.charterPhone,
-      charterOrganizationalUnit: charterOrganizationalUnit ?? this.charterOrganizationalUnit,
+      charterOrganizationalUnit:
+          charterOrganizationalUnit ?? this.charterOrganizationalUnit,
       charterGreenBelt: charterGreenBelt ?? this.charterGreenBelt,
       charterBlackBelt: charterBlackBelt ?? this.charterBlackBelt,
       tags: tags ?? this.tags,
+      contractors: contractors ?? this.contractors,
+      vendors: vendors ?? this.vendors,
       potentialSolutions: potentialSolutions ?? this.potentialSolutions,
       solutionRisks: solutionRisks ?? this.solutionRisks,
       preferredSolutionAnalysis:
@@ -394,12 +418,16 @@ class ProjectDataModel {
       'charterConstraints': charterConstraints,
       'charterProjectManagerName': charterProjectManagerName,
       'charterProjectSponsorName': charterProjectSponsorName,
+      'charterReviewedBy': charterReviewedBy,
+      'charterApprovalDate': charterApprovalDate?.toIso8601String(),
       'charterEmail': charterEmail,
       'charterPhone': charterPhone,
       'charterOrganizationalUnit': charterOrganizationalUnit,
       'charterGreenBelt': charterGreenBelt,
       'charterBlackBelt': charterBlackBelt,
       'tags': tags,
+      'contractors': contractors.map((c) => c.toJson()).toList(),
+      'vendors': vendors.map((v) => v.toJson()).toList(),
       'potentialSolutions': potentialSolutions.map((s) => s.toJson()).toList(),
       'solutionRisks': solutionRisks.map((r) => r.toJson()).toList(),
       'preferredSolutionAnalysis': preferredSolutionAnalysis?.toJson(),
@@ -435,7 +463,8 @@ class ProjectDataModel {
       if (coreStakeholdersData != null)
         'coreStakeholdersData': coreStakeholdersData!.toJson(),
       'projectRoles': projectRoles.map((r) => r.toJson()).toList(),
-      'staffingRequirements': staffingRequirements.map((s) => s.toJson()).toList(),
+      'staffingRequirements':
+          staffingRequirements.map((s) => s.toJson()).toList(),
       'trainingActivities': trainingActivities.map((t) => t.toJson()).toList(),
       'designDeliverables': designDeliverablesData.toJson(),
       'currentCheckpoint': currentCheckpoint,
@@ -447,13 +476,15 @@ class ProjectDataModel {
       'projectId': projectId,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
-      'fieldHistories': fieldHistories.map((key, value) => MapEntry(key, value.toJson())),
+      'fieldHistories':
+          fieldHistories.map((key, value) => MapEntry(key, value.toJson())),
       'costBenefitCurrency': costBenefitCurrency,
       'preferredSolutionId': preferredSolutionId,
       'stakeholderEntries': stakeholderEntries.map((e) => e.toJson()).toList(),
       'engagementPlanEntries':
           engagementPlanEntries.map((e) => e.toJson()).toList(),
       'qualityManagementData': qualityManagementData?.toJson(),
+      'designManagementData': designManagementData?.toJson(),
       'executionPhaseData': executionPhaseData?.toJson(),
     };
   }
@@ -550,22 +581,35 @@ class ProjectDataModel {
       solutionDescription: json['solutionDescription']?.toString() ?? '',
       businessCase: json['businessCase']?.toString() ?? '',
       notes: json['notes']?.toString() ?? '',
-      assumptions: (json['assumptions'] as List?)?.map((e) => e.toString()).toList() ?? [],
-      constraints: (json['constraints'] as List?)?.map((e) => e.toString()).toList() ?? [],
-      outOfScope: (json['outOfScope'] as List?)?.map((e) => e.toString()).toList() ?? [],
-      opportunities: (json['opportunities'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      assumptions:
+          (json['assumptions'] as List?)?.map((e) => e.toString()).toList() ??
+              [],
+      constraints:
+          (json['constraints'] as List?)?.map((e) => e.toString()).toList() ??
+              [],
+      outOfScope:
+          (json['outOfScope'] as List?)?.map((e) => e.toString()).toList() ??
+              [],
+      opportunities:
+          (json['opportunities'] as List?)?.map((e) => e.toString()).toList() ??
+              [],
       charterAssumptions: json['charterAssumptions']?.toString() ?? '',
       charterConstraints: json['charterConstraints']?.toString() ?? '',
       charterProjectManagerName:
           json['charterProjectManagerName']?.toString() ?? '',
       charterProjectSponsorName:
           json['charterProjectSponsorName']?.toString() ?? '',
+      charterReviewedBy: json['charterReviewedBy']?.toString() ?? '',
+      charterApprovalDate: safeParseDateTime('charterApprovalDate'),
       charterEmail: json['charterEmail']?.toString() ?? '',
       charterPhone: json['charterPhone']?.toString() ?? '',
-      charterOrganizationalUnit: json['charterOrganizationalUnit']?.toString() ?? '',
+      charterOrganizationalUnit:
+          json['charterOrganizationalUnit']?.toString() ?? '',
       charterGreenBelt: json['charterGreenBelt']?.toString() ?? '',
       charterBlackBelt: json['charterBlackBelt']?.toString() ?? '',
       tags: (json['tags'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      contractors: safeParseList('contractors', Contractor.fromJson),
+      vendors: safeParseList('vendors', Vendor.fromJson),
       potentialSolutions:
           safeParseList('potentialSolutions', PotentialSolution.fromJson),
       solutionRisks: safeParseList('solutionRisks', SolutionRisk.fromJson),
@@ -631,6 +675,8 @@ class ProjectDataModel {
           DesignDeliverablesData(),
       executionPhaseData:
           safeParseSingle('executionPhaseData', ExecutionPhaseData.fromJson),
+      designManagementData: safeParseSingle(
+          'designManagementData', DesignManagementData.fromJson),
       isBasicPlanProject: json['isBasicPlanProject'] == true,
       aiUsageCounts: (json['aiUsageCounts'] is Map)
           ? Map<String, int>.from(
@@ -665,7 +711,8 @@ class ProjectDataModel {
                   );
                 } catch (e) {
                   debugPrint('⚠️ Error parsing FieldHistory for $key: $e');
-                  return MapEntry(key.toString(), FieldHistory(fieldName: key.toString()));
+                  return MapEntry(
+                      key.toString(), FieldHistory(fieldName: key.toString()));
                 }
               }),
             )
@@ -687,7 +734,8 @@ class ProjectDataModel {
   }
 
   /// Add a field value to history for undo functionality
-  void addFieldToHistory(String fieldName, String value, {bool isAiGenerated = false}) {
+  void addFieldToHistory(String fieldName, String value,
+      {bool isAiGenerated = false}) {
     if (!fieldHistories.containsKey(fieldName)) {
       fieldHistories[fieldName] = FieldHistory(
         fieldName: fieldName,
@@ -975,7 +1023,6 @@ List<Milestone> getDefaultMilestones() {
   ];
 }
 
-
 class WorkItem {
   String id;
   String parentId;
@@ -1018,10 +1065,9 @@ class WorkItem {
               ?.map((c) => WorkItem.fromJson(c as Map<String, dynamic>))
               .toList() ??
           [],
-      dependencies: (json['dependencies'] as List?)
-              ?.map((d) => d.toString())
-              .toList() ??
-          [],
+      dependencies:
+          (json['dependencies'] as List?)?.map((d) => d.toString()).toList() ??
+              [],
     );
   }
 }
@@ -1554,12 +1600,14 @@ class PotentialSolution {
         'number': number,
         'title': title,
         'description': description,
-        'fieldHistories': fieldHistories.map((key, value) => MapEntry(key, value.toJson())),
+        'fieldHistories':
+            fieldHistories.map((key, value) => MapEntry(key, value.toJson())),
       };
 
   factory PotentialSolution.fromJson(Map<String, dynamic> json) {
     return PotentialSolution(
-      id: json['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+      id: json['id']?.toString() ??
+          DateTime.now().microsecondsSinceEpoch.toString(),
       number: (json['number'] is num) ? (json['number'] as num).toInt() : 1,
       title: json['title'] ?? '',
       description: json['description'] ?? '',
@@ -1754,9 +1802,9 @@ class PreferredSolutionAnalysis {
           [],
       selectedSolutionTitle: json['selectedSolutionTitle'],
       selectedSolutionId: json['selectedSolutionId']?.toString(),
-      selectedSolutionIndex: json['selectedSolutionIndex'] is int 
+      selectedSolutionIndex: json['selectedSolutionIndex'] is int
           ? json['selectedSolutionIndex'] as int
-          : (json['selectedSolutionIndex'] != null 
+          : (json['selectedSolutionIndex'] != null
               ? int.tryParse(json['selectedSolutionIndex'].toString())
               : null),
     );
@@ -1818,7 +1866,6 @@ class SolutionAnalysisItem {
     );
   }
 }
-
 
 class CostItem {
   String item;
@@ -2054,21 +2101,33 @@ class BenefitLineItem {
 
 class ITConsiderationsData {
   String notes;
+  String hardwareRequirements;
+  String softwareRequirements;
+  String networkRequirements;
   List<SolutionITData> solutionITData;
 
   ITConsiderationsData({
     this.notes = '',
+    this.hardwareRequirements = '',
+    this.softwareRequirements = '',
+    this.networkRequirements = '',
     List<SolutionITData>? solutionITData,
   }) : solutionITData = solutionITData ?? [];
 
   Map<String, dynamic> toJson() => {
         'notes': notes,
+        'hardwareRequirements': hardwareRequirements,
+        'softwareRequirements': softwareRequirements,
+        'networkRequirements': networkRequirements,
         'solutionITData': solutionITData.map((s) => s.toJson()).toList(),
       };
 
   factory ITConsiderationsData.fromJson(Map<String, dynamic> json) {
     return ITConsiderationsData(
       notes: json['notes'] ?? '',
+      hardwareRequirements: json['hardwareRequirements'] ?? '',
+      softwareRequirements: json['softwareRequirements'] ?? '',
+      networkRequirements: json['networkRequirements'] ?? '',
       solutionITData: (json['solutionITData'] as List?)
               ?.map((s) => SolutionITData.fromJson(s))
               .toList() ??
@@ -2101,15 +2160,24 @@ class SolutionITData {
 
 class InfrastructureConsiderationsData {
   String notes;
+  String physicalSpaceRequirements;
+  String powerCoolingRequirements;
+  String connectivityRequirements;
   List<SolutionInfrastructureData> solutionInfrastructureData;
 
   InfrastructureConsiderationsData({
     this.notes = '',
+    this.physicalSpaceRequirements = '',
+    this.powerCoolingRequirements = '',
+    this.connectivityRequirements = '',
     List<SolutionInfrastructureData>? solutionInfrastructureData,
   }) : solutionInfrastructureData = solutionInfrastructureData ?? [];
 
   Map<String, dynamic> toJson() => {
         'notes': notes,
+        'physicalSpaceRequirements': physicalSpaceRequirements,
+        'powerCoolingRequirements': powerCoolingRequirements,
+        'connectivityRequirements': connectivityRequirements,
         'solutionInfrastructureData':
             solutionInfrastructureData.map((s) => s.toJson()).toList(),
       };
@@ -2117,6 +2185,9 @@ class InfrastructureConsiderationsData {
   factory InfrastructureConsiderationsData.fromJson(Map<String, dynamic> json) {
     return InfrastructureConsiderationsData(
       notes: json['notes'] ?? '',
+      physicalSpaceRequirements: json['physicalSpaceRequirements'] ?? '',
+      powerCoolingRequirements: json['powerCoolingRequirements'] ?? '',
+      connectivityRequirements: json['connectivityRequirements'] ?? '',
       solutionInfrastructureData: (json['solutionInfrastructureData'] as List?)
               ?.map((s) => SolutionInfrastructureData.fromJson(s))
               .toList() ??
@@ -2478,32 +2549,32 @@ class DesignDeliverablesData {
 
   factory DesignDeliverablesData.fromJson(Map<String, dynamic> json) {
     return DesignDeliverablesData(
-      metrics: json['metrics'] is Map<String, dynamic>
-          ? DesignDeliverablesMetrics.fromJson(
-              json['metrics'] as Map<String, dynamic>)
-          : const DesignDeliverablesMetrics(),
+      metrics: DesignDeliverablesMetrics.fromJson(
+          json['metrics'] as Map<String, dynamic>? ?? {}),
       pipeline: (json['pipeline'] as List?)
-              ?.map((item) => DesignDeliverablePipelineItem.fromJson(
-                  Map<String, dynamic>.from(item as Map)))
+              ?.map((e) => DesignDeliverablePipelineItem.fromJson(
+                  e as Map<String, dynamic>))
               .toList() ??
-          const [],
+          [],
       approvals:
-          (json['approvals'] as List?)?.map((e) => e.toString()).toList() ??
-              const [],
+          (json['approvals'] as List?)?.map((e) => e.toString()).toList() ?? [],
       register: (json['register'] as List?)
-              ?.map((item) => DesignDeliverableRegisterItem.fromJson(
-                  Map<String, dynamic>.from(item as Map)))
+              ?.map((e) => DesignDeliverableRegisterItem.fromJson(
+                  e as Map<String, dynamic>))
               .toList() ??
-          const [],
+          [],
       dependencies:
           (json['dependencies'] as List?)?.map((e) => e.toString()).toList() ??
-              const [],
+              [],
       handoffChecklist: (json['handoffChecklist'] as List?)
               ?.map((e) => e.toString())
               .toList() ??
-          const [],
+          [],
     );
   }
+
+  factory DesignDeliverablesData.fromMap(Map<String, dynamic> map) =>
+      DesignDeliverablesData.fromJson(map);
 }
 
 class DesignDeliverablesMetrics {
@@ -2672,7 +2743,8 @@ class FieldHistory {
   factory FieldHistory.fromJson(Map<String, dynamic> json) {
     return FieldHistory(
       fieldName: json['fieldName']?.toString() ?? '',
-      history: (json['history'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      history:
+          (json['history'] as List?)?.map((e) => e.toString()).toList() ?? [],
       isAiGenerated: json['isAiGenerated'] == true,
     );
   }
@@ -2954,10 +3026,8 @@ class StakeholderEntry {
       contactInfo: json['contactInfo']?.toString() ?? '',
       owner: json['owner']?.toString() ?? '',
       notes: json['notes']?.toString() ?? '',
-      createdAt:
-          DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
-      updatedAt:
-          DateTime.tryParse(json['updatedAt'] ?? '') ?? DateTime.now(),
+      createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updatedAt'] ?? '') ?? DateTime.now(),
     );
   }
 }
@@ -3057,10 +3127,8 @@ class EngagementPlanEntry {
       status: json['status']?.toString() ?? 'Planned',
       nextTouchpoint: json['nextTouchpoint']?.toString() ?? '',
       notes: json['notes']?.toString() ?? '',
-      createdAt:
-          DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
-      updatedAt:
-          DateTime.tryParse(json['updatedAt'] ?? '') ?? DateTime.now(),
+      createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updatedAt'] ?? '') ?? DateTime.now(),
     );
   }
 }
@@ -3252,7 +3320,6 @@ class QcTechnique {
   }
 }
 
-
 class MetricValue {
   final String value;
   final String unit;
@@ -3334,14 +3401,14 @@ class QualityMetrics {
 
   factory QualityMetrics.fromJson(Map<String, dynamic> json) {
     return QualityMetrics(
-      defectDensity: json['defectDensity'] != null 
-          ? MetricValue.fromJson(json['defectDensity']) 
+      defectDensity: json['defectDensity'] != null
+          ? MetricValue.fromJson(json['defectDensity'])
           : MetricValue.empty(),
-      customerSatisfaction: json['customerSatisfaction'] != null 
-          ? MetricValue.fromJson(json['customerSatisfaction']) 
+      customerSatisfaction: json['customerSatisfaction'] != null
+          ? MetricValue.fromJson(json['customerSatisfaction'])
           : MetricValue.empty(),
-      onTimeDelivery: json['onTimeDelivery'] != null 
-          ? MetricValue.fromJson(json['onTimeDelivery']) 
+      onTimeDelivery: json['onTimeDelivery'] != null
+          ? MetricValue.fromJson(json['onTimeDelivery'])
           : MetricValue.empty(),
       defectTrendData: (json['defectTrendData'] as List?)
               ?.map((e) => double.tryParse(e.toString()) ?? 0.0)
@@ -3366,7 +3433,8 @@ class QualityMetrics {
       customerSatisfaction: customerSatisfaction ?? this.customerSatisfaction,
       onTimeDelivery: onTimeDelivery ?? this.onTimeDelivery,
       defectTrendData: defectTrendData ?? this.defectTrendData,
-      satisfactionTrendData: satisfactionTrendData ?? this.satisfactionTrendData,
+      satisfactionTrendData:
+          satisfactionTrendData ?? this.satisfactionTrendData,
     );
   }
 }
@@ -3438,6 +3506,224 @@ class QualityManagementData {
       qaTechniques: qaTechniques ?? this.qaTechniques,
       qcTechniques: qcTechniques ?? this.qcTechniques,
       metrics: metrics ?? this.metrics,
+    );
+  }
+}
+
+class Contractor {
+  final String id;
+  String name;
+  String service;
+  double estimatedCost;
+  String status;
+  String notes;
+
+  Contractor({
+    required this.id,
+    this.name = '',
+    this.service = '',
+    this.estimatedCost = 0.0,
+    this.status = 'Pending',
+    this.notes = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'service': service,
+        'estimatedCost': estimatedCost,
+        'status': status,
+        'notes': notes,
+      };
+
+  factory Contractor.fromJson(Map<String, dynamic> json) {
+    return Contractor(
+      id: json['id']?.toString() ??
+          DateTime.now().microsecondsSinceEpoch.toString(),
+      name: json['name']?.toString() ?? '',
+      service: json['service']?.toString() ?? '',
+      estimatedCost: (json['estimatedCost'] is num)
+          ? (json['estimatedCost'] as num).toDouble()
+          : double.tryParse(json['estimatedCost']?.toString() ?? '0') ?? 0.0,
+      status: json['status']?.toString() ?? 'Pending',
+      notes: json['notes']?.toString() ?? '',
+    );
+  }
+}
+
+class Vendor {
+  final String id;
+  String name;
+  String equipmentOrService;
+  double estimatedPrice;
+  String procurementStage;
+  String status;
+  String notes;
+
+  Vendor({
+    required this.id,
+    this.name = '',
+    this.equipmentOrService = '',
+    this.estimatedPrice = 0.0,
+    this.procurementStage = 'Identified',
+    this.status = 'Pending',
+    this.notes = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'equipmentOrService': equipmentOrService,
+        'estimatedPrice': estimatedPrice,
+        'procurementStage': procurementStage,
+        'status': status,
+        'notes': notes,
+      };
+
+  factory Vendor.fromJson(Map<String, dynamic> json) {
+    return Vendor(
+      id: json['id']?.toString() ??
+          DateTime.now().microsecondsSinceEpoch.toString(),
+      name: json['name']?.toString() ?? '',
+      equipmentOrService: json['equipmentOrService']?.toString() ?? '',
+      estimatedPrice: (json['estimatedPrice'] is num)
+          ? (json['estimatedPrice'] as num).toDouble()
+          : double.tryParse(json['estimatedPrice']?.toString() ?? '0') ?? 0.0,
+      procurementStage: json['procurementStage']?.toString() ?? 'Identified',
+      status: json['status']?.toString() ?? 'Pending',
+      notes: json['notes']?.toString() ?? '',
+    );
+  }
+}
+
+// --- Design Management Data Models ---
+
+class DesignManagementData {
+  List<DesignSpecification> specifications;
+  List<DesignDocument> documents;
+  List<DesignToolLink> tools;
+
+  DesignManagementData({
+    List<DesignSpecification>? specifications,
+    List<DesignDocument>? documents,
+    List<DesignToolLink>? tools,
+  })  : specifications = specifications ?? [],
+        documents = documents ?? [],
+        tools = tools ?? [];
+
+  Map<String, dynamic> toJson() => {
+        'specifications': specifications.map((e) => e.toJson()).toList(),
+        'documents': documents.map((e) => e.toJson()).toList(),
+        'tools': tools.map((e) => e.toJson()).toList(),
+      };
+
+  factory DesignManagementData.fromJson(Map<String, dynamic> json) {
+    return DesignManagementData(
+      specifications: (json['specifications'] as List?)
+              ?.map((e) =>
+                  DesignSpecification.fromJson(Map<String, dynamic>.from(e)))
+              .toList() ??
+          [],
+      documents: (json['documents'] as List?)
+              ?.map(
+                  (e) => DesignDocument.fromJson(Map<String, dynamic>.from(e)))
+              .toList() ??
+          [],
+      tools: (json['tools'] as List?)
+              ?.map(
+                  (e) => DesignToolLink.fromJson(Map<String, dynamic>.from(e)))
+              .toList() ??
+          [],
+    );
+  }
+}
+
+class DesignSpecification {
+  String id;
+  String description;
+  String status; // 'Defined', 'Validated', 'Implemented'
+
+  DesignSpecification({
+    String? id,
+    this.description = '',
+    this.status = 'Defined',
+  }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString();
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'description': description,
+        'status': status,
+      };
+
+  factory DesignSpecification.fromJson(Map<String, dynamic> json) {
+    return DesignSpecification(
+      id: json['id']?.toString(),
+      description: json['description']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'Defined',
+    );
+  }
+}
+
+class DesignDocument {
+  String id;
+  String title;
+  String type; // 'Input' or 'Output'
+  String? url;
+  String? notes;
+
+  DesignDocument({
+    String? id,
+    this.title = '',
+    this.type = 'Output',
+    this.url,
+    this.notes,
+  }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString();
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'type': type,
+        'url': url,
+        'notes': notes,
+      };
+
+  factory DesignDocument.fromJson(Map<String, dynamic> json) {
+    return DesignDocument(
+      id: json['id']?.toString(),
+      title: json['title']?.toString() ?? '',
+      type: json['type']?.toString() ?? 'Output',
+      url: json['url']?.toString(),
+      notes: json['notes']?.toString(),
+    );
+  }
+}
+
+class DesignToolLink {
+  String id;
+  String name;
+  String url;
+  bool isInternal;
+
+  DesignToolLink({
+    String? id,
+    this.name = '',
+    this.url = '',
+    this.isInternal = false,
+  }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString();
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'url': url,
+        'isInternal': isInternal,
+      };
+
+  factory DesignToolLink.fromJson(Map<String, dynamic> json) {
+    return DesignToolLink(
+      id: json['id']?.toString(),
+      name: json['name']?.toString() ?? '',
+      url: json['url']?.toString() ?? '',
+      isInternal: json['isInternal'] == true,
     );
   }
 }

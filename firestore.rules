@@ -66,6 +66,20 @@ service cloud.firestore {
         allow read, write: if isAuthenticated();
       }
       
+      // Procurement subcollections
+      match /procurement_items/{itemId} {
+        allow read, write: if isAuthenticated();
+      }
+      match /procurement_strategies/{strategyId} {
+        allow read, write: if isAuthenticated();
+      }
+      match /rfqs/{rfqId} {
+        allow read, write: if isAuthenticated();
+      }
+      match /purchase_orders/{poId} {
+        allow read, write: if isAuthenticated();
+      }
+      
       // Contracting dashboard subcollection
       match /contracting/{docId} {
         allow read, write: if isAuthenticated();

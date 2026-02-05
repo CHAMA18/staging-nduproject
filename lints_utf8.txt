@@ -1,0 +1,22 @@
+﻿Analyzing 4 items...                                            
+
+   info - Don't use 'BuildContext's across async gaps - lib\screens\design_deliverables_screen.dart:63:39 - use_build_context_synchronously
+warning - The declaration '_PipelineRow' isn't referenced - lib\screens\design_deliverables_screen.dart:930:7 - unused_element
+warning - The declaration '_ChecklistRow' isn't referenced - lib\screens\design_deliverables_screen.dart:1018:7 - unused_element
+warning - The declaration '_RegisterRow' isn't referenced - lib\screens\design_deliverables_screen.dart:1263:7 - unused_element
+warning - The declaration '_BulletRow' isn't referenced - lib\screens\design_deliverables_screen.dart:1417:7 - unused_element
+warning - Unused import: 'package:ndu_project/widgets/responsive.dart' - lib\screens\specialized_design_screen.dart:6:8 - unused_import
+warning - The value of the local variable 'projectData' isn't used - lib\screens\specialized_design_screen.dart:82:15 - unused_local_variable
+   info - Don't use 'BuildContext's across async gaps - lib\screens\specialized_design_screen.dart:82:55 - use_build_context_synchronously
+warning - The value of the local variable 'doc' isn't used - lib\screens\specialized_design_screen.dart:98:15 - unused_local_variable
+  error - The method 'getCollection' isn't defined for the type 'ProjectDataHelper' - lib\screens\specialized_design_screen.dart:98:45 - undefined_method
+warning - The declaration '_normalizeStatus' isn't referenced - lib\screens\specialized_design_screen.dart:151:10 - unused_element
+  error - The method 'isMobile' isn't defined for the type 'ResponsiveScaffold' - lib\screens\specialized_design_screen.dart:174:41 - undefined_method
+warning - The declaration '_ownerOptions' isn't referenced - lib\screens\specialized_design_screen.dart:937:16 - unused_element
+  error - The name '_ownerOptions' is already defined - lib\screens\specialized_design_screen.dart:937:16 - duplicate_definition
+  error - The method 'fromMap' isn't defined for the type 'DesignDeliverablesData' - lib\services\design_phase_service.dart:124:39 - undefined_method
+   info - Statements in an if should be enclosed in a block - lib\services\design_phase_service.dart:178:7 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\services\design_phase_service.dart:185:46 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\services\design_phase_service.dart:208:9 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\services\design_phase_service.dart:215:9 - curly_braces_in_flow_control_structures
+

@@ -11,19 +11,10 @@ enum ProcurementItemStatus {
 }
 
 /// Priority of a procurement item
-enum ProcurementPriority {
-  low,
-  medium,
-  high,
-  critical
-}
+enum ProcurementPriority { low, medium, high, critical }
 
 /// Status of a strategy
-enum StrategyStatus {
-  draft,
-  active,
-  archived
-}
+enum StrategyStatus { draft, active, archived }
 
 /// Status of an RFQ
 enum RfqStatus {
@@ -62,12 +53,12 @@ class ProcurementEvent {
   });
 
   Map<String, dynamic> toJson() => {
-    'title': title,
-    'description': description,
-    'subtext': subtext,
-    'date': Timestamp.fromDate(date),
-    'status': status,
-  };
+        'title': title,
+        'description': description,
+        'subtext': subtext,
+        'date': Timestamp.fromDate(date),
+        'status': status,
+      };
 
   factory ProcurementEvent.fromJson(Map<String, dynamic> json) {
     DateTime parseDate(dynamic v) {
@@ -75,6 +66,7 @@ class ProcurementEvent {
       if (v is String) return DateTime.tryParse(v) ?? DateTime.now();
       return DateTime.now();
     }
+
     return ProcurementEvent(
       title: json['title'] ?? '',
       description: json['description'] ?? '',
@@ -133,32 +125,84 @@ class ProcurementItemModel {
     required this.updatedAt,
   });
 
-  Map<String, dynamic> toMap() => {
-    'projectId': projectId,
-    'name': name,
-    'description': description,
-    'category': category,
-    'status': status.name,
-    'priority': priority.name,
-    'budget': budget,
-    'spent': spent,
-    'estimatedDelivery': estimatedDelivery != null ? Timestamp.fromDate(estimatedDelivery!) : null,
-    'actualDelivery': actualDelivery != null ? Timestamp.fromDate(actualDelivery!) : null,
-    'progress': progress,
-    'vendorId': vendorId,
-    'contractId': contractId,
-    'events': events.map((e) => e.toJson()).toList(),
-    'notes': notes,
-    'projectPhase': projectPhase,
-    'responsibleMember': responsibleMember,
-    'comments': comments,
-    'createdAt': FieldValue.serverTimestamp(),
-    'updatedAt': FieldValue.serverTimestamp(),
-  };
+  ProcurementItemModel copyWith({
+    String? id,
+    String? projectId,
+    String? name,
+    String? description,
+    String? category,
+    ProcurementItemStatus? status,
+    ProcurementPriority? priority,
+    double? budget,
+    double? spent,
+    DateTime? estimatedDelivery,
+    DateTime? actualDelivery,
+    double? progress,
+    String? vendorId,
+    String? contractId,
+    List<ProcurementEvent>? events,
+    String? notes,
+    String? projectPhase,
+    String? responsibleMember,
+    String? comments,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return ProcurementItemModel(
+      id: id ?? this.id,
+      projectId: projectId ?? this.projectId,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      category: category ?? this.category,
+      status: status ?? this.status,
+      priority: priority ?? this.priority,
+      budget: budget ?? this.budget,
+      spent: spent ?? this.spent,
+      estimatedDelivery: estimatedDelivery ?? this.estimatedDelivery,
+      actualDelivery: actualDelivery ?? this.actualDelivery,
+      progress: progress ?? this.progress,
+      vendorId: vendorId ?? this.vendorId,
+      contractId: contractId ?? this.contractId,
+      events: events ?? this.events,
+      notes: notes ?? this.notes,
+      projectPhase: projectPhase ?? this.projectPhase,
+      responsibleMember: responsibleMember ?? this.responsibleMember,
+      comments: comments ?? this.comments,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 
-  static ProcurementItemModel fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+  Map<String, dynamic> toMap() => {
+        'projectId': projectId,
+        'name': name,
+        'description': description,
+        'category': category,
+        'status': status.name,
+        'priority': priority.name,
+        'budget': budget,
+        'spent': spent,
+        'estimatedDelivery': estimatedDelivery != null
+            ? Timestamp.fromDate(estimatedDelivery!)
+            : null,
+        'actualDelivery':
+            actualDelivery != null ? Timestamp.fromDate(actualDelivery!) : null,
+        'progress': progress,
+        'vendorId': vendorId,
+        'contractId': contractId,
+        'events': events.map((e) => e.toJson()).toList(),
+        'notes': notes,
+        'projectPhase': projectPhase,
+        'responsibleMember': responsibleMember,
+        'comments': comments,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+  static ProcurementItemModel fromDoc(
+      DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
-    
+
     DateTime? parseDate(dynamic v) {
       if (v is Timestamp) return v.toDate();
       if (v is String) return DateTime.tryParse(v);
@@ -188,7 +232,10 @@ class ProcurementItemModel {
       progress: (data['progress'] as num?)?.toDouble() ?? 0.0,
       vendorId: data['vendorId'],
       contractId: data['contractId'],
-      events: (data['events'] as List?)?.map((e) => ProcurementEvent.fromJson(e)).toList() ?? [],
+      events: (data['events'] as List?)
+              ?.map((e) => ProcurementEvent.fromJson(e))
+              .toList() ??
+          [],
       notes: data['notes'] ?? '',
       projectPhase: data['projectPhase'] ?? 'Planning',
       responsibleMember: data['responsibleMember'] ?? '',
@@ -223,16 +270,40 @@ class ContractModel {
     required this.createdAt,
   });
 
+  ContractModel copyWith({
+    String? id,
+    String? projectId,
+    String? title,
+    String? description,
+    String? contractorName,
+    double? estimatedCost,
+    String? duration,
+    String? status,
+    DateTime? createdAt,
+  }) {
+    return ContractModel(
+      id: id ?? this.id,
+      projectId: projectId ?? this.projectId,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      contractorName: contractorName ?? this.contractorName,
+      estimatedCost: estimatedCost ?? this.estimatedCost,
+      duration: duration ?? this.duration,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
   Map<String, dynamic> toMap() => {
-    'projectId': projectId,
-    'title': title,
-    'description': description,
-    'contractorName': contractorName,
-    'estimatedCost': estimatedCost,
-    'duration': duration,
-    'status': status,
-    'createdAt': FieldValue.serverTimestamp(),
-  };
+        'projectId': projectId,
+        'title': title,
+        'description': description,
+        'contractorName': contractorName,
+        'estimatedCost': estimatedCost,
+        'duration': duration,
+        'status': status,
+        'createdAt': FieldValue.serverTimestamp(),
+      };
 
   static ContractModel fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
@@ -271,15 +342,16 @@ class ProcurementStrategyModel {
   });
 
   Map<String, dynamic> toMap() => {
-    'projectId': projectId,
-    'title': title,
-    'description': description,
-    'status': status.name,
-    'itemCount': itemCount,
-    'createdAt': FieldValue.serverTimestamp(),
-  };
+        'projectId': projectId,
+        'title': title,
+        'description': description,
+        'status': status.name,
+        'itemCount': itemCount,
+        'createdAt': FieldValue.serverTimestamp(),
+      };
 
-  static ProcurementStrategyModel fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+  static ProcurementStrategyModel fromDoc(
+      DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
     return ProcurementStrategyModel(
       id: doc.id,
@@ -326,18 +398,18 @@ class RfqModel {
   });
 
   Map<String, dynamic> toMap() => {
-    'projectId': projectId,
-    'title': title,
-    'category': category,
-    'owner': owner,
-    'dueDate': Timestamp.fromDate(dueDate),
-    'invitedCount': invitedCount,
-    'responseCount': responseCount,
-    'budget': budget,
-    'status': status.name,
-    'priority': priority.name,
-    'createdAt': FieldValue.serverTimestamp(),
-  };
+        'projectId': projectId,
+        'title': title,
+        'category': category,
+        'owner': owner,
+        'dueDate': Timestamp.fromDate(dueDate),
+        'invitedCount': invitedCount,
+        'responseCount': responseCount,
+        'budget': budget,
+        'status': status.name,
+        'priority': priority.name,
+        'createdAt': FieldValue.serverTimestamp(),
+      };
 
   static RfqModel fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
@@ -395,32 +467,36 @@ class PurchaseOrderModel {
   });
 
   Map<String, dynamic> toMap() => {
-    'poNumber': poNumber,
-    'projectId': projectId,
-    'vendorName': vendorName,
-    'vendorId': vendorId,
-    'category': category,
-    'owner': owner,
-    'orderedDate': Timestamp.fromDate(orderedDate),
-    'expectedDate': Timestamp.fromDate(expectedDate),
-    'amount': amount,
-    'progress': progress,
-    'status': status.name,
-    'createdAt': FieldValue.serverTimestamp(),
-  };
+        'poNumber': poNumber,
+        'projectId': projectId,
+        'vendorName': vendorName,
+        'vendorId': vendorId,
+        'category': category,
+        'owner': owner,
+        'orderedDate': Timestamp.fromDate(orderedDate),
+        'expectedDate': Timestamp.fromDate(expectedDate),
+        'amount': amount,
+        'progress': progress,
+        'status': status.name,
+        'createdAt': FieldValue.serverTimestamp(),
+      };
 
-  static PurchaseOrderModel fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+  static PurchaseOrderModel fromDoc(
+      DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
     return PurchaseOrderModel(
       id: doc.id,
-      poNumber: data['poNumber'] ?? (doc.id.length > 6 ? doc.id.substring(0, 6).toUpperCase() : doc.id),
+      poNumber: data['poNumber'] ??
+          (doc.id.length > 6 ? doc.id.substring(0, 6).toUpperCase() : doc.id),
       projectId: data['projectId'] ?? '',
       vendorName: data['vendorName'] ?? '',
       vendorId: data['vendorId'],
       category: data['category'] ?? '',
       owner: data['owner'] ?? '',
-      orderedDate: (data['orderedDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      expectedDate: (data['expectedDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      orderedDate:
+          (data['orderedDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      expectedDate:
+          (data['expectedDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       amount: (data['amount'] as num?)?.toDouble() ?? 0.0,
       progress: (data['progress'] as num?)?.toDouble() ?? 0.0,
       status: PurchaseOrderStatus.values.firstWhere(

@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:ndu_project/models/design_phase_models.dart';
+import 'package:ndu_project/services/design_phase_service.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/screens/design_phase_screen.dart';
 import 'package:ndu_project/screens/technical_alignment_screen.dart';
@@ -12,24 +15,29 @@ class RequirementsImplementationScreen extends StatefulWidget {
   const RequirementsImplementationScreen({super.key});
 
   @override
-  State<RequirementsImplementationScreen> createState() => _RequirementsImplementationScreenState();
+  State<RequirementsImplementationScreen> createState() =>
+      _RequirementsImplementationScreenState();
 }
 
-class _RequirementsImplementationScreenState extends State<RequirementsImplementationScreen> {
+class _RequirementsImplementationScreenState
+    extends State<RequirementsImplementationScreen> {
   final TextEditingController _notesController = TextEditingController();
+  Timer? _saveDebounce;
+  bool _isLoading = false;
+  bool _suspendSave = false;
 
-  final List<_RequirementRow> _requirementRows = [
-    _RequirementRow(
+  final List<RequirementRow> _requirementRows = [
+    RequirementRow(
       title: 'User journeys',
       owner: 'Product',
       definition: 'Epic to story map locked, acceptance criteria captured.',
     ),
-    _RequirementRow(
+    RequirementRow(
       title: 'System behaviors',
       owner: 'Engineering',
       definition: 'Functional and non-functional requirements approved.',
     ),
-    _RequirementRow(
+    RequirementRow(
       title: 'Integration points',
       owner: 'Platform',
       definition: 'Contracts, payloads, and error handling documented.',
@@ -37,18 +45,18 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
   ];
 
   // Checklist items with status
-  final List<_ChecklistItem> _checklistItems = [
-    _ChecklistItem(
+  final List<RequirementChecklistItem> _checklistItems = [
+    RequirementChecklistItem(
       title: 'Key flows covered',
       description: 'All priority user journeys have mapped requirements.',
       status: ChecklistStatus.ready,
     ),
-    _ChecklistItem(
+    RequirementChecklistItem(
       title: 'Constraints documented',
       description: 'Performance, security, and compliance captured.',
       status: ChecklistStatus.inReview,
     ),
-    _ChecklistItem(
+    RequirementChecklistItem(
       title: 'Stakeholder sign-off',
       description: 'Product, design, and engineering alignment.',
       status: ChecklistStatus.pending,
@@ -58,19 +66,87 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
   @override
   void initState() {
     super.initState();
+    _notesController.addListener(_onNotesChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _loadFromFirestore();
       final provider = ProjectDataInherited.maybeOf(context);
       final pid = provider?.projectData.projectId;
       if (pid != null && pid.isNotEmpty) {
-        await ProjectNavigationService.instance.saveLastPage(pid, 'requirements-implementation');
+        await ProjectNavigationService.instance
+            .saveLastPage(pid, 'requirements-implementation');
       }
     });
   }
 
   @override
   void dispose() {
+    _notesController.removeListener(_onNotesChanged);
     _notesController.dispose();
+    _saveDebounce?.cancel();
     super.dispose();
+  }
+
+  void _onNotesChanged() {
+    if (_suspendSave) return;
+    _scheduleSave();
+  }
+
+  Future<void> _loadFromFirestore() async {
+    final provider = ProjectDataInherited.maybeOf(context);
+    final projectId = provider?.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final data = await DesignPhaseService.instance
+          .loadRequirementsImplementation(projectId);
+
+      _suspendSave = true;
+      if (mounted) {
+        setState(() {
+          _notesController.text = data['notes']?.toString() ?? '';
+
+          if (data['requirements'] != null) {
+            _requirementRows.clear();
+            _requirementRows.addAll((data['requirements'] as List)
+                .map((e) => RequirementRow.fromMap(e as Map<String, dynamic>)));
+          }
+
+          if (data['checklist'] != null) {
+            _checklistItems.clear();
+            _checklistItems.addAll((data['checklist'] as List).map((e) =>
+                RequirementChecklistItem.fromMap(e as Map<String, dynamic>)));
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading requirements: $e');
+    } finally {
+      _suspendSave = false;
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _scheduleSave() {
+    _saveDebounce?.cancel();
+    _saveDebounce = Timer(const Duration(milliseconds: 1000), _saveToFirestore);
+  }
+
+  Future<void> _saveToFirestore() async {
+    final provider = ProjectDataInherited.maybeOf(context);
+    final projectId = provider?.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+
+    try {
+      await DesignPhaseService.instance.saveRequirementsImplementation(
+        projectId,
+        notes: _notesController.text,
+        requirements: _requirementRows,
+        checklist: _checklistItems,
+      );
+    } catch (e) {
+      debugPrint('Error saving requirements: $e');
+    }
   }
 
   void _navigateToDesignOverview() {
@@ -91,7 +167,18 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
     final horizontalPadding = isMobile ? 16.0 : 40.0;
-    final ownerOptions = _ownerOptions();
+
+    // Get team members from provider
+    final provider = ProjectDataInherited.maybeOf(context);
+    final List<String> ownerOptions = provider?.projectData.teamMembers
+            .map((m) => m.name)
+            .where((n) => n.isNotEmpty)
+            .toList() ??
+        [];
+
+    if (ownerOptions.isEmpty) {
+      ownerOptions.add('Unassigned');
+    }
 
     return ResponsiveScaffold(
       activeItemLabel: 'Requirements Implementation',
@@ -109,13 +196,14 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
                 children: [
                   // Main content area
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 24),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding, vertical: 24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Section label
                         Text(
-                          'REQUIREMENTS IMPLEMENTATION',
+                          'DESIGN SPECIFICATIONS',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -126,7 +214,7 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
                         const SizedBox(height: 12),
                         // Main heading
                         const Text(
-                          'Translate agreed design scope into clear, actionable requirements',
+                          'Design Specifications',
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -148,7 +236,8 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
                         // Next in flow banner
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
                             color: const Color(0xFFFFF3E0),
                             borderRadius: BorderRadius.circular(8),
@@ -174,10 +263,14 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
                           ),
                           child: TextField(
                             controller: _notesController,
-                            maxLines: 2,
-                            style: const TextStyle(color: Color(0xFF1F2937), fontSize: 14),
+                            maxLines: null,
+                            minLines: 3,
+                            keyboardType: TextInputType.multiline,
+                            style: const TextStyle(
+                                color: Color(0xFF1F2937), fontSize: 14),
                             decoration: const InputDecoration(
-                              hintText: 'Capture key implementation notes here... (priorities, story mapping decisions, sequencing, and non-negotiables)',
+                              hintText:
+                                  'Capture key implementation notes here... (priorities, story mapping decisions, sequencing, and non-negotiables)',
                               hintStyle: TextStyle(
                                 color: Color(0xFF9CA3AF),
                                 fontSize: 13,
@@ -247,7 +340,8 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionIcon(Icons.view_list_rounded, const Color(0xFF1D4ED8)),
+              _buildSectionIcon(
+                  Icons.view_list_rounded, const Color(0xFF1D4ED8)),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -276,12 +370,13 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
                 onPressed: () {
                   setState(() {
                     _requirementRows.add(
-                      _RequirementRow(
+                      RequirementRow(
                         title: 'New requirement',
                         owner: 'Owner',
                         definition: 'Define acceptance criteria and evidence.',
                       ),
                     );
+                    _scheduleSave();
                   });
                 },
                 icon: const Icon(Icons.add, size: 18),
@@ -289,7 +384,8 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFF1D4ED8),
                   side: const BorderSide(color: Color(0xFFD6DCE8)),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 ),
               ),
             ],
@@ -300,7 +396,8 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
               _TableColumn(label: 'Requirement group', flex: 3),
               _TableColumn(label: 'Owner', flex: 2),
               _TableColumn(label: 'Definition of ready', flex: 4),
-              _TableColumn(label: 'Action', flex: 2, alignment: Alignment.center),
+              _TableColumn(
+                  label: 'Action', flex: 2, alignment: Alignment.center),
             ],
           ),
           const SizedBox(height: 10),
@@ -320,12 +417,13 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
                 onPressed: () {
                   setState(() {
                     _requirementRows.add(
-                      _RequirementRow(
+                      RequirementRow(
                         title: 'New requirement',
                         owner: 'Owner',
                         definition: 'Define acceptance criteria and evidence.',
                       ),
                     );
+                    _scheduleSave();
                   });
                 },
                 icon: const Icon(Icons.add_circle_outline, size: 18),
@@ -333,7 +431,8 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFF1A1D1F),
                   side: const BorderSide(color: Color(0xFFD6DCE8)),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 ),
               ),
               const SizedBox(width: 12),
@@ -343,7 +442,8 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
                 label: const Text('Import from design'),
                 style: TextButton.styleFrom(
                   foregroundColor: const Color(0xFF475569),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                 ),
               ),
             ],
@@ -376,7 +476,8 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionIcon(Icons.fact_check_outlined, const Color(0xFF16A34A)),
+              _buildSectionIcon(
+                  Icons.fact_check_outlined, const Color(0xFF16A34A)),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -405,12 +506,13 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
                 onPressed: () {
                   setState(() {
                     _checklistItems.add(
-                      _ChecklistItem(
+                      RequirementChecklistItem(
                         title: 'New checklist item',
                         description: 'Describe the evidence required.',
                         status: ChecklistStatus.pending,
                       ),
                     );
+                    _scheduleSave();
                   });
                 },
                 icon: const Icon(Icons.add, size: 18),
@@ -418,7 +520,8 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFF16A34A),
                   side: const BorderSide(color: Color(0xFFD6DCE8)),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 ),
               ),
             ],
@@ -429,7 +532,8 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
               _TableColumn(label: 'Checklist item', flex: 4),
               _TableColumn(label: 'Owner', flex: 2),
               _TableColumn(label: 'Status', flex: 2),
-              _TableColumn(label: 'Action', flex: 2, alignment: Alignment.center),
+              _TableColumn(
+                  label: 'Action', flex: 2, alignment: Alignment.center),
             ],
           ),
           const SizedBox(height: 10),
@@ -453,10 +557,12 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
           ),
           const SizedBox(height: 8),
           TextFormField(
-            maxLines: 3,
+            maxLines: null,
+            minLines: 3,
             style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
             decoration: InputDecoration(
-              hintText: 'Capture sequencing decisions, launch scope, and deferred items.',
+              hintText:
+                  'Capture sequencing decisions, launch scope, and deferred items.',
               hintStyle: TextStyle(fontSize: 13, color: Colors.grey[500]),
               filled: true,
               fillColor: const Color(0xFFF8FAFC),
@@ -470,9 +576,11 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFF16A34A), width: 2),
+                borderSide:
+                    const BorderSide(color: Color(0xFF16A34A), width: 2),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             ),
           ),
           const SizedBox(height: 12),
@@ -485,7 +593,8 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFF1A1D1F),
                 side: const BorderSide(color: Color(0xFFD6DCE8)),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               ),
             ),
           ),
@@ -540,7 +649,7 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
   }
 
   Widget _buildRequirementRow(
-    _RequirementRow row, {
+    RequirementRow row, {
     required int index,
     required bool isStriped,
     required List<String> ownerOptions,
@@ -568,7 +677,10 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
               value: row.owner,
               options: ownerOptions,
               onChanged: (value) {
-                setState(() => _requirementRows[index].owner = value);
+                setState(() {
+                  _requirementRows[index].owner = value;
+                  _scheduleSave();
+                });
               },
             ),
           ),
@@ -578,7 +690,8 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
             child: _buildTableField(
               initialValue: row.definition,
               hintText: 'Definition of ready',
-              maxLines: 2,
+              maxLines: null,
+              minLines: 1,
             ),
           ),
           const SizedBox(width: 10),
@@ -590,13 +703,17 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
                 onPressed: () async {
                   final confirmed = await _confirmDelete('requirement');
                   if (!confirmed) return;
-                  setState(() => _requirementRows.removeAt(index));
+                  setState(() {
+                    _requirementRows.removeAt(index);
+                    _scheduleSave();
+                  });
                 },
                 icon: const Icon(Icons.delete_outline, size: 18),
                 label: const Text('Delete'),
                 style: TextButton.styleFrom(
                   foregroundColor: const Color(0xFFB91C1C),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                 ),
               ),
             ),
@@ -607,7 +724,7 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
   }
 
   Widget _buildChecklistRow(
-    _ChecklistItem item, {
+    RequirementChecklistItem item, {
     required int index,
     required bool isStriped,
     required List<String> ownerOptions,
@@ -649,7 +766,10 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
               value: item.owner ?? '',
               options: ownerOptions,
               onChanged: (value) {
-                setState(() => _checklistItems[index].owner = value);
+                setState(() {
+                  _checklistItems[index].owner = value;
+                  _scheduleSave();
+                });
               },
             ),
           ),
@@ -665,8 +785,8 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
                   .map(
                     (status) => Align(
                       alignment: Alignment.center,
-                      child:
-                          Text(_statusLabel(status), textAlign: TextAlign.center),
+                      child: Text(_statusLabel(status),
+                          textAlign: TextAlign.center),
                     ),
                   )
                   .toList(),
@@ -675,21 +795,25 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
                     (status) => DropdownMenuItem(
                       value: status,
                       child: Center(
-                        child:
-                            Text(_statusLabel(status), textAlign: TextAlign.center),
+                        child: Text(_statusLabel(status),
+                            textAlign: TextAlign.center),
                       ),
                     ),
                   )
                   .toList(),
               onChanged: (value) {
                 if (value == null) return;
-                setState(() => _checklistItems[index].status = value);
+                setState(() {
+                  _checklistItems[index].status = value;
+                  _scheduleSave();
+                });
               },
               decoration: InputDecoration(
                 isDense: true,
                 filled: true,
                 fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
@@ -700,7 +824,8 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFF16A34A), width: 2),
+                  borderSide:
+                      const BorderSide(color: Color(0xFF16A34A), width: 2),
                 ),
               ),
             ),
@@ -714,13 +839,17 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
                 onPressed: () async {
                   final confirmed = await _confirmDelete('checklist item');
                   if (!confirmed) return;
-                  setState(() => _checklistItems.removeAt(index));
+                  setState(() {
+                    _checklistItems.removeAt(index);
+                    _scheduleSave();
+                  });
                 },
                 icon: const Icon(Icons.delete_outline, size: 18),
                 label: const Text('Delete'),
                 style: TextButton.styleFrom(
                   foregroundColor: const Color(0xFFB91C1C),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                 ),
               ),
             ),
@@ -733,13 +862,16 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
   Widget _buildTableField({
     required String initialValue,
     required String hintText,
-    int maxLines = 1,
+    int? maxLines,
+    int minLines = 1,
   }) {
     return TextFormField(
       initialValue: initialValue,
       maxLines: maxLines,
-      textAlign: TextAlign.center,
-      textAlignVertical: TextAlignVertical.center,
+      minLines: minLines,
+      keyboardType: TextInputType.multiline,
+      textAlign: TextAlign.start,
+      textAlignVertical: TextAlignVertical.top,
       style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
       decoration: InputDecoration(
         hintText: hintText,
@@ -747,7 +879,8 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
         isDense: true,
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
@@ -815,7 +948,8 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
         isDense: true,
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
@@ -845,7 +979,8 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFFB91C1C)),
+            style:
+                TextButton.styleFrom(foregroundColor: const Color(0xFFB91C1C)),
             child: const Text('Delete'),
           ),
         ],
@@ -916,10 +1051,9 @@ class _RequirementsImplementationScreenState extends State<RequirementsImplement
       ],
     );
   }
-
 }
 
-enum ChecklistStatus { ready, inReview, pending }
+// End of _RequirementsImplementationScreenState
 
 class _TableColumn {
   const _TableColumn({
@@ -931,29 +1065,4 @@ class _TableColumn {
   final String label;
   final int flex;
   final Alignment alignment;
-}
-
-class _RequirementRow {
-  _RequirementRow({
-    required this.title,
-    required this.owner,
-    required this.definition,
-  });
-
-  String title;
-  String owner;
-  String definition;
-}
-
-class _ChecklistItem {
-  final String title;
-  final String description;
-  ChecklistStatus status;
-  String? owner;
-
-  _ChecklistItem({
-    required this.title,
-    required this.description,
-    required this.status,
-  });
 }

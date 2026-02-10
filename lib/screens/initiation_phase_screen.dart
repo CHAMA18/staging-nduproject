@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:math' as Math;
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -112,6 +112,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
   List<String> _notesSuggestions = [];
   List<String> _businessSuggestions = [];
 
+  // ignore: unused_field
   String? _notesSuggestionError;
   String? _businessSuggestionError;
 
@@ -220,6 +221,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
   bool _canRequestNotesSuggestions(String text) => text.trim().length >= 12;
   bool _canRequestBusinessSuggestions(String text) => text.trim().length >= 18;
 
+  // ignore: unused_element
   void _scheduleNotesSuggestions(String value) {
     _notesDebounce?.cancel();
     if (!_notesFocusNode.hasFocus) return;
@@ -416,7 +418,9 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     setState(() {});
   }
 
-  void _retryNotesSuggestions() => _fetchNotesSuggestions(_notesController.text.trim());
+  // ignore: unused_element
+  void _retryNotesSuggestions() =>
+      _fetchNotesSuggestions(_notesController.text.trim());
 
   void _retryBusinessSuggestions() =>
       _fetchBusinessSuggestions(_businessCaseController.text.trim());
@@ -636,6 +640,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
         businessCase: _businessCaseController.text.trim(),
       );
       await provider.saveToFirebase(checkpoint: 'business_case');
+      if (!mounted) return;
 
       // Show dialog indicating which fields need to be filled
       await showDialog(
@@ -744,7 +749,14 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
                       child: Column(children: [
                         for (var i = 0; i < options.length; i++)
                           ListTile(
-                            leading: Radio<int?>(value: i, groupValue: selectedIndex, onChanged: (v) => setState(() => selectedIndex = v)),
+                            leading: Radio<int?>(
+                              value: i,
+                              // ignore: deprecated_member_use
+                              groupValue: selectedIndex,
+                              // ignore: deprecated_member_use
+                              onChanged: (v) =>
+                                  setState(() => selectedIndex = v),
+                            ),
                             title: Text(options[i].title.isNotEmpty ? options[i].title : 'Untitled Solution', style: const TextStyle(fontWeight: FontWeight.w700)),
                             subtitle: Text(options[i].description, maxLines: 2, overflow: TextOverflow.ellipsis),
                             onTap: () {
@@ -847,7 +859,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     switch (checkpoint) {
       case 'core_stakeholders':
         screen = CoreStakeholdersScreen(
-          notes: projectData.coreStakeholdersData?.notes ?? projectData.notes ?? '',
+          notes: projectData.coreStakeholdersData?.notes ?? projectData.notes,
           solutions: projectData.potentialSolutions
               .map((s) => AiSolutionItem(title: s.title, description: s.description))
               .toList(),
@@ -855,7 +867,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
         break;
       case 'it_considerations':
         screen = ITConsiderationsScreen(
-          notes: projectData.itConsiderationsData?.notes ?? projectData.notes ?? '',
+          notes: projectData.itConsiderationsData?.notes ?? projectData.notes,
           solutions: projectData.potentialSolutions
               .map((s) => AiSolutionItem(title: s.title, description: s.description))
               .toList(),
@@ -863,7 +875,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
         break;
       case 'infrastructure_considerations':
         screen = InfrastructureConsiderationsScreen(
-          notes: projectData.infrastructureConsiderationsData?.notes ?? projectData.notes ?? '',
+          notes: projectData.infrastructureConsiderationsData?.notes ?? projectData.notes,
           solutions: projectData.potentialSolutions
               .map((s) => AiSolutionItem(title: s.title, description: s.description))
               .toList(),
@@ -1162,8 +1174,9 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     );
   }
 
-  // Sidebar to match PreferredSolutionAnalysisScreen structure and add right border
+  // ignore: unused_element
   Widget _buildSidebar() {
+    // Sidebar to match PreferredSolutionAnalysisScreen structure and add right border
     final isMobile = AppBreakpoints.isMobile(context);
     final double bannerHeight = isMobile ? 72 : 96;
     final sidebarWidth = AppBreakpoints.sidebarWidth(context);
@@ -2037,8 +2050,8 @@ class _RingPainter extends CustomPainter {
     canvas.drawArc(rect, startAngle, sweep, false, progressPaint);
 
     // Small moving dot at the end of arc
-    final endX = center.dx + radius * MathCos(startAngle + sweep);
-    final endY = center.dy + radius * MathSin(startAngle + sweep);
+    final endX = center.dx + radius * math.cos(startAngle + sweep);
+    final endY = center.dy + radius * math.sin(startAngle + sweep);
     final dotPaint = Paint()..color = const Color(0xFFFFA800);
     canvas.drawCircle(Offset(endX, endY), 4, dotPaint);
   }
@@ -2047,10 +2060,6 @@ class _RingPainter extends CustomPainter {
   bool shouldRepaint(covariant _RingPainter oldDelegate) =>
       oldDelegate.progress != progress;
 }
-
-// Simple wrappers since dart:math isn't imported at top of file
-double MathSin(double v) => Math.sin(v);
-double MathCos(double v) => Math.cos(v);
 
 class _RequirementItem extends StatelessWidget {
   const _RequirementItem({required this.icon, required this.text});

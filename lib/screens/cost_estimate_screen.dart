@@ -147,7 +147,7 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
   }
 
   double _sumCostItems(List<CostEstimateItem> items) {
-    return items.fold(0.0, (sum, item) => sum + item.amount);
+    return items.fold(0.0, (total, item) => total + item.amount);
   }
 
   _CostViewDefinition _buildViewDefinition(_CostView view, List<CostEstimateItem> items, double total) {
@@ -249,6 +249,7 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
   Future<void> _showAiSuggestions(BuildContext context) async {
     final provider = ProjectDataHelper.getProvider(context);
     final pd = provider.projectData;
+    final messenger = ScaffoldMessenger.of(context);
     
     // Construct context context for AI
     final projectContext = '''
@@ -276,7 +277,7 @@ Current Cost Items: ${pd.costEstimateItems.map((e) => "${e.title} (${e.costType}
       }
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text('Added ${selectedItems.length} items from AI suggestions'),
             behavior: SnackBarBehavior.floating,
@@ -287,6 +288,7 @@ Current Cost Items: ${pd.costEstimateItems.map((e) => "${e.title} (${e.costType}
   }
 
   Future<void> _showAddItem(BuildContext context) async {
+    final provider = ProjectDataHelper.getProvider(context);
     final selected = await showDialog<CostEstimateItem>(
       context: context,
       builder: (dialogContext) => _AddCostItemDialog(initialView: _activeView),
@@ -294,7 +296,6 @@ Current Cost Items: ${pd.costEstimateItems.map((e) => "${e.title} (${e.costType}
 
     if (selected == null) return;
 
-    final provider = ProjectDataHelper.getProvider(context);
     final items = List<CostEstimateItem>.from(provider.projectData.costEstimateItems)..add(selected);
     provider.updateField((data) => data.copyWith(costEstimateItems: items));
     await provider.saveToFirebase(checkpoint: 'cost_estimate');
@@ -302,6 +303,7 @@ Current Cost Items: ${pd.costEstimateItems.map((e) => "${e.title} (${e.costType}
   }
 
   Future<void> _showEditItem(BuildContext context, CostEstimateItem existing) async {
+    final provider = ProjectDataHelper.getProvider(context);
     final updated = await showDialog<CostEstimateItem>(
       context: context,
       builder: (dialogContext) => _AddCostItemDialog(
@@ -312,7 +314,6 @@ Current Cost Items: ${pd.costEstimateItems.map((e) => "${e.title} (${e.costType}
 
     if (updated == null) return;
 
-    final provider = ProjectDataHelper.getProvider(context);
     final items = provider.projectData.costEstimateItems.map((i) => i.id == existing.id ? updated : i).toList();
     provider.updateField((data) => data.copyWith(costEstimateItems: items));
     await provider.saveToFirebase(checkpoint: 'cost_estimate');
@@ -320,6 +321,7 @@ Current Cost Items: ${pd.costEstimateItems.map((e) => "${e.title} (${e.costType}
   }
 
   Future<void> _deleteItem(BuildContext context, CostEstimateItem item) async {
+    final provider = ProjectDataHelper.getProvider(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -333,7 +335,6 @@ Current Cost Items: ${pd.costEstimateItems.map((e) => "${e.title} (${e.costType}
     );
     if (confirmed != true) return;
 
-    final provider = ProjectDataHelper.getProvider(context);
     final items = provider.projectData.costEstimateItems.where((i) => i.id != item.id).toList();
     provider.updateField((data) => data.copyWith(costEstimateItems: items));
     await provider.saveToFirebase(checkpoint: 'cost_estimate');

@@ -221,6 +221,7 @@ Future<void> _createTrainingActivityShortcut(
     builder: (_) => _TrainingShortcutDialog(defaultTitle: defaultTitle),
   );
 
+  if (!context.mounted) return;
   if (result == null) return;
 
   await ProjectDataHelper.updateAndSave(
@@ -744,6 +745,7 @@ class _QualityPlanViewState extends State<_QualityPlanView> {
       context: context,
       builder: (_) => const _QualityStandardDialog(),
     );
+    if (!mounted) return;
     if (result == null) return;
 
     await _updateQualityData(
@@ -766,6 +768,7 @@ class _QualityPlanViewState extends State<_QualityPlanView> {
       context: context,
       builder: (_) => _QualityStandardDialog(initialValue: standards[index]),
     );
+    if (!mounted) return;
     if (result == null) return;
 
     await _updateQualityData(
@@ -800,6 +803,7 @@ class _QualityPlanViewState extends State<_QualityPlanView> {
       context: context,
       builder: (_) => const _QualityChangeDialog(),
     );
+    if (!mounted) return;
     if (result == null) return;
 
     await _updateQualityData(
@@ -822,6 +826,7 @@ class _QualityPlanViewState extends State<_QualityPlanView> {
       context: context,
       builder: (_) => _QualityChangeDialog(initialValue: entries[index]),
     );
+    if (!mounted) return;
     if (result == null) return;
 
     await _updateQualityData(
@@ -1012,6 +1017,7 @@ class _ObjectivesViewState extends State<_ObjectivesView> {
       builder: (_) =>
           _QualityObjectiveDialog(ownerOptions: _ownerOptions(context)),
     );
+    if (!mounted) return;
     if (result == null) return;
 
     await _updateQualityData(
@@ -1037,6 +1043,7 @@ class _ObjectivesViewState extends State<_ObjectivesView> {
         initialValue: objectives[index],
       ),
     );
+    if (!mounted) return;
     if (result == null) return;
 
     await _updateQualityData(
@@ -1112,6 +1119,7 @@ class _QaTrackingViewState extends State<_QaTrackingView> {
         ownerOptions: _ownerOptions(context),
       ),
     );
+    if (!mounted) return;
     if (result == null) return;
 
     await _updateQualityData(
@@ -1136,6 +1144,7 @@ class _QaTrackingViewState extends State<_QaTrackingView> {
         initialValue: control,
       ),
     );
+    if (!mounted) return;
     if (result == null) return;
 
     await _updateQualityData(
@@ -1171,6 +1180,7 @@ class _QaTrackingViewState extends State<_QaTrackingView> {
       context: context,
       builder: (_) => _QualityTaskDialog(ownerOptions: _ownerOptions(context)),
     );
+    if (!mounted) return;
     if (result == null) return;
 
     await _updateQualityData(
@@ -1193,6 +1203,7 @@ class _QaTrackingViewState extends State<_QaTrackingView> {
         initialValue: task,
       ),
     );
+    if (!mounted) return;
     if (result == null) return;
 
     await _updateQualityData(
@@ -1304,6 +1315,7 @@ class _QcTrackingViewState extends State<_QcTrackingView> {
         ownerOptions: _ownerOptions(context),
       ),
     );
+    if (!mounted) return;
     if (result == null) return;
 
     await _updateQualityData(
@@ -1328,6 +1340,7 @@ class _QcTrackingViewState extends State<_QcTrackingView> {
         initialValue: control,
       ),
     );
+    if (!mounted) return;
     if (result == null) return;
 
     await _updateQualityData(
@@ -1363,6 +1376,7 @@ class _QcTrackingViewState extends State<_QcTrackingView> {
       context: context,
       builder: (_) => _QualityTaskDialog(ownerOptions: _ownerOptions(context)),
     );
+    if (!mounted) return;
     if (result == null) return;
 
     await _updateQualityData(
@@ -1385,6 +1399,7 @@ class _QcTrackingViewState extends State<_QcTrackingView> {
         initialValue: task,
       ),
     );
+    if (!mounted) return;
     if (result == null) return;
 
     await _updateQualityData(
@@ -1418,6 +1433,7 @@ class _QcTrackingViewState extends State<_QcTrackingView> {
       context: context,
       builder: (_) => _QualityAuditDialog(ownerOptions: _ownerOptions(context)),
     );
+    if (!mounted) return;
     if (result == null) return;
 
     await _updateQualityData(
@@ -1440,6 +1456,7 @@ class _QcTrackingViewState extends State<_QcTrackingView> {
         initialValue: audit,
       ),
     );
+    if (!mounted) return;
     if (result == null) return;
 
     await _updateQualityData(
@@ -1479,6 +1496,7 @@ class _QcTrackingViewState extends State<_QcTrackingView> {
         ),
       ),
     );
+    if (!mounted) return;
     if (result == null) return;
 
     await _updateQualityData(
@@ -1502,6 +1520,7 @@ class _QcTrackingViewState extends State<_QcTrackingView> {
         initialValue: entry,
       ),
     );
+    if (!mounted) return;
     if (result == null) return;
 
     await _updateQualityData(
@@ -1644,6 +1663,7 @@ class _MetricsViewState extends State<_MetricsView> {
       builder: (_) =>
           _DashboardConfigDialog(initialValue: quality.dashboardConfig),
     );
+    if (!mounted) return;
     if (result == null) return;
 
     await _updateQualityData(
@@ -1660,6 +1680,7 @@ class _MetricsViewState extends State<_MetricsView> {
       context: context,
       builder: (_) => _MetricsEditDialog(metrics: quality.metrics),
     );
+    if (!mounted) return;
     if (result == null) return;
 
     await _updateQualityData(
@@ -3255,7 +3276,7 @@ class _QualityObjectiveDialogState extends State<_QualityObjectiveDialog> {
                     children: [
                       _FieldLabel('Owner'),
                       DropdownButtonFormField<String>(
-                        value: _owner,
+                        initialValue: _owner,
                         decoration: _inputDecoration(context, ''),
                         items: widget.ownerOptions
                             .map((e) =>
@@ -3427,7 +3448,7 @@ class _WorkflowControlDialogState extends State<_WorkflowControlDialog> {
                     children: [
                       _FieldLabel('Owner'),
                       DropdownButtonFormField<String>(
-                        value: _owner,
+                        initialValue: _owner,
                         decoration: _inputDecoration(context, ''),
                         items: widget.ownerOptions
                             .map((e) =>
@@ -3594,7 +3615,7 @@ class _QualityTaskDialogState extends State<_QualityTaskDialog> {
                     children: [
                       _FieldLabel('Responsible'),
                       DropdownButtonFormField<String>(
-                        value: _responsible,
+                        initialValue: _responsible,
                         decoration: _inputDecoration(context, ''),
                         items: widget.ownerOptions
                             .map((e) =>
@@ -3650,7 +3671,7 @@ class _QualityTaskDialogState extends State<_QualityTaskDialog> {
                     children: [
                       _FieldLabel('Status'),
                       DropdownButtonFormField<QualityTaskStatus>(
-                        value: _status,
+                        initialValue: _status,
                         decoration: _inputDecoration(context, ''),
                         items: const [
                           DropdownMenuItem(
@@ -3680,7 +3701,7 @@ class _QualityTaskDialogState extends State<_QualityTaskDialog> {
                     children: [
                       _FieldLabel('Priority'),
                       DropdownButtonFormField<QualityTaskPriority>(
-                        value: _priority,
+                        initialValue: _priority,
                         decoration: _inputDecoration(context, ''),
                         items: const [
                           DropdownMenuItem(
@@ -3876,7 +3897,7 @@ class _QualityAuditDialogState extends State<_QualityAuditDialog> {
                     children: [
                       _FieldLabel('Owner'),
                       DropdownButtonFormField<String>(
-                        value: _owner,
+                        initialValue: _owner,
                         decoration: _inputDecoration(context, ''),
                         items: widget.ownerOptions
                             .map((e) =>
@@ -3896,7 +3917,7 @@ class _QualityAuditDialogState extends State<_QualityAuditDialog> {
                     children: [
                       _FieldLabel('Result'),
                       DropdownButtonFormField<AuditResultStatus>(
-                        value: _result,
+                        initialValue: _result,
                         decoration: _inputDecoration(context, ''),
                         items: const [
                           DropdownMenuItem(
@@ -4086,7 +4107,7 @@ class _CorrectiveActionDialogState extends State<_CorrectiveActionDialog> {
                     children: [
                       _FieldLabel('Owner'),
                       DropdownButtonFormField<String>(
-                        value: _owner,
+                        initialValue: _owner,
                         decoration: _inputDecoration(context, ''),
                         items: widget.ownerOptions
                             .map((e) =>
@@ -4117,7 +4138,7 @@ class _CorrectiveActionDialogState extends State<_CorrectiveActionDialog> {
             const SizedBox(height: 10),
             _FieldLabel('Status'),
             DropdownButtonFormField<CorrectiveActionStatus>(
-              value: _status,
+              initialValue: _status,
               decoration: _inputDecoration(context, ''),
               items: const [
                 DropdownMenuItem(
@@ -4667,7 +4688,7 @@ class _MetricsEditDialogState extends State<_MetricsEditDialog> {
             const SizedBox(width: 8),
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: trend,
+                initialValue: trend,
                 decoration: _inputDecoration(context, ''),
                 items: const [
                   DropdownMenuItem(value: 'neutral', child: Text('Neutral')),

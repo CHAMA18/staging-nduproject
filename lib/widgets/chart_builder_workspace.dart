@@ -285,7 +285,7 @@ class _DataRow extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             children: swatches.map((swatch) {
-              final selected = swatch.value == point.color.value;
+              final selected = swatch.toARGB32() == point.color.toARGB32();
               return GestureDetector(
                 onTap: () => onColorChanged(swatch),
                 child: Container(

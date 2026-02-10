@@ -405,7 +405,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
           return daysUntilRenewal <= 30 && daysUntilRenewal > 0;
         }).length;
         final totalValue =
-            contracts.fold<double>(0.0, (sum, c) => sum + c.estimatedValue);
+            contracts.fold<double>(0.0, (total, c) => total + c.estimatedValue);
         final atRiskCount =
             contracts.where((c) => c.status == 'At risk').length;
 
@@ -693,13 +693,13 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
     }
   }
 
+  // ignore: unused_element
   Future<void> _restoreContract(ContractModel contract) async {
     final projectId = _projectId;
     if (projectId == null) return;
 
     try {
       // Recreate the contract
-      final user = FirebaseAuth.instance.currentUser;
       await ContractService.createContract(
         projectId: projectId,
         name: contract.name,
@@ -1033,9 +1033,10 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
       );
       return;
     }
-    _showContractDialog(context, null, projectId);
+    _showContractDialog(null, projectId);
   }
 
+  // ignore: unused_element
   void _showEditContractDialog(BuildContext context, ContractModel contract) {
     final projectId = _projectId;
     if (projectId == null) {
@@ -1045,11 +1046,11 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
       );
       return;
     }
-    _showContractDialog(context, contract, projectId);
+    _showContractDialog(contract, projectId);
   }
 
   Future<void> _showContractDialog(
-      BuildContext context, ContractModel? contract, String projectId) async {
+      ContractModel? contract, String projectId) async {
     final isEdit = contract != null;
 
     // Load External/Contractor roles from Staff Needs
@@ -1065,6 +1066,8 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
     } catch (e) {
       debugPrint('Error loading staff roles: $e');
     }
+
+    if (!mounted) return;
 
     final nameController = TextEditingController(text: contract?.name ?? '');
     final descriptionController =
@@ -1376,6 +1379,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
     );
   }
 
+  // ignore: unused_element
   void _showDeleteContractDialog(BuildContext context, ContractModel contract) {
     final projectId = _projectId;
     if (projectId == null) {
@@ -1511,7 +1515,7 @@ class _RenewalLaneData {
         'label': label,
         'count': count,
         'note': note,
-        'color': color.value,
+        'color': color.toARGB32(),
       };
 
   static List<_RenewalLaneData> fromList(dynamic data) {
@@ -1526,7 +1530,7 @@ class _RenewalLaneData {
         note: map['note']?.toString() ?? '',
         color: Color(map['color'] is int
             ? map['color'] as int
-            : const Color(0xFFF97316).value),
+            : const Color(0xFFF97316).toARGB32()),
       );
     }).toList();
   }

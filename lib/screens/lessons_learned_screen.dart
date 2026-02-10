@@ -588,7 +588,6 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
   Widget _buildTasksTable(List<_LessonEntry> entries) {
     const headerStyle = TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87);
     const cellStyle = TextStyle(fontSize: 13, color: Colors.black87);
-    const subStyle = TextStyle(fontSize: 12, color: Colors.black54);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -701,6 +700,7 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
                                       IconButton(
                                         onPressed: () async {
                                           // Delete the lesson from persisted store
+                                          final messenger = ScaffoldMessenger.of(context);
                                           final id = entries[i].id;
                                           await ProjectDataHelper.updateAndSave(
                                             context: context,
@@ -710,7 +710,7 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
                                             ),
                                           );
                                           if (!mounted) return;
-                                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lesson deleted.')));
+                                          messenger.showSnackBar(const SnackBar(content: Text('Lesson deleted.')));
                                         },
                                         icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
                                         tooltip: 'Delete lesson',
@@ -1045,7 +1045,7 @@ class _AddLessonDialogState extends State<_AddLessonDialog> {
                     onChanged: (value) => setState(() => _highlightRow = value),
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Highlight this lesson in the table'),
-                    activeColor: const Color(0xFFFFD700),
+                    activeThumbColor: const Color(0xFFFFD700),
                   ),
                   const SizedBox(height: 24),
                   Row(

@@ -209,16 +209,6 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
       return;
     }
     setState(() {
-      String initialFramework;
-      if (_selectedOverallFramework == 'Waterfall' ||
-          _selectedOverallFramework == 'Agile') {
-        initialFramework = _selectedOverallFramework!;
-      } else {
-        initialFramework =
-            'Agile'; // or null, but the UI expects a value often?
-        // Actually, logic: if Hybrid, user can select. If W/A, user cannot.
-        // When adding new goal, if locked, it MUST start as locked value.
-      }
       final g = _Goal(
           id: _goals.length + 1,
           name: 'Goal ${_goals.length + 1}',
@@ -806,6 +796,7 @@ class _GoalCard extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _BottomOverlay extends StatelessWidget {
   const _BottomOverlay();
 

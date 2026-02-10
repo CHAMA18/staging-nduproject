@@ -647,7 +647,7 @@ class _TeamTrainingAndBuildingScreenState
               const SizedBox(height: 16),
               PremiumEditDialog.fieldLabel('Category'),
               DropdownButtonFormField<String>(
-                value: category,
+                initialValue: category,
                 items: const [
                   DropdownMenuItem(
                       value: 'Onboarding', child: Text('Onboarding')),
@@ -805,7 +805,7 @@ class _TeamTrainingAndBuildingScreenState
               if (existingDocs.isNotEmpty) ...[
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
-                  value: selectedExistingDocUrl != null &&
+                  initialValue: selectedExistingDocUrl != null &&
                           existingDocs
                               .any((doc) => doc.url == selectedExistingDocUrl)
                       ? selectedExistingDocUrl
@@ -973,7 +973,7 @@ class _TeamTrainingAndBuildingScreenState
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: category,
+                      initialValue: category,
                       items: const [
                         DropdownMenuItem(
                             value: 'Onboarding', child: Text('Onboarding')),
@@ -1134,7 +1134,7 @@ class _TeamTrainingAndBuildingScreenState
                     if (existingDocs.isNotEmpty) ...[
                       const SizedBox(height: 10),
                       DropdownButtonFormField<String>(
-                        value: selectedExistingDocUrl != null &&
+                        initialValue: selectedExistingDocUrl != null &&
                                 existingDocs.any(
                                     (doc) => doc.url == selectedExistingDocUrl)
                             ? selectedExistingDocUrl

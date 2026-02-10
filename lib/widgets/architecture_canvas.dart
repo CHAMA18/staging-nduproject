@@ -90,7 +90,8 @@ class _ArchitectureCanvasState extends State<ArchitectureCanvas> {
   }
 
   void _zoom(double factor) {
-    final next = Matrix4.copy(_transform.value)..scale(factor);
+    // scaleByDouble takes x/y/z/w components.
+    final next = Matrix4.copy(_transform.value)..scaleByDouble(factor, factor, 1.0, 1.0);
     setState(() => _transform.value = next);
   }
 
@@ -142,7 +143,7 @@ class _ArchitectureCanvasState extends State<ArchitectureCanvas> {
                 spacing: 8,
                 runSpacing: 8,
                 children: _nodeColors.map((color) {
-                  final isSelected = color.value == selectedColor.value;
+                  final isSelected = color.toARGB32() == selectedColor.toARGB32();
                   return InkWell(
                     onTap: () => setState(() => selectedColor = color),
                     borderRadius: BorderRadius.circular(8),

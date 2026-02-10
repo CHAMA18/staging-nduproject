@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:ndu_project/utils/finance.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/widgets/app_logo.dart';
@@ -390,8 +391,16 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
     final sidebarWidth = AppBreakpoints.sidebarWidth(context);
-    return WillPopScope(
-      onWillPop: _confirmExit,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        // Capture Navigator before awaiting to avoid using context across async gaps.
+        final nav = Navigator.of(context);
+        final ok = await _confirmExit();
+        if (!mounted) return;
+        if (ok) nav.pop();
+      },
       child: Scaffold(
         key: _scaffoldKey,
         backgroundColor: Colors.white,
@@ -419,6 +428,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildTopHeader() {
     final isMobile = AppBreakpoints.isMobile(context);
     // Match InitiationPhaseScreen header: no logo, centered title, profile at right
@@ -502,6 +512,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildSidebar() {
     // Match RiskIdentificationScreen sidebar styling and structure
     final sidebarWidth = AppBreakpoints.sidebarWidth(context);
@@ -768,6 +779,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildSubMenuItem(String title,
       {VoidCallback? onTap, bool isActive = false}) {
     final primary = Theme.of(context).colorScheme.primary;
@@ -2521,9 +2533,6 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
   }
 
   Widget _buildProjectValueSummary() {
-    final amountText = _projectValueAmountController.text.trim();
-    final amountValue = _parseCurrencyInput(amountText);
-    final hasAmount = amountValue > 0;
     final definedBenefitLabels = <String>[];
     final benefitTiles = <Widget>[];
 
@@ -2562,13 +2571,6 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         ]),
       ));
     }
-
-    final statementPrefix = hasAmount
-        ? 'Estimated project value: ${_formatCurrencyValue(amountValue)} to anchor ROI and NPV calculations.'
-        : 'Add an estimated project value to anchor ROI and NPV calculations.';
-    final statementSuffix = definedBenefitLabels.isEmpty
-        ? 'Capture benefit statements so finance can trace inputs to ROI metrics.'
-        : 'Benefit pillars captured: ${definedBenefitLabels.join(', ')}.';
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       const Text('Project Benefit Descriptions',
@@ -2726,6 +2728,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     return _benefitLineItems.fold<double>(0, (sum, entry) => sum + entry.units);
   }
 
+  // ignore: unused_element
   double _calculateTotalBenefitsWithFrequency() {
     final baseTotal = _benefitTotalValue();
     if (_trackerBasisFrequency == 'Monthly') {
@@ -2734,6 +2737,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     return baseTotal; // Already annual
   }
 
+  // ignore: unused_element
   Widget _buildFinancialBenefitsTrackerSection() {
     final tabs = const ['Project Benefits', 'Project Value Estimation'];
     final summaries = _benefitSummaries();
@@ -3314,6 +3318,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildBenefitEstimatesTab({
     required Map<String, _BenefitCategorySummary> summaries,
     required double totalValue,
@@ -3466,6 +3471,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildBenefitSavingsTab({required double totalValue}) {
     final items = _benefitLineItems
         .where((entry) => entry.totalValue > 0 && entry.title.isNotEmpty)
@@ -3601,10 +3607,6 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     final top3CategoryKeys = topCategories.take(3).map((e) => e.key).toList();
     final top3CategoryLabels =
         top3CategoryKeys.map((key) => _benefitCategoryLabel(key)).toList();
-
-    // Sort benefit categories by total value (highest first)
-    final sortedCategories = summaries.entries.toList()
-      ..sort((a, b) => b.value.valueTotal.compareTo(a.value.valueTotal));
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       // Only show summaries if there are benefit items
@@ -3980,6 +3982,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
   }
 
   // Initial Cost Estimate: per-solution itemized cost matrix (AI-derived items)
+  // ignore: unused_element
   Widget _buildCategoryCostMatrix() {
     return Container(
       width: double.infinity,
@@ -4094,6 +4097,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _categoryCostRow(int solutionIndex, String categoryKey, String label,
       _CategoryCostEntry entry) {
     return Container(
@@ -4272,7 +4276,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             v == 0 ? '' : v.toStringAsFixed(v % 1 == 0 ? 0 : 2);
       });
     } catch (e) {
-      print('Error estimating cost: $e');
+      if (kDebugMode) debugPrint('Error estimating cost: $e');
     } finally {
       if (mounted) setState(() => row.aiLoading = false);
     }
@@ -4297,7 +4301,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             v == 0 ? '' : v.toStringAsFixed(v % 1 == 0 ? 0 : 2);
       });
     } catch (e) {
-      print('Error estimating category cost: $e');
+      if (kDebugMode) debugPrint('Error estimating category cost: $e');
     } finally {
       if (mounted) setState(() => entry.aiLoading = false);
     }
@@ -5090,14 +5094,6 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       npv = _solutionTotalNpv(index);
     }
 
-    // Calculate Payback Period: Time to recover initial investment
-    double paybackPeriod = 0;
-    if (cost > 0 && benefits > 0 && _npvHorizon > 0) {
-      final annualBenefit = benefits / _npvHorizon;
-      if (annualBenefit > 0) {
-        paybackPeriod = cost / annualBenefit; // Years to payback
-      }
-    }
     // IRR using Finance utility with cashflows distributed over time
     // Only calculate if Initial Project Value is set
     double irr = 0;
@@ -5125,7 +5121,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       decoration: BoxDecoration(
           border: Border(
               top: BorderSide(
-                  color: Colors.grey.withValues(alpha: index == 0 ? 0 : 0.2)))),
+                  color: Colors.grey.withValues(alpha: index == 0 ? 0.0 : 0.2)))),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Expanded(
             flex: 4,
@@ -5205,7 +5201,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       decoration: BoxDecoration(
         border: Border(
             top: BorderSide(
-                color: Colors.grey.withValues(alpha: index == 0 ? 0 : 0.2))),
+                color: Colors.grey.withValues(alpha: index == 0 ? 0.0 : 0.2))),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
@@ -5889,20 +5885,10 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     }
   }
 
+  // ignore: unused_element
   Widget _buildDetailedBreakdown(
       {required bool isMobile, required String horizonLabel}) {
     final tabsCount = _rowsPerSolution.length;
-    final int activeIndex;
-    if (tabsCount == 0) {
-      activeIndex = 0;
-    } else if (_activeTab >= tabsCount) {
-      activeIndex = tabsCount - 1;
-    } else if (_activeTab < 0) {
-      activeIndex = 0;
-    } else {
-      activeIndex = _activeTab;
-    }
-
     return Container(
       key: _tablesSectionKey,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -6055,6 +6041,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         .fold<double>(0, (sum, row) => sum + row.currentNpv());
   }
 
+  // ignore: unused_element
   double _solutionAverageRoi(int index) {
     if (index >= _rowsPerSolution.length) return 0;
     double total = 0;
@@ -6425,10 +6412,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     for (final entry in map.entries) {
       final key = entry.key;
       final costCtrl = entry.value.costController;
-      final noteCtrl = entry.value.notesController;
       final hasUserCost = (costCtrl.text.trim().isNotEmpty) &&
           (_parseCurrencyInput(costCtrl.text.trim()) > 0);
-      final hasUserNotes = noteCtrl.text.trim().isNotEmpty;
       final t = (totals[key] ?? 0);
       if (!hasUserCost && t > 0) {
         costCtrl.text = t.toStringAsFixed(t % 1 == 0 ? 0 : 2);
@@ -6517,6 +6502,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     _markDirty();
   }
 
+  // ignore: unused_element
   Widget _tabButton(
       {required String label,
       required bool isActive,
@@ -6813,6 +6799,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildPhaseNavigation() {
     final phases = [
       'Initiation Phase',
@@ -6950,10 +6937,11 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         _savingsSuggestions = [];
       });
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _isSavingsGenerating = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isSavingsGenerating = false;
+        });
+      }
     }
   }
 
@@ -7062,10 +7050,11 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         );
       }
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _isGeneratingValue = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isGeneratingValue = false;
+        });
+      }
     }
   }
 
@@ -7167,7 +7156,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         _applyCategoryEstimatesFromItems(i, items);
       }
     } catch (e) {
-      print('Error generating cost breakdown: $e');
+      if (kDebugMode) debugPrint('Error generating cost breakdown: $e');
       _error = e.toString();
     } finally {
       if (mounted) setState(() => _isGenerating = false);
@@ -7412,6 +7401,7 @@ class _CostRow {
 
   String _num(double v) => (v.isFinite ? v : 0).toStringAsFixed(2);
 
+  // ignore: unused_element
   String _formatCurrency(double v) {
     final formatted = _formatNumber(v);
     final code = currencyProvider();

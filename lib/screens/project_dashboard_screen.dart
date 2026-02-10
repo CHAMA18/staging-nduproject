@@ -2353,14 +2353,15 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
       debugPrint('📤 Load result: $success, error: ${provider.lastError}');
 
       if (!context.mounted) return;
-
-      Navigator.of(context).pop(); // Close loading dialog
+      final navigator = Navigator.of(context);
+      navigator.pop(); // Close loading dialog
 
       if (success) {
         // Get checkpoint from Firestore (primary source) or fallback to SharedPreferences
         final checkpointRoute = project.checkpointRoute.isNotEmpty
             ? project.checkpointRoute
             : await ProjectNavigationService.instance.getLastPage(project.id);
+        if (!context.mounted) return;
         debugPrint(
             '✅ Project loaded successfully, navigating to checkpoint: $checkpointRoute');
 
@@ -2371,10 +2372,8 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
         );
 
         // Navigate to the resolved screen
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (_) => screen ?? const InitiationPhaseScreen()),
+        navigator.push(
+          MaterialPageRoute(builder: (_) => screen ?? const InitiationPhaseScreen()),
         );
       } else {
         debugPrint('❌ Failed to load project: ${provider.lastError}');
@@ -2444,17 +2443,18 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
           ),
         );
       }
-    } catch (e, stackTrace) {
-      debugPrint('❌ Exception opening project: $e');
-      debugPrint('Stack trace: $stackTrace');
+	    } catch (e, stackTrace) {
+	      debugPrint('❌ Exception opening project: $e');
+	      debugPrint('Stack trace: $stackTrace');
 
-      if (Navigator.canPop(context)) {
-        Navigator.of(context).pop();
-      }
-      if (context.mounted) {
-        showDialog(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
+	      if (!context.mounted) return;
+	      if (Navigator.canPop(context)) {
+	        Navigator.of(context).pop();
+	      }
+	      if (context.mounted) {
+	        showDialog(
+	          context: context,
+	          builder: (dialogContext) => AlertDialog(
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: Row(

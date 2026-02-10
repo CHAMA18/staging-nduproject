@@ -1209,9 +1209,11 @@ class _InfrastructureConsiderationsScreenState
   }
 
   Future<void> _regenerateSingleInfraField(TextEditingController controller, int index) async {
+    if (index >= _solutions.length) return;
+
+    final provider = ProjectDataHelper.getProvider(context);
+    final messenger = ScaffoldMessenger.of(context);
     try {
-      if (index >= _solutions.length) return;
-      
       final solution = _solutions[index];
       final solutionsToUse = [solution];
       
@@ -1219,21 +1221,21 @@ class _InfrastructureConsiderationsScreenState
         solutionsToUse,
         contextNotes: _notesController.text,
       );
+      if (!mounted) return;
       
       final items = result[solution.title] ?? const <String>[];
       controller.text = items.isEmpty ? '' : items.map((e) => '- $e').join('\n');
       
-      final provider = ProjectDataHelper.getProvider(context);
       await provider.saveToFirebase(checkpoint: 'infra_field_regenerated');
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           const SnackBar(content: Text('Infrastructure field regenerated')),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text('Failed to regenerate: $e')),
         );
       }

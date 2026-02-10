@@ -2868,7 +2868,7 @@ class _PieChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final double radius = math.min(size.width, size.height) / 2;
     final Offset center = Offset(size.width / 2, size.height / 2);
-    final double total = slices.fold(0, (sum, slice) => sum + slice.value);
+    final double total = slices.fold(0, (total, slice) => total + slice.value);
     double startRadian = -math.pi / 2;
 
     final Paint paint = Paint()..style = PaintingStyle.fill;

@@ -69,6 +69,7 @@ class _RequirementsImplementationScreenState
     _notesController.addListener(_onNotesChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _syncAndLoad();
+      if (!mounted) return;
       final provider = ProjectDataInherited.maybeOf(context);
       final pid = provider?.projectData.projectId;
       if (pid != null && pid.isNotEmpty) {
@@ -215,6 +216,12 @@ class _RequirementsImplementationScreenState
             showImportButton: false,
             showContentButton: false,
           ),
+          if (_isLoading)
+            const LinearProgressIndicator(
+              minHeight: 2,
+              backgroundColor: Color(0xFFE5E7EB),
+              color: Color(0xFF1D4ED8),
+            ),
           Expanded(
             child: SingleChildScrollView(
               child: Column(
@@ -923,23 +930,6 @@ class _RequirementsImplementationScreenState
     );
   }
 
-  List<String> _ownerOptions() {
-    final provider = ProjectDataInherited.maybeOf(context);
-    final members = provider?.projectData.teamMembers ?? [];
-    final names = members
-        .map((member) {
-          final name = member.name.trim();
-          if (name.isNotEmpty) return name;
-          final email = member.email.trim();
-          if (email.isNotEmpty) return email;
-          return member.role.trim();
-        })
-        .where((value) => value.isNotEmpty)
-        .toList();
-    if (names.isEmpty) return const ['Owner'];
-    return names.toSet().toList();
-  }
-
   Widget _buildOwnerDropdown({
     required String value,
     required List<String> options,
@@ -1025,57 +1015,6 @@ class _RequirementsImplementationScreenState
       case ChecklistStatus.pending:
         return 'Pending';
     }
-  }
-
-  Widget _buildStatusBadge(ChecklistStatus status) {
-    Color bgColor;
-    Color textColor;
-    String label;
-    bool showDot = false;
-
-    switch (status) {
-      case ChecklistStatus.ready:
-        bgColor = Colors.transparent;
-        textColor = const Color(0xFF22C55E);
-        label = 'Ready';
-        showDot = true;
-        break;
-      case ChecklistStatus.inReview:
-        bgColor = Colors.transparent;
-        textColor = const Color(0xFF6B7280);
-        label = 'In review';
-        break;
-      case ChecklistStatus.pending:
-        bgColor = Colors.transparent;
-        textColor = const Color(0xFF6B7280);
-        label = 'Pending';
-        break;
-    }
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (showDot) ...[
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: textColor,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 6),
-        ],
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: textColor,
-          ),
-        ),
-      ],
-    );
   }
 }
 

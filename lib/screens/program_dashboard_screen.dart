@@ -1273,6 +1273,8 @@ class _ProjectRow extends StatelessWidget {
         debugPrint(
             '✅ Project loaded successfully, navigating to checkpoint: $checkpointRoute');
 
+        if (!context.mounted) return;
+
         // Resolve checkpoint to screen widget
         final screen = NavigationRouteResolver.resolveCheckpointToScreen(
           checkpointRoute.isEmpty ? 'initiation' : checkpointRoute,

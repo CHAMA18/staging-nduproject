@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:ndu_project/screens/ssher_stacked_screen.dart';
-import 'package:ndu_project/services/sidebar_navigation_service.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -217,6 +215,7 @@ class _ProjectFrameworkNextScreenState
     super.dispose();
   }
 
+  // ignore: unused_element
   bool _areAllGoalsFilled() {
     for (int i = 0; i < 3; i++) {
       if (_goalTitleControllers[i].text.trim().isEmpty ||
@@ -1625,7 +1624,7 @@ class _GoalCardExpandedDialogState extends State<_GoalCardExpandedDialog> {
                 borderRadius:
                     const BorderRadius.vertical(bottom: Radius.circular(28)),
                 border: Border(
-                    top: BorderSide(color: _kBorderColor.withOpacity(0.5))),
+                    top: BorderSide(color: _kBorderColor.withValues(alpha: 0.5))),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -1688,8 +1687,9 @@ class _MilestonesSection extends StatelessWidget {
     // Flatten rows based on filter
     final List<List<String>> rows = [];
     for (int i = 0; i < 3; i++) {
-      if (currentFilter != 'View All' && currentFilter != 'Goal ${i + 1}')
+      if (currentFilter != 'View All' && currentFilter != 'Goal ${i + 1}') {
         continue;
+      }
 
       for (final m in goalMilestones[i]) {
         if (m.titleController.text.isNotEmpty ||
@@ -1771,7 +1771,7 @@ class _MilestonesSection extends StatelessWidget {
                     border: Border(
                       bottom: BorderSide(
                           color: _kBorderColor
-                              .withOpacity(index == rows.length - 1 ? 0 : 0.6)),
+                              .withValues(alpha: index == rows.length - 1 ? 0.0 : 0.6)),
                     ),
                   ),
                   padding:
@@ -1903,10 +1903,10 @@ class _GoalFilterChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
       decoration: BoxDecoration(
-        color: isSelected ? data.color : data.color.withOpacity(0.18),
+        color: isSelected ? data.color : data.color.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(22),
         border:
-            isSelected ? null : Border.all(color: data.color.withOpacity(0.3)),
+            isSelected ? null : Border.all(color: data.color.withValues(alpha: 0.3)),
       ),
       child: Text(data.label,
           style: TextStyle(

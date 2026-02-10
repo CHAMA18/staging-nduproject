@@ -44,7 +44,9 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
   }
 
   Future<void> _loadData() async {
-    final projectId = ProjectDataHelper.getData(context).projectId;
+    // Read from context before any awaits to avoid use_build_context_synchronously.
+    final projectData = ProjectDataHelper.getData(context);
+    final projectId = projectData.projectId;
     if (projectId == null) return;
 
     setState(() {
@@ -57,10 +59,11 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
       var loaded =
           await DesignPhaseService.instance.loadDesignDeliverables(projectId);
 
+      if (!mounted) return;
+
       // 2. Fallback to legacy structure in ProjectDataModel
       if (loaded == null) {
-        final existing =
-            ProjectDataHelper.getData(context).designDeliverablesData;
+        final existing = projectData.designDeliverablesData;
         if (!existing.isEmpty) {
           loaded = existing;
           // Note: We don't auto-save immediately to new service unless user changes something or we want migration on read.
@@ -927,6 +930,7 @@ class _EditablePipelineRow extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _PipelineRow extends StatelessWidget {
   const _PipelineRow({required this.label, required this.value});
 
@@ -1015,6 +1019,7 @@ class _EditableChecklistRow extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _ChecklistRow extends StatelessWidget {
   const _ChecklistRow({required this.text});
 
@@ -1260,6 +1265,7 @@ class _RegisterHeader extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _RegisterRow extends StatelessWidget {
   const _RegisterRow({
     required this.name,
@@ -1414,6 +1420,7 @@ class _SaveStatusChip extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _BulletRow extends StatelessWidget {
   const _BulletRow({required this.text});
 

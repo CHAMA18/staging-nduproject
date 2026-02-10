@@ -635,13 +635,14 @@ class _FrontEndPlanningProcurementScreenState
 
     // Save all data before navigation to prevent data loss
     final provider = ProjectDataHelper.getProvider(context);
+    final messenger = ScaffoldMessenger.of(context);
     try {
       // Ensure all items are saved
       await provider.saveToFirebase(checkpoint: 'fep_procurement');
     } catch (e) {
       debugPrint('Error saving before navigation: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           const SnackBar(
             content: Text('Error saving data. Please try again.'),
             backgroundColor: Colors.red,
@@ -650,6 +651,8 @@ class _FrontEndPlanningProcurementScreenState
       }
       return; // Don't navigate if save fails
     }
+
+    if (!mounted) return;
 
     // Check if destination is locked
     if (ProjectDataHelper.isDestinationLocked(context, 'fep_security')) {
@@ -1719,9 +1722,11 @@ class _ItemsGrid extends StatelessWidget {
     return LayoutBuilder(builder: (context, constraints) {
       final double width = constraints.maxWidth;
       int columns = 1;
-      if (width > 1200)
+      if (width > 1200) {
         columns = 3;
-      else if (width > 800) columns = 2;
+      } else if (width > 800) {
+        columns = 2;
+      }
 
       final double cardWidth = (width - ((columns - 1) * 24)) / columns;
 
@@ -1759,12 +1764,13 @@ class _ProcurementItemCard extends StatelessWidget {
     Color progressColor;
     if (item.progress >= 1.0) {
       progressColor = const Color(0xFF10B981);
-    } else if (item.progress >= 0.5)
+    } else if (item.progress >= 0.5) {
       progressColor = const Color(0xFF2563EB);
-    else if (item.progress == 0)
+    } else if (item.progress == 0) {
       progressColor = const Color(0xFFD1D5DB);
-    else
+    } else {
       progressColor = const Color(0xFF38BDF8);
+    }
 
     return Container(
       decoration: BoxDecoration(

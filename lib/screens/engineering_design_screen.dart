@@ -829,6 +829,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
     ),
   );
 
+  // ignore: unused_element
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'defined':

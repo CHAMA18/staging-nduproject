@@ -1445,7 +1445,7 @@ class _SnapshotMetric {
         'title': title,
         'subtitle': subtitle,
         'value': value,
-        'accent': accent.value,
+        'accent': accent.toARGB32(),
       };
 
   static List<_SnapshotMetric> fromList(dynamic data) {
@@ -1460,7 +1460,7 @@ class _SnapshotMetric {
         value: map['value']?.toString() ?? '',
         accent: Color(map['accent'] is int
             ? map['accent'] as int
-            : const Color(0xFF0EA5E9).value),
+            : const Color(0xFF0EA5E9).toARGB32()),
       );
     }).toList();
   }

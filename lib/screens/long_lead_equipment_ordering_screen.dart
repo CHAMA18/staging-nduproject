@@ -696,7 +696,7 @@ class _EditableTable extends StatelessWidget {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: ConstrainedBox(
-        constraints: BoxConstraints(minWidth: columns.fold<double>(0, (sum, col) => sum + col.width)),
+        constraints: BoxConstraints(minWidth: columns.fold<double>(0, (total, col) => total + col.width)),
         child: Column(
           children: [
             header,

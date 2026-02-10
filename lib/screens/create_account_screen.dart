@@ -30,6 +30,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   bool _isConfirmPasswordVisible = false;
   bool _agreeToPrivacyPolicy = false;
   bool _isLoading = false;
+  // ignore: unused_field
   String? _errorMessage;
 
   @override
@@ -44,22 +45,21 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   }
 
   Future<void> _handleGoogleSignIn(BuildContext context) async {
+    final nav = Navigator.of(context);
     setState(() {
       _isLoading = true;
     });
 
     try {
       await FirebaseAuthService.signInWithGoogle();
-      if (mounted) {
+      if (!mounted) return;
         _showSuccessSnackBar('Successfully signed in with Google!');
         // Navigate to the authenticated landing screen
-        Navigator.pushReplacement(
-          context,
+        nav.pushReplacement(
           MaterialPageRoute(
             builder: (context) => const HomeScreen(),
           ),
         );
-      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -240,11 +240,14 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     );
   }
 
+  // ignore: unused_element
   void _showSignInDialog(BuildContext context) {
     final emailController = TextEditingController();
     final passwordController = TextEditingController();
     bool isPasswordVisible = false;
     bool isLoading = false;
+    final parentNav = Navigator.of(context);
+    final parentMessenger = ScaffoldMessenger.of(context);
 
     showDialog(
       context: context,
@@ -300,7 +303,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
             ElevatedButton(
               onPressed: isLoading ? null : () async {
                 if (emailController.text.trim().isEmpty || passwordController.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  parentMessenger.showSnackBar(
                     const SnackBar(
                       content: Text('Please fill in all fields'),
                       backgroundColor: Colors.red,
@@ -319,17 +322,15 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                     password: passwordController.text,
                   );
 
-                  if (mounted) {
-                    Navigator.pop(context);
-                    Navigator.pushReplacement(
-                      context,
+                  if (!context.mounted) return;
+                  Navigator.pop(context);
+                  parentNav.pushReplacement(
                       MaterialPageRoute(
                         builder: (context) => const HomeScreen(),
                       ),
                     );
-                  }
                 } on FirebaseAuthException catch (e) {
-                  if (mounted) {
+                  if (context.mounted) {
                     String errorMessage;
                     switch (e.code) {
                       case 'user-not-found':
@@ -347,7 +348,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                       default:
                         errorMessage = e.message ?? 'Sign in failed.';
                     }
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    parentMessenger.showSnackBar(
                       SnackBar(
                         content: Text(errorMessage),
                         backgroundColor: Colors.red,
@@ -355,8 +356,8 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                     );
                   }
                 } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                  if (context.mounted) {
+                    parentMessenger.showSnackBar(
                       SnackBar(
                         content: Text('Sign in failed: ${e.toString()}'),
                         backgroundColor: Colors.red,

@@ -137,10 +137,11 @@ class _OrganizationRolesResponsibilitiesScreenState
                       ? null
                       : (val) {
                           setDialogState(() {
-                            if (val == true)
+                            if (val == true) {
                               selectedIndices.add(index);
-                            else
+                            } else {
                               selectedIndices.remove(index);
+                            }
                           });
                         },
                 );
@@ -662,7 +663,7 @@ class _OrganizationStaffingPlanScreenState
                     children: [
                       PremiumEditDialog.fieldLabel('Employment'),
                       DropdownButtonFormField<String>(
-                        value: empType,
+                        initialValue: empType,
                         items: ['FT', 'PT']
                             .map((s) =>
                                 DropdownMenuItem(value: s, child: Text(s)))
@@ -686,7 +687,7 @@ class _OrganizationStaffingPlanScreenState
                     children: [
                       PremiumEditDialog.fieldLabel('Category'),
                       DropdownButtonFormField<String>(
-                        value: employeeType,
+                        initialValue: employeeType,
                         items: ['Employee', 'Contractor']
                             .map((s) =>
                                 DropdownMenuItem(value: s, child: Text(s)))
@@ -1171,6 +1172,7 @@ class _SectionData {
     required this.title,
     required this.subtitle,
     this.bullets = const [],
+    // ignore: unused_element_parameter
     this.statusRows = const [],
     this.onEdit,
     this.onDelete,

@@ -357,8 +357,8 @@ class _FrontEndPlanningContractVendorQuotesScreenState
             children: [
               if (!isMobile)
                 DraggableSidebar(
-                    child: InitiationLikeSidebar(),
-                    openWidth: AppBreakpoints.sidebarWidth(context)),
+                    openWidth: AppBreakpoints.sidebarWidth(context),
+                    child: InitiationLikeSidebar()),
               Expanded(
                 child: Column(
                   children: [

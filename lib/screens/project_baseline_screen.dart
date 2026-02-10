@@ -979,11 +979,15 @@ class _VarianceTone {
   final Color color;
   final Color barColor;
 
+  // ignore: unused_field
   static const _VarianceTone onTrack = _VarianceTone._(Color(0xFF047857), Color(0xFF10B981));
+  // ignore: unused_field
   static const _VarianceTone warning = _VarianceTone._(Color(0xFFB45309), Color(0xFFFBBF24));
+  // ignore: unused_field
   static const _VarianceTone behind = _VarianceTone._(Color(0xFFB91C1C), Color(0xFFF87171));
 }
 
+// ignore: unused_element
 class _ScheduleDetail {
   const _ScheduleDetail({required this.label, required this.value});
 
@@ -991,6 +995,7 @@ class _ScheduleDetail {
   final String value;
 }
 
+// ignore: unused_element
 class _CostDetail {
   const _CostDetail({required this.label, required this.value});
 

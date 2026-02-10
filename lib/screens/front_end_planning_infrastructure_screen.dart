@@ -36,6 +36,7 @@ class _FrontEndPlanningInfrastructureScreenState extends State<FrontEndPlanningI
   final TextEditingController _notes = TextEditingController();
   Timer? _infrastructurePromptTimer;
   bool _hasShownPrompt = false;
+  // ignore: unused_field
   DateTime? _lastActivityTime;
 
   @override
@@ -456,6 +457,7 @@ Widget _yellowPillButton({required String label, required VoidCallback onTap}) {
   );
 }
 
+// ignore: unused_element
 class _TopBar extends StatelessWidget {
   const _TopBar();
 

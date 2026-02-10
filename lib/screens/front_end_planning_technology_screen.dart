@@ -429,6 +429,7 @@ class _FrontEndPlanningTechnologyScreenState
     await _persistTechnologyData();
   }
 
+  // ignore: unused_element
   void _addAiRecommendation() => _showRecommendationDialog();
   void _editAiRecommendation(_AiRecommendation item) =>
       _showRecommendationDialog(existing: item);
@@ -439,10 +440,11 @@ class _FrontEndPlanningTechnologyScreenState
 
   Future<void> _generateAiRecommendations() async {
     if (_isGeneratingRecommendations) return;
+    final messenger = ScaffoldMessenger.of(context);
     final data = ProjectDataHelper.getProvider(context).projectData;
     final solutions = _buildSolutionItems(data);
     if (solutions.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(
             content:
                 Text('Add project solutions to generate AI recommendations.')),
@@ -457,6 +459,7 @@ class _FrontEndPlanningTechnologyScreenState
         solutions,
         contextNotes: contextNotes,
       );
+      if (!mounted) return;
       final generated = <_AiRecommendation>[];
       for (final entry in map.entries) {
         for (final tech in entry.value) {
@@ -474,18 +477,21 @@ class _FrontEndPlanningTechnologyScreenState
         }
       }
       if (generated.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           const SnackBar(content: Text('No AI recommendations returned.')),
         );
       } else {
         setState(() => _aiRecommendations = generated);
         await _persistTechnologyData();
+        if (!mounted) return;
         _scrollToTop();
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to generate AI recommendations: $e')),
-      );
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Failed to generate AI recommendations: $e')),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isGeneratingRecommendations = false);
@@ -582,7 +588,7 @@ class _FrontEndPlanningTechnologyScreenState
             const SizedBox(height: 12),
             PremiumEditDialog.fieldLabel('Category'),
             DropdownButtonFormField<String>(
-              value:
+              initialValue:
                   categoryOptions.contains(categoryName) ? categoryName : null,
               items: categoryOptions
                   .map((c) => DropdownMenuItem(value: c, child: Text(c)))
@@ -1337,8 +1343,8 @@ class _FrontEndPlanningTechnologyScreenState
                 subtitle: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: const [
-                    _kv('One-time Costs', '2,500'),
-                    _kv('Annual Running Costs', '\u0021,657/year'),
+                    _Kv('One-time Costs', '2,500'),
+                    _Kv('Annual Running Costs', '\u0021,657/year'),
                   ],
                 ),
               ),
@@ -1351,11 +1357,11 @@ class _FrontEndPlanningTechnologyScreenState
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: const [
-                    _kv('Deployed', '1'),
+                    _Kv('Deployed', '1'),
                     SizedBox(height: 6),
-                    _kv('Proposed/Pending', '2'),
+                    _Kv('Proposed/Pending', '2'),
                     SizedBox(height: 6),
-                    _kv('Available Recommendations', '4'),
+                    _Kv('Available Recommendations', '4'),
                   ],
                 ),
               ),
@@ -1445,8 +1451,8 @@ class _SummaryRow2 extends StatelessWidget {
             subtitle: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _kv('One-time Costs', oneTimeLabel),
-                _kv('Annual Running Costs', annualLabel),
+                _Kv('One-time Costs', oneTimeLabel),
+                _Kv('Annual Running Costs', annualLabel),
               ],
             ),
           ),
@@ -1462,11 +1468,11 @@ class _SummaryRow2 extends StatelessWidget {
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _kv('Deployed', deployedCount.toString()),
+                _Kv('Deployed', deployedCount.toString()),
                 const SizedBox(height: 6),
-                _kv('Proposed/Pending', proposedCount.toString()),
+                _Kv('Proposed/Pending', proposedCount.toString()),
                 const SizedBox(height: 6),
-                _kv('Available Recommendations',
+                _Kv('Available Recommendations',
                     aiRecommendations.length.toString()),
               ],
             ),
@@ -1559,8 +1565,8 @@ class _SummaryCard extends StatelessWidget {
   }
 }
 
-class _kv extends StatelessWidget {
-  const _kv(this.k, this.v);
+class _Kv extends StatelessWidget {
+  const _Kv(this.k, this.v);
   final String k;
   final String v;
   @override
@@ -1727,6 +1733,7 @@ class _TabActionsBar extends StatelessWidget {
 }
 
 // ===== Search + Filter =====================================================
+// ignore: unused_element
 class _SearchAndFilter extends StatelessWidget {
   const _SearchAndFilter({
     required this.searchCtrl,
@@ -1882,7 +1889,7 @@ class _InventoryTable extends StatelessWidget {
           _cell(_CategoryCell(item: e), flex: 2),
           _cell(Text(e.costText,
               style: const TextStyle(fontWeight: FontWeight.w600))),
-          _cell(_StatusChip(e.status)),
+          _cell(_statusChip(e.status)),
           _cell(
               Text(e.vendor, style: const TextStyle(color: Color(0xFF111827)))),
           _cell(
@@ -2014,7 +2021,7 @@ class _CategoryCell extends StatelessWidget {
   }
 }
 
-Widget _StatusChip(String status) {
+Widget _statusChip(String status) {
   final normalized = status.toLowerCase();
   Color bg = const Color(0xFFE3FCEF);
   Color fg = const Color(0xFF16A34A);
@@ -2179,7 +2186,7 @@ class _AiIntegrationCard extends StatelessWidget {
                             color: Color(0xFF111827)),
                       ),
                     ),
-                    _StatusChip(item.status),
+                    _statusChip(item.status),
                     const SizedBox(width: 8),
                     PopupMenuButton<String>(
                       onSelected: (value) {
@@ -2405,7 +2412,7 @@ class _ExternalIntegrationsTable extends StatelessWidget {
                       DataCell(Text(item.vendor)),
                       DataCell(Text(item.dataFlow)),
                       DataCell(Text(item.sla)),
-                      DataCell(_StatusChip(item.status)),
+                      DataCell(_statusChip(item.status)),
                       DataCell(Text(item.lastSync)),
                       DataCell(
                         PopupMenuButton<String>(
@@ -2911,6 +2918,7 @@ class _HealthRow extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _ComingSoonCard extends StatelessWidget {
   const _ComingSoonCard({required this.index});
   final int index;

@@ -611,6 +611,7 @@ class _FilterToolbar extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _SummaryGrid extends StatelessWidget {
   const _SummaryGrid();
 
@@ -1823,6 +1824,8 @@ class _ScenarioMatrixDialogState extends State<_ScenarioMatrixDialog> {
 
     if (saved != true) return;
 
+    if (!mounted) return;
+
     final newRecord = ScenarioRecord(
         id: id,
         title: titleCtrl.text.trim(),
@@ -1833,7 +1836,7 @@ class _ScenarioMatrixDialogState extends State<_ScenarioMatrixDialog> {
         likelihood: likelihood);
     // update provider
     await ProjectDataHelper.updateAndSave(
-      context: context,
+      context: super.context,
       checkpoint: 'gap_analysis_scope_reconcillation',
       dataUpdater: (current) {
         final fep = current.frontEndPlanning;
@@ -2097,9 +2100,10 @@ class _ScenarioMatrixDialogState extends State<_ScenarioMatrixDialog> {
                                                         .pop(true),
                                                 child: const Text('Delete'))
                                           ]));
+                              if (!mounted) return;
                               if (confirmed == true) {
                                 await ProjectDataHelper.updateAndSave(
-                                    context: context,
+                                    context: super.context,
                                     checkpoint:
                                         'gap_analysis_scope_reconcillation',
                                     dataUpdater: (current) {
@@ -2793,7 +2797,7 @@ class _WorkflowBoardColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DragTarget<_WorkflowStep>(
-      onWillAcceptWithDetails: (data) => data != null,
+      onWillAcceptWithDetails: (_) => true,
       onAcceptWithDetails: (details) => onAccept(details.data),
       builder: (context, candidateData, rejectedData) {
         final isActive = candidateData.isNotEmpty;
@@ -3221,6 +3225,7 @@ class _InfoChip extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _GapTitleCell extends StatelessWidget {
   const _GapTitleCell({required this.entry});
 
@@ -3251,6 +3256,7 @@ class _GapTitleCell extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _PriorityBadge extends StatelessWidget {
   const _PriorityBadge({required this.label});
 
@@ -3297,6 +3303,7 @@ class _PriorityBadge extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _StatusBadge extends StatelessWidget {
   const _StatusBadge({required this.label});
 
@@ -3340,6 +3347,7 @@ class _StatusBadge extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _TrendPill extends StatelessWidget {
   const _TrendPill({required this.label});
 

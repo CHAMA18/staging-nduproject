@@ -214,6 +214,8 @@ class _AdminContentScreenState extends State<AdminContentScreen> {
   }
 
   Future<void> _showAddContentDialog() async {
+    // Capture before await to avoid use_build_context_synchronously.
+    final messenger = ScaffoldMessenger.of(context);
     await showDialog(
       context: context,
       builder: (context) => _ContentEditorDialog(
@@ -228,20 +230,21 @@ class _AdminContentScreenState extends State<AdminContentScreen> {
             updatedAt: DateTime.now(),
           );
           final id = await AppContentService.addContent(content);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
+          if (!mounted) return;
+          messenger.showSnackBar(
               SnackBar(
                 content: Text(id != null ? 'Content added successfully' : 'Failed to add content'),
                 backgroundColor: id != null ? Colors.green : Colors.red,
               ),
-            );
-          }
+          );
         },
       ),
     );
   }
 
   Future<void> _showEditContentDialog(AppContent content) async {
+    // Capture before await to avoid use_build_context_synchronously.
+    final messenger = ScaffoldMessenger.of(context);
     await showDialog(
       context: context,
       builder: (context) => _ContentEditorDialog(
@@ -255,14 +258,13 @@ class _AdminContentScreenState extends State<AdminContentScreen> {
             updatedAt: DateTime.now(),
           );
           final success = await AppContentService.updateContent(content.id, updated);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
+          if (!mounted) return;
+          messenger.showSnackBar(
               SnackBar(
                 content: Text(success ? 'Content updated successfully' : 'Failed to update content'),
                 backgroundColor: success ? Colors.green : Colors.red,
               ),
-            );
-          }
+          );
         },
       ),
     );

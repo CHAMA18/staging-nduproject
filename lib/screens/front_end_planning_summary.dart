@@ -174,6 +174,7 @@ class _FrontEndPlanningSummaryScreenState
   }
 }
 
+// ignore: unused_element
 class _TopBar extends StatelessWidget {
   const _TopBar();
 
@@ -431,6 +432,7 @@ class _PlanningCardsSectionState extends State<_PlanningCardsSection> {
   Future<void> _handleGenerateAI(BuildContext context, String sectionLabel,
       String loadingKey, List<PlanningDashboardItem> currentList) async {
     setState(() => _generatingStates[loadingKey] = true);
+    final messenger = ScaffoldMessenger.of(context);
 
     try {
       final data = ProjectDataHelper.getData(context);
@@ -449,12 +451,12 @@ class _PlanningCardsSectionState extends State<_PlanningCardsSection> {
         final updatedList = List<PlanningDashboardItem>.from(currentList)
           ..addAll(newItems);
 
-        await _updateList(context, loadingKey, updatedList);
+        await _updateList(this.context, loadingKey, updatedList);
       }
     } catch (e) {
       debugPrint('Error generating planning items: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
               content: Text('Failed to generate items: $e'),
               backgroundColor: Colors.red),

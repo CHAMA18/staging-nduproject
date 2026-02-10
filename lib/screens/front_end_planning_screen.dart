@@ -29,6 +29,7 @@ class _FrontEndPlanningScreenState extends State<FrontEndPlanningScreen> {
     });
   }
 
+  // ignore: unused_element
   static void open(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const FrontEndPlanningScreen()),

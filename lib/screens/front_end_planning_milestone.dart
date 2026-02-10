@@ -130,6 +130,7 @@ class _FrontEndPlanningMilestoneScreenState
   Future<void> _selectEndDate() async {
     final startDate = _parseDate(_startDateStr);
     final currentEndDate = _parseDate(_endDateStr);
+    final messenger = ScaffoldMessenger.of(context);
     final picked = await showDatePicker(
       context: context,
       initialDate: currentEndDate ?? (startDate ?? DateTime.now()).add(const Duration(days: 90)),
@@ -139,7 +140,7 @@ class _FrontEndPlanningMilestoneScreenState
     );
     if (picked != null) {
       if (startDate != null && picked.isBefore(startDate)) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           const SnackBar(
             content: Text('End date cannot be before start date'),
             backgroundColor: Colors.orange,
@@ -358,7 +359,6 @@ Generate milestones that cover the typical project lifecycle phases.''';
     
     try {
       final data = ProjectDataHelper.getData(context);
-      final projectContext = ProjectDataHelper.buildFepContext(data);
       
       final prompt = '''Based on the project information below, suggest appropriate start and end dates.
 

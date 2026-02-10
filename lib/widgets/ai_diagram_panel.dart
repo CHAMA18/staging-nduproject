@@ -13,27 +13,33 @@ class _DiagramPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // simple layered layout: compute levels by in-degree
+    // Simple layered layout: compute levels using a topological traversal.
+    // This is O(nodes + edges) and avoids unbounded loops on cyclic graphs.
     final nodes = model.nodes;
     final edges = model.edges;
-    final byId = {for (final n in nodes) n.id: n};
+    if (nodes.isEmpty) return;
+
     final incoming = <String, int>{for (final n in nodes) n.id: 0};
+    final outgoing = <String, List<DiagramEdge>>{
+      for (final n in nodes) n.id: <DiagramEdge>[],
+    };
     for (final e in edges) {
       if (incoming.containsKey(e.to)) incoming[e.to] = (incoming[e.to] ?? 0) + 1;
+      final bucket = outgoing[e.from];
+      if (bucket != null) bucket.add(e);
     }
     final level = <String, int>{};
-    final queue = <String>[];
-    incoming.forEach((id, deg) {
-      if (deg == 0) queue.add(id);
-    });
-    while (queue.isNotEmpty) {
-      final id = queue.removeAt(0);
+    final queue = <String>[...incoming.entries.where((e) => e.value == 0).map((e) => e.key)];
+    for (int qi = 0; qi < queue.length; qi++) {
+      final id = queue[qi];
       final currentLevel = level[id] ?? 0;
-      for (final e in edges.where((e) => e.from == id)) {
+      for (final e in outgoing[id] ?? const <DiagramEdge>[]) {
         final next = e.to;
+        if (!incoming.containsKey(next)) continue;
         final nextLevel = (level[next] ?? 0);
         if (currentLevel + 1 > nextLevel) level[next] = currentLevel + 1;
-        queue.add(next);
+        incoming[next] = (incoming[next] ?? 0) - 1;
+        if (incoming[next] == 0) queue.add(next);
       }
     }
     // group by level
@@ -73,6 +79,9 @@ class _DiagramPainter extends CustomPainter {
       ..color = const Color(0xFF9CA3AF)
       ..strokeWidth = 1.2
       ..style = PaintingStyle.stroke;
+    final arrowPaint = Paint()
+      ..color = const Color(0xFF9CA3AF)
+      ..style = PaintingStyle.fill;
     for (final e in edges) {
       final a = positions[e.from];
       final b = positions[e.to];
@@ -87,7 +96,6 @@ class _DiagramPainter extends CustomPainter {
 
       // arrow head
       const double arrow = 6;
-      final angle = (end - Offset(midX, end.dy)).direction;
       final p1 = end.translate(-arrow * 1.4, -arrow / 1.4);
       final p2 = end.translate(-arrow * 1.4, arrow / 1.4);
       final tri = Path()
@@ -95,7 +103,7 @@ class _DiagramPainter extends CustomPainter {
         ..lineTo(p1.dx, p1.dy)
         ..lineTo(p2.dx, p2.dy)
         ..close();
-      canvas.drawPath(tri, edgePaint..style = PaintingStyle.fill);
+      canvas.drawPath(tri, arrowPaint);
 
       if (e.label.trim().isNotEmpty) {
         textPainter.text = TextSpan(
@@ -245,9 +253,13 @@ class _AiDiagramPanelState extends State<AiDiagramPanel> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: CustomPaint(
-                painter: _DiagramPainter(_diagram!),
-                child: const SizedBox.expand(),
+              child: RepaintBoundary(
+                child: CustomPaint(
+                  painter: _DiagramPainter(_diagram!),
+                  isComplex: true,
+                  willChange: false,
+                  child: const SizedBox.expand(),
+                ),
               ),
             ),
           ),

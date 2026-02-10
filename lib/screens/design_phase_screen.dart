@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:html' as html show window;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -23,6 +22,7 @@ import 'package:ndu_project/widgets/design_management_widgets.dart';
 import 'package:ndu_project/widgets/design_phase_progress_indicator.dart';
 import 'package:ndu_project/services/design_phase_service.dart';
 import 'package:ndu_project/models/design_phase_models.dart';
+import 'package:ndu_project/utils/web_utils.dart';
 
 class DesignPhaseScreen extends StatefulWidget {
   const DesignPhaseScreen(
@@ -373,7 +373,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
 
   static String? _hexFromColor(Color? c) {
     if (c == null) return null;
-    final argb = c.value;
+    final argb = c.toARGB32();
     return '#${argb.toRadixString(16).padLeft(8, '0').toUpperCase()}';
   }
 
@@ -499,6 +499,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
     );
   }
 
+  // ignore: unused_element
   Widget _docChip(_DocItem d, {bool elevated = false}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
@@ -788,7 +789,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
     // For web platform, open in new tab since WebView is not supported
     if (kIsWeb) {
       // Open in new tab
-      html.window.open(url, '_blank');
+      openUrlInNewWindow(url);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Opening $title in new tab'),

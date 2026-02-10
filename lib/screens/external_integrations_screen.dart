@@ -106,9 +106,11 @@ class _ExternalIntegrationsScreenState
               child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () async {
+              final nav = Navigator.of(c);
               setState(() => _items.add({'name': name.text.trim()}));
               await _save();
-              Navigator.of(c).pop();
+              if (!mounted) return;
+              nav.pop();
             },
             child: const Text('Add'),
           ),

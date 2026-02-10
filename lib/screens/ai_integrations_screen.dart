@@ -46,21 +46,27 @@ class _AiIntegrationsScreenState extends State<AiIntegrationsScreen> {
     final provider = ProjectDataInherited.maybeOf(context);
     if (provider == null) return;
     if (_seeding) return;
+    final messenger = ScaffoldMessenger.of(context);
     setState(() => _seeding = true);
     _undoBeforeAi = _items.map((e) => Map<String, dynamic>.from(e)).toList();
     final ai = OpenAiServiceSecure();
     final ctx = '${provider.projectData.projectName} - ${provider.projectData.solutionTitle}';
     try {
-  final text = await ai.generateFepSectionText(section: 'AI Integrations', context: ctx, maxTokens: 600);
-  final sanitized = TextSanitizer.sanitizeAiText(text);
-  final lines = sanitized.split('\n').where((l) => l.trim().isNotEmpty).toList();
+      final text = await ai.generateFepSectionText(
+        section: 'AI Integrations',
+        context: ctx,
+        maxTokens: 600,
+      );
+      final sanitized = TextSanitizer.sanitizeAiText(text);
+      final lines =
+          sanitized.split('\n').where((l) => l.trim().isNotEmpty).toList();
       final parsed = lines.map((l) => {'name': l.trim(), 'notes': ''}).toList();
       setState(() => _items..clear()..addAll(parsed));
       await _save();
     } catch (e) {
       debugPrint('AI seed failed: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text('Regenerate failed: ${e.toString()}')),
         );
       }
@@ -83,10 +89,26 @@ class _AiIntegrationsScreenState extends State<AiIntegrationsScreen> {
 
   void _openAdd() {
     final name = TextEditingController();
+    final messenger = ScaffoldMessenger.of(context);
+    final nav = Navigator.of(context);
     showDialog(context: context, builder: (c) => AlertDialog(
       title: const Text('Add integration'),
       content: TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
-      actions: [TextButton(onPressed: () => Navigator.of(c).pop(), child: const Text('Cancel')), ElevatedButton(onPressed: () async { setState(() => _items.add({'name': name.text.trim()})); await _save(); Navigator.of(c).pop(); }, child: const Text('Add'))],
+      actions: [
+        TextButton(onPressed: () => Navigator.of(c).pop(), child: const Text('Cancel')),
+        ElevatedButton(
+          onPressed: () async {
+            setState(() => _items.add({'name': name.text.trim()}));
+            await _save();
+            if (!mounted) return;
+            nav.pop();
+            messenger.showSnackBar(
+              const SnackBar(content: Text('Integration added'), backgroundColor: Colors.green),
+            );
+          },
+          child: const Text('Add'),
+        ),
+      ],
     ));
   }
 

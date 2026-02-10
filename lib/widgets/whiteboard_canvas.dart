@@ -166,7 +166,7 @@ class _WhiteboardHeader extends StatelessWidget {
           const SizedBox(width: 12),
           Row(
             children: swatches.map((swatch) {
-              final isSelected = swatch.value == color.value && !eraser;
+              final isSelected = swatch.toARGB32() == color.toARGB32() && !eraser;
               return GestureDetector(
                 onTap: () => onSelectColor(swatch),
                 child: Container(

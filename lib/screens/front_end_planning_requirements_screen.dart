@@ -588,14 +588,11 @@ class _FrontEndPlanningRequirementsScreenState
 }
 
 class _RequirementRow {
-  _RequirementRow({required int number, this.onChanged})
-      : _number = number,
-        descriptionController = TextEditingController(),
+  _RequirementRow({required this.number, this.onChanged})
+      : descriptionController = TextEditingController(),
         commentsController = TextEditingController();
 
-  int _number;
-  int get number => _number;
-  set number(int value) => _number = value;
+  int number;
 
   final TextEditingController descriptionController;
   final TextEditingController commentsController;

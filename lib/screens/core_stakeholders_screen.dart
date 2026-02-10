@@ -53,7 +53,6 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
   late final OpenAiServiceSecure _openAi;
   bool _isGenerating = false;
   String? _error;
-  final bool _hintShown = false;
   bool _initiationExpanded = true;
   bool _businessCaseExpanded = true;
   bool _isAdmin = false;
@@ -932,6 +931,8 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
     // 1. Save data FIRST before validation check
     await _saveCoreStakeholdersData();
 
+    if (!mounted) return;
+
     // 2. Validate data completeness
     final provider = ProjectDataInherited.of(context);
     final projectData = provider.projectData;
@@ -963,7 +964,7 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
       }
     }
 
-    if (!mounted) return;
+    final nav = Navigator.of(context);
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -988,10 +989,9 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
         seconds: 1)); // Reduced delay from 3s to 1s for better UX
 
     if (!mounted) return;
-    Navigator.of(context).pop();
+    nav.pop();
 
-    Navigator.push(
-      context,
+    nav.push(
       MaterialPageRoute(
         builder: (context) => CostAnalysisScreen(
           notes: _notesController.text,
@@ -1302,21 +1302,25 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
 
   Future<void> _regenerateSingleStakeholderField(
       TextEditingController controller, int index, bool isInternal) async {
+    final provider = ProjectDataHelper.getProvider(context);
+    final messenger = ScaffoldMessenger.of(context);
     try {
       if (index >= _solutions.length) return;
-      
+
       final solution = _solutions[index];
       final solutionsToUse = [solution];
       final contextNotes = _notesController.text.trim();
-      
+
       final result = await _openAi.generateStakeholdersForSolutions(
         solutionsToUse,
         contextNotes: contextNotes,
       );
-      
+
+      if (!mounted) return;
+
       final internalMap = result['internal'] ?? <String, List<String>>{};
       final externalMap = result['external'] ?? <String, List<String>>{};
-      
+
       if (isInternal) {
         final internalStakeholders = internalMap[solution.title] ?? <String>[];
         controller.text = internalStakeholders.isEmpty
@@ -1328,33 +1332,29 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
             ? ''
             : externalStakeholders.map((e) => '- $e').join('\n');
       }
-      
-      final provider = ProjectDataHelper.getProvider(context);
+
       await provider.saveToFirebase(checkpoint: 'stakeholder_field_regenerated');
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Stakeholder field regenerated')),
-        );
-      }
+
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Stakeholder field regenerated')),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to regenerate: $e')),
-        );
-      }
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text('Failed to regenerate: $e')));
     }
   }
 
   Future<void> _generateStakeholders() async {
     if (_isGenerating) return;
+    final messenger = ScaffoldMessenger.of(context);
     setState(() {
       _isGenerating = true;
       _error = null;
     });
     try {
       final provider = ProjectDataHelper.getProvider(context);
-      
+
       // Add current values to history before regenerating
       for (int i = 0; i < _solutions.length; i++) {
         if (i < _internalStakeholderControllers.length) {
@@ -1366,12 +1366,11 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
           provider.addFieldToHistory(fieldKey, _externalStakeholderControllers[i].text, isAiGenerated: true);
         }
       }
-      
+
       // Get project context for fallback if solutions are empty
       final projectData = provider.projectData;
-      final projectName = projectData.projectName ?? '';
-      final projectDescription =
-          projectData.solutionDescription ?? projectData.businessCase ?? '';
+      final projectName = projectData.projectName;
+      final projectDescription = projectData.solutionDescription;
 
       // Use solutions if available, otherwise create a placeholder from project name
       final solutionsToUse = _solutions
@@ -1419,6 +1418,8 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
         contextNotes: contextNotes,
       );
 
+      if (!mounted) return;
+
       // Apply generated data to controllers (separate internal and external)
       final internalMap = result['internal'] ?? <String, List<String>>{};
       final externalMap = result['external'] ?? <String, List<String>>{};
@@ -1439,22 +1440,20 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
             ? ''
             : externalStakeholders.map((e) => '- $e').join('\n');
       }
-      
+
       // Auto-save after regeneration
       await provider.saveToFirebase(checkpoint: 'stakeholders_regenerated');
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Stakeholders regenerated successfully')),
-        );
-      }
+
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Stakeholders regenerated successfully')),
+      );
     } catch (e) {
       _error = e.toString();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to regenerate stakeholders: $e')),
-        );
-      }
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to regenerate stakeholders: $e')),
+      );
     } finally {
       if (mounted) {
         setState(() => _isGenerating = false);

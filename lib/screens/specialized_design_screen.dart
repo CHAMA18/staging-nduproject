@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -81,17 +80,9 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
           data.integrationFlows.isEmpty;
 
       if (isEmpty) {
-        final doc = await FirebaseFirestore.instance
-            .collection('projects')
-            .doc(projectId)
-            .get();
-        // Let's just use the logic from previous code for migration:
-        // final oldDoc = await FirebaseFirestore.instance.collection('projects').doc(projectId).get();
-        // But I don't want to import Firestore directly if I can avoid it?
-        // fine, I'll keep it clean. If it's empty, it's empty. migrating typical prototype data isn't always critical unless requested.
-        // User asked for "Review/Migrate Storage Consistency". So I SHOULD migrate.
-        // I'll assume the ProjectDataModel DOES NOT have this field, so I have to fetch raw.
-        // But wait, the previous code imported cloud_firestore. I should leave it if I need it for migration.
+        // No migration performed here: specialized design is stored under
+        // `projects/{id}/design_phase_sections/specialized_design`.
+        // Keeping this block makes the intent explicit without introducing extra reads.
       }
 
       setState(() {
@@ -265,11 +256,6 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Capture the critical, non-generic design decisions so engineers know exactly how to implement edge cases, secure zones, and high-scale components.',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                   ),
                   const SizedBox(height: 8),
                   Text(

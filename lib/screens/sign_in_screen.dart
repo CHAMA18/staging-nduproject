@@ -164,8 +164,9 @@ class _SignInScreenState extends State<SignInScreen> {
               try {
                 await FirebaseAuth.instance.currentUser
                     ?.sendEmailVerification();
-                if (mounted)
+                if (mounted) {
                   _showSnack('Verification email sent', Colors.green);
+                }
               } catch (e) {
                 if (mounted) _showSnack('Failed to resend: $e', Colors.red);
               }

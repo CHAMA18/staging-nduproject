@@ -1816,7 +1816,7 @@ class _AddContractDialogState extends State<AddContractDialog> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<ContractStatus>(
-              value: _status,
+              initialValue: _status,
               decoration: _dialogDecoration(label: 'Status'),
               items: ContractStatus.values
                   .map((option) => DropdownMenuItem(

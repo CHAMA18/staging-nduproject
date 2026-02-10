@@ -84,6 +84,7 @@ class _FrontEndPlanningSummaryEndScreenState extends State<FrontEndPlanningSumma
   }
 }
 
+// ignore: unused_element
 class _TopBar extends StatelessWidget {
   const _TopBar();
 

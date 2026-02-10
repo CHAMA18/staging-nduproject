@@ -100,6 +100,7 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
 
   void _openAdd() {
     final t = TextEditingController();
+    final navigator = Navigator.of(context);
     showDialog(
       context: context,
       builder: (c) => AlertDialog(
@@ -111,7 +112,8 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
             onPressed: () async {
               setState(() => _items.add({'recommendation': t.text.trim()}));
               await _save();
-              Navigator.of(c).pop();
+              if (!mounted) return;
+              navigator.pop();
             },
             child: const Text('Add'),
           ),

@@ -27,7 +27,9 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
   late TabController _tabController;
   String? _selectedProject;
 
+  // ignore: unused_field
   static const List<_Deliverable> _deliverables = [];
+  // ignore: unused_field
   static const List<_CommunicationPlan> _communications = [];
   static const List<String> _currencyOptions = ['USD', 'EUR', 'GBP', 'ZAR', 'NGN', 'KES', 'GHS'];
 
@@ -1732,6 +1734,7 @@ class _ProjectPlanOverviewCard extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _KeyDeliverablesCard extends StatelessWidget {
   const _KeyDeliverablesCard({required this.deliverables, required this.isMobile});
 
@@ -1920,6 +1923,7 @@ class _EmptyStateChip extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _CommunicationPlanCard extends StatelessWidget {
   const _CommunicationPlanCard({required this.communications, required this.isMobile});
 
@@ -2364,7 +2368,7 @@ class _EditableTable extends StatelessWidget {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: ConstrainedBox(
-        constraints: BoxConstraints(minWidth: columns.fold<double>(0, (sum, col) => sum + col.width)),
+        constraints: BoxConstraints(minWidth: columns.fold<double>(0, (total, col) => total + col.width)),
         child: Column(
           children: [
             header,

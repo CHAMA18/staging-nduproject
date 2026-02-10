@@ -186,9 +186,9 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
       
       // Get project context for fallback if solutions are empty
       final projectData = provider.projectData;
-      final projectName = projectData.projectName ?? '';
+      final projectName = projectData.projectName;
       final projectDescription =
-          projectData.solutionDescription ?? projectData.businessCase ?? '';
+          projectData.solutionDescription;
 
       // Use solutions if available, otherwise create a placeholder from project name
       final solutionsToUse = _solutions
@@ -1217,9 +1217,11 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
   }
 
   Future<void> _regenerateSingleTechField(TextEditingController controller, int index) async {
+    if (index >= _solutions.length) return;
+
+    final provider = ProjectDataHelper.getProvider(context);
+    final messenger = ScaffoldMessenger.of(context);
     try {
-      if (index >= _solutions.length) return;
-      
       final solution = _solutions[index];
       final solutionsToUse = [solution];
       final contextNotes = _notesController.text.trim();
@@ -1228,21 +1230,21 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
         solutionsToUse,
         contextNotes: contextNotes,
       );
+      if (!mounted) return;
       
       final tech = map[solution.title] ?? const <String>[];
       controller.text = tech.isEmpty ? '' : tech.map((e) => '- $e').join('\n');
       
-      final provider = ProjectDataHelper.getProvider(context);
       await provider.saveToFirebase(checkpoint: 'it_tech_field_regenerated');
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           const SnackBar(content: Text('IT tech field regenerated')),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text('Failed to regenerate: $e')),
         );
       }

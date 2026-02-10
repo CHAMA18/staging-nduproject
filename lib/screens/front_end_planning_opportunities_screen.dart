@@ -3,7 +3,6 @@ import 'package:ndu_project/screens/front_end_planning_contract_vendor_quotes_sc
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
-import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/widgets/content_text.dart';
@@ -1163,6 +1162,7 @@ class _ImpactBadge extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _EmptyStateCard extends StatelessWidget {
   final VoidCallback onAction;
   const _EmptyStateCard({required this.onAction});

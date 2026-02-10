@@ -165,26 +165,32 @@ class _AdminCouponsScreenState extends State<AdminCouponsScreen> {
   }
 
   Future<void> _showCreateCouponDialog(BuildContext context) async {
+    // Capture before await to avoid use_build_context_synchronously.
+    final messenger = ScaffoldMessenger.of(context);
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => const _CouponFormDialog(),
     );
 
-    if (result == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+    if (!mounted) return;
+    if (result == true) {
+      messenger.showSnackBar(
         const SnackBar(content: Text('Coupon created successfully'), backgroundColor: Colors.green),
       );
     }
   }
 
   Future<void> _showEditCouponDialog(BuildContext context, CouponModel coupon) async {
+    // Capture before await to avoid use_build_context_synchronously.
+    final messenger = ScaffoldMessenger.of(context);
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => _CouponFormDialog(coupon: coupon),
     );
 
-    if (result == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+    if (!mounted) return;
+    if (result == true) {
+      messenger.showSnackBar(
         const SnackBar(content: Text('Coupon updated successfully'), backgroundColor: Colors.green),
       );
     }

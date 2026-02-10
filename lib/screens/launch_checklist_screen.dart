@@ -2437,9 +2437,9 @@ class _StatusMetricData {
         'value': value,
         'annotation': annotation,
         'iconKey': iconKey,
-        'accentColor': accentColor.value,
-        'background': background.value,
-        'borderColor': borderColor.value,
+        'accentColor': accentColor.toARGB32(),
+        'background': background.toARGB32(),
+        'borderColor': borderColor.toARGB32(),
       };
 
   static List<_StatusMetricData> fromList(dynamic data) {
@@ -2452,9 +2452,9 @@ class _StatusMetricData {
         value: map['value']?.toString() ?? '',
         annotation: map['annotation']?.toString(),
         iconKey: map['iconKey']?.toString() ?? 'stacked',
-        accentColor: Color(map['accentColor'] is int ? map['accentColor'] as int : const Color(0xFF2563EB).value),
-        background: Color(map['background'] is int ? map['background'] as int : const Color(0xFFEFF6FF).value),
-        borderColor: Color(map['borderColor'] is int ? map['borderColor'] as int : const Color(0xFFD2E3FC).value),
+        accentColor: Color(map['accentColor'] is int ? map['accentColor'] as int : 0xFF2563EB),
+        background: Color(map['background'] is int ? map['background'] as int : 0xFFEFF6FF),
+        borderColor: Color(map['borderColor'] is int ? map['borderColor'] as int : 0xFFD2E3FC),
       );
     }).toList();
   }
@@ -2504,7 +2504,7 @@ class _MilestoneData {
         'detail': detail,
         'dateLabel': dateLabel,
         'badgeLabel': badgeLabel,
-        'badgeColor': badgeColor.value,
+        'badgeColor': badgeColor.toARGB32(),
         'iconKey': iconKey,
       };
 
@@ -2518,7 +2518,7 @@ class _MilestoneData {
         detail: map['detail']?.toString() ?? '',
         dateLabel: map['dateLabel']?.toString() ?? '',
         badgeLabel: map['badgeLabel']?.toString() ?? '',
-        badgeColor: Color(map['badgeColor'] is int ? map['badgeColor'] as int : const Color(0xFF2563EB).value),
+        badgeColor: Color(map['badgeColor'] is int ? map['badgeColor'] as int : 0xFF2563EB),
         iconKey: map['iconKey']?.toString() ?? 'present',
       );
     }).toList();
@@ -2569,8 +2569,8 @@ class _ApprovalItem {
         'detail': detail,
         'status': status,
         'iconKey': iconKey,
-        'iconColor': iconColor.value,
-        'iconBackground': iconBackground.value,
+        'iconColor': iconColor.toARGB32(),
+        'iconBackground': iconBackground.toARGB32(),
       };
 
   static List<_ApprovalItem> fromList(dynamic data) {
@@ -2583,8 +2583,8 @@ class _ApprovalItem {
         detail: map['detail']?.toString() ?? '',
         status: map['status']?.toString() ?? 'On track',
         iconKey: map['iconKey']?.toString() ?? 'check',
-        iconColor: Color(map['iconColor'] is int ? map['iconColor'] as int : const Color(0xFF16A34A).value),
-        iconBackground: Color(map['iconBackground'] is int ? map['iconBackground'] as int : const Color(0xFFDCFCE7).value),
+        iconColor: Color(map['iconColor'] is int ? map['iconColor'] as int : 0xFF16A34A),
+        iconBackground: Color(map['iconBackground'] is int ? map['iconBackground'] as int : 0xFFDCFCE7),
       );
     }).toList();
   }
@@ -2695,7 +2695,7 @@ class _TimelineStage {
         'detail': detail,
         'date': date,
         'iconKey': iconKey,
-        'accent': accent.value,
+        'accent': accent.toARGB32(),
       };
 
   static List<_TimelineStage> fromList(dynamic data) {
@@ -2708,7 +2708,7 @@ class _TimelineStage {
         detail: map['detail']?.toString() ?? '',
         date: map['date']?.toString() ?? '',
         iconKey: map['iconKey']?.toString() ?? 'factcheck',
-        accent: Color(map['accent'] is int ? map['accent'] as int : const Color(0xFF2563EB).value),
+        accent: Color(map['accent'] is int ? map['accent'] as int : 0xFF2563EB),
       );
     }).toList();
   }
@@ -2758,7 +2758,7 @@ class _HighlightItem {
         'detail': detail,
         'status': status,
         'iconKey': iconKey,
-        'accent': accent.value,
+        'accent': accent.toARGB32(),
         'ctaLabel': ctaLabel,
       };
 
@@ -2772,7 +2772,7 @@ class _HighlightItem {
         detail: map['detail']?.toString() ?? '',
         status: map['status']?.toString() ?? 'On track',
         iconKey: map['iconKey']?.toString() ?? 'campaign',
-        accent: Color(map['accent'] is int ? map['accent'] as int : const Color(0xFF6366F1).value),
+        accent: Color(map['accent'] is int ? map['accent'] as int : 0xFF6366F1),
         ctaLabel: map['ctaLabel']?.toString(),
       );
     }).toList();
@@ -2822,7 +2822,7 @@ class _InsightCardData {
         'title': title,
         'subtitle': subtitle,
         'tag': tag,
-        'tagColor': tagColor.value,
+        'tagColor': tagColor.toARGB32(),
         'entries': entries.map((e) => e.toMap()).toList(),
         'footerLabel': footerLabel,
       };
@@ -2836,7 +2836,7 @@ class _InsightCardData {
         title: map['title']?.toString() ?? '',
         subtitle: map['subtitle']?.toString() ?? '',
         tag: map['tag']?.toString() ?? '',
-        tagColor: Color(map['tagColor'] is int ? map['tagColor'] as int : const Color(0xFF2563EB).value),
+        tagColor: Color(map['tagColor'] is int ? map['tagColor'] as int : 0xFF2563EB),
         entries: _InsightEntryData.fromList(map['entries']),
         footerLabel: map['footerLabel']?.toString(),
       );
@@ -2883,7 +2883,7 @@ class _InsightEntryData {
         'label': label,
         'detail': detail,
         'iconKey': iconKey,
-        'iconColor': iconColor.value,
+        'iconColor': iconColor.toARGB32(),
         'status': status,
       };
 
@@ -2896,7 +2896,7 @@ class _InsightEntryData {
         label: map['label']?.toString() ?? '',
         detail: map['detail']?.toString() ?? '',
         iconKey: map['iconKey']?.toString() ?? 'checklist',
-        iconColor: Color(map['iconColor'] is int ? map['iconColor'] as int : const Color(0xFF2563EB).value),
+        iconColor: Color(map['iconColor'] is int ? map['iconColor'] as int : 0xFF2563EB),
         status: map['status']?.toString(),
       );
     }).toList();

@@ -240,6 +240,7 @@ class _BottomOverlay extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _TopBar extends StatelessWidget {
   const _TopBar();
 

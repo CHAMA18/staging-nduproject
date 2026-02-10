@@ -960,10 +960,6 @@ class _LandingScreenState extends State<LandingScreen>
                         builder: (context, constraints) {
                           final bool horizontalLayout =
                               constraints.maxWidth >= 720;
-                          final bool twoColumnCards =
-                              constraints.maxWidth >= 560;
-                          final bool threeColumnCards =
-                              constraints.maxWidth >= 980;
                           const double cardSpacing = 18;
 
                           return SingleChildScrollView(
@@ -1047,8 +1043,6 @@ class _LandingScreenState extends State<LandingScreen>
                                     final bool shouldUseTwoColumns =
                                         availableWidth >= 560 &&
                                             availableWidth < 980;
-                                    final bool shouldUseOneColumn =
-                                        availableWidth < 560;
 
                                     final EdgeInsets cardPadding =
                                         EdgeInsets.symmetric(
@@ -1128,6 +1122,7 @@ class _LandingScreenState extends State<LandingScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildExecutiveProgramCard() {
     final List<Map<String, dynamic>> segments = [
       {
@@ -1303,6 +1298,7 @@ class _LandingScreenState extends State<LandingScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _floatingChip(
       {required IconData icon, required String label, required Color color}) {
     return Container(
@@ -1329,6 +1325,7 @@ class _LandingScreenState extends State<LandingScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _floatingPortfolioCard({double? width}) {
     final card = Container(
       padding: const EdgeInsets.all(20),
@@ -1404,6 +1401,7 @@ class _LandingScreenState extends State<LandingScreen>
     return width != null ? SizedBox(width: width, child: card) : card;
   }
 
+  // ignore: unused_element
   Widget _floatingTimelineCard({double? width}) {
     final card = Container(
       padding: const EdgeInsets.all(18),
@@ -2237,6 +2235,7 @@ class _LandingScreenState extends State<LandingScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildTestimonialsSection(BuildContext context, bool wideLayout) {
     final testimonials = [
       const _TestimonialData(
@@ -3659,6 +3658,7 @@ class _FooterPill extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _SocialButton extends StatelessWidget {
   const _SocialButton({required this.icon, required this.label});
 
@@ -3687,6 +3687,7 @@ class _SocialButton extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _TrustedByBadge extends StatelessWidget {
   const _TrustedByBadge({required this.label});
 
@@ -3718,6 +3719,7 @@ class _MetricData {
     required this.label,
     required this.caption,
     this.suffix = '',
+    // ignore: unused_element_parameter
     this.decimals = 0,
   });
 

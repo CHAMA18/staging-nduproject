@@ -77,7 +77,7 @@ class CharterExecutiveSnapshot extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.6),
+            color: Colors.white.withValues(alpha: 0.6),
             fontSize: 11,
             fontWeight: FontWeight.w600,
             letterSpacing: 1.0,
@@ -100,7 +100,7 @@ class CharterExecutiveSnapshot extends StatelessWidget {
     return Container(
       height: 40,
       width: 1,
-      color: Colors.white.withOpacity(0.2),
+      color: Colors.white.withValues(alpha: 0.2),
     );
   }
 
@@ -741,23 +741,12 @@ class CharterFinancialOverview extends StatelessWidget {
     final costStr = NumberFormat.simpleCurrency(name: data!.costBenefitCurrency)
         .format(cost);
 
-    // Attempt to parse benefits
-    double benefits = 0.0;
+    // Savings target is currently displayed as text; keep parsing logic out until we need numeric calculations again.
     String benefitsStr = 'TBD';
     if (data!.costAnalysisData != null &&
         data!.costAnalysisData!.savingsTarget.isNotEmpty) {
       benefitsStr = data!.costAnalysisData!.savingsTarget;
-      // Try to parse number from string if possible for Net calc
-      // This is a rough heuristic as savingsTarget is a String
-      final clean = benefitsStr.replaceAll(RegExp(r'[^0-9.]'), '');
-      if (clean.isNotEmpty) {
-        benefits = double.tryParse(clean) ?? 0.0;
-      }
     }
-
-    final netWebefit = benefits - cost;
-    final netStr = NumberFormat.simpleCurrency(name: data!.costBenefitCurrency)
-        .format(netWebefit);
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -1078,9 +1067,9 @@ class CharterRisks extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Text('$count $label',
           style: TextStyle(
@@ -1204,7 +1193,7 @@ class CharterRisks extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(4)),
       child: Text(impact,
           style: TextStyle(
@@ -1390,7 +1379,7 @@ class CharterMilestoneVisualizer extends StatelessWidget {
                                 boxShadow: [
                                   if (isFuture)
                                     BoxShadow(
-                                        color: Colors.grey.withOpacity(0.1),
+                                        color: Colors.grey.withValues(alpha: 0.1),
                                         blurRadius: 4,
                                         offset: const Offset(0, 2))
                                 ],
@@ -1859,7 +1848,7 @@ class CharterTechnicalEnvironment extends StatelessWidget {
           decoration: BoxDecoration(
               color: bg,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: color.withOpacity(0.2))),
+              border: Border.all(color: color.withValues(alpha: 0.2))),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1870,7 +1859,7 @@ class CharterTechnicalEnvironment extends StatelessWidget {
                   style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: color.withOpacity(0.8))),
+                      color: color.withValues(alpha: 0.8))),
               const SizedBox(height: 8),
               Text(subtitle,
                   style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),

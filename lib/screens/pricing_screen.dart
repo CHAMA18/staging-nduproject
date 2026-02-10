@@ -21,21 +21,24 @@ class PricingScreen extends StatefulWidget {
 class _PricingScreenState extends State<PricingScreen> {
   static final NumberFormat _currencyFormatter = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
   _PlanTier _selectedTier = _PlanTier.program;
+  // ignore: unused_field
   bool _isCheckingSubscription = false;
   bool _isAnnual = false;
 
   Future<void> _handlePlanSelection(BuildContext context, _PricingPlan plan) async {
     setState(() => _isCheckingSubscription = true);
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
     
     try {
       final isBasicPlan = plan.tier == _PlanTier.basicProject;
       final subscriptionTier = _convertToSubscriptionTier(plan.tier);
       final hasSubscription = await SubscriptionService.hasActiveSubscription(tier: subscriptionTier);
       
-      if (!mounted) return;
+      if (!context.mounted) return;
       
       if (hasSubscription) {
-        _navigateToManagementLevel(context, isBasicPlan: isBasicPlan);
+        _navigateToManagementLevel(navigator, isBasicPlan: isBasicPlan);
       } else {
         final price = _priceForPlan(plan);
         final paymentResult = await PaymentDialog.show(
@@ -46,24 +49,24 @@ class _PricingScreenState extends State<PricingScreen> {
           displayPrice: price.price,
           displayPeriod: _isAnnual ? 'Billed annually' : 'Billed monthly',
           onPaymentComplete: () {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Subscription activated successfully!'),
-                  backgroundColor: Color(0xFF22C55E),
-                ),
-              );
-            }
+            if (!mounted) return;
+            messenger.showSnackBar(
+              const SnackBar(
+                content: Text('Subscription activated successfully!'),
+                backgroundColor: Color(0xFF22C55E),
+              ),
+            );
           },
         );
         
-        if (paymentResult && mounted) {
-          _navigateToManagementLevel(context, isBasicPlan: isBasicPlan);
+        if (!context.mounted) return;
+        if (paymentResult) {
+          _navigateToManagementLevel(navigator, isBasicPlan: isBasicPlan);
         }
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: Text('Error checking subscription: $e'), backgroundColor: Colors.red),
       );
     } finally {
@@ -84,11 +87,11 @@ class _PricingScreenState extends State<PricingScreen> {
     }
   }
   
-  void _navigateToManagementLevel(BuildContext context, {bool isBasicPlan = false}) {
+  void _navigateToManagementLevel(NavigatorState navigator, {bool isBasicPlan = false}) {
     final screen = isBasicPlan
         ? const BasicPlanDashboardScreen()
         : const ManagementLevelScreen();
-    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+    navigator.push(MaterialPageRoute(builder: (_) => screen));
   }
 
   _PlanPrice _priceForPlan(_PricingPlan plan) {

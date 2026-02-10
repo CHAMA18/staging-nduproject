@@ -1,6 +1,8 @@
-/// Mock Authentication Service
-/// This is a temporary bypass to allow the app to work 
-/// while Firebase authentication platform channel issues are resolved
+import 'package:flutter/foundation.dart';
+
+// Mock Authentication Service
+// This is a temporary bypass to allow the app to work
+// while Firebase authentication platform channel issues are resolved
 class MockAuthService {
   static bool _isAuthenticated = false;
   static String? _currentUserEmail;
@@ -42,10 +44,10 @@ class MockAuthService {
           ? '$firstName $lastName'
           : firstName ?? 'User';
       
-      print('Mock authentication successful for: $email');
+      if (kDebugMode) debugPrint('Mock authentication successful for: $email');
       return true;
     } catch (e) {
-      print('Mock authentication failed: $e');
+      if (kDebugMode) debugPrint('Mock authentication failed: $e');
       rethrow;
     }
   }
@@ -61,10 +63,10 @@ class MockAuthService {
       _currentUserEmail = 'user@gmail.com';
       _currentUserName = 'Google User';
       
-      print('Mock Google authentication successful');
+      if (kDebugMode) debugPrint('Mock Google authentication successful');
       return true;
     } catch (e) {
-      print('Mock Google authentication failed: $e');
+      if (kDebugMode) debugPrint('Mock Google authentication failed: $e');
       rethrow;
     }
   }
@@ -88,10 +90,10 @@ class MockAuthService {
       _currentUserEmail = email;
       _currentUserName = 'Returning User';
       
-      print('Mock sign in successful for: $email');
+      if (kDebugMode) debugPrint('Mock sign in successful for: $email');
       return true;
     } catch (e) {
-      print('Mock sign in failed: $e');
+      if (kDebugMode) debugPrint('Mock sign in failed: $e');
       rethrow;
     }
   }
@@ -101,7 +103,7 @@ class MockAuthService {
     _isAuthenticated = false;
     _currentUserEmail = null;
     _currentUserName = null;
-    print('Mock sign out successful');
+    if (kDebugMode) debugPrint('Mock sign out successful');
   }
 
   // Email validation helper

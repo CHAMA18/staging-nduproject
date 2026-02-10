@@ -1389,7 +1389,9 @@ class _RadioOptionRow extends StatelessWidget {
           children: [
             Radio<String>(
               value: label,
+              // ignore: deprecated_member_use
               groupValue: groupValue,
+              // ignore: deprecated_member_use
               onChanged: (_) => onChanged(label),
               activeColor: const Color(0xFF2563EB),
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -3671,7 +3673,7 @@ class _ContractingStatusScreenState extends State<ContractingStatusScreen> {
   void _applySummaryFromContracts() {
     if (_contracts.isEmpty) return;
     final totalValue =
-        _contracts.fold<double>(0.0, (sum, c) => sum + c.estimatedValue);
+        _contracts.fold<double>(0.0, (total, c) => total + c.estimatedValue);
     final averageValue = totalValue / _contracts.length;
     final completed = _contracts
         .where((c) => c.status.toLowerCase().contains('complete'))
@@ -4888,7 +4890,7 @@ class _BudgetImpactData {
         'originalBudget': originalBudget,
         'currentEstimate': currentEstimate,
         'variance': variance,
-        'varianceColor': varianceColor.value,
+        'varianceColor': varianceColor.toARGB32(),
       };
 }
 
@@ -5509,7 +5511,6 @@ class _TimelineRow extends StatelessWidget {
       case _TimelineStatusState.behindSchedule:
         return const Color(0xFFF59E0B);
       case _TimelineStatusState.notStarted:
-      default:
         return const Color(0xFFE5E7EB);
     }
   }
@@ -6708,7 +6709,7 @@ class _MilestoneEntry {
   Map<String, dynamic> toJson() => {
         'label': label,
         'date': date,
-        'statusColor': statusColor.value,
+        'statusColor': statusColor.toARGB32(),
       };
 }
 
@@ -7005,7 +7006,7 @@ class _ContractMilestoneData {
   Map<String, dynamic> toJson() => {
         'title': title,
         'value': value,
-        'accentColor': accentColor.value,
+        'accentColor': accentColor.toARGB32(),
         'emphasize': emphasize,
       };
 }
@@ -7809,7 +7810,7 @@ class _ContractDocumentData {
   Map<String, dynamic> toJson() => {
         'title': title,
         'details': details,
-        'accentColor': accentColor.value,
+        'accentColor': accentColor.toARGB32(),
         'iconCodePoint': icon.codePoint,
       };
 }
@@ -8096,4 +8097,5 @@ class _TimelineStepData {
   final _TimelineStatus status;
 }
 
+// ignore: unused_field
 enum _TimelineStatus { current, upcoming }

@@ -64,7 +64,7 @@ class _FrontEndPlanningAllowanceScreenState
       // or just use a separate field if available, but FEP data has `allowance` string.
       // I'll use `allowance` for general notes text.
 
-      this._allowanceItems = List.from(data.frontEndPlanning.allowanceItems);
+      _allowanceItems = List.from(data.frontEndPlanning.allowanceItems);
 
       _notes.addListener(_syncNotesToProvider);
       _isSyncReady = true;
@@ -188,7 +188,7 @@ class _FrontEndPlanningAllowanceScreenState
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: selectedType,
+                initialValue: selectedType,
                 decoration: const InputDecoration(
                     labelText: 'Type', border: OutlineInputBorder()),
                 items: ['Contingency', 'Training', 'Staffing', 'Tech', 'Other']
@@ -271,7 +271,7 @@ class _FrontEndPlanningAllowanceScreenState
 
       setState(() {
         if (isEditing) {
-          final index = _allowanceItems.indexWhere((i) => i.id == item!.id);
+          final index = _allowanceItems.indexWhere((i) => i.id == item.id);
           if (index != -1) _allowanceItems[index] = newItem;
         } else {
           _allowanceItems.add(newItem);

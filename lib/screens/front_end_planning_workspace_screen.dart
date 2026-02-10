@@ -153,6 +153,10 @@ class _FrontEndPlanningWorkspaceScreenState
   Future<void> _generateList(String type, String sectionLabel) async {
     if (_isGenerating) return;
 
+    // Capture messenger up front to avoid using context after awaits.
+    final messenger = ScaffoldMessenger.of(context);
+    final projectData = ProjectDataHelper.getData(context);
+
     // Check if list is not empty
     List<String> currentList = [];
     if (type == 'scope') currentList = _withinScope;
@@ -185,9 +189,8 @@ class _FrontEndPlanningWorkspaceScreenState
     setState(() => _isGenerating = true);
 
     try {
-      final data = ProjectDataHelper.getData(context);
       final contextStr =
-          ProjectDataHelper.buildFepContext(data, sectionLabel: 'Details');
+          ProjectDataHelper.buildFepContext(projectData, sectionLabel: 'Details');
 
       final items = await _openAi.generatePlanningItems(
         section: sectionLabel,
@@ -211,13 +214,13 @@ class _FrontEndPlanningWorkspaceScreenState
 
       _syncLists();
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
             content: Text('Generated ${items.length} items for $sectionLabel')),
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text('Error generating items: $e')),
         );
       }
@@ -506,7 +509,7 @@ class _ListEditorCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -518,10 +521,12 @@ class _ListEditorCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.05),
+              color: color.withValues(alpha: 0.05),
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(12)),
-              border: Border(bottom: BorderSide(color: color.withOpacity(0.1))),
+              border: Border(
+                bottom: BorderSide(color: color.withValues(alpha: 0.1)),
+              ),
             ),
             child: Row(
               children: [
@@ -532,8 +537,7 @@ class _ListEditorCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: color.withOpacity(
-                        0.8), // Darker shade approximation or just allow generic
+                    color: color.withValues(alpha: 0.8),
                   ),
                 ),
                 const Spacer(),

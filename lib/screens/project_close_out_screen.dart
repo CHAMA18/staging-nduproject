@@ -322,6 +322,7 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
 
 enum _CloseOutView { longForm, summarized }
 
+// ignore: unused_element
 class _CloseOutNavItem extends StatelessWidget {
   const _CloseOutNavItem({required this.label, required this.selected, required this.onTap});
 

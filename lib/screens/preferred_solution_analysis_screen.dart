@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:ndu_project/widgets/header_banner_image.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
@@ -1152,6 +1153,7 @@ class _PreferredSolutionAnalysisScreenState
     }
   }
 
+  // ignore: unused_element
   Widget _buildSelectedSolutionIndicator(ProjectDataModel projectData) {
     final preferredAnalysis = projectData.preferredSolutionAnalysis;
     final selectedTitle = preferredAnalysis?.selectedSolutionTitle ?? '';
@@ -1728,6 +1730,7 @@ class _PreferredSolutionAnalysisScreenState
     );
   }
 
+  // ignore: unused_element
   Widget _buildFullCostsSection(List<AiCostItem> items) {
     if (items.isEmpty) {
       return Column(
@@ -1979,6 +1982,7 @@ class _PreferredSolutionAnalysisScreenState
     );
   }
 
+  // ignore: unused_element
   Widget _buildComparisonTable(ProjectDataModel projectData) {
     // Define the categories for comparison
     final categories = [
@@ -2331,6 +2335,7 @@ class _PreferredSolutionAnalysisScreenState
     );
   }
 
+  // ignore: unused_element
   Widget _buildComparisonCellClickable({
     required String category,
     required int index,
@@ -2415,8 +2420,10 @@ class _PreferredSolutionAnalysisScreenState
   }
 
   bool _isSavingPreferredSelection = false;
+  // ignore: unused_field
   int? _savingPreferredIndex;
 
+  // ignore: unused_element
   Future<void> _confirmSelectPreferredFromCard({
     required int index,
     required String title,
@@ -2571,11 +2578,12 @@ class _PreferredSolutionAnalysisScreenState
         SnackBar(content: Text('Failed to select solution: $e')),
       );
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _isSavingPreferredSelection = false;
-        _savingPreferredIndex = null;
-      });
+      if (mounted) {
+        setState(() {
+          _isSavingPreferredSelection = false;
+          _savingPreferredIndex = null;
+        });
+      }
     }
   }
 
@@ -2585,7 +2593,7 @@ class _PreferredSolutionAnalysisScreenState
     final analysis = _analysis[index];
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => PreferredSolutionDetailsScreen(
+        builder: (_) => _PreferredSolutionDetailsScreen(
           analysis: analysis,
           index: index,
           onSelectPreferred: () => _confirmSelectPreferredFromDetails(
@@ -2628,6 +2636,7 @@ class _PreferredSolutionAnalysisScreenState
     await _selectPreferredAndContinue(index: index);
   }
 
+  // ignore: unused_element
   void _showSolutionDetailsDialog(_SolutionAnalysisData analysis, int index) {
     final provider = ProjectDataHelper.getProvider(context);
     final projectData = provider.projectData;
@@ -3376,7 +3385,7 @@ class _PreferredSolutionAnalysisScreenState
     if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => PreferredSolutionComparisonScreen(
+        builder: (_) => _PreferredSolutionComparisonScreen(
           notes: _notesController.text,
           analysis: analysis,
           solutions: _solutions
@@ -3495,6 +3504,10 @@ class _PreferredSolutionAnalysisScreenState
     required AiSolutionItem selectedSolution,
     required String projectName,
   }) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
+
     final filteredSolutions = _solutions
         .map((solution) => AiSolutionItem(
             title: solution.title.trim(),
@@ -3503,7 +3516,7 @@ class _PreferredSolutionAnalysisScreenState
         .toList();
 
     if (filteredSolutions.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(
             content:
                 Text('Add at least one solution option before continuing.')),
@@ -3517,7 +3530,7 @@ class _PreferredSolutionAnalysisScreenState
 
     if (user == null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
           const SnackBar(content: Text('Sign in to save your project.')));
       return;
     }
@@ -3537,7 +3550,7 @@ class _PreferredSolutionAnalysisScreenState
           ownerId: user.uid, name: projectName.trim());
       if (existing && mounted) {
         setState(() => _projectNameError = null);
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           const SnackBar(
             content: Text(
               'Project name already exists. Continuing anyway (projects can share the same name).',
@@ -3553,7 +3566,7 @@ class _PreferredSolutionAnalysisScreenState
     if (mounted) {
       dialogShown = true;
       showDialog<void>(
-        context: context,
+        context: navigator.context,
         barrierDismissible: false,
         builder: (_) => const Center(child: CircularProgressIndicator()),
       );
@@ -3573,22 +3586,21 @@ class _PreferredSolutionAnalysisScreenState
         checkpointRoute: 'project_decision_summary',
       );
     } catch (error, stack) {
-      // ignore: avoid_print
-      print('Failed to create project: $error\n$stack');
+      if (kDebugMode) debugPrint('Failed to create project: $error\n$stack');
       if (dialogShown && mounted) {
-        Navigator.of(context, rootNavigator: true).pop();
+        rootNavigator.pop();
       }
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
           const SnackBar(content: Text('Unable to save project. Try again.')));
       return;
     }
 
     if (dialogShown && mounted) {
-      Navigator.of(context, rootNavigator: true).pop();
+      rootNavigator.pop();
     }
 
-    Navigator.of(context).push(
+    navigator.push(
       MaterialPageRoute(
         builder: (_) => ProjectDecisionSummaryScreen(
           projectName: projectName,
@@ -4063,13 +4075,14 @@ class _ProjectOptionCard extends StatelessWidget {
   }
 }
 
-class PreferredSolutionComparisonScreen extends StatelessWidget {
+class _PreferredSolutionComparisonScreen extends StatelessWidget {
   final String notes;
   final List<_SolutionAnalysisData> analysis;
   final List<AiSolutionItem> solutions;
   final String businessCase;
 
-  const PreferredSolutionComparisonScreen({
+  const _PreferredSolutionComparisonScreen({
+    // ignore: unused_element_parameter
     super.key,
     required this.notes,
     required this.analysis,
@@ -4794,8 +4807,9 @@ class _ComparisonContent extends StatelessWidget {
   }
 }
 
-class PreferredSolutionDetailsScreen extends StatefulWidget {
-  const PreferredSolutionDetailsScreen({
+class _PreferredSolutionDetailsScreen extends StatefulWidget {
+  const _PreferredSolutionDetailsScreen({
+    // ignore: unused_element_parameter
     super.key,
     required this.analysis,
     required this.index,
@@ -4807,12 +4821,12 @@ class PreferredSolutionDetailsScreen extends StatefulWidget {
   final Future<void> Function() onSelectPreferred;
 
   @override
-  State<PreferredSolutionDetailsScreen> createState() =>
+  State<_PreferredSolutionDetailsScreen> createState() =>
       _PreferredSolutionDetailsScreenState();
 }
 
 class _PreferredSolutionDetailsScreenState
-    extends State<PreferredSolutionDetailsScreen> {
+    extends State<_PreferredSolutionDetailsScreen> {
   _SolutionAnalysisData get analysis => widget.analysis;
   int get index => widget.index;
   Future<void> Function() get onSelectPreferred => widget.onSelectPreferred;

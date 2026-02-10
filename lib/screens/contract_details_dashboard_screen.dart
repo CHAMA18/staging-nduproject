@@ -467,13 +467,11 @@ class _GhostButton extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onPressed,
-    this.isSecondary = false,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onPressed;
-  final bool isSecondary;
 
   @override
   Widget build(BuildContext context) {

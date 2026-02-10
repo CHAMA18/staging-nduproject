@@ -396,9 +396,8 @@ class _StepTile extends StatelessWidget {
   final int step;
   final String title;
   final String subtitle;
-  final VoidCallback? onPressed;
   const _StepTile(
-      {required this.step, required this.title, required this.subtitle, this.onPressed});
+      {required this.step, required this.title, required this.subtitle});
   @override
   Widget build(BuildContext context) {
     return Container(

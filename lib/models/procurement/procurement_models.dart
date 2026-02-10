@@ -249,6 +249,7 @@ class ProcurementItemModel {
 /// Status of a contract
 enum ContractStatus {
   draft,
+  // ignore: constant_identifier_names
   under_review,
   approved,
   executed,

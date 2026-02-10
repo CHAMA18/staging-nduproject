@@ -1548,6 +1548,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
       return;
     }
 
+    final messenger = ScaffoldMessenger.of(context);
     setState(() => _isLoadingSolutions = true);
 
     try {
@@ -1582,25 +1583,25 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
 
       await _saveSolutions();
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('All solutions regenerated successfully')),
-        );
-      }
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('All solutions regenerated successfully')),
+      );
     } catch (e) {
-      if (mounted) {
-        setState(() => _isLoadingSolutions = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to regenerate solutions: $e')),
-        );
-      }
+      if (!mounted) return;
+      setState(() => _isLoadingSolutions = false);
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to regenerate solutions: $e')),
+      );
     }
   }
 
   Future<void> _regenerateSolutionField(
       SolutionRow solution, String fieldName) async {
     if (_incomingBusinessCase.trim().isEmpty) return;
+
+    final provider = ProjectDataHelper.getProvider(context);
+    final messenger = ScaffoldMessenger.of(context);
 
     try {
       String newValue;
@@ -1615,7 +1616,6 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
       }
 
       // Add to history
-      final provider = ProjectDataHelper.getProvider(context);
       final fieldKey = 'solution_${solution.id}_$fieldName';
       provider.addFieldToHistory(
           fieldKey,
@@ -1633,17 +1633,13 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
 
       await _saveSolutions();
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Field regenerated successfully')),
-        );
-      }
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Field regenerated successfully')),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to regenerate field: $e')),
-        );
-      }
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text('Failed to regenerate field: $e')));
     }
   }
 

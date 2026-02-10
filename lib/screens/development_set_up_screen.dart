@@ -655,7 +655,8 @@ class _EditableTable extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final totalWidth = columns.fold<double>(0, (sum, col) => sum + col.width);
+        final totalWidth =
+            columns.fold<double>(0, (total, col) => total + col.width);
         final minWidth = constraints.maxWidth > totalWidth ? constraints.maxWidth : totalWidth;
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,

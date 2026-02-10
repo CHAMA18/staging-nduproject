@@ -7,8 +7,6 @@ import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
-import 'project_framework_screen.dart';
-import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/services/project_route_registry.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
@@ -587,7 +585,7 @@ class _WorkBreakdownStructureBodyState
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -670,7 +668,7 @@ class _WorkBreakdownStructureBodyState
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: (_kAccentColor.withOpacity(0.2)),
+                          color: (_kAccentColor.withValues(alpha: 0.2)),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: const Icon(Icons.add,
@@ -694,7 +692,7 @@ class _WorkBreakdownStructureBodyState
         width: 280,
         height: 100,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.4),
+          color: Colors.white.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: _kCardBorder, style: BorderStyle.none),
         ),

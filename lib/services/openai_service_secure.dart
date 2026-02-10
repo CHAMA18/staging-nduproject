@@ -2451,7 +2451,7 @@ $c
       }
       return _mergeWithFallbackCost(solutions, result);
     } catch (e) {
-      print('generateCostBreakdownForSolutions failed: $e');
+      if (kDebugMode) debugPrint('generateCostBreakdownForSolutions failed: $e');
       return _fallbackCostBreakdown(solutions);
     }
   }
@@ -2572,7 +2572,7 @@ Context notes (optional): $notes
           (parsed['project_value'] ?? parsed) as Map<String, dynamic>;
       return AiProjectValueInsights.fromMap(valueMap);
     } catch (e) {
-      print('generateProjectValueInsights failed: $e');
+      if (kDebugMode) debugPrint('generateProjectValueInsights failed: $e');
       return _fallbackProjectValueInsights(solutions);
     }
   }
@@ -2891,7 +2891,7 @@ Return ONLY JSON.
       }
       return scenarios;
     } catch (e) {
-      print('generateBenefitSavingsSuggestions failed: $e');
+      if (kDebugMode) debugPrint('generateBenefitSavingsSuggestions failed: $e');
       return _fallbackSavingsSuggestions(items, currency: currency);
     }
   }
@@ -3033,7 +3033,7 @@ Remember: Return ONLY a JSON object with key "savings_scenarios".
       }
       return _mergeWithFallbackInfra(solutions, result);
     } catch (e) {
-      print('generateInfrastructureForSolutions failed: $e');
+      if (kDebugMode) debugPrint('generateInfrastructureForSolutions failed: $e');
       return _fallbackInfrastructure(solutions);
     }
   }
@@ -3224,7 +3224,7 @@ Context notes (optional): $notes
       return _mergeWithFallbackStakeholders(
           solutions, internalResult, externalResult);
     } catch (e) {
-      print('generateStakeholdersForSolutions failed: $e');
+      if (kDebugMode) debugPrint('generateStakeholdersForSolutions failed: $e');
       return _fallbackStakeholders(solutions);
     }
   }
@@ -3552,7 +3552,7 @@ Make each suggestion:
           ? _fallbackSingleRiskSuggestions(solutionTitle, riskNumber)
           : suggestions;
     } catch (e) {
-      print('generateSingleRiskSuggestions failed: $e');
+      if (kDebugMode) debugPrint('generateSingleRiskSuggestions failed: $e');
       return _fallbackSingleRiskSuggestions(solutionTitle, riskNumber);
     }
   }
@@ -3661,7 +3661,7 @@ $escaped
         if (summary.isNotEmpty) return summary;
       }
     } catch (e) {
-      print('generateSsherPlanSummary failed: $e');
+      if (kDebugMode) debugPrint('generateSsherPlanSummary failed: $e');
     }
 
     return _fallbackSsherSummary(trimmedContext);
@@ -3725,7 +3725,7 @@ $escaped
         }
       }
     } catch (e) {
-      print('generateSsherEntries failed: $e');
+      if (kDebugMode) debugPrint('generateSsherEntries failed: $e');
     }
 
     return _fallbackSsherEntries(trimmedContext, itemsPerCategory);
@@ -3792,7 +3792,7 @@ $escaped
         }
       }
     } catch (e) {
-      print('generateLaunchPhaseEntries failed: $e');
+      if (kDebugMode) debugPrint('generateLaunchPhaseEntries failed: $e');
     }
 
     return _fallbackLaunchEntries(trimmedContext, sections, itemsPerSection);

@@ -22,7 +22,7 @@ import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
 /// - Top bar with back/forward, centered title, and user chip
 /// - Rounded notes input
 /// - Section title: Project Opportunities (List out opportunities that would benefit the project here)
-/// - Table with headers: No | Potential Opportunity | Discipline | Stakeholder | Potential Cost | Potential Cost
+/// - Table with headers: No | Potential Opportunity | Discipline | Stakeholder | Potential Cost | Potential Cost | Apply
 /// - Three sample rows (1..3)
 /// - Bottom-left circular info icon
 /// - Bottom-right yellow Submit pill button and blue AI hint card (as shown)
@@ -47,7 +47,7 @@ class _FrontEndPlanningOpportunitiesScreenState
   bool _isSyncReady = false;
 
   // Backing rows for the table; built from incoming requirements (if any).
-  late List<_OpportunityItem> _rows;
+  late List<OpportunityItem> _rows;
   bool _isGeneratingOpportunities = false;
 
   @override
@@ -57,10 +57,13 @@ class _FrontEndPlanningOpportunitiesScreenState
     _rows = [];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final projectData = ProjectDataHelper.getData(context);
-      _notes.text = projectData.frontEndPlanning.opportunities;
-      _notes.addListener(_syncOpportunitiesToProvider);
+      _notes.text =
+          'Placeholder notes...'; // _notes is typically not used for main data storage here, preserving existing logic if any
+      // Actually, looking at previous code, _notes was sync'd to opportunities string.
+      // But opportunities string is now legacy/secondary.
+      // We will try to sync it if needed, but primarily use list.
+
       _isSyncReady = true;
-      _syncOpportunitiesToProvider();
 
       // Check if selectedSolutionTitle exists, warn if missing
       final selectedSolution =
@@ -70,7 +73,7 @@ class _FrontEndPlanningOpportunitiesScreenState
             'Warning: selectedSolutionTitle is missing. State may not have persisted from selection page.');
       }
 
-      // Load saved opportunities from text
+      // Load saved opportunities
       _loadSavedOpportunities(projectData);
 
       // Generate opportunities if empty OR if opportunities exist but have empty fields
@@ -79,8 +82,8 @@ class _FrontEndPlanningOpportunitiesScreenState
               r.opportunity.isEmpty ||
               r.discipline.isEmpty ||
               r.stakeholder.isEmpty ||
-              r.potentialCost1.isEmpty ||
-              r.potentialCost2.isEmpty)) {
+              r.potentialCostSavings.isEmpty ||
+              r.potentialScheduleSavings.isEmpty)) {
         _generateOpportunitiesFromContext();
       }
       if (mounted) setState(() {});
@@ -88,30 +91,36 @@ class _FrontEndPlanningOpportunitiesScreenState
   }
 
   void _loadSavedOpportunities(ProjectDataModel data) {
-    final savedOpportunitiesText = data.frontEndPlanning.opportunities.trim();
-    if (savedOpportunitiesText.isNotEmpty) {
-      // Parse opportunities from text format: "opportunity: discipline"
-      final lines = savedOpportunitiesText
-          .split('\n')
-          .map((line) => line.trim())
-          .where((line) => line.isNotEmpty)
-          .toList();
+    if (data.frontEndPlanning.opportunityItems.isNotEmpty) {
+      _rows = List.from(data.frontEndPlanning.opportunityItems);
+    } else {
+      // Migration: Try to parse legacy string format "opportunity: discipline"
+      final savedOpportunitiesText = data.frontEndPlanning.opportunities.trim();
+      if (savedOpportunitiesText.isNotEmpty) {
+        final lines = savedOpportunitiesText
+            .split('\n')
+            .map((line) => line.trim())
+            .where((line) => line.isNotEmpty)
+            .toList();
 
-      if (lines.isNotEmpty) {
-        _rows = lines.map((line) {
-          // Try to parse "opportunity: discipline" format
-          final parts = line.split(':');
-          final opportunity = parts.isNotEmpty ? parts[0].trim() : '';
-          final discipline = parts.length > 1 ? parts[1].trim() : '';
+        if (lines.isNotEmpty) {
+          _rows = lines.map((line) {
+            final parts = line.split(':');
+            final opportunity = parts.isNotEmpty ? parts[0].trim() : '';
+            final discipline = parts.length > 1 ? parts[1].trim() : '';
 
-          return _OpportunityItem(
-            opportunity: opportunity,
-            discipline: discipline,
-            stakeholder: '',
-            potentialCost1: '',
-            potentialCost2: '',
-          );
-        }).toList();
+            return OpportunityItem(
+              id: DateTime.now().microsecondsSinceEpoch.toString(),
+              opportunity: opportunity,
+              discipline: discipline,
+              stakeholder: '',
+              potentialCostSavings: '',
+              potentialScheduleSavings: '',
+            );
+          }).toList();
+          // Initial sync to persist migration
+          _syncOpportunitiesToProvider();
+        }
       }
     }
   }
@@ -123,47 +132,51 @@ class _FrontEndPlanningOpportunitiesScreenState
         'opportunity': 'Automate manual data entry processes',
         'discipline': 'IT',
         'stakeholder': 'IT Operations Manager',
-        'potentialCost1': '50,000',
-        'potentialCost2': '4 weeks',
+        'potentialCostSavings': '50,000',
+        'potentialScheduleSavings': '4 weeks',
       },
       {
         'opportunity': 'Consolidate vendor contracts for better pricing',
         'discipline': 'Procurement',
         'stakeholder': 'Procurement Director',
-        'potentialCost1': '75,000',
-        'potentialCost2': '6 weeks',
+        'potentialCostSavings': '75,000',
+        'potentialScheduleSavings': '6 weeks',
       },
       {
         'opportunity': 'Implement early risk detection mechanisms',
         'discipline': 'Project Management',
         'stakeholder': 'Program Manager',
-        'potentialCost1': '30,000',
-        'potentialCost2': '2 weeks',
+        'potentialCostSavings': '30,000',
+        'potentialScheduleSavings': '2 weeks',
       },
       {
         'opportunity': 'Streamline approval workflows',
         'discipline': 'Operations',
         'stakeholder': 'Operations Lead',
-        'potentialCost1': '40,000',
-        'potentialCost2': '3 weeks',
+        'potentialCostSavings': '40,000',
+        'potentialScheduleSavings': '3 weeks',
       },
       {
         'opportunity': 'Leverage existing infrastructure investments',
         'discipline': 'IT',
         'stakeholder': 'IT Infrastructure Manager',
-        'potentialCost1': '100,000',
-        'potentialCost2': '8 weeks',
+        'potentialCostSavings': '100,000',
+        'potentialScheduleSavings': '8 weeks',
       },
     ];
 
     setState(() {
       _rows = fallbackList
-          .map((e) => _OpportunityItem(
+          .map((e) => OpportunityItem(
+                id: DateTime.now().microsecondsSinceEpoch.toString(),
                 opportunity: (e['opportunity'] ?? '').toString(),
                 discipline: (e['discipline'] ?? '').toString(),
                 stakeholder: (e['stakeholder'] ?? '').toString(),
-                potentialCost1: (e['potentialCost1'] ?? '').toString(),
-                potentialCost2: (e['potentialCost2'] ?? '').toString(),
+                potentialCostSavings:
+                    (e['potentialCostSavings'] ?? '').toString(),
+                potentialScheduleSavings:
+                    (e['potentialScheduleSavings'] ?? '').toString(),
+                impact: (e['impact'] ?? 'Medium').toString(),
               ))
           .toList();
     });
@@ -172,26 +185,27 @@ class _FrontEndPlanningOpportunitiesScreenState
 
   @override
   void dispose() {
-    if (_isSyncReady) {
-      _notes.removeListener(_syncOpportunitiesToProvider);
-    }
+    // No specific listeners to remove other than controllers
     _notes.dispose();
     super.dispose();
   }
 
   void _syncOpportunitiesToProvider() {
     if (!mounted || !_isSyncReady) return;
+
+    // Legacy string format
     final oppText = _rows
         .map((r) => '${r.opportunity}: ${r.discipline}')
         .where((s) => s.trim().isNotEmpty)
         .join('\n');
-    final value = oppText.isNotEmpty ? oppText : _notes.text.trim();
+
     final provider = ProjectDataHelper.getProvider(context);
     provider.updateField(
       (data) => data.copyWith(
         frontEndPlanning: ProjectDataHelper.updateFEPField(
           current: data.frontEndPlanning,
-          opportunities: value,
+          opportunities: oppText, // Legacy
+          opportunityItems: _rows, // New structured list
         ),
       ),
     );
@@ -210,12 +224,13 @@ class _FrontEndPlanningOpportunitiesScreenState
     try {
       final data = ProjectDataHelper.getData(context);
       final provider = ProjectDataHelper.getProvider(context);
-      
+
       // Track field history before regenerating
-      for (final row in _rows) {
+      for (int i = 0; i < _rows.length; i++) {
+        final row = _rows[i];
         if (row.opportunity.trim().isNotEmpty) {
           provider.addFieldToHistory(
-            'fep_opportunity_${_rows.indexOf(row)}_opportunity',
+            'fep_opportunity_${i}_opportunity',
             row.opportunity,
             isAiGenerated: true,
           );
@@ -235,6 +250,7 @@ class _FrontEndPlanningOpportunitiesScreenState
           sectionLabel: 'Project Opportunities');
       final ai = OpenAiServiceSecure();
       final list = await ai.generateOpportunitiesFromContext(ctx);
+
       if (!mounted) return;
       if (list.isNotEmpty) {
         setState(() {
@@ -244,161 +260,59 @@ class _FrontEndPlanningOpportunitiesScreenState
               _rows.any((r) =>
                   r.opportunity.isEmpty ||
                   r.stakeholder.isEmpty ||
-                  r.potentialCost1.isEmpty ||
-                  r.potentialCost2.isEmpty)) {
+                  r.potentialCostSavings.isEmpty ||
+                  r.potentialScheduleSavings.isEmpty)) {
             // Merge: fill empty fields with generated ones
             final generatedList = list.toList();
-            _rows = _rows.asMap().entries.map((entry) {
-              final index = entry.key;
-              final existing = entry.value;
+            // We'll create a new list to avoid mutating state inside map if possible,
+            // but here we just replace _rows fully.
+            List<OpportunityItem> merged = [];
 
-              // If any critical field is empty, use generated data
-              if (index < generatedList.length) {
-                final generated = generatedList[index];
-                return _OpportunityItem(
-                  opportunity:
-                      (generated['opportunity'] ?? existing.opportunity)
-                              .toString()
-                              .isEmpty
-                          ? existing.opportunity
-                          : (generated['opportunity'] ?? existing.opportunity)
-                              .toString(),
-                  discipline: (generated['discipline'] ?? existing.discipline)
-                          .toString()
-                          .isEmpty
+            for (int i = 0; i < _rows.length; i++) {
+              final existing = _rows[i];
+              // If index matches generated list, merge
+              if (i < generatedList.length) {
+                final generated = generatedList[i];
+                merged.add(OpportunityItem(
+                  id: existing.id,
+                  opportunity: existing.opportunity.isNotEmpty
+                      ? existing.opportunity
+                      : generated.opportunity,
+                  discipline: existing.discipline.isNotEmpty
                       ? existing.discipline
-                      : (generated['discipline'] ?? existing.discipline)
-                          .toString(),
-                  stakeholder:
-                      (generated['stakeholder'] ?? existing.stakeholder)
-                              .toString()
-                              .isEmpty
-                          ? existing.stakeholder
-                          : (generated['stakeholder'] ?? existing.stakeholder)
-                              .toString(),
-                  potentialCost1: (generated['potentialCost1'] ??
-                              generated['potential_cost_savings'] ??
-                              existing.potentialCost1)
-                          .toString()
-                          .isEmpty
-                      ? existing.potentialCost1
-                      : (generated['potentialCost1'] ??
-                              generated['potential_cost_savings'] ??
-                              existing.potentialCost1)
-                          .toString(),
-                  potentialCost2: (generated['potentialCost2'] ??
-                              generated['potential_cost_schedule_savings'] ??
-                              existing.potentialCost2)
-                          .toString()
-                          .isEmpty
-                      ? existing.potentialCost2
-                      : (generated['potentialCost2'] ??
-                              generated['potential_cost_schedule_savings'] ??
-                              existing.potentialCost2)
-                          .toString(),
-                );
+                      : generated.discipline,
+                  stakeholder: existing.stakeholder.isNotEmpty
+                      ? existing.stakeholder
+                      : generated.stakeholder,
+                  potentialCostSavings: existing.potentialCostSavings.isNotEmpty
+                      ? existing.potentialCostSavings
+                      : generated.potentialCostSavings,
+                  potentialScheduleSavings:
+                      existing.potentialScheduleSavings.isNotEmpty
+                          ? existing.potentialScheduleSavings
+                          : generated.potentialScheduleSavings,
+                  appliesTo: existing.appliesTo,
+                  assignedTo: existing.assignedTo,
+                  impact: existing.impact.isNotEmpty
+                      ? existing.impact
+                      : generated.impact,
+                ));
+              } else {
+                // Keep existing as is
+                merged.add(existing);
               }
-              // If no generated data available, fill empty fields with fallback
-              if (existing.stakeholder.isEmpty ||
-                  existing.potentialCost1.isEmpty ||
-                  existing.potentialCost2.isEmpty) {
-                final fallbackData = <Map<String, String>>[
-                  {
-                    'stakeholder': 'IT Operations Manager',
-                    'potentialCost1': '50,000',
-                    'potentialCost2': '4 weeks',
-                  },
-                  {
-                    'stakeholder': 'Procurement Director',
-                    'potentialCost1': '75,000',
-                    'potentialCost2': '6 weeks',
-                  },
-                  {
-                    'stakeholder': 'Program Manager',
-                    'potentialCost1': '30,000',
-                    'potentialCost2': '2 weeks',
-                  },
-                  {
-                    'stakeholder': 'Operations Lead',
-                    'potentialCost1': '40,000',
-                    'potentialCost2': '3 weeks',
-                  },
-                  {
-                    'stakeholder': 'IT Infrastructure Manager',
-                    'potentialCost1': '100,000',
-                    'potentialCost2': '8 weeks',
-                  },
-                ];
-                final fallbackIndex = index % fallbackData.length;
-                final fallback = fallbackData[fallbackIndex];
-                return _OpportunityItem(
-                  opportunity: existing.opportunity,
-                  discipline: existing.discipline,
-                  stakeholder: existing.stakeholder.isEmpty
-                      ? (fallback['stakeholder'] as String)
-                      : existing.stakeholder,
-                  potentialCost1: existing.potentialCost1.isEmpty
-                      ? (fallback['potentialCost1'] as String)
-                      : existing.potentialCost1,
-                  potentialCost2: existing.potentialCost2.isEmpty
-                      ? (fallback['potentialCost2'] as String)
-                      : existing.potentialCost2,
-                );
-              }
-              return existing;
-            }).toList();
-
-            // Add any additional generated opportunities beyond existing rows
-            if (generatedList.length > _rows.length) {
-              _rows.addAll(
-                  generatedList.skip(_rows.length).map((e) => _OpportunityItem(
-                        opportunity: (e['opportunity'] ?? '').toString(),
-                        discipline: (e['discipline'] ?? '').toString(),
-                        stakeholder: (e['stakeholder'] ?? '').toString(),
-                        potentialCost1: (e['potentialCost1'] ??
-                                e['potential_cost_savings'] ??
-                                '')
-                            .toString(),
-                        potentialCost2: (e['potentialCost2'] ??
-                                e['potential_cost_schedule_savings'] ??
-                                '')
-                            .toString(),
-                      )));
             }
+
+            // Append remaining generated items
+            if (generatedList.length > _rows.length) {
+              merged.addAll(generatedList.skip(_rows.length));
+            }
+            _rows = merged;
           } else {
             // Replace with new generated opportunities
-            _rows = list
-                .asMap()
-                .entries
-                .map((entry) {
-                  final index = entry.key;
-                  final e = entry.value;
-                  final opportunityText = (e['opportunity'] ?? '').toString();
-                  
-                  // Track AI-generated content in field history
-                  if (opportunityText.isNotEmpty) {
-                    provider.addFieldToHistory(
-                      'fep_opportunity_${index}_opportunity',
-                      opportunityText,
-                      isAiGenerated: true,
-                    );
-                  }
-                  
-                  return _OpportunityItem(
-                    opportunity: opportunityText,
-                    discipline: (e['discipline'] ?? '').toString(),
-                    stakeholder: (e['stakeholder'] ?? '').toString(),
-                    potentialCost1: (e['potentialCost1'] ??
-                            e['potential_cost_savings'] ??
-                            '')
-                        .toString(),
-                    potentialCost2: (e['potentialCost2'] ??
-                            e['potential_cost_schedule_savings'] ??
-                            '')
-                        .toString(),
-                  );
-                })
-                .toList();
+            // Track new items history? Only if we overwrite existing populated data.
+            // Simplest is to just use the new list.
+            _rows = list;
           }
         });
         _syncOpportunitiesToProvider();
@@ -421,7 +335,6 @@ class _FrontEndPlanningOpportunitiesScreenState
       }
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -462,7 +375,8 @@ class _FrontEndPlanningOpportunitiesScreenState
                                 children: [
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: const [
                                         EditableContentText(
                                           contentKey: 'fep_opportunities_title',
@@ -476,7 +390,8 @@ class _FrontEndPlanningOpportunitiesScreenState
                                         ),
                                         SizedBox(height: 6),
                                         EditableContentText(
-                                          contentKey: 'fep_opportunities_subtitle',
+                                          contentKey:
+                                              'fep_opportunities_subtitle',
                                           fallback:
                                               '(List out opportunities that would benefit the project here)',
                                           category: 'front_end_planning',
@@ -490,7 +405,9 @@ class _FrontEndPlanningOpportunitiesScreenState
                                   ),
                                   PageRegenerateAllButton(
                                     onRegenerateAll: () async {
-                                      final confirmed = await showRegenerateAllConfirmation(context);
+                                      final confirmed =
+                                          await showRegenerateAllConfirmation(
+                                              context);
                                       if (confirmed && mounted) {
                                         await _regenerateAllOpportunities();
                                       }
@@ -502,31 +419,45 @@ class _FrontEndPlanningOpportunitiesScreenState
                                   SizedBox(
                                     height: 40,
                                     child: OutlinedButton.icon(
-                                      onPressed: _showAddOpportunityDialog,
-                                      icon: const Icon(Icons.add,
-                                          size: 18, color: Color(0xFF111827)),
-                                      label: const Text('Add',
+                                      onPressed: () =>
+                                          _showAddOpportunityDialog(),
+                                      icon: const Icon(Icons.add, size: 18),
+                                      label: const Text('Add Opportunity',
                                           style: TextStyle(
-                                              fontWeight: FontWeight.w700,
-                                              color: Color(0xFF111827))),
+                                              fontWeight: FontWeight.w600)),
                                       style: OutlinedButton.styleFrom(
-                                        backgroundColor:
-                                            const Color(0xFFF2F4F7),
+                                        foregroundColor:
+                                            const Color(0xFF111827),
                                         side: const BorderSide(
-                                            color: Color(0xFFE5E7EB)),
+                                            color: Color(0xFFD1D5DB)),
                                         shape: RoundedRectangleBorder(
                                             borderRadius:
-                                                BorderRadius.circular(12)),
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 14),
+                                                BorderRadius.circular(8)),
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 14),
-                              _OpportunityTable(rows: _rows),
-                              const SizedBox(height: 140),
+                              const SizedBox(height: 24),
+                              _OpportunityTable(
+                                rows: _rows,
+                                onUpdate: (index, item) {
+                                  setState(() {
+                                    _rows[index] = item;
+                                    _syncOpportunitiesToProvider();
+                                  });
+                                },
+                                onEdit: (item) {
+                                  _showAddOpportunityDialog(existingItem: item);
+                                },
+                                onDelete: (id) {
+                                  setState(() {
+                                    _rows.removeWhere((r) => r.id == id);
+                                    _syncOpportunitiesToProvider();
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 80),
                             ],
                           ),
                         ),
@@ -534,11 +465,6 @@ class _FrontEndPlanningOpportunitiesScreenState
                     ],
                   ),
                   _BottomOverlays(rows: _rows),
-                  const Positioned(
-                    bottom: 90,
-                    right: 24,
-                    child: KazAiChatBubble(),
-                  ),
                 ],
               ),
             ),
@@ -548,23 +474,304 @@ class _FrontEndPlanningOpportunitiesScreenState
     );
   }
 
-  Future<void> _showAddOpportunityDialog() async {
-    final item = await showDialog<_OpportunityItem>(
+  void _showAddOpportunityDialog({OpportunityItem? existingItem}) {
+    showDialog(
       context: context,
-      barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
-      builder: (ctx) => const _AddOpportunityDialog(),
-    );
-    if (item != null) {
-      setState(() => _rows.add(item));
-      _syncOpportunitiesToProvider();
+      builder: (context) => _OpportunityDialog(item: existingItem),
+    ).then((val) {
+      if (val != null && val is OpportunityItem) {
+        setState(() {
+          if (existingItem != null) {
+            final index = _rows.indexWhere((r) => r.id == existingItem.id);
+            if (index != -1) {
+              _rows[index] = val;
+            }
+          } else {
+            _rows.add(val);
+          }
+          _syncOpportunitiesToProvider();
+        });
+      }
+    });
+  }
+}
+
+class _OpportunityDialog extends StatefulWidget {
+  final OpportunityItem? item;
+  const _OpportunityDialog({this.item});
+
+  @override
+  State<_OpportunityDialog> createState() => _OpportunityDialogState();
+}
+
+class _OpportunityDialogState extends State<_OpportunityDialog> {
+  final _oppCtrl = TextEditingController();
+  final _disciplineCtrl = TextEditingController();
+  final _stakeholderCtrl = TextEditingController();
+  final _cost1Ctrl = TextEditingController();
+  final _cost2Ctrl = TextEditingController();
+  final _assignedToCtrl = TextEditingController();
+  String _selectedImpact = 'Medium';
+  List<String> _selectedAppliesTo = [];
+
+  final List<String> _applyOptions = ['Estimate', 'Schedule', 'Training'];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.item != null) {
+      _oppCtrl.text = widget.item!.opportunity;
+      _disciplineCtrl.text = widget.item!.discipline;
+      _stakeholderCtrl.text = widget.item!.stakeholder;
+      _cost1Ctrl.text = widget.item!.potentialCostSavings;
+      _cost2Ctrl.text = widget.item!.potentialScheduleSavings;
+      _assignedToCtrl.text = widget.item!.assignedTo;
+      _selectedImpact = widget.item!.impact;
+      _selectedAppliesTo = List.from(widget.item!.appliesTo);
     }
+  }
+
+  @override
+  void dispose() {
+    _oppCtrl.dispose();
+    _disciplineCtrl.dispose();
+    _stakeholderCtrl.dispose();
+    _cost1Ctrl.dispose();
+    _cost2Ctrl.dispose();
+    _assignedToCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final viewInsets = MediaQuery.of(context).viewInsets;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child: Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(20, 16, 20, 16 + viewInsets.bottom),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.edit_note, color: Color(0xFF111827)),
+                      const SizedBox(width: 8),
+                      Text(
+                          widget.item == null
+                              ? 'Add Opportunity'
+                              : 'Edit Opportunity',
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w800)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _LabeledField(
+                      label: 'Potential Opportunity',
+                      controller: _oppCtrl,
+                      autofocus: widget.item == null,
+                      hintText: 'Describe the opportunity'),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    Expanded(
+                        child: _LabeledField(
+                            label: 'Discipline',
+                            controller: _disciplineCtrl,
+                            hintText: 'e.g. Finance/IT/Operations')),
+                    const SizedBox(width: 12),
+                    Expanded(
+                        child: _LabeledField(
+                            label: 'Stakeholder',
+                            controller: _stakeholderCtrl,
+                            hintText: 'e.g. VP of IT')),
+                  ]),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    Expanded(
+                        child: _LabeledField(
+                            label: 'Potential Cost Savings',
+                            controller: _cost1Ctrl,
+                            hintText: 'e.g. 75,000')),
+                    const SizedBox(width: 12),
+                    Expanded(
+                        child: _LabeledField(
+                            label: 'Potential Cost Schedule Savings',
+                            controller: _cost2Ctrl,
+                            hintText: 'e.g. 30,000')),
+                  ]),
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Impact',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF6B7280))),
+                            const SizedBox(height: 6),
+                            Container(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border:
+                                    Border.all(color: const Color(0xFFE5E7EB)),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: _selectedImpact,
+                                  isExpanded: true,
+                                  items: ['High', 'Medium', 'Low']
+                                      .map((e) => DropdownMenuItem(
+                                            value: e,
+                                            child: Text(e,
+                                                style: const TextStyle(
+                                                    fontSize: 14)),
+                                          ))
+                                      .toList(),
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setState(() => _selectedImpact = val);
+                                    }
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                          child: _LabeledField(
+                              label: 'Assigned To',
+                              controller: _assignedToCtrl,
+                              hintText: 'e.g. John Doe')),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Apply To',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF6B7280))),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        children: _applyOptions.map((option) {
+                          final isSelected =
+                              _selectedAppliesTo.contains(option);
+                          return FilterChip(
+                            label: Text(option),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              setState(() {
+                                if (selected) {
+                                  _selectedAppliesTo.add(option);
+                                } else {
+                                  _selectedAppliesTo.remove(option);
+                                }
+                              });
+                            },
+                            backgroundColor: Colors.white,
+                            selectedColor: const Color(0xFFEFF6FF),
+                            checkmarkColor: const Color(0xFF3B82F6),
+                            side: BorderSide(
+                                color: isSelected
+                                    ? const Color(0xFF3B82F6)
+                                    : const Color(0xFFE5E7EB)),
+                            labelStyle: TextStyle(
+                              color: isSelected
+                                  ? const Color(0xFF1E40AF)
+                                  : const Color(0xFF374151),
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      TextButton(
+                          onPressed: () => Navigator.of(context).pop(null),
+                          child: const Text('Cancel')),
+                      const Spacer(),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.check, color: Colors.black),
+                        label: const Text('Save',
+                            style: TextStyle(color: Colors.black)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFFD700),
+                          foregroundColor: Colors.black,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 18, vertical: 12),
+                        ),
+                        onPressed: () {
+                          final opp = _oppCtrl.text.trim();
+                          if (opp.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text(
+                                        'Please enter a Potential Opportunity')));
+                            return;
+                          }
+                          Navigator.of(context).pop(OpportunityItem(
+                            id: widget.item?.id ??
+                                DateTime.now()
+                                    .microsecondsSinceEpoch
+                                    .toString(),
+                            opportunity: opp,
+                            discipline: _disciplineCtrl.text.trim(),
+                            stakeholder: _stakeholderCtrl.text.trim(),
+                            potentialCostSavings: _cost1Ctrl.text.trim(),
+                            potentialScheduleSavings: _cost2Ctrl.text.trim(),
+                            impact: _selectedImpact,
+                            appliesTo: _selectedAppliesTo,
+                            assignedTo: _assignedToCtrl.text.trim(),
+                          ));
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
 class _OpportunityTable extends StatelessWidget {
-  const _OpportunityTable({required this.rows});
-  final List<_OpportunityItem> rows;
+  const _OpportunityTable(
+      {required this.rows,
+      required this.onUpdate,
+      required this.onEdit,
+      required this.onDelete});
+  final List<OpportunityItem> rows;
+  final Function(int, OpportunityItem) onUpdate;
+  final Function(OpportunityItem) onEdit;
+  final Function(String) onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -586,11 +793,14 @@ class _OpportunityTable extends StatelessWidget {
       child: Table(
         columnWidths: const {
           0: FixedColumnWidth(52),
-          1: FlexColumnWidth(2.2),
-          2: FlexColumnWidth(1.6),
-          3: FlexColumnWidth(1.6),
-          4: FlexColumnWidth(1.4),
-          5: FlexColumnWidth(1.4),
+          1: FlexColumnWidth(2.0),
+          2: FlexColumnWidth(1.4),
+          3: FlexColumnWidth(1.4),
+          4: FlexColumnWidth(1.1),
+          5: FlexColumnWidth(1.1),
+          6: FixedColumnWidth(80), // Impact
+          7: FlexColumnWidth(1.8), // Implementation (Applies To + Assignee)
+          8: FixedColumnWidth(50), // Actions
         },
         border: TableBorder(
           horizontalInside: border,
@@ -600,7 +810,7 @@ class _OpportunityTable extends StatelessWidget {
           left: border,
           right: border,
         ),
-        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+        defaultVerticalAlignment: TableCellVerticalAlignment.top,
         children: [
           TableRow(
             decoration: const BoxDecoration(color: Color(0xFFF9FAFB)),
@@ -611,6 +821,9 @@ class _OpportunityTable extends StatelessWidget {
               _th('Stakeholder', headerStyle),
               _th('Potential Cost Savings', headerStyle),
               _th('Potential Cost Schedule Savings', headerStyle),
+              _th('Impact', headerStyle),
+              _th('Implementation', headerStyle),
+              const SizedBox(), // Actions
             ],
           ),
           ...List<TableRow>.generate(rows.length, (i) {
@@ -620,8 +833,90 @@ class _OpportunityTable extends StatelessWidget {
               td(Text(r.opportunity, style: cellStyle)),
               td(Text(r.discipline, style: cellStyle)),
               td(Text(r.stakeholder, style: cellStyle)),
-              td(Text(r.potentialCost1, style: cellStyle)),
-              td(Text(r.potentialCost2, style: cellStyle)),
+              td(Text(r.potentialCostSavings, style: cellStyle)),
+              td(Text(r.potentialScheduleSavings, style: cellStyle)),
+              td(_ImpactBadge(impact: r.impact)),
+              td(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (r.assignedTo.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          const Icon(Icons.person_outline,
+                              size: 14, color: Color(0xFF6B7280)),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              r.assignedTo,
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF374151)),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                    ],
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: r.appliesTo
+                          .map((tag) => Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEFF6FF),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                      color: const Color(0xFFBFDBFE)),
+                                ),
+                                child: Text(
+                                  tag,
+                                  style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF1E40AF)),
+                                ),
+                              ))
+                          .toList(),
+                    ),
+                  ],
+                ),
+              ),
+              td(
+                GestureDetector(
+                  onTapDown: (details) {
+                    showMenu(
+                      context: context,
+                      position: RelativeRect.fromLTRB(
+                        details.globalPosition.dx,
+                        details.globalPosition.dy,
+                        details.globalPosition.dx,
+                        details.globalPosition.dy,
+                      ),
+                      items: [
+                        PopupMenuItem(
+                          child: const Text('Edit'),
+                          onTap: () => Future.delayed(
+                            Duration.zero,
+                            () => onEdit(r),
+                          ),
+                        ),
+                        PopupMenuItem(
+                          child: const Text('Delete',
+                              style: TextStyle(color: Colors.red)),
+                          onTap: () => onDelete(r.id),
+                        ),
+                      ],
+                    );
+                  },
+                  child: const Icon(Icons.more_vert,
+                      size: 20, color: Color(0xFF9CA3AF)),
+                ),
+              ),
             ]);
           }),
         ],
@@ -644,9 +939,7 @@ class _OpportunityTable extends StatelessWidget {
 
 class _BottomOverlays extends StatelessWidget {
   const _BottomOverlays({required this.rows});
-
-  final List<_OpportunityItem> rows;
-
+  final List<OpportunityItem> rows;
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
@@ -674,6 +967,7 @@ class _BottomOverlays extends StatelessWidget {
                   const SizedBox(width: 16),
                   ElevatedButton(
                     onPressed: () async {
+                      // Legacy Text
                       final oppText = rows
                           .map((r) => '${r.opportunity}: ${r.discipline}')
                           .where((s) => s.trim().isNotEmpty)
@@ -708,6 +1002,7 @@ class _BottomOverlays extends StatelessWidget {
                           frontEndPlanning: ProjectDataHelper.updateFEPField(
                             current: data.frontEndPlanning,
                             opportunities: oppText,
+                            opportunityItems: rows,
                           ),
                         ),
                       );
@@ -753,162 +1048,6 @@ class _BottomOverlays extends StatelessWidget {
           Text('Focus on major risks associated with each potential solution.',
               style: TextStyle(color: Color(0xFF1F2937))),
         ],
-      ),
-    );
-  }
-}
-
-class _OpportunityItem {
-  final String opportunity;
-  final String discipline;
-  final String stakeholder;
-  final String potentialCost1;
-  final String potentialCost2;
-  const _OpportunityItem({
-    required this.opportunity,
-    required this.discipline,
-    required this.stakeholder,
-    required this.potentialCost1,
-    required this.potentialCost2,
-  });
-
-  _OpportunityItem copy() => _OpportunityItem(
-        opportunity: opportunity,
-        discipline: discipline,
-        stakeholder: stakeholder,
-        potentialCost1: potentialCost1,
-        potentialCost2: potentialCost2,
-      );
-}
-
-class _AddOpportunityDialog extends StatefulWidget {
-  const _AddOpportunityDialog();
-
-  @override
-  State<_AddOpportunityDialog> createState() => _AddOpportunityDialogState();
-}
-
-class _AddOpportunityDialogState extends State<_AddOpportunityDialog> {
-  final _oppCtrl = TextEditingController();
-  final _disciplineCtrl = TextEditingController();
-  final _stakeholderCtrl = TextEditingController();
-  final _cost1Ctrl = TextEditingController();
-  final _cost2Ctrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _oppCtrl.dispose();
-    _disciplineCtrl.dispose();
-    _stakeholderCtrl.dispose();
-    _cost1Ctrl.dispose();
-    _cost2Ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final viewInsets = MediaQuery.of(context).viewInsets;
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560),
-        child: Material(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(20, 16, 20, 16 + viewInsets.bottom),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: const [
-                      Icon(Icons.add_box_outlined, color: Color(0xFF111827)),
-                      SizedBox(width: 8),
-                      Text('Add Opportunity',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w800)),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  _LabeledField(
-                      label: 'Potential Opportunity',
-                      controller: _oppCtrl,
-                      autofocus: true,
-                      hintText: 'Describe the opportunity'),
-                  const SizedBox(height: 12),
-                  Row(children: [
-                    Expanded(
-                        child: _LabeledField(
-                            label: 'Discipline',
-                            controller: _disciplineCtrl,
-                            hintText: 'e.g. Finance/IT/Operations')),
-                    const SizedBox(width: 12),
-                    Expanded(
-                        child: _LabeledField(
-                            label: 'Stakeholder',
-                            controller: _stakeholderCtrl,
-                            hintText: 'e.g. VP of IT')),
-                  ]),
-                  const SizedBox(height: 12),
-                  Row(children: [
-                    Expanded(
-                        child: _LabeledField(
-                            label: 'Potential Cost Savings',
-                            controller: _cost1Ctrl,
-                            hintText: 'e.g. 75,000')),
-                    const SizedBox(width: 12),
-                    Expanded(
-                        child: _LabeledField(
-                            label: 'Potential Cost Schedule Savings',
-                            controller: _cost2Ctrl,
-                            hintText: 'e.g. 30,000')),
-                  ]),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      TextButton(
-                          onPressed: () => Navigator.of(context).pop(null),
-                          child: const Text('Cancel')),
-                      const Spacer(),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.check, color: Colors.black),
-                        label: const Text('Save',
-                            style: TextStyle(color: Colors.black)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFFD700),
-                          foregroundColor: Colors.black,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 18, vertical: 12),
-                        ),
-                        onPressed: () {
-                          final opp = _oppCtrl.text.trim();
-                          if (opp.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text(
-                                        'Please enter a Potential Opportunity')));
-                            return;
-                          }
-                          Navigator.of(context).pop(_OpportunityItem(
-                            opportunity: opp,
-                            discipline: _disciplineCtrl.text.trim(),
-                            stakeholder: _stakeholderCtrl.text.trim(),
-                            potentialCost1: _cost1Ctrl.text.trim(),
-                            potentialCost2: _cost2Ctrl.text.trim(),
-                          ));
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -983,4 +1122,105 @@ Widget _roundedField(
       style: const TextStyle(fontSize: 14, color: Color(0xFF374151)),
     ),
   );
+}
+
+class _ImpactBadge extends StatelessWidget {
+  final String impact;
+  const _ImpactBadge({required this.impact});
+
+  @override
+  Widget build(BuildContext context) {
+    Color bg;
+    Color fg;
+    switch (impact.toLowerCase()) {
+      case 'high':
+        bg = const Color(0xFFFEF2F2);
+        fg = const Color(0xFFDC2626);
+        break;
+      case 'low':
+        bg = const Color(0xFFECFDF5);
+        fg = const Color(0xFF059669);
+        break;
+      case 'medium':
+      default:
+        bg = const Color(0xFFFFFBEB);
+        fg = const Color(0xFFD97706);
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        impact,
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: fg),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+}
+
+class _EmptyStateCard extends StatelessWidget {
+  final VoidCallback onAction;
+  const _EmptyStateCard({required this.onAction});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x0F0F172A), blurRadius: 12, offset: Offset(0, 8)),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: Color(0xFFEFF6FF),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.lightbulb_outline,
+                size: 32, color: Color(0xFF2563EB)),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'No Opportunities Identified',
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827)),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Start by adding a new opportunity manually or use the\nGenerate button to identify opportunities from project context.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+          ),
+          const SizedBox(height: 24),
+          OutlinedButton.icon(
+            onPressed: () => onAction(),
+            icon: const Icon(Icons.add, size: 16),
+            label: const Text('Add Opportunity'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF111827),
+              side: const BorderSide(color: Color(0xFFD1D5DB)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

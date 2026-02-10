@@ -12,7 +12,7 @@ class ProjectDataHelper {
   static bool isDestinationLocked(
       BuildContext context, String destinationCheckpoint) {
     final provider = Provider.of<ProjectDataProvider>(context, listen: false);
-    
+
     final projectData = provider.projectData;
     final currentCheckpoint = projectData.currentCheckpoint;
 
@@ -214,8 +214,7 @@ class ProjectDataHelper {
     w('Front End Planning – Requirements', fep.requirements);
     w('Front End Planning – Risks', fep.risks);
     w('Front End Planning – Opportunities', fep.opportunities);
-    w('Front End Planning – Contract & Vendor Quotes',
-        fep.contractVendorQuotes);
+    w('Front End Planning – Contracting', fep.contractVendorQuotes);
     w('Front End Planning – Procurement', fep.procurement);
     w('Front End Planning – Security', fep.security);
     w('Front End Planning – Allowance', fep.allowance);
@@ -379,8 +378,7 @@ class ProjectDataHelper {
     w('Front End Planning – Requirements', fep.requirements);
     w('Front End Planning – Risks', fep.risks);
     w('Front End Planning – Opportunities', fep.opportunities);
-    w('Front End Planning – Contract & Vendor Quotes',
-        fep.contractVendorQuotes);
+    w('Front End Planning – Contracting', fep.contractVendorQuotes);
     w('Front End Planning – Procurement', fep.procurement);
     w('Front End Planning – Security', fep.security);
     w('Front End Planning – Allowance', fep.allowance);
@@ -499,9 +497,10 @@ class ProjectDataHelper {
 
   /// Get project data from context (non-listening by default, safe for event handlers)
   static ProjectDataModel getData(BuildContext context, {bool listen = false}) {
-    return Provider.of<ProjectDataProvider>(context, listen: listen).projectData;
+    return Provider.of<ProjectDataProvider>(context, listen: listen)
+        .projectData;
   }
-  
+
   /// Get project data with listening (use only in build methods)
   static ProjectDataModel getDataListening(BuildContext context) {
     return Provider.of<ProjectDataProvider>(context).projectData;
@@ -631,6 +630,8 @@ class ProjectDataHelper {
     List<RemediationTrack>? technicalDebtTracks,
     List<OwnerItem>? technicalDebtOwners,
     List<RiskRegisterItem>? riskRegisterItems,
+    List<AllowanceItem>? allowanceItems,
+    List<OpportunityItem>? opportunityItems,
   }) {
     return FrontEndPlanningData(
       requirements: requirements ?? current.requirements,
@@ -662,6 +663,8 @@ class ProjectDataHelper {
       technicalDebtTracks: technicalDebtTracks ?? current.technicalDebtTracks,
       technicalDebtOwners: technicalDebtOwners ?? current.technicalDebtOwners,
       riskRegisterItems: riskRegisterItems ?? current.riskRegisterItems,
+      allowanceItems: allowanceItems ?? current.allowanceItems,
+      opportunityItems: opportunityItems ?? current.opportunityItems,
     );
   }
 }

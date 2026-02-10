@@ -61,7 +61,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
   String? _errorMessage;
   bool _isEligibleForTrial = false;
   bool _isCheckingEligibility = true;
-  
+
   // Coupon state
   final _couponController = TextEditingController();
   AppliedCouponResult? _appliedCoupon;
@@ -69,16 +69,19 @@ class _PaymentDialogState extends State<PaymentDialog> {
   String? _couponError;
 
   String get _tierName => SubscriptionService.getTierName(widget.tier);
-  Map<String, String> get _price => SubscriptionService.getPriceForTier(widget.tier, annual: widget.isAnnual);
+  Map<String, String> get _price =>
+      SubscriptionService.getPriceForTier(widget.tier, annual: widget.isAnnual);
   String get _displayTierName => widget.displayTierName ?? _tierName;
   String get _displayPrice => widget.displayPrice ?? _price['price']!;
-  String get _displayPeriod => widget.displayPeriod ?? (widget.isAnnual ? 'Billed annually' : 'Billed monthly');
-  
+  String get _displayPeriod =>
+      widget.displayPeriod ??
+      (widget.isAnnual ? 'Billed annually' : 'Billed monthly');
+
   double get _originalPrice {
     final priceStr = _displayPrice.replaceAll('\$', '').replaceAll(',', '');
     return double.tryParse(priceStr) ?? 0;
   }
-  
+
   double get _finalPrice => _appliedCoupon?.discountedPrice ?? _originalPrice;
 
   @override
@@ -107,19 +110,38 @@ class _PaymentDialogState extends State<PaymentDialog> {
 
     // Special fast-path: SAVE200 grants immediate access
     if (code.toUpperCase() == 'SAVE200') {
-      setState(() {
-        _isValidatingCoupon = false;
-        _appliedCoupon = AppliedCouponResult(
-          couponId: '',
-          code: 'SAVE200',
-          discountedPrice: 0,
-          originalPrice: _originalPrice,
-          discountPercent: 100,
-          discountAmount: _originalPrice,
-        );
-      });
-      widget.onPaymentComplete();
-      if (mounted) Navigator.of(context).pop(true);
+      // Create a valid subscription record in Firestore so AuthWrapper allows access
+      final success = await SubscriptionService.activateCouponSubscription(
+        tier: widget.tier,
+        isAnnual: widget.isAnnual,
+        couponCode: 'SAVE200',
+      );
+
+      if (success) {
+        if (mounted) {
+          setState(() {
+            _isValidatingCoupon = false;
+            _appliedCoupon = AppliedCouponResult(
+              couponId: '',
+              code: 'SAVE200',
+              discountedPrice: 0,
+              originalPrice: _originalPrice,
+              discountPercent: 100,
+              discountAmount: _originalPrice,
+            );
+          });
+          widget.onPaymentComplete();
+          Navigator.of(context).pop(true);
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isValidatingCoupon = false;
+            _couponError =
+                'Failed to activate coupon subscription. Please try again.';
+          });
+        }
+      }
       return;
     }
 
@@ -237,12 +259,12 @@ class _PaymentDialogState extends State<PaymentDialog> {
         final uri = Uri.parse(result.paymentUrl!);
         if (await canLaunchUrl(uri)) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
-          
+
           if (!mounted) return;
-          
+
           // Show waiting dialog
           final paymentConfirmed = await _showPaymentConfirmationDialog();
-          
+
           if (paymentConfirmed == true) {
             widget.onPaymentComplete();
             if (mounted) Navigator.of(context).pop(true);
@@ -297,21 +319,24 @@ class _PaymentDialogState extends State<PaymentDialog> {
             Text(
               'If your payment was successful, click "Yes, I paid" to continue.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: _secondaryText.withValues(alpha: 0.7), fontSize: 13),
+              style: TextStyle(
+                  color: _secondaryText.withValues(alpha: 0.7), fontSize: 13),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel', style: TextStyle(color: _secondaryText)),
+            child:
+                const Text('Cancel', style: TextStyle(color: _secondaryText)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.black,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
             child: const Text('Yes, I paid'),
           ),
@@ -345,7 +370,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
                     ),
                   ),
                   IconButton(
-                    onPressed: _isProcessing ? null : () => Navigator.of(context).pop(false),
+                    onPressed: _isProcessing
+                        ? null
+                        : () => Navigator.of(context).pop(false),
                     icon: const Icon(Icons.close),
                     color: _secondaryText,
                   ),
@@ -375,7 +402,8 @@ class _PaymentDialogState extends State<PaymentDialog> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.receipt_long_outlined, color: _primaryText),
+                          child: const Icon(Icons.receipt_long_outlined,
+                              color: _primaryText),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
@@ -392,7 +420,8 @@ class _PaymentDialogState extends State<PaymentDialog> {
                               ),
                               Text(
                                 _displayPeriod,
-                                style: const TextStyle(color: _secondaryText, fontSize: 13),
+                                style: const TextStyle(
+                                    color: _secondaryText, fontSize: 13),
                               ),
                             ],
                           ),
@@ -434,29 +463,34 @@ class _PaymentDialogState extends State<PaymentDialog> {
                     if (_appliedCoupon != null) ...[
                       const SizedBox(height: 12),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: const Color(0xFF22C55E).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFF22C55E).withValues(alpha: 0.3)),
+                          border: Border.all(
+                              color: const Color(0xFF22C55E)
+                                  .withValues(alpha: 0.3)),
                         ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.local_offer, color: Color(0xFF16A34A), size: 16),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  '${_appliedCoupon!.code} - ${_appliedCoupon!.discountPercent > 0 ? '${_appliedCoupon!.discountPercent.toStringAsFixed(0)}% OFF' : '\$${_appliedCoupon!.discountAmount.toStringAsFixed(0)} OFF'}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF16A34A),
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                  ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.local_offer,
+                                color: Color(0xFF16A34A), size: 16),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '${_appliedCoupon!.code} - ${_appliedCoupon!.discountPercent > 0 ? '${_appliedCoupon!.discountPercent.toStringAsFixed(0)}% OFF' : '\$${_appliedCoupon!.discountAmount.toStringAsFixed(0)} OFF'}',
+                                style: const TextStyle(
+                                  color: Color(0xFF16A34A),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
                               ),
                             ),
                             InkWell(
                               onTap: _removeCoupon,
-                              child: const Icon(Icons.close, color: Color(0xFF16A34A), size: 18),
+                              child: const Icon(Icons.close,
+                                  color: Color(0xFF16A34A), size: 18),
                             ),
                           ],
                         ),
@@ -475,15 +509,20 @@ class _PaymentDialogState extends State<PaymentDialog> {
                         controller: _couponController,
                         decoration: InputDecoration(
                           hintText: 'Enter coupon code',
-                          hintStyle: TextStyle(color: _secondaryText.withValues(alpha: 0.6)),
-                          prefixIcon: Icon(Icons.local_offer_outlined, color: _secondaryText.withValues(alpha: 0.6), size: 20),
+                          hintStyle: TextStyle(
+                              color: _secondaryText.withValues(alpha: 0.6)),
+                          prefixIcon: Icon(Icons.local_offer_outlined,
+                              color: _secondaryText.withValues(alpha: 0.6),
+                              size: 20),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.1)),
+                            borderSide: BorderSide(
+                                color: Colors.black.withValues(alpha: 0.1)),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.1)),
+                            borderSide: BorderSide(
+                                color: Colors.black.withValues(alpha: 0.1)),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -491,7 +530,8 @@ class _PaymentDialogState extends State<PaymentDialog> {
                           ),
                           errorText: _couponError,
                           errorStyle: const TextStyle(fontSize: 11),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
                           isDense: true,
                         ),
                         textCapitalization: TextCapitalization.characters,
@@ -503,13 +543,20 @@ class _PaymentDialogState extends State<PaymentDialog> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         elevation: 0,
                       ),
                       child: _isValidatingCoupon
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Text('Apply', style: TextStyle(fontWeight: FontWeight.w600)),
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Text('Apply',
+                              style: TextStyle(fontWeight: FontWeight.w600)),
                     ),
                   ],
                 ),
@@ -527,7 +574,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
                     ),
                   ),
                 )
-              else if (_isEligibleForTrial) ...[                
+              else if (_isEligibleForTrial) ...[
                 _FreeTrialBanner(
                   onStartTrial: _isProcessing ? null : _startFreeTrial,
                   isProcessing: _isProcessing,
@@ -535,7 +582,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
                 const SizedBox(height: 20),
                 Row(
                   children: [
-                    Expanded(child: Divider(color: Colors.black.withValues(alpha: 0.1))),
+                    Expanded(
+                        child: Divider(
+                            color: Colors.black.withValues(alpha: 0.1))),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
@@ -548,7 +597,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
                         ),
                       ),
                     ),
-                    Expanded(child: Divider(color: Colors.black.withValues(alpha: 0.1))),
+                    Expanded(
+                        child: Divider(
+                            color: Colors.black.withValues(alpha: 0.1))),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -569,7 +620,10 @@ class _PaymentDialogState extends State<PaymentDialog> {
                 subtitle: 'Pay securely with Stripe',
                 icon: Icons.credit_card_rounded,
                 isSelected: _selectedProvider == PaymentProvider.stripe,
-                onTap: _isProcessing ? null : () => setState(() => _selectedProvider = PaymentProvider.stripe),
+                onTap: _isProcessing
+                    ? null
+                    : () => setState(
+                        () => _selectedProvider = PaymentProvider.stripe),
               ),
               const SizedBox(height: 12),
               _PaymentOption(
@@ -578,7 +632,10 @@ class _PaymentDialogState extends State<PaymentDialog> {
                 subtitle: 'Pay with your PayPal account',
                 icon: Icons.account_balance_wallet_rounded,
                 isSelected: _selectedProvider == PaymentProvider.paypal,
-                onTap: _isProcessing ? null : () => setState(() => _selectedProvider = PaymentProvider.paypal),
+                onTap: _isProcessing
+                    ? null
+                    : () => setState(
+                        () => _selectedProvider = PaymentProvider.paypal),
               ),
               const SizedBox(height: 12),
               _PaymentOption(
@@ -587,7 +644,10 @@ class _PaymentDialogState extends State<PaymentDialog> {
                 subtitle: 'Bank transfer, USSD, Mobile Money',
                 icon: Icons.account_balance_rounded,
                 isSelected: _selectedProvider == PaymentProvider.paystack,
-                onTap: _isProcessing ? null : () => setState(() => _selectedProvider = PaymentProvider.paystack),
+                onTap: _isProcessing
+                    ? null
+                    : () => setState(
+                        () => _selectedProvider = PaymentProvider.paystack),
               ),
               if (_errorMessage != null) ...[
                 const SizedBox(height: 16),
@@ -600,12 +660,14 @@ class _PaymentDialogState extends State<PaymentDialog> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                      Icon(Icons.error_outline,
+                          color: Colors.red.shade700, size: 20),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           _errorMessage!,
-                          style: TextStyle(color: Colors.red.shade700, fontSize: 13),
+                          style: TextStyle(
+                              color: Colors.red.shade700, fontSize: 13),
                         ),
                       ),
                     ],
@@ -616,13 +678,16 @@ class _PaymentDialogState extends State<PaymentDialog> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _isProcessing || _selectedProvider == null ? null : _processPayment,
+                  onPressed: _isProcessing || _selectedProvider == null
+                      ? null
+                      : _processPayment,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: Colors.grey.shade300,
                     padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                     elevation: 0,
                   ),
                   child: _isProcessing
@@ -631,12 +696,14 @@ class _PaymentDialogState extends State<PaymentDialog> {
                           width: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
                       : const Text(
                           'Continue to Payment',
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 16),
                         ),
                 ),
               ),
@@ -644,7 +711,8 @@ class _PaymentDialogState extends State<PaymentDialog> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.lock_outline, size: 14, color: _secondaryText.withValues(alpha: 0.7)),
+                  Icon(Icons.lock_outline,
+                      size: 14, color: _secondaryText.withValues(alpha: 0.7)),
                   const SizedBox(width: 6),
                   Text(
                     'Secure payment processing',
@@ -686,7 +754,8 @@ class _FreeTrialBanner extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF22C55E).withValues(alpha: 0.3)),
+        border:
+            Border.all(color: const Color(0xFF22C55E).withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -722,7 +791,8 @@ class _FreeTrialBanner extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: const Color(0xFF22C55E),
                             borderRadius: BorderRadius.circular(999),
@@ -761,7 +831,8 @@ class _FreeTrialBanner extends StatelessWidget {
                 backgroundColor: const Color(0xFF22C55E),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
                 elevation: 0,
               ),
               child: isProcessing
@@ -775,7 +846,8 @@ class _FreeTrialBanner extends StatelessWidget {
                     )
                   : const Text(
                       'Start Free Trial',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                      style:
+                          TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                     ),
             ),
           ),
@@ -816,7 +888,8 @@ class _PaymentOption extends StatelessWidget {
             color: isSelected ? _accent.withValues(alpha: 0.08) : Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isSelected ? _accent : Colors.black.withValues(alpha: 0.08),
+              color:
+                  isSelected ? _accent : Colors.black.withValues(alpha: 0.08),
               width: isSelected ? 2 : 1,
             ),
           ),
@@ -825,7 +898,9 @@ class _PaymentOption extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: isSelected ? _accent.withValues(alpha: 0.15) : _pageBackground,
+                  color: isSelected
+                      ? _accent.withValues(alpha: 0.15)
+                      : _pageBackground,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
@@ -865,7 +940,9 @@ class _PaymentOption extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: isSelected ? _accent : Colors.transparent,
                   border: Border.all(
-                    color: isSelected ? _accent : Colors.black.withValues(alpha: 0.2),
+                    color: isSelected
+                        ? _accent
+                        : Colors.black.withValues(alpha: 0.2),
                     width: 2,
                   ),
                 ),

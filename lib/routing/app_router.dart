@@ -1,9 +1,9 @@
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/routing/platform_router.dart';
 
 // Screens
 import 'package:ndu_project/screens/landing_screen.dart';
@@ -21,6 +21,8 @@ import 'package:ndu_project/screens/lessons_learned_screen.dart';
 import 'package:ndu_project/screens/management_level_screen.dart';
 import 'package:ndu_project/screens/stakeholder_management_screen.dart';
 import 'package:ndu_project/screens/core_stakeholders_screen.dart';
+import 'package:ndu_project/screens/splash_screen.dart';
+import 'package:ndu_project/screens/onboarding/onboarding_screen.dart';
 
 // Front-end planning cluster
 import 'package:ndu_project/screens/front_end_planning_screen.dart';
@@ -125,13 +127,17 @@ import 'package:ndu_project/screens/admin/admin_users_screen.dart';
 import 'package:ndu_project/screens/admin/admin_coupons_screen.dart';
 import 'package:ndu_project/screens/admin/admin_subscription_lookup_screen.dart';
 import 'package:ndu_project/services/access_policy.dart';
+import 'package:ndu_project/screens/pricing/mobile_pricing_screen.dart';
 
 /// Named route constants for consistency.
 class AppRoutes {
+  static const splash = 'splash';
+  static const onboarding = 'onboarding';
   static const landing = 'landing';
   static const signIn = 'sign-in';
   static const createAccount = 'create-account';
   static const pricing = 'pricing';
+  static const mobilePricing = 'mobile-pricing';
   static const settings = 'settings';
 
   static const dashboard = 'dashboard';
@@ -265,7 +271,7 @@ class AppRouter {
   // The primary router for the end-user app
   static final GoRouter main = GoRouter(
     debugLogDiagnostics: kDebugMode,
-    initialLocation: '/',
+    initialLocation: PlatformRouter.getInitialRoute(),
     redirect: (context, state) {
       // Enforce admin-host policy if a user is present
       final user = FirebaseAuth.instance.currentUser;
@@ -285,6 +291,21 @@ class AppRouter {
         builder: (context, state) => const LandingScreen(),
       ),
       GoRoute(
+        name: AppRoutes.splash,
+        path: '/splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        name: AppRoutes.onboarding,
+        path: '/onboarding',
+        builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        name: AppRoutes.mobilePricing,
+        path: '/mobile-pricing',
+        builder: (context, state) => const MobilePricingScreen(),
+      ),
+      GoRoute(
         name: AppRoutes.adminPortal,
         path: '/${AppRoutes.adminPortal}',
         builder: (context, state) => const AdminAuthWrapper(),
@@ -292,27 +313,32 @@ class AppRouter {
       GoRoute(
         name: AppRoutes.adminHome,
         path: '/${AppRoutes.adminHome}',
-        builder: (context, state) => const AdminAuthWrapper(child: AdminHomeScreen()),
+        builder: (context, state) =>
+            const AdminAuthWrapper(child: AdminHomeScreen()),
       ),
       GoRoute(
         name: AppRoutes.adminProjects,
         path: '/${AppRoutes.adminProjects}',
-        builder: (context, state) => const AdminAuthWrapper(child: AdminProjectsScreen()),
+        builder: (context, state) =>
+            const AdminAuthWrapper(child: AdminProjectsScreen()),
       ),
       GoRoute(
         name: AppRoutes.adminUsers,
         path: '/${AppRoutes.adminUsers}',
-        builder: (context, state) => const AdminAuthWrapper(child: AdminUsersScreen()),
+        builder: (context, state) =>
+            const AdminAuthWrapper(child: AdminUsersScreen()),
       ),
       GoRoute(
         name: AppRoutes.adminCoupons,
         path: '/${AppRoutes.adminCoupons}',
-        builder: (context, state) => const AdminAuthWrapper(child: AdminCouponsScreen()),
+        builder: (context, state) =>
+            const AdminAuthWrapper(child: AdminCouponsScreen()),
       ),
       GoRoute(
         name: AppRoutes.adminSubscriptionLookup,
         path: '/${AppRoutes.adminSubscriptionLookup}',
-        builder: (context, state) => const AdminAuthWrapper(child: AdminSubscriptionLookupScreen()),
+        builder: (context, state) =>
+            const AdminAuthWrapper(child: AdminSubscriptionLookupScreen()),
       ),
       GoRoute(
         name: AppRoutes.signIn,
@@ -368,139 +394,393 @@ class AppRouter {
       ),
 
       // Supplemental entry points
-      GoRoute(name: AppRoutes.home, path: '/${AppRoutes.home}', builder: (c, s) => const HomeScreen()),
-      GoRoute(name: AppRoutes.managementLevel, path: '/${AppRoutes.managementLevel}', builder: (c, s) => const ManagementLevelScreen()),
-      GoRoute(name: AppRoutes.lessonsLearned, path: '/${AppRoutes.lessonsLearned}', builder: (c, s) => const LessonsLearnedScreen()),
-      GoRoute(name: AppRoutes.stakeholderManagement, path: '/${AppRoutes.stakeholderManagement}', builder: (c, s) => const StakeholderManagementScreen()),
+      GoRoute(
+          name: AppRoutes.home,
+          path: '/${AppRoutes.home}',
+          builder: (c, s) => const HomeScreen()),
+      GoRoute(
+          name: AppRoutes.managementLevel,
+          path: '/${AppRoutes.managementLevel}',
+          builder: (c, s) => const ManagementLevelScreen()),
+      GoRoute(
+          name: AppRoutes.lessonsLearned,
+          path: '/${AppRoutes.lessonsLearned}',
+          builder: (c, s) => const LessonsLearnedScreen()),
+      GoRoute(
+          name: AppRoutes.stakeholderManagement,
+          path: '/${AppRoutes.stakeholderManagement}',
+          builder: (c, s) => const StakeholderManagementScreen()),
       GoRoute(
         name: AppRoutes.coreStakeholders,
         path: '/${AppRoutes.coreStakeholders}',
-        builder: (c, s) => const CoreStakeholdersScreen(notes: '', solutions: []),
+        builder: (c, s) =>
+            const CoreStakeholdersScreen(notes: '', solutions: []),
       ),
 
       // FEP cluster
-      GoRoute(name: AppRoutes.fep, path: '/${AppRoutes.fep}', builder: (c, s) => const FrontEndPlanningScreen()),
-      GoRoute(name: AppRoutes.fepWorkspace, path: '/${AppRoutes.fepWorkspace}', builder: (c, s) => const FrontEndPlanningWorkspaceScreen()),
-      GoRoute(name: AppRoutes.fepRequirements, path: '/${AppRoutes.fepRequirements}', builder: (c, s) => const FrontEndPlanningRequirementsScreen()),
-      GoRoute(name: AppRoutes.fepPersonnel, path: '/${AppRoutes.fepPersonnel}', builder: (c, s) => const FrontEndPlanningPersonnelScreen()),
-      GoRoute(name: AppRoutes.fepProcurement, path: '/${AppRoutes.fepProcurement}', builder: (c, s) => const FrontEndPlanningProcurementScreen()),
-      GoRoute(name: AppRoutes.fepContracts, path: '/${AppRoutes.fepContracts}', builder: (c, s) => const FrontEndPlanningContractsScreen()),
-      GoRoute(name: AppRoutes.fepVendorQuotes, path: '/${AppRoutes.fepVendorQuotes}', builder: (c, s) => const FrontEndPlanningContractVendorQuotesScreen()),
-      GoRoute(name: AppRoutes.fepInfrastructure, path: '/${AppRoutes.fepInfrastructure}', builder: (c, s) => const FrontEndPlanningInfrastructureScreen()),
-      GoRoute(name: AppRoutes.fepTechnology, path: '/${AppRoutes.fepTechnology}', builder: (c, s) => const FrontEndPlanningTechnologyScreen()),
-      GoRoute(name: AppRoutes.fepTechnologyPersonnel, path: '/${AppRoutes.fepTechnologyPersonnel}', builder: (c, s) => const FrontEndPlanningTechnologyPersonnelScreen()),
-      GoRoute(name: AppRoutes.fepRisks, path: '/${AppRoutes.fepRisks}', builder: (c, s) => const FrontEndPlanningRisksScreen()),
-      GoRoute(name: AppRoutes.fepAllowance, path: '/${AppRoutes.fepAllowance}', builder: (c, s) => const FrontEndPlanningAllowanceScreen()),
-      GoRoute(name: AppRoutes.fepMilestone, path: '/${AppRoutes.fepMilestone}', builder: (c, s) => const FrontEndPlanningMilestoneScreen()),
-      GoRoute(name: AppRoutes.fepOpportunities, path: '/${AppRoutes.fepOpportunities}', builder: (c, s) => const FrontEndPlanningOpportunitiesScreen()),
-      GoRoute(name: AppRoutes.fepSummary, path: '/${AppRoutes.fepSummary}', builder: (c, s) => const FrontEndPlanningSummaryScreen()),
-      GoRoute(name: AppRoutes.fepSummaryEnd, path: '/${AppRoutes.fepSummaryEnd}', builder: (c, s) => const FrontEndPlanningSummaryEndScreen()),
-      GoRoute(name: AppRoutes.fepSecurity, path: '/${AppRoutes.fepSecurity}', builder: (c, s) => const FrontEndPlanningSecurityScreen()),
+      GoRoute(
+          name: AppRoutes.fep,
+          path: '/${AppRoutes.fep}',
+          builder: (c, s) => const FrontEndPlanningScreen()),
+      GoRoute(
+          name: AppRoutes.fepWorkspace,
+          path: '/${AppRoutes.fepWorkspace}',
+          builder: (c, s) => const FrontEndPlanningWorkspaceScreen()),
+      GoRoute(
+          name: AppRoutes.fepRequirements,
+          path: '/${AppRoutes.fepRequirements}',
+          builder: (c, s) => const FrontEndPlanningRequirementsScreen()),
+      GoRoute(
+          name: AppRoutes.fepPersonnel,
+          path: '/${AppRoutes.fepPersonnel}',
+          builder: (c, s) => const FrontEndPlanningPersonnelScreen()),
+      GoRoute(
+          name: AppRoutes.fepProcurement,
+          path: '/${AppRoutes.fepProcurement}',
+          builder: (c, s) => const FrontEndPlanningProcurementScreen()),
+      GoRoute(
+          name: AppRoutes.fepContracts,
+          path: '/${AppRoutes.fepContracts}',
+          builder: (c, s) => const FrontEndPlanningContractsScreen()),
+      GoRoute(
+          name: AppRoutes.fepVendorQuotes,
+          path: '/${AppRoutes.fepVendorQuotes}',
+          builder: (c, s) =>
+              const FrontEndPlanningContractVendorQuotesScreen()),
+      GoRoute(
+          name: AppRoutes.fepInfrastructure,
+          path: '/${AppRoutes.fepInfrastructure}',
+          builder: (c, s) => const FrontEndPlanningInfrastructureScreen()),
+      GoRoute(
+          name: AppRoutes.fepTechnology,
+          path: '/${AppRoutes.fepTechnology}',
+          builder: (c, s) => const FrontEndPlanningTechnologyScreen()),
+      GoRoute(
+          name: AppRoutes.fepTechnologyPersonnel,
+          path: '/${AppRoutes.fepTechnologyPersonnel}',
+          builder: (c, s) => const FrontEndPlanningTechnologyPersonnelScreen()),
+      GoRoute(
+          name: AppRoutes.fepRisks,
+          path: '/${AppRoutes.fepRisks}',
+          builder: (c, s) => const FrontEndPlanningRisksScreen()),
+      GoRoute(
+          name: AppRoutes.fepAllowance,
+          path: '/${AppRoutes.fepAllowance}',
+          builder: (c, s) => const FrontEndPlanningAllowanceScreen()),
+      GoRoute(
+          name: AppRoutes.fepMilestone,
+          path: '/${AppRoutes.fepMilestone}',
+          builder: (c, s) => const FrontEndPlanningMilestoneScreen()),
+      GoRoute(
+          name: AppRoutes.fepOpportunities,
+          path: '/${AppRoutes.fepOpportunities}',
+          builder: (c, s) => const FrontEndPlanningOpportunitiesScreen()),
+      GoRoute(
+          name: AppRoutes.fepSummary,
+          path: '/${AppRoutes.fepSummary}',
+          builder: (c, s) => const FrontEndPlanningSummaryScreen()),
+      GoRoute(
+          name: AppRoutes.fepSummaryEnd,
+          path: '/${AppRoutes.fepSummaryEnd}',
+          builder: (c, s) => const FrontEndPlanningSummaryEndScreen()),
+      GoRoute(
+          name: AppRoutes.fepSecurity,
+          path: '/${AppRoutes.fepSecurity}',
+          builder: (c, s) => const FrontEndPlanningSecurityScreen()),
 
       // Process cluster
-      GoRoute(name: AppRoutes.projectPlan, path: '/${AppRoutes.projectPlan}', builder: (c, s) => const ProjectPlanScreen()),
-      GoRoute(name: AppRoutes.projectFramework, path: '/${AppRoutes.projectFramework}', builder: (c, s) => const ProjectFrameworkScreen()),
-      GoRoute(name: AppRoutes.projectFrameworkNext, path: '/${AppRoutes.projectFrameworkNext}', builder: (c, s) => const ProjectFrameworkNextScreen()),
-      GoRoute(name: AppRoutes.projectCharter, path: '/${AppRoutes.projectCharter}', builder: (c, s) => const ProjectCharterScreen()),
+      GoRoute(
+          name: AppRoutes.projectPlan,
+          path: '/${AppRoutes.projectPlan}',
+          builder: (c, s) => const ProjectPlanScreen()),
+      GoRoute(
+          name: AppRoutes.projectFramework,
+          path: '/${AppRoutes.projectFramework}',
+          builder: (c, s) => const ProjectFrameworkScreen()),
+      GoRoute(
+          name: AppRoutes.projectFrameworkNext,
+          path: '/${AppRoutes.projectFrameworkNext}',
+          builder: (c, s) => const ProjectFrameworkNextScreen()),
+      GoRoute(
+          name: AppRoutes.projectCharter,
+          path: '/${AppRoutes.projectCharter}',
+          builder: (c, s) => const ProjectCharterScreen()),
       GoRoute(
         name: AppRoutes.projectDecisionSummary,
         path: '/${AppRoutes.projectDecisionSummary}',
         builder: (c, s) => ProjectDecisionSummaryScreen(
           projectName: 'Untitled Project',
-          selectedSolution: AiSolutionItem(title: 'TBD Solution', description: 'Draft placeholder'),
+          selectedSolution: AiSolutionItem(
+              title: 'TBD Solution', description: 'Draft placeholder'),
           allSolutions: const [],
           businessCase: '',
           notes: '',
         ),
       ),
-      GoRoute(name: AppRoutes.progressTracking, path: '/${AppRoutes.progressTracking}', builder: (c, s) => const ProgressTrackingScreen()),
-      GoRoute(name: AppRoutes.wbs, path: '/${AppRoutes.wbs}', builder: (c, s) => const WorkBreakdownStructureScreen()),
-      GoRoute(name: AppRoutes.executionPlan, path: '/${AppRoutes.executionPlan}', builder: (c, s) => const ExecutionPlanScreen()),
-      GoRoute(name: AppRoutes.executionPlanInterface, path: '/${AppRoutes.executionPlanInterface}', builder: (c, s) => const ExecutionPlanInterfaceManagementOverviewScreen()),
-      GoRoute(name: AppRoutes.costEstimate, path: '/${AppRoutes.costEstimate}', builder: (c, s) => const CostEstimateScreen()),
+      GoRoute(
+          name: AppRoutes.progressTracking,
+          path: '/${AppRoutes.progressTracking}',
+          builder: (c, s) => const ProgressTrackingScreen()),
+      GoRoute(
+          name: AppRoutes.wbs,
+          path: '/${AppRoutes.wbs}',
+          builder: (c, s) => const WorkBreakdownStructureScreen()),
+      GoRoute(
+          name: AppRoutes.executionPlan,
+          path: '/${AppRoutes.executionPlan}',
+          builder: (c, s) => const ExecutionPlanScreen()),
+      GoRoute(
+          name: AppRoutes.executionPlanInterface,
+          path: '/${AppRoutes.executionPlanInterface}',
+          builder: (c, s) =>
+              const ExecutionPlanInterfaceManagementOverviewScreen()),
+      GoRoute(
+          name: AppRoutes.costEstimate,
+          path: '/${AppRoutes.costEstimate}',
+          builder: (c, s) => const CostEstimateScreen()),
       GoRoute(
         name: AppRoutes.costAnalysis,
         path: '/${AppRoutes.costAnalysis}',
         builder: (c, s) => const CostAnalysisScreen(notes: '', solutions: []),
       ),
-      GoRoute(name: AppRoutes.potentialSolutions, path: '/${AppRoutes.potentialSolutions}', builder: (c, s) => const PotentialSolutionsScreen()),
+      GoRoute(
+          name: AppRoutes.potentialSolutions,
+          path: '/${AppRoutes.potentialSolutions}',
+          builder: (c, s) => const PotentialSolutionsScreen()),
       GoRoute(
         name: AppRoutes.preferredSolutionAnalysis,
         path: '/${AppRoutes.preferredSolutionAnalysis}',
-        builder: (c, s) => const PreferredSolutionAnalysisScreen(notes: '', solutions: [], businessCase: ''),
+        builder: (c, s) => const PreferredSolutionAnalysisScreen(
+            notes: '', solutions: [], businessCase: ''),
       ),
-      GoRoute(name: AppRoutes.riskAssessment, path: '/${AppRoutes.riskAssessment}', builder: (c, s) => const RiskAssessmentScreen()),
+      GoRoute(
+          name: AppRoutes.riskAssessment,
+          path: '/${AppRoutes.riskAssessment}',
+          builder: (c, s) => const RiskAssessmentScreen()),
       GoRoute(
         name: AppRoutes.riskIdentification,
         path: '/${AppRoutes.riskIdentification}',
-        builder: (c, s) => const RiskIdentificationScreen(notes: '', solutions: []),
+        builder: (c, s) =>
+            const RiskIdentificationScreen(notes: '', solutions: []),
       ),
-      GoRoute(name: AppRoutes.issueManagement, path: '/${AppRoutes.issueManagement}', builder: (c, s) => const IssueManagementScreen()),
-      GoRoute(name: AppRoutes.changeManagement, path: '/${AppRoutes.changeManagement}', builder: (c, s) => ChangeManagementScreen()),
-      GoRoute(name: AppRoutes.schedule, path: '/${AppRoutes.schedule}', builder: (c, s) => const ScheduleScreen()),
-      GoRoute(name: AppRoutes.contractDetails, path: '/${AppRoutes.contractDetails}', builder: (c, s) => ContractDetailsDashboardScreen()),
-      GoRoute(name: AppRoutes.scheduleManagementBoard, path: '/${AppRoutes.scheduleManagementBoard}', builder: (c, s) => const ScheduleManagementBoardScreen()),
+      GoRoute(
+          name: AppRoutes.issueManagement,
+          path: '/${AppRoutes.issueManagement}',
+          builder: (c, s) => const IssueManagementScreen()),
+      GoRoute(
+          name: AppRoutes.changeManagement,
+          path: '/${AppRoutes.changeManagement}',
+          builder: (c, s) => ChangeManagementScreen()),
+      GoRoute(
+          name: AppRoutes.schedule,
+          path: '/${AppRoutes.schedule}',
+          builder: (c, s) => const ScheduleScreen()),
+      GoRoute(
+          name: AppRoutes.contractDetails,
+          path: '/${AppRoutes.contractDetails}',
+          builder: (c, s) => ContractDetailsDashboardScreen()),
+      GoRoute(
+          name: AppRoutes.scheduleManagementBoard,
+          path: '/${AppRoutes.scheduleManagementBoard}',
+          builder: (c, s) => const ScheduleManagementBoardScreen()),
 
       // Team cluster
-      GoRoute(name: AppRoutes.teamManagement, path: '/${AppRoutes.teamManagement}', builder: (c, s) => const TeamManagementScreen()),
-      GoRoute(name: AppRoutes.teamMeetings, path: '/${AppRoutes.teamMeetings}', builder: (c, s) => const TeamMeetingsScreen()),
-      GoRoute(name: AppRoutes.teamRoles, path: '/${AppRoutes.teamRoles}', builder: (c, s) => const TeamRolesResponsibilitiesScreen()),
-      GoRoute(name: AppRoutes.teamTraining, path: '/${AppRoutes.teamTraining}', builder: (c, s) => const TeamTrainingAndBuildingScreen()),
-      GoRoute(name: AppRoutes.trainingTasks, path: '/${AppRoutes.trainingTasks}', builder: (c, s) => const TrainingProjectTasksScreen()),
-      GoRoute(name: AppRoutes.staffTeam, path: '/${AppRoutes.staffTeam}', builder: (c, s) => const StaffTeamScreen()),
+      GoRoute(
+          name: AppRoutes.teamManagement,
+          path: '/${AppRoutes.teamManagement}',
+          builder: (c, s) => const TeamManagementScreen()),
+      GoRoute(
+          name: AppRoutes.teamMeetings,
+          path: '/${AppRoutes.teamMeetings}',
+          builder: (c, s) => const TeamMeetingsScreen()),
+      GoRoute(
+          name: AppRoutes.teamRoles,
+          path: '/${AppRoutes.teamRoles}',
+          builder: (c, s) => const TeamRolesResponsibilitiesScreen()),
+      GoRoute(
+          name: AppRoutes.teamTraining,
+          path: '/${AppRoutes.teamTraining}',
+          builder: (c, s) => const TeamTrainingAndBuildingScreen()),
+      GoRoute(
+          name: AppRoutes.trainingTasks,
+          path: '/${AppRoutes.trainingTasks}',
+          builder: (c, s) => const TrainingProjectTasksScreen()),
+      GoRoute(
+          name: AppRoutes.staffTeam,
+          path: '/${AppRoutes.staffTeam}',
+          builder: (c, s) => const StaffTeamScreen()),
       GoRoute(
         name: AppRoutes.infrastructureConsiderations,
         path: '/${AppRoutes.infrastructureConsiderations}',
-        builder: (c, s) => const InfrastructureConsiderationsScreen(notes: '', solutions: []),
+        builder: (c, s) =>
+            const InfrastructureConsiderationsScreen(notes: '', solutions: []),
       ),
       GoRoute(
         name: AppRoutes.itConsiderations,
         path: '/${AppRoutes.itConsiderations}',
-        builder: (c, s) => const ITConsiderationsScreen(notes: '', solutions: []),
+        builder: (c, s) =>
+            const ITConsiderationsScreen(notes: '', solutions: []),
       ),
-      GoRoute(name: AppRoutes.securityManagement, path: '/${AppRoutes.securityManagement}', builder: (c, s) => const SecurityManagementScreen()),
+      GoRoute(
+          name: AppRoutes.securityManagement,
+          path: '/${AppRoutes.securityManagement}',
+          builder: (c, s) => const SecurityManagementScreen()),
 
       // Program basics
-      GoRoute(name: AppRoutes.programBasics, path: '/${AppRoutes.programBasics}', builder: (c, s) => const ProgramBasicsScreen()),
-      GoRoute(name: AppRoutes.initiationPhase, path: '/${AppRoutes.initiationPhase}', builder: (c, s) => const InitiationPhaseScreen()),
-      GoRoute(name: AppRoutes.designPhase, path: '/${AppRoutes.designPhase}', builder: (c, s) => const DesignPhaseScreen()),
-      GoRoute(name: AppRoutes.requirementsImplementation, path: '/${AppRoutes.requirementsImplementation}', builder: (c, s) => const RequirementsImplementationScreen()),
-      GoRoute(name: AppRoutes.deliverablesRoadmap, path: '/${AppRoutes.deliverablesRoadmap}', builder: (c, s) => const DeliverablesRoadmapScreen()),
-      GoRoute(name: AppRoutes.deliverProjectClosure, path: '/${AppRoutes.deliverProjectClosure}', builder: (c, s) => const DeliverProjectClosureScreen()),
-      GoRoute(name: AppRoutes.transitionToProdTeam, path: '/${AppRoutes.transitionToProdTeam}', builder: (c, s) => const TransitionToProdTeamScreen()),
-      GoRoute(name: AppRoutes.contractCloseOut, path: '/${AppRoutes.contractCloseOut}', builder: (c, s) => const ContractCloseOutScreen()),
-      GoRoute(name: AppRoutes.vendorAccountCloseOut, path: '/${AppRoutes.vendorAccountCloseOut}', builder: (c, s) => const VendorAccountCloseOutScreen()),
-      GoRoute(name: AppRoutes.uiUxDesign, path: '/${AppRoutes.uiUxDesign}', builder: (c, s) => const UiUxDesignScreen()),
-      GoRoute(name: AppRoutes.developmentSetUp, path: '/${AppRoutes.developmentSetUp}', builder: (c, s) => const DevelopmentSetUpScreen()),
-      GoRoute(name: AppRoutes.technicalAlignment, path: '/${AppRoutes.technicalAlignment}', builder: (c, s) => const TechnicalAlignmentScreen()),
-      GoRoute(name: AppRoutes.backendDesign, path: '/${AppRoutes.backendDesign}', builder: (c, s) => const BackendDesignScreen()),
-      GoRoute(name: AppRoutes.longLeadEquipmentOrdering, path: '/${AppRoutes.longLeadEquipmentOrdering}', builder: (c, s) => const LongLeadEquipmentOrderingScreen()),
-      GoRoute(name: AppRoutes.projectCloseOut, path: '/${AppRoutes.projectCloseOut}', builder: (c, s) => const ProjectCloseOutScreen()),
-      GoRoute(name: AppRoutes.demobilizeTeam, path: '/${AppRoutes.demobilizeTeam}', builder: (c, s) => const DemobilizeTeamScreen()),
-      GoRoute(name: AppRoutes.technicalDevelopment, path: '/${AppRoutes.technicalDevelopment}', builder: (c, s) => const TechnicalDevelopmentScreen()),
-      GoRoute(name: AppRoutes.toolsIntegration, path: '/${AppRoutes.toolsIntegration}', builder: (c, s) => const ToolsIntegrationScreen()),
-      GoRoute(name: AppRoutes.summarizeAccountRisks, path: '/${AppRoutes.summarizeAccountRisks}', builder: (c, s) => const SummarizeAccountRisksScreen()),
-      GoRoute(name: AppRoutes.agileDevelopmentIterations, path: '/${AppRoutes.agileDevelopmentIterations}', builder: (c, s) => const AgileDevelopmentIterationsScreen()),
-      GoRoute(name: AppRoutes.engineeringDesign, path: '/${AppRoutes.engineeringDesign}', builder: (c, s) => const EngineeringDesignScreen()),
-      GoRoute(name: AppRoutes.scopeCompletion, path: '/${AppRoutes.scopeCompletion}', builder: (c, s) => const ScopeCompletionScreen()),
-      GoRoute(name: AppRoutes.technicalDebtManagement, path: '/${AppRoutes.technicalDebtManagement}', builder: (c, s) => const TechnicalDebtManagementScreen()),
-      GoRoute(name: AppRoutes.riskTracking, path: '/${AppRoutes.riskTracking}', builder: (c, s) => const RiskTrackingScreen()),
-      GoRoute(name: AppRoutes.identifyStaffOpsTeam, path: '/${AppRoutes.identifyStaffOpsTeam}', builder: (c, s) => const IdentifyStaffOpsTeamScreen()),
-      GoRoute(name: AppRoutes.contractsTracking, path: '/${AppRoutes.contractsTracking}', builder: (c, s) => const ContractsTrackingScreen()),
-      GoRoute(name: AppRoutes.vendorTracking, path: '/${AppRoutes.vendorTracking}', builder: (c, s) => const VendorTrackingScreen()),
-      GoRoute(name: AppRoutes.detailedDesign, path: '/${AppRoutes.detailedDesign}', builder: (c, s) => const DetailedDesignScreen()),
-      GoRoute(name: AppRoutes.scopeTrackingImplementation, path: '/${AppRoutes.scopeTrackingImplementation}', builder: (c, s) => const ScopeTrackingImplementationScreen()),
-      GoRoute(name: AppRoutes.stakeholderAlignment, path: '/${AppRoutes.stakeholderAlignment}', builder: (c, s) => const StakeholderAlignmentScreen()),
-      GoRoute(name: AppRoutes.updateOpsMaintenancePlans, path: '/${AppRoutes.updateOpsMaintenancePlans}', builder: (c, s) => const UpdateOpsMaintenancePlansScreen()),
-      GoRoute(name: AppRoutes.privacyPolicy, path: '/${AppRoutes.privacyPolicy}', builder: (c, s) => const PrivacyPolicyScreen()),
-      GoRoute(name: AppRoutes.termsConditions, path: '/${AppRoutes.termsConditions}', builder: (c, s) => const TermsConditionsScreen()),
+      GoRoute(
+          name: AppRoutes.programBasics,
+          path: '/${AppRoutes.programBasics}',
+          builder: (c, s) => const ProgramBasicsScreen()),
+      GoRoute(
+          name: AppRoutes.initiationPhase,
+          path: '/${AppRoutes.initiationPhase}',
+          builder: (c, s) => const InitiationPhaseScreen()),
+      GoRoute(
+          name: AppRoutes.designPhase,
+          path: '/${AppRoutes.designPhase}',
+          builder: (c, s) => const DesignPhaseScreen()),
+      GoRoute(
+          name: AppRoutes.requirementsImplementation,
+          path: '/${AppRoutes.requirementsImplementation}',
+          builder: (c, s) => const RequirementsImplementationScreen()),
+      GoRoute(
+          name: AppRoutes.deliverablesRoadmap,
+          path: '/${AppRoutes.deliverablesRoadmap}',
+          builder: (c, s) => const DeliverablesRoadmapScreen()),
+      GoRoute(
+          name: AppRoutes.deliverProjectClosure,
+          path: '/${AppRoutes.deliverProjectClosure}',
+          builder: (c, s) => const DeliverProjectClosureScreen()),
+      GoRoute(
+          name: AppRoutes.transitionToProdTeam,
+          path: '/${AppRoutes.transitionToProdTeam}',
+          builder: (c, s) => const TransitionToProdTeamScreen()),
+      GoRoute(
+          name: AppRoutes.contractCloseOut,
+          path: '/${AppRoutes.contractCloseOut}',
+          builder: (c, s) => const ContractCloseOutScreen()),
+      GoRoute(
+          name: AppRoutes.vendorAccountCloseOut,
+          path: '/${AppRoutes.vendorAccountCloseOut}',
+          builder: (c, s) => const VendorAccountCloseOutScreen()),
+      GoRoute(
+          name: AppRoutes.uiUxDesign,
+          path: '/${AppRoutes.uiUxDesign}',
+          builder: (c, s) => const UiUxDesignScreen()),
+      GoRoute(
+          name: AppRoutes.developmentSetUp,
+          path: '/${AppRoutes.developmentSetUp}',
+          builder: (c, s) => const DevelopmentSetUpScreen()),
+      GoRoute(
+          name: AppRoutes.technicalAlignment,
+          path: '/${AppRoutes.technicalAlignment}',
+          builder: (c, s) => const TechnicalAlignmentScreen()),
+      GoRoute(
+          name: AppRoutes.backendDesign,
+          path: '/${AppRoutes.backendDesign}',
+          builder: (c, s) => const BackendDesignScreen()),
+      GoRoute(
+          name: AppRoutes.longLeadEquipmentOrdering,
+          path: '/${AppRoutes.longLeadEquipmentOrdering}',
+          builder: (c, s) => const LongLeadEquipmentOrderingScreen()),
+      GoRoute(
+          name: AppRoutes.projectCloseOut,
+          path: '/${AppRoutes.projectCloseOut}',
+          builder: (c, s) => const ProjectCloseOutScreen()),
+      GoRoute(
+          name: AppRoutes.demobilizeTeam,
+          path: '/${AppRoutes.demobilizeTeam}',
+          builder: (c, s) => const DemobilizeTeamScreen()),
+      GoRoute(
+          name: AppRoutes.technicalDevelopment,
+          path: '/${AppRoutes.technicalDevelopment}',
+          builder: (c, s) => const TechnicalDevelopmentScreen()),
+      GoRoute(
+          name: AppRoutes.toolsIntegration,
+          path: '/${AppRoutes.toolsIntegration}',
+          builder: (c, s) => const ToolsIntegrationScreen()),
+      GoRoute(
+          name: AppRoutes.summarizeAccountRisks,
+          path: '/${AppRoutes.summarizeAccountRisks}',
+          builder: (c, s) => const SummarizeAccountRisksScreen()),
+      GoRoute(
+          name: AppRoutes.agileDevelopmentIterations,
+          path: '/${AppRoutes.agileDevelopmentIterations}',
+          builder: (c, s) => const AgileDevelopmentIterationsScreen()),
+      GoRoute(
+          name: AppRoutes.engineeringDesign,
+          path: '/${AppRoutes.engineeringDesign}',
+          builder: (c, s) => const EngineeringDesignScreen()),
+      GoRoute(
+          name: AppRoutes.scopeCompletion,
+          path: '/${AppRoutes.scopeCompletion}',
+          builder: (c, s) => const ScopeCompletionScreen()),
+      GoRoute(
+          name: AppRoutes.technicalDebtManagement,
+          path: '/${AppRoutes.technicalDebtManagement}',
+          builder: (c, s) => const TechnicalDebtManagementScreen()),
+      GoRoute(
+          name: AppRoutes.riskTracking,
+          path: '/${AppRoutes.riskTracking}',
+          builder: (c, s) => const RiskTrackingScreen()),
+      GoRoute(
+          name: AppRoutes.identifyStaffOpsTeam,
+          path: '/${AppRoutes.identifyStaffOpsTeam}',
+          builder: (c, s) => const IdentifyStaffOpsTeamScreen()),
+      GoRoute(
+          name: AppRoutes.contractsTracking,
+          path: '/${AppRoutes.contractsTracking}',
+          builder: (c, s) => const ContractsTrackingScreen()),
+      GoRoute(
+          name: AppRoutes.vendorTracking,
+          path: '/${AppRoutes.vendorTracking}',
+          builder: (c, s) => const VendorTrackingScreen()),
+      GoRoute(
+          name: AppRoutes.detailedDesign,
+          path: '/${AppRoutes.detailedDesign}',
+          builder: (c, s) => const DetailedDesignScreen()),
+      GoRoute(
+          name: AppRoutes.scopeTrackingImplementation,
+          path: '/${AppRoutes.scopeTrackingImplementation}',
+          builder: (c, s) => const ScopeTrackingImplementationScreen()),
+      GoRoute(
+          name: AppRoutes.stakeholderAlignment,
+          path: '/${AppRoutes.stakeholderAlignment}',
+          builder: (c, s) => const StakeholderAlignmentScreen()),
+      GoRoute(
+          name: AppRoutes.updateOpsMaintenancePlans,
+          path: '/${AppRoutes.updateOpsMaintenancePlans}',
+          builder: (c, s) => const UpdateOpsMaintenancePlansScreen()),
+      GoRoute(
+          name: AppRoutes.privacyPolicy,
+          path: '/${AppRoutes.privacyPolicy}',
+          builder: (c, s) => const PrivacyPolicyScreen()),
+      GoRoute(
+          name: AppRoutes.termsConditions,
+          path: '/${AppRoutes.termsConditions}',
+          builder: (c, s) => const TermsConditionsScreen()),
 
       // SSHER suite
-      GoRoute(name: AppRoutes.ssherStacked, path: '/${AppRoutes.ssherStacked}', builder: (c, s) => const SsherStackedScreen()),
-      GoRoute(name: AppRoutes.ssher1, path: '/${AppRoutes.ssher1}', builder: (c, s) => const SsherScreen1()),
-      GoRoute(name: AppRoutes.ssher2, path: '/${AppRoutes.ssher2}', builder: (c, s) => const SsherScreen2()),
-      GoRoute(name: AppRoutes.ssher3, path: '/${AppRoutes.ssher3}', builder: (c, s) => const SsherScreen3()),
-      GoRoute(name: AppRoutes.ssher4, path: '/${AppRoutes.ssher4}', builder: (c, s) => const SsherScreen4()),
+      GoRoute(
+          name: AppRoutes.ssherStacked,
+          path: '/${AppRoutes.ssherStacked}',
+          builder: (c, s) => const SsherStackedScreen()),
+      GoRoute(
+          name: AppRoutes.ssher1,
+          path: '/${AppRoutes.ssher1}',
+          builder: (c, s) => const SsherScreen1()),
+      GoRoute(
+          name: AppRoutes.ssher2,
+          path: '/${AppRoutes.ssher2}',
+          builder: (c, s) => const SsherScreen2()),
+      GoRoute(
+          name: AppRoutes.ssher3,
+          path: '/${AppRoutes.ssher3}',
+          builder: (c, s) => const SsherScreen3()),
+      GoRoute(
+          name: AppRoutes.ssher4,
+          path: '/${AppRoutes.ssher4}',
+          builder: (c, s) => const SsherScreen4()),
       // SafetyFullViewScreen requires constructor data; reachable via the SSHER flow, not direct URL
     ],
     errorBuilder: (context, state) {
@@ -515,18 +795,19 @@ class AppRouter {
     redirect: (context, state) {
       final user = FirebaseAuth.instance.currentUser;
       final currentPath = state.uri.path;
-      
+
       // On admin domain, handle routing specially
       if (AccessPolicy.isRestrictedAdminHost()) {
         // Redirect /landing to appropriate page (it doesn't exist in admin router)
-        if (currentPath == '/${AppRoutes.landing}' || currentPath == '/landing') {
+        if (currentPath == '/${AppRoutes.landing}' ||
+            currentPath == '/landing') {
           final email = user?.email;
           if (email != null && email.isNotEmpty) {
             return '/${AppRoutes.adminHome}';
           }
           return '/${AppRoutes.signIn}';
         }
-        
+
         // If user is authenticated (has email), allow access
         final email = user?.email;
         if (email != null && email.isNotEmpty) {
@@ -537,23 +818,24 @@ class AppRouter {
           // Allow access to other routes
           return null;
         }
-        
+
         // If not authenticated, redirect to sign-in (unless already on sign-in)
-        if (currentPath != '/${AppRoutes.signIn}' && currentPath != '/sign-in') {
+        if (currentPath != '/${AppRoutes.signIn}' &&
+            currentPath != '/sign-in') {
           return '/${AppRoutes.signIn}';
         }
         return null;
       }
-      
+
       // For non-admin domains, use the standard guard
       final block = _adminHostGuard(user);
       if (block != null) return block;
-      
+
       // Default: if authenticated and on root, go to admin home
       if (user != null && (currentPath == '/' || currentPath.isEmpty)) {
         return '/${AppRoutes.adminHome}';
       }
-      
+
       return null;
     },
     routes: [
@@ -569,7 +851,10 @@ class AppRouter {
           return const SignInScreen();
         },
       ),
-      GoRoute(name: AppRoutes.signIn, path: '/${AppRoutes.signIn}', builder: (c, s) => const SignInScreen()),
+      GoRoute(
+          name: AppRoutes.signIn,
+          path: '/${AppRoutes.signIn}',
+          builder: (c, s) => const SignInScreen()),
       GoRoute(
         name: AppRoutes.adminHome,
         path: '/${AppRoutes.adminHome}',
@@ -593,7 +878,8 @@ class AppRouter {
       GoRoute(
         name: AppRoutes.adminSubscriptionLookup,
         path: '/${AppRoutes.adminSubscriptionLookup}',
-        builder: (c, s) => const AdminAuthWrapper(child: AdminSubscriptionLookupScreen()),
+        builder: (c, s) =>
+            const AdminAuthWrapper(child: AdminSubscriptionLookupScreen()),
       ),
       GoRoute(
         name: AppRoutes.settings,
@@ -601,7 +887,8 @@ class AppRouter {
         builder: (c, s) => const AdminAuthWrapper(child: SettingsScreen()),
       ),
     ],
-    errorBuilder: (context, state) => _RouteNotFound(path: state.uri.toString()),
+    errorBuilder: (context, state) =>
+        _RouteNotFound(path: state.uri.toString()),
   );
 }
 
@@ -614,7 +901,7 @@ class _RouteNotFound extends StatelessWidget {
     final isAdminDomain = AccessPolicy.isRestrictedAdminHost();
     final user = FirebaseAuth.instance.currentUser;
     final hasEmail = user?.email != null && user!.email!.isNotEmpty;
-    
+
     return Scaffold(
       body: Center(
         child: ConstrainedBox(
@@ -627,13 +914,16 @@ class _RouteNotFound extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.travel_explore, color: t.colorScheme.primary, size: 32),
+                    Icon(Icons.travel_explore,
+                        color: t.colorScheme.primary, size: 32),
                     const SizedBox(width: 12),
                     Text('Page not found', style: t.textTheme.titleLarge),
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text('We couldn\'t find "$path". Check the URL or use navigation.', style: t.textTheme.bodyMedium),
+                Text(
+                    'We couldn\'t find "$path". Check the URL or use navigation.',
+                    style: t.textTheme.bodyMedium),
                 const SizedBox(height: 16),
                 FilledButton.icon(
                   onPressed: () {

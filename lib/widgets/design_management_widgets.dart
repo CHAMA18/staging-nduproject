@@ -192,13 +192,13 @@ class DesignDocumentsCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -207,59 +207,113 @@ class DesignDocumentsCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Design Documents',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
                 ),
+                child: const Icon(Icons.description,
+                    color: Color(0xFF10B981), size: 20),
               ),
-              IconButton(
-                icon: const Icon(Icons.upload_file, color: Color(0xFF10B981)),
-                onPressed: () => _showAddDocumentDialog(context, provider),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Design Documents',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 16),
           if (documents.isEmpty)
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
-                child: Text(
-                  'No documents linked.',
-                  style: TextStyle(color: Colors.grey),
+                padding: const EdgeInsets.symmetric(vertical: 32),
+                child: Column(
+                  children: [
+                    Icon(Icons.folder_open,
+                        size: 48, color: Colors.grey.shade300),
+                    const SizedBox(height: 12),
+                    Text(
+                      'No documents linked',
+                      style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: () =>
+                          _showAddDocumentDialog(context, provider),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Add Document'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF10B981),
+                        side: const BorderSide(color: Color(0xFF10B981)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             )
           else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: documents.length,
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final doc = documents[index];
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.description_outlined,
-                      color: Colors.grey),
-                  title: Text(doc.title),
-                  subtitle: Text(doc.type),
-                  trailing: doc.url != null && doc.url!.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.open_in_new, size: 18),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Opening ${doc.url}')),
-                            );
-                          },
-                        )
-                      : null,
-                );
-              },
+            Column(
+              children: [
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: documents.length,
+                  separatorBuilder: (context, index) =>
+                      Divider(height: 1, color: Colors.grey.shade100),
+                  itemBuilder: (context, index) {
+                    final doc = documents[index];
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.description_outlined,
+                            color: Colors.blue, size: 20),
+                      ),
+                      title: Text(doc.title,
+                          style: const TextStyle(fontWeight: FontWeight.w500)),
+                      subtitle: Text(doc.type,
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey.shade600)),
+                      trailing: doc.url != null && doc.url!.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(Icons.open_in_new,
+                                  size: 18, color: Colors.grey.shade600),
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Opening ${doc.url}')),
+                                );
+                              },
+                            )
+                          : null,
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: () => _showAddDocumentDialog(context, provider),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Add Document'),
+                  style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFF10B981)),
+                ),
+              ],
             ),
         ],
       ),
@@ -345,13 +399,13 @@ class DesignToolsCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -360,61 +414,142 @@ class DesignToolsCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Design Tools',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
                 ),
+                child: const Icon(Icons.construction,
+                    color: Color(0xFFF59E0B), size: 20),
               ),
-              IconButton(
-                icon: const Icon(Icons.add_link, color: Color(0xFFF59E0B)),
-                onPressed: () => _showAddToolDialog(context, provider),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Design Tools',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 16),
           if (tools.isEmpty)
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
-                child: Text(
-                  'No tools configured.',
-                  style: TextStyle(color: Colors.grey),
+                padding: const EdgeInsets.symmetric(vertical: 32),
+                child: Column(
+                  children: [
+                    Icon(Icons.handyman, size: 48, color: Colors.grey.shade300),
+                    const SizedBox(height: 12),
+                    Text(
+                      'No tools configured',
+                      style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: () => _showAddToolDialog(context, provider),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Add Tool'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFF59E0B),
+                        side: const BorderSide(color: Color(0xFFF59E0B)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             )
           else
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: tools.map((tool) {
-                return InputChip(
-                  avatar: Icon(
-                    tool.isInternal ? Icons.dns : Icons.public,
-                    size: 16,
-                    color: Colors.grey.shade700,
-                  ),
-                  label: Text(tool.name),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Opening ${tool.url}')),
+            Column(
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: tools.map((tool) {
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Opening ${tool.url}')),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: tool.isInternal
+                                ? Colors.blue.shade50
+                                : Colors.purple.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: tool.isInternal
+                                  ? Colors.blue.shade200
+                                  : Colors.purple.shade200,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                tool.isInternal ? Icons.dns : Icons.public,
+                                size: 16,
+                                color: tool.isInternal
+                                    ? Colors.blue.shade700
+                                    : Colors.purple.shade700,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                tool.name,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: tool.isInternal
+                                      ? Colors.blue.shade900
+                                      : Colors.purple.shade900,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              InkWell(
+                                onTap: () {
+                                  final currentData = provider
+                                      .projectData.designManagementData!;
+                                  currentData.tools.remove(tool);
+                                  provider.updateProjectData(
+                                    provider.projectData.copyWith(
+                                        designManagementData: currentData),
+                                  );
+                                },
+                                child: Icon(Icons.close,
+                                    size: 14, color: Colors.grey.shade600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     );
-                  },
-                  onDeleted: () {
-                    final currentData =
-                        provider.projectData.designManagementData!;
-                    currentData.tools.remove(tool);
-                    provider.updateProjectData(
-                      provider.projectData
-                          .copyWith(designManagementData: currentData),
-                    );
-                  },
-                );
-              }).toList(),
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: () => _showAddToolDialog(context, provider),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Add Tool'),
+                  style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFFF59E0B)),
+                ),
+              ],
             ),
         ],
       ),

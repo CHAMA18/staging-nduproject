@@ -244,7 +244,7 @@ class _ContractRowWidgetState extends State<_ContractRowWidget> {
         updatedAt: DateTime.now(),
       );
 
-      // Update contract with AI-generated key terms
+      // Update contract with KAZ AI-generated key terms
       _updateContract(updated);
 
       if (mounted) {
@@ -424,7 +424,8 @@ class _ContractRowWidgetState extends State<_ContractRowWidget> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    initialValue: selectedStatus.isEmpty ? null : selectedStatus,
+                    initialValue:
+                        selectedStatus.isEmpty ? null : selectedStatus,
                     decoration: const InputDecoration(
                       labelText: 'Status *',
                       isDense: true,

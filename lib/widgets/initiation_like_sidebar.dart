@@ -458,8 +458,8 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
 
   void _openContractVendorQuotes() {
     // Security check: prevent navigation if item is locked
-    if (_isBasicPlanLocked('Contract & Vendor Quotes')) {
-      _showLockedItemMessage('Contract & Vendor Quotes');
+    if (_isBasicPlanLocked('Contracting')) {
+      _showLockedItemMessage('Contracting');
       return;
     }
     _navigateWithCheckpoint('fep_contract_vendor_quotes',
@@ -1517,8 +1517,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
   }
 
   List<Widget> _buildAllMenuItems() {
-    final lockContractVendorQuotes =
-        _isBasicPlanLocked('Contract & Vendor Quotes');
+    final lockContractVendorQuotes = _isBasicPlanLocked('Contracting');
     final lockSecurity = _isBasicPlanLocked('Security');
     final lockAllowance = _isBasicPlanLocked('Allowance');
     final lockWorkBreakdown = _isBasicPlanLocked('Work Breakdown Structure');
@@ -1642,9 +1641,9 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
               onTap: _openFrontEndOpportunities,
               isActive: widget.activeItemLabel == 'Project Opportunities'),
           _buildSubSubMenuItem(
-            'Contract & Vendor Quotes',
+            'Contracting',
             onTap: lockContractVendorQuotes ? null : _openContractVendorQuotes,
-            isActive: widget.activeItemLabel == 'Contract & Vendor Quotes',
+            isActive: widget.activeItemLabel == 'Contracting',
             isDisabled: lockContractVendorQuotes,
           ),
           _buildSubSubMenuItem('Procurement',
@@ -2221,8 +2220,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
   Widget _buildSearchResults() {
     final query = _searchQuery.toLowerCase();
     final results = <Widget>[];
-    final lockContractVendorQuotes =
-        _isBasicPlanLocked('Contract & Vendor Quotes');
+    final lockContractVendorQuotes = _isBasicPlanLocked('Contracting');
     final lockSecurity = _isBasicPlanLocked('Security');
     final lockAllowance = _isBasicPlanLocked('Allowance');
     final lockWorkBreakdown = _isBasicPlanLocked('Work Breakdown Structure');
@@ -2366,9 +2364,9 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
       results.add(
         _buildMenuItem(
           Icons.description_outlined,
-          'Contract & Vendor Quotes',
+          'Contracting',
           onTap: lockContractVendorQuotes ? null : _openContractVendorQuotes,
-          isActive: widget.activeItemLabel == 'Contract & Vendor Quotes',
+          isActive: widget.activeItemLabel == 'Contracting',
           isDisabled: lockContractVendorQuotes,
         ),
       );

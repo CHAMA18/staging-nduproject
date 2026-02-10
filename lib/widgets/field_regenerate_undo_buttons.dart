@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Reusable field-level regenerate and undo buttons
-/// Shows on hover over text fields that have AI-generated content
+/// Shows on hover over text fields that have KAZ AI-generated content
 class FieldRegenerateUndoButtons extends StatelessWidget {
   const FieldRegenerateUndoButtons({
     super.key,

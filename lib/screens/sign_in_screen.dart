@@ -9,6 +9,7 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/elevated_auth_container.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ndu_project/routing/app_router.dart';
+import 'package:ndu_project/services/subscription_service.dart'; // Added
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -67,7 +68,8 @@ class _SignInScreenState extends State<SignInScreen> {
       await _showDeviceRestrictionDialog();
       return;
     }
-    if (_emailController.text.trim().isEmpty || _passwordController.text.isEmpty) {
+    if (_emailController.text.trim().isEmpty ||
+        _passwordController.text.isEmpty) {
       _showSnack('Please fill in all fields', Colors.red);
       return;
     }
@@ -83,12 +85,16 @@ class _SignInScreenState extends State<SignInScreen> {
       await user?.reload();
       if (!mounted) return;
       final refreshed = FirebaseAuth.instance.currentUser;
-      if (refreshed != null && (refreshed.emailVerified || _isGoogleProvider(refreshed))) {
+      if (refreshed != null &&
+          (refreshed.emailVerified || _isGoogleProvider(refreshed))) {
         _navigateAfterSignIn();
       } else {
-        await _showVerifyEmailDialog(refreshed?.email ?? _emailController.text.trim());
+        await _showVerifyEmailDialog(
+            refreshed?.email ?? _emailController.text.trim());
         // Keep user on sign-in; optionally sign out to prevent accidental access
-        try { await FirebaseAuthService.signOut(); } catch (_) {}
+        try {
+          await FirebaseAuthService.signOut();
+        } catch (_) {}
       }
     } catch (e) {
       _showSnack('Sign in failed: $e', Colors.red);
@@ -105,10 +111,31 @@ class _SignInScreenState extends State<SignInScreen> {
     if (!mounted) return;
     if (_shouldDeferToAuthWrapper()) return;
 
-    final isAdminHost = AccessPolicy.isRestrictedAdminHost();
-    final target = isAdminHost ? '/${AppRoutes.adminHome}' : '/${AppRoutes.pricing}';
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+      String target;
+      final isAdminHost = AccessPolicy.isRestrictedAdminHost();
+
+      if (isAdminHost) {
+        target = '/${AppRoutes.adminHome}';
+      } else {
+        // Check for active subscription (including trials)
+        try {
+          final hasSubscription =
+              await SubscriptionService.hasActiveSubscription();
+          if (hasSubscription) {
+            target = '/${AppRoutes.dashboard}';
+          } else {
+            target = '/${AppRoutes.pricing}';
+          }
+        } catch (e) {
+          debugPrint('Error checking subscription on sign in: $e');
+          // Fallback to pricing if check fails
+          target = '/${AppRoutes.pricing}';
+        }
+      }
+
       if (!mounted) return;
       context.go(target);
     });
@@ -117,7 +144,8 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _shouldDeferToAuthWrapper() {
     try {
       final path = GoRouterState.of(context).uri.path;
-      return path.startsWith('/${AppRoutes.adminPortal}') || path.startsWith('/admin-');
+      return path.startsWith('/${AppRoutes.adminPortal}') ||
+          path.startsWith('/admin-');
     } catch (_) {
       return false;
     }
@@ -128,13 +156,16 @@ class _SignInScreenState extends State<SignInScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Verify your email'),
-        content: Text('We\'ve sent a verification link to\n$email. Please verify your email, then come back and sign in.'),
+        content: Text(
+            'We\'ve sent a verification link to\n$email. Please verify your email, then come back and sign in.'),
         actions: [
           TextButton(
             onPressed: () async {
               try {
-                await FirebaseAuth.instance.currentUser?.sendEmailVerification();
-                if (mounted) _showSnack('Verification email sent', Colors.green);
+                await FirebaseAuth.instance.currentUser
+                    ?.sendEmailVerification();
+                if (mounted)
+                  _showSnack('Verification email sent', Colors.green);
               } catch (e) {
                 if (mounted) _showSnack('Failed to resend: $e', Colors.red);
               }
@@ -172,7 +203,8 @@ class _SignInScreenState extends State<SignInScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Device Not Supported'),
-        content: const Text('Use either a Tablet/Desktop for the best experience possible'),
+        content: const Text(
+            'Use either a Tablet/Desktop for the best experience possible'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
@@ -195,7 +227,8 @@ class _SignInScreenState extends State<SignInScreen> {
       final borderShape = BorderRadius.circular(12);
       return InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: secondaryText.withValues(alpha: 0.6), fontSize: 15),
+        hintStyle: TextStyle(
+            color: secondaryText.withValues(alpha: 0.6), fontSize: 15),
         filled: true,
         fillColor: const Color(0xFFF9FAFB),
         border: OutlineInputBorder(
@@ -210,7 +243,8 @@ class _SignInScreenState extends State<SignInScreen> {
           borderRadius: borderShape,
           borderSide: const BorderSide(color: headlineAccent, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         suffixIcon: suffix,
       );
     }
@@ -248,7 +282,6 @@ class _SignInScreenState extends State<SignInScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
                 ElevatedAuthContainer(
                   maxWidth: maxContentWidth,
                   child: Column(
@@ -260,23 +293,30 @@ class _SignInScreenState extends State<SignInScreen> {
                         height: 54,
                         child: OutlinedButton.icon(
                           onPressed: _isLoading ? null : _handleGoogleSignIn,
-                          icon: Image.asset('assets/images/search.png', height: 20, width: 20),
+                          icon: Image.asset('assets/images/search.png',
+                              height: 20, width: 20),
                           label: _isLoading
                               ? const SizedBox(
                                   width: 18,
                                   height: 18,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(primaryText),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        primaryText),
                                   ),
                                 )
                               : const Text(
                                   'Log in with Google',
-                                  style: TextStyle(fontSize: 15, color: primaryText, fontWeight: FontWeight.w600),
+                                  style: TextStyle(
+                                      fontSize: 15,
+                                      color: primaryText,
+                                      fontWeight: FontWeight.w600),
                                 ),
                           style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: fieldBorder, width: 1.5),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            side: const BorderSide(
+                                color: fieldBorder, width: 1.5),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                             backgroundColor: Colors.white,
                           ),
                         ),
@@ -284,17 +324,27 @@ class _SignInScreenState extends State<SignInScreen> {
                       const SizedBox(height: 24),
                       Row(
                         children: [
-                          const Expanded(child: Divider(color: dividerColor, thickness: 1)),
+                          const Expanded(
+                              child:
+                                  Divider(color: dividerColor, thickness: 1)),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: const Text('OR', style: TextStyle(color: secondaryText, fontSize: 13)),
+                            child: const Text('OR',
+                                style: TextStyle(
+                                    color: secondaryText, fontSize: 13)),
                           ),
-                          const Expanded(child: Divider(color: dividerColor, thickness: 1)),
+                          const Expanded(
+                              child:
+                                  Divider(color: dividerColor, thickness: 1)),
                         ],
                       ),
                       const SizedBox(height: 24),
 
-                      const Text('Email', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: primaryText)),
+                      const Text('Email',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: primaryText)),
                       const SizedBox(height: 10),
                       SizedBox(
                         height: 54,
@@ -307,7 +357,11 @@ class _SignInScreenState extends State<SignInScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      const Text('Password', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: primaryText)),
+                      const Text('Password',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: primaryText)),
                       const SizedBox(height: 10),
                       SizedBox(
                         height: 54,
@@ -318,8 +372,13 @@ class _SignInScreenState extends State<SignInScreen> {
                           decoration: fieldDecoration(
                             '**********',
                             suffix: IconButton(
-                              icon: Icon(_isPasswordVisible ? Icons.visibility_off : Icons.visibility, color: secondaryText),
-                              onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                              icon: Icon(
+                                  _isPasswordVisible
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                  color: secondaryText),
+                              onPressed: () => setState(() =>
+                                  _isPasswordVisible = !_isPasswordVisible),
                             ),
                           ),
                         ),
@@ -335,15 +394,18 @@ class _SignInScreenState extends State<SignInScreen> {
                                 height: 20,
                                 child: Checkbox(
                                   value: _rememberMe,
-                                  onChanged: (value) => setState(() => _rememberMe = value ?? false),
+                                  onChanged: (value) => setState(
+                                      () => _rememberMe = value ?? false),
                                   activeColor: headlineAccent,
-                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
                                 ),
                               ),
                               const SizedBox(width: 8),
                               const Text(
                                 'Remember Me',
-                                style: TextStyle(color: secondaryText, fontSize: 13),
+                                style: TextStyle(
+                                    color: secondaryText, fontSize: 13),
                               ),
                             ],
                           ),
@@ -351,15 +413,19 @@ class _SignInScreenState extends State<SignInScreen> {
                             onTap: () async {
                               final email = _emailController.text.trim();
                               if (email.isEmpty) {
-                                _showSnack('Enter your email to reset password', Colors.red);
+                                _showSnack('Enter your email to reset password',
+                                    Colors.red);
                                 return;
                               }
                               setState(() => _isLoading = true);
                               try {
-                                await FirebaseAuthService.sendPasswordResetEmail(email);
-                                _showSnack('Password reset link sent to $email', Colors.green);
+                                await FirebaseAuthService
+                                    .sendPasswordResetEmail(email);
+                                _showSnack('Password reset link sent to $email',
+                                    Colors.green);
                               } catch (e) {
-                                _showSnack('Failed to send reset email: $e', Colors.red);
+                                _showSnack('Failed to send reset email: $e',
+                                    Colors.red);
                               } finally {
                                 if (mounted) setState(() => _isLoading = false);
                               }
@@ -384,7 +450,8 @@ class _SignInScreenState extends State<SignInScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: LightModeColors.accent,
                             foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                             elevation: 0,
                           ),
                           child: _isLoading
@@ -393,33 +460,40 @@ class _SignInScreenState extends State<SignInScreen> {
                                   height: 20,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white),
                                   ),
                                 )
-                              : const Text('Sign In', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                              : const Text('Sign In',
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700)),
                         ),
                       ),
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 20),
                 Center(
                   child: GestureDetector(
                     onTap: () {
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(builder: (_) => const CreateAccountScreen()),
+                        MaterialPageRoute(
+                            builder: (_) => const CreateAccountScreen()),
                       );
                     },
                     child: RichText(
                       text: TextSpan(
-                        style: const TextStyle(color: secondaryText, fontSize: 13),
+                        style:
+                            const TextStyle(color: secondaryText, fontSize: 13),
                         children: [
                           const TextSpan(text: "Don't have an account? "),
                           const TextSpan(
                             text: 'Create Account',
-                            style: TextStyle(color: headlineAccent, decoration: TextDecoration.underline),
+                            style: TextStyle(
+                                color: headlineAccent,
+                                decoration: TextDecoration.underline),
                           ),
                         ],
                       ),

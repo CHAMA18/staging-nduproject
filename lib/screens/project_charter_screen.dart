@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
@@ -10,9 +10,9 @@ import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
-import 'package:ndu_project/widgets/expandable_text.dart';
+
 import 'package:ndu_project/screens/project_charter_sections.dart';
-import 'package:ndu_project/screens/project_charter_sections_extended.dart';
+import 'package:ndu_project/screens/charter_governance_section.dart';
 
 class ProjectCharterScreen extends StatefulWidget {
   const ProjectCharterScreen({super.key});
@@ -171,6 +171,7 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
         }
 
         if (needsAssumptions || needsConstraints) {
+          if (!mounted) return;
           final provider = ProjectDataInherited.of(context);
           if (needsAssumptions) {
             try {
@@ -211,6 +212,92 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
       }
     } catch (e) {
       debugPrint('Error ensuring charter content: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isGenerating = false);
+      }
+    }
+  }
+
+  Future<void> _generateSection(String sectionType) async {
+    if (_projectData == null || _isGenerating) return;
+    setState(() => _isGenerating = true);
+
+    try {
+      final contextText = ProjectDataHelper.buildFepContext(_projectData!);
+      final provider = ProjectDataInherited.of(context);
+
+      if (sectionType == 'definition') {
+        final overview = await _openAi.generateFepSectionText(
+          section: 'Project Overview and Business Case',
+          context: contextText,
+          maxTokens: 800,
+        );
+        if (mounted && overview.isNotEmpty) {
+          provider.updateField((data) => data.copyWith(
+                businessCase: overview,
+              ));
+        }
+      } else if (sectionType == 'scope') {
+        final scope = await _openAi.generateProjectScope(
+          context: contextText,
+        );
+        if (mounted) {
+          final inScope = List<String>.from(scope['in'] ?? []);
+          final outScope = List<String>.from(scope['out'] ?? []);
+          if (inScope.isNotEmpty || outScope.isNotEmpty) {
+            provider.updateField((data) => data.copyWith(
+                  withinScope: inScope,
+                  outOfScope: outScope,
+                ));
+          }
+        }
+      } else if (sectionType == 'risks') {
+        final result = await _openAi.generateDetailedRisks(
+          context: contextText,
+        );
+        if (mounted) {
+          final newRisks = List<RiskRegisterItem>.from(result['risks'] ?? []);
+          final newConstraints = List<String>.from(result['constraints'] ?? []);
+
+          provider.updateField((data) {
+            final fep = data.frontEndPlanning;
+            final updatedFep = fep.copyWith(riskRegisterItems: newRisks);
+            return data.copyWith(
+              frontEndPlanning: updatedFep,
+              constraints: newConstraints,
+            );
+          });
+        }
+      } else if (sectionType == 'tech') {
+        final result = await _openAi.generateTechnicalRequirements(
+          context: contextText,
+        );
+        if (mounted) {
+          final it = result['it'] as ITConsiderationsData?;
+          final infra = result['infra'] as InfrastructureConsiderationsData?;
+          if (it != null || infra != null) {
+            provider.updateField((data) => data.copyWith(
+                  itConsiderationsData: it ?? data.itConsiderationsData,
+                  infrastructureConsiderationsData:
+                      infra ?? data.infrastructureConsiderationsData,
+                ));
+          }
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _projectData = provider.projectData;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error generating $sectionType: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to generate $sectionType: $e')),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isGenerating = false);
@@ -320,90 +407,81 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
       );
     }
 
-    // New Refactored Layout
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // 1. Executive Summary
-        CharterExecutiveSummary(data: _projectData),
-        const SizedBox(height: 24),
-
-        // 2. Visual Overview (Charts in Row)
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    // New Refactored Layout with width constraint
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1400),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(child: CharterTimelineChart(data: _projectData)),
-            const SizedBox(width: 24),
-            Expanded(child: CharterCostChart(data: _projectData)),
+            // 0. Executive Snapshot (New Upgrade)
+            CharterExecutiveSnapshot(data: _projectData),
+
+            // 1. Executive Summary (General Info Header)
+            CharterExecutiveSummary(data: _projectData),
+            const SizedBox(height: 24),
+
+            // Main Content Grid
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // LEFT COLUMN (Narrative & Technical - 60%)
+                Expanded(
+                  flex: 6,
+                  child: Column(
+                    children: [
+                      CharterProjectDefinition(
+                        data: _projectData,
+                        onGenerate: () => _generateSection('definition'),
+                      ),
+                      const SizedBox(height: 24),
+                      CharterScope(
+                        data: _projectData,
+                        onGenerate: () => _generateSection('scope'),
+                      ),
+                      const SizedBox(height: 24),
+                      // Key Risks & Constraints - Enhanced Left Panel
+                      CharterRisks(
+                        data: _projectData,
+                        onGenerate: () => _generateSection('risks'),
+                      ),
+                      const SizedBox(height: 24),
+                      // Combined Technology & Infrastructure Row
+                      CharterTechnicalEnvironment(
+                        data: _projectData,
+                        onGenerate: () => _generateSection('tech'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 24),
+
+                // RIGHT COLUMN (Analysis, Governance & Timeline - 40%)
+                Expanded(
+                  flex: 4,
+                  child: Column(
+                    children: [
+                      // NEW Financial Overview Panel (Replaces Snapshot + Cost Chart)
+                      CharterFinancialOverview(data: _projectData),
+                      const SizedBox(height: 24),
+                      // Timeline & Schedule
+                      CharterScheduleTable(data: _projectData),
+                      const SizedBox(height: 16),
+                      CharterMilestoneVisualizer(data: _projectData),
+                      const SizedBox(height: 16),
+                      CharterAssumptions(data: _projectData),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            // NEW GOVERNANCE SECTION (Full Width)
+            CharterGovernanceSection(data: _projectData),
+            const SizedBox(height: 48),
           ],
         ),
-        const SizedBox(height: 24),
-
-        // 3. Financial Snapshot
-        CharterFinancialSnapshot(data: _projectData),
-        const SizedBox(height: 24),
-
-        // 4. Definition & Scope (Row)
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: CharterProjectDefinition(data: _projectData)),
-            const SizedBox(width: 24),
-            Expanded(child: CharterScope(data: _projectData)),
-          ],
-        ),
-        const SizedBox(height: 24),
-
-        // 5. Risks
-        CharterRisks(data: _projectData),
-        const SizedBox(height: 24),
-
-        // 6. IT & Infrastrucutre Considerations (Row)
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: CharterITConsiderations(data: _projectData)),
-            const SizedBox(width: 24),
-            Expanded(
-                child: CharterInfrastructureConsiderations(data: _projectData)),
-          ],
-        ),
-        const SizedBox(height: 24),
-
-        // 7. Schedule & Resources
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(flex: 3, child: CharterScheduleTable(data: _projectData)),
-            const SizedBox(width: 24),
-            Expanded(flex: 2, child: CharterResources(data: _projectData)),
-          ],
-        ),
-        const SizedBox(height: 24),
-
-        // 8. Stakeholders
-        CharterStakeholders(data: _projectData),
-        const SizedBox(height: 48),
-
-        // 9. Contractors & Vendors
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: CharterContractors(data: _projectData)),
-            const SizedBox(width: 24),
-            Expanded(child: CharterVendors(data: _projectData)),
-          ],
-        ),
-        const SizedBox(height: 24),
-
-        // 10. Security
-        CharterSecurity(data: _projectData),
-        const SizedBox(height: 24),
-
-        // 11. Approvals
-        CharterApprovals(data: _projectData),
-        const SizedBox(height: 48),
-      ],
+      ),
     );
   }
 }

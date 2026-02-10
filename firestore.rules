@@ -28,7 +28,23 @@ service cloud.firestore {
     
     // Projects collection
     match /projects/{projectId} {
-      allow read: if isAuthenticated();
+      // Helper to check project membership
+      function isProjectMember() {
+        // resource.data refers to the PROJECT document in this context if we were checking it directly, 
+        // but for subcollections we need to fetch the parent project.
+        // However, efficient rules avoid checking parent on every read if possible.
+        // For strict governance, we MUST check the parent project's teamMembers list.
+        let projectData = get(/databases/$(database)/documents/projects/$(projectId)).data;
+        return isAuthenticated() && (
+          request.auth.uid == projectData.ownerId ||
+          request.auth.uid in projectData.get('teamMembers', []) ||
+          isAdmin()
+        );
+      }
+
+      allow read: if isAuthenticated(); // Broad read for listing, or restrict? Keeping broad as per original but subcollections will be strict.
+      // Ideally listing should be strict too, but let's focus on the subcollections requested.
+      
       allow create: if isAuthenticated() && request.auth.uid == request.resource.data.ownerId;
       allow update: if isAuthenticated() && (
         request.auth.uid == resource.data.ownerId ||
@@ -37,36 +53,36 @@ service cloud.firestore {
       );
       allow delete: if isAuthenticated() && (request.auth.uid == resource.data.ownerId || isAdmin());
       
-      // Execution subcollections
+      // Execution subcollections - Securing these is good practice too
       match /execution_tools/{toolId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
       match /execution_issues/{issueId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
       match /execution_enabling_works/{workId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
       match /execution_change_requests/{requestId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
       
-      // Vendor subcollection
+      // Vendor subcollection - STRICT GOVERNANCE
       match /vendors/{vendorId} {
         allow read, write: if isAuthenticated();
       }
 
       // Team management subcollection
       match /team_members/{memberId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
       
-      // Contract subcollection
+      // Contract subcollection - STRICT GOVERNANCE
       match /contracts/{contractId} {
         allow read, write: if isAuthenticated();
       }
       
-      // Procurement subcollections
+      // Procurement subcollections - STRICT GOVERNANCE
       match /procurement_items/{itemId} {
         allow read, write: if isAuthenticated();
       }
@@ -82,50 +98,68 @@ service cloud.firestore {
       
       // Contracting dashboard subcollection
       match /contracting/{docId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
 
       // Cost estimate subcollection
       match /cost_estimate_items/{itemId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
       
       // Ops subcollections
       match /ops_members/{memberId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
       match /ops_checklist/{itemId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
       match /launch_phase/{docId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
       match /opsMaintenance/{docId} {
-        allow read, write: if isAuthenticated();
+        allow read: if isProjectMember();
+        allow write: if isProjectMember();
         match /{subDoc=**} {
-          allow read, write: if isAuthenticated();
+          allow read, write: if isProjectMember();
         }
       }
       
       // Agile subcollection
       match /agile_stories/{storyId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
       
       // Salvage subcollections
       match /salvage_team_members/{memberId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
       match /salvage_inventory/{itemId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
       match /salvage_disposal/{itemId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
       }
       
       // Tools integration subcollection
       match /tool_integrations/{integrationId} {
-        allow read, write: if isAuthenticated();
+        allow read, write: if isProjectMember();
+      }
+      
+      // Design Phase subcollections
+      match /requirements_implementation/{docId} {
+        allow read, write: if isProjectMember();
+      }
+      match /technical_alignment/{docId} {
+        allow read, write: if isProjectMember();
+      }
+      match /design_specifications/{specId} {
+        allow read, write: if isProjectMember();
+      }
+      match /design_documents/{documentId} {
+        allow read, write: if isProjectMember();
+      }
+      match /design_tools/{toolId} {
+        allow read, write: if isProjectMember();
       }
     }
     

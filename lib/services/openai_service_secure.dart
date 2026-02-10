@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:ndu_project/openai/openai_config.dart';
 import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/models/design_phase_models.dart';
 
 // Remove markdown bold markers commonly produced by the model (e.g. *text* or **text**)
 String _stripAsterisks(String s) => s.replaceAll('*', '');
@@ -334,10 +335,7 @@ class OpenAiServiceSecure {
       'temperature': temperature,
       'max_tokens': maxTokens,
       'messages': [
-        {
-          'role': 'system',
-          'content': 'Return only the response text.'
-        },
+        {'role': 'system', 'content': 'Return only the response text.'},
         {'role': 'user', 'content': trimmedPrompt},
       ],
     });
@@ -346,8 +344,7 @@ class OpenAiServiceSecure {
         .post(uri, headers: headers, body: body)
         .timeout(const Duration(seconds: 16));
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(
-          'OpenAI error ${response.statusCode}: ${response.body}');
+      throw Exception('OpenAI error ${response.statusCode}: ${response.body}');
     }
     final data =
         jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
@@ -431,17 +428,228 @@ class OpenAiServiceSecure {
     }
   }
 
-  Future<DesignDeliverablesData> generateDesignDeliverables({
+  // Generate structured Scope items (Within Scope, Out of Scope)
+  Future<Map<String, List<String>>> generateProjectScope({
     required String context,
-    int maxTokens = 1200,
-    double temperature = 0.4,
+    int maxTokens = 800,
+    double temperature = 0.5,
   }) async {
     final trimmedContext = context.trim();
-    if (trimmedContext.isEmpty) {
-      return const DesignDeliverablesData();
+    if (trimmedContext.isEmpty) return {'in': [], 'out': []};
+    if (!OpenAiConfig.isConfigured) return {'in': [], 'out': []};
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a senior project manager. Extract or generate a list of "Within Scope" and "Out of Scope" items based on the project context. Return JSON with keys "within_scope" and "out_of_scope" as arrays of strings.'
+        },
+        {
+          'role': 'user',
+          'content': 'Project Context:\n$trimmedContext',
+        }
+      ],
+    });
+
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 14));
+      if (response.statusCode >= 300) return {'in': [], 'out': []};
+
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content =
+          (data['choices'] as List).first['message']['content'] as String;
+      final parsed = jsonDecode(content) as Map<String, dynamic>;
+
+      List<String> toList(dynamic val) {
+        if (val is List) {
+          return val.map((e) => _stripAsterisks(e.toString())).toList();
+        }
+        return [];
+      }
+
+      return {
+        'in': toList(parsed['within_scope']),
+        'out': toList(parsed['out_of_scope']),
+      };
+    } catch (e) {
+      debugPrint('Error generating scope: $e');
+      return {'in': [], 'out': []};
     }
+  }
+
+  // Generate structured Risks and Constraints
+  Future<Map<String, dynamic>> generateDetailedRisks({
+    required String context,
+    int maxTokens = 1000,
+    double temperature = 0.5,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) return {'risks': [], 'constraints': []};
+    if (!OpenAiConfig.isConfigured) return {'risks': [], 'constraints': []};
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a risk manager. Identify key risks (with impact/mitigation) and constraints. Return JSON with "risks": [{ "name": "...", "impact": "High/Medium/Low", "mitigation": "..." }] and "constraints": ["..."].'
+        },
+        {
+          'role': 'user',
+          'content': 'Project Context:\n$trimmedContext',
+        }
+      ],
+    });
+
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 14));
+      if (response.statusCode >= 300) return {'risks': [], 'constraints': []};
+
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content =
+          (data['choices'] as List).first['message']['content'] as String;
+      final parsed = jsonDecode(content) as Map<String, dynamic>;
+
+      List<RiskRegisterItem> risks = [];
+      if (parsed['risks'] is List) {
+        risks = (parsed['risks'] as List).map((r) {
+          final map = r as Map<String, dynamic>;
+          return RiskRegisterItem(
+            riskName: _stripAsterisks(map['name']?.toString() ?? ''),
+            impactLevel: _stripAsterisks(map['impact']?.toString() ?? 'Medium'),
+            mitigationStrategy:
+                _stripAsterisks(map['mitigation']?.toString() ?? ''),
+          );
+        }).toList();
+      }
+
+      List<String> constraints = [];
+      if (parsed['constraints'] is List) {
+        constraints = (parsed['constraints'] as List)
+            .map((e) => _stripAsterisks(e.toString()))
+            .toList();
+      }
+
+      return {'risks': risks, 'constraints': constraints};
+    } catch (e) {
+      debugPrint('Error generating risks: $e');
+      return {'risks': [], 'constraints': []};
+    }
+  }
+
+  // Generate Technical Requirements (IT and Infra)
+  Future<Map<String, dynamic>> generateTechnicalRequirements({
+    required String context,
+    int maxTokens = 1000,
+    double temperature = 0.5,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) return {};
+    if (!OpenAiConfig.isConfigured) return {};
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a technical architect. Identify IT and Infrastructure requirements. Return JSON with "it": { "hardware": "...", "software": "...", "network": "..." } and "infra": { "space": "...", "power": "...", "connectivity": "..." }.'
+        },
+        {
+          'role': 'user',
+          'content': 'Project Context:\n$trimmedContext',
+        }
+      ],
+    });
+
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 14));
+      if (response.statusCode >= 300) return {};
+
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content =
+          (data['choices'] as List).first['message']['content'] as String;
+      final parsed = jsonDecode(content) as Map<String, dynamic>;
+
+      final itMap = parsed['it'] as Map<String, dynamic>? ?? {};
+      final infraMap = parsed['infra'] as Map<String, dynamic>? ?? {};
+
+      final it = ITConsiderationsData(
+        hardwareRequirements:
+            _stripAsterisks(itMap['hardware']?.toString() ?? ''),
+        softwareRequirements:
+            _stripAsterisks(itMap['software']?.toString() ?? ''),
+        networkRequirements:
+            _stripAsterisks(itMap['network']?.toString() ?? ''),
+      );
+
+      final infra = InfrastructureConsiderationsData(
+        physicalSpaceRequirements:
+            _stripAsterisks(infraMap['space']?.toString() ?? ''),
+        powerCoolingRequirements:
+            _stripAsterisks(infraMap['power']?.toString() ?? ''),
+        connectivityRequirements:
+            _stripAsterisks(infraMap['connectivity']?.toString() ?? ''),
+      );
+
+      return {'it': it, 'infra': infra};
+    } catch (e) {
+      debugPrint('Error generating tech reqs: $e');
+      return {};
+    }
+  }
+
+  // Generate structured planning items (Scope, Assumptions, Constraints)
+  Future<List<PlanningDashboardItem>> generatePlanningItems({
+    required String section,
+    required String context,
+    int maxTokens = 1000,
+    double temperature = 0.5,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) return [];
+
     if (!OpenAiConfig.isConfigured) {
-      return _designDeliverablesFallback(trimmedContext);
+      return _planningItemsFallback(section, trimmedContext);
     }
 
     final uri = OpenAiConfig.chatUri();
@@ -451,22 +659,21 @@ class OpenAiServiceSecure {
     };
 
     final prompt = '''
-You are drafting the Design Deliverables workspace for a project. Using the context below, return ONLY a JSON object with the exact keys:
-metrics: {active, in_review, approved, at_risk}
-pipeline: [{label, status}]
-approvals: [string]
-register: [{name, owner, status, due, risk}]
-dependencies: [string]
-handoff: [string]
-
-Rules:
-- Provide 4-6 items for pipeline, approvals, register, dependencies, and handoff.
-- Use realistic owners, dates, and statuses (Approved, In Review, In Progress, Pending).
-- Use risks: Low, Medium, High.
-- Keep each string under 90 characters.
+You are a senior project manager. Based on the project context below, generate a list of specific, actionable items for the "$section" section.
+Return ONLY a JSON object with a single key "items", which is a list of objects. Each object must have:
+- "description": A clear, concise statement (max 20 words).
+- "title": A short 3-5 word summary (optional, can be empty).
 
 Context:
 $trimmedContext
+
+Rules:
+- Generate 3-7 high-quality items.
+- Focus on specific details relevant to the project type, not generic statements.
+- For "Within Scope": lists specific deliverables.
+- For "Out of Scope": lists specific exclusions.
+- For "Assumptions": lists key dependencies or conditions.
+- For "Constraints": lists budget, timeline, or resource limitations.
 ''';
 
     final body = jsonEncode({
@@ -478,7 +685,7 @@ $trimmedContext
         {
           'role': 'system',
           'content':
-              'You are a design delivery coordinator. Return only a JSON object that matches the requested schema.'
+              'You are a project planning assistant. Return only a JSON object.'
         },
         {'role': 'user', 'content': prompt}
       ],
@@ -488,18 +695,320 @@ $trimmedContext
       final response = await _client
           .post(uri, headers: headers, body: body)
           .timeout(const Duration(seconds: 16));
+
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw Exception(
             'OpenAI error ${response.statusCode}: ${response.body}');
       }
+
       final data =
           jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
       final content =
           (data['choices'] as List).first['message']['content'] as String;
       final parsed = jsonDecode(content) as Map<String, dynamic>;
-      return _parseDesignDeliverables(parsed);
-    } catch (_) {
-      return _designDeliverablesFallback(trimmedContext);
+
+      final rawItems = parsed['items'] as List?;
+      if (rawItems == null) return [];
+
+      return rawItems.map((item) {
+        final map = item as Map<String, dynamic>;
+        return PlanningDashboardItem(
+          title: _stripAsterisks((map['title'] ?? '').toString()),
+          description: _stripAsterisks((map['description'] ?? '').toString()),
+          isAiGenerated: true,
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('Error generating planning items: $e');
+      return _planningItemsFallback(section, trimmedContext);
+    }
+  }
+
+  List<PlanningDashboardItem> _planningItemsFallback(
+      String section, String context) {
+    // Basic heuristics for fallback
+    final isBakery = context.toLowerCase().contains('bakery') ||
+        context.toLowerCase().contains('food');
+    final isTech = context.toLowerCase().contains('app') ||
+        context.toLowerCase().contains('software');
+
+    List<String> suggestions = [];
+
+    if (section.contains('Within Scope')) {
+      if (isBakery) {
+        suggestions = [
+          'Kitchen equipment procurement and installation',
+          'Interior design and seating area setup',
+          'Menu development and tasting',
+          'Staff hiring and training program',
+          'Health and safety inspection compliance'
+        ];
+      } else if (isTech) {
+        suggestions = [
+          'User authentication and profile management',
+          'Core feature implementation (MVP)',
+          'Database schema design and setup',
+          'API integration with third-party services',
+          'Unit and integration testing'
+        ];
+      } else {
+        suggestions = [
+          'Project initiation and planning phase',
+          'Requirement gathering and analysis',
+          'Design and prototyping',
+          'Implementation and development',
+          'Final delivery and handover'
+        ];
+      }
+    } else if (section.contains('Out of Scope')) {
+      suggestions = [
+        'Post-launch marketing campaigns',
+        'Long-term maintenance support (separate contract)',
+        'Features not explicitly listed in the requirements',
+        'Hardware procurement (client responsibility)'
+      ];
+    } else if (section.contains('Assumptions')) {
+      suggestions = [
+        'Client provides all necessary content and branding assets',
+        'Regulatory approvals are obtained within standard timelines',
+        'Key stakeholders are available for weekly reviews',
+        'Budget approval is secured before Phase 2'
+      ];
+    } else if (section.contains('Constraints')) {
+      suggestions = [
+        'Budget is fixed at the initial estimate',
+        'Timeline must meet the Q4 launch window',
+        'Availability of specialized resources',
+        'Compliance with local zoning laws'
+      ];
+    }
+
+    return suggestions
+        .map((s) => PlanningDashboardItem(
+            description: s, isAiGenerated: true, title: ''))
+        .toList();
+  }
+
+  Future<DesignDeliverablesData> generateDesignDeliverables({
+    required String context,
+    int maxTokens = 1200,
+    double temperature = 0.4,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) {
+      return const DesignDeliverablesData();
+    }
+
+    if (!OpenAiConfig.isConfigured) {
+      // Fallback
+      return const DesignDeliverablesData(
+        pipeline: [
+          DesignDeliverablePipelineItem(
+              label: 'High-Level Design Document', status: 'Draft'),
+          DesignDeliverablePipelineItem(
+              label: 'API Specification', status: 'Pending'),
+          DesignDeliverablePipelineItem(
+              label: 'Database Schema', status: 'Pending'),
+        ],
+        register: [
+          DesignDeliverableRegisterItem(
+              name: 'System Architecture',
+              owner: 'Architect',
+              status: 'In Review',
+              due: 'TBD',
+              risk: 'Low'),
+        ],
+        approvals: ['Design Review Pending'],
+      );
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a design delivery manager. Return JSON with "pipeline": [{ "deliverable", "owner", "dueDate", "status" }], "register": [{ "title", "type", "status", "version", "risk" }], "approvals": [{"item", "approver", "date", "status" }].'
+        },
+        {'role': 'user', 'content': 'Project Context:\n$trimmedContext'}
+      ],
+    });
+
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 16));
+      if (response.statusCode >= 300) return const DesignDeliverablesData();
+
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content =
+          (data['choices'] as List).first['message']['content'] as String;
+      final parsed = jsonDecode(content) as Map<String, dynamic>;
+
+      final pipeline = (parsed['pipeline'] as List?)
+              ?.map((e) => DesignDeliverablePipelineItem.fromJson(
+                  e as Map<String, dynamic>))
+              .toList() ??
+          [];
+      final register = (parsed['register'] as List?)
+              ?.map((e) => DesignDeliverableRegisterItem.fromJson(
+                  e as Map<String, dynamic>))
+              .toList() ??
+          [];
+      final approvals =
+          (parsed['approvals'] as List?)?.map((e) => e.toString()).toList() ??
+              [];
+
+      return DesignDeliverablesData(
+        pipeline: pipeline,
+        register: register,
+        approvals: approvals,
+      );
+    } catch (e) {
+      debugPrint('Error generating design deliverables: $e');
+      return const DesignDeliverablesData();
+    }
+  }
+
+  // Generate Technical Alignment (Constraints, Mappings, Dependencies)
+  Future<Map<String, dynamic>> generateTechnicalAlignment({
+    required String context,
+    int maxTokens = 1500,
+    double temperature = 0.5,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) return {};
+    if (!OpenAiConfig.isConfigured) return {};
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content': '''
+You are a software architect. Identify technical alignment items based on project context.
+Return JSON with:
+- "constraints": [{ "constraint", "guardrail", "owner", "status" }]
+- "mappings": [{ "requirement", "approach", "status" }]
+- "dependencies": [{ "item", "detail", "owner", "status" }]
+'''
+        },
+        {'role': 'user', 'content': 'Project Context:\n$trimmedContext'}
+      ],
+    });
+
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode >= 300) return {};
+
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content =
+          (data['choices'] as List).first['message']['content'] as String;
+      final parsed = jsonDecode(content) as Map<String, dynamic>;
+
+      return parsed;
+    } catch (e) {
+      debugPrint('Error generating technical alignment: $e');
+      return {};
+    }
+  }
+
+  // Generate Specialized Design (Security, Performance, Integrations)
+  Future<SpecializedDesignData> generateSpecializedDesign({
+    required String context,
+    int maxTokens = 1500,
+    double temperature = 0.5,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) return SpecializedDesignData();
+    if (!OpenAiConfig.isConfigured) return SpecializedDesignData();
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content': '''
+You are a security and performance data engineer. Suggest specialized design patterns.
+Return JSON with:
+- "security": [{ "pattern", "context", "implementation", "status" }]
+- "performance": [{ "pattern", "metric", "optimization", "status" }]
+- "integration": [{ "system", "method", "data_flow", "status" }]
+- "notes": "Summary of critical specialized design considerations."
+'''
+        },
+        {'role': 'user', 'content': 'Project Context:\n$trimmedContext'}
+      ],
+    });
+
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 20));
+
+      if (response.statusCode >= 300) return SpecializedDesignData();
+
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content =
+          (data['choices'] as List).first['message']['content'] as String;
+      final parsed = jsonDecode(content) as Map<String, dynamic>;
+
+      final security = (parsed['security'] as List?)
+              ?.map((e) => SecurityPatternRow.fromMap(e))
+              .toList() ??
+          [];
+      final performance = (parsed['performance'] as List?)
+              ?.map((e) => PerformancePatternRow.fromMap(e))
+              .toList() ??
+          [];
+      final integration = (parsed['integration'] as List?)
+              ?.map((e) => IntegrationFlowRow.fromMap(e))
+              .toList() ??
+          [];
+      final notes = _stripAsterisks((parsed['notes'] ?? '').toString());
+
+      return SpecializedDesignData(
+        notes: notes,
+        securityPatterns: security,
+        performancePatterns: performance,
+        integrationFlows: integration,
+      );
+    } catch (e) {
+      debugPrint('Error generating specialized design: $e');
+      return SpecializedDesignData();
     }
   }
 
@@ -698,7 +1207,8 @@ $trimmedContext
   // OPPORTUNITIES
   // Generates a structured list of project opportunities based on full project context.
   // Returns up to 12 rows suitable for the Opportunities table.
-  Future<List<Map<String, String>>> generateOpportunitiesFromContext(
+  // Returns up to 12 rows suitable for the Opportunities table.
+  Future<List<OpportunityItem>> generateOpportunitiesFromContext(
       String context) async {
     final trimmed = context.trim();
     if (trimmed.isEmpty) throw Exception('No context provided');
@@ -744,28 +1254,31 @@ $trimmedContext
           (data['choices'] as List).first['message']['content'] as String;
       final parsed = jsonDecode(content) as Map<String, dynamic>;
       final list = (parsed['opportunities'] as List? ?? []);
-      final result = <Map<String, String>>[];
+      final result = <OpportunityItem>[];
       for (final item in list) {
         if (item is! Map) continue;
         final map = item as Map<String, dynamic>;
         final opp = _stripAsterisks(
             (map['opportunity'] ?? map['title'] ?? '').toString().trim());
         if (opp.isEmpty) continue;
-        result.add({
-          'opportunity': opp,
-          'discipline': (map['discipline'] ?? '').toString().trim(),
-          'stakeholder':
+        result.add(OpportunityItem(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          opportunity: opp,
+          discipline: (map['discipline'] ?? '').toString().trim(),
+          stakeholder:
               (map['stakeholder'] ?? map['owner'] ?? '').toString().trim(),
-          'potentialCost1':
-              (map['potential_cost_savings'] ?? map['cost_savings'] ?? '')
-                  .toString()
-                  .trim(),
-          'potentialCost2': (map['potential_cost_schedule_savings'] ??
-                  map['schedule_savings'] ??
+          potentialCostSavings: (map['potentialCostSavings'] ??
+                  map['potential_cost_savings'] ??
                   '')
               .toString()
               .trim(),
-        });
+          potentialScheduleSavings: (map['potentialScheduleSavings'] ??
+                  map['potential_cost_schedule_savings'] ??
+                  '')
+              .toString()
+              .trim(),
+          impact: (map['impact'] ?? 'Medium').toString().trim(),
+        ));
       }
       if (result.isNotEmpty) return result.take(12).toList();
       throw Exception('OpenAI returned no opportunities');
@@ -786,8 +1299,9 @@ Return ONLY valid JSON with this exact structure:
       "opportunity": "Concise opportunity statement",
       "discipline": "Owning discipline (e.g., IT, Finance, Operations)",
       "stakeholder": "Primary stakeholder / owner",
-      "potential_cost_savings": "Numeric or short label (e.g., 25,000)",
-      "potential_cost_schedule_savings": "Numeric/short label (e.g., 2 weeks)"
+      "potentialCostSavings": "Numeric or short label (e.g., 25,000)",
+      "potentialScheduleSavings": "Numeric/short label (e.g., 2 weeks)",
+      "impact": "High / Medium / Low"
     }
   ]
 }
@@ -795,6 +1309,7 @@ Return ONLY valid JSON with this exact structure:
 Guidelines:
 - Be specific and actionable (no placeholders).
 - Use concise text; do not add extra fields.
+- Assign impact based on strategic value and cost/schedule savings.
 - 5–12 items is ideal.
 
 Project context:
@@ -1004,6 +1519,123 @@ Additional context: "$notes"
     } catch (e) {
       rethrow;
     }
+  }
+
+  // ALLOWANCES
+  Future<List<AllowanceItem>> generateAllowancesFromContext(
+      String context) async {
+    final trimmed = context.trim();
+    if (trimmed.isEmpty) throw Exception('No context provided');
+    if (!OpenAiConfig.isConfigured) throw const OpenAiNotConfiguredException();
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': 0.5,
+      'max_tokens': 1200,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a financial program manager. Suggest realistic allowance and contingency items for a project. Return strict JSON.'
+        },
+        {
+          'role': 'user',
+          'content': _allowancesPrompt(trimmed),
+        }
+      ],
+    });
+
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 14));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+            'OpenAI error ${response.statusCode}: ${response.body}');
+      }
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content =
+          (data['choices'] as List).first['message']['content'] as String;
+      final parsed = jsonDecode(content) as Map<String, dynamic>;
+      final list = (parsed['items'] as List? ?? []);
+
+      final result = <AllowanceItem>[];
+      for (final item in list) {
+        if (item is! Map) continue;
+        final map = item as Map<String, dynamic>;
+
+        final name = _stripAsterisks(
+            (map['name'] ?? map['title'] ?? '').toString().trim());
+        if (name.isEmpty) continue;
+
+        double amount = 0.0;
+        if (map['amount'] is num) {
+          amount = (map['amount'] as num).toDouble();
+        } else {
+          final amtStr =
+              map['amount'].toString().replaceAll(',', '').replaceAll('\$', '');
+          amount = double.tryParse(amtStr) ?? 0.0;
+        }
+
+        final appliesTo = (map['appliesTo'] as List? ?? [])
+            .map((e) => e.toString().trim())
+            .toList();
+
+        // Auto-assign appliesTo if missing (based on prompt guidelines, but safe fallback)
+        if (appliesTo.isEmpty) {
+          appliesTo.add('Project Wide');
+        }
+
+        result.add(AllowanceItem(
+          id: DateTime.now()
+              .microsecondsSinceEpoch
+              .toString(), // Will be unique enough in loop or re-assigned by caller
+          name: name,
+          type: (map['type'] ?? 'Other').toString(),
+          amount: amount,
+          appliesTo: appliesTo,
+          notes: (map['notes'] ?? '').toString(),
+        ));
+      }
+      if (result.isNotEmpty) return result;
+      throw Exception('OpenAI returned no allowance items');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  String _allowancesPrompt(String context) {
+    final c = _escape(context);
+    return '''
+Based on the project context below, suggest 3-5 specific Allowance or Contingency items.
+These should represent set-aside funds for specific uncertain areas (e.g. Training, Staffing, Tech, General Contingency).
+
+Return ONLY valid JSON with this exact structure:
+{
+  "items": [
+    {
+      "name": "Item Name (e.g. End User Training)",
+      "type": "One of: Contingency, Training, Staffing, Tech, Other",
+      "amount": 15000,
+      "appliesTo": ["Operations", "IT"],
+      "notes": "Brief justification"
+    }
+  ]
+}
+
+Project context:
+"""
+$c
+"""
+''';
   }
 
   String _costSuggestionsPrompt(String context) {

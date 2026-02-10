@@ -5,8 +5,15 @@ import 'package:ndu_project/widgets/expandable_text.dart';
 
 class ContractsTable extends StatelessWidget {
   final List<ContractModel> contracts;
+  final Function(ContractModel)? onEdit;
+  final Function(ContractModel)? onDelete;
 
-  const ContractsTable({super.key, required this.contracts});
+  const ContractsTable({
+    super.key,
+    required this.contracts,
+    this.onEdit,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -22,41 +29,133 @@ class ContractsTable extends StatelessWidget {
             constraints: BoxConstraints(minWidth: constraints.maxWidth),
             child: DataTable(
               columnSpacing: 24,
-              horizontalMargin: 12,
-              headingRowColor: WidgetStateProperty.all(Colors.grey[100]),
-              border: TableBorder.all(
-                  color: Colors.grey[300]!,
-                  width: 0.5,
-                  borderRadius: BorderRadius.circular(8)),
+              horizontalMargin: 16,
+              headingRowColor: WidgetStateProperty.all(Colors.grey[50]),
+              dataRowMinHeight: 56, // Enterprise standard height
+              dataRowMaxHeight: 72,
+              border: TableBorder(
+                bottom: BorderSide(color: Colors.grey[200]!),
+                verticalInside: BorderSide.none,
+              ),
               columns: const [
                 DataColumn(
-                    label: Text('Contract Item',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
+                    label: Text('CONTRACT ITEM',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                            fontSize: 12,
+                            color: Color(0xFF64748B)))),
                 DataColumn(
-                    label: Text('Description',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
+                    label: Text('VENDOR',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                            fontSize: 12,
+                            color: Color(0xFF64748B)))),
                 DataColumn(
-                    label: Text('Contractor',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
+                    label: Text('VALUE',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                            fontSize: 12,
+                            color: Color(0xFF64748B)))),
                 DataColumn(
-                    label: Text('Duration',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
+                    label: Text('TIMELINE',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                            fontSize: 12,
+                            color: Color(0xFF64748B)))),
                 DataColumn(
-                    label: Text('Cost',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
+                    label: Text('OWNER',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                            fontSize: 12,
+                            color: Color(0xFF64748B)))),
                 DataColumn(
-                    label: Text('Status',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
+                    label: Text('STATUS',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                            fontSize: 12,
+                            color: Color(0xFF64748B)))),
+                DataColumn(label: Text('')), // Actions
               ],
               rows: contracts.map((contract) {
                 return DataRow(
                   cells: [
-                    DataCell(_TextCell(contract.title, bold: true)),
-                    DataCell(_ExpandableCell(contract.description)),
+                    DataCell(
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(contract.title,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w600)),
+                          Text(contract.description,
+                              style: TextStyle(
+                                  fontSize: 11, color: Colors.grey[500]),
+                              overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
+                    ),
                     DataCell(_TextCell(contract.contractorName)),
-                    DataCell(_TextCell(contract.duration)),
                     DataCell(_PriceCell(contract.estimatedCost)),
-                    DataCell(_StatusCell(contract.status)),
+                    DataCell(Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (contract.startDate != null)
+                          Text(
+                              'Start: ${DateFormat('MMM dd, yyyy').format(contract.startDate!)}',
+                              style: const TextStyle(fontSize: 11)),
+                        if (contract.endDate != null)
+                          Text(
+                              'End: ${DateFormat('MMM dd, yyyy').format(contract.endDate!)}',
+                              style: const TextStyle(fontSize: 11)),
+                        if (contract.startDate == null &&
+                            contract.endDate == null)
+                          const Text('-', style: TextStyle(color: Colors.grey)),
+                      ],
+                    )),
+                    DataCell(_OwnerBadge(name: contract.owner)),
+                    DataCell(_ContractStatusBadge(status: contract.status)),
+                    DataCell(
+                      PopupMenuButton(
+                        icon: const Icon(Icons.more_horiz, color: Colors.grey),
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit, size: 16),
+                                SizedBox(width: 8),
+                                Text('Edit Contract'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete, size: 16, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text('Delete',
+                                    style: TextStyle(color: Colors.red)),
+                              ],
+                            ),
+                          ),
+                        ],
+                        onSelected: (value) {
+                          if (value == 'edit' && onEdit != null) {
+                            onEdit!(contract);
+                          } else if (value == 'delete' && onDelete != null) {
+                            onDelete!(contract);
+                          }
+                        },
+                      ),
+                    ),
                   ],
                 );
               }).toList(),
@@ -173,8 +272,7 @@ class _TextCell extends StatelessWidget {
       child: Text(
         text,
         overflow: TextOverflow.ellipsis,
-        style:
-            bold ? const TextStyle(fontWeight: FontWeight.w600) : null,
+        style: bold ? const TextStyle(fontWeight: FontWeight.w600) : null,
       ),
     );
   }
@@ -213,12 +311,98 @@ class _PriceCell extends StatelessWidget {
   }
 }
 
-class _StatusCell extends StatelessWidget {
-  final String status;
-  const _StatusCell(this.status);
+class _OwnerBadge extends StatelessWidget {
+  final String name;
+  const _OwnerBadge({required this.name});
 
   @override
   Widget build(BuildContext context) {
+    if (name.isEmpty || name == 'Unassigned') {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text('Unassigned',
+            style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+      );
+    }
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 10,
+          backgroundColor: Colors.blue[100],
+          child: Text(name[0].toUpperCase(),
+              style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.blue[800],
+                  fontWeight: FontWeight.bold)),
+        ),
+        const SizedBox(width: 8),
+        Text(name, style: const TextStyle(fontSize: 12)),
+      ],
+    );
+  }
+}
+
+class _ContractStatusBadge extends StatelessWidget {
+  final ContractStatus status;
+  const _ContractStatusBadge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    Color color;
+    Color bg;
+    String label = status.name.replaceAll('_', ' ').toUpperCase();
+
+    switch (status) {
+      case ContractStatus.draft:
+        color = Colors.grey[700]!;
+        bg = Colors.grey[100]!;
+        break;
+      case ContractStatus.under_review:
+        color = Colors.blue[700]!;
+        bg = Colors.blue[50]!;
+        break;
+      case ContractStatus.approved:
+        color = Colors.purple[700]!;
+        bg = Colors.purple[50]!;
+        break;
+      case ContractStatus.executed:
+        color = Colors.green[700]!;
+        bg = Colors.green[50]!;
+        break;
+      case ContractStatus.expired:
+        color = Colors.orange[800]!;
+        bg = Colors.orange[50]!;
+        break;
+      case ContractStatus.terminated:
+        color = Colors.red[800]!;
+        bg = Colors.red[50]!;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: color.withValues(alpha: 0.2))),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 10, fontWeight: FontWeight.bold, color: color)),
+    );
+  }
+}
+
+class _StatusCell extends StatelessWidget {
+  final String status;
+  const _StatusCell(this.status);
+  // ... existing implementation for Procurement Items ...
+  @override
+  Widget build(BuildContext context) {
+    // ... existing logic ...
     final s = status.toLowerCase();
     Color color = Colors.grey;
     if (s.contains('planning') || s.contains('draft')) color = Colors.blue;

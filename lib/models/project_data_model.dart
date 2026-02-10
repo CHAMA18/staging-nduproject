@@ -9,10 +9,53 @@ class ProjectDataModel {
   String businessCase;
   String notes;
 
-  // Strategic Planning Data (editable in Project Details)
-  List<String> assumptions;
-  List<String> constraints;
-  List<String> outOfScope;
+  // --- Legacy / Alias Getters ---
+  String get projectDescription => solutionDescription;
+  set projectDescription(String val) => solutionDescription = val;
+
+  FrontEndPlanningData get frontEndPlanningData => frontEndPlanning;
+  set frontEndPlanningData(FrontEndPlanningData val) => frontEndPlanning = val;
+
+  String get technology {
+    if (technologyDefinitions.isEmpty) return 'Not specified';
+    return technologyDefinitions.map((e) => e['name'] ?? '').join(', ');
+  }
+
+  // --- Structured Planning Fields ---
+  List<PlanningDashboardItem> withinScopeItems;
+  List<PlanningDashboardItem> outOfScopeItems;
+  List<PlanningDashboardItem> assumptionItems;
+  List<PlanningDashboardItem> constraintItems;
+
+  // --- Legacy Getters (Backward Compatibility) ---
+  List<String> get withinScope =>
+      withinScopeItems.map((e) => e.description).toList();
+  set withinScope(List<String> val) {
+    withinScopeItems =
+        val.map((e) => PlanningDashboardItem(description: e)).toList();
+  }
+
+  List<String> get outOfScope =>
+      outOfScopeItems.map((e) => e.description).toList();
+  set outOfScope(List<String> val) {
+    outOfScopeItems =
+        val.map((e) => PlanningDashboardItem(description: e)).toList();
+  }
+
+  List<String> get assumptions =>
+      assumptionItems.map((e) => e.description).toList();
+  set assumptions(List<String> val) {
+    assumptionItems =
+        val.map((e) => PlanningDashboardItem(description: e)).toList();
+  }
+
+  List<String> get constraints =>
+      constraintItems.map((e) => e.description).toList();
+  set constraints(List<String> val) {
+    constraintItems =
+        val.map((e) => PlanningDashboardItem(description: e)).toList();
+  }
+
   List<String> opportunities;
 
   // Project Charter (editable in Project Charter screen)
@@ -100,6 +143,12 @@ class ProjectDataModel {
   // Execution Phase Data
   ExecutionPhaseData? executionPhaseData;
 
+  // Monitoring & Controls Data
+  MonitoringControlsData? monitoringControls;
+
+  // Launch Phase Data
+  LaunchPhaseData? launchPhaseData;
+
   // Stakeholder Management Data
   List<StakeholderEntry> stakeholderEntries;
   List<EngagementPlanEntry> engagementPlanEntries;
@@ -162,6 +211,7 @@ class ProjectDataModel {
     this.wbsCriteriaB,
     List<String>? assumptions,
     List<String>? constraints,
+    List<String>? withinScope,
     List<String>? outOfScope,
     List<String>? opportunities,
     List<List<WorkItem>>? goalWorkItems,
@@ -196,16 +246,19 @@ class ProjectDataModel {
     this.updatedAt,
     this.currentCheckpoint = 'initiation',
     Map<String, FieldHistory>? fieldHistories,
+    this.monitoringControls,
+    this.launchPhaseData,
     String? costBenefitCurrency,
-    String? preferredSolutionId,
+    this.preferredSolutionId,
+    List<PlanningDashboardItem>? withinScopeItems,
+    List<PlanningDashboardItem>? outOfScopeItems,
+    List<PlanningDashboardItem>? assumptionItems,
+    List<PlanningDashboardItem>? constraintItems,
   })  : potentialSolutions = potentialSolutions ?? [],
         solutionRisks = solutionRisks ?? [],
         contractors = contractors ?? [],
         vendors = vendors ?? [],
         projectGoals = projectGoals ?? [],
-        assumptions = assumptions ?? [],
-        constraints = constraints ?? [],
-        outOfScope = outOfScope ?? [],
         opportunities = opportunities ?? [],
         planningGoals = planningGoals ??
             List.generate(3, (i) => PlanningGoal(goalNumber: i + 1)),
@@ -234,7 +287,26 @@ class ProjectDataModel {
         engagementPlanEntries = engagementPlanEntries ?? [],
         fieldHistories = fieldHistories ?? {},
         costBenefitCurrency = costBenefitCurrency ?? 'USD',
-        preferredSolutionId = preferredSolutionId;
+        withinScopeItems = withinScopeItems ??
+            (withinScope
+                    ?.map((e) => PlanningDashboardItem(description: e))
+                    .toList() ??
+                []),
+        outOfScopeItems = outOfScopeItems ??
+            (outOfScope
+                    ?.map((e) => PlanningDashboardItem(description: e))
+                    .toList() ??
+                []),
+        assumptionItems = assumptionItems ??
+            (assumptions
+                    ?.map((e) => PlanningDashboardItem(description: e))
+                    .toList() ??
+                []),
+        constraintItems = constraintItems ??
+            (constraints
+                    ?.map((e) => PlanningDashboardItem(description: e))
+                    .toList() ??
+                []);
 
   ProjectDataModel copyWith({
     String? projectName,
@@ -242,6 +314,12 @@ class ProjectDataModel {
     String? solutionDescription,
     String? businessCase,
     String? notes,
+    // Legacy args (kept for compatibility in signature, but we prioritize new fields)
+    List<String>? assumptions,
+    List<String>? constraints,
+    List<String>? withinScope,
+    List<String>? outOfScope,
+    List<String>? opportunities,
     String? charterAssumptions,
     String? charterConstraints,
     String? charterProjectManagerName,
@@ -266,19 +344,15 @@ class ProjectDataModel {
     List<PlanningGoal>? planningGoals,
     List<Milestone>? keyMilestones,
     Map<String, String>? planningNotes,
-    List<String>? assumptions,
-    List<String>? constraints,
-    List<String>? outOfScope,
-    List<String>? opportunities,
     String? wbsCriteriaA,
     String? wbsCriteriaB,
     List<List<WorkItem>>? goalWorkItems,
     List<WorkItem>? wbsTree,
     List<IssueLogItem>? issueLogItems,
     List<LessonRecord>? lessonsLearned,
+    FrontEndPlanningData? frontEndPlanning,
     List<Map<String, dynamic>>? technologyDefinitions,
     List<Map<String, dynamic>>? technologyInventory,
-    FrontEndPlanningData? frontEndPlanning,
     SSHERData? ssherData,
     List<TeamMember>? teamMembers,
     List<LaunchChecklistItem>? launchChecklistItems,
@@ -293,6 +367,8 @@ class ProjectDataModel {
     DesignDeliverablesData? designDeliverablesData,
     DesignManagementData? designManagementData,
     ExecutionPhaseData? executionPhaseData,
+    MonitoringControlsData? monitoringControls,
+    LaunchPhaseData? launchPhaseData,
     bool? isBasicPlanProject,
     Map<String, int>? aiUsageCounts,
     List<Map<String, dynamic>>? aiIntegrations,
@@ -307,6 +383,12 @@ class ProjectDataModel {
     List<StakeholderEntry>? stakeholderEntries,
     List<EngagementPlanEntry>? engagementPlanEntries,
     QualityManagementData? qualityManagementData,
+
+    // New Fields
+    List<PlanningDashboardItem>? withinScopeItems,
+    List<PlanningDashboardItem>? outOfScopeItems,
+    List<PlanningDashboardItem>? assumptionItems,
+    List<PlanningDashboardItem>? constraintItems,
   }) {
     return ProjectDataModel(
       projectName: projectName ?? this.projectName,
@@ -314,6 +396,13 @@ class ProjectDataModel {
       solutionDescription: solutionDescription ?? this.solutionDescription,
       businessCase: businessCase ?? this.businessCase,
       notes: notes ?? this.notes,
+      // Pass legacy args if provided. The constructor handles mapping them to items if items aren't provided.
+      assumptions: assumptions,
+      constraints: constraints,
+      withinScope: withinScope,
+      outOfScope: outOfScope,
+
+      opportunities: opportunities ?? this.opportunities,
       charterAssumptions: charterAssumptions ?? this.charterAssumptions,
       charterConstraints: charterConstraints ?? this.charterConstraints,
       charterProjectManagerName:
@@ -343,10 +432,6 @@ class ProjectDataModel {
       planningGoals: planningGoals ?? this.planningGoals,
       keyMilestones: keyMilestones ?? this.keyMilestones,
       planningNotes: planningNotes ?? this.planningNotes,
-      assumptions: assumptions ?? this.assumptions,
-      constraints: constraints ?? this.constraints,
-      outOfScope: outOfScope ?? this.outOfScope,
-      opportunities: opportunities ?? this.opportunities,
       wbsCriteriaA: wbsCriteriaA ?? this.wbsCriteriaA,
       wbsCriteriaB: wbsCriteriaB ?? this.wbsCriteriaB,
       goalWorkItems: goalWorkItems ?? this.goalWorkItems,
@@ -372,6 +457,8 @@ class ProjectDataModel {
       designDeliverablesData:
           designDeliverablesData ?? this.designDeliverablesData,
       executionPhaseData: executionPhaseData ?? this.executionPhaseData,
+      monitoringControls: monitoringControls ?? this.monitoringControls,
+      launchPhaseData: launchPhaseData ?? this.launchPhaseData,
       isBasicPlanProject: isBasicPlanProject ?? this.isBasicPlanProject,
       aiUsageCounts: aiUsageCounts ?? this.aiUsageCounts,
       aiIntegrations: aiIntegrations ?? this.aiIntegrations,
@@ -388,6 +475,12 @@ class ProjectDataModel {
           engagementPlanEntries ?? this.engagementPlanEntries,
       qualityManagementData:
           qualityManagementData ?? this.qualityManagementData,
+
+      // New Fields copy
+      withinScopeItems: withinScopeItems ?? this.withinScopeItems,
+      outOfScopeItems: outOfScopeItems ?? this.outOfScopeItems,
+      assumptionItems: assumptionItems ?? this.assumptionItems,
+      constraintItems: constraintItems ?? this.constraintItems,
     );
   }
 
@@ -412,6 +505,7 @@ class ProjectDataModel {
       'notes': notes,
       'assumptions': assumptions,
       'constraints': constraints,
+      'withinScope': withinScope,
       'outOfScope': outOfScope,
       'opportunities': opportunities,
       'charterAssumptions': charterAssumptions,
@@ -486,6 +580,12 @@ class ProjectDataModel {
       'qualityManagementData': qualityManagementData?.toJson(),
       'designManagementData': designManagementData?.toJson(),
       'executionPhaseData': executionPhaseData?.toJson(),
+
+      // New Structured Data persistence
+      'withinScopeItems': withinScopeItems.map((x) => x.toJson()).toList(),
+      'outOfScopeItems': outOfScopeItems.map((x) => x.toJson()).toList(),
+      'assumptionItems': assumptionItems.map((x) => x.toJson()).toList(),
+      'constraintItems': constraintItems.map((x) => x.toJson()).toList(),
     };
   }
 
@@ -523,6 +623,16 @@ class ProjectDataModel {
         debugPrint('⚠️ Error parsing goalWorkItems: $e');
         reconstructedGoalWorkItems = List.generate(3, (_) => []);
       }
+    }
+
+    // Helper to safely parse PlanningDashboardItem lists
+    List<PlanningDashboardItem>? parseDashboardItems(String key) {
+      if (json[key] is List) {
+        return (json[key] as List)
+            .map((e) => PlanningDashboardItem.fromJson(e))
+            .toList();
+      }
+      return null; // Return null so constructor uses legacy fallback
     }
 
     // Safe parsing helper for lists
@@ -586,6 +696,9 @@ class ProjectDataModel {
               [],
       constraints:
           (json['constraints'] as List?)?.map((e) => e.toString()).toList() ??
+              [],
+      withinScope:
+          (json['withinScope'] as List?)?.map((e) => e.toString()).toList() ??
               [],
       outOfScope:
           (json['outOfScope'] as List?)?.map((e) => e.toString()).toList() ??
@@ -730,6 +843,12 @@ class ProjectDataModel {
       qualityManagementData: json['qualityManagementData'] != null
           ? QualityManagementData.fromJson(json['qualityManagementData'])
           : null,
+
+      // Load New Structured Data
+      withinScopeItems: parseDashboardItems('withinScopeItems'),
+      outOfScopeItems: parseDashboardItems('outOfScopeItems'),
+      assumptionItems: parseDashboardItems('assumptionItems'),
+      constraintItems: parseDashboardItems('constraintItems'),
     );
   }
 
@@ -1152,7 +1271,9 @@ class FrontEndPlanningData {
   String requirements;
   String requirementsNotes;
   String risks;
-  String opportunities;
+  String
+      opportunities; // Legacy string field, kept for backward compatibility if needed, or deprecated
+  List<OpportunityItem> opportunityItems; // New structured list
   String contractVendorQuotes;
   String procurement;
   String security;
@@ -1180,6 +1301,8 @@ class FrontEndPlanningData {
   List<OwnerItem> technicalDebtOwners;
   // Structured risk register items (used for charter/summary tables)
   List<RiskRegisterItem> riskRegisterItems;
+  // Structured allowance items
+  List<AllowanceItem> allowanceItems;
 
   FrontEndPlanningData({
     this.requirements = '',
@@ -1208,6 +1331,8 @@ class FrontEndPlanningData {
     List<RemediationTrack>? technicalDebtTracks,
     List<OwnerItem>? technicalDebtOwners,
     List<RiskRegisterItem>? riskRegisterItems,
+    List<AllowanceItem>? allowanceItems,
+    List<OpportunityItem>? opportunityItems,
   })  : requirementItems = requirementItems ?? [],
         technicalDebtItems = technicalDebtItems ?? [],
         technicalDebtRootCauses = technicalDebtRootCauses ?? [],
@@ -1218,7 +1343,72 @@ class FrontEndPlanningData {
         securityRoles = securityRoles ?? [],
         securityPermissions = securityPermissions ?? [],
         securitySettings = securitySettings ?? [],
-        securityAccessLogs = securityAccessLogs ?? [];
+        securityAccessLogs = securityAccessLogs ?? [],
+        allowanceItems = allowanceItems ?? [],
+        opportunityItems = opportunityItems ?? [];
+
+  FrontEndPlanningData copyWith({
+    String? requirements,
+    String? requirementsNotes,
+    String? risks,
+    String? opportunities,
+    String? contractVendorQuotes,
+    String? procurement,
+    String? security,
+    String? allowance,
+    String? summary,
+    String? technology,
+    String? personnel,
+    String? infrastructure,
+    String? contracts,
+    String? milestoneStartDate,
+    String? milestoneEndDate,
+    List<RequirementItem>? requirementItems,
+    List<ScenarioRecord>? scenarioMatrixItems,
+    List<RoleItem>? securityRoles,
+    List<PermissionItem>? securityPermissions,
+    List<SecuritySetting>? securitySettings,
+    List<AccessLogItem>? securityAccessLogs,
+    List<DebtItem>? technicalDebtItems,
+    List<DebtInsight>? technicalDebtRootCauses,
+    List<RemediationTrack>? technicalDebtTracks,
+    List<OwnerItem>? technicalDebtOwners,
+    List<RiskRegisterItem>? riskRegisterItems,
+    List<AllowanceItem>? allowanceItems,
+    List<OpportunityItem>? opportunityItems,
+  }) {
+    return FrontEndPlanningData(
+      requirements: requirements ?? this.requirements,
+      requirementsNotes: requirementsNotes ?? this.requirementsNotes,
+      risks: risks ?? this.risks,
+      opportunities: opportunities ?? this.opportunities,
+      contractVendorQuotes: contractVendorQuotes ?? this.contractVendorQuotes,
+      procurement: procurement ?? this.procurement,
+      security: security ?? this.security,
+      allowance: allowance ?? this.allowance,
+      summary: summary ?? this.summary,
+      technology: technology ?? this.technology,
+      personnel: personnel ?? this.personnel,
+      infrastructure: infrastructure ?? this.infrastructure,
+      contracts: contracts ?? this.contracts,
+      milestoneStartDate: milestoneStartDate ?? this.milestoneStartDate,
+      milestoneEndDate: milestoneEndDate ?? this.milestoneEndDate,
+      requirementItems: requirementItems ?? this.requirementItems,
+      scenarioMatrixItems: scenarioMatrixItems ?? this.scenarioMatrixItems,
+      securityRoles: securityRoles ?? this.securityRoles,
+      securityPermissions: securityPermissions ?? this.securityPermissions,
+      securitySettings: securitySettings ?? this.securitySettings,
+      securityAccessLogs: securityAccessLogs ?? this.securityAccessLogs,
+      technicalDebtItems: technicalDebtItems ?? this.technicalDebtItems,
+      technicalDebtRootCauses:
+          technicalDebtRootCauses ?? this.technicalDebtRootCauses,
+      technicalDebtTracks: technicalDebtTracks ?? this.technicalDebtTracks,
+      technicalDebtOwners: technicalDebtOwners ?? this.technicalDebtOwners,
+      riskRegisterItems: riskRegisterItems ?? this.riskRegisterItems,
+      allowanceItems: allowanceItems ?? this.allowanceItems,
+      opportunityItems: opportunityItems ?? this.opportunityItems,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         'requirements': requirements,
@@ -1236,6 +1426,9 @@ class FrontEndPlanningData {
         'contracts': contracts,
         'milestoneStartDate': milestoneStartDate,
         'milestoneEndDate': milestoneEndDate,
+        'allowanceItems': allowanceItems.map((item) => item.toJson()).toList(),
+        'opportunityItems':
+            opportunityItems.map((item) => item.toJson()).toList(),
         'requirementsItems':
             requirementItems.map((item) => item.toJson()).toList(),
         'riskRegisterItems':
@@ -1275,6 +1468,14 @@ class FrontEndPlanningData {
       contracts: json['contracts'] ?? '',
       milestoneStartDate: json['milestoneStartDate'] ?? '',
       milestoneEndDate: json['milestoneEndDate'] ?? '',
+      allowanceItems: (json['allowanceItems'] as List?)
+              ?.map((e) => AllowanceItem.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      opportunityItems: (json['opportunityItems'] as List?)
+              ?.map((e) => OpportunityItem.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
       requirementItems: (json['requirementsItems'] as List?)
               ?.map((item) =>
                   RequirementItem.fromJson(item as Map<String, dynamic>))
@@ -1327,6 +1528,113 @@ class FrontEndPlanningData {
                   AccessLogItem.fromJson(item as Map<String, dynamic>))
               .toList() ??
           [],
+    );
+  }
+}
+
+class AllowanceItem {
+  String id;
+  int number;
+  String name;
+  String type; // Contingency, Training, Staffing, Tech, Other
+  double amount;
+  List<String> appliesTo;
+  String notes;
+  String assignedTo; // Role or person responsible for this allowance
+
+  AllowanceItem({
+    required this.id,
+    this.number = 0,
+    this.name = '',
+    this.type = 'Other',
+    this.amount = 0.0,
+    this.appliesTo = const [],
+    this.notes = '',
+    this.assignedTo = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'number': number,
+        'name': name,
+        'type': type,
+        'amount': amount,
+        'appliesTo': appliesTo,
+        'notes': notes,
+        'assignedTo': assignedTo,
+      };
+
+  factory AllowanceItem.fromJson(Map<String, dynamic> json) {
+    return AllowanceItem(
+      id: json['id']?.toString() ?? '',
+      number: json['number'] as int? ?? 0,
+      name: json['name']?.toString() ?? '',
+      type: json['type']?.toString() ?? 'Other',
+      amount:
+          (json['amount'] is num) ? (json['amount'] as num).toDouble() : 0.0,
+      appliesTo:
+          (json['appliesTo'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      notes: json['notes']?.toString() ?? '',
+      assignedTo: json['assignedTo']?.toString() ?? '',
+    );
+  }
+}
+
+class OpportunityItem {
+  String id;
+  String opportunity;
+  String discipline;
+  String stakeholder;
+  String potentialCostSavings;
+  String potentialScheduleSavings;
+  List<String> appliesTo;
+  String assignedTo;
+  String impact;
+
+  OpportunityItem({
+    required this.id,
+    this.opportunity = '',
+    this.discipline = '',
+    this.stakeholder = '',
+    this.potentialCostSavings = '',
+    this.potentialScheduleSavings = '',
+    this.appliesTo = const [],
+    this.assignedTo = '',
+    this.impact = 'Medium',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'opportunity': opportunity,
+        'discipline': discipline,
+        'stakeholder': stakeholder,
+        'potentialCostSavings': potentialCostSavings,
+        'potentialScheduleSavings': potentialScheduleSavings,
+        'appliesTo': appliesTo,
+        'assignedTo': assignedTo,
+        'impact': impact,
+      };
+
+  factory OpportunityItem.fromJson(Map<String, dynamic> json) {
+    // Migration: If 'isApplied' exists and is true, add 'Estimate' to appliesTo
+    List<String> appliesTo = [];
+    if (json['appliesTo'] != null) {
+      appliesTo = List<String>.from(json['appliesTo']);
+    } else if (json['isApplied'] == true) {
+      appliesTo = ['Estimate'];
+    }
+
+    return OpportunityItem(
+      id: json['id']?.toString() ?? '',
+      opportunity: json['opportunity']?.toString() ?? '',
+      discipline: json['discipline']?.toString() ?? '',
+      stakeholder: json['stakeholder']?.toString() ?? '',
+      potentialCostSavings: json['potentialCostSavings']?.toString() ?? '',
+      potentialScheduleSavings:
+          json['potentialScheduleSavings']?.toString() ?? '',
+      appliesTo: appliesTo,
+      assignedTo: json['assignedTo']?.toString() ?? '',
+      impact: json['impact']?.toString() ?? 'Medium',
     );
   }
 }
@@ -3724,6 +4032,97 @@ class DesignToolLink {
       name: json['name']?.toString() ?? '',
       url: json['url']?.toString() ?? '',
       isInternal: json['isInternal'] == true,
+    );
+  }
+}
+
+class PlanningDashboardItem {
+  String id;
+  String title;
+  String description;
+  DateTime createdAt;
+  bool isAiGenerated;
+
+  PlanningDashboardItem({
+    String? id,
+    this.title = '',
+    required this.description,
+    DateTime? createdAt,
+    this.isAiGenerated = false,
+  })  : id = id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        createdAt = createdAt ?? DateTime.now();
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'createdAt': createdAt.toIso8601String(),
+      'isAiGenerated': isAiGenerated,
+    };
+  }
+
+  factory PlanningDashboardItem.fromJson(Map<String, dynamic> json) {
+    return PlanningDashboardItem(
+      id: json['id'],
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'])
+          : null,
+      isAiGenerated: json['isAiGenerated'] ?? false,
+    );
+  }
+}
+
+class MonitoringControlsData {
+  String kpiTracking;
+  String qaPlan;
+  String riskMonitoring;
+
+  MonitoringControlsData({
+    this.kpiTracking = '',
+    this.qaPlan = '',
+    this.riskMonitoring = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'kpiTracking': kpiTracking,
+        'qaPlan': qaPlan,
+        'riskMonitoring': riskMonitoring,
+      };
+
+  factory MonitoringControlsData.fromJson(Map<String, dynamic> json) {
+    return MonitoringControlsData(
+      kpiTracking: json['kpiTracking'] ?? '',
+      qaPlan: json['qaPlan'] ?? '',
+      riskMonitoring: json['riskMonitoring'] ?? '',
+    );
+  }
+}
+
+class LaunchPhaseData {
+  String launchPlan;
+  String goNoGoCriteria;
+  String postLaunchReview;
+
+  LaunchPhaseData({
+    this.launchPlan = '',
+    this.goNoGoCriteria = '',
+    this.postLaunchReview = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'launchPlan': launchPlan,
+        'goNoGoCriteria': goNoGoCriteria,
+        'postLaunchReview': postLaunchReview,
+      };
+
+  factory LaunchPhaseData.fromJson(Map<String, dynamic> json) {
+    return LaunchPhaseData(
+      launchPlan: json['launchPlan'] ?? '',
+      goNoGoCriteria: json['goNoGoCriteria'] ?? '',
+      postLaunchReview: json['postLaunchReview'] ?? '',
     );
   }
 }

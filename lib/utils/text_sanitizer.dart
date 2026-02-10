@@ -1,4 +1,4 @@
-/// Small utilities for sanitizing AI-generated text before it is shown in UI
+/// Small utilities for sanitizing KAZ AI-generated text before it is shown in UI
 class TextSanitizer {
   /// Remove markdown asterisk markers that can appear in AI output (e.g. *bold* or **bold**)
   /// and trim surrounding whitespace.

@@ -59,7 +59,6 @@ class _FrontEndPlanningProcurementScreenState
 
   List<VendorModel> _vendors = [];
   final Set<String> _selectedVendorIds = {};
-  int _vendorIdCounter = 0;
 
   final List<_VendorHealthMetric> _vendorHealthMetrics = [];
 
@@ -89,9 +88,6 @@ class _FrontEndPlanningProcurementScreenState
 
   late final OpenAiServiceSecure _openAi;
   bool _isGeneratingData = false;
-
-  String _newVendorId() =>
-      'vendor_${DateTime.now().microsecondsSinceEpoch}_${_vendorIdCounter++}';
 
   @override
   void initState() {
@@ -136,23 +132,30 @@ class _FrontEndPlanningProcurementScreenState
     // Regeneration disabled in persistent mode to prevent data loss.
     // To reset, one would need to delete the subcollections.
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Regeneration disabled in persistent mode.')),
+      const SnackBar(
+          content: Text('Regeneration disabled in persistent mode.')),
     );
   }
 
-  Future<void> _seedProcurementDataIfNeeded(String projectId, ProjectDataModel data) async {
+  Future<void> _seedProcurementDataIfNeeded(
+      String projectId, ProjectDataModel data) async {
     if (_isGeneratingData) return;
 
     // Check if data exists by peeking at streams
-    final hasItems = await ProcurementService.streamItems(projectId).first.then((l) => l.isNotEmpty);
+    final hasItems = await ProcurementService.streamItems(projectId)
+        .first
+        .then((l) => l.isNotEmpty);
     // If we have items, we assume we have seeded.
     if (hasItems) return;
 
     setState(() => _isGeneratingData = true);
 
     try {
-      final projectName = data.projectName.trim().isEmpty ? 'Project' : data.projectName.trim();
-      final solutionTitle = data.solutionTitle.trim().isEmpty ? 'Solution' : data.solutionTitle.trim();
+      final projectName =
+          data.projectName.trim().isEmpty ? 'Project' : data.projectName.trim();
+      final solutionTitle = data.solutionTitle.trim().isEmpty
+          ? 'Solution'
+          : data.solutionTitle.trim();
       final notes = data.frontEndPlanning.procurement.trim();
 
       await _seedItems(projectId, projectName, solutionTitle, notes);
@@ -170,7 +173,8 @@ class _FrontEndPlanningProcurementScreenState
     }
   }
 
-  Future<void> _seedItems(String projectId, String projectName, String solutionTitle, String notes) async {
+  Future<void> _seedItems(String projectId, String projectName,
+      String solutionTitle, String notes) async {
     final now = DateTime.now();
     final categories = [
       'IT Equipment',
@@ -185,91 +189,110 @@ class _FrontEndPlanningProcurementScreenState
       final resultList = <ProcurementItemModel>[];
       try {
         for (int i = 0; i < categories.length; i++) {
-            final category = categories[i];
-            final result = await _openAi.generateProcurementItemSuggestion(
-              projectName: projectName,
-              solutionTitle: solutionTitle,
-              category: category,
-              contextNotes: notes,
-            );
+          final category = categories[i];
+          final result = await _openAi.generateProcurementItemSuggestion(
+            projectName: projectName,
+            solutionTitle: solutionTitle,
+            category: category,
+            contextNotes: notes,
+          );
 
-            final deliveryDays = (result['estimatedDeliveryDays'] as int?) ?? 90;
-            final deliveryDate = DateTime.now().add(Duration(days: deliveryDays));
+          final deliveryDays = (result['estimatedDeliveryDays'] as int?) ?? 90;
+          final deliveryDate = DateTime.now().add(Duration(days: deliveryDays));
 
-            ProcurementPriority priority;
-            final priorityStr = (result['priority'] ?? 'medium').toString();
-            switch (priorityStr.toLowerCase()) {
-              case 'critical': priority = ProcurementPriority.critical; break;
-              case 'high': priority = ProcurementPriority.high; break;
-              case 'low': priority = ProcurementPriority.low; break;
-              default: priority = ProcurementPriority.medium;
-            }
+          ProcurementPriority priority;
+          final priorityStr = (result['priority'] ?? 'medium').toString();
+          switch (priorityStr.toLowerCase()) {
+            case 'critical':
+              priority = ProcurementPriority.critical;
+              break;
+            case 'high':
+              priority = ProcurementPriority.high;
+              break;
+            case 'low':
+              priority = ProcurementPriority.low;
+              break;
+            default:
+              priority = ProcurementPriority.medium;
+          }
 
-            ProcurementItemStatus status;
-            switch (i % 5) {
-              case 0: status = ProcurementItemStatus.planning; break;
-              case 1: status = ProcurementItemStatus.rfqReview; break;
-              case 2: status = ProcurementItemStatus.vendorSelection; break;
-              case 3: status = ProcurementItemStatus.ordered; break;
-              default: status = ProcurementItemStatus.delivered;
-            }
+          ProcurementItemStatus status;
+          switch (i % 5) {
+            case 0:
+              status = ProcurementItemStatus.planning;
+              break;
+            case 1:
+              status = ProcurementItemStatus.rfqReview;
+              break;
+            case 2:
+              status = ProcurementItemStatus.vendorSelection;
+              break;
+            case 3:
+              status = ProcurementItemStatus.ordered;
+              break;
+            default:
+              status = ProcurementItemStatus.delivered;
+          }
 
-            final progress = [0.0, 0.25, 0.5, 0.75, 1.0][i % 5];
+          final progress = [0.0, 0.25, 0.5, 0.75, 1.0][i % 5];
 
-            // Create events based on status for tracking
-            final events = <ProcurementEvent>[];
-            if (status.index >= ProcurementItemStatus.ordered.index) {
-                events.add(ProcurementEvent(
-                  title: 'Order Placed',
-                  description: 'Order confirmed with vendor',
-                  subtext: 'Ordered',
-                  date: now.subtract(const Duration(days: 10)),
-                ));
-            }
-            if (status == ProcurementItemStatus.delivered) {
-                 events.add(ProcurementEvent(
-                  title: 'Delivered',
-                  description: 'Item received at site',
-                  subtext: 'Delivered',
-                  date: now,
-                ));
-            }
-
-            resultList.add(ProcurementItemModel(
-              id: '', // Service handles ID
-              projectId: projectId,
-              name: (result['name'] ?? '$category Procurement').toString(),
-              description: (result['description'] ?? 'Procurement item for $category category').toString(),
-              category: category,
-              status: status,
-              priority: priority,
-              budget: ((result['budget'] as int?) ?? (50000 + (i * 10000))).toDouble(),
-              estimatedDelivery: deliveryDate,
-              progress: progress,
-              createdAt: now,
-              updatedAt: now,
-              events: events,
+          // Create events based on status for tracking
+          final events = <ProcurementEvent>[];
+          if (status.index >= ProcurementItemStatus.ordered.index) {
+            events.add(ProcurementEvent(
+              title: 'Order Placed',
+              description: 'Order confirmed with vendor',
+              subtext: 'Ordered',
+              date: now.subtract(const Duration(days: 10)),
             ));
+          }
+          if (status == ProcurementItemStatus.delivered) {
+            events.add(ProcurementEvent(
+              title: 'Delivered',
+              description: 'Item received at site',
+              subtext: 'Delivered',
+              date: now,
+            ));
+          }
+
+          resultList.add(ProcurementItemModel(
+            id: '', // Service handles ID
+            projectId: projectId,
+            name: (result['name'] ?? '$category Procurement').toString(),
+            description: (result['description'] ??
+                    'Procurement item for $category category')
+                .toString(),
+            category: category,
+            status: status,
+            priority: priority,
+            budget: ((result['budget'] as int?) ?? (50000 + (i * 10000)))
+                .toDouble(),
+            estimatedDelivery: deliveryDate,
+            progress: progress,
+            createdAt: now,
+            updatedAt: now,
+            events: events,
+          ));
         }
       } catch (e) {
         debugPrint('AI generation failed, using fallback: $e');
         // Fallback
-         for (int i = 0; i < categories.length; i++) {
-           resultList.add(ProcurementItemModel(
-              id: '',
-              projectId: projectId,
-              name: '${categories[i]} Procurement',
-              description: 'Procurement item for ${categories[i]}',
-              category: categories[i],
-              status: ProcurementItemStatus.planning,
-              priority: ProcurementPriority.medium,
-              budget: (50000 + (i * 10000)).toDouble(),
-              estimatedDelivery: now.add(const Duration(days: 90)),
-              progress: 0.0,
-              createdAt: now,
-              updatedAt: now,
-           ));
-         }
+        for (int i = 0; i < categories.length; i++) {
+          resultList.add(ProcurementItemModel(
+            id: '',
+            projectId: projectId,
+            name: '${categories[i]} Procurement',
+            description: 'Procurement item for ${categories[i]}',
+            category: categories[i],
+            status: ProcurementItemStatus.planning,
+            priority: ProcurementPriority.medium,
+            budget: (50000 + (i * 10000)).toDouble(),
+            estimatedDelivery: now.add(const Duration(days: 90)),
+            progress: 0.0,
+            createdAt: now,
+            updatedAt: now,
+          ));
+        }
       }
 
       // Save to Firestore
@@ -282,43 +305,47 @@ class _FrontEndPlanningProcurementScreenState
   }
 
   Future<void> _seedStrategies(String projectId) async {
-      // Create default strategies
-      final strategies = [
-        ProcurementStrategyModel(
-          id: '',
-          projectId: projectId,
-          title: 'IT Infrastructure Procurement',
-          status: StrategyStatus.active,
-          itemCount: 1,
-          description: 'Strategic approach for acquiring IT infrastructure components and equipment.',
-          createdAt: DateTime.now(),
-        ),
-        ProcurementStrategyModel(
-          id: '',
-          projectId: projectId,
-          title: 'Construction & Facilities',
-          status: StrategyStatus.active,
-          itemCount: 1,
-          description: 'Procurement strategy for construction services and facility improvements.',
-          createdAt: DateTime.now(),
-        ),
-        ProcurementStrategyModel(
-          id: '',
-          projectId: projectId,
-          title: 'Office & Workspace',
-          status: StrategyStatus.draft,
-          itemCount: 1,
-          description: 'Strategy for furnishing and equipping office spaces and work areas.',
-          createdAt: DateTime.now(),
-        ),
-      ];
+    // Create default strategies
+    final strategies = [
+      ProcurementStrategyModel(
+        id: '',
+        projectId: projectId,
+        title: 'IT Infrastructure Procurement',
+        status: StrategyStatus.active,
+        itemCount: 1,
+        description:
+            'Strategic approach for acquiring IT infrastructure components and equipment.',
+        createdAt: DateTime.now(),
+      ),
+      ProcurementStrategyModel(
+        id: '',
+        projectId: projectId,
+        title: 'Construction & Facilities',
+        status: StrategyStatus.active,
+        itemCount: 1,
+        description:
+            'Procurement strategy for construction services and facility improvements.',
+        createdAt: DateTime.now(),
+      ),
+      ProcurementStrategyModel(
+        id: '',
+        projectId: projectId,
+        title: 'Office & Workspace',
+        status: StrategyStatus.draft,
+        itemCount: 1,
+        description:
+            'Strategy for furnishing and equipping office spaces and work areas.',
+        createdAt: DateTime.now(),
+      ),
+    ];
 
-      for (final s in strategies) {
-        await ProcurementService.createStrategy(s);
-      }
+    for (final s in strategies) {
+      await ProcurementService.createStrategy(s);
+    }
   }
 
-  Future<void> _seedVendors(String projectId, String projectName, String solutionTitle, String notes) async {
+  Future<void> _seedVendors(String projectId, String projectName,
+      String solutionTitle, String notes) async {
     try {
       final vendors = await _openAi.generateProcurementVendors(
         projectName: projectName,
@@ -329,43 +356,64 @@ class _FrontEndPlanningProcurementScreenState
 
       final list = <VendorModel>[];
       if (vendors.isNotEmpty) {
-           for (final v in vendors) {
-            final name = (v['name'] ?? '').toString();
-            list.add(VendorModel( // Need full constructor
-              id: '', // Service handles
-              projectId: projectId,
-              name: name,
-              category: (v['category'] ?? 'IT Equipment').toString(),
-              criticality: 'Medium',
-              sla: '98%',
-              rating: 'A', // Default to string A
-              status: ((v['approved'] as bool? ?? true) ? 'Active' : 'Pending'),
-              nextReview: DateFormat('MMM d, yyyy')
-                  .format(DateTime.now().add(const Duration(days: 180))),
-              slaPerformance: 0.95,
-              leadTime: '14 Days',
-              requiredDeliverables: '• Quarterly review\n• SLA adherence',
-              onTimeDelivery: 0.95,
-              incidentResponse: 0.95,
-              qualityScore: 0.95,
-              costAdherence: 0.95,
-              createdById: '',
-              createdByEmail: '',
-              createdByName: '',
-              createdAt: DateTime.now(),
-              updatedAt: DateTime.now(),
-            ));
-           }
+        for (final v in vendors) {
+          final name = (v['name'] ?? '').toString();
+          list.add(VendorModel(
+            // Need full constructor
+            id: '', // Service handles
+            projectId: projectId,
+            name: name,
+            category: (v['category'] ?? 'IT Equipment').toString(),
+            criticality: 'Medium',
+            sla: '98%',
+            rating: 'A', // Default to string A
+            status: ((v['approved'] as bool? ?? true) ? 'Active' : 'Pending'),
+            nextReview: DateFormat('MMM d, yyyy')
+                .format(DateTime.now().add(const Duration(days: 180))),
+            slaPerformance: 0.95,
+            leadTime: '14 Days',
+            requiredDeliverables: '• Quarterly review\n• SLA adherence',
+            onTimeDelivery: 0.95,
+            incidentResponse: 0.95,
+            qualityScore: 0.95,
+            costAdherence: 0.95,
+            createdById: '',
+            createdByEmail: '',
+            createdByName: '',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ));
+        }
       } else {
         // Fallback
         list.add(VendorModel(
-             id: '', projectId: projectId, name: 'TechCorp Solutions', category: 'IT Equipment', criticality: 'Medium', rating: 'A', status: 'Active', sla: '99%', nextReview: DateFormat('MMM d, yyyy')
-                  .format(DateTime.now().add(const Duration(days: 180))), slaPerformance: 0.98, leadTime: '14 Days', requiredDeliverables: '• Quarterly review\n• SLA adherence', onTimeDelivery: 1.0, incidentResponse: 1.0, qualityScore: 1.0, costAdherence: 1.0, createdById: '', createdByEmail: '', createdByName: '', createdAt: DateTime.now(), updatedAt: DateTime.now()));
+            id: '',
+            projectId: projectId,
+            name: 'TechCorp Solutions',
+            category: 'IT Equipment',
+            criticality: 'Medium',
+            rating: 'A',
+            status: 'Active',
+            sla: '99%',
+            nextReview: DateFormat('MMM d, yyyy')
+                .format(DateTime.now().add(const Duration(days: 180))),
+            slaPerformance: 0.98,
+            leadTime: '14 Days',
+            requiredDeliverables: '• Quarterly review\n• SLA adherence',
+            onTimeDelivery: 1.0,
+            incidentResponse: 1.0,
+            qualityScore: 1.0,
+            costAdherence: 1.0,
+            createdById: '',
+            createdByEmail: '',
+            createdByName: '',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now()));
       }
 
       for (final v in list) {
-         // Use createVendor which handles auth fields
-         await VendorService.createVendor(
+        // Use createVendor which handles auth fields
+        await VendorService.createVendor(
             projectId: projectId,
             name: v.name,
             category: v.category,
@@ -383,102 +431,67 @@ class _FrontEndPlanningProcurementScreenState
             costAdherence: v.costAdherence,
             createdById: 'system',
             createdByEmail: 'system@ndu.com',
-            createdByName: 'System AI'
-         );
+            createdByName: 'System AI');
       }
-
     } catch (e) {
       debugPrint('Error seeding vendors: $e');
     }
   }
 
-  Future<void> _seedRfqs(
-      String projectId, String projectName, String solutionTitle, String notes) async {
+  Future<void> _seedRfqs(String projectId, String projectName,
+      String solutionTitle, String notes) async {
     // Basic seeding
     try {
-        final rfqs = <RfqModel>[
-             RfqModel(id: '', projectId: projectId, title: 'Network Equip', category: 'IT', owner: 'Manager', dueDate: DateTime.now().add(const Duration(days: 30)), invitedCount: 5, responseCount: 3, budget: 50000, status: RfqStatus.inMarket, priority: ProcurementPriority.high, createdAt: DateTime.now())
-        ];
-        for(final r in rfqs) {
-          await ProcurementService.createRfq(r);
-        }
-    } catch(e) { debugPrint('$e'); }
+      final rfqs = <RfqModel>[
+        RfqModel(
+            id: '',
+            projectId: projectId,
+            title: 'Network Equip',
+            category: 'IT',
+            owner: 'Manager',
+            dueDate: DateTime.now().add(const Duration(days: 30)),
+            invitedCount: 5,
+            responseCount: 3,
+            budget: 50000,
+            status: RfqStatus.inMarket,
+            priority: ProcurementPriority.high,
+            createdAt: DateTime.now())
+      ];
+      for (final r in rfqs) {
+        await ProcurementService.createRfq(r);
+      }
+    } catch (e) {
+      debugPrint('$e');
+    }
   }
 
-  Future<void> _seedPurchaseOrders(String projectId, String projectName, String solutionTitle, String notes) async {
-     // Implementation similar to seedRfqs but for POs. Skipping strictly for length, assuming empty for now or implementing if needed logic.
-     // To save tokens, I'll implement a basic seed.
-     try {
-       final pos = [
-          PurchaseOrderModel(
-            id: '', poNumber: 'PO-1001', projectId: projectId, vendorName: 'TechCorp', category: 'IT', orderedDate: DateTime.now(), expectedDate: DateTime.now().add(const Duration(days: 10)), amount: 50000, createdAt: DateTime.now(), status: PurchaseOrderStatus.issued
-          )
-       ];
-       for(final po in pos) {
-         await ProcurementService.createPo(po);
-       }
-     } catch(e) { debugPrint('$e'); }
+  Future<void> _seedPurchaseOrders(String projectId, String projectName,
+      String solutionTitle, String notes) async {
+    // Implementation similar to seedRfqs but for POs. Skipping strictly for length, assuming empty for now or implementing if needed logic.
+    // To save tokens, I'll implement a basic seed.
+    try {
+      final pos = [
+        PurchaseOrderModel(
+            id: '',
+            poNumber: 'PO-1001',
+            projectId: projectId,
+            vendorName: 'TechCorp',
+            category: 'IT',
+            orderedDate: DateTime.now(),
+            expectedDate: DateTime.now().add(const Duration(days: 10)),
+            amount: 50000,
+            createdAt: DateTime.now(),
+            status: PurchaseOrderStatus.issued)
+      ];
+      for (final po in pos) {
+        await ProcurementService.createPo(po);
+      }
+    } catch (e) {
+      debugPrint('$e');
+    }
   }
 
   // _generateTrackableItems removed as trackable items are derived from _items logic.
-
-
-
-  void _generateReportsData() {
-    final reportsData = _openAi.generateProcurementReportsData();
-    if (reportsData.isEmpty) return;
-
-    final data = reportsData.first;
-
-    setState(() {
-      // KPIs
-      _reportKpis.clear();
-      final kpis = (data['kpis'] as List? ?? []);
-      _reportKpis.addAll(kpis.map((k) => _ReportKpi(
-            label: (k['label'] ?? '').toString(),
-            value: (k['value'] ?? '').toString(),
-            delta: (k['delta'] ?? '').toString(),
-            positive: k['positive'] as bool? ?? true,
-          )));
-
-      // Spend breakdown
-      _spendBreakdown.clear();
-      final spend = (data['spendBreakdown'] as List? ?? []);
-      _spendBreakdown.addAll(spend.map((s) => _SpendBreakdown(
-            label: (s['label'] ?? '').toString(),
-            amount: (s['amount'] as int?) ?? 0,
-            percent:
-                ((s['percent'] as num?)?.toDouble() ?? 0.0).clamp(0.0, 100.0),
-            color: Color((s['color'] as int?) ?? 0xFF64748B),
-          )));
-
-      // Lead time metrics
-      _leadTimeMetrics.clear();
-      final leadTimes = (data['leadTimeMetrics'] as List? ?? []);
-      _leadTimeMetrics.addAll(leadTimes.map((l) => _LeadTimeMetric(
-            label: (l['label'] ?? '').toString(),
-            onTimeRate:
-                ((l['onTimeRate'] as num?)?.toDouble() ?? 0.0).clamp(0.0, 1.0),
-          )));
-
-      // Savings opportunities
-      _savingsOpportunities.clear();
-      final savings = (data['savingsOpportunities'] as List? ?? []);
-      _savingsOpportunities.addAll(savings.map((s) => _SavingsOpportunity(
-            title: (s['title'] ?? '').toString(),
-            value: (s['value'] ?? '').toString(),
-            owner: (s['owner'] ?? '').toString(),
-          )));
-
-      // Compliance metrics
-      _complianceMetrics.clear();
-      final compliance = (data['complianceMetrics'] as List? ?? []);
-      _complianceMetrics.addAll(compliance.map((c) => _ComplianceMetric(
-            label: (c['label'] ?? '').toString(),
-            value: ((c['value'] as num?)?.toDouble() ?? 0.0).clamp(0.0, 1.0),
-          )));
-    });
-  }
 
   @override
   void dispose() {
@@ -503,9 +516,6 @@ class _FrontEndPlanningProcurementScreenState
       return true;
     }).toList();
   }
-
-  bool _isVendorSelected(String vendorId) =>
-      _selectedVendorIds.contains(vendorId);
 
   void _toggleVendorSelection(String vendorId, bool selected) {
     setState(() {
@@ -575,34 +585,6 @@ class _FrontEndPlanningProcurementScreenState
     final projectId = data.projectId ?? '';
     if (projectId.isEmpty) return;
     await _seedProcurementDataIfNeeded(projectId, data);
-  }
-
-  Future<bool> _persistProcurementNotes({bool showConfirmation = false}) async {
-    final success = await ProjectDataHelper.updateAndSave(
-      context: context,
-      checkpoint: 'fep_procurement',
-      dataUpdater: (data) => data.copyWith(
-        frontEndPlanning: ProjectDataHelper.updateFEPField(
-          current: data.frontEndPlanning,
-          procurement: _notes.text.trim(),
-        ),
-      ),
-      showSnackbar: false,
-    );
-
-    if (mounted && showConfirmation) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(success
-              ? 'Procurement notes saved'
-              : 'Unable to save procurement notes'),
-          backgroundColor:
-              success ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
-        ),
-      );
-    }
-
-    return success;
   }
 
   void _toggleStrategy(int index) {
@@ -841,29 +823,6 @@ class _FrontEndPlanningProcurementScreenState
     );
   }
 
-  int _parseCurrency(String value) {
-    final cleaned = value.replaceAll(RegExp(r'[^0-9]'), '');
-    return int.tryParse(cleaned) ?? 0;
-  }
-
-  String _formatStoreDate(DateTime date) =>
-      DateFormat('yyyy-MM-dd').format(date);
-
-  String _formatDisplayDate(DateTime date) =>
-      DateFormat('MMM d, yyyy').format(date);
-
-  String _deriveInitials(String name) {
-    final parts =
-        name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
-    if (parts.isEmpty) return 'NA';
-    if (parts.length == 1) {
-      return parts.first
-          .substring(0, parts.first.length >= 2 ? 2 : 1)
-          .toUpperCase();
-    }
-    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-  }
-
   List<Widget> _buildDialogContextChips() {
     final data = ProjectDataHelper.getData(context);
     final chips = <Widget>[
@@ -878,36 +837,6 @@ class _FrontEndPlanningProcurementScreenState
       chips.add(ContextChip(label: 'Solution', value: solution));
     }
     return chips;
-  }
-
-  InputDecoration _dialogDecoration(
-      {required String label,
-      String? hint,
-      Widget? prefixIcon,
-      String? helperText,
-      String? errorText}) {
-    return InputDecoration(
-      labelText: label,
-      hintText: hint,
-      helperText: helperText,
-      errorText: errorText,
-      prefixIcon: prefixIcon,
-      filled: true,
-      fillColor: const Color(0xFFF8FAFC),
-      labelStyle: const TextStyle(
-          fontWeight: FontWeight.w600, color: Color(0xFF475569)),
-      hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
-      border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-      enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-      focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5)),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-    );
   }
 
   Future<void> _openAddItemDialog() async {
@@ -935,16 +864,16 @@ class _FrontEndPlanningProcurementScreenState
     );
 
     if (result != null) {
-        try {
-             await ProcurementService.createItem(result);
-             if (mounted) {
-               setState(() {
-                 _items.add(result);
-               });
-             }
-        } catch (e) {
-             debugPrint('Error creating item: $e');
+      try {
+        await ProcurementService.createItem(result);
+        if (mounted) {
+          setState(() {
+            _items.add(result);
+          });
         }
+      } catch (e) {
+        debugPrint('Error creating item: $e');
+      }
     }
   }
 
@@ -973,23 +902,24 @@ class _FrontEndPlanningProcurementScreenState
 
     if (result != null) {
       await VendorService.createVendor(
-        projectId: result.projectId,
-        name: result.name,
-        category: result.category,
-        criticality: result.criticality,
-        rating: result.rating,
-        status: result.status,
-        sla: result.sla,
-        slaPerformance: result.slaPerformance,
-        leadTime: result.leadTime,
-        requiredDeliverables: result.requiredDeliverables,
-        nextReview: result.nextReview,
-        onTimeDelivery: result.onTimeDelivery,
-        incidentResponse: result.incidentResponse,
-        qualityScore: result.qualityScore,
-        costAdherence: result.costAdherence,
-        createdById: 'user', createdByEmail: 'user@email', createdByName: 'User'
-      );
+          projectId: result.projectId,
+          name: result.name,
+          category: result.category,
+          criticality: result.criticality,
+          rating: result.rating,
+          status: result.status,
+          sla: result.sla,
+          slaPerformance: result.slaPerformance,
+          leadTime: result.leadTime,
+          requiredDeliverables: result.requiredDeliverables,
+          nextReview: result.nextReview,
+          onTimeDelivery: result.onTimeDelivery,
+          incidentResponse: result.incidentResponse,
+          qualityScore: result.qualityScore,
+          costAdherence: result.costAdherence,
+          createdById: 'user',
+          createdByEmail: 'user@email',
+          createdByName: 'User');
       if (mounted) {
         setState(() {
           _vendors.add(result);
@@ -1053,12 +983,12 @@ class _FrontEndPlanningProcurementScreenState
     );
 
     if (result != null) {
-       await ProcurementService.createPo(result);
-       if (mounted) {
-         setState(() {
-           _purchaseOrders.add(result);
-         });
-       }
+      await ProcurementService.createPo(result);
+      if (mounted) {
+        setState(() {
+          _purchaseOrders.add(result);
+        });
+      }
     }
   }
 
@@ -1433,77 +1363,6 @@ class _PlanHeader extends StatelessWidget {
   }
 }
 
-class _AiSuggestionCard extends StatelessWidget {
-  const _AiSuggestionCard(
-      {required this.onAccept, required this.onEdit, required this.onReject});
-
-  final VoidCallback onAccept;
-  final VoidCallback onEdit;
-  final VoidCallback onReject;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0FDF9),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFCCF0E6)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: const [
-              Icon(Icons.lightbulb_circle_rounded, color: Color(0xFF0EA5E9)),
-              SizedBox(width: 12),
-              Text(
-                'AI Suggestion',
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF0F172A)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Based on your scope, group items by category and delivery window to streamline sourcing and approvals.',
-            style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF94A3B8),
-                fontStyle: FontStyle.italic),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(onPressed: onReject, child: const Text('Reject')),
-              const SizedBox(width: 12),
-              TextButton(onPressed: onEdit, child: const Text('Edit')),
-              const SizedBox(width: 12),
-              ElevatedButton(
-                onPressed: onAccept,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF10B981),
-                  foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
-                ),
-                child: const Text('Accept'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ItemsListView extends StatelessWidget {
   const _ItemsListView({
     super.key,
@@ -1552,7 +1411,7 @@ class _ItemsListView extends StatelessWidget {
         const SizedBox(height: 24),
         _ItemsToolbar(onAddItem: onAddItem),
         const SizedBox(height: 20),
-        _ItemsTable(
+        _ItemsGrid(
             items: items, currencyFormat: currencyFormat, onAddItem: onAddItem),
         const SizedBox(height: 28),
         _TrackableAndTimeline(
@@ -1834,8 +1693,8 @@ class _AddItemButton extends StatelessWidget {
   }
 }
 
-class _ItemsTable extends StatelessWidget {
-  const _ItemsTable(
+class _ItemsGrid extends StatelessWidget {
+  const _ItemsGrid(
       {required this.items,
       required this.currencyFormat,
       required this.onAddItem});
@@ -1857,207 +1716,196 @@ class _ItemsTable extends StatelessWidget {
       );
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Column(
-        children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-            child: _ItemsTableHeader(),
-          ),
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
-          for (var i = 0; i < items.length; i++) ...[
-            _ItemRow(item: items[i], currencyFormat: currencyFormat),
-            if (i != items.length - 1)
-              const Divider(height: 1, color: Color(0xFFE2E8F0)),
-          ],
-        ],
-      ),
-    );
+    return LayoutBuilder(builder: (context, constraints) {
+      final double width = constraints.maxWidth;
+      int columns = 1;
+      if (width > 1200)
+        columns = 3;
+      else if (width > 800) columns = 2;
+
+      final double cardWidth = (width - ((columns - 1) * 24)) / columns;
+
+      return Wrap(
+        spacing: 24,
+        runSpacing: 24,
+        children: items.map((item) {
+          return SizedBox(
+            width: cardWidth,
+            child: _ProcurementItemCard(
+              item: item,
+              currencyFormat: currencyFormat,
+            ),
+          );
+        }).toList(),
+      );
+    });
   }
 }
 
-class _ItemsTableHeader extends StatelessWidget {
-  const _ItemsTableHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: const [
-        _HeaderCell(label: 'Item', flex: 4),
-        _HeaderCell(label: 'Category', flex: 2),
-        _HeaderCell(label: 'Status', flex: 2),
-        _HeaderCell(label: 'Priority', flex: 2),
-        _HeaderCell(label: 'Budget', flex: 2),
-        _HeaderCell(label: 'Est. Delivery', flex: 2),
-        _HeaderCell(label: 'Progress', flex: 2),
-        _HeaderCell(label: 'Actions', flex: 2, alignEnd: true),
-      ],
-    );
-  }
-}
-
-class _HeaderCell extends StatelessWidget {
-  const _HeaderCell(
-      {required this.label, required this.flex, this.alignEnd = false});
-
-  final String label;
-  final int flex;
-  final bool alignEnd;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      flex: flex,
-      child: Align(
-        alignment: alignEnd ? Alignment.centerRight : Alignment.centerLeft,
-        child: Text(
-          label,
-          style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF475569)),
-        ),
-      ),
-    );
-  }
-}
-
-class _ItemRow extends StatelessWidget {
-  const _ItemRow({required this.item, required this.currencyFormat});
+class _ProcurementItemCard extends StatelessWidget {
+  const _ProcurementItemCard(
+      {required this.item, required this.currencyFormat});
 
   final ProcurementItemModel item;
   final NumberFormat currencyFormat;
 
   @override
   Widget build(BuildContext context) {
-    final dateLabel = item.estimatedDelivery != null 
-        ? DateFormat('M/d/yyyy').format(item.estimatedDelivery!) 
+    final dateLabel = item.estimatedDelivery != null
+        ? DateFormat('MMM d, yyyy').format(item.estimatedDelivery!)
         : 'TBD';
     final progressLabel = '${(item.progress * 100).round()}%';
-    
+
     Color progressColor;
     if (item.progress >= 1.0) {
       progressColor = const Color(0xFF10B981);
-    } else if (item.progress >= 0.5) progressColor = const Color(0xFF2563EB);
-    else if (item.progress == 0) progressColor = const Color(0xFFD1D5DB);
-    else progressColor = const Color(0xFF38BDF8);
+    } else if (item.progress >= 0.5)
+      progressColor = const Color(0xFF2563EB);
+    else if (item.progress == 0)
+      progressColor = const Color(0xFFD1D5DB);
+    else
+      progressColor = const Color(0xFF38BDF8);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x08000000), blurRadius: 12, offset: Offset(0, 4)),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 4,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.name,
-                  style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF0F172A)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.name,
+                      style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF111827)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.category,
+                      style: const TextStyle(
+                          fontSize: 13, color: Color(0xFF6B7280)),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  item.description,
-                  style:
-                      const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-              flex: 2,
-              child: Text(item.category,
-                  style:
-                      const TextStyle(fontSize: 13, color: Color(0xFF334155)))),
-          Expanded(
-            flex: 2,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: _BadgePill(
+              ),
+              _BadgePill(
                 label: item.status.label,
                 background: item.status.backgroundColor,
                 border: item.status.borderColor,
                 foreground: item.status.textColor,
               ),
-            ),
+            ],
           ),
-          Expanded(
-            flex: 2,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: _BadgePill(
+          const SizedBox(height: 16),
+          Text(
+            item.description,
+            style: const TextStyle(fontSize: 13, color: Color(0xFF4B5563)),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _MetricItem(
+                label: 'Budget',
+                value: currencyFormat.format(item.budget),
+              ),
+              const SizedBox(width: 24),
+              _MetricItem(label: 'Delivery', value: dateLabel),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Progress',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                  Text(progressLabel,
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: progressColor)),
+                ],
+              ),
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  value: item.progress.clamp(0, 1).toDouble(),
+                  minHeight: 6,
+                  backgroundColor: const Color(0xFFF1F5F9),
+                  valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          const Divider(height: 1, color: Color(0xFFE5E7EB)),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _BadgePill(
                 label: item.priority.label,
                 background: item.priority.backgroundColor,
                 border: item.priority.borderColor,
                 foreground: item.priority.textColor,
               ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              currencyFormat.format(item.budget),
-              style: const TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF0F172A),
-                  fontWeight: FontWeight.w600),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(dateLabel,
-                style: const TextStyle(fontSize: 13, color: Color(0xFF334155))),
-          ),
-          Expanded(
-            flex: 2,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(progressLabel,
-                    style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1D4ED8))),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: item.progress.clamp(0, 1).toDouble(),
-                    minHeight: 6,
-                    backgroundColor: const Color(0xFFE2E8F0),
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(progressColor),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: const [
-                _ActionIcon(icon: Icons.remove_red_eye_outlined),
-                SizedBox(width: 8),
-                _ActionIcon(icon: Icons.edit_outlined),
-                SizedBox(width: 8),
-                _ActionIcon(icon: Icons.link_outlined),
-                SizedBox(width: 8),
-                _ActionIcon(icon: Icons.more_horiz_rounded),
-              ],
-            ),
+              Row(
+                children: const [
+                  _ActionIcon(icon: Icons.edit_outlined),
+                  SizedBox(width: 8),
+                  _ActionIcon(icon: Icons.more_horiz_rounded),
+                ],
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MetricItem extends StatelessWidget {
+  const _MetricItem({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+        const SizedBox(height: 2),
+        Text(value,
+            style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF334155))),
+      ],
     );
   }
 }
@@ -2884,16 +2732,16 @@ class _VendorDataTable extends StatelessWidget {
                           DataCell(
                             Checkbox(
                               value: selectedVendorIds.contains(vendor.id),
-                              onChanged: (value) => onToggleSelected(
-                                  vendor.id, value ?? false),
+                              onChanged: (value) =>
+                                  onToggleSelected(vendor.id, value ?? false),
                             ),
                           ),
                           DataCell(_VendorNameCell(vendor: vendor)),
                           DataCell(Text(vendor.category)),
                           DataCell(_RatingStars(rating: vendor.ratingScore)),
-                          DataCell(_YesNoBadge(value: vendor.status == 'Active')),
-                          DataCell(_YesNoBadge(
-                              value: false, showStar: true)),
+                          DataCell(
+                              _YesNoBadge(value: vendor.status == 'Active')),
+                          DataCell(_YesNoBadge(value: false, showStar: true)),
                           DataCell(_VendorActionsMenu(
                             vendor: vendor,
                             onEdit: () => onEditVendor(vendor),
@@ -3685,7 +3533,8 @@ class _RfqWorkflowView extends StatelessWidget {
         totalInvited == 0 ? 0 : (totalResponses / totalInvited * 100).round();
     final inEvaluation =
         rfqs.where((rfq) => rfq.status == RfqStatus.evaluation).length;
-    final pipelineValue = rfqs.fold<double>(0, (sum, rfq) => sum + rfq.budget).round();
+    final pipelineValue =
+        rfqs.fold<double>(0, (sum, rfq) => sum + rfq.budget).round();
 
     final metrics = [
       _SummaryCard(
@@ -3937,9 +3786,8 @@ class _RfqItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
-    final double responseRate = rfq.invitedCount == 0
-        ? 0.0
-        : rfq.responseCount / rfq.invitedCount;
+    final double responseRate =
+        rfq.invitedCount == 0 ? 0.0 : rfq.responseCount / rfq.invitedCount;
     final dueLabel = DateFormat('MMM d').format(rfq.dueDate);
 
     return Container(
@@ -4007,8 +3855,7 @@ class _RfqItemCard extends StatelessWidget {
                 Expanded(
                     child: _RfqMeta(
                         label: 'Responses',
-                        value:
-                            '${rfq.responseCount}/${rfq.invitedCount}')),
+                        value: '${rfq.responseCount}/${rfq.invitedCount}')),
                 Expanded(
                     child: _RfqMeta(
                         label: 'Budget',
@@ -4207,8 +4054,7 @@ class _RfqSidebarCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        DateFormat('MMM d')
-                            .format(topUpcoming[i].dueDate),
+                        DateFormat('MMM d').format(topUpcoming[i].dueDate),
                         style: const TextStyle(
                             fontSize: 12, color: Color(0xFF64748B)),
                       ),
@@ -4248,7 +4094,8 @@ class _PurchaseOrdersView extends StatelessWidget {
     final openOrders = orders
         .where((order) => order.status != PurchaseOrderStatus.received)
         .length;
-    final totalSpend = orders.fold<double>(0, (sum, order) => sum + order.amount);
+    final totalSpend =
+        orders.fold<double>(0, (sum, order) => sum + order.amount);
 
     final metrics = [
       _SummaryCard(
@@ -4460,6 +4307,34 @@ class _PurchaseOrderHeaderRow extends StatelessWidget {
   }
 }
 
+class _HeaderCell extends StatelessWidget {
+  const _HeaderCell({
+    required this.label,
+    required this.flex,
+    this.alignEnd = false,
+  });
+
+  final String label;
+  final int flex;
+  final bool alignEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      flex: flex,
+      child: Text(
+        label,
+        textAlign: alignEnd ? TextAlign.end : TextAlign.start,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF64748B),
+        ),
+      ),
+    );
+  }
+}
+
 class _PurchaseOrderRow extends StatelessWidget {
   const _PurchaseOrderRow({required this.order, required this.currencyFormat});
 
@@ -4468,8 +4343,7 @@ class _PurchaseOrderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final expectedLabel =
-        DateFormat('M/d/yyyy').format(order.expectedDate);
+    final expectedLabel = DateFormat('M/d/yyyy').format(order.expectedDate);
     final progressLabel = '${(order.progress * 100).round()}%';
 
     return Padding(
@@ -4575,8 +4449,7 @@ class _PurchaseOrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final expectedLabel =
-        DateFormat('M/d/yyyy').format(order.expectedDate);
+    final expectedLabel = DateFormat('M/d/yyyy').format(order.expectedDate);
     final progressLabel = '${(order.progress * 100).round()}%';
 
     return Container(
@@ -4715,8 +4588,7 @@ class _ApprovalQueueCard extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    DateFormat('MMM d')
-                        .format(approvals[i].orderedDate),
+                    DateFormat('MMM d').format(approvals[i].orderedDate),
                     style:
                         const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                   ),
@@ -5047,8 +4919,8 @@ class _AlertSeverityPill extends StatelessWidget {
       decoration: BoxDecoration(
         color: _AlertSeverityExtension(severity).backgroundColor,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-            color: _AlertSeverityExtension(severity).borderColor),
+        border:
+            Border.all(color: _AlertSeverityExtension(severity).borderColor),
       ),
       child: Text(
         _AlertSeverityExtension(severity).label,
@@ -5692,8 +5564,6 @@ class _ComplianceSnapshotCard extends StatelessWidget {
   }
 }
 
-
-
 class _EmptyStateBody extends StatelessWidget {
   const _EmptyStateBody({
     required this.icon,
@@ -5808,42 +5678,6 @@ class _EmptyStateCard extends StatelessWidget {
   }
 }
 
-class _ComingSoonCard extends StatelessWidget {
-  const _ComingSoonCard({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF0F172A)),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'This section is under construction. Check back soon for the interactive experience.',
-            style: TextStyle(fontSize: 14, color: Color(0xFF64748B)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 enum _ProcurementTab {
   procurementDashboard,
   itemsList,
@@ -5873,36 +5707,7 @@ extension _ProcurementTabExtension on _ProcurementTab {
         return 'Reports';
     }
   }
-
-  String get title {
-    switch (this) {
-      case _ProcurementTab.procurementDashboard:
-        return 'Procurement Dashboard';
-      case _ProcurementTab.itemsList:
-        return 'Items List';
-      case _ProcurementTab.vendorManagement:
-        return 'Vendor Management';
-      case _ProcurementTab.rfqWorkflow:
-        return 'RFQ Workflow';
-      case _ProcurementTab.purchaseOrders:
-        return 'Purchase Orders';
-      case _ProcurementTab.itemTracking:
-        return 'Item Tracking';
-      case _ProcurementTab.reports:
-        return 'Reports';
-    }
-  }
 }
-
-
-
-
-
-
-
-
-
-
 
 class _VendorHealthMetric {
   const _VendorHealthMetric(
@@ -6037,10 +5842,6 @@ extension _RiskSeverityExtension on _RiskSeverity {
   }
 }
 
-
-
-
-
 class _RfqStage {
   const _RfqStage(
       {required this.title, required this.subtitle, required this.status});
@@ -6104,10 +5905,6 @@ class _RfqCriterion {
   final String label;
   final double weight;
 }
-
-
-
-
 
 class _TrackingAlert {
   const _TrackingAlert({

@@ -387,7 +387,8 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
           categoryTitle: category.name.toUpperCase());
       await SsherExportHelper.downloadCsv(csv, 'ssher_${category.name}.csv');
     } else {
-      await SsherExportHelper.exportToPdf(_entriesForCategory(category), categoryTitle: category.name.toUpperCase());
+      await SsherExportHelper.exportToPdf(_entriesForCategory(category),
+          categoryTitle: category.name.toUpperCase());
     }
   }
 
@@ -419,40 +420,42 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: StreamBuilder<bool>(
-          stream: UserService.watchAdminStatus(),
-          builder: (context, snapshot) {
-            final isAdmin = snapshot.data ?? false;
-            final hostname = getCurrentHostname() ?? '';
-            final allowCsv = isAdmin && hostname.startsWith('admin.');
+            stream: UserService.watchAdminStatus(),
+            builder: (context, snapshot) {
+              final isAdmin = snapshot.data ?? false;
+              final hostname = getCurrentHostname() ?? '';
+              final allowCsv = isAdmin && hostname.startsWith('admin.');
 
-            return Stack(
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    DraggableSidebar(
-                      openWidth: AppBreakpoints.sidebarWidth(context),
-                      child: const InitiationLikeSidebar(activeItemLabel: 'SSHER'),
-                    ),
-                    Expanded(
-                      child: DefaultTabController(
-                        length: 5,
-                        child: _buildMainContent(const EdgeInsets.all(24), allowCsv: allowCsv),
+              return Stack(
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      DraggableSidebar(
+                        openWidth: AppBreakpoints.sidebarWidth(context),
+                        child: const InitiationLikeSidebar(
+                            activeItemLabel: 'SSHER'),
                       ),
-                    ),
-                  ],
-                ),
-                const KazAiChatBubble(),
-                const AdminEditToggle(),
-              ],
-            );
-          }
-        ),
+                      Expanded(
+                        child: DefaultTabController(
+                          length: 5,
+                          child: _buildMainContent(const EdgeInsets.all(24),
+                              allowCsv: allowCsv),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const KazAiChatBubble(),
+                  const AdminEditToggle(),
+                ],
+              );
+            }),
       ),
     );
   }
 
-  Widget _buildMainContent(EdgeInsetsGeometry padding, {required bool allowCsv}) {
+  Widget _buildMainContent(EdgeInsetsGeometry padding,
+      {required bool allowCsv}) {
     return NestedScrollView(
       headerSliverBuilder: (context, innerBoxIsScrolled) {
         return [
@@ -468,8 +471,12 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
                             fontSize: 24, fontWeight: FontWeight.bold)),
                     ElevatedButton.icon(
                       onPressed: _downloadAll,
-                      icon: Icon(allowCsv ? Icons.download_for_offline : Icons.picture_as_pdf),
-                      label: Text(allowCsv ? 'Download All (CSV)' : 'Download All (PDF)'),
+                      icon: Icon(allowCsv
+                          ? Icons.download_for_offline
+                          : Icons.picture_as_pdf),
+                      label: Text(allowCsv
+                          ? 'Download All (CSV)'
+                          : 'Download All (PDF)'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue[700],
                         foregroundColor: Colors.white,
@@ -572,7 +579,7 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
                         SizedBox(width: 12),
                         Expanded(
                             child: Text(
-                                'AI is preparing a tailored SSHER summary...',
+                                'KAZ AI is preparing a tailored SSHER summary...',
                                 style: TextStyle(
                                     color: Colors.blue, fontSize: 13))),
                       ],
@@ -592,7 +599,7 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('AI-generated SSHER Summary',
+                        const Text('KAZ AI-generated SSHER Summary',
                             style: TextStyle(
                                 fontSize: 16, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 8),
@@ -632,7 +639,7 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
         children: [
           Expanded(
             child: TabBarView(
-             children: [
+              children: [
                 _buildTab(
                     _SsherCategory.safety,
                     'Safety',
@@ -686,19 +693,23 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
                 final navIndex = PlanningPhaseNavigation.getPageIndex('ssher');
                 if (navIndex > 0) {
                   final prevPage = PlanningPhaseNavigation.pages[navIndex - 1];
-                  Navigator.pushReplacement(context, MaterialPageRoute(builder: prevPage.builder));
+                  Navigator.pushReplacement(
+                      context, MaterialPageRoute(builder: prevPage.builder));
                 } else {
                   Navigator.maybePop(context);
                 }
               },
               onNext: () {
-                 final navIndex = PlanningPhaseNavigation.getPageIndex('ssher');
-                 if (navIndex != -1 && navIndex < PlanningPhaseNavigation.pages.length - 1) {
-                   final nextPage = PlanningPhaseNavigation.pages[navIndex + 1];
-                   Navigator.pushReplacement(context, MaterialPageRoute(builder: nextPage.builder));
-                 } else {
-                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No next screen available')));
-                 }
+                final navIndex = PlanningPhaseNavigation.getPageIndex('ssher');
+                if (navIndex != -1 &&
+                    navIndex < PlanningPhaseNavigation.pages.length - 1) {
+                  final nextPage = PlanningPhaseNavigation.pages[navIndex + 1];
+                  Navigator.pushReplacement(
+                      context, MaterialPageRoute(builder: nextPage.builder));
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('No next screen available')));
+                }
               },
             ),
           ),
@@ -708,7 +719,8 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
   }
 
   Widget _buildTab(_SsherCategory category, String title, String subtitle,
-      Color accent, IconData icon, String details, {required bool allowCsv}) {
+      Color accent, IconData icon, String details,
+      {required bool allowCsv}) {
     return SsherCategoryFullView(
       title: title,
       subtitle: subtitle,

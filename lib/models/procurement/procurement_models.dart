@@ -246,6 +246,16 @@ class ProcurementItemModel {
   }
 }
 
+/// Status of a contract
+enum ContractStatus {
+  draft,
+  under_review,
+  approved,
+  executed,
+  expired,
+  terminated
+}
+
 /// Contract Model for specific contracted work
 class ContractModel {
   final String id;
@@ -255,7 +265,10 @@ class ContractModel {
   final String contractorName;
   final double estimatedCost;
   final String duration;
-  final String status;
+  final ContractStatus status; // Upgraded from String
+  final DateTime? startDate; // Added
+  final DateTime? endDate; // Added
+  final String owner; // Added owner field
   final DateTime createdAt;
 
   const ContractModel({
@@ -266,7 +279,10 @@ class ContractModel {
     required this.contractorName,
     this.estimatedCost = 0.0,
     this.duration = '',
-    this.status = 'Draft',
+    this.status = ContractStatus.draft,
+    this.startDate,
+    this.endDate,
+    required this.owner,
     required this.createdAt,
   });
 
@@ -278,7 +294,10 @@ class ContractModel {
     String? contractorName,
     double? estimatedCost,
     String? duration,
-    String? status,
+    ContractStatus? status,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? owner,
     DateTime? createdAt,
   }) {
     return ContractModel(
@@ -290,6 +309,9 @@ class ContractModel {
       estimatedCost: estimatedCost ?? this.estimatedCost,
       duration: duration ?? this.duration,
       status: status ?? this.status,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      owner: owner ?? this.owner,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -301,7 +323,10 @@ class ContractModel {
         'contractorName': contractorName,
         'estimatedCost': estimatedCost,
         'duration': duration,
-        'status': status,
+        'status': status.name,
+        'startDate': startDate != null ? Timestamp.fromDate(startDate!) : null,
+        'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
+        'owner': owner,
         'createdAt': FieldValue.serverTimestamp(),
       };
 
@@ -315,7 +340,12 @@ class ContractModel {
       contractorName: data['contractorName'] ?? '',
       estimatedCost: (data['estimatedCost'] as num?)?.toDouble() ?? 0.0,
       duration: data['duration'] ?? '',
-      status: data['status'] ?? 'Draft',
+      status: ContractStatus.values.firstWhere(
+          (e) => e.name == (data['status'] ?? 'draft'),
+          orElse: () => ContractStatus.draft),
+      startDate: (data['startDate'] as Timestamp?)?.toDate(),
+      endDate: (data['endDate'] as Timestamp?)?.toDate(),
+      owner: data['owner'] ?? 'Unassigned',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }

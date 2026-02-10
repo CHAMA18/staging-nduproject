@@ -42,7 +42,7 @@ Future<bool> showRegenerateAllConfirmation(BuildContext context) async {
     builder: (context) => AlertDialog(
       title: const Text('Regenerate All Content'),
       content: const Text(
-        'This will regenerate all AI-generated content on this page. Your current content will be lost. Continue?',
+        'This will regenerate all KAZ AI-generated content on this page. Your current content will be lost. Continue?',
       ),
       actions: [
         TextButton(

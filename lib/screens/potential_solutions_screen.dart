@@ -32,7 +32,8 @@ class PotentialSolutionsScreen extends StatefulWidget {
   const PotentialSolutionsScreen({super.key});
 
   @override
-  State<PotentialSolutionsScreen> createState() => _PotentialSolutionsScreenState();
+  State<PotentialSolutionsScreen> createState() =>
+      _PotentialSolutionsScreenState();
 }
 
 class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
@@ -44,7 +45,9 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
       title: 'Initiation Phase',
       isActive: true,
     ),
-    _SidebarItem(icon: Icons.calendar_month_outlined, title: 'Initiation: Front End Planning'),
+    _SidebarItem(
+        icon: Icons.calendar_month_outlined,
+        title: 'Initiation: Front End Planning'),
     _SidebarItem(icon: Icons.device_hub_outlined, title: 'Workflow Roadmap'),
     _SidebarItem(icon: Icons.alt_route_outlined, title: 'Agile Roadmap'),
     _SidebarItem(icon: Icons.handshake_outlined, title: 'Contracting'),
@@ -66,37 +69,40 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
   bool _initiationExpanded = true;
   bool _businessCaseExpanded = true;
   bool _frontEndExpanded = true;
-  
+
   bool get _isAdminHost => AccessPolicy.isRestrictedAdminHost();
 
   @override
   void initState() {
     super.initState();
     _projectNameController = TextEditingController();
-    
+
     // Initialize API key manager
     ApiKeyManager.initializeApiKey();
-    
+
     // Load data from provider and defer generation
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      
+
       final projectData = ProjectDataHelper.getData(context);
       _notesController.text = projectData.notes;
       _incomingBusinessCase = projectData.businessCase;
-      
+
       // Load saved solutions if they exist
       if (projectData.potentialSolutions.isNotEmpty) {
-        final targetCount = _isAdminHost ? projectData.potentialSolutions.length : 3;
+        final targetCount =
+            _isAdminHost ? projectData.potentialSolutions.length : 3;
         setState(() {
           _solutions.clear();
-          for (final solution in projectData.potentialSolutions.take(targetCount)) {
+          for (final solution
+              in projectData.potentialSolutions.take(targetCount)) {
             _solutions.add(
               SolutionRow(
                 id: solution.id,
                 number: solution.number,
                 titleController: TextEditingController(text: solution.title),
-                descriptionController: TextEditingController(text: solution.description),
+                descriptionController:
+                    TextEditingController(text: solution.description),
                 isAiGenerated: true,
               ),
             );
@@ -107,7 +113,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
         _showHintDialogOnce();
         _generateInitialSolutions();
       }
-      
+
       if (mounted) setState(() {});
     });
   }
@@ -120,7 +126,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
       pageId: 'potential_solutions',
       title: 'Notification',
       message:
-          'Although AI-generated outputs can provide valuable insights, please review and refine them as needed to ensure they align with your project requirements.',
+          'Although KAZ AI-generated outputs can provide valuable insights, please review and refine them as needed to ensure they align with your project requirements.',
     );
   }
 
@@ -133,7 +139,8 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
     }
 
     try {
-      final aiSolutions = await _openAiService.generateSolutionsFromBusinessCase(_incomingBusinessCase);
+      final aiSolutions = await _openAiService
+          .generateSolutionsFromBusinessCase(_incomingBusinessCase);
       _applySolutions(aiSolutions);
     } catch (e) {
       debugPrint('Error generating solutions: $e');
@@ -143,17 +150,19 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
 
   void _applySolutions(List<AiSolutionItem> aiSolutions) {
     final targetCount = _isAdminHost ? 5 : 3;
-    
+
     setState(() {
       _solutions.clear();
       final solutionsToUse = aiSolutions.take(targetCount).toList();
-      
+
       for (int i = 0; i < solutionsToUse.length; i++) {
         _solutions.add(
           SolutionRow(
             number: i + 1,
-            titleController: TextEditingController(text: solutionsToUse[i].title),
-            descriptionController: TextEditingController(text: solutionsToUse[i].description),
+            titleController:
+                TextEditingController(text: solutionsToUse[i].title),
+            descriptionController:
+                TextEditingController(text: solutionsToUse[i].description),
             isAiGenerated: true,
           ),
         );
@@ -165,7 +174,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
 
   void _applyFallback(String errorMessage) {
     final targetCount = _isAdminHost ? 5 : 3;
-    
+
     setState(() {
       _loadingError = errorMessage;
       _solutions.clear();
@@ -173,9 +182,11 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
         _solutions.add(
           SolutionRow(
             number: i + 1,
-            titleController: TextEditingController(text: 'Proposed Solution ${i + 1}'),
+            titleController:
+                TextEditingController(text: 'Proposed Solution ${i + 1}'),
             descriptionController: TextEditingController(
-              text: 'Describe how this option addresses the project\'s needs, assumptions, constraints, and expected benefits.',
+              text:
+                  'Describe how this option addresses the project\'s needs, assumptions, constraints, and expected benefits.',
             ),
             isAiGenerated: true,
           ),
@@ -204,7 +215,8 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
                   children: [
                     DraggableSidebar(
                       openWidth: sidebarWidth,
-                      child: const InitiationLikeSidebar(activeItemLabel: 'Potential Solutions'),
+                      child: const InitiationLikeSidebar(
+                          activeItemLabel: 'Potential Solutions'),
                     ),
                     Expanded(
                       child: _buildMainContent(),
@@ -272,7 +284,10 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
                     radius: 16,
                     backgroundColor: Colors.blue[400],
                     child: Text(
-                      FirebaseAuthService.displayNameOrEmail(fallback: 'U').characters.first.toUpperCase(),
+                      FirebaseAuthService.displayNameOrEmail(fallback: 'U')
+                          .characters
+                          .first
+                          .toUpperCase(),
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -286,7 +301,8 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        FirebaseAuthService.displayNameOrEmail(fallback: 'User'),
+                        FirebaseAuthService.displayNameOrEmail(
+                            fallback: 'User'),
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -315,8 +331,14 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
               radius: 16,
               backgroundColor: Colors.blue[400],
               child: Text(
-                FirebaseAuthService.displayNameOrEmail(fallback: 'U').characters.first.toUpperCase(),
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                FirebaseAuthService.displayNameOrEmail(fallback: 'U')
+                    .characters
+                    .first
+                    .toUpperCase(),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14),
               ),
             ),
         ],
@@ -364,7 +386,11 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('StackOne', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black)),
+                    Text('StackOne',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black)),
                   ],
                 )
               ],
@@ -375,12 +401,14 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 20),
               children: [
-                _buildMenuItemLikeRisk(Icons.home_outlined, 'Home', onTap: () => HomeScreen.open(context)),
+                _buildMenuItemLikeRisk(Icons.home_outlined, 'Home',
+                    onTap: () => HomeScreen.open(context)),
                 _buildExpandableHeaderLikeCost(
                   Icons.flag_outlined,
                   'Initiation Phase',
                   expanded: _initiationExpanded,
-                  onTap: () => setState(() => _initiationExpanded = !_initiationExpanded),
+                  onTap: () => setState(
+                      () => _initiationExpanded = !_initiationExpanded),
                   isActive: true,
                 ),
                 if (_initiationExpanded) ...[
@@ -388,19 +416,30 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
                     Icons.business_center_outlined,
                     'Business Case',
                     expanded: _businessCaseExpanded,
-                    onTap: () => setState(() => _businessCaseExpanded = !_businessCaseExpanded),
+                    onTap: () => setState(
+                        () => _businessCaseExpanded = !_businessCaseExpanded),
                     isActive: false,
                   ),
                   if (_businessCaseExpanded) ...[
-                    _buildNestedSubMenuItem('Potential Solutions', onTap: _scrollToSolutions, isActive: true),
-                    _buildNestedSubMenuItem('Risk Identification', onTap: _openRiskIdentification),
-                    _buildNestedSubMenuItem('IT Considerations', onTap: _openITConsiderations),
-                    _buildNestedSubMenuItem('Infrastructure Considerations', onTap: _openInfrastructureConsiderations),
-                    _buildNestedSubMenuItem('Core Stakeholders', onTap: _openCoreStakeholders),
-                    _buildNestedSubMenuItem('Cost Benefit Analysis & Financial Metrics', onTap: _openCostAnalysis),
-                    _buildNestedSubMenuItem('Preferred Solution Analysis', onTap: _openPreferredSolutionAnalysis),
+                    _buildNestedSubMenuItem('Potential Solutions',
+                        onTap: _scrollToSolutions, isActive: true),
+                    _buildNestedSubMenuItem('Risk Identification',
+                        onTap: _openRiskIdentification),
+                    _buildNestedSubMenuItem('IT Considerations',
+                        onTap: _openITConsiderations),
+                    _buildNestedSubMenuItem('Infrastructure Considerations',
+                        onTap: _openInfrastructureConsiderations),
+                    _buildNestedSubMenuItem('Core Stakeholders',
+                        onTap: _openCoreStakeholders),
+                    _buildNestedSubMenuItem(
+                        'Cost Benefit Analysis & Financial Metrics',
+                        onTap: _openCostAnalysis),
+                    _buildNestedSubMenuItem('Preferred Solution Analysis',
+                        onTap: _openPreferredSolutionAnalysis),
                   ],
-                  _buildExpandableHeaderLikeCost(Icons.timeline, 'Initiation: Front End Planning', expanded: _frontEndExpanded, onTap: () {
+                  _buildExpandableHeaderLikeCost(
+                      Icons.timeline, 'Initiation: Front End Planning',
+                      expanded: _frontEndExpanded, onTap: () {
                     setState(() => _frontEndExpanded = !_frontEndExpanded);
                   }, isActive: false),
                   if (_frontEndExpanded) ...[
@@ -409,13 +448,18 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
                     _buildNestedSubMenuItem('Project Opportunities'),
                   ],
                 ],
-                _buildMenuItemLikeRisk(Icons.account_tree_outlined, 'Workflow Roadmap'),
+                _buildMenuItemLikeRisk(
+                    Icons.account_tree_outlined, 'Workflow Roadmap'),
                 _buildMenuItemLikeRisk(Icons.flash_on, 'Agile Roadmap'),
-                _buildMenuItemLikeRisk(Icons.description_outlined, 'Contracting'),
-                _buildMenuItemLikeRisk(Icons.shopping_cart_outlined, 'Procurement'),
+                _buildMenuItemLikeRisk(
+                    Icons.description_outlined, 'Contracting'),
+                _buildMenuItemLikeRisk(
+                    Icons.shopping_cart_outlined, 'Procurement'),
                 const SizedBox(height: 20),
-                _buildMenuItemLikeRisk(Icons.settings_outlined, 'Settings', onTap: () => SettingsScreen.open(context)),
-                _buildMenuItemLikeRisk(Icons.logout_outlined, 'LogOut', onTap: () => AuthNav.signOutAndExit(context)),
+                _buildMenuItemLikeRisk(Icons.settings_outlined, 'Settings',
+                    onTap: () => SettingsScreen.open(context)),
+                _buildMenuItemLikeRisk(Icons.logout_outlined, 'LogOut',
+                    onTap: () => AuthNav.signOutAndExit(context)),
               ],
             ),
           ),
@@ -440,12 +484,14 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
               title: Text('StackOne'),
             ),
             const Divider(height: 1),
-            _buildMenuItemLikeRisk(Icons.home_outlined, 'Home', onTap: () => HomeScreen.open(context)),
+            _buildMenuItemLikeRisk(Icons.home_outlined, 'Home',
+                onTap: () => HomeScreen.open(context)),
             _buildExpandableHeaderLikeCost(
               Icons.flag_outlined,
               'Initiation Phase',
               expanded: _initiationExpanded,
-              onTap: () => setState(() => _initiationExpanded = !_initiationExpanded),
+              onTap: () =>
+                  setState(() => _initiationExpanded = !_initiationExpanded),
               isActive: true,
             ),
             if (_initiationExpanded) ...[
@@ -453,7 +499,8 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
                 Icons.business_center_outlined,
                 'Business Case',
                 expanded: _businessCaseExpanded,
-                onTap: () => setState(() => _businessCaseExpanded = !_businessCaseExpanded),
+                onTap: () => setState(
+                    () => _businessCaseExpanded = !_businessCaseExpanded),
                 isActive: false,
               ),
               if (_businessCaseExpanded) ...[
@@ -469,7 +516,8 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
                   Navigator.of(context).maybePop();
                   _openITConsiderations();
                 }),
-                _buildNestedSubMenuItem('Infrastructure Considerations', onTap: () {
+                _buildNestedSubMenuItem('Infrastructure Considerations',
+                    onTap: () {
                   Navigator.of(context).maybePop();
                   _openInfrastructureConsiderations();
                 }),
@@ -477,34 +525,44 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
                   Navigator.of(context).maybePop();
                   _openCoreStakeholders();
                 }),
-                _buildNestedSubMenuItem('Cost Benefit Analysis & Financial Metrics', onTap: () {
+                _buildNestedSubMenuItem(
+                    'Cost Benefit Analysis & Financial Metrics', onTap: () {
                   Navigator.of(context).maybePop();
                   _openCostAnalysis();
                 }),
-                _buildNestedSubMenuItem('Preferred Solution Analysis', onTap: () {
+                _buildNestedSubMenuItem('Preferred Solution Analysis',
+                    onTap: () {
                   Navigator.of(context).maybePop();
                   _openPreferredSolutionAnalysis();
                 }),
               ],
-              _buildExpandableHeaderLikeCost(Icons.timeline, 'Initiation: Front End Planning', expanded: _frontEndExpanded, onTap: () {
+              _buildExpandableHeaderLikeCost(
+                  Icons.timeline, 'Initiation: Front End Planning',
+                  expanded: _frontEndExpanded, onTap: () {
                 setState(() => _frontEndExpanded = !_frontEndExpanded);
               }, isActive: false),
               if (_frontEndExpanded) ...[
-                _buildNestedSubMenuItem('Project Requirements', onTap: () => Navigator.of(context).maybePop()),
-                _buildNestedSubMenuItem('Project Risks', onTap: () => Navigator.of(context).maybePop()),
-                _buildNestedSubMenuItem('Project Opportunities', onTap: () => Navigator.of(context).maybePop()),
+                _buildNestedSubMenuItem('Project Requirements',
+                    onTap: () => Navigator.of(context).maybePop()),
+                _buildNestedSubMenuItem('Project Risks',
+                    onTap: () => Navigator.of(context).maybePop()),
+                _buildNestedSubMenuItem('Project Opportunities',
+                    onTap: () => Navigator.of(context).maybePop()),
               ],
             ],
-            _buildMenuItemLikeRisk(Icons.account_tree_outlined, 'Workflow Roadmap'),
+            _buildMenuItemLikeRisk(
+                Icons.account_tree_outlined, 'Workflow Roadmap'),
             _buildMenuItemLikeRisk(Icons.flash_on, 'Agile Roadmap'),
             _buildMenuItemLikeRisk(Icons.description_outlined, 'Contracting'),
             _buildMenuItemLikeRisk(Icons.shopping_cart_outlined, 'Procurement'),
             const Divider(height: 1),
-            _buildMenuItemLikeRisk(Icons.settings_outlined, 'Settings', onTap: () {
+            _buildMenuItemLikeRisk(Icons.settings_outlined, 'Settings',
+                onTap: () {
               Navigator.of(context).maybePop();
               SettingsScreen.open(context);
             }),
-            _buildMenuItemLikeRisk(Icons.logout_outlined, 'LogOut', onTap: () => AuthNav.signOutAndExit(context)),
+            _buildMenuItemLikeRisk(Icons.logout_outlined, 'LogOut',
+                onTap: () => AuthNav.signOutAndExit(context)),
           ],
         ),
       ),
@@ -512,7 +570,8 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
   }
 
   // Sidebar tile that mimics RiskIdentificationScreen's _buildMenuItem
-  Widget _buildMenuItemLikeRisk(IconData icon, String title, {VoidCallback? onTap, bool isActive = false}) {
+  Widget _buildMenuItemLikeRisk(IconData icon, String title,
+      {VoidCallback? onTap, bool isActive = false}) {
     final primary = Theme.of(context).colorScheme.primary;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 2),
@@ -521,7 +580,8 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: isActive ? primary.withValues(alpha: 0.12) : Colors.transparent,
+            color:
+                isActive ? primary.withValues(alpha: 0.12) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -549,7 +609,8 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
   }
 
   // ignore: unused_element
-  Widget _buildSubMenuItemLikeRisk(String title, {VoidCallback? onTap, bool isActive = false}) {
+  Widget _buildSubMenuItemLikeRisk(String title,
+      {VoidCallback? onTap, bool isActive = false}) {
     final primary = Theme.of(context).colorScheme.primary;
     return Padding(
       padding: const EdgeInsets.only(left: 48, right: 24, top: 2, bottom: 2),
@@ -558,12 +619,14 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: isActive ? primary.withValues(alpha: 0.10) : Colors.transparent,
+            color:
+                isActive ? primary.withValues(alpha: 0.10) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
             children: [
-              Icon(Icons.circle, size: 8, color: isActive ? primary : Colors.grey[500]),
+              Icon(Icons.circle,
+                  size: 8, color: isActive ? primary : Colors.grey[500]),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -585,7 +648,8 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
   }
 
   // Third-level nested menu item (under Business Case)
-  Widget _buildNestedSubMenuItem(String title, {VoidCallback? onTap, bool isActive = false}) {
+  Widget _buildNestedSubMenuItem(String title,
+      {VoidCallback? onTap, bool isActive = false}) {
     final primary = Theme.of(context).colorScheme.primary;
     return Padding(
       padding: const EdgeInsets.only(left: 72, right: 24, top: 2, bottom: 2),
@@ -594,12 +658,14 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: isActive ? primary.withValues(alpha: 0.10) : Colors.transparent,
+            color:
+                isActive ? primary.withValues(alpha: 0.10) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
             children: [
-              Icon(Icons.circle, size: 6, color: isActive ? primary : Colors.grey[400]),
+              Icon(Icons.circle,
+                  size: 6, color: isActive ? primary : Colors.grey[400]),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -622,7 +688,9 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
 
   // Expandable header matching Cost Analysis look and behavior
   Widget _buildExpandableHeaderLikeCost(IconData icon, String title,
-      {required bool expanded, required VoidCallback onTap, bool isActive = false}) {
+      {required bool expanded,
+      required VoidCallback onTap,
+      bool isActive = false}) {
     final primary = Theme.of(context).colorScheme.primary;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 2),
@@ -631,7 +699,8 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: isActive ? primary.withValues(alpha: 0.12) : Colors.transparent,
+            color:
+                isActive ? primary.withValues(alpha: 0.12) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -651,8 +720,12 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Icon(expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                  color: Colors.grey[700], size: 20),
+              Icon(
+                  expanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                  color: Colors.grey[700],
+                  size: 20),
             ],
           ),
         ),
@@ -860,7 +933,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
                       child: EditableContentText(
                         contentKey: 'potential_solutions_description',
                         fallback: AccessPolicy.isRestrictedAdminHost()
-                            ? '(5 AI-generated solutions)'
+                            ? '(5 KAZ AI-generated solutions)'
                             : '(Maximum 3 solutions)',
                         category: 'business_case',
                         style: const TextStyle(
@@ -873,11 +946,14 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
                     ),
                     // Page-level Regenerate All button
                     IconButton(
-                      icon: const Icon(Icons.refresh, size: 20, color: Color(0xFF2563EB)),
+                      icon: const Icon(Icons.refresh,
+                          size: 20, color: Color(0xFF2563EB)),
                       tooltip: 'Regenerate all solutions',
-                      onPressed: _isLoadingSolutions ? null : _confirmRegenerateAll,
+                      onPressed:
+                          _isLoadingSolutions ? null : _confirmRegenerateAll,
                       padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                      constraints:
+                          const BoxConstraints(minWidth: 40, minHeight: 40),
                     ),
                   ],
                 ),
@@ -888,7 +964,8 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: OutlinedButton.icon(
-                      onPressed: _isLoadingSolutions ? null : _addManualSolution,
+                      onPressed:
+                          _isLoadingSolutions ? null : _addManualSolution,
                       icon: const Icon(Icons.add),
                       label: Text('Add Solution (${_solutions.length}/3)'),
                     ),
@@ -898,7 +975,8 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
                 // Navigation Buttons
                 BusinessCaseNavigationButtons(
                   currentScreen: 'Potential Solutions',
-                  padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 24),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 0, vertical: 24),
                   onNext: _handleNextPressed,
                 ),
               ],
@@ -919,10 +997,13 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
     }
 
     if (AppBreakpoints.isMobile(context)) {
-      final displayCount = _isAdminHost ? _solutions.length : (_solutions.length > 3 ? 3 : _solutions.length);
+      final displayCount = _isAdminHost
+          ? _solutions.length
+          : (_solutions.length > 3 ? 3 : _solutions.length);
       return Column(
         children: [
-          for (int i = 0; i < displayCount; i++) _buildSolutionCardMobile(_solutions[i], i),
+          for (int i = 0; i < displayCount; i++)
+            _buildSolutionCardMobile(_solutions[i], i),
         ],
       );
     }
@@ -931,7 +1012,9 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
   }
 
   Widget _buildDesktopSolutionsTable() {
-    final displayCount = _isAdminHost ? _solutions.length : (_solutions.length > 3 ? 3 : _solutions.length);
+    final displayCount = _isAdminHost
+        ? _solutions.length
+        : (_solutions.length > 3 ? 3 : _solutions.length);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1127,12 +1210,15 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
     );
   }
 
-  Widget _buildSolutionRow(SolutionRow solution, {required int index, bool isLast = false}) {
+  Widget _buildSolutionRow(SolutionRow solution,
+      {required int index, bool isLast = false}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
       decoration: BoxDecoration(
         border: Border(
-          bottom: isLast ? BorderSide.none : BorderSide(color: Colors.grey.shade300),
+          bottom: isLast
+              ? BorderSide.none
+              : BorderSide(color: Colors.grey.shade300),
         ),
       ),
       child: Row(
@@ -1154,7 +1240,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
                   child: Text(
                     '${index + 1}',
                     style: TextStyle(
-                      fontSize: 13, 
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: Colors.black87,
                     ),
@@ -1218,16 +1304,22 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Solution ${index + 1}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black54)),
+              Text('Solution ${index + 1}',
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black54)),
               IconButton(
                 tooltip: 'Delete solution',
                 onPressed: () => _confirmDeleteSolution(index),
-                icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                icon: const Icon(Icons.delete_outline,
+                    size: 20, color: Colors.redAccent),
               ),
             ],
           ),
           const SizedBox(height: 6),
-          const Text('Solution Title', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          const Text('Solution Title',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
           _buildFieldWithControls(
             solution: solution,
@@ -1237,7 +1329,8 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
             isMobile: true,
           ),
           const SizedBox(height: 10),
-          const Text('Description', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          const Text('Description',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
           _buildFieldWithControls(
             solution: solution,
@@ -1267,7 +1360,9 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
 
     if (solutions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add at least one solution option before continuing.')),
+        const SnackBar(
+            content:
+                Text('Add at least one solution option before continuing.')),
       );
       return;
     }
@@ -1276,7 +1371,8 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
 
     // Save solutions to provider
     final provider = ProjectDataHelper.getProvider(context);
-    final rowsToPersist = _isAdminHost ? _solutions : _solutions.take(3).toList();
+    final rowsToPersist =
+        _isAdminHost ? _solutions : _solutions.take(3).toList();
     final potentialSolutions = rowsToPersist
         .map(
           (s) => PotentialSolution(
@@ -1287,12 +1383,12 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
           ),
         )
         .toList();
-    
+
     provider.updateInitiationData(
       notes: trimmedNotes,
       potentialSolutions: potentialSolutions,
     );
-    
+
     // Save to Firebase
     await provider.saveToFirebase(checkpoint: 'potential_solutions');
 
@@ -1306,7 +1402,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
     );
 
     if (!mounted) return;
-    
+
     // Navigate to Risk Identification
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -1332,7 +1428,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
 
   Future<void> _addManualSolution() async {
     if (_solutions.length >= 3) return;
-    
+
     setState(() {
       _solutions.add(
         SolutionRow(
@@ -1343,7 +1439,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
         ),
       );
     });
-    
+
     // Auto-focus on first field of new solution
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _solutions.isNotEmpty) {
@@ -1358,14 +1454,14 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
         });
       }
     });
-    
+
     // Auto-save empty solution to Firebase
     await _saveSolutions();
   }
 
   Future<void> _confirmDeleteSolution(int index) async {
     if (index < 0 || index >= _solutions.length) return;
-    
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -1386,17 +1482,17 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
         ],
       ),
     );
-    
+
     if (confirmed == true && mounted) {
       final row = _solutions.removeAt(index);
       row.titleController.dispose();
       row.descriptionController.dispose();
-      
+
       // Renumber remaining solutions
       for (int i = 0; i < _solutions.length; i++) {
         _solutions[i].number = i + 1;
       }
-      
+
       setState(() {});
       await _saveSolutions();
     }
@@ -1412,7 +1508,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
               description: s.descriptionController.text.trim(),
             ))
         .toList();
-    
+
     provider.updateInitiationData(potentialSolutions: solutions);
     await provider.saveToFirebase(checkpoint: 'potential_solutions');
   }
@@ -1423,7 +1519,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Regenerate All Solutions'),
         content: const Text(
-          'This will regenerate all AI-generated solutions on this page. Your current content will be lost. Continue?',
+          'This will regenerate all KAZ AI-generated solutions on this page. Your current content will be lost. Continue?',
         ),
         actions: [
           TextButton(
@@ -1446,7 +1542,8 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
   Future<void> _regenerateAllSolutions() async {
     if (_incomingBusinessCase.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Business case is required to regenerate solutions')),
+        const SnackBar(
+            content: Text('Business case is required to regenerate solutions')),
       );
       return;
     }
@@ -1454,25 +1551,28 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
     setState(() => _isLoadingSolutions = true);
 
     try {
-      final aiSolutions = await _openAiService.generateSolutionsFromBusinessCase(_incomingBusinessCase);
+      final aiSolutions = await _openAiService
+          .generateSolutionsFromBusinessCase(_incomingBusinessCase);
       final targetCount = _isAdminHost ? 5 : 3;
-      
+
       setState(() {
         // Dispose old controllers
         for (final solution in _solutions) {
           solution.titleController.dispose();
           solution.descriptionController.dispose();
         }
-        
+
         _solutions.clear();
         final solutionsToUse = aiSolutions.take(targetCount).toList();
-        
+
         for (int i = 0; i < solutionsToUse.length; i++) {
           _solutions.add(
             SolutionRow(
               number: i + 1,
-              titleController: TextEditingController(text: solutionsToUse[i].title),
-              descriptionController: TextEditingController(text: solutionsToUse[i].description),
+              titleController:
+                  TextEditingController(text: solutionsToUse[i].title),
+              descriptionController:
+                  TextEditingController(text: solutionsToUse[i].description),
               isAiGenerated: true,
             ),
           );
@@ -1481,10 +1581,11 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
       });
 
       await _saveSolutions();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('All solutions regenerated successfully')),
+          const SnackBar(
+              content: Text('All solutions regenerated successfully')),
         );
       }
     } catch (e) {
@@ -1497,23 +1598,31 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
     }
   }
 
-  Future<void> _regenerateSolutionField(SolutionRow solution, String fieldName) async {
+  Future<void> _regenerateSolutionField(
+      SolutionRow solution, String fieldName) async {
     if (_incomingBusinessCase.trim().isEmpty) return;
 
     try {
       String newValue;
       if (fieldName == 'title') {
-        final result = await _openAiService.generateSolutionsFromBusinessCase(_incomingBusinessCase);
+        final result = await _openAiService
+            .generateSolutionsFromBusinessCase(_incomingBusinessCase);
         newValue = result.isNotEmpty ? result.first.title : '';
       } else {
-        final result = await _openAiService.generateSolutionsFromBusinessCase(_incomingBusinessCase);
+        final result = await _openAiService
+            .generateSolutionsFromBusinessCase(_incomingBusinessCase);
         newValue = result.isNotEmpty ? result.first.description : '';
       }
 
       // Add to history
       final provider = ProjectDataHelper.getProvider(context);
       final fieldKey = 'solution_${solution.id}_$fieldName';
-      provider.addFieldToHistory(fieldKey, fieldName == 'title' ? solution.titleController.text : solution.descriptionController.text, isAiGenerated: true);
+      provider.addFieldToHistory(
+          fieldKey,
+          fieldName == 'title'
+              ? solution.titleController.text
+              : solution.descriptionController.text,
+          isAiGenerated: true);
 
       // Update field
       if (fieldName == 'title') {
@@ -1523,7 +1632,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
       }
 
       await _saveSolutions();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Field regenerated successfully')),
@@ -1538,10 +1647,11 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
     }
   }
 
-  Future<void> _undoSolutionField(SolutionRow solution, String fieldName) async {
+  Future<void> _undoSolutionField(
+      SolutionRow solution, String fieldName) async {
     final provider = ProjectDataHelper.getProvider(context);
     final fieldKey = 'solution_${solution.id}_$fieldName';
-    
+
     if (provider.canUndoField(fieldKey)) {
       final previousValue = provider.projectData.undoField(fieldKey);
       if (previousValue != null) {
@@ -1551,7 +1661,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
           solution.descriptionController.text = previousValue;
         }
         await _saveSolutions();
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Undo successful')),
@@ -1600,19 +1710,29 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.refresh, size: 18, color: Color(0xFF2563EB)),
+                        icon: const Icon(Icons.refresh,
+                            size: 18, color: Color(0xFF2563EB)),
                         tooltip: 'Regenerate this field',
-                        onPressed: () => _regenerateSolutionField(solution, fieldName),
+                        onPressed: () =>
+                            _regenerateSolutionField(solution, fieldName),
                         padding: const EdgeInsets.all(6),
-                        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                        constraints:
+                            const BoxConstraints(minWidth: 36, minHeight: 36),
                         splashRadius: 18,
                       ),
                       IconButton(
-                        icon: Icon(Icons.undo, size: 18, color: canUndo ? const Color(0xFF6B7280) : Colors.grey.shade300),
+                        icon: Icon(Icons.undo,
+                            size: 18,
+                            color: canUndo
+                                ? const Color(0xFF6B7280)
+                                : Colors.grey.shade300),
                         tooltip: 'Undo last change',
-                        onPressed: canUndo ? () => _undoSolutionField(solution, fieldName) : null,
+                        onPressed: canUndo
+                            ? () => _undoSolutionField(solution, fieldName)
+                            : null,
                         padding: const EdgeInsets.all(6),
-                        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                        constraints:
+                            const BoxConstraints(minWidth: 36, minHeight: 36),
                         splashRadius: 18,
                       ),
                     ],
@@ -1639,10 +1759,14 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
                       controller: controller,
                       style: TextStyle(
                         fontSize: 14,
-                        color: fieldName == 'description' ? Colors.grey : Colors.black87,
+                        color: fieldName == 'description'
+                            ? Colors.grey
+                            : Colors.black87,
                       ),
                       decoration: InputDecoration(
-                        border: isMobile ? const OutlineInputBorder() : InputBorder.none,
+                        border: isMobile
+                            ? const OutlineInputBorder()
+                            : InputBorder.none,
                         isDense: true,
                         contentPadding: isMobile ? null : EdgeInsets.zero,
                         hintText: hintText,
@@ -1694,7 +1818,8 @@ class _LoadingDialog extends StatefulWidget {
   State<_LoadingDialog> createState() => _LoadingDialogState();
 }
 
-class _LoadingDialogState extends State<_LoadingDialog> with SingleTickerProviderStateMixin {
+class _LoadingDialogState extends State<_LoadingDialog>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override

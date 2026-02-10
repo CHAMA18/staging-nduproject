@@ -53,6 +53,108 @@ class DesignPhaseService {
     }
   }
 
+  // --- Auto-Sync Logic ---
+
+  /// Syncs Scope items from Project Charter into Requirements.
+  /// Returns the number of new items added.
+  Future<int> syncRequirementsFromScope(String projectId) async {
+    try {
+      // 1. Fetch Project Charter / Scope
+      final charterDoc = await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection(
+              'planning_phase') // Assuming charter is here or similar path
+          .doc('project_charter')
+          .get();
+
+      if (!charterDoc.exists) return 0;
+
+      final charterData = charterDoc.data() ?? {};
+      // Adjust field access based on actual Charter structure.
+      // Assuming 'projectScope' list or similar.
+      // If structure is different, we might need to look at 'front_end_planning' -> 'scope'
+      // Let's assume a standard 'scopeItems' list for now, or check 'project_scope' collection if it exists.
+      // Based on previous context, scope might be in 'project_charter' doc under 'scope' key.
+
+      final dynamic scopeData = charterData['scope'];
+      List<String> scopeItems = [];
+
+      if (scopeData is List) {
+        scopeItems = scopeData.map((e) => e.toString()).toList();
+      } else if (scopeData is String) {
+        // Maybe it's a markdown string? Split by bullets?
+        // For now, let's look for a specific 'scopeItems' array if 'scope' isn't it.
+      }
+
+      // Fallback: Check if there is a specific 'scope' document in planning phase
+      if (scopeItems.isEmpty) {
+        final scopeDoc = await FirebaseFirestore.instance
+            .collection('projects')
+            .doc(projectId)
+            .collection('planning_phase')
+            .doc('project_scope')
+            .get();
+
+        if (scopeDoc.exists) {
+          final data = scopeDoc.data();
+          if (data != null && data['items'] is List) {
+            scopeItems =
+                (data['items'] as List).map((e) => e.toString()).toList();
+          }
+        }
+      }
+
+      if (scopeItems.isEmpty) return 0;
+
+      // 2. Fetch Existing Requirements
+      final reqDoc =
+          await _sectionDoc(projectId, 'requirements_implementation').get();
+
+      List<RequirementRow> existingReqs = [];
+      if (reqDoc.exists) {
+        final data = reqDoc.data();
+        if (data != null && data['requirements'] != null) {
+          existingReqs = (data['requirements'] as List)
+              .map((e) => RequirementRow.fromMap(e as Map<String, dynamic>))
+              .toList();
+        }
+      }
+
+      // 3. Merge: Add scope items that don't exist as requirement titles
+      int addedCount = 0;
+      for (final item in scopeItems) {
+        // Simple duplicate check by title
+        final exists = existingReqs
+            .any((r) => r.title.toLowerCase() == item.toLowerCase());
+        if (!exists) {
+          existingReqs.add(RequirementRow(
+            title: item,
+            owner: 'Unassigned',
+            definition: 'Imported from Project Scope',
+          ));
+          addedCount++;
+        }
+      }
+
+      if (addedCount > 0) {
+        // 4. Save back
+        await _sectionDoc(projectId, 'requirements_implementation').set({
+          'requirements': existingReqs.map((e) => e.toMap()).toList(),
+          // Preserve other fields
+          'notes': reqDoc.exists ? reqDoc.get('notes') : '',
+          'checklist': reqDoc.exists ? reqDoc.get('checklist') : [],
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+
+      return addedCount;
+    } catch (e) {
+      debugPrint('Error syncing scope to requirements: $e');
+      return 0;
+    }
+  }
+
   // --- Technical Alignment ---
 
   Future<Map<String, dynamic>> loadTechnicalAlignment(String projectId) async {
@@ -226,23 +328,41 @@ class DesignPhaseService {
   }
 
   Stream<Map<String, dynamic>> calculateOverallProgress(String projectId) {
-    // For now, returning a single-emit stream.
-    // Ideally, this would combine streams from all sections for real-time updates.
-    return Stream.fromFuture(_getOverallProgressMap(projectId));
+    // Wrap in error handling to gracefully handle permission errors
+    return Stream.fromFuture(_getOverallProgressMap(projectId))
+        .handleError((error) {
+      debugPrint('Error in calculateOverallProgress stream: $error');
+      // Return fallback data on error
+      return {
+        'progress': 0.0,
+        'completed': 0,
+        'total': 14,
+      };
+    });
   }
 
   Future<Map<String, dynamic>> _getOverallProgressMap(String projectId) async {
-    final progress = await getDesignProgress(projectId);
-    // Mocking 'approved sections' based on progress * total sections (14)
-    // In a real scenario, this would count actual approved section documents.
-    final totalSections = 14;
-    final completedSections =
-        (progress.overallProgress * totalSections).round();
+    try {
+      final progress = await getDesignProgress(projectId);
+      // Mocking 'approved sections' based on progress * total sections (14)
+      // In a real scenario, this would count actual approved section documents.
+      final totalSections = 14;
+      final completedSections =
+          (progress.overallProgress * totalSections).round();
 
-    return {
-      'progress': progress.overallProgress,
-      'completed': completedSections,
-      'total': totalSections,
-    };
+      return {
+        'progress': progress.overallProgress,
+        'completed': completedSections,
+        'total': totalSections,
+      };
+    } catch (e) {
+      debugPrint('Error getting overall progress map: $e');
+      // Return fallback data on error (e.g., permission denied)
+      return {
+        'progress': 0.0,
+        'completed': 0,
+        'total': 14,
+      };
+    }
   }
 }

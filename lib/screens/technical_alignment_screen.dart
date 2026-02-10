@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ndu_project/models/design_phase_models.dart';
 import 'package:ndu_project/services/design_phase_service.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/screens/development_set_up_screen.dart';
 import 'package:pdf/pdf.dart';
@@ -182,6 +183,82 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     }
   }
 
+  bool _isGenerating = false;
+  final OpenAiServiceSecure _openAi = OpenAiServiceSecure();
+
+  Future<void> _generateAllAlignment() async {
+    final provider = ProjectDataInherited.maybeOf(context);
+    final projectId = provider?.projectData.projectId;
+    if (projectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error: No active project found.')),
+      );
+      return;
+    }
+
+    setState(() => _isGenerating = true);
+
+    try {
+      // Build context
+      final data = provider!.projectData;
+      final contextBuffer = StringBuffer();
+      contextBuffer.writeln('Project: ${data.projectName}');
+      contextBuffer.writeln('Description: ${data.projectDescription}');
+      contextBuffer.writeln('Goals: ${data.projectGoals.join(", ")}');
+      contextBuffer.writeln('Tech Stack: ${data.technology}');
+      contextBuffer
+          .writeln('Requirements: ${data.frontEndPlanningData.requirements}');
+
+      final result = await _openAi.generateTechnicalAlignment(
+        context: contextBuffer.toString(),
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        if (result.containsKey('constraints')) {
+          _constraints.clear();
+          for (var item in result['constraints']) {
+            _constraints.add(ConstraintRow.fromMap(item));
+          }
+        }
+        if (result.containsKey('mappings')) {
+          _mappings.clear();
+          for (var item in result['mappings']) {
+            _mappings.add(RequirementMappingRow.fromMap(item));
+          }
+        }
+        if (result.containsKey('dependencies')) {
+          _dependencies.clear();
+          for (var item in result['dependencies']) {
+            _dependencies.add(DependencyDecisionRow.fromMap(item));
+          }
+        }
+      });
+
+      _scheduleSave();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Technical Alignment generated successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error generating alignment: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('AI Generation failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isGenerating = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
@@ -238,6 +315,35 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                     'Capture the minimum set of technical decisions so the team can move forward confidently without over engineering or rework.',
                     style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Capture the minimum set of technical decisions so the team can move forward confidently without over engineering or rework.',
+                    style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                  ),
+                  const SizedBox(height: 16),
+                  // AI Generation Button
+                  if (_isGenerating)
+                    const Center(
+                        child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: CircularProgressIndicator(),
+                    ))
+                  else
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: ElevatedButton.icon(
+                        onPressed: _generateAllAlignment,
+                        icon: const Icon(Icons.auto_awesome,
+                            color: Colors.white, size: 18),
+                        label: const Text('AI Auto-Generate Alignment'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppSemanticColors.ai,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 24),
 
                   // Notes Input

@@ -51,10 +51,9 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     with SingleTickerProviderStateMixin {
   static const List<_StepDefinition> _stepDefinitions = [
     _StepDefinition(
-      shortLabel: 'Project Value',
-      title: 'Estimate project Value and Investment Benefit',
-      subtitle:
-          'Estimate the projects\' value. This would be the profitability analysis basis.',
+      shortLabel: 'Project Benefit Calculation',
+      title: 'Project Benefit Calculation',
+      subtitle: 'AI-assisted estimation to showcase project benefits',
     ),
     _StepDefinition(
       shortLabel: 'Initial Cost Estimate',
@@ -200,7 +199,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
   String? _error;
   String? _projectValueError;
   int _npvHorizon = 5;
-  final double _discountRate = 0.10; // Default 10% discount rate for NPV calculations
+  final double _discountRate =
+      0.10; // Default 10% discount rate for NPV calculations
   final Set<int> _solutionLoading = <int>{};
   final List<_BenefitLineItemEntry> _benefitLineItems = [];
   int _benefitTabIndex = 0;
@@ -1453,7 +1453,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       decoration: BoxDecoration(
         color: const Color(0xFFE6F2FF),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF90CAF9).withValues(alpha: 0.4)),
+        border:
+            Border.all(color: const Color(0xFF90CAF9).withValues(alpha: 0.4)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1984,8 +1985,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                   fillColor: Colors.grey.shade100,
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide:
-                          BorderSide(color: Colors.grey.withValues(alpha: 0.3))),
+                      borderSide: BorderSide(
+                          color: Colors.grey.withValues(alpha: 0.3))),
                   focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: const BorderSide(color: Color(0xFFFFD700))),
@@ -2015,8 +2016,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                   fillColor: Colors.grey.shade100,
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide:
-                          BorderSide(color: Colors.grey.withValues(alpha: 0.3))),
+                      borderSide: BorderSide(
+                          color: Colors.grey.withValues(alpha: 0.3))),
                   focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: const BorderSide(color: Color(0xFFFFD700))),
@@ -2734,7 +2735,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
   }
 
   Widget _buildFinancialBenefitsTrackerSection() {
-    final tabs = const ['Line Items', 'Project Benefits Review'];
+    final tabs = const ['Project Benefits', 'Project Value Estimation'];
     final summaries = _benefitSummaries();
     final totalValue = _benefitTotalValue();
     final totalUnits = _benefitTotalUnits();
@@ -2947,9 +2948,9 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                       border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
                     child: Row(children: [
-                      // Columns: Benefit, Category, Basis, Unit Value, Number of Units, Subtotal Benefit
+                      // Columns: Benefit (Dropdown), Category (Text), Basis, Unit Value, Number of Units, Subtotal Benefit
                       SizedBox(
-                        width: 200,
+                        width: 150,
                         child: Center(
                           child: Text('Benefit',
                               style: const TextStyle(
@@ -2960,7 +2961,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                       ),
                       const SizedBox(width: 12),
                       SizedBox(
-                        width: 150,
+                        width: 200,
                         child: Center(
                           child: Text('Category',
                               style: const TextStyle(
@@ -3026,8 +3027,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(6),
-                          border:
-                              Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+                          border: Border.all(
+                              color: Colors.grey.withValues(alpha: 0.25)),
                         ),
                         child: Column(
                           children: [
@@ -3047,7 +3048,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                       color: const Color(0xFFFFF8E1),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                          color: const Color(0xFFFFD700).withValues(alpha: 0.5)),
+                          color:
+                              const Color(0xFFFFD700).withValues(alpha: 0.5)),
                     ),
                     child: Row(children: [
                       SizedBox(
@@ -3142,31 +3144,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         border: Border(top: BorderSide(color: const Color(0xFFE2E8F0))),
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-        // Benefit name
-        SizedBox(
-          width: 200,
-          child: TextField(
-            controller: entry.titleController,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 12),
-            decoration: InputDecoration(
-              hintText: 'Benefit name',
-              hintStyle:
-                  const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
-              isDense: true,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Color(0xFFE2E8F0))),
-              enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Color(0xFFE2E8F0))),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        // Category
+        // Benefit (Dropdown)
         SizedBox(
           width: 150,
           child: DropdownButtonFormField<String>(
@@ -3191,6 +3169,30 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             ),
             isExpanded: true,
             style: const TextStyle(fontSize: 12, color: Color(0xFF111827)),
+          ),
+        ),
+        const SizedBox(width: 12),
+        // Category (Text)
+        SizedBox(
+          width: 200,
+          child: TextField(
+            controller: entry.titleController,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12),
+            decoration: InputDecoration(
+              hintText: 'Category name',
+              hintStyle:
+                  const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
+              isDense: true,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Color(0xFFE2E8F0))),
+              enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Color(0xFFE2E8F0))),
+            ),
           ),
         ),
         const SizedBox(width: 12),
@@ -3837,8 +3839,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                   border: isLast
                       ? null
                       : Border(
-                          bottom:
-                              BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+                          bottom: BorderSide(
+                              color: Colors.grey.withValues(alpha: 0.2)),
                         ),
                 ),
                 child: Row(
@@ -4097,7 +4099,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.2)))),
+          border: Border(
+              top: BorderSide(color: Colors.grey.withValues(alpha: 0.2)))),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Expanded(
             flex: 3, child: Text(label, style: const TextStyle(fontSize: 12))),
@@ -4153,7 +4156,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.2)))),
+          border: Border(
+              top: BorderSide(color: Colors.grey.withValues(alpha: 0.2)))),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         SizedBox(
           width: 300,
@@ -4717,8 +4721,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                       decoration: BoxDecoration(
                           color: Colors.grey.shade200,
                           borderRadius: BorderRadius.circular(6),
-                          border:
-                              Border.all(color: Colors.grey.withValues(alpha: 0.35))),
+                          border: Border.all(
+                              color: Colors.grey.withValues(alpha: 0.35))),
                       child: Row(children: [
                         SizedBox(
                           width: 300,
@@ -4752,8 +4756,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                       decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(6),
-                          border:
-                              Border.all(color: Colors.grey.withValues(alpha: 0.25))),
+                          border: Border.all(
+                              color: Colors.grey.withValues(alpha: 0.25))),
                       child: Column(children: [
                         for (final r in rows) _initialItemCostRow(r),
                         Container(
@@ -4762,7 +4766,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                           decoration: BoxDecoration(
                               border: Border(
                                   top: BorderSide(
-                                      color: Colors.grey.withValues(alpha: 0.2)))),
+                                      color:
+                                          Colors.grey.withValues(alpha: 0.2)))),
                           child: Row(children: [
                             SizedBox(
                               width: 300,
@@ -4913,7 +4918,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          const Text('AI-generated Project Value category ideas',
+          const Text('KAZ AI-generated Project Value category ideas',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(width: 8),
           const _AiTag(),
@@ -5630,7 +5635,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                 'Explain why this investment level is appropriate (e.g., resourcing, integrations, governance).',
             border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.3))),
+                borderSide:
+                    BorderSide(color: Colors.grey.withValues(alpha: 0.3))),
             isDense: true,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -6635,8 +6641,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
-          border:
-              Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.25)))),
+          border: Border(
+              top: BorderSide(color: Colors.grey.withValues(alpha: 0.25)))),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Expanded(
           flex: 2,

@@ -152,7 +152,7 @@ class _PreferredSolutionAnalysisScreenState
             _isLoading = false;
           });
           _enrichAnalysisFromProjectData();
-          
+
           // Restore selection using UUID/Index fallback
           if (existingData.selectedSolutionIndex != null &&
               existingData.selectedSolutionIndex! >= 0 &&
@@ -161,7 +161,8 @@ class _PreferredSolutionAnalysisScreenState
           } else if (existingData.selectedSolutionId != null) {
             // Try to match by UUID
             for (int i = 0; i < projectData.potentialSolutions.length; i++) {
-              if (projectData.potentialSolutions[i].id == existingData.selectedSolutionId) {
+              if (projectData.potentialSolutions[i].id ==
+                  existingData.selectedSolutionId) {
                 if (i < _analysis.length) {
                   _selectedSolutionIndex = i;
                   break;
@@ -169,10 +170,11 @@ class _PreferredSolutionAnalysisScreenState
               }
             }
           } else if (existingData.selectedSolutionTitle != null &&
-                     existingData.selectedSolutionTitle!.isNotEmpty) {
+              existingData.selectedSolutionTitle!.isNotEmpty) {
             // Fallback to title matching
             for (int i = 0; i < _analysis.length; i++) {
-              if (_matchSolutionTitle(_analysis[i].solution.title, existingData.selectedSolutionTitle!)) {
+              if (_matchSolutionTitle(_analysis[i].solution.title,
+                  existingData.selectedSolutionTitle!)) {
                 _selectedSolutionIndex = i;
                 break;
               }
@@ -342,7 +344,8 @@ class _PreferredSolutionAnalysisScreenState
 
       for (final sr in projectData.solutionRisks) {
         if (_matchSolutionTitle(sr.solutionTitle, title)) {
-          risks = sr.risks.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+          risks =
+              sr.risks.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
           break;
         }
       }
@@ -354,8 +357,8 @@ class _PreferredSolutionAnalysisScreenState
           break;
         }
       }
-      final infraData =
-          projectData.infrastructureConsiderationsData?.solutionInfrastructureData ??
+      final infraData = projectData
+              .infrastructureConsiderationsData?.solutionInfrastructureData ??
           [];
       for (final inf in infraData) {
         if (_matchSolutionTitle(inf.solutionTitle, title)) {
@@ -1079,7 +1082,8 @@ class _PreferredSolutionAnalysisScreenState
           // Page-level Regenerate All button
           if (!_isLoading && _analysis.isNotEmpty)
             IconButton(
-              icon: const Icon(Icons.refresh, size: 20, color: Color(0xFF2563EB)),
+              icon:
+                  const Icon(Icons.refresh, size: 20, color: Color(0xFF2563EB)),
               tooltip: 'Regenerate all solutions',
               onPressed: _confirmRegenerateAll,
             ),
@@ -1107,7 +1111,7 @@ class _PreferredSolutionAnalysisScreenState
       builder: (context) => AlertDialog(
         title: const Text('Regenerate All Solutions'),
         content: const Text(
-          'This will regenerate all AI-generated solution analysis on this page. Your current content will be lost. Continue?',
+          'This will regenerate all KAZ AI-generated solution analysis on this page. Your current content will be lost. Continue?',
         ),
         actions: [
           TextButton(
@@ -1133,7 +1137,8 @@ class _PreferredSolutionAnalysisScreenState
       await _loadExistingDataAndAnalysis();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('All solutions regenerated successfully')),
+          const SnackBar(
+              content: Text('All solutions regenerated successfully')),
         );
       }
     } catch (e) {
@@ -1151,12 +1156,14 @@ class _PreferredSolutionAnalysisScreenState
     final preferredAnalysis = projectData.preferredSolutionAnalysis;
     final selectedTitle = preferredAnalysis?.selectedSolutionTitle ?? '';
     final selectedIndex = preferredAnalysis?.selectedSolutionIndex;
-    
+
     if (selectedTitle.isEmpty) return const SizedBox.shrink();
-    
+
     // Find the selected solution number
     int? solutionNumber;
-    if (selectedIndex != null && selectedIndex >= 0 && selectedIndex < _analysis.length) {
+    if (selectedIndex != null &&
+        selectedIndex >= 0 &&
+        selectedIndex < _analysis.length) {
       solutionNumber = selectedIndex + 1;
     } else {
       // Try to find by title match
@@ -1167,14 +1174,15 @@ class _PreferredSolutionAnalysisScreenState
         }
       }
     }
-    
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFFFFF8E1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.5), width: 1.5),
+        border: Border.all(
+            color: const Color(0xFFFFD700).withValues(alpha: 0.5), width: 1.5),
       ),
       child: Row(
         children: [
@@ -1397,12 +1405,14 @@ class _PreferredSolutionAnalysisScreenState
         _buildSectionBlock(title: 'Top risks', items: data.risks),
         if (data.technologies.any((e) => e.trim().isNotEmpty)) ...[
           const SizedBox(height: 20),
-          _buildSectionBlock(title: 'IT consideration', items: data.technologies),
+          _buildSectionBlock(
+              title: 'IT consideration', items: data.technologies),
         ],
         if (data.infrastructure.any((e) => e.trim().isNotEmpty)) ...[
           const SizedBox(height: 20),
           _buildSectionBlock(
-              title: 'Infrastructure consideration', items: data.infrastructure),
+              title: 'Infrastructure consideration',
+              items: data.infrastructure),
         ],
         const SizedBox(height: 20),
         _buildCostsSection(data.costs),
@@ -1428,7 +1438,8 @@ class _PreferredSolutionAnalysisScreenState
         ? data.solution.title
         : 'Solution ${index + 1}';
     final projectData = ProjectDataHelper.getData(context);
-    final cbaRows = _getCbaCostRowsForSolution(projectData, data.solution.title);
+    final cbaRows =
+        _getCbaCostRowsForSolution(projectData, data.solution.title);
 
     showDialog<void>(
       context: context,
@@ -1522,8 +1533,8 @@ class _PreferredSolutionAnalysisScreenState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title,
-              style: const TextStyle(
-                  fontSize: 15, fontWeight: FontWeight.w700)),
+              style:
+                  const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
           child,
         ],
@@ -1608,16 +1619,14 @@ class _PreferredSolutionAnalysisScreenState
         children: [
           if (hasInternal) ...[
             const Text('Internal',
-                style: TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w600)),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
             _buildDetailList(data.internalStakeholders!),
             const SizedBox(height: 12),
           ],
           if (hasExternal) ...[
             const Text('External',
-                style: TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w600)),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
             _buildDetailList(data.externalStakeholders!),
           ],
@@ -1648,8 +1657,8 @@ class _PreferredSolutionAnalysisScreenState
               if (r.description.trim().isNotEmpty) ...[
                 const SizedBox(height: 6),
                 Text(r.description,
-                    style: const TextStyle(
-                        fontSize: 13, color: Colors.black54)),
+                    style:
+                        const TextStyle(fontSize: 13, color: Colors.black54)),
               ],
               if (r.cost.trim().isNotEmpty) ...[
                 const SizedBox(height: 6),
@@ -1660,8 +1669,8 @@ class _PreferredSolutionAnalysisScreenState
               if (r.assumptions.trim().isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text('Assumptions: ${r.assumptions}',
-                    style: const TextStyle(
-                        fontSize: 12, color: Colors.black45)),
+                    style:
+                        const TextStyle(fontSize: 12, color: Colors.black45)),
               ],
             ],
           ),
@@ -1697,8 +1706,8 @@ class _PreferredSolutionAnalysisScreenState
               if (item.description.isNotEmpty) ...[
                 const SizedBox(height: 6),
                 Text(item.description,
-                    style: const TextStyle(
-                        fontSize: 13, color: Colors.black54)),
+                    style:
+                        const TextStyle(fontSize: 13, color: Colors.black54)),
               ],
               const SizedBox(height: 10),
               Wrap(
@@ -1756,16 +1765,18 @@ class _PreferredSolutionAnalysisScreenState
                 if (item.description.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Text(item.description,
-                      style: const TextStyle(
-                          fontSize: 13, color: Colors.black54)),
+                      style:
+                          const TextStyle(fontSize: 13, color: Colors.black54)),
                 ],
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
                   runSpacing: 6,
                   children: [
-                    _buildCostBadge('Est. cost', _formatCurrency(item.estimatedCost)),
-                    _buildCostBadge('ROI', '${item.roiPercent.toStringAsFixed(1)}%'),
+                    _buildCostBadge(
+                        'Est. cost', _formatCurrency(item.estimatedCost)),
+                    _buildCostBadge(
+                        'ROI', '${item.roiPercent.toStringAsFixed(1)}%'),
                     _buildCostBadge('NPV', _formatCurrency(item.npv)),
                   ],
                 ),
@@ -1929,7 +1940,7 @@ class _PreferredSolutionAnalysisScreenState
             // Calculate minimum width needed (for horizontal scroll fallback)
             final minTableWidth = 120.0 + (250.0 * _analysis.length);
             final needsScroll = minTableWidth > availableWidth;
-            
+
             return Container(
               width: double.infinity,
               decoration: BoxDecoration(
@@ -1953,11 +1964,13 @@ class _PreferredSolutionAnalysisScreenState
                           scrollDirection: Axis.horizontal,
                           child: SizedBox(
                             width: minTableWidth,
-                            child: _buildComparisonTableFillWidth(projectData, minTableWidth),
+                            child: _buildComparisonTableFillWidth(
+                                projectData, minTableWidth),
                           ),
                         ),
                       )
-                    : _buildComparisonTableFillWidth(projectData, availableWidth),
+                    : _buildComparisonTableFillWidth(
+                        projectData, availableWidth),
               ),
             );
           },
@@ -1982,8 +1995,9 @@ class _PreferredSolutionAnalysisScreenState
     final categoryWidth = screenWidth < 900 ? 120.0 : 150.0;
     // Calculate minimum width for each solution column
     final solutionColumnMinWidth = 280.0;
-    final totalMinWidth = categoryWidth + (solutionColumnMinWidth * _analysis.length);
-    
+    final totalMinWidth =
+        categoryWidth + (solutionColumnMinWidth * _analysis.length);
+
     return ConstrainedBox(
       constraints: BoxConstraints(minWidth: totalMinWidth),
       child: Table(
@@ -2032,7 +2046,8 @@ class _PreferredSolutionAnalysisScreenState
     );
   }
 
-  Widget _buildComparisonTableFillWidth(ProjectDataModel projectData, double tableWidth) {
+  Widget _buildComparisonTableFillWidth(
+      ProjectDataModel projectData, double tableWidth) {
     // Define the categories for comparison
     final categories = [
       'Solution Description',
@@ -2048,7 +2063,7 @@ class _PreferredSolutionAnalysisScreenState
     // Solution columns split remaining width equally
     final remainingWidth = tableWidth - categoryWidth;
     final solutionColumnWidth = remainingWidth / _analysis.length;
-    
+
     return Table(
       border: TableBorder(
         horizontalInside: BorderSide(color: Colors.grey.shade200),
@@ -2093,28 +2108,30 @@ class _PreferredSolutionAnalysisScreenState
       ],
     );
   }
-  
+
   // Track expanded state for each cell
   final Map<String, bool> _expandedCells = {};
-  
+
   String _getCellKey(String category, int index) => '${category}_$index';
-  
+
   Widget _buildExpandableComparisonCell({
     required String category,
     required int index,
     required _SolutionAnalysisData analysis,
     required ProjectDataModel projectData,
   }) {
-    final fullContent = _getFullCellContent(category, index, analysis, projectData);
+    final fullContent =
+        _getFullCellContent(category, index, analysis, projectData);
     final cellKey = _getCellKey(category, index);
     final isExpanded = _expandedCells[cellKey] ?? false;
-    
+
     // Check if content needs expansion (more than ~150 chars or 4 lines)
-    final needsExpansion = fullContent.length > 150 || fullContent.split('\n').length > 4;
-    final displayContent = isExpanded || !needsExpansion 
-        ? fullContent 
+    final needsExpansion =
+        fullContent.length > 150 || fullContent.split('\n').length > 4;
+    final displayContent = isExpanded || !needsExpansion
+        ? fullContent
         : _truncateContent(fullContent);
-    
+
     return InkWell(
       onTap: () => _navigateToSolutionDetails(index),
       child: Container(
@@ -2154,7 +2171,9 @@ class _PreferredSolutionAnalysisScreenState
                     ),
                     const SizedBox(width: 4),
                     Icon(
-                      isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      isExpanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
                       size: 14,
                       color: const Color(0xFF2563EB),
                     ),
@@ -2167,7 +2186,7 @@ class _PreferredSolutionAnalysisScreenState
       ),
     );
   }
-  
+
   String _truncateContent(String content) {
     final lines = content.split('\n');
     if (lines.length > 4) {
@@ -2178,7 +2197,7 @@ class _PreferredSolutionAnalysisScreenState
     }
     return content;
   }
-  
+
   String _getFullCellContent(
     String category,
     int index,
@@ -2189,22 +2208,22 @@ class _PreferredSolutionAnalysisScreenState
       case 'Solution Description':
         final desc = analysis.solution.description;
         return desc.isNotEmpty ? desc : 'No description available';
-      
+
       case 'Risk Identification':
         final risks = analysis.risks;
         if (risks.isEmpty) return 'No risks identified';
         return risks.map((r) => '• $r').join('\n');
-      
+
       case 'IT Considerations':
         final tech = analysis.technologies;
         if (tech.isEmpty) return 'No IT considerations';
         return tech.map((t) => '• $t').join('\n');
-      
+
       case 'Infrastructure Considerations':
         final infra = analysis.infrastructure;
         if (infra.isEmpty) return 'No infrastructure considerations';
         return infra.map((i) => '• $i').join('\n');
-      
+
       case 'Core Stakeholders':
         final internal = analysis.internalStakeholders ?? [];
         final external = analysis.externalStakeholders ?? [];
@@ -2219,17 +2238,21 @@ class _PreferredSolutionAnalysisScreenState
           lines.addAll(external.map((s) => '• $s'));
         }
         return lines.isEmpty ? 'No stakeholders identified' : lines.join('\n');
-      
+
       case 'Cost Benefit Analysis Overview':
-        final cbaRows = _getCbaCostRowsForSolution(projectData, analysis.solution.title);
+        final cbaRows =
+            _getCbaCostRowsForSolution(projectData, analysis.solution.title);
         if (cbaRows.isEmpty) return 'No cost analysis available';
         final totalCost = cbaRows.fold<double>(
-          0, 
-          (sum, row) => sum + (double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0)
-        );
-        final items = cbaRows.map((r) => '• ${r.itemName}: ${r.cost}').join('\n');
+            0,
+            (sum, row) =>
+                sum +
+                (double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ??
+                    0));
+        final items =
+            cbaRows.map((r) => '• ${r.itemName}: ${r.cost}').join('\n');
         return 'Total: \$${totalCost.toStringAsFixed(0)}\n\n$items';
-      
+
       default:
         return '';
     }
@@ -2315,7 +2338,7 @@ class _PreferredSolutionAnalysisScreenState
     required ProjectDataModel projectData,
   }) {
     final content = _getCellContent(category, index, analysis, projectData);
-    
+
     return InkWell(
       onTap: () => _navigateToSolutionDetails(index),
       child: Container(
@@ -2344,42 +2367,48 @@ class _PreferredSolutionAnalysisScreenState
         final desc = analysis.solution.description;
         // Show more text on larger screens
         final maxLength = MediaQuery.of(context).size.width > 1200 ? 300 : 200;
-        return desc.isNotEmpty 
-            ? (desc.length > maxLength ? '${desc.substring(0, maxLength)}...' : desc)
+        return desc.isNotEmpty
+            ? (desc.length > maxLength
+                ? '${desc.substring(0, maxLength)}...'
+                : desc)
             : 'No description available';
-      
+
       case 'Risk Identification':
         final risks = analysis.risks;
         if (risks.isEmpty) return 'No risks identified';
         return risks.take(3).map((r) => '- $r').join('\n');
-      
+
       case 'IT Considerations':
         final tech = analysis.technologies;
         if (tech.isEmpty) return 'No IT considerations';
         return tech.take(3).map((t) => '- $t').join('\n');
-      
+
       case 'Infrastructure Considerations':
         final infra = analysis.infrastructure;
         if (infra.isEmpty) return 'No infrastructure considerations';
         return infra.take(3).map((i) => '- $i').join('\n');
-      
+
       case 'Core Stakeholders':
         final internal = analysis.internalStakeholders ?? [];
         final external = analysis.externalStakeholders ?? [];
         final allStakeholders = [...internal, ...external];
         if (allStakeholders.isEmpty) return 'No stakeholders identified';
         return allStakeholders.take(3).map((s) => '- $s').join('\n');
-      
+
       case 'Cost Benefit Analysis Overview':
-        final cbaRows = _getCbaCostRowsForSolution(projectData, analysis.solution.title);
+        final cbaRows =
+            _getCbaCostRowsForSolution(projectData, analysis.solution.title);
         if (cbaRows.isEmpty) return 'No cost analysis available';
         final totalCost = cbaRows.fold<double>(
-          0, 
-          (sum, row) => sum + (double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0)
-        );
-        final items = cbaRows.take(3).map((r) => '- ${r.itemName}: ${r.cost}').join('\n');
+            0,
+            (sum, row) =>
+                sum +
+                (double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ??
+                    0));
+        final items =
+            cbaRows.take(3).map((r) => '- ${r.itemName}: ${r.cost}').join('\n');
         return 'Project Value: ${projectData.preferredSolutionAnalysis?.solutionAnalyses.isEmpty ?? true ? "Not set" : "\$${totalCost.toStringAsFixed(0)}"}\n$items';
-      
+
       default:
         return '';
     }
@@ -2448,11 +2477,12 @@ class _PreferredSolutionAnalysisScreenState
             solutionId = matchById.id;
           }
         }
-        
+
         // Fallback 2: Try title matching (last resort)
         if (solutionId == null) {
           final matchByTitle = projectData.potentialSolutions
-              .where((s) => _matchSolutionTitle(s.title, analysis.solution.title))
+              .where(
+                  (s) => _matchSolutionTitle(s.title, analysis.solution.title))
               .firstOrNull;
           solutionId = matchByTitle?.id;
         }
@@ -2461,7 +2491,9 @@ class _PreferredSolutionAnalysisScreenState
       if (solutionId == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not match solution to select. Please ensure solutions are properly configured.')),
+            const SnackBar(
+                content: Text(
+                    'Could not match solution to select. Please ensure solutions are properly configured.')),
           );
         }
         return;
@@ -2474,7 +2506,8 @@ class _PreferredSolutionAnalysisScreenState
       // Also update PreferredSolutionAnalysis with UUID and index for persistence
       final currentAnalysis = provider.projectData.preferredSolutionAnalysis;
       final updatedAnalysis = PreferredSolutionAnalysis(
-        workingNotes: currentAnalysis?.workingNotes ?? _notesController.text.trim(),
+        workingNotes:
+            currentAnalysis?.workingNotes ?? _notesController.text.trim(),
         solutionAnalyses: currentAnalysis?.solutionAnalyses ?? [],
         selectedSolutionTitle: analysis.solution.title,
         selectedSolutionId: solutionId,
@@ -2491,21 +2524,22 @@ class _PreferredSolutionAnalysisScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Solution selected successfully')),
       );
-      
+
       // Navigate to Preferred Solutions screen (ProjectDecisionSummaryScreen)
       final potentialSolutions = projectData.potentialSolutions;
       final solutions = potentialSolutions
-          .map((s) => AiSolutionItem(title: s.title, description: s.description))
+          .map(
+              (s) => AiSolutionItem(title: s.title, description: s.description))
           .toList();
       final safeSolutions = solutions.isNotEmpty
           ? solutions
           : [
               AiSolutionItem(
-                title: projectData.projectName.isNotEmpty 
-                    ? projectData.projectName 
+                title: projectData.projectName.isNotEmpty
+                    ? projectData.projectName
                     : 'Preferred Solution',
-                description: projectData.businessCase.isNotEmpty 
-                    ? projectData.businessCase 
+                description: projectData.businessCase.isNotEmpty
+                    ? projectData.businessCase
                     : '',
               ),
             ];
@@ -2517,16 +2551,16 @@ class _PreferredSolutionAnalysisScreenState
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => ProjectDecisionSummaryScreen(
-            projectName: projectData.projectName.isNotEmpty 
-                ? projectData.projectName 
+            projectName: projectData.projectName.isNotEmpty
+                ? projectData.projectName
                 : 'Untitled Project',
             selectedSolution: selectedSolution,
             allSolutions: safeSolutions,
-            businessCase: projectData.businessCase.isNotEmpty 
-                ? projectData.businessCase 
+            businessCase: projectData.businessCase.isNotEmpty
+                ? projectData.businessCase
                 : '',
-            notes: updatedAnalysis.workingNotes.isNotEmpty 
-                ? updatedAnalysis.workingNotes 
+            notes: updatedAnalysis.workingNotes.isNotEmpty
+                ? updatedAnalysis.workingNotes
                 : '',
           ),
         ),
@@ -2547,7 +2581,7 @@ class _PreferredSolutionAnalysisScreenState
 
   void _navigateToSolutionDetails(int index) {
     if (index < 0 || index >= _analysis.length) return;
-    
+
     final analysis = _analysis[index];
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -2597,7 +2631,8 @@ class _PreferredSolutionAnalysisScreenState
   void _showSolutionDetailsDialog(_SolutionAnalysisData analysis, int index) {
     final provider = ProjectDataHelper.getProvider(context);
     final projectData = provider.projectData;
-    final cbaRows = _getCbaCostRowsForSolution(projectData, analysis.solution.title);
+    final cbaRows =
+        _getCbaCostRowsForSolution(projectData, analysis.solution.title);
 
     showDialog(
       context: context,
@@ -2609,7 +2644,8 @@ class _PreferredSolutionAnalysisScreenState
           child: Column(
             children: [
               AppBar(
-                title: Text('Solution #${index + 1}: ${analysis.solution.title}'),
+                title:
+                    Text('Solution #${index + 1}: ${analysis.solution.title}'),
                 leading: IconButton(
                   icon: const Icon(Icons.arrow_back),
                   onPressed: () => Navigator.of(context).pop(),
@@ -2622,14 +2658,17 @@ class _PreferredSolutionAnalysisScreenState
                           .where((s) => s.title == analysis.solution.title)
                           .firstOrNull
                           ?.id;
-                      
+
                       if (solutionId != null) {
-                        await provider.setPreferredSolution(solutionId, checkpoint: 'preferred_solution_selected');
+                        await provider.setPreferredSolution(solutionId,
+                            checkpoint: 'preferred_solution_selected');
                         if (context.mounted) {
                           Navigator.of(context).pop(); // Close dialog
                           Navigator.of(context).pop(); // Go back to card view
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Selected as preferred solution')),
+                            const SnackBar(
+                                content:
+                                    Text('Selected as preferred solution')),
                           );
                           // Navigate to next step
                           FrontEndPlanningSummaryScreen.open(context);
@@ -2655,8 +2694,8 @@ class _PreferredSolutionAnalysisScreenState
                       SolutionDetailSection(
                         title: 'Scope Statement',
                         content: Text(
-                          analysis.solution.description.isNotEmpty 
-                              ? analysis.solution.description 
+                          analysis.solution.description.isNotEmpty
+                              ? analysis.solution.description
                               : 'No scope statement provided.',
                           style: const TextStyle(fontSize: 14, height: 1.5),
                         ),
@@ -2665,65 +2704,109 @@ class _PreferredSolutionAnalysisScreenState
                       SolutionDetailSection(
                         title: 'Risks Identified',
                         content: analysis.risks.isEmpty
-                            ? const Text('No risks identified.', style: TextStyle(fontSize: 14))
+                            ? const Text('No risks identified.',
+                                style: TextStyle(fontSize: 14))
                             : Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                children: analysis.risks.map((risk) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Text('. ', style: TextStyle(fontSize: 14)),
-                                      Expanded(child: Text(risk, style: const TextStyle(fontSize: 14))),
-                                    ],
-                                  ),
-                                )).toList(),
+                                children: analysis.risks
+                                    .map((risk) => Padding(
+                                          padding:
+                                              const EdgeInsets.only(bottom: 8),
+                                          child: Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              const Text('. ',
+                                                  style:
+                                                      TextStyle(fontSize: 14)),
+                                              Expanded(
+                                                  child: Text(risk,
+                                                      style: const TextStyle(
+                                                          fontSize: 14))),
+                                            ],
+                                          ),
+                                        ))
+                                    .toList(),
                               ),
                       ),
                       SolutionDetailSection(
                         title: 'IT Considerations',
-                        content: analysis.itConsiderationText?.isNotEmpty == true
-                            ? Text(analysis.itConsiderationText!, style: const TextStyle(fontSize: 14, height: 1.5))
+                        content: analysis.itConsiderationText?.isNotEmpty ==
+                                true
+                            ? Text(analysis.itConsiderationText!,
+                                style:
+                                    const TextStyle(fontSize: 14, height: 1.5))
                             : (analysis.technologies.isEmpty
-                                ? const Text('No IT considerations recorded.', style: TextStyle(fontSize: 14))
+                                ? const Text('No IT considerations recorded.',
+                                    style: TextStyle(fontSize: 14))
                                 : Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: analysis.technologies.map((tech) => Padding(
-                                      padding: const EdgeInsets.only(bottom: 8),
-                                      child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          const Text('. ', style: TextStyle(fontSize: 14)),
-                                          Expanded(child: Text(tech, style: const TextStyle(fontSize: 14))),
-                                        ],
-                                      ),
-                                    )).toList(),
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: analysis.technologies
+                                        .map((tech) => Padding(
+                                              padding: const EdgeInsets.only(
+                                                  bottom: 8),
+                                              child: Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  const Text('. ',
+                                                      style: TextStyle(
+                                                          fontSize: 14)),
+                                                  Expanded(
+                                                      child: Text(tech,
+                                                          style:
+                                                              const TextStyle(
+                                                                  fontSize:
+                                                                      14))),
+                                                ],
+                                              ),
+                                            ))
+                                        .toList(),
                                   )),
                       ),
                       SolutionDetailSection(
                         title: 'Infrastructure Considerations',
-                        content: analysis.infraConsiderationText?.isNotEmpty == true
-                            ? Text(analysis.infraConsiderationText!, style: const TextStyle(fontSize: 14, height: 1.5))
+                        content: analysis.infraConsiderationText?.isNotEmpty ==
+                                true
+                            ? Text(analysis.infraConsiderationText!,
+                                style:
+                                    const TextStyle(fontSize: 14, height: 1.5))
                             : (analysis.infrastructure.isEmpty
-                                ? const Text('No infrastructure considerations recorded.', style: TextStyle(fontSize: 14))
+                                ? const Text(
+                                    'No infrastructure considerations recorded.',
+                                    style: TextStyle(fontSize: 14))
                                 : Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: analysis.infrastructure.map((infra) => Padding(
-                                      padding: const EdgeInsets.only(bottom: 8),
-                                      child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          const Text('. ', style: TextStyle(fontSize: 14)),
-                                          Expanded(child: Text(infra, style: const TextStyle(fontSize: 14))),
-                                        ],
-                                      ),
-                                    )).toList(),
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: analysis.infrastructure
+                                        .map((infra) => Padding(
+                                              padding: const EdgeInsets.only(
+                                                  bottom: 8),
+                                              child: Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  const Text('. ',
+                                                      style: TextStyle(
+                                                          fontSize: 14)),
+                                                  Expanded(
+                                                      child: Text(infra,
+                                                          style:
+                                                              const TextStyle(
+                                                                  fontSize:
+                                                                      14))),
+                                                ],
+                                              ),
+                                            ))
+                                        .toList(),
                                   )),
                       ),
                       SolutionDetailSection(
                         title: 'Cost Benefit Analysis',
                         content: cbaRows.isEmpty
-                            ? const Text('No cost analysis available.', style: TextStyle(fontSize: 14))
+                            ? const Text('No cost analysis available.',
+                                style: TextStyle(fontSize: 14))
                             : _buildCostBenefitTable(cbaRows),
                       ),
                       SolutionDetailSection(
@@ -2731,38 +2814,63 @@ class _PreferredSolutionAnalysisScreenState
                         content: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (analysis.externalStakeholders?.isNotEmpty == true) ...[
-                              const Text('External:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                            if (analysis.externalStakeholders?.isNotEmpty ==
+                                true) ...[
+                              const Text('External:',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14)),
                               const SizedBox(height: 8),
-                              ...analysis.externalStakeholders!.map((s) => Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('. ', style: TextStyle(fontSize: 14)),
-                                    Expanded(child: Text(s, style: const TextStyle(fontSize: 14))),
-                                  ],
-                                ),
-                              )),
+                              ...analysis.externalStakeholders!
+                                  .map((s) => Padding(
+                                        padding:
+                                            const EdgeInsets.only(bottom: 4),
+                                        child: Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Text('. ',
+                                                style: TextStyle(fontSize: 14)),
+                                            Expanded(
+                                                child: Text(s,
+                                                    style: const TextStyle(
+                                                        fontSize: 14))),
+                                          ],
+                                        ),
+                                      )),
                               const SizedBox(height: 16),
                             ],
-                            if (analysis.internalStakeholders?.isNotEmpty == true) ...[
-                              const Text('Internal:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                            if (analysis.internalStakeholders?.isNotEmpty ==
+                                true) ...[
+                              const Text('Internal:',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14)),
                               const SizedBox(height: 8),
-                              ...analysis.internalStakeholders!.map((s) => Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('. ', style: TextStyle(fontSize: 14)),
-                                    Expanded(child: Text(s, style: const TextStyle(fontSize: 14))),
-                                  ],
-                                ),
-                              )),
+                              ...analysis.internalStakeholders!
+                                  .map((s) => Padding(
+                                        padding:
+                                            const EdgeInsets.only(bottom: 4),
+                                        child: Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Text('. ',
+                                                style: TextStyle(fontSize: 14)),
+                                            Expanded(
+                                                child: Text(s,
+                                                    style: const TextStyle(
+                                                        fontSize: 14))),
+                                          ],
+                                        ),
+                                      )),
                             ],
-                            if ((analysis.externalStakeholders?.isEmpty ?? true) && 
-                                (analysis.internalStakeholders?.isEmpty ?? true))
-                              const Text('No stakeholders identified.', style: TextStyle(fontSize: 14)),
+                            if ((analysis.externalStakeholders?.isEmpty ??
+                                    true) &&
+                                (analysis.internalStakeholders?.isEmpty ??
+                                    true))
+                              const Text('No stakeholders identified.',
+                                  style: TextStyle(fontSize: 14)),
                           ],
                         ),
                       ),
@@ -2779,9 +2887,10 @@ class _PreferredSolutionAnalysisScreenState
 
   Widget _buildCostBenefitTable(List<CostRowData> cbaRows) {
     if (cbaRows.isEmpty) {
-      return const Text('No cost data available.', style: TextStyle(fontSize: 14));
+      return const Text('No cost data available.',
+          style: TextStyle(fontSize: 14));
     }
-    
+
     return Table(
       border: TableBorder.all(color: Colors.grey.shade300),
       children: [
@@ -2790,11 +2899,17 @@ class _PreferredSolutionAnalysisScreenState
           children: const [
             Padding(
               padding: EdgeInsets.all(8),
-              child: Center(child: Text('Item', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+              child: Center(
+                  child: Text('Item',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600, fontSize: 12))),
             ),
             Padding(
               padding: EdgeInsets.all(8),
-              child: Center(child: Text('Cost', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+              child: Center(
+                  child: Text('Cost',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600, fontSize: 12))),
             ),
           ],
         ),
@@ -2807,7 +2922,9 @@ class _PreferredSolutionAnalysisScreenState
               ),
               Padding(
                 padding: const EdgeInsets.all(8),
-                child: Center(child: Text(row.cost, style: const TextStyle(fontSize: 12))),
+                child: Center(
+                    child:
+                        Text(row.cost, style: const TextStyle(fontSize: 12))),
               ),
             ],
           ),
@@ -3653,7 +3770,6 @@ class _PreferredSolutionAnalysisScreenState
 
     return lines.isEmpty ? 'No cost analysis available' : lines.join('\n');
   }
-
 }
 
 class _SolutionAnalysisData {
@@ -3875,8 +3991,9 @@ class _ProjectOptionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor =
-        isSelected ? const Color(0xFFFFD700) : Colors.grey.withValues(alpha: 0.2);
+    final borderColor = isSelected
+        ? const Color(0xFFFFD700)
+        : Colors.grey.withValues(alpha: 0.2);
     final background = isSelected ? const Color(0xFFFFF8DC) : Colors.white;
 
     return Container(
@@ -4690,17 +4807,20 @@ class PreferredSolutionDetailsScreen extends StatefulWidget {
   final Future<void> Function() onSelectPreferred;
 
   @override
-  State<PreferredSolutionDetailsScreen> createState() => _PreferredSolutionDetailsScreenState();
+  State<PreferredSolutionDetailsScreen> createState() =>
+      _PreferredSolutionDetailsScreenState();
 }
 
-class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetailsScreen> {
+class _PreferredSolutionDetailsScreenState
+    extends State<PreferredSolutionDetailsScreen> {
   _SolutionAnalysisData get analysis => widget.analysis;
   int get index => widget.index;
   Future<void> Function() get onSelectPreferred => widget.onSelectPreferred;
 
   Widget _buildCbaDataTable(List<CostRowData> cbaRows, String currency) {
     if (cbaRows.isEmpty) {
-      return const Text('No cost analysis available.', style: TextStyle(fontSize: 14));
+      return const Text('No cost analysis available.',
+          style: TextStyle(fontSize: 14));
     }
 
     return LayoutBuilder(
@@ -4719,7 +4839,8 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
               children: [
                 // Currency indicator at top
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.blue.shade50,
                     borderRadius: BorderRadius.circular(6),
@@ -4727,7 +4848,8 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.attach_money, size: 16, color: Colors.blue.shade700),
+                      Icon(Icons.attach_money,
+                          size: 16, color: Colors.blue.shade700),
                       const SizedBox(width: 6),
                       Text(
                         'Currency: $currency',
@@ -4743,11 +4865,13 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
                 const SizedBox(height: 8),
                 // Header row - center-aligned, reduced font/padding
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.grey.shade200,
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.grey.withValues(alpha: 0.35)),
+                    border:
+                        Border.all(color: Colors.grey.withValues(alpha: 0.35)),
                   ),
                   child: Row(
                     children: [
@@ -4796,17 +4920,20 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+                    border:
+                        Border.all(color: Colors.grey.withValues(alpha: 0.25)),
                   ),
                   child: Column(
                     children: [
                       for (int i = 0; i < cbaRows.length; i++)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 8),
                           decoration: BoxDecoration(
                             border: Border(
                               top: i > 0
-                                  ? BorderSide(color: Colors.grey.withValues(alpha: 0.2))
+                                  ? BorderSide(
+                                      color: Colors.grey.withValues(alpha: 0.2))
                                   : BorderSide.none,
                             ),
                           ),
@@ -4828,7 +4955,9 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
                                 flex: 1,
                                 child: Center(
                                   child: Text(
-                                    cbaRows[i].cost.isEmpty ? '—' : cbaRows[i].cost,
+                                    cbaRows[i].cost.isEmpty
+                                        ? '—'
+                                        : cbaRows[i].cost,
                                     style: const TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w600,
@@ -4869,17 +4998,18 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
   int get _riskCount => analysis.risks.length;
   int get _techCount => analysis.technologies.length;
   int get _infraCount => analysis.infrastructure.length;
-  int get _stakeholderCount => 
-      (analysis.internalStakeholders?.length ?? 0) + 
+  int get _stakeholderCount =>
+      (analysis.internalStakeholders?.length ?? 0) +
       (analysis.externalStakeholders?.length ?? 0) +
       (analysis.stakeholders.length);
 
   Widget _buildOverviewCard(bool isSelected, List<CostRowData> cbaRows) {
     final totalCost = cbaRows.fold<double>(
-      0, 
-      (sum, row) => sum + (double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0)
-    );
-    
+        0,
+        (sum, row) =>
+            sum +
+            (double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0));
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -4894,7 +5024,8 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
           ],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
+        border:
+            Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -4925,8 +5056,8 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      analysis.solution.title.isNotEmpty 
-                          ? analysis.solution.title 
+                      analysis.solution.title.isNotEmpty
+                          ? analysis.solution.title
                           : 'Solution ${index + 1}',
                       style: const TextStyle(
                         fontSize: 20,
@@ -4937,7 +5068,8 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
                     if (isSelected)
                       Container(
                         margin: const EdgeInsets.only(top: 6),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: const Color(0xFF10B981),
                           borderRadius: BorderRadius.circular(20),
@@ -4945,7 +5077,8 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.check_circle, size: 14, color: Colors.white),
+                            Icon(Icons.check_circle,
+                                size: 14, color: Colors.white),
                             SizedBox(width: 4),
                             Text(
                               'Preferred Solution',
@@ -4966,7 +5099,7 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
           if (analysis.solution.description.isNotEmpty) ...[
             const SizedBox(height: 16),
             Text(
-              analysis.solution.description.length > 200 
+              analysis.solution.description.length > 200
                   ? '${analysis.solution.description.substring(0, 200)}...'
                   : analysis.solution.description,
               style: TextStyle(
@@ -4982,16 +5115,22 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
             spacing: 12,
             runSpacing: 12,
             children: [
-              _buildStatChip(Icons.warning_amber, '$_riskCount Risks', 
+              _buildStatChip(Icons.warning_amber, '$_riskCount Risks',
                   _riskCount > 0 ? const Color(0xFFEF4444) : Colors.grey),
-              _buildStatChip(Icons.computer, '$_techCount Technologies', 
+              _buildStatChip(Icons.computer, '$_techCount Technologies',
                   _techCount > 0 ? const Color(0xFF3B82F6) : Colors.grey),
-              _buildStatChip(Icons.construction, '$_infraCount Infrastructure', 
+              _buildStatChip(Icons.construction, '$_infraCount Infrastructure',
                   _infraCount > 0 ? const Color(0xFF8B5CF6) : Colors.grey),
-              _buildStatChip(Icons.people, '$_stakeholderCount Stakeholders', 
-                  _stakeholderCount > 0 ? const Color(0xFF10B981) : Colors.grey),
+              _buildStatChip(
+                  Icons.people,
+                  '$_stakeholderCount Stakeholders',
+                  _stakeholderCount > 0
+                      ? const Color(0xFF10B981)
+                      : Colors.grey),
               if (cbaRows.isNotEmpty)
-                _buildStatChip(Icons.attach_money, '\$${totalCost.toStringAsFixed(0)}', 
+                _buildStatChip(
+                    Icons.attach_money,
+                    '\$${totalCost.toStringAsFixed(0)}',
                     const Color(0xFFF59E0B)),
             ],
           ),
@@ -5028,9 +5167,10 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
 
   Widget _buildEnhancedRisksSection() {
     if (analysis.risks.isEmpty) {
-      return _buildEmptyState('No risks identified', Icons.check_circle, Colors.green);
+      return _buildEmptyState(
+          'No risks identified', Icons.check_circle, Colors.green);
     }
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -5076,10 +5216,12 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
   }
 
   Widget _buildEnhancedTechSection() {
-    if (analysis.technologies.isEmpty && (analysis.itConsiderationText?.isEmpty ?? true)) {
-      return _buildEmptyState('No IT considerations recorded', Icons.computer, Colors.blue);
+    if (analysis.technologies.isEmpty &&
+        (analysis.itConsiderationText?.isEmpty ?? true)) {
+      return _buildEmptyState(
+          'No IT considerations recorded', Icons.computer, Colors.blue);
     }
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -5099,28 +5241,32 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: analysis.technologies.map((tech) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFBFDBFE)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.code, size: 14, color: Color(0xFF3B82F6)),
-                  const SizedBox(width: 6),
-                  Text(
-                    tech,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF1E40AF),
-                    ),
-                  ),
-                ],
-              ),
-            )).toList(),
+            children: analysis.technologies
+                .map((tech) => Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.code,
+                              size: 14, color: Color(0xFF3B82F6)),
+                          const SizedBox(width: 6),
+                          Text(
+                            tech,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF1E40AF),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ))
+                .toList(),
           ),
         ],
       ],
@@ -5128,10 +5274,12 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
   }
 
   Widget _buildEnhancedInfraSection() {
-    if (analysis.infrastructure.isEmpty && (analysis.infraConsiderationText?.isEmpty ?? true)) {
-      return _buildEmptyState('No infrastructure considerations', Icons.construction, Colors.purple);
+    if (analysis.infrastructure.isEmpty &&
+        (analysis.infraConsiderationText?.isEmpty ?? true)) {
+      return _buildEmptyState('No infrastructure considerations',
+          Icons.construction, Colors.purple);
     }
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -5154,7 +5302,8 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.check_circle, size: 18, color: Color(0xFF8B5CF6)),
+                  const Icon(Icons.check_circle,
+                      size: 18, color: Color(0xFF8B5CF6)),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(item, style: const TextStyle(fontSize: 14)),
@@ -5170,29 +5319,34 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
     final hasStakeholders = analysis.stakeholders.isNotEmpty ||
         (analysis.internalStakeholders?.isNotEmpty ?? false) ||
         (analysis.externalStakeholders?.isNotEmpty ?? false);
-    
+
     if (!hasStakeholders) {
-      return _buildEmptyState('No stakeholders identified', Icons.people, Colors.teal);
+      return _buildEmptyState(
+          'No stakeholders identified', Icons.people, Colors.teal);
     }
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (analysis.externalStakeholders?.isNotEmpty ?? false) ...[
-          _buildStakeholderGroup('External Stakeholders', analysis.externalStakeholders!, const Color(0xFF059669)),
+          _buildStakeholderGroup('External Stakeholders',
+              analysis.externalStakeholders!, const Color(0xFF059669)),
           const SizedBox(height: 16),
         ],
         if (analysis.internalStakeholders?.isNotEmpty ?? false)
-          _buildStakeholderGroup('Internal Stakeholders', analysis.internalStakeholders!, const Color(0xFF0891B2)),
-        if (analysis.stakeholders.isNotEmpty && 
-            (analysis.externalStakeholders?.isEmpty ?? true) && 
+          _buildStakeholderGroup('Internal Stakeholders',
+              analysis.internalStakeholders!, const Color(0xFF0891B2)),
+        if (analysis.stakeholders.isNotEmpty &&
+            (analysis.externalStakeholders?.isEmpty ?? true) &&
             (analysis.internalStakeholders?.isEmpty ?? true))
-          _buildStakeholderGroup('Stakeholders', analysis.stakeholders, const Color(0xFF10B981)),
+          _buildStakeholderGroup(
+              'Stakeholders', analysis.stakeholders, const Color(0xFF10B981)),
       ],
     );
   }
 
-  Widget _buildStakeholderGroup(String title, List<String> stakeholders, Color color) {
+  Widget _buildStakeholderGroup(
+      String title, List<String> stakeholders, Color color) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -5227,25 +5381,30 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: stakeholders.map((s) => Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: color.withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.person, size: 16, color: color),
-                const SizedBox(width: 6),
-                Text(
-                  s,
-                  style: TextStyle(fontSize: 13, color: color.withValues(alpha: 0.8)),
-                ),
-              ],
-            ),
-          )).toList(),
+          children: stakeholders
+              .map((s) => Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: color.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.person, size: 16, color: color),
+                        const SizedBox(width: 6),
+                        Text(
+                          s,
+                          style: TextStyle(
+                              fontSize: 13,
+                              color: color.withValues(alpha: 0.8)),
+                        ),
+                      ],
+                    ),
+                  ))
+              .toList(),
         ),
       ],
     );
@@ -5284,14 +5443,15 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
     final selectedId = preferredAnalysis?.selectedSolutionId;
     final selectedIndex = preferredAnalysis?.selectedSolutionIndex;
     final selectedTitle = preferredAnalysis?.selectedSolutionTitle ?? '';
-    
+
     // Check if selected: Primary by index, fallback to UUID, then title
     bool isSelected = false;
     bool titlesMatch(String a, String b) =>
         a.trim().toLowerCase() == b.trim().toLowerCase();
     if (selectedIndex != null && selectedIndex == index) {
       isSelected = true;
-    } else if (selectedId != null && index < projectData.potentialSolutions.length) {
+    } else if (selectedId != null &&
+        index < projectData.potentialSolutions.length) {
       isSelected = projectData.potentialSolutions[index].id == selectedId;
     } else if (selectedTitle.isNotEmpty) {
       isSelected = titlesMatch(selectedTitle, analysis.solution.title);
@@ -5323,8 +5483,10 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
         actions: [
           TextButton.icon(
             onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.compare_arrows, size: 18, color: Color(0xFF6B7280)),
-            label: const Text('Back to Comparison', style: TextStyle(color: Color(0xFF6B7280))),
+            icon: const Icon(Icons.compare_arrows,
+                size: 18, color: Color(0xFF6B7280)),
+            label: const Text('Back to Comparison',
+                style: TextStyle(color: Color(0xFF6B7280))),
           ),
           const SizedBox(width: 8),
         ],
@@ -5339,74 +5501,89 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
                 children: [
                   // Overview Card
                   _buildOverviewCard(isSelected, cbaRows),
-                  
+
                   // Cost Benefit Analysis - Always Expanded
                   _buildSectionCard(
                     icon: Icons.attach_money,
                     iconColor: const Color(0xFFF59E0B),
                     title: 'Cost Benefit Analysis',
-                    subtitle: cbaRows.isEmpty ? 'No data available' : '${cbaRows.length} cost items',
+                    subtitle: cbaRows.isEmpty
+                        ? 'No data available'
+                        : '${cbaRows.length} cost items',
                     initiallyExpanded: true,
                     content: cbaRows.isEmpty
-                        ? _buildEmptyState('No cost analysis available', Icons.attach_money, Colors.amber)
-                        : _buildCbaDataTable(cbaRows, projectData.costBenefitCurrency),
+                        ? _buildEmptyState('No cost analysis available',
+                            Icons.attach_money, Colors.amber)
+                        : _buildCbaDataTable(
+                            cbaRows, projectData.costBenefitCurrency),
                   ),
-                  
+
                   // Risks Identified
                   _buildSectionCard(
                     icon: Icons.warning_amber,
                     iconColor: const Color(0xFFEF4444),
                     title: 'Risks Identified',
-                    subtitle: analysis.risks.isEmpty ? 'No risks' : '${analysis.risks.length} risks identified',
+                    subtitle: analysis.risks.isEmpty
+                        ? 'No risks'
+                        : '${analysis.risks.length} risks identified',
                     initiallyExpanded: analysis.risks.isNotEmpty,
                     content: _buildEnhancedRisksSection(),
                   ),
-                  
+
                   // IT Considerations
                   _buildSectionCard(
                     icon: Icons.computer,
                     iconColor: const Color(0xFF3B82F6),
                     title: 'IT Considerations',
-                    subtitle: analysis.technologies.isEmpty ? 'No data' : '${analysis.technologies.length} technologies',
+                    subtitle: analysis.technologies.isEmpty
+                        ? 'No data'
+                        : '${analysis.technologies.length} technologies',
                     initiallyExpanded: analysis.technologies.isNotEmpty,
                     content: _buildEnhancedTechSection(),
                   ),
-                  
+
                   // Infrastructure
                   _buildSectionCard(
                     icon: Icons.construction,
                     iconColor: const Color(0xFF8B5CF6),
                     title: 'Infrastructure Considerations',
-                    subtitle: analysis.infrastructure.isEmpty ? 'No data' : '${analysis.infrastructure.length} items',
+                    subtitle: analysis.infrastructure.isEmpty
+                        ? 'No data'
+                        : '${analysis.infrastructure.length} items',
                     initiallyExpanded: analysis.infrastructure.isNotEmpty,
                     content: _buildEnhancedInfraSection(),
                   ),
-                  
+
                   // Stakeholders
                   _buildSectionCard(
                     icon: Icons.people,
                     iconColor: const Color(0xFF10B981),
                     title: 'Core Stakeholders',
-                    subtitle: _stakeholderCount == 0 ? 'No stakeholders' : '$_stakeholderCount stakeholders',
+                    subtitle: _stakeholderCount == 0
+                        ? 'No stakeholders'
+                        : '$_stakeholderCount stakeholders',
                     initiallyExpanded: _stakeholderCount > 0,
                     content: _buildEnhancedStakeholdersSection(),
                   ),
-                  
+
                   // Scope Statement
                   _buildSectionCard(
                     icon: Icons.description,
                     iconColor: const Color(0xFF6366F1),
                     title: 'Scope Statement',
-                    subtitle: analysis.solution.description.isEmpty ? 'Not provided' : 'View full scope',
+                    subtitle: analysis.solution.description.isEmpty
+                        ? 'Not provided'
+                        : 'View full scope',
                     initiallyExpanded: analysis.solution.description.isNotEmpty,
                     content: analysis.solution.description.isNotEmpty
                         ? Text(
                             analysis.solution.description,
                             style: const TextStyle(fontSize: 14, height: 1.6),
                           )
-                        : _buildEmptyState('No scope statement provided', Icons.description, Colors.indigo),
+                        : _buildEmptyState('No scope statement provided',
+                            Icons.description, Colors.indigo),
                   ),
-                  
+
                   const SizedBox(height: 100), // Space for bottom buttons
                 ],
               ),
@@ -5433,7 +5610,8 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
                   icon: const Icon(Icons.arrow_back, size: 18),
                   label: const Text('Back to Selection'),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 14),
                   ),
                 ),
                 const Spacer(),
@@ -5446,7 +5624,8 @@ class _PreferredSolutionDetailsScreenState extends State<PreferredSolutionDetail
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFFF59E0B),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 14),
                   ),
                 ),
               ],
@@ -5564,7 +5743,9 @@ class _ExpandableSectionCardState extends State<_ExpandableSectionCard> {
                     ),
                   ),
                   Icon(
-                    _isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                    _isExpanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
                     color: Colors.grey[500],
                   ),
                 ],

@@ -8,6 +8,7 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/theme.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/design_phase_service.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/models/design_phase_models.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 
@@ -134,6 +135,82 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
     await DesignPhaseService.instance.saveSpecializedDesign(projectId, data);
   }
 
+  bool _isGenerating = false;
+  final OpenAiServiceSecure _openAi = OpenAiServiceSecure();
+
+  Future<void> _generateAllSpecializedDesign() async {
+    final projectId = _currentProjectId();
+    if (projectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error: No active project found.')),
+      );
+      return;
+    }
+
+    setState(() => _isGenerating = true);
+
+    try {
+      // Build context
+      final provider = ProjectDataInherited.maybeOf(context);
+      final data = provider!.projectData;
+      final contextBuffer = StringBuffer();
+      contextBuffer.writeln('Project: ${data.projectName}');
+      contextBuffer.writeln('Description: ${data.projectDescription}');
+      contextBuffer.writeln('Goals: ${data.projectGoals.join(", ")}');
+      contextBuffer.writeln('Tech Stack: ${data.technology}');
+      contextBuffer
+          .writeln('Requirements: ${data.frontEndPlanningData.requirements}');
+
+      final result = await _openAi.generateSpecializedDesign(
+        context: contextBuffer.toString(),
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        if (result.notes.isNotEmpty && _notesController.text.isEmpty) {
+          _notesController.text = result.notes;
+        }
+
+        if (result.securityPatterns.isNotEmpty) {
+          _securityRows.clear();
+          _securityRows.addAll(result.securityPatterns);
+        }
+
+        if (result.performancePatterns.isNotEmpty) {
+          _performanceRows.clear();
+          _performanceRows.addAll(result.performancePatterns);
+        }
+
+        if (result.integrationFlows.isNotEmpty) {
+          _integrationRows.clear();
+          _integrationRows.addAll(result.integrationFlows);
+        }
+      });
+
+      _scheduleSave();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Specialized Design generated successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error generating specialized design: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('AI Generation failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isGenerating = false);
+    }
+  }
+
   // Helper to build list of context-aware options (Project members)
   List<String> _ownerOptions() {
     final data = ProjectDataHelper.getData(context);
@@ -194,6 +271,37 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
                     'Capture the critical, non-generic design decisions so engineers know exactly how to implement edge cases, secure zones, and high-scale components.',
                     style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Capture the critical, non-generic design decisions so engineers know exactly how to implement edge cases, secure zones, and high-scale components.',
+                    style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // AI Generation Button
+                  if (_isGenerating)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: CircularProgressIndicator(),
+                      ),
+                    )
+                  else
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: ElevatedButton.icon(
+                        onPressed: _generateAllSpecializedDesign,
+                        icon: const Icon(Icons.auto_awesome,
+                            color: Colors.white, size: 18),
+                        label: const Text('AI Auto-Generate Design'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppSemanticColors.ai,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 24),
 
                   // Notes Input

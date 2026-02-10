@@ -1436,7 +1436,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 children: [
                   Row(
                     children: [
-                      const Text('OpenAI',
+                      const Text('KAZ AI',
                           style: TextStyle(
                               fontSize: 18, fontWeight: FontWeight.w700)),
                       const SizedBox(width: 8),
@@ -1560,9 +1560,9 @@ class _SettingsScreenState extends State<SettingsScreen>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Remove OpenAI API Key'),
+        title: const Text('Remove KAZ AI API Key'),
         content: const Text(
-            'This will disable AI features until you add a new key. Continue?'),
+            'This will disable KAZ AI features until you add a new key. Continue?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -1578,7 +1578,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('OpenAI API key removed'),
+              content: Text('KAZ AI API key removed'),
               backgroundColor: Colors.red),
         );
         setState(() {});

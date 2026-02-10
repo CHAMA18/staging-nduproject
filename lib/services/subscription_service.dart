@@ -55,37 +55,43 @@ class Subscription {
     if (pausedUntil != null && pausedUntil!.isAfter(DateTime.now())) {
       return false; // Subscription is paused
     }
-    return (status == SubscriptionStatus.active || status == SubscriptionStatus.trial) && 
-      (endDate == null || endDate!.isAfter(DateTime.now()));
+    return (status == SubscriptionStatus.active ||
+            status == SubscriptionStatus.trial) &&
+        (endDate == null || endDate!.isAfter(DateTime.now()));
   }
-  
-  bool get isTrialActive => isTrial && 
-    status == SubscriptionStatus.trial && 
-    trialEndDate != null && 
-    trialEndDate!.isAfter(DateTime.now());
-  
+
+  bool get isTrialActive =>
+      isTrial &&
+      status == SubscriptionStatus.trial &&
+      trialEndDate != null &&
+      trialEndDate!.isAfter(DateTime.now());
+
   int get trialDaysRemaining {
     if (!isTrialActive || trialEndDate == null) return 0;
     return trialEndDate!.difference(DateTime.now()).inDays;
   }
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'userId': userId,
-    'tier': tier.name,
-    'status': status.name,
-    'provider': provider.name,
-    'startDate': Timestamp.fromDate(startDate),
-    'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
-    'nextBillingDate': nextBillingDate != null ? Timestamp.fromDate(nextBillingDate!) : null,
-    'isAnnual': isAnnual,
-    'externalSubscriptionId': externalSubscriptionId,
-    'createdAt': Timestamp.fromDate(createdAt),
-    'updatedAt': Timestamp.fromDate(updatedAt),
-    'isTrial': isTrial,
-    'trialEndDate': trialEndDate != null ? Timestamp.fromDate(trialEndDate!) : null,
-    'pausedUntil': pausedUntil != null ? Timestamp.fromDate(pausedUntil!) : null,
-  };
+        'id': id,
+        'userId': userId,
+        'tier': tier.name,
+        'status': status.name,
+        'provider': provider.name,
+        'startDate': Timestamp.fromDate(startDate),
+        'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
+        'nextBillingDate': nextBillingDate != null
+            ? Timestamp.fromDate(nextBillingDate!)
+            : null,
+        'isAnnual': isAnnual,
+        'externalSubscriptionId': externalSubscriptionId,
+        'createdAt': Timestamp.fromDate(createdAt),
+        'updatedAt': Timestamp.fromDate(updatedAt),
+        'isTrial': isTrial,
+        'trialEndDate':
+            trialEndDate != null ? Timestamp.fromDate(trialEndDate!) : null,
+        'pausedUntil':
+            pausedUntil != null ? Timestamp.fromDate(pausedUntil!) : null,
+      };
 
   factory Subscription.fromJson(Map<String, dynamic> json) {
     return Subscription(
@@ -143,7 +149,8 @@ class Subscription {
       endDate: endDate ?? this.endDate,
       nextBillingDate: nextBillingDate ?? this.nextBillingDate,
       isAnnual: isAnnual ?? this.isAnnual,
-      externalSubscriptionId: externalSubscriptionId ?? this.externalSubscriptionId,
+      externalSubscriptionId:
+          externalSubscriptionId ?? this.externalSubscriptionId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isTrial: isTrial ?? this.isTrial,
@@ -173,15 +180,16 @@ class PaymentResult {
 /// Service for managing subscriptions and payments via Firebase Cloud Functions
 class SubscriptionService {
   static final _firestore = FirebaseFirestore.instance;
-  static final _subscriptionsCollection = _firestore.collection('subscriptions');
-  
+  static final _subscriptionsCollection =
+      _firestore.collection('subscriptions');
+
   /// Base URL for Cloud Functions
   static String get _cloudFunctionsBaseUrl {
     final projectId = DefaultFirebaseOptions.currentPlatform.projectId;
     // Default region us-central1 unless you deploy elsewhere
     return 'https://us-central1-$projectId.cloudfunctions.net';
   }
-  
+
   /// Free trial duration in days
   static const int trialDurationDays = 3;
 
@@ -220,7 +228,7 @@ class SubscriptionService {
       final isEligible = await isEligibleForFreeTrial();
       if (!isEligible) {
         return PaymentResult(
-          success: false, 
+          success: false,
           message: 'You have already used your free trial',
         );
       }
@@ -228,7 +236,7 @@ class SubscriptionService {
       final now = DateTime.now();
       final trialEndDate = now.add(const Duration(days: trialDurationDays));
       final docRef = _subscriptionsCollection.doc();
-      
+
       final subscription = Subscription(
         id: docRef.id,
         userId: user.uid,
@@ -255,6 +263,51 @@ class SubscriptionService {
     } catch (e) {
       debugPrint('Error starting free trial: $e');
       return PaymentResult(success: false, message: e.toString());
+    }
+  }
+
+  /// Activate a subscription via a 100% off coupon
+  static Future<bool> activateCouponSubscription({
+    required SubscriptionTier tier,
+    required bool isAnnual,
+    required String couponCode,
+  }) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return false;
+
+      final now = DateTime.now();
+      // Grant 1 year access for annual, or 1 month (but typically coupons like SAVE200 might imply longer)
+      // For now, let's treat SAVE200 as a 1 year valid period or indefinite?
+      // User didn't specify, but implies "access". Let's give 1 year for now to be safe, or 100 years.
+      // Given it's a "bypass" maybe just 1 year renewable.
+      final endDate = isAnnual
+          ? now.add(const Duration(days: 365))
+          : now.add(const Duration(days: 30));
+
+      final docRef = _subscriptionsCollection.doc();
+
+      final subscription = Subscription(
+        id: docRef.id,
+        userId: user.uid,
+        tier: tier,
+        status: SubscriptionStatus.active,
+        provider: PaymentProvider.stripe, // Placeholder provider
+        startDate: now,
+        endDate: endDate,
+        nextBillingDate: endDate,
+        isAnnual: isAnnual,
+        externalSubscriptionId: 'coupon_$couponCode',
+        createdAt: now,
+        updatedAt: now,
+        isTrial: false,
+      );
+
+      await docRef.set(subscription.toJson());
+      return true;
+    } catch (e) {
+      debugPrint('Error activating coupon subscription: $e');
+      return false;
     }
   }
 
@@ -303,10 +356,10 @@ class SubscriptionService {
       final subscription = await getCurrentSubscription();
       if (subscription == null) return false;
       if (!subscription.isActive) return false;
-      
+
       // If no specific tier requested, any active subscription is valid
       if (tier == null) return true;
-      
+
       // Check if user's subscription tier allows access to the requested tier
       // Portfolio includes Program and Project access
       // Program includes Project access
@@ -336,10 +389,10 @@ class SubscriptionService {
         .limit(1)
         .snapshots()
         .map((snapshot) {
-          if (snapshot.docs.isEmpty) return null;
-          final subscription = Subscription.fromJson(snapshot.docs.first.data());
-          return subscription.isActive ? subscription : null;
-        });
+      if (snapshot.docs.isEmpty) return null;
+      final subscription = Subscription.fromJson(snapshot.docs.first.data());
+      return subscription.isActive ? subscription : null;
+    });
   }
 
   /// Initiate a payment with Stripe
@@ -366,7 +419,8 @@ class SubscriptionService {
           'isAnnual': isAnnual,
           'userId': user.uid,
           'email': user.email,
-          if (couponCode != null && couponCode.isNotEmpty) 'couponCode': couponCode,
+          if (couponCode != null && couponCode.isNotEmpty)
+            'couponCode': couponCode,
         }),
       );
 
@@ -414,7 +468,8 @@ class SubscriptionService {
           'isAnnual': isAnnual,
           'userId': user.uid,
           'email': user.email,
-          if (couponCode != null && couponCode.isNotEmpty) 'couponCode': couponCode,
+          if (couponCode != null && couponCode.isNotEmpty)
+            'couponCode': couponCode,
         }),
       );
 
@@ -462,7 +517,8 @@ class SubscriptionService {
           'isAnnual': isAnnual,
           'userId': user.uid,
           'email': user.email,
-          if (couponCode != null && couponCode.isNotEmpty) 'couponCode': couponCode,
+          if (couponCode != null && couponCode.isNotEmpty)
+            'couponCode': couponCode,
         }),
       );
 
@@ -575,9 +631,12 @@ class SubscriptionService {
       if (user == null) return false;
 
       final pausedUntil = DateTime.now().add(Duration(days: months * 30));
-      
+
       // Update user document in Firestore
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({
         'pausedUntil': Timestamp.fromDate(pausedUntil),
         'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -597,7 +656,10 @@ class SubscriptionService {
       if (user == null) return false;
 
       // Clear paused_until from user document
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({
         'pausedUntil': FieldValue.delete(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -616,18 +678,21 @@ class SubscriptionService {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return false;
 
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
       if (!userDoc.exists) return false;
 
       final data = userDoc.data();
       final pausedUntil = data?['pausedUntil'];
-      
+
       if (pausedUntil == null) return false;
-      
+
       if (pausedUntil is Timestamp) {
         return pausedUntil.toDate().isAfter(DateTime.now());
       }
-      
+
       return false;
     } catch (e) {
       debugPrint('Error checking subscription pause status: $e');
@@ -636,20 +701,21 @@ class SubscriptionService {
   }
 
   /// Get price for a tier
-  static Map<String, String> getPriceForTier(SubscriptionTier tier, {bool annual = false}) {
+  static Map<String, String> getPriceForTier(SubscriptionTier tier,
+      {bool annual = false}) {
     switch (tier) {
       case SubscriptionTier.project:
-        return annual 
-          ? {'price': '\$790', 'period': 'per year'}
-          : {'price': '\$79', 'period': 'per month'};
+        return annual
+            ? {'price': '\$790', 'period': 'per year'}
+            : {'price': '\$79', 'period': 'per month'};
       case SubscriptionTier.program:
-        return annual 
-          ? {'price': '\$1,890', 'period': 'per year'}
-          : {'price': '\$189', 'period': 'per month'};
+        return annual
+            ? {'price': '\$1,890', 'period': 'per year'}
+            : {'price': '\$189', 'period': 'per month'};
       case SubscriptionTier.portfolio:
-        return annual 
-          ? {'price': '\$4,490', 'period': 'per year'}
-          : {'price': '\$449', 'period': 'per month'};
+        return annual
+            ? {'price': '\$4,490', 'period': 'per year'}
+            : {'price': '\$449', 'period': 'per month'};
     }
   }
 
@@ -666,7 +732,8 @@ class SubscriptionService {
   }
 
   /// Fetch invoice history for a user
-  static Future<List<Invoice>> getInvoiceHistory({String? userId, String? userEmail}) async {
+  static Future<List<Invoice>> getInvoiceHistory(
+      {String? userId, String? userEmail}) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return [];
@@ -687,8 +754,9 @@ class SubscriptionService {
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data['success'] == true) {
         final invoices = (data['invoices'] as List?)
-            ?.map((i) => Invoice.fromJson(i))
-            .toList() ?? [];
+                ?.map((i) => Invoice.fromJson(i))
+                .toList() ??
+            [];
         return invoices;
       }
       return [];
@@ -727,7 +795,8 @@ class SubscriptionService {
         return AppliedCouponResult(
           couponId: data['couponId'] ?? '',
           code: couponCode.toUpperCase(),
-          discountedPrice: (data['discountedPrice'] ?? originalPrice).toDouble(),
+          discountedPrice:
+              (data['discountedPrice'] ?? originalPrice).toDouble(),
           originalPrice: originalPrice,
           discountPercent: (data['discountPercent'] ?? 0).toDouble(),
           discountAmount: (data['discountAmount'] ?? 0).toDouble(),
@@ -797,7 +866,9 @@ class Invoice {
       status: json['status'] ?? 'unknown',
       provider: json['provider'] ?? 'unknown',
       description: json['description'] ?? 'Payment',
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : DateTime.now(),
       paidAt: json['paidAt'] != null ? DateTime.parse(json['paidAt']) : null,
       subscriptionId: json['subscriptionId'],
       externalId: json['externalId'],
@@ -806,10 +877,15 @@ class Invoice {
     );
   }
 
-  bool get isPaid => status == 'paid' || status == 'succeeded' || status == 'success';
+  bool get isPaid =>
+      status == 'paid' || status == 'succeeded' || status == 'success';
 
   String get formattedAmount {
-    final symbol = currency == 'USD' ? '\$' : currency == 'NGN' ? '₦' : currency;
+    final symbol = currency == 'USD'
+        ? '\$'
+        : currency == 'NGN'
+            ? '₦'
+            : currency;
     return '$symbol${amount.toStringAsFixed(2)}';
   }
 

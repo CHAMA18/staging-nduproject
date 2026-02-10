@@ -68,7 +68,7 @@ class _RequirementsImplementationScreenState
     super.initState();
     _notesController.addListener(_onNotesChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _loadFromFirestore();
+      await _syncAndLoad();
       final provider = ProjectDataInherited.maybeOf(context);
       final pid = provider?.projectData.projectId;
       if (pid != null && pid.isNotEmpty) {
@@ -76,6 +76,32 @@ class _RequirementsImplementationScreenState
             .saveLastPage(pid, 'requirements-implementation');
       }
     });
+  }
+
+  Future<void> _syncAndLoad() async {
+    final provider = ProjectDataInherited.maybeOf(context);
+    final projectId = provider?.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) return;
+
+    // 1. Auto-sync from scope first
+    try {
+      final addedCount = await DesignPhaseService.instance
+          .syncRequirementsFromScope(projectId);
+      if (addedCount > 0 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text('Synced $addedCount new requirements from Project Scope'),
+            backgroundColor: const Color(0xFF16A34A),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Sync error: $e');
+    }
+
+    // 2. Load data
+    await _loadFromFirestore();
   }
 
   @override
@@ -181,7 +207,7 @@ class _RequirementsImplementationScreenState
     }
 
     return ResponsiveScaffold(
-      activeItemLabel: 'Requirements Implementation',
+      activeItemLabel: 'Design Specifications',
       body: Column(
         children: [
           const PlanningPhaseHeader(

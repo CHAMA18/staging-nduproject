@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:html' as html show window;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -19,6 +21,8 @@ import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:ndu_project/widgets/design_management_widgets.dart';
 import 'package:ndu_project/widgets/design_phase_progress_indicator.dart';
+import 'package:ndu_project/services/design_phase_service.dart';
+import 'package:ndu_project/models/design_phase_models.dart';
 
 class DesignPhaseScreen extends StatefulWidget {
   const DesignPhaseScreen(
@@ -102,6 +106,8 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
     );
   }
 
+  DesignPhaseProgress? _progress;
+
   @override
   void initState() {
     super.initState();
@@ -116,10 +122,116 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
       if (pid != null && pid.isNotEmpty) {
         setState(() => _projectId = pid);
         _loadPersisted(pid);
+        _loadProgress(pid);
         // Save this page as the last visited page for the project
         await ProjectNavigationService.instance.saveLastPage(pid, 'design');
       }
     });
+  }
+
+  Future<void> _loadProgress(String projectId) async {
+    try {
+      final progress =
+          await DesignPhaseService.instance.getDesignProgress(projectId);
+      if (mounted) setState(() => _progress = progress);
+    } catch (e) {
+      debugPrint('Error loading design progress: $e');
+    }
+  }
+
+  Widget _buildDesignDashboard(double padding) {
+    if (_progress == null) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Design Progress',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                  child: _buildProgressMetric('Requirements',
+                      _progress!.specificationsProgress, Colors.blue)),
+              const SizedBox(width: 16),
+              Expanded(
+                  child: _buildProgressMetric('Alignment',
+                      _progress!.alignmentProgress, Colors.purple)),
+              const SizedBox(width: 16),
+              Expanded(
+                  child: _buildComplexityMetric(
+                      'Architecture', _nodes.length, Colors.orange)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressMetric(String label, double value, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label,
+                style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            Text('${(value * 100).toInt()}%',
+                style: TextStyle(fontWeight: FontWeight.bold, color: color)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        LinearProgressIndicator(
+          value: value,
+          backgroundColor: color.withValues(alpha: 0.1),
+          valueColor: AlwaysStoppedAnimation<Color>(color),
+          borderRadius: BorderRadius.circular(4),
+          minHeight: 6,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildComplexityMetric(String label, int value, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label,
+                style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            Text('$value nodes',
+                style: TextStyle(fontWeight: FontWeight.bold, color: color)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        LinearProgressIndicator(
+          value: value > 0
+              ? (value / 20).clamp(0.05, 1.0)
+              : 0, // Mock scale of complexity
+          backgroundColor: color.withValues(alpha: 0.1),
+          valueColor: AlwaysStoppedAnimation<Color>(color),
+          borderRadius: BorderRadius.circular(4),
+          minHeight: 6,
+        ),
+      ],
+    );
   }
 
   @override
@@ -261,7 +373,8 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
 
   static String? _hexFromColor(Color? c) {
     if (c == null) return null;
-    return '#${c.value.toRadixString(16).padLeft(8, '0').toUpperCase()}';
+    final argb = c.value;
+    return '#${argb.toRadixString(16).padLeft(8, '0').toUpperCase()}';
   }
 
   // Keep icon resolution to a known set so web builds can tree-shake icons safely.
@@ -307,6 +420,11 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Move Design Dashboard inside scroll view
+                  if (_projectId != null) ...[
+                    _buildDesignDashboard(padding),
+                    const SizedBox(height: 16),
+                  ],
                   const PlanningAiNotesCard(
                     title: 'Notes',
                     sectionLabel: 'Design',
@@ -378,166 +496,6 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildDocumentsSection() {
-    // Keep public signature for existing calls but forward to themed builder
-    return _buildDocumentsSectionThemed(context);
-  }
-
-  Widget _buildDocumentsSectionThemed(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppSemanticColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Documents',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
-              Text('${_outputDocs.length} items',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text('Input Documents',
-              style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-          const SizedBox(height: 8),
-          _buildDocStatic('API Design Spec', isActive: false),
-          _buildDocStatic('Security Requirements', isActive: false),
-          const SizedBox(height: 16),
-          Text('Output Documents',
-              style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-          const SizedBox(height: 8),
-          // DragTarget to add new output docs from the Component Library
-          DragTarget<ArchitectureDragPayload>(
-            onWillAcceptWithDetails: (_) => true,
-            onAcceptWithDetails: (details) {
-              setState(() {
-                final data = details.data;
-                _outputDocs.add(
-                  _DocItem(
-                    data.label,
-                    icon: data.icon ?? Icons.insert_drive_file_outlined,
-                    color: Colors.blueGrey,
-                  ),
-                );
-              });
-            },
-            builder: (context, candidates, rejects) {
-              return Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: candidates.isNotEmpty
-                      ? LightModeColors.accent.withValues(alpha: 0.2)
-                      : cs.surface,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppSemanticColors.border),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.download_for_offline_outlined,
-                        size: 18, color: Colors.grey[700]),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        candidates.isNotEmpty
-                            ? 'Release to add as Output Document'
-                            : 'Drag components here to add as Output Docs',
-                        style: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-          ..._outputDocs.map((d) => _buildDocDraggable(d,
-              isActive: d.title == 'System Architecture')),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDocItem(String title,
-      {IconData? icon, Color? color, bool isBlue = false}) {
-    // Legacy static builder (kept for reference)
-    return Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isBlue ? Colors.blue.withValues(alpha: 0.1) : Colors.transparent,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        children: [
-          if (icon != null)
-            Icon(icon, size: 16, color: color ?? Colors.blue)
-          else
-            const SizedBox(width: 16), // Spacer if no icon to align text
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 13,
-                color: isBlue ? Colors.blue : Colors.black87,
-                fontWeight: isBlue ? FontWeight.w500 : FontWeight.normal,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDocStatic(String title, {bool isActive = false}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        children: [
-          const SizedBox(width: 16),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontSize: 13,
-                color: Colors.black87,
-                fontWeight: FontWeight.normal,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDocDraggable(_DocItem d, {bool isActive = false}) {
-    return LongPressDraggable<_DocItem>(
-      data: d,
-      dragAnchorStrategy: pointerDragAnchorStrategy,
-      feedback: Material(
-        color: Colors.transparent,
-        child: _docChip(d, elevated: true),
-      ),
-      child: _docChip(d, elevated: isActive),
     );
   }
 
@@ -822,6 +780,98 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  void _openToolWebView(String title, String url) {
+    // For web platform, open in new tab since WebView is not supported
+    if (kIsWeb) {
+      // Open in new tab
+      html.window.open(url, '_blank');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Opening $title in new tab'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // For mobile/desktop, use modal with WebView
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(24),
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.85,
+          height: MediaQuery.of(context).size.height * 0.85,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade200),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.public, color: Colors.grey.shade700, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(context).pop(),
+                      tooltip: 'Close',
+                    ),
+                  ],
+                ),
+              ),
+              // WebView Content
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
+                  ),
+                  child: WebViewWidget(
+                    controller: WebViewController()
+                      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+                      ..loadRequest(Uri.parse(url)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1343,69 +1393,6 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
       case DesignTool.architecture:
         return '${_nodes.length} elements on canvas';
     }
-  }
-
-  void _openToolWebView(String title, String url) {
-    final controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..loadRequest(Uri.parse(url));
-
-    showDialog<void>(
-      context: context,
-      builder: (context) {
-        final size = MediaQuery.sizeOf(context);
-        final width = size.width < 980 ? size.width * 0.92 : 920.0;
-        final height = size.height < 720 ? size.height * 0.82 : 700.0;
-        return Dialog(
-          insetPadding:
-              const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: SizedBox(
-            width: width,
-            height: height,
-            child: Column(
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(color: Colors.grey.shade200),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.close, size: 18),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(16),
-                      bottomRight: Radius.circular(16),
-                    ),
-                    child: WebViewWidget(controller: controller),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
   Widget _componentTile(_PaletteItem item,

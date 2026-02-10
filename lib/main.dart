@@ -13,6 +13,7 @@ import 'package:ndu_project/routing/app_router.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:webview_flutter_platform_interface/webview_flutter_platform_interface.dart';
 import 'package:webview_flutter_web/webview_flutter_web.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -46,7 +47,8 @@ void main() async {
         message.contains('saved with invalid state') ||
         message.contains('invalid state. Nested arrays') ||
         stackTrace.contains('mode#') ||
-        (message.contains('listening to') && message.contains('invalid state'))) {
+        (message.contains('listening to') &&
+            message.contains('invalid state'))) {
       debugPrint('Route state warning suppressed: $message');
       return;
     }
@@ -79,8 +81,10 @@ void main() async {
         message.contains('saved with invalid state') ||
         message.contains('invalid state. Nested arrays') ||
         stackTrace.contains('mode#') ||
-        (message.contains('listening to') && message.contains('invalid state'))) {
-      return const SizedBox.shrink(); // Return empty widget for suppressed errors
+        (message.contains('listening to') &&
+            message.contains('invalid state'))) {
+      return const SizedBox
+          .shrink(); // Return empty widget for suppressed errors
     }
 
     // For other errors, show a friendly error screen
@@ -95,8 +99,8 @@ void main() async {
   try {
     debugPrint('Starting Firebase.initializeApp...');
     // Prevent Preview from hanging indefinitely if Firebase JS is slow/blocked on web
-    await Firebase
-        .initializeApp(options: DefaultFirebaseOptions.currentPlatform)
+    await Firebase.initializeApp(
+            options: DefaultFirebaseOptions.currentPlatform)
         .timeout(const Duration(seconds: 12));
     debugPrint('Firebase initialized');
   } on TimeoutException catch (e, st) {
@@ -129,11 +133,15 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ProjectDataProvider()),
-        ChangeNotifierProvider(create: (_) => AppContentProvider()..watchContent()..loadLocalOverrides()),
+        ChangeNotifierProvider(
+            create: (_) => AppContentProvider()
+              ..watchContent()
+              ..loadLocalOverrides()),
       ],
       child: Builder(
         builder: (context) {
-          final projectProvider = Provider.of<ProjectDataProvider>(context, listen: false);
+          final projectProvider =
+              Provider.of<ProjectDataProvider>(context, listen: false);
           return ProjectDataInherited(
             provider: projectProvider,
             child: MaterialApp.router(
@@ -163,7 +171,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-
 GoRouter _routerFor(Object? firebaseInitError) {
   if (firebaseInitError != null) {
     // Minimal router that just shows the friendly error page
@@ -173,7 +180,8 @@ GoRouter _routerFor(Object? firebaseInitError) {
           path: '/',
           builder: (context, state) => _FriendlyErrorScreen(
             title: 'Unable to connect to the cloud',
-            message: 'Firebase failed to initialize. Some features may be unavailable.',
+            message:
+                'Firebase failed to initialize. Some features may be unavailable.',
             stack: firebaseInitError.toString(),
           ),
         ),
@@ -229,7 +237,8 @@ class _MyHomePageState extends State<MyHomePage> {
 }
 
 class _FriendlyErrorScreen extends StatelessWidget {
-  const _FriendlyErrorScreen({required this.title, required this.message, this.stack});
+  const _FriendlyErrorScreen(
+      {required this.title, required this.message, this.stack});
 
   final String title;
   final String message;
@@ -254,7 +263,8 @@ class _FriendlyErrorScreen extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.warning_amber_rounded, color: theme.colorScheme.error, size: 36),
+                        Icon(Icons.warning_amber_rounded,
+                            color: theme.colorScheme.error, size: 36),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(title, style: theme.textTheme.titleLarge),
@@ -266,7 +276,8 @@ class _FriendlyErrorScreen extends StatelessWidget {
                     if (stack != null) ...[
                       const SizedBox(height: 12),
                       ExpansionTile(
-                        leading: const Icon(Icons.bug_report, color: Colors.red),
+                        leading:
+                            const Icon(Icons.bug_report, color: Colors.red),
                         title: const Text('Technical details'),
                         children: [
                           SingleChildScrollView(
@@ -286,11 +297,13 @@ class _FriendlyErrorScreen extends StatelessWidget {
                         onPressed: () {
                           // Try to navigate back safely, or do nothing if Navigator isn't available
                           try {
-                            final nav = Navigator.maybeOf(context, rootNavigator: true);
+                            final nav =
+                                Navigator.maybeOf(context, rootNavigator: true);
                             if (nav != null && nav.canPop()) {
                               nav.pop();
                             } else {
-                              debugPrint('No Navigator available or cannot pop. Please refresh the app manually.');
+                              debugPrint(
+                                  'No Navigator available or cannot pop. Please refresh the app manually.');
                             }
                           } catch (e) {
                             debugPrint('Error during retry: $e');

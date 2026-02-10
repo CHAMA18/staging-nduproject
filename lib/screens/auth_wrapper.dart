@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/screens/landing_screen.dart';
-import 'package:ndu_project/screens/pricing_screen.dart';
+import 'package:ndu_project/screens/home_screen.dart';
 import 'package:ndu_project/screens/admin/admin_home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/services/access_policy.dart';
+import 'package:ndu_project/services/subscription_service.dart'; // Added
+import 'package:ndu_project/screens/pricing_screen.dart'; // Re-added
 import 'package:ndu_project/widgets/restricted_access.dart';
 
 class AuthWrapper extends StatefulWidget {
@@ -33,12 +35,16 @@ class _AuthWrapperState extends State<AuthWrapper> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error, size: 40),
+                        Icon(Icons.error_outline,
+                            color: Theme.of(context).colorScheme.error,
+                            size: 40),
                         const SizedBox(height: 12),
-                        Text('Authentication error', style: Theme.of(context).textTheme.titleLarge),
+                        Text('Authentication error',
+                            style: Theme.of(context).textTheme.titleLarge),
                         const SizedBox(height: 8),
                         Text(
-                          snapshot.error?.toString() ?? 'An unexpected error occurred while checking your session.',
+                          snapshot.error?.toString() ??
+                              'An unexpected error occurred while checking your session.',
                           style: Theme.of(context).textTheme.bodyMedium,
                           textAlign: TextAlign.center,
                         ),
@@ -77,24 +83,33 @@ class _AuthWrapperState extends State<AuthWrapper> {
             debugPrint('Access blocked on admin host for email: ${user.email}');
             return RestrictedAccessScreen(email: user.email);
           }
-          
-          // Route based on admin status
-          return FutureBuilder<bool>(
-            future: UserService.isCurrentUserAdmin(),
-            builder: (context, adminSnapshot) {
-              if (adminSnapshot.connectionState == ConnectionState.waiting) {
+
+          // Route based on admin and subscription status
+          return FutureBuilder<List<bool>>(
+            future: Future.wait([
+              UserService.isCurrentUserAdmin(),
+              SubscriptionService.hasActiveSubscription(),
+            ]),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Scaffold(
-                  body: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  body:
+                      Center(child: CircularProgressIndicator(strokeWidth: 2)),
                 );
               }
-              
-              final isAdmin = adminSnapshot.data ?? false;
-              
+
+              final result = snapshot.data ?? [false, false];
+              final isAdmin = result[0];
+              final hasSubscription = result[1];
+
               if (isAdmin) {
                 // Admin users go to Admin Dashboard
                 return const _KeyLoader(child: AdminHomeScreen());
+              } else if (hasSubscription) {
+                // Client users with active subscription go to Dashboard
+                return const _KeyLoader(child: HomeScreen());
               } else {
-                // Client users go to Pricing Screen
+                // Client users without subscription go to Pricing
                 return const _KeyLoader(child: PricingScreen());
               }
             },

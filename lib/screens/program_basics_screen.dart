@@ -373,8 +373,7 @@ class ProjectDetailsScreen extends StatelessWidget {
 
   static void open(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute(
-          builder: (_) => const ProjectDetailsScreen()),
+      MaterialPageRoute(builder: (_) => const ProjectDetailsScreen()),
     );
   }
 
@@ -406,12 +405,10 @@ class _ProjectDetailsContent extends StatefulWidget {
   const _ProjectDetailsContent();
 
   @override
-  State<_ProjectDetailsContent> createState() =>
-      _ProjectDetailsContentState();
+  State<_ProjectDetailsContent> createState() => _ProjectDetailsContentState();
 }
 
-class _ProjectDetailsContentState
-    extends State<_ProjectDetailsContent> {
+class _ProjectDetailsContentState extends State<_ProjectDetailsContent> {
   bool _shownAiHint = false;
 
   @override
@@ -447,7 +444,8 @@ class _ProjectDetailsContentState
                     initialValue: data.notes,
                     onChanged: (val) {
                       provider.updateInitiationData(notes: val);
-                      provider.saveToFirebase(checkpoint: 'project_details_notes');
+                      provider.saveToFirebase(
+                          checkpoint: 'project_details_notes');
                     },
                   ),
                   const SizedBox(height: 28),
@@ -457,7 +455,8 @@ class _ProjectDetailsContentState
                     items: data.assumptions,
                     onChanged: (val) {
                       provider.updateField((d) => d.copyWith(assumptions: val));
-                      provider.saveToFirebase(checkpoint: 'project_details_assumptions');
+                      provider.saveToFirebase(
+                          checkpoint: 'project_details_assumptions');
                     },
                   ),
                   const SizedBox(height: 24),
@@ -467,7 +466,8 @@ class _ProjectDetailsContentState
                     items: data.constraints,
                     onChanged: (val) {
                       provider.updateField((d) => d.copyWith(constraints: val));
-                      provider.saveToFirebase(checkpoint: 'project_details_constraints');
+                      provider.saveToFirebase(
+                          checkpoint: 'project_details_constraints');
                     },
                   ),
                   const SizedBox(height: 24),
@@ -477,7 +477,8 @@ class _ProjectDetailsContentState
                     items: data.outOfScope,
                     onChanged: (val) {
                       provider.updateField((d) => d.copyWith(outOfScope: val));
-                      provider.saveToFirebase(checkpoint: 'project_details_outofscope');
+                      provider.saveToFirebase(
+                          checkpoint: 'project_details_outofscope');
                     },
                   ),
                   const SizedBox(height: 28),
@@ -515,7 +516,7 @@ void _showAiHintDialog(BuildContext context) {
                 Icon(Icons.lightbulb_outline, color: _kAccentColor, size: 36),
                 SizedBox(height: 12),
                 Text(
-                  'Although AI-generated outputs can provide valuable insights, please review and refine them as needed to ensure they align with your project requirements.',
+                  'Although KAZ AI-generated outputs can provide valuable insights, please review and refine them as needed to ensure they align with your project requirements.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: _kTextPrimary,

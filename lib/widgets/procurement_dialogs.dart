@@ -180,7 +180,8 @@ class ProcurementDialogShell extends StatelessWidget {
 }
 
 class DialogSectionTitle extends StatelessWidget {
-  const DialogSectionTitle({super.key, required this.title, required this.subtitle});
+  const DialogSectionTitle(
+      {super.key, required this.title, required this.subtitle});
 
   final String title;
   final String subtitle;
@@ -636,10 +637,8 @@ class _AddVendorDialogState extends State<AddVendorDialog> {
   @override
   void initState() {
     super.initState();
-    _nameCtrl = TextEditingController(
-        text: widget.initialVendor?.name ?? '');
-    _category = widget.initialVendor?.category ??
-        widget.categoryOptions.first;
+    _nameCtrl = TextEditingController(text: widget.initialVendor?.name ?? '');
+    _category = widget.initialVendor?.category ?? widget.categoryOptions.first;
     _rating = _ratingFromLetter(widget.initialVendor?.rating ?? 'B');
     final status = widget.initialVendor?.status.toLowerCase() ?? 'active';
     _approved = status == 'active' || status == 'approved';
@@ -821,9 +820,8 @@ class _AddVendorDialogState extends State<AddVendorDialog> {
           slaPerformance: widget.initialVendor?.slaPerformance ??
               (_rating / 5).clamp(0.0, 1.0),
           leadTime: widget.initialVendor?.leadTime ?? '14 Days',
-          requiredDeliverables:
-              widget.initialVendor?.requiredDeliverables ??
-                  '• Quarterly review\n• SLA adherence',
+          requiredDeliverables: widget.initialVendor?.requiredDeliverables ??
+              '• Quarterly review\n• SLA adherence',
           rating: _ratingToLetter(_rating),
           status: status,
           nextReview: nextReview,
@@ -1574,9 +1572,11 @@ class _AddContractDialogState extends State<AddContractDialog> {
   late TextEditingController _contractorCtrl;
   late TextEditingController _descCtrl;
   late TextEditingController _costCtrl;
-  late TextEditingController _durationCtrl;
+  late TextEditingController _ownerCtrl;
 
-  String _status = 'Draft';
+  ContractStatus _status = ContractStatus.draft;
+  DateTime? _startDate;
+  DateTime? _endDate;
 
   @override
   void initState() {
@@ -1585,7 +1585,7 @@ class _AddContractDialogState extends State<AddContractDialog> {
     _contractorCtrl = TextEditingController();
     _descCtrl = TextEditingController();
     _costCtrl = TextEditingController();
-    _durationCtrl = TextEditingController();
+    _ownerCtrl = TextEditingController();
   }
 
   @override
@@ -1594,7 +1594,7 @@ class _AddContractDialogState extends State<AddContractDialog> {
     _contractorCtrl.dispose();
     _descCtrl.dispose();
     _costCtrl.dispose();
-    _durationCtrl.dispose();
+    _ownerCtrl.dispose();
     super.dispose();
   }
 
@@ -1602,6 +1602,9 @@ class _AddContractDialogState extends State<AddContractDialog> {
     final cleaned = value.replaceAll(RegExp(r'[^0-9]'), '');
     return int.tryParse(cleaned) ?? 0;
   }
+
+  String _formatDisplayDate(DateTime date) =>
+      DateFormat('MMM d, yyyy').format(date);
 
   InputDecoration _dialogDecoration(
       {required String label,
@@ -1635,29 +1638,45 @@ class _AddContractDialogState extends State<AddContractDialog> {
   Widget build(BuildContext context) {
     return ProcurementDialogShell(
       title: 'Add Contract',
-      subtitle: 'Define a new contract agreement.',
-      icon: Icons.assignment_outlined,
+      subtitle: 'Define contract terms, owner, and duration.',
+      icon: Icons.gavel_outlined,
       contextChips: widget.contextChips,
-      primaryLabel: 'Create Contract',
+      primaryLabel: 'Add Contract',
       secondaryLabel: 'Cancel',
       onSecondary: () => Navigator.of(context).pop(),
       onPrimary: () {
         final valid = _formKey.currentState?.validate() ?? false;
         if (!valid) return;
 
+        final cost = _parseCurrency(_costCtrl.text);
         final projectId =
             ProjectDataHelper.getData(context).projectId ?? 'project-1';
-        final cost = _parseCurrency(_costCtrl.text);
+
+        // duration string calculation
+        String durationStr = '';
+        if (_startDate != null && _endDate != null) {
+          final days = _endDate!.difference(_startDate!).inDays;
+          if (days > 30) {
+            durationStr = '${(days / 30).round()} Months';
+          } else {
+            durationStr = '$days Days';
+          }
+        }
 
         final contract = ContractModel(
-          id: '', // Service generates ID
+          id: 'CNT-${DateTime.now().millisecondsSinceEpoch % 10000}',
           projectId: projectId,
           title: _titleCtrl.text.trim(),
           description: _descCtrl.text.trim(),
           contractorName: _contractorCtrl.text.trim(),
           estimatedCost: cost.toDouble(),
-          duration: _durationCtrl.text.trim(),
+          duration: durationStr,
+          startDate: _startDate,
+          endDate: _endDate,
           status: _status,
+          owner: _ownerCtrl.text.trim().isEmpty
+              ? 'Unassigned'
+              : _ownerCtrl.text.trim(),
           createdAt: DateTime.now(),
         );
         Navigator.of(context).pop(contract);
@@ -1669,63 +1688,145 @@ class _AddContractDialogState extends State<AddContractDialog> {
           children: [
             const DialogSectionTitle(
               title: 'Contract basics',
-              subtitle: 'What is being contracted and who is responsible?',
+              subtitle: 'Identify the agreement and parties.',
             ),
             TextFormField(
               controller: _titleCtrl,
               decoration: _dialogDecoration(
-                  label: 'Contract Item', hint: 'e.g. Electrical Wiring'),
-              validator: (v) =>
-                  (v == null || v.isEmpty) ? 'Title is required' : null,
+                  label: 'Contract item',
+                  hint: 'e.g. Electrical Services Agreement'),
+              validator: (value) => (value == null || value.trim().isEmpty)
+                  ? 'Title is required.'
+                  : null,
             ),
             const SizedBox(height: 12),
-            TextFormField(
-              controller: _contractorCtrl,
-              decoration: _dialogDecoration(
-                  label: 'Contractor Name', hint: 'e.g. Sparky Services'),
-              validator: (v) =>
-                  (v == null || v.isEmpty) ? 'Contractor name is required' : null,
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _contractorCtrl,
+                    decoration: _dialogDecoration(
+                        label: 'Contractor', hint: 'e.g. Acme Electric'),
+                    validator: (value) =>
+                        (value == null || value.trim().isEmpty)
+                            ? 'Required.'
+                            : null,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextFormField(
+                    controller: _ownerCtrl,
+                    decoration: _dialogDecoration(
+                        label: 'Contract Owner', hint: 'e.g. T. Ndlovu'),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _descCtrl,
               maxLines: 2,
               decoration: _dialogDecoration(
-                  label: 'Description', hint: 'Scope of work...'),
+                  label: 'Scope description',
+                  hint: 'Brief summary of services...'),
             ),
             const SizedBox(height: 18),
             const DialogSectionTitle(
-              title: 'Terms',
-              subtitle: 'Cost, duration, and status.',
+              title: 'Terms & Value',
+              subtitle: 'Set the financial and timeline bounds.',
             ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _costCtrl,
+              keyboardType: TextInputType.number,
+              decoration: _dialogDecoration(
+                  label: 'Total Value',
+                  hint: 'e.g. 150000',
+                  prefixIcon: const Icon(Icons.attach_money)),
+              validator: (value) {
+                final amount = _parseCurrency(value ?? '');
+                return amount <= 0 ? 'Enter value.' : null;
+              },
+            ),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
-                  child: TextFormField(
-                    controller: _costCtrl,
-                    decoration: _dialogDecoration(
-                        label: 'Est. Cost', prefixIcon: const Icon(Icons.attach_money)),
+                  child: InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: _startDate ?? DateTime.now(),
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(DateTime.now().year + 5),
+                      );
+                      if (picked == null) return;
+                      setState(() => _startDate = picked);
+                    },
+                    child: InputDecorator(
+                      decoration: _dialogDecoration(
+                          label: 'Start Date',
+                          prefixIcon: const Icon(Icons.calendar_today)),
+                      child: Text(
+                        _startDate == null
+                            ? 'Select'
+                            : _formatDisplayDate(_startDate!),
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: _startDate != null
+                                ? const Color(0xFF0F172A)
+                                : const Color(0xFF94A3B8)),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextFormField(
-                    controller: _durationCtrl,
-                    decoration: _dialogDecoration(
-                        label: 'Duration', hint: 'e.g. 3 months'),
+                  child: InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: _endDate ??
+                            DateTime.now().add(const Duration(days: 90)),
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(DateTime.now().year + 5),
+                      );
+                      if (picked == null) return;
+                      setState(() => _endDate = picked);
+                    },
+                    child: InputDecorator(
+                      decoration: _dialogDecoration(
+                          label: 'End Date',
+                          prefixIcon: const Icon(Icons.event_busy)),
+                      child: Text(
+                        _endDate == null
+                            ? 'Select'
+                            : _formatDisplayDate(_endDate!),
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: _endDate != null
+                                ? const Color(0xFF0F172A)
+                                : const Color(0xFF94A3B8)),
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
+            DropdownButtonFormField<ContractStatus>(
               value: _status,
               decoration: _dialogDecoration(label: 'Status'),
-              items: ['Draft', 'Active', 'Pending', 'Closed']
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+              items: ContractStatus.values
+                  .map((option) => DropdownMenuItem(
+                      value: option,
+                      child:
+                          Text(option.name.replaceAll('_', ' ').toUpperCase())))
                   .toList(),
-              onChanged: (v) {
-                if (v != null) setState(() => _status = v);
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _status = value);
               },
             ),
           ],

@@ -395,40 +395,6 @@ class _OrganizationStaffingPlanScreenState
                                   fontWeight: FontWeight.w700,
                                   color: Color(0xFF111827)),
                             ),
-                            const SizedBox(width: 12),
-                            ElevatedButton.icon(
-                              onPressed: () async {
-                                final newReq = StaffingRequirement(
-                                    title: 'New Position',
-                                    startDate: 'TBD',
-                                    endDate: 'TBD');
-                                await ProjectDataHelper.saveAndNavigate(
-                                  context: context,
-                                  checkpoint: 'organization_staffing_plan',
-                                  nextScreenBuilder: () =>
-                                      const OrganizationStaffingPlanScreen(),
-                                  dataUpdater: (d) => d.copyWith(
-                                      staffingRequirements: [
-                                        ...d.staffingRequirements,
-                                        newReq
-                                      ]),
-                                );
-                                setState(() {});
-                              },
-                              icon: const Icon(Icons.add, size: 16),
-                              label: const Text('Add Position'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFFFC107),
-                                foregroundColor: const Color(0xFF1F2933),
-                                elevation: 0,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 10),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12)),
-                                textStyle: const TextStyle(
-                                    fontSize: 13, fontWeight: FontWeight.w700),
-                              ),
-                            ),
                             const Spacer(),
                             const _UserChip(),
                           ],
@@ -464,7 +430,7 @@ class _OrganizationStaffingPlanScreenState
                           const _SectionEmptyState(
                             title: 'No staffing positions yet',
                             message:
-                                'Add positions manually or sync from defined roles.',
+                                'Sync from defined roles to populate this view.',
                             icon: Icons.group_outlined,
                           )
                         else
@@ -511,7 +477,6 @@ class _OrganizationStaffingPlanScreenState
                                           DataColumn(label: Text('Person')),
                                           DataColumn(label: Text('Location')),
                                           DataColumn(label: Text('Type')),
-                                          DataColumn(label: Text('Headcount')),
                                           DataColumn(label: Text('Status')),
                                           DataColumn(label: Text('Timeline')),
                                           DataColumn(label: Text('Actions')),
@@ -538,8 +503,6 @@ class _OrganizationStaffingPlanScreenState
                                                   : req.location)),
                                               DataCell(Text(
                                                   '${req.employmentType} / ${req.employeeType}')),
-                                              DataCell(Text(
-                                                  req.headcount.toString())),
                                               DataCell(
                                                 Container(
                                                   padding: const EdgeInsets
@@ -641,8 +604,6 @@ class _OrganizationStaffingPlanScreenState
     final titleController = TextEditingController(text: req.title);
     final personController = TextEditingController(text: req.personName);
     final locationController = TextEditingController(text: req.location);
-    final headcountController =
-        TextEditingController(text: req.headcount.toString());
     final statusController = TextEditingController(text: req.status);
     final startController = TextEditingController(text: req.startDate);
     final endController = TextEditingController(text: req.endDate);
@@ -664,7 +625,6 @@ class _OrganizationStaffingPlanScreenState
               title: titleController.text.trim(),
               personName: personController.text.trim(),
               location: locationController.text.trim(),
-              headcount: int.tryParse(headcountController.text) ?? 1,
               status: statusController.text.trim(),
               startDate: startController.text.trim(),
               endDate: endController.text.trim(),
@@ -756,18 +716,6 @@ class _OrganizationStaffingPlanScreenState
                       PremiumEditDialog.fieldLabel('Status'),
                       PremiumEditDialog.textField(
                           controller: statusController, hint: 'e.g. Hired'),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      PremiumEditDialog.fieldLabel('Headcount'),
-                      PremiumEditDialog.textField(
-                          controller: headcountController,
-                          keyboardType: TextInputType.number),
                     ],
                   ),
                 ),

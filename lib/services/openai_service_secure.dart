@@ -428,6 +428,355 @@ class OpenAiServiceSecure {
     }
   }
 
+  Future<QualitySeedBundle> generateQualitySeedBundle({
+    required String context,
+    required String section,
+    int maxTokens = 1200,
+    double temperature = 0.45,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) {
+      return QualitySeedBundle.empty();
+    }
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackQualitySeedBundle(trimmedContext, section);
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a quality management specialist. Generate realistic, actionable QA/QC planning data and return only JSON matching the requested schema.'
+        },
+        {
+          'role': 'user',
+          'content':
+              _qualitySeedPrompt(section: section, context: trimmedContext),
+        }
+      ],
+    });
+
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 16));
+      if (response.statusCode == 401) throw Exception('Invalid API key');
+      if (response.statusCode == 429) throw Exception('API quota exceeded');
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+            'OpenAI error ${response.statusCode}: ${response.body}');
+      }
+
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content =
+          (data['choices'] as List).first['message']['content'] as String;
+      final parsed = _decodeJsonSafely(content);
+      if (parsed == null) {
+        return _fallbackQualitySeedBundle(trimmedContext, section);
+      }
+
+      final standards = _parseQualityStandards(parsed['standards']);
+      final objectives = _parseQualityObjectives(parsed['objectives']);
+      final workflowControls =
+          _parseQualityWorkflowControls(parsed['workflowControls']);
+      final audits = _parseQualityAuditPlan(parsed['auditPlan']);
+
+      final dashboardRaw =
+          (parsed['dashboardConfig'] is Map) ? parsed['dashboardConfig'] : {};
+      final kpiRaw = (parsed['kpiTargets'] is Map) ? parsed['kpiTargets'] : {};
+      final targetRaw = (dashboardRaw is Map &&
+              dashboardRaw['targetTimeToResolutionDays'] != null)
+          ? dashboardRaw['targetTimeToResolutionDays']
+          : kpiRaw['targetTimeToResolutionDays'];
+      final targetDays = _toDouble(targetRaw);
+
+      return QualitySeedBundle(
+        standards: standards,
+        objectives: objectives,
+        workflowControls: workflowControls,
+        auditPlan: audits,
+        dashboardConfig: QualityDashboardConfig(
+          targetTimeToResolutionDays: targetDays <= 0 ? 15 : targetDays,
+          allowManualMetricsOverride: true,
+          maxTrendPoints: 12,
+        ),
+      );
+    } catch (e) {
+      debugPrint('generateQualitySeedBundle failed: $e');
+      return _fallbackQualitySeedBundle(trimmedContext, section);
+    }
+  }
+
+  List<Map<String, dynamic>> _asMapList(dynamic raw) {
+    if (raw is! List) return const [];
+    final result = <Map<String, dynamic>>[];
+    for (final item in raw) {
+      if (item is Map) {
+        result.add(Map<String, dynamic>.from(item));
+      }
+    }
+    return result;
+  }
+
+  List<QualityStandard> _parseQualityStandards(dynamic raw) {
+    return _asMapList(raw)
+        .map((entry) {
+          return QualityStandard(
+            id: (entry['id'] ?? DateTime.now().microsecondsSinceEpoch)
+                .toString(),
+            name: _stripAsterisks(
+                (entry['name'] ?? entry['standard'] ?? '').toString().trim()),
+            source: _stripAsterisks(
+                (entry['source'] ?? entry['framework'] ?? '')
+                    .toString()
+                    .trim()),
+            category:
+                _stripAsterisks((entry['category'] ?? '').toString().trim()),
+            description:
+                _stripAsterisks((entry['description'] ?? '').toString().trim()),
+            applicability: _stripAsterisks(
+                (entry['applicability'] ?? entry['appliesTo'] ?? '')
+                    .toString()
+                    .trim()),
+          );
+        })
+        .where((s) => s.name.isNotEmpty)
+        .toList();
+  }
+
+  List<QualityObjective> _parseQualityObjectives(dynamic raw) {
+    return _asMapList(raw)
+        .map((entry) {
+          return QualityObjective(
+            id: (entry['id'] ?? DateTime.now().microsecondsSinceEpoch)
+                .toString(),
+            title: _stripAsterisks(
+                (entry['title'] ?? entry['objective'] ?? '').toString().trim()),
+            acceptanceCriteria: _stripAsterisks(
+                (entry['acceptanceCriteria'] ?? entry['criteria'] ?? '')
+                    .toString()
+                    .trim()),
+            successMetric: _stripAsterisks(
+                (entry['successMetric'] ?? entry['metric'] ?? '')
+                    .toString()
+                    .trim()),
+            targetValue: _stripAsterisks(
+                (entry['targetValue'] ?? entry['target'] ?? '')
+                    .toString()
+                    .trim()),
+            currentValue: _stripAsterisks(
+                (entry['currentValue'] ?? '').toString().trim()),
+            owner: _stripAsterisks((entry['owner'] ?? '').toString().trim()),
+            linkedRequirement: _stripAsterisks(
+                (entry['linkedRequirement'] ?? '').toString().trim()),
+            linkedWbs:
+                _stripAsterisks((entry['linkedWbs'] ?? '').toString().trim()),
+            status:
+                _stripAsterisks((entry['status'] ?? 'Draft').toString().trim()),
+          );
+        })
+        .where((o) => o.title.isNotEmpty)
+        .toList();
+  }
+
+  List<QualityWorkflowControl> _parseQualityWorkflowControls(dynamic raw) {
+    return _asMapList(raw)
+        .map((entry) {
+          return QualityWorkflowControl(
+            id: (entry['id'] ?? DateTime.now().microsecondsSinceEpoch)
+                .toString(),
+            type: _parseWorkflowType(entry['type']),
+            name: _stripAsterisks((entry['name'] ?? '').toString().trim()),
+            method: _stripAsterisks((entry['method'] ?? '').toString().trim()),
+            tools: _stripAsterisks((entry['tools'] ?? '').toString().trim()),
+            checklist:
+                _stripAsterisks((entry['checklist'] ?? '').toString().trim()),
+            frequency:
+                _stripAsterisks((entry['frequency'] ?? '').toString().trim()),
+            owner: _stripAsterisks((entry['owner'] ?? '').toString().trim()),
+            standardsReference: _stripAsterisks(
+                (entry['standardsReference'] ?? '').toString().trim()),
+          );
+        })
+        .where((w) => w.name.isNotEmpty)
+        .toList();
+  }
+
+  List<QualityAuditEntry> _parseQualityAuditPlan(dynamic raw) {
+    return _asMapList(raw)
+        .map((entry) {
+          return QualityAuditEntry(
+            id: (entry['id'] ?? DateTime.now().microsecondsSinceEpoch)
+                .toString(),
+            title: _stripAsterisks((entry['title'] ?? '').toString().trim()),
+            scope: _stripAsterisks((entry['scope'] ?? '').toString().trim()),
+            plannedDate:
+                _stripAsterisks((entry['plannedDate'] ?? '').toString().trim()),
+            completedDate: _stripAsterisks(
+                (entry['completedDate'] ?? '').toString().trim()),
+            owner: _stripAsterisks((entry['owner'] ?? '').toString().trim()),
+            result: _parseAuditResultStatus(entry['result']),
+            findings:
+                _stripAsterisks((entry['findings'] ?? '').toString().trim()),
+            notes: _stripAsterisks((entry['notes'] ?? '').toString().trim()),
+          );
+        })
+        .where((a) => a.title.isNotEmpty)
+        .toList();
+  }
+
+  String _normalizeQualityToken(dynamic raw) {
+    return raw
+            ?.toString()
+            .trim()
+            .toLowerCase()
+            .replaceAll(RegExp(r'[\s_-]+'), '') ??
+        '';
+  }
+
+  QualityWorkflowType _parseWorkflowType(dynamic raw) {
+    final token = _normalizeQualityToken(raw);
+    if (token == 'qc' || token == 'qualitycontrol') {
+      return QualityWorkflowType.qc;
+    }
+    return QualityWorkflowType.qa;
+  }
+
+  AuditResultStatus _parseAuditResultStatus(dynamic raw) {
+    final token = _normalizeQualityToken(raw);
+    switch (token) {
+      case 'pass':
+      case 'passed':
+        return AuditResultStatus.pass;
+      case 'conditional':
+      case 'warning':
+        return AuditResultStatus.conditional;
+      case 'fail':
+      case 'failed':
+        return AuditResultStatus.fail;
+      default:
+        return AuditResultStatus.pending;
+    }
+  }
+
+  QualitySeedBundle _fallbackQualitySeedBundle(String context, String section) {
+    final scopeTag = section.trim().isEmpty ? 'Project' : section.trim();
+    return QualitySeedBundle(
+      standards: [
+        QualityStandard(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          name: 'ISO 9001-aligned process controls',
+          source: 'ISO 9001',
+          category: 'Quality Management',
+          description:
+              'Define process ownership, documented procedures, and recurring audits.',
+          applicability: scopeTag,
+        ),
+        QualityStandard(
+          id: DateTime.now()
+              .add(const Duration(microseconds: 1))
+              .microsecondsSinceEpoch
+              .toString(),
+          name: 'Project acceptance criteria governance',
+          source: 'Stakeholder requirements',
+          category: 'Acceptance',
+          description:
+              'Maintain measurable acceptance criteria per deliverable and verify before sign-off.',
+          applicability: scopeTag,
+        ),
+      ],
+      objectives: [
+        QualityObjective(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          title: 'Reduce defect leakage',
+          acceptanceCriteria:
+              'Defects identified in QA are resolved before release gates.',
+          successMetric: 'Defect leakage rate',
+          targetValue: '< 5%',
+          currentValue: '',
+          owner: '',
+          linkedRequirement: '',
+          linkedWbs: '',
+          status: 'Draft',
+        ),
+        QualityObjective(
+          id: DateTime.now()
+              .add(const Duration(microseconds: 1))
+              .microsecondsSinceEpoch
+              .toString(),
+          title: 'Improve audit readiness',
+          acceptanceCriteria:
+              'All planned quality audits executed and documented on schedule.',
+          successMetric: 'Planned audit completion',
+          targetValue: '100%',
+          currentValue: '',
+          owner: '',
+          linkedRequirement: '',
+          linkedWbs: '',
+          status: 'Draft',
+        ),
+      ],
+      workflowControls: [
+        QualityWorkflowControl(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          type: QualityWorkflowType.qa,
+          name: 'Peer review and checklist verification',
+          method: 'Review deliverables against agreed standards and templates',
+          tools: 'Review checklist, issue log',
+          checklist: 'Definition of done + quality checklist',
+          frequency: 'Weekly',
+          owner: '',
+          standardsReference: 'ISO 9001, project QA guide',
+        ),
+        QualityWorkflowControl(
+          id: DateTime.now()
+              .add(const Duration(microseconds: 1))
+              .microsecondsSinceEpoch
+              .toString(),
+          type: QualityWorkflowType.qc,
+          name: 'Inspection and audit sampling',
+          method: 'Inspect completed outputs and run quality audits',
+          tools: 'Inspection sheets, audit logs',
+          checklist: 'QC inspection criteria',
+          frequency: 'Bi-weekly',
+          owner: '',
+          standardsReference: 'Internal QC protocol',
+        ),
+      ],
+      auditPlan: [
+        QualityAuditEntry(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          title: 'Requirements quality audit',
+          scope: 'Requirements and acceptance criteria completeness',
+          plannedDate: '',
+          completedDate: '',
+          owner: '',
+          result: AuditResultStatus.pending,
+          findings: '',
+          notes:
+              'Seeded from project context: ${_excerpt(_stripAsterisks(context), 120)}',
+        ),
+      ],
+      dashboardConfig: const QualityDashboardConfig(
+        targetTimeToResolutionDays: 15,
+        allowManualMetricsOverride: true,
+        maxTrendPoints: 12,
+      ),
+    );
+  }
+
   // Generate structured Scope items (Within Scope, Out of Scope)
   Future<Map<String, List<String>>> generateProjectScope({
     required String context,
@@ -1335,6 +1684,48 @@ Guidelines:
 - Keep it 120–250 words when possible; be specific and actionable.
 - Avoid placeholders, boilerplate, and generic fluff.
 - Where helpful, use short lists (hyphen bullets) but keep structure minimal.
+
+Project context:
+"""
+$c
+"""
+''';
+  }
+
+  String _qualitySeedPrompt(
+      {required String section, required String context}) {
+    final s = _escape(section);
+    final c = _escape(context);
+    return '''
+Generate a structured quality planning seed bundle for "$s" using the project context.
+
+Return ONLY valid JSON with this exact schema:
+{
+  "standards": [
+    {"name": "", "source": "", "category": "", "description": "", "applicability": ""}
+  ],
+  "objectives": [
+    {"title": "", "acceptanceCriteria": "", "successMetric": "", "targetValue": "", "currentValue": "", "owner": "", "linkedRequirement": "", "linkedWbs": "", "status": ""}
+  ],
+  "workflowControls": [
+    {"type": "qa or qc", "name": "", "method": "", "tools": "", "checklist": "", "frequency": "", "owner": "", "standardsReference": ""}
+  ],
+  "auditPlan": [
+    {"title": "", "scope": "", "plannedDate": "", "completedDate": "", "owner": "", "result": "pending", "findings": "", "notes": ""}
+  ],
+  "kpiTargets": {
+    "targetTimeToResolutionDays": 15
+  },
+  "dashboardConfig": {
+    "targetTimeToResolutionDays": 15
+  }
+}
+
+Guidelines:
+- Focus on actionable standards, measurable objectives, and practical QA/QC controls.
+- Prefer concise, realistic entries with no placeholders.
+- Include 3-8 items for each list where possible.
+- Keep result values for audits as one of: pass, conditional, fail, pending.
 
 Project context:
 """
@@ -3682,14 +4073,69 @@ $escaped
   }
 
   String _fallbackSsherSummary(String context) {
-    final lines = context
-        .split('\n')
-        .where((line) => line.trim().isNotEmpty)
-        .take(5)
-        .join(' ');
-    return lines.isEmpty
-        ? 'SSHER plan is in progress.'
-        : 'SSHER plan summary: $lines';
+    final projectName = _extractProjectName(context);
+    final assetName = projectName.isEmpty ? 'this project' : projectName;
+    final highlights = _extractContextHighlights(
+      context,
+      const [
+        'Project Objective:',
+        'Business Case:',
+        'Potential Solution:',
+        'Front End Planning – Risks:',
+        'Front End Planning – Security:',
+        'Front End Planning – Requirements:',
+        'Front End Planning – Procurement:',
+      ],
+      maxItems: 3,
+    );
+    final focusText = highlights.isEmpty
+        ? 'project scope, delivery constraints, and stakeholder expectations'
+        : highlights.join('; ');
+
+    return 'SSHER priorities for $assetName focus on preventing safety incidents, securing assets and information, protecting workforce health, reducing environmental impact, and maintaining regulatory compliance. Current planning inputs emphasize $focusText. Each category should have clear ownership, risk ratings, mitigation actions, and weekly review cadence, with high-risk issues escalated to closure.';
+  }
+
+  List<String> _extractContextHighlights(
+    String context,
+    List<String> labels, {
+    int maxItems = 3,
+  }) {
+    final highlights = <String>[];
+    final lines = context.split('\n');
+
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i].trim();
+      if (line.isEmpty) continue;
+
+      for (final label in labels) {
+        if (!line.toLowerCase().startsWith(label.toLowerCase())) {
+          continue;
+        }
+
+        var value = '';
+        final colonIndex = line.indexOf(':');
+        if (colonIndex != -1 && colonIndex + 1 < line.length) {
+          value = line.substring(colonIndex + 1).trim();
+        }
+        if (value.isEmpty && i + 1 < lines.length) {
+          value = lines[i + 1].trim();
+        }
+        value = _stripAsterisks(value);
+        if (value.isEmpty) continue;
+
+        final exists = highlights.any(
+          (item) => item.toLowerCase() == value.toLowerCase(),
+        );
+        if (!exists) {
+          highlights.add(value);
+        }
+        if (highlights.length >= maxItems) {
+          return highlights;
+        }
+      }
+    }
+
+    return highlights;
   }
 
   String _ssherEntriesPrompt(String context, int itemsPerCategory) {
@@ -5045,6 +5491,11 @@ Additional Context: $contextNotes
   }
 
   String _escape(String v) => v.replaceAll('"', '\\"').replaceAll('\n', ' ');
+
+  String _excerpt(String value, int maxChars) {
+    if (value.length <= maxChars) return value;
+    return '${value.substring(0, maxChars - 3)}...';
+  }
 
   // PROCUREMENT - VENDORS
   Future<Map<String, dynamic>> generateVendorSuggestion({

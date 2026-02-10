@@ -3628,6 +3628,959 @@ class QcTechnique {
   }
 }
 
+enum QualityWorkflowType { qa, qc }
+
+enum QualityTaskStatus { notStarted, inProgress, complete, blocked }
+
+enum QualityTaskPriority { minimal, moderate, critical }
+
+enum AuditResultStatus { pass, conditional, fail, pending }
+
+enum CorrectiveActionStatus { open, inProgress, verified, closed, overdue }
+
+String _normalizeQualityEnumToken(String value) =>
+    value.toLowerCase().replaceAll(RegExp(r'[^a-z]'), '');
+
+QualityWorkflowType _parseWorkflowType(dynamic raw) {
+  if (raw is int && raw >= 0 && raw < QualityWorkflowType.values.length) {
+    return QualityWorkflowType.values[raw];
+  }
+  final token = _normalizeQualityEnumToken(raw?.toString() ?? '');
+  return token == 'qc' ? QualityWorkflowType.qc : QualityWorkflowType.qa;
+}
+
+QualityTaskStatus _parseQualityTaskStatus(dynamic raw) {
+  if (raw is int && raw >= 0 && raw < QualityTaskStatus.values.length) {
+    return QualityTaskStatus.values[raw];
+  }
+  final token = _normalizeQualityEnumToken(raw?.toString() ?? '');
+  switch (token) {
+    case 'inprogress':
+      return QualityTaskStatus.inProgress;
+    case 'complete':
+    case 'completed':
+      return QualityTaskStatus.complete;
+    case 'blocked':
+      return QualityTaskStatus.blocked;
+    default:
+      return QualityTaskStatus.notStarted;
+  }
+}
+
+QualityTaskPriority _parseQualityTaskPriority(dynamic raw) {
+  if (raw is int && raw >= 0 && raw < QualityTaskPriority.values.length) {
+    return QualityTaskPriority.values[raw];
+  }
+  final token = _normalizeQualityEnumToken(raw?.toString() ?? '');
+  switch (token) {
+    case 'moderate':
+    case 'medium':
+      return QualityTaskPriority.moderate;
+    case 'critical':
+    case 'high':
+      return QualityTaskPriority.critical;
+    default:
+      return QualityTaskPriority.minimal;
+  }
+}
+
+AuditResultStatus _parseAuditResultStatus(dynamic raw) {
+  if (raw is int && raw >= 0 && raw < AuditResultStatus.values.length) {
+    return AuditResultStatus.values[raw];
+  }
+  final token = _normalizeQualityEnumToken(raw?.toString() ?? '');
+  switch (token) {
+    case 'pass':
+    case 'passed':
+      return AuditResultStatus.pass;
+    case 'conditional':
+      return AuditResultStatus.conditional;
+    case 'fail':
+    case 'failed':
+      return AuditResultStatus.fail;
+    default:
+      return AuditResultStatus.pending;
+  }
+}
+
+CorrectiveActionStatus _parseCorrectiveActionStatus(dynamic raw) {
+  if (raw is int && raw >= 0 && raw < CorrectiveActionStatus.values.length) {
+    return CorrectiveActionStatus.values[raw];
+  }
+  final token = _normalizeQualityEnumToken(raw?.toString() ?? '');
+  switch (token) {
+    case 'inprogress':
+      return CorrectiveActionStatus.inProgress;
+    case 'verified':
+      return CorrectiveActionStatus.verified;
+    case 'closed':
+      return CorrectiveActionStatus.closed;
+    case 'overdue':
+      return CorrectiveActionStatus.overdue;
+    default:
+      return CorrectiveActionStatus.open;
+  }
+}
+
+String _objectiveStatusFromTargetStatus(QualityTargetStatus status) {
+  switch (status) {
+    case QualityTargetStatus.onTrack:
+      return 'On Track';
+    case QualityTargetStatus.monitoring:
+      return 'Monitoring';
+    case QualityTargetStatus.offTrack:
+      return 'Off Track';
+  }
+}
+
+class QualityStandard {
+  final String id;
+  final String name;
+  final String source;
+  final String category;
+  final String description;
+  final String applicability;
+
+  QualityStandard({
+    required this.id,
+    required this.name,
+    required this.source,
+    required this.category,
+    required this.description,
+    required this.applicability,
+  });
+
+  factory QualityStandard.empty() => QualityStandard(
+        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        name: '',
+        source: '',
+        category: '',
+        description: '',
+        applicability: '',
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'source': source,
+        'category': category,
+        'description': description,
+        'applicability': applicability,
+      };
+
+  factory QualityStandard.fromJson(Map<String, dynamic> json) {
+    return QualityStandard(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      source: json['source']?.toString() ?? '',
+      category: json['category']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      applicability: json['applicability']?.toString() ?? '',
+    );
+  }
+
+  QualityStandard copyWith({
+    String? name,
+    String? source,
+    String? category,
+    String? description,
+    String? applicability,
+  }) {
+    return QualityStandard(
+      id: id,
+      name: name ?? this.name,
+      source: source ?? this.source,
+      category: category ?? this.category,
+      description: description ?? this.description,
+      applicability: applicability ?? this.applicability,
+    );
+  }
+}
+
+class QualityObjective {
+  final String id;
+  final String title;
+  final String acceptanceCriteria;
+  final String successMetric;
+  final String targetValue;
+  final String currentValue;
+  final String owner;
+  final String linkedRequirement;
+  final String linkedWbs;
+  final String status;
+
+  QualityObjective({
+    required this.id,
+    required this.title,
+    required this.acceptanceCriteria,
+    required this.successMetric,
+    required this.targetValue,
+    required this.currentValue,
+    required this.owner,
+    required this.linkedRequirement,
+    required this.linkedWbs,
+    required this.status,
+  });
+
+  factory QualityObjective.empty() => QualityObjective(
+        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        title: '',
+        acceptanceCriteria: '',
+        successMetric: '',
+        targetValue: '',
+        currentValue: '',
+        owner: '',
+        linkedRequirement: '',
+        linkedWbs: '',
+        status: 'Draft',
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'acceptanceCriteria': acceptanceCriteria,
+        'successMetric': successMetric,
+        'targetValue': targetValue,
+        'currentValue': currentValue,
+        'owner': owner,
+        'linkedRequirement': linkedRequirement,
+        'linkedWbs': linkedWbs,
+        'status': status,
+      };
+
+  factory QualityObjective.fromJson(Map<String, dynamic> json) {
+    return QualityObjective(
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      acceptanceCriteria: json['acceptanceCriteria']?.toString() ?? '',
+      successMetric: json['successMetric']?.toString() ?? '',
+      targetValue: json['targetValue']?.toString() ?? '',
+      currentValue: json['currentValue']?.toString() ?? '',
+      owner: json['owner']?.toString() ?? '',
+      linkedRequirement: json['linkedRequirement']?.toString() ?? '',
+      linkedWbs: json['linkedWbs']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'Draft',
+    );
+  }
+
+  QualityObjective copyWith({
+    String? title,
+    String? acceptanceCriteria,
+    String? successMetric,
+    String? targetValue,
+    String? currentValue,
+    String? owner,
+    String? linkedRequirement,
+    String? linkedWbs,
+    String? status,
+  }) {
+    return QualityObjective(
+      id: id,
+      title: title ?? this.title,
+      acceptanceCriteria: acceptanceCriteria ?? this.acceptanceCriteria,
+      successMetric: successMetric ?? this.successMetric,
+      targetValue: targetValue ?? this.targetValue,
+      currentValue: currentValue ?? this.currentValue,
+      owner: owner ?? this.owner,
+      linkedRequirement: linkedRequirement ?? this.linkedRequirement,
+      linkedWbs: linkedWbs ?? this.linkedWbs,
+      status: status ?? this.status,
+    );
+  }
+}
+
+class QualityWorkflowControl {
+  final String id;
+  final QualityWorkflowType type;
+  final String name;
+  final String method;
+  final String tools;
+  final String checklist;
+  final String frequency;
+  final String owner;
+  final String standardsReference;
+
+  QualityWorkflowControl({
+    required this.id,
+    required this.type,
+    required this.name,
+    required this.method,
+    required this.tools,
+    required this.checklist,
+    required this.frequency,
+    required this.owner,
+    required this.standardsReference,
+  });
+
+  factory QualityWorkflowControl.empty(QualityWorkflowType type) =>
+      QualityWorkflowControl(
+        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        type: type,
+        name: '',
+        method: '',
+        tools: '',
+        checklist: '',
+        frequency: '',
+        owner: '',
+        standardsReference: '',
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'type': type.index,
+        'name': name,
+        'method': method,
+        'tools': tools,
+        'checklist': checklist,
+        'frequency': frequency,
+        'owner': owner,
+        'standardsReference': standardsReference,
+      };
+
+  factory QualityWorkflowControl.fromJson(Map<String, dynamic> json) {
+    return QualityWorkflowControl(
+      id: json['id']?.toString() ?? '',
+      type: _parseWorkflowType(json['type']),
+      name: json['name']?.toString() ?? '',
+      method: json['method']?.toString() ?? '',
+      tools: json['tools']?.toString() ?? '',
+      checklist: json['checklist']?.toString() ?? '',
+      frequency: json['frequency']?.toString() ?? '',
+      owner: json['owner']?.toString() ?? '',
+      standardsReference: json['standardsReference']?.toString() ?? '',
+    );
+  }
+
+  QualityWorkflowControl copyWith({
+    QualityWorkflowType? type,
+    String? name,
+    String? method,
+    String? tools,
+    String? checklist,
+    String? frequency,
+    String? owner,
+    String? standardsReference,
+  }) {
+    return QualityWorkflowControl(
+      id: id,
+      type: type ?? this.type,
+      name: name ?? this.name,
+      method: method ?? this.method,
+      tools: tools ?? this.tools,
+      checklist: checklist ?? this.checklist,
+      frequency: frequency ?? this.frequency,
+      owner: owner ?? this.owner,
+      standardsReference: standardsReference ?? this.standardsReference,
+    );
+  }
+}
+
+class QualityAuditEntry {
+  final String id;
+  final String title;
+  final String scope;
+  final String plannedDate;
+  final String completedDate;
+  final String owner;
+  final AuditResultStatus result;
+  final String findings;
+  final String notes;
+
+  QualityAuditEntry({
+    required this.id,
+    required this.title,
+    required this.scope,
+    required this.plannedDate,
+    required this.completedDate,
+    required this.owner,
+    required this.result,
+    required this.findings,
+    required this.notes,
+  });
+
+  factory QualityAuditEntry.empty() => QualityAuditEntry(
+        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        title: '',
+        scope: '',
+        plannedDate: '',
+        completedDate: '',
+        owner: '',
+        result: AuditResultStatus.pending,
+        findings: '',
+        notes: '',
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'scope': scope,
+        'plannedDate': plannedDate,
+        'completedDate': completedDate,
+        'owner': owner,
+        'result': result.index,
+        'findings': findings,
+        'notes': notes,
+      };
+
+  factory QualityAuditEntry.fromJson(Map<String, dynamic> json) {
+    return QualityAuditEntry(
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      scope: json['scope']?.toString() ?? '',
+      plannedDate: json['plannedDate']?.toString() ?? '',
+      completedDate: json['completedDate']?.toString() ?? '',
+      owner: json['owner']?.toString() ?? '',
+      result: _parseAuditResultStatus(json['result']),
+      findings: json['findings']?.toString() ?? '',
+      notes: json['notes']?.toString() ?? '',
+    );
+  }
+
+  QualityAuditEntry copyWith({
+    String? title,
+    String? scope,
+    String? plannedDate,
+    String? completedDate,
+    String? owner,
+    AuditResultStatus? result,
+    String? findings,
+    String? notes,
+  }) {
+    return QualityAuditEntry(
+      id: id,
+      title: title ?? this.title,
+      scope: scope ?? this.scope,
+      plannedDate: plannedDate ?? this.plannedDate,
+      completedDate: completedDate ?? this.completedDate,
+      owner: owner ?? this.owner,
+      result: result ?? this.result,
+      findings: findings ?? this.findings,
+      notes: notes ?? this.notes,
+    );
+  }
+}
+
+class QualityTaskEntry {
+  final String id;
+  final String task;
+  final double percentComplete;
+  final String responsible;
+  final String startDate;
+  final String endDate;
+  final int? durationDays;
+  final QualityTaskStatus status;
+  final QualityTaskPriority priority;
+  final String comments;
+  final String? resolvedDate;
+
+  QualityTaskEntry({
+    required this.id,
+    required this.task,
+    required this.percentComplete,
+    required this.responsible,
+    required this.startDate,
+    required this.endDate,
+    required this.durationDays,
+    required this.status,
+    required this.priority,
+    required this.comments,
+    required this.resolvedDate,
+  });
+
+  factory QualityTaskEntry.empty() => QualityTaskEntry(
+        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        task: '',
+        percentComplete: 0.0,
+        responsible: '',
+        startDate: '',
+        endDate: '',
+        durationDays: null,
+        status: QualityTaskStatus.notStarted,
+        priority: QualityTaskPriority.minimal,
+        comments: '',
+        resolvedDate: null,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'task': task,
+        'percentComplete': percentComplete,
+        'responsible': responsible,
+        'startDate': startDate,
+        'endDate': endDate,
+        'durationDays': durationDays,
+        'status': status.index,
+        'priority': priority.index,
+        'comments': comments,
+        'resolvedDate': resolvedDate,
+      };
+
+  factory QualityTaskEntry.fromJson(Map<String, dynamic> json) {
+    double parsePercent(dynamic raw) {
+      if (raw is num) return raw.toDouble();
+      final token = raw?.toString() ?? '';
+      final cleaned = token.replaceAll('%', '').trim();
+      return double.tryParse(cleaned) ?? 0.0;
+    }
+
+    int? parseDuration(dynamic raw) {
+      if (raw is int) return raw;
+      if (raw is num) return raw.round();
+      return int.tryParse(raw?.toString() ?? '');
+    }
+
+    return QualityTaskEntry(
+      id: json['id']?.toString() ?? '',
+      task: json['task']?.toString() ?? '',
+      percentComplete: parsePercent(json['percentComplete']),
+      responsible: json['responsible']?.toString() ?? '',
+      startDate: json['startDate']?.toString() ?? '',
+      endDate: json['endDate']?.toString() ?? '',
+      durationDays: parseDuration(json['durationDays']),
+      status: _parseQualityTaskStatus(json['status']),
+      priority: _parseQualityTaskPriority(json['priority']),
+      comments: json['comments']?.toString() ?? '',
+      resolvedDate: json['resolvedDate']?.toString(),
+    );
+  }
+
+  QualityTaskEntry copyWith({
+    String? task,
+    double? percentComplete,
+    String? responsible,
+    String? startDate,
+    String? endDate,
+    int? durationDays,
+    QualityTaskStatus? status,
+    QualityTaskPriority? priority,
+    String? comments,
+    String? resolvedDate,
+  }) {
+    return QualityTaskEntry(
+      id: id,
+      task: task ?? this.task,
+      percentComplete: percentComplete ?? this.percentComplete,
+      responsible: responsible ?? this.responsible,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      durationDays: durationDays ?? this.durationDays,
+      status: status ?? this.status,
+      priority: priority ?? this.priority,
+      comments: comments ?? this.comments,
+      resolvedDate: resolvedDate ?? this.resolvedDate,
+    );
+  }
+}
+
+class CorrectiveActionEntry {
+  final String id;
+  final String auditEntryId;
+  final String title;
+  final String rootCause;
+  final String action;
+  final String owner;
+  final String dueDate;
+  final CorrectiveActionStatus status;
+  final String createdAt;
+  final String closedAt;
+  final String verificationNotes;
+
+  CorrectiveActionEntry({
+    required this.id,
+    required this.auditEntryId,
+    required this.title,
+    required this.rootCause,
+    required this.action,
+    required this.owner,
+    required this.dueDate,
+    required this.status,
+    required this.createdAt,
+    required this.closedAt,
+    required this.verificationNotes,
+  });
+
+  factory CorrectiveActionEntry.empty() {
+    final now = DateTime.now().toIso8601String();
+    return CorrectiveActionEntry(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      auditEntryId: '',
+      title: '',
+      rootCause: '',
+      action: '',
+      owner: '',
+      dueDate: '',
+      status: CorrectiveActionStatus.open,
+      createdAt: now,
+      closedAt: '',
+      verificationNotes: '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'auditEntryId': auditEntryId,
+        'title': title,
+        'rootCause': rootCause,
+        'action': action,
+        'owner': owner,
+        'dueDate': dueDate,
+        'status': status.index,
+        'createdAt': createdAt,
+        'closedAt': closedAt,
+        'verificationNotes': verificationNotes,
+      };
+
+  factory CorrectiveActionEntry.fromJson(Map<String, dynamic> json) {
+    return CorrectiveActionEntry(
+      id: json['id']?.toString() ?? '',
+      auditEntryId: json['auditEntryId']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      rootCause: json['rootCause']?.toString() ?? '',
+      action: json['action']?.toString() ?? '',
+      owner: json['owner']?.toString() ?? '',
+      dueDate: json['dueDate']?.toString() ?? '',
+      status: _parseCorrectiveActionStatus(json['status']),
+      createdAt: json['createdAt']?.toString() ?? '',
+      closedAt: json['closedAt']?.toString() ?? '',
+      verificationNotes: json['verificationNotes']?.toString() ?? '',
+    );
+  }
+
+  CorrectiveActionEntry copyWith({
+    String? auditEntryId,
+    String? title,
+    String? rootCause,
+    String? action,
+    String? owner,
+    String? dueDate,
+    CorrectiveActionStatus? status,
+    String? createdAt,
+    String? closedAt,
+    String? verificationNotes,
+  }) {
+    return CorrectiveActionEntry(
+      id: id,
+      auditEntryId: auditEntryId ?? this.auditEntryId,
+      title: title ?? this.title,
+      rootCause: rootCause ?? this.rootCause,
+      action: action ?? this.action,
+      owner: owner ?? this.owner,
+      dueDate: dueDate ?? this.dueDate,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      closedAt: closedAt ?? this.closedAt,
+      verificationNotes: verificationNotes ?? this.verificationNotes,
+    );
+  }
+}
+
+class QualityChangeEntry {
+  final String id;
+  final String description;
+  final String reason;
+  final String requestedBy;
+  final String approvedBy;
+  final String date;
+  final String status;
+
+  QualityChangeEntry({
+    required this.id,
+    required this.description,
+    required this.reason,
+    required this.requestedBy,
+    required this.approvedBy,
+    required this.date,
+    required this.status,
+  });
+
+  factory QualityChangeEntry.empty() => QualityChangeEntry(
+        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        description: '',
+        reason: '',
+        requestedBy: '',
+        approvedBy: '',
+        date: '',
+        status: 'Draft',
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'description': description,
+        'reason': reason,
+        'requestedBy': requestedBy,
+        'approvedBy': approvedBy,
+        'date': date,
+        'status': status,
+      };
+
+  factory QualityChangeEntry.fromJson(Map<String, dynamic> json) {
+    return QualityChangeEntry(
+      id: json['id']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      reason: json['reason']?.toString() ?? '',
+      requestedBy: json['requestedBy']?.toString() ?? '',
+      approvedBy: json['approvedBy']?.toString() ?? '',
+      date: json['date']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'Draft',
+    );
+  }
+
+  QualityChangeEntry copyWith({
+    String? description,
+    String? reason,
+    String? requestedBy,
+    String? approvedBy,
+    String? date,
+    String? status,
+  }) {
+    return QualityChangeEntry(
+      id: id,
+      description: description ?? this.description,
+      reason: reason ?? this.reason,
+      requestedBy: requestedBy ?? this.requestedBy,
+      approvedBy: approvedBy ?? this.approvedBy,
+      date: date ?? this.date,
+      status: status ?? this.status,
+    );
+  }
+}
+
+class QualityDashboardConfig {
+  final double targetTimeToResolutionDays;
+  final bool allowManualMetricsOverride;
+  final int maxTrendPoints;
+
+  const QualityDashboardConfig({
+    this.targetTimeToResolutionDays = 15,
+    this.allowManualMetricsOverride = true,
+    this.maxTrendPoints = 12,
+  });
+
+  factory QualityDashboardConfig.empty() => const QualityDashboardConfig();
+
+  Map<String, dynamic> toJson() => {
+        'targetTimeToResolutionDays': targetTimeToResolutionDays,
+        'allowManualMetricsOverride': allowManualMetricsOverride,
+        'maxTrendPoints': maxTrendPoints,
+      };
+
+  factory QualityDashboardConfig.fromJson(Map<String, dynamic> json) {
+    double parseDouble(dynamic raw, double fallback) {
+      if (raw is num) return raw.toDouble();
+      return double.tryParse(raw?.toString() ?? '') ?? fallback;
+    }
+
+    return QualityDashboardConfig(
+      targetTimeToResolutionDays:
+          parseDouble(json['targetTimeToResolutionDays'], 15),
+      allowManualMetricsOverride: json['allowManualMetricsOverride'] != false,
+      maxTrendPoints: (json['maxTrendPoints'] is int)
+          ? json['maxTrendPoints'] as int
+          : int.tryParse(json['maxTrendPoints']?.toString() ?? '') ?? 12,
+    );
+  }
+
+  QualityDashboardConfig copyWith({
+    double? targetTimeToResolutionDays,
+    bool? allowManualMetricsOverride,
+    int? maxTrendPoints,
+  }) {
+    return QualityDashboardConfig(
+      targetTimeToResolutionDays:
+          targetTimeToResolutionDays ?? this.targetTimeToResolutionDays,
+      allowManualMetricsOverride:
+          allowManualMetricsOverride ?? this.allowManualMetricsOverride,
+      maxTrendPoints: maxTrendPoints ?? this.maxTrendPoints,
+    );
+  }
+}
+
+class QualityComputedSnapshot {
+  final double averageTimeToResolutionDays;
+  final double targetTimeToResolutionDays;
+  final double averageTaskCompletionPercent;
+  final double plannedAuditsCompletionPercent;
+  final Map<String, int> statusTallies;
+  final Map<String, int> priorityTallies;
+  final List<double> defectTrendData;
+  final List<double> satisfactionTrendData;
+  final String generatedAt;
+
+  const QualityComputedSnapshot({
+    required this.averageTimeToResolutionDays,
+    required this.targetTimeToResolutionDays,
+    required this.averageTaskCompletionPercent,
+    required this.plannedAuditsCompletionPercent,
+    required this.statusTallies,
+    required this.priorityTallies,
+    required this.defectTrendData,
+    required this.satisfactionTrendData,
+    required this.generatedAt,
+  });
+
+  factory QualityComputedSnapshot.empty() => QualityComputedSnapshot(
+        averageTimeToResolutionDays: 0,
+        targetTimeToResolutionDays: 15,
+        averageTaskCompletionPercent: 0,
+        plannedAuditsCompletionPercent: 0,
+        statusTallies: const {
+          'notStarted': 0,
+          'inProgress': 0,
+          'complete': 0,
+          'blocked': 0,
+        },
+        priorityTallies: const {
+          'minimal': 0,
+          'moderate': 0,
+          'critical': 0,
+        },
+        defectTrendData: const [],
+        satisfactionTrendData: const [],
+        generatedAt: '',
+      );
+
+  Map<String, dynamic> toJson() => {
+        'averageTimeToResolutionDays': averageTimeToResolutionDays,
+        'targetTimeToResolutionDays': targetTimeToResolutionDays,
+        'averageTaskCompletionPercent': averageTaskCompletionPercent,
+        'plannedAuditsCompletionPercent': plannedAuditsCompletionPercent,
+        'statusTallies': statusTallies,
+        'priorityTallies': priorityTallies,
+        'defectTrendData': defectTrendData,
+        'satisfactionTrendData': satisfactionTrendData,
+        'generatedAt': generatedAt,
+      };
+
+  factory QualityComputedSnapshot.fromJson(Map<String, dynamic> json) {
+    double parseDouble(dynamic raw) {
+      if (raw is num) return raw.toDouble();
+      return double.tryParse(raw?.toString() ?? '') ?? 0;
+    }
+
+    Map<String, int> parseIntMap(dynamic raw) {
+      if (raw is! Map) return const {};
+      final map = <String, int>{};
+      raw.forEach((key, value) {
+        if (value is int) {
+          map[key.toString()] = value;
+        } else if (value is num) {
+          map[key.toString()] = value.round();
+        } else {
+          map[key.toString()] = int.tryParse(value.toString()) ?? 0;
+        }
+      });
+      return map;
+    }
+
+    List<double> parseDoubleList(dynamic raw) {
+      if (raw is! List) return const [];
+      return raw.map((e) => parseDouble(e)).toList();
+    }
+
+    return QualityComputedSnapshot(
+      averageTimeToResolutionDays:
+          parseDouble(json['averageTimeToResolutionDays']),
+      targetTimeToResolutionDays:
+          parseDouble(json['targetTimeToResolutionDays']),
+      averageTaskCompletionPercent:
+          parseDouble(json['averageTaskCompletionPercent']),
+      plannedAuditsCompletionPercent:
+          parseDouble(json['plannedAuditsCompletionPercent']),
+      statusTallies: parseIntMap(json['statusTallies']),
+      priorityTallies: parseIntMap(json['priorityTallies']),
+      defectTrendData: parseDoubleList(json['defectTrendData']),
+      satisfactionTrendData: parseDoubleList(json['satisfactionTrendData']),
+      generatedAt: json['generatedAt']?.toString() ?? '',
+    );
+  }
+
+  QualityComputedSnapshot copyWith({
+    double? averageTimeToResolutionDays,
+    double? targetTimeToResolutionDays,
+    double? averageTaskCompletionPercent,
+    double? plannedAuditsCompletionPercent,
+    Map<String, int>? statusTallies,
+    Map<String, int>? priorityTallies,
+    List<double>? defectTrendData,
+    List<double>? satisfactionTrendData,
+    String? generatedAt,
+  }) {
+    return QualityComputedSnapshot(
+      averageTimeToResolutionDays:
+          averageTimeToResolutionDays ?? this.averageTimeToResolutionDays,
+      targetTimeToResolutionDays:
+          targetTimeToResolutionDays ?? this.targetTimeToResolutionDays,
+      averageTaskCompletionPercent:
+          averageTaskCompletionPercent ?? this.averageTaskCompletionPercent,
+      plannedAuditsCompletionPercent:
+          plannedAuditsCompletionPercent ?? this.plannedAuditsCompletionPercent,
+      statusTallies: statusTallies ?? this.statusTallies,
+      priorityTallies: priorityTallies ?? this.priorityTallies,
+      defectTrendData: defectTrendData ?? this.defectTrendData,
+      satisfactionTrendData:
+          satisfactionTrendData ?? this.satisfactionTrendData,
+      generatedAt: generatedAt ?? this.generatedAt,
+    );
+  }
+}
+
+class QualitySeedBundle {
+  final List<QualityStandard> standards;
+  final List<QualityObjective> objectives;
+  final List<QualityWorkflowControl> workflowControls;
+  final List<QualityAuditEntry> auditPlan;
+  final QualityDashboardConfig dashboardConfig;
+
+  QualitySeedBundle({
+    required this.standards,
+    required this.objectives,
+    required this.workflowControls,
+    required this.auditPlan,
+    required this.dashboardConfig,
+  });
+
+  factory QualitySeedBundle.empty() => QualitySeedBundle(
+        standards: const [],
+        objectives: const [],
+        workflowControls: const [],
+        auditPlan: const [],
+        dashboardConfig: QualityDashboardConfig.empty(),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'standards': standards.map((e) => e.toJson()).toList(),
+        'objectives': objectives.map((e) => e.toJson()).toList(),
+        'workflowControls': workflowControls.map((e) => e.toJson()).toList(),
+        'auditPlan': auditPlan.map((e) => e.toJson()).toList(),
+        'dashboardConfig': dashboardConfig.toJson(),
+      };
+
+  factory QualitySeedBundle.fromJson(Map<String, dynamic> json) {
+    return QualitySeedBundle(
+      standards: (json['standards'] as List?)
+              ?.map((e) => QualityStandard.fromJson(e))
+              .toList() ??
+          [],
+      objectives: (json['objectives'] as List?)
+              ?.map((e) => QualityObjective.fromJson(e))
+              .toList() ??
+          [],
+      workflowControls: (json['workflowControls'] as List?)
+              ?.map((e) => QualityWorkflowControl.fromJson(e))
+              .toList() ??
+          [],
+      auditPlan: (json['auditPlan'] as List?)
+              ?.map((e) => QualityAuditEntry.fromJson(e))
+              .toList() ??
+          [],
+      dashboardConfig: json['dashboardConfig'] != null
+          ? QualityDashboardConfig.fromJson(
+              Map<String, dynamic>.from(json['dashboardConfig'] as Map))
+          : QualityDashboardConfig.empty(),
+    );
+  }
+}
+
 class MetricValue {
   final String value;
   final String unit;
@@ -3749,71 +4702,247 @@ class QualityMetrics {
 
 class QualityManagementData {
   final String qualityPlan;
+  final String reviewCadence;
+  final String escalationPath;
+  final String changeControlProcess;
   final List<QualityTarget> targets;
   final List<QaTechnique> qaTechniques;
   final List<QcTechnique> qcTechniques;
   final QualityMetrics metrics;
+  final List<QualityStandard> standards;
+  final List<QualityObjective> objectives;
+  final List<QualityWorkflowControl> workflowControls;
+  final List<QualityAuditEntry> auditPlan;
+  final List<QualityTaskEntry> qaTaskLog;
+  final List<QualityTaskEntry> qcTaskLog;
+  final List<CorrectiveActionEntry> correctiveActions;
+  final List<QualityChangeEntry> qualityChangeLog;
+  final QualityDashboardConfig dashboardConfig;
+  final QualityComputedSnapshot? computedSnapshot;
 
   QualityManagementData({
     required this.qualityPlan,
+    required this.reviewCadence,
+    required this.escalationPath,
+    required this.changeControlProcess,
     required this.targets,
     required this.qaTechniques,
     required this.qcTechniques,
     required this.metrics,
+    required this.standards,
+    required this.objectives,
+    required this.workflowControls,
+    required this.auditPlan,
+    required this.qaTaskLog,
+    required this.qcTaskLog,
+    required this.correctiveActions,
+    required this.qualityChangeLog,
+    required this.dashboardConfig,
+    required this.computedSnapshot,
   });
 
   factory QualityManagementData.empty() {
     return QualityManagementData(
       qualityPlan: '',
+      reviewCadence: '',
+      escalationPath: '',
+      changeControlProcess: '',
       targets: [],
       qaTechniques: [],
       qcTechniques: [],
       metrics: QualityMetrics.empty(),
+      standards: [],
+      objectives: [],
+      workflowControls: [],
+      auditPlan: [],
+      qaTaskLog: [],
+      qcTaskLog: [],
+      correctiveActions: [],
+      qualityChangeLog: [],
+      dashboardConfig: QualityDashboardConfig.empty(),
+      computedSnapshot: null,
     );
   }
 
   Map<String, dynamic> toJson() => {
         'qualityPlan': qualityPlan,
+        'reviewCadence': reviewCadence,
+        'escalationPath': escalationPath,
+        'changeControlProcess': changeControlProcess,
         'targets': targets.map((t) => t.toJson()).toList(),
         'qaTechniques': qaTechniques.map((t) => t.toJson()).toList(),
         'qcTechniques': qcTechniques.map((t) => t.toJson()).toList(),
         'metrics': metrics.toJson(),
+        'standards': standards.map((s) => s.toJson()).toList(),
+        'objectives': objectives.map((o) => o.toJson()).toList(),
+        'workflowControls': workflowControls.map((w) => w.toJson()).toList(),
+        'auditPlan': auditPlan.map((a) => a.toJson()).toList(),
+        'qaTaskLog': qaTaskLog.map((t) => t.toJson()).toList(),
+        'qcTaskLog': qcTaskLog.map((t) => t.toJson()).toList(),
+        'correctiveActions': correctiveActions.map((c) => c.toJson()).toList(),
+        'qualityChangeLog': qualityChangeLog.map((c) => c.toJson()).toList(),
+        'dashboardConfig': dashboardConfig.toJson(),
+        'computedSnapshot': computedSnapshot?.toJson(),
       };
 
   factory QualityManagementData.fromJson(Map<String, dynamic> json) {
+    final legacyTargets = (json['targets'] as List?)
+            ?.map((e) => QualityTarget.fromJson(e))
+            .toList() ??
+        [];
+    final legacyQaTechniques = (json['qaTechniques'] as List?)
+            ?.map((e) => QaTechnique.fromJson(e))
+            .toList() ??
+        [];
+    final legacyQcTechniques = (json['qcTechniques'] as List?)
+            ?.map((e) => QcTechnique.fromJson(e))
+            .toList() ??
+        [];
+
+    final parsedObjectives = (json['objectives'] as List?)
+            ?.map((e) => QualityObjective.fromJson(e))
+            .toList() ??
+        [];
+    final parsedWorkflowControls = (json['workflowControls'] as List?)
+            ?.map((e) => QualityWorkflowControl.fromJson(e))
+            .toList() ??
+        [];
+
+    final derivedObjectives = parsedObjectives.isNotEmpty
+        ? parsedObjectives
+        : legacyTargets
+            .map((t) => QualityObjective(
+                  id: t.id,
+                  title: t.name,
+                  acceptanceCriteria: t.target,
+                  successMetric: t.metric,
+                  targetValue: t.target,
+                  currentValue: t.current,
+                  owner: '',
+                  linkedRequirement: '',
+                  linkedWbs: '',
+                  status: _objectiveStatusFromTargetStatus(t.status),
+                ))
+            .toList();
+
+    final derivedWorkflowControls = parsedWorkflowControls.isNotEmpty
+        ? parsedWorkflowControls
+        : [
+            ...legacyQaTechniques.map(
+              (t) => QualityWorkflowControl(
+                id: t.id,
+                type: QualityWorkflowType.qa,
+                name: t.name,
+                method: t.description,
+                tools: '',
+                checklist: '',
+                frequency: t.frequency,
+                owner: '',
+                standardsReference: t.standards,
+              ),
+            ),
+            ...legacyQcTechniques.map(
+              (t) => QualityWorkflowControl(
+                id: t.id,
+                type: QualityWorkflowType.qc,
+                name: t.name,
+                method: t.description,
+                tools: '',
+                checklist: '',
+                frequency: t.frequency,
+                owner: '',
+                standardsReference: '',
+              ),
+            ),
+          ];
+
     return QualityManagementData(
       qualityPlan: json['qualityPlan']?.toString() ?? '',
-      targets: (json['targets'] as List?)
-              ?.map((e) => QualityTarget.fromJson(e))
-              .toList() ??
-          [],
-      qaTechniques: (json['qaTechniques'] as List?)
-              ?.map((e) => QaTechnique.fromJson(e))
-              .toList() ??
-          [],
-      qcTechniques: (json['qcTechniques'] as List?)
-              ?.map((e) => QcTechnique.fromJson(e))
-              .toList() ??
-          [],
+      reviewCadence: json['reviewCadence']?.toString() ?? '',
+      escalationPath: json['escalationPath']?.toString() ?? '',
+      changeControlProcess: json['changeControlProcess']?.toString() ?? '',
+      targets: legacyTargets,
+      qaTechniques: legacyQaTechniques,
+      qcTechniques: legacyQcTechniques,
       metrics: json['metrics'] != null
           ? QualityMetrics.fromJson(json['metrics'])
           : QualityMetrics.empty(),
+      standards: (json['standards'] as List?)
+              ?.map((e) => QualityStandard.fromJson(e))
+              .toList() ??
+          [],
+      objectives: derivedObjectives,
+      workflowControls: derivedWorkflowControls,
+      auditPlan: (json['auditPlan'] as List?)
+              ?.map((e) => QualityAuditEntry.fromJson(e))
+              .toList() ??
+          [],
+      qaTaskLog: (json['qaTaskLog'] as List?)
+              ?.map((e) => QualityTaskEntry.fromJson(e))
+              .toList() ??
+          [],
+      qcTaskLog: (json['qcTaskLog'] as List?)
+              ?.map((e) => QualityTaskEntry.fromJson(e))
+              .toList() ??
+          [],
+      correctiveActions: (json['correctiveActions'] as List?)
+              ?.map((e) => CorrectiveActionEntry.fromJson(e))
+              .toList() ??
+          [],
+      qualityChangeLog: (json['qualityChangeLog'] as List?)
+              ?.map((e) => QualityChangeEntry.fromJson(e))
+              .toList() ??
+          [],
+      dashboardConfig: json['dashboardConfig'] != null
+          ? QualityDashboardConfig.fromJson(
+              Map<String, dynamic>.from(json['dashboardConfig'] as Map))
+          : QualityDashboardConfig.empty(),
+      computedSnapshot: json['computedSnapshot'] != null
+          ? QualityComputedSnapshot.fromJson(
+              Map<String, dynamic>.from(json['computedSnapshot'] as Map))
+          : null,
     );
   }
 
   QualityManagementData copyWith({
     String? qualityPlan,
+    String? reviewCadence,
+    String? escalationPath,
+    String? changeControlProcess,
     List<QualityTarget>? targets,
     List<QaTechnique>? qaTechniques,
     List<QcTechnique>? qcTechniques,
     QualityMetrics? metrics,
+    List<QualityStandard>? standards,
+    List<QualityObjective>? objectives,
+    List<QualityWorkflowControl>? workflowControls,
+    List<QualityAuditEntry>? auditPlan,
+    List<QualityTaskEntry>? qaTaskLog,
+    List<QualityTaskEntry>? qcTaskLog,
+    List<CorrectiveActionEntry>? correctiveActions,
+    List<QualityChangeEntry>? qualityChangeLog,
+    QualityDashboardConfig? dashboardConfig,
+    QualityComputedSnapshot? computedSnapshot,
   }) {
     return QualityManagementData(
       qualityPlan: qualityPlan ?? this.qualityPlan,
+      reviewCadence: reviewCadence ?? this.reviewCadence,
+      escalationPath: escalationPath ?? this.escalationPath,
+      changeControlProcess: changeControlProcess ?? this.changeControlProcess,
       targets: targets ?? this.targets,
       qaTechniques: qaTechniques ?? this.qaTechniques,
       qcTechniques: qcTechniques ?? this.qcTechniques,
       metrics: metrics ?? this.metrics,
+      standards: standards ?? this.standards,
+      objectives: objectives ?? this.objectives,
+      workflowControls: workflowControls ?? this.workflowControls,
+      auditPlan: auditPlan ?? this.auditPlan,
+      qaTaskLog: qaTaskLog ?? this.qaTaskLog,
+      qcTaskLog: qcTaskLog ?? this.qcTaskLog,
+      correctiveActions: correctiveActions ?? this.correctiveActions,
+      qualityChangeLog: qualityChangeLog ?? this.qualityChangeLog,
+      dashboardConfig: dashboardConfig ?? this.dashboardConfig,
+      computedSnapshot: computedSnapshot ?? this.computedSnapshot,
     );
   }
 }

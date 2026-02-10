@@ -210,6 +210,53 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
     );
   }
 
+  Future<void> _retrySummaryGeneration() async {
+    if (_isGeneratingSummary) return;
+    setState(() {
+      _summaryLoaded = false;
+      _aiPlanSummary = '';
+    });
+    await _populateSsherSummaryFromAi();
+  }
+
+  String _buildSummaryPlaceholderText() {
+    final entries = _allEntries();
+    if (entries.isEmpty) {
+      return 'No AI summary has been generated yet. Add SSHER notes or at least one item in any category, then tap "Try Generate Again".';
+    }
+
+    final categoryCoverage = <String>[
+      if (_safetyEntries.isNotEmpty) 'Safety (${_safetyEntries.length})',
+      if (_securityEntries.isNotEmpty) 'Security (${_securityEntries.length})',
+      if (_healthEntries.isNotEmpty) 'Health (${_healthEntries.length})',
+      if (_environmentEntries.isNotEmpty)
+        'Environment (${_environmentEntries.length})',
+      if (_regulatoryEntries.isNotEmpty)
+        'Regulatory (${_regulatoryEntries.length})',
+    ];
+
+    final highRiskCount = entries
+        .where((entry) => entry.riskLevel.trim().toLowerCase() == 'high')
+        .length;
+    final mediumRiskCount = entries
+        .where((entry) => entry.riskLevel.trim().toLowerCase() == 'medium')
+        .length;
+    final topConcerns = entries
+        .map((entry) => entry.concern.trim())
+        .where((concern) => concern.isNotEmpty)
+        .take(2)
+        .toList();
+    final coverageText = categoryCoverage.isEmpty
+        ? 'tracked SSHER categories'
+        : categoryCoverage.join(', ');
+
+    final concernText = topConcerns.isEmpty
+        ? ''
+        : ' Current concerns: ${topConcerns.join(' | ')}.';
+
+    return 'No AI summary has been generated yet. You currently have ${entries.length} SSHER items across $coverageText with $highRiskCount high-risk and $mediumRiskCount medium-risk entries.$concernText';
+  }
+
   List<SsherEntry> _entriesForCategory(_SsherCategory category) {
     switch (category) {
       case _SsherCategory.safety:
@@ -550,7 +597,7 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
                       child: EditableContentText(
                         contentKey: 'ssher_plan_summary_description',
                         fallback:
-                            'This SSHER plan encompasses comprehensive risk management across all operational domains.',
+                            'AI-generated SSHER summary appears below once project context is available. If unavailable, use notes and category tables to capture key risks and mitigations.',
                         style: TextStyle(fontSize: 13, color: Colors.grey[700]),
                         category: 'ssher',
                       ),
@@ -608,6 +655,64 @@ class _SsherStackedScreenState extends State<SsherStackedScreen> {
                                 color: Colors.grey[800],
                                 fontSize: 14,
                                 height: 1.5)),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFBEB),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFFDE68A)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.auto_awesome_outlined,
+                            color: Color(0xFFB45309), size: 18),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'AI-generated SSHER Summary Unavailable',
+                                style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF92400E)),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                _buildSummaryPlaceholderText(),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  height: 1.45,
+                                  color: Color(0xFF92400E),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              OutlinedButton.icon(
+                                onPressed: () => _retrySummaryGeneration(),
+                                icon: const Icon(Icons.refresh, size: 16),
+                                label: const Text('Try Generate Again'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF92400E),
+                                  side: const BorderSide(
+                                      color: Color(0xFFF59E0B)),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 10),
+                                  textStyle: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),

@@ -18,7 +18,9 @@ import 'package:ndu_project/screens/front_end_planning_allowance.dart';
 import 'package:ndu_project/screens/front_end_planning_milestone.dart';
 import 'package:ndu_project/screens/project_charter_screen.dart';
 import 'package:ndu_project/screens/project_framework_screen.dart';
+import 'package:ndu_project/screens/project_framework_next_screen.dart';
 import 'package:ndu_project/screens/work_breakdown_structure_screen.dart';
+import 'package:ndu_project/screens/planning_requirements_screen.dart';
 import 'package:ndu_project/screens/ssher_stacked_screen.dart';
 import 'package:ndu_project/screens/change_management_screen.dart';
 import 'package:ndu_project/screens/issue_management_screen.dart';
@@ -29,6 +31,7 @@ import 'package:ndu_project/screens/project_plan_screen.dart';
 import 'package:ndu_project/screens/execution_plan_screen.dart';
 import 'package:ndu_project/screens/schedule_screen.dart';
 import 'package:ndu_project/screens/design_phase_screen.dart';
+import 'package:ndu_project/screens/design_planning_screen.dart';
 import 'package:ndu_project/screens/front_end_planning_technology_screen.dart';
 import 'package:ndu_project/screens/interface_management_screen.dart';
 import 'package:ndu_project/screens/startup_planning_screen.dart';
@@ -186,8 +189,12 @@ class NavigationRouteResolver {
       // Planning Phase
       case 'project_framework':
         return const ProjectFrameworkScreen();
+      case 'project_goals_milestones':
+        return const ProjectFrameworkNextScreen();
       case 'work_breakdown_structure':
         return const WorkBreakdownStructureScreen();
+      case 'requirements':
+        return const PlanningRequirementsScreen();
       case 'ssher':
         return const SsherStackedScreen();
       case 'change_management':
@@ -207,8 +214,9 @@ class NavigationRouteResolver {
       case 'schedule':
         return const ScheduleScreen();
       case 'design':
+        return const DesignPlanningScreen();
       case 'design_management':
-        return const DesignPhaseScreen(activeItemLabel: 'Design');
+        return const DesignPhaseScreen(activeItemLabel: 'Design Management');
       case 'technology':
         return const FrontEndPlanningTechnologyScreen();
       case 'interface_management':

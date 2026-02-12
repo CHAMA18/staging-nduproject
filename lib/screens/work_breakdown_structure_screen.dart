@@ -1,10 +1,15 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/utils/download_helper.dart' as download_helper;
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/services/project_route_registry.dart';
@@ -96,6 +101,9 @@ class _WorkBreakdownStructureBodyState
   List<WorkItem> _wbsItems = [];
   final List<String> _goalTitles = List.filled(3, '');
   final List<String> _goalDescriptions = List.filled(3, '');
+  final Set<String> _collapsedNodeIds = {};
+  Map<String, dynamic>? _contextSnapshot;
+  DateTime? _contextCapturedAt;
 
   @override
   void initState() {
@@ -152,6 +160,7 @@ class _WorkBreakdownStructureBodyState
         _wbsItems.add(newNode);
       } else {
         parent.children.add(newNode);
+        _collapsedNodeIds.remove(parent.id);
       }
     });
   }
@@ -291,6 +300,7 @@ class _WorkBreakdownStructureBodyState
       } else {
         _removeNodeFromChildren(_wbsItems, node);
       }
+      _removeCollapsedIds(node);
     });
   }
 
@@ -301,6 +311,13 @@ class _WorkBreakdownStructureBodyState
         return;
       }
       _removeNodeFromChildren(item.children, nodeToRemove);
+    }
+  }
+
+  void _removeCollapsedIds(WorkItem node) {
+    _collapsedNodeIds.remove(node.id);
+    for (final child in node.children) {
+      _removeCollapsedIds(child);
     }
   }
 
@@ -323,6 +340,7 @@ class _WorkBreakdownStructureBodyState
     });
 
     try {
+      final contextSnapshot = _buildContextSnapshot(projectData);
       final generatedItems = await OpenAiServiceSecure().generateWbsStructure(
         projectName: projectData.projectName,
         projectObjective: projectData.projectObjective,
@@ -335,6 +353,8 @@ class _WorkBreakdownStructureBodyState
         setState(() {
           _trimWbsDepth(generatedItems, _maxWbsDepth);
           _wbsItems = generatedItems;
+          _contextSnapshot = contextSnapshot;
+          _contextCapturedAt = DateTime.now();
         });
 
         if (mounted) {
@@ -549,11 +569,12 @@ class _WorkBreakdownStructureBodyState
   }
 
   Widget _buildWbsNodeRecursive(WorkItem item, {required List<int> path}) {
+    final isCollapsed = _collapsedNodeIds.contains(item.id);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildWbsNodeCard(item, path: path),
-        if (item.children.isNotEmpty) ...[
+        if (item.children.isNotEmpty && !isCollapsed) ...[
           const SizedBox(height: 24),
           Padding(
             padding: const EdgeInsets.only(left: 32),
@@ -578,6 +599,7 @@ class _WorkBreakdownStructureBodyState
     final nodeColor = _getNodeColor(level);
     final canAddChild = path.length < _maxWbsDepth;
     final displayTitle = _formatWbsTitle(path: path, title: item.title);
+    final isCollapsed = _collapsedNodeIds.contains(item.id);
     return Container(
       width: 280,
       decoration: BoxDecoration(
@@ -622,6 +644,19 @@ class _WorkBreakdownStructureBodyState
                       ),
                     ),
                     _buildStatusIcon(item.status),
+                    if (item.children.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => _toggleCollapse(item),
+                        child: Icon(
+                          isCollapsed
+                              ? Icons.chevron_right
+                              : Icons.expand_more,
+                          size: 18,
+                          color: _kSecondaryText,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
                 if (item.description.isNotEmpty) ...[
@@ -633,6 +668,16 @@ class _WorkBreakdownStructureBodyState
                     style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
+                        color: _kSecondaryText),
+                  ),
+                ],
+                if (item.children.isNotEmpty && isCollapsed) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    '${item.children.length} sub-items hidden',
+                    style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
                         color: _kSecondaryText),
                   ),
                 ],
@@ -835,6 +880,358 @@ class _WorkBreakdownStructureBodyState
     );
   }
 
+  void _toggleCollapse(WorkItem item) {
+    setState(() {
+      if (_collapsedNodeIds.contains(item.id)) {
+        _collapsedNodeIds.remove(item.id);
+      } else {
+        _collapsedNodeIds.add(item.id);
+      }
+    });
+  }
+
+  Map<String, dynamic> _buildContextSnapshot(ProjectDataModel data) {
+    final dimension = _selectedCriteriaA;
+    return {
+      'projectName': data.projectName,
+      'projectObjective': data.projectObjective,
+      'breakdownDimension': dimension ?? '',
+      'dimensionDescription':
+          dimension == null ? '' : _getDimensionDescription(dimension),
+      'goals': data.projectGoals
+          .map((g) => {
+                'name': g.name,
+                'description': g.description,
+                if (g.framework != null && g.framework!.isNotEmpty)
+                  'framework': g.framework,
+              })
+          .toList(),
+    };
+  }
+
+  String _formatCapturedAt(DateTime? capturedAt) {
+    if (capturedAt == null) return '';
+    final localizations = MaterialLocalizations.of(context);
+    final date = localizations.formatFullDate(capturedAt);
+    final time = localizations.formatTimeOfDay(
+      TimeOfDay.fromDateTime(capturedAt),
+      alwaysUse24HourFormat: false,
+    );
+    return '$date at $time';
+  }
+
+  String _formatPdfTimestamp(DateTime value) {
+    final local = value.toLocal();
+    final year = local.year.toString().padLeft(4, '0');
+    final month = local.month.toString().padLeft(2, '0');
+    final day = local.day.toString().padLeft(2, '0');
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    return '$year-$month-$day $hour:$minute';
+  }
+
+  pw.Widget _pdfField(String label, String value) {
+    final display = value.trim().isEmpty ? 'Not provided' : value.trim();
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          label,
+          style: pw.TextStyle(
+            fontSize: 10,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.grey700,
+          ),
+        ),
+        pw.SizedBox(height: 2),
+        pw.Text(
+          display,
+          style: const pw.TextStyle(fontSize: 11),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _downloadContextPdf(Map<String, dynamic> contextData) async {
+    final filename =
+        'wbs_project_context_${DateTime.now().millisecondsSinceEpoch}.pdf';
+    final goals = (contextData['goals'] as List?) ?? const [];
+    final projectName = (contextData['projectName'] ?? '').toString();
+    final projectObjective =
+        (contextData['projectObjective'] ?? '').toString();
+    final dimension = (contextData['breakdownDimension'] ?? '').toString();
+    final dimensionDescription =
+        (contextData['dimensionDescription'] ?? '').toString();
+    final capturedAt = _contextCapturedAt;
+
+    try {
+      final doc = pw.Document();
+      doc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(28),
+          build: (_) => [
+            pw.Text(
+              'Project Context Used For WBS',
+              style: pw.TextStyle(
+                fontSize: 18,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+            pw.SizedBox(height: 4),
+            pw.Text(
+              capturedAt != null
+                  ? 'Captured: ${_formatPdfTimestamp(capturedAt)}'
+                  : 'Generated: ${_formatPdfTimestamp(DateTime.now())}',
+              style: pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+            ),
+            pw.SizedBox(height: 16),
+            _pdfField('Project Name', projectName),
+            pw.SizedBox(height: 10),
+            _pdfField('Project Objective', projectObjective),
+            pw.SizedBox(height: 10),
+            _pdfField(
+              'Breakdown Dimension',
+              dimension.isNotEmpty ? dimension : 'Not selected',
+            ),
+            if (dimensionDescription.trim().isNotEmpty) ...[
+              pw.SizedBox(height: 10),
+              _pdfField('Dimension Rationale', dimensionDescription),
+            ],
+            pw.SizedBox(height: 16),
+            pw.Text(
+              'Project Goals',
+              style: pw.TextStyle(
+                fontSize: 12,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+            pw.SizedBox(height: 6),
+            if (goals.isEmpty)
+              pw.Text(
+                'No project goals provided.',
+                style: const pw.TextStyle(fontSize: 11),
+              )
+            else
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: List.generate(goals.length, (index) {
+                  final goal = goals[index];
+                  final goalMap = goal is Map
+                      ? Map<String, dynamic>.from(goal)
+                      : <String, dynamic>{};
+                  final name = (goalMap['name'] ?? '').toString().trim();
+                  final description =
+                      (goalMap['description'] ?? '').toString().trim();
+                  final framework =
+                      (goalMap['framework'] ?? '').toString().trim();
+                  final title = name.isNotEmpty ? name : 'Goal ${index + 1}';
+                  final detailParts = <String>[];
+                  if (description.isNotEmpty) detailParts.add(description);
+                  if (framework.isNotEmpty) {
+                    detailParts.add('Framework: $framework');
+                  }
+                  final details = detailParts.join(' | ');
+                  return pw.Padding(
+                    padding: const pw.EdgeInsets.only(bottom: 4),
+                    child: pw.Text(
+                      details.isNotEmpty
+                          ? '${index + 1}. $title - $details'
+                          : '${index + 1}. $title',
+                      style: const pw.TextStyle(fontSize: 11),
+                    ),
+                  );
+                }),
+              ),
+          ],
+        ),
+      );
+
+      final bytes = await doc.save();
+
+      if (kIsWeb) {
+        download_helper.downloadFile(
+          bytes,
+          filename,
+          mimeType: 'application/pdf',
+        );
+      } else {
+        await Printing.sharePdf(bytes: bytes, filename: filename);
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('PDF ready: $filename')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to create PDF: $e')),
+      );
+    }
+  }
+
+  Widget _buildContextCard() {
+    final data = ProjectDataHelper.getProvider(context).projectData;
+    final contextData = _contextSnapshot ?? _buildContextSnapshot(data);
+    final dimension = (contextData['breakdownDimension'] ?? '').toString();
+    final dimensionDescription =
+        (contextData['dimensionDescription'] ?? '').toString();
+    final goals = (contextData['goals'] as List?) ?? const [];
+    final hasSnapshot = _contextSnapshot != null;
+    final caption = hasSnapshot
+        ? 'Captured ${_formatCapturedAt(_contextCapturedAt)}'
+        : 'Current project context (no AI snapshot yet).';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _kCardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Project Context Used For WBS',
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: _kPrimaryText),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _downloadContextPdf(contextData),
+                icon: const Icon(Icons.download_outlined, size: 18),
+                label: const Text('Download PDF'),
+              ),
+            ],
+          ),
+          Text(
+            caption,
+            style: const TextStyle(fontSize: 11, color: _kSecondaryText),
+          ),
+          const SizedBox(height: 16),
+          _buildContextField(
+              'Project Name', (contextData['projectName'] ?? '').toString()),
+          const SizedBox(height: 12),
+          _buildContextField('Project Objective',
+              (contextData['projectObjective'] ?? '').toString()),
+          const SizedBox(height: 12),
+          _buildContextField(
+            'Breakdown Dimension',
+            dimension.isNotEmpty ? dimension : 'Not selected',
+          ),
+          if (dimension.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _buildContextField('Dimension Rationale', dimensionDescription),
+          ],
+          const SizedBox(height: 16),
+          const Text(
+            'Project Goals',
+            style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: _kPrimaryText),
+          ),
+          const SizedBox(height: 8),
+          if (goals.isEmpty)
+            const Text(
+              'No project goals provided yet.',
+              style: TextStyle(fontSize: 12, color: _kSecondaryText),
+            )
+          else
+            Column(
+              children: goals.map((goal) {
+                final goalMap = goal is Map
+                    ? goal
+                    : {'name': '', 'description': goal.toString()};
+                final name = (goalMap['name'] ?? '').toString();
+                final description =
+                    (goalMap['description'] ?? '').toString();
+                final framework = (goalMap['framework'] ?? '').toString();
+                if (name.trim().isEmpty && description.trim().isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                return Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _kCardBorder),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name.isNotEmpty ? name : 'Goal',
+                        style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: _kPrimaryText),
+                      ),
+                      if (description.trim().isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          description,
+                          style: const TextStyle(
+                              fontSize: 12, color: _kSecondaryText),
+                        ),
+                      ],
+                      if (framework.trim().isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          'Framework: $framework',
+                          style: const TextStyle(
+                              fontSize: 11, color: _kSecondaryText),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContextField(String label, String value) {
+    final display = value.trim().isEmpty ? 'Not provided' : value.trim();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: _kSecondaryText),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          display,
+          style: const TextStyle(
+              fontSize: 13, fontWeight: FontWeight.w600, color: _kPrimaryText),
+        ),
+      ],
+    );
+  }
+
   // ignore: unused_element
   Future<void> _handleNextPressed() async {
     // Use ProjectRouteRegistry to find next accessible screen
@@ -888,6 +1285,10 @@ class _WorkBreakdownStructureBodyState
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              _buildInfoBanner(),
+                              const SizedBox(height: 20),
+                              _buildContextCard(),
+                              const SizedBox(height: 28),
                               _buildCriteriaRow(),
                               const SizedBox(height: 32),
                               _buildWbsTreeView(),
@@ -896,8 +1297,6 @@ class _WorkBreakdownStructureBodyState
                                 alignment: Alignment.centerRight,
                                 child: _buildNotesCard(),
                               ),
-                              const SizedBox(height: 28),
-                              _buildInfoBanner(),
                               const SizedBox(height: 40),
                             ],
                           ),
@@ -912,7 +1311,20 @@ class _WorkBreakdownStructureBodyState
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         ElevatedButton.icon(
-                          onPressed: () => Navigator.maybePop(context),
+                          onPressed: () {
+                            final navIndex = PlanningPhaseNavigation.getPageIndex(
+                                'work_breakdown_structure');
+                            if (navIndex > 0) {
+                              final prevPage =
+                                  PlanningPhaseNavigation.pages[navIndex - 1];
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: prevPage.builder),
+                              );
+                            } else {
+                              Navigator.maybePop(context);
+                            }
+                          },
                           icon: const Icon(Icons.arrow_back, size: 16),
                           label: const Text('Back'),
                           style: ElevatedButton.styleFrom(
@@ -929,7 +1341,8 @@ class _WorkBreakdownStructureBodyState
                         ElevatedButton.icon(
                           onPressed: () async {
                             final navIndex =
-                                PlanningPhaseNavigation.getPageIndex('wbs');
+                                PlanningPhaseNavigation.getPageIndex(
+                                    'work_breakdown_structure');
                             if (navIndex != -1 &&
                                 navIndex <
                                     PlanningPhaseNavigation.pages.length - 1) {

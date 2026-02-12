@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
-import 'package:ndu_project/screens/design_phase_screen.dart';
+import 'package:ndu_project/screens/design_planning_screen.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/content_text.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
@@ -3641,7 +3641,7 @@ class _TopBar extends StatelessWidget {
                   checkpoint: 'technology',
                   saveInBackground: true,
                   nextScreenBuilder: () =>
-                      const DesignPhaseScreen(activeItemLabel: 'Design'),
+                      const DesignPlanningScreen(),
                   dataUpdater: (d) => d,
                   destinationCheckpoint: 'design',
                   destinationName: 'Design',

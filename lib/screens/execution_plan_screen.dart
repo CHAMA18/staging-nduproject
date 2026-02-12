@@ -17,7 +17,7 @@ import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/screens/quality_management_screen.dart';
-import 'package:ndu_project/screens/design_phase_screen.dart';
+import 'package:ndu_project/screens/design_planning_screen.dart';
 
 class ExecutionPlanScreen extends StatefulWidget {
   const ExecutionPlanScreen({super.key});
@@ -4197,8 +4197,7 @@ class ExecutionPlanAgileDeliveryPlanScreen extends StatelessWidget {
                       onNext: () => Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => const DesignPhaseScreen(
-                                activeItemLabel: 'Design')),
+                            builder: (_) => const DesignPlanningScreen()),
                       ),
                     ),
                     const SizedBox(height: 32),
@@ -4322,8 +4321,7 @@ class _AgileDeliveryPlanSection extends StatelessWidget {
               onPressed: () => Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                    builder: (_) =>
-                        const DesignPhaseScreen(activeItemLabel: 'Design')),
+                    builder: (_) => const DesignPlanningScreen()),
               ),
             ),
           ],

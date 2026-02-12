@@ -9,7 +9,7 @@ import 'package:ndu_project/screens/stakeholder_management_screen.dart';
 import 'package:ndu_project/screens/ssher_stacked_screen.dart';
 import 'package:ndu_project/screens/quality_management_screen.dart';
 import 'package:ndu_project/screens/execution_plan_screen.dart';
-import 'package:ndu_project/screens/design_phase_screen.dart';
+import 'package:ndu_project/screens/design_planning_screen.dart';
 import 'package:ndu_project/screens/front_end_planning_technology_screen.dart';
 import 'package:ndu_project/screens/interface_management_screen.dart';
 import 'package:ndu_project/screens/risk_assessment_screen.dart';
@@ -30,19 +30,19 @@ import 'package:ndu_project/screens/project_baseline_screen.dart';
 class PlanningPhaseNavigation {
   static final List<PlanningPage> pages = [
     PlanningPage(
-      id: 'project_details',
+      id: 'project_framework',
       title: 'Project Details',
       builder: (_) => const ProjectFrameworkScreen(),
+    ),
+    PlanningPage(
+      id: 'work_breakdown_structure',
+      title: 'Work Breakdown Structure',
+      builder: (_) => const WorkBreakdownStructureScreen(),
     ),
     PlanningPage(
       id: 'project_goals_milestones',
       title: 'Project Goals & Milestones',
       builder: (_) => const ProjectFrameworkNextScreen(),
-    ),
-    PlanningPage(
-      id: 'wbs',
-      title: 'Work Breakdown Structure',
-      builder: (_) => const WorkBreakdownStructureScreen(),
     ),
     PlanningPage(
       id: 'requirements',
@@ -90,7 +90,7 @@ class PlanningPhaseNavigation {
     PlanningPage(
       id: 'design_planning',
       title: 'Design Planning',
-      builder: (_) => const DesignPhaseScreen(activeItemLabel: 'Design'),
+      builder: (_) => const DesignPlanningScreen(),
     ),
     PlanningPage(
       id: 'technology',

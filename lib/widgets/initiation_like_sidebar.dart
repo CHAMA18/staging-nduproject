@@ -39,6 +39,7 @@ import 'package:ndu_project/screens/stakeholder_management_screen.dart';
 import 'package:ndu_project/screens/lessons_learned_screen.dart';
 import 'package:ndu_project/screens/team_training_building_screen.dart';
 import 'package:ndu_project/screens/design_phase_screen.dart';
+import 'package:ndu_project/screens/design_planning_screen.dart';
 import 'package:ndu_project/screens/engineering_design_screen.dart';
 import 'package:ndu_project/screens/schedule_screen.dart';
 import 'package:ndu_project/screens/interface_management_screen.dart';
@@ -559,8 +560,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
   }
 
   void _openDesign() {
-    _navigateWithCheckpoint(
-        'design', const DesignPhaseScreen(activeItemLabel: 'Design'));
+    _navigateWithCheckpoint('design', const DesignPlanningScreen());
   }
 
   void _openDesignManagement() {

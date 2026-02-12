@@ -6,13 +6,14 @@ import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/screens/project_framework_screen.dart';
 import 'package:ndu_project/screens/project_framework_next_screen.dart';
 import 'package:ndu_project/screens/work_breakdown_structure_screen.dart';
+import 'package:ndu_project/screens/planning_requirements_screen.dart';
 import 'package:ndu_project/screens/organization_plan_subsections_screen.dart';
 import 'package:ndu_project/screens/team_training_building_screen.dart';
 import 'package:ndu_project/screens/stakeholder_management_screen.dart';
 import 'package:ndu_project/screens/ssher_stacked_screen.dart';
 import 'package:ndu_project/screens/quality_management_screen.dart';
 import 'package:ndu_project/screens/execution_plan_screen.dart';
-import 'package:ndu_project/screens/design_phase_screen.dart';
+import 'package:ndu_project/screens/design_planning_screen.dart';
 import 'package:ndu_project/screens/front_end_planning_technology_screen.dart';
 import 'package:ndu_project/screens/interface_management_screen.dart';
 import 'package:ndu_project/screens/risk_assessment_screen.dart';
@@ -39,6 +40,7 @@ class ProjectRouteRegistry {
     'project_framework': () => const ProjectFrameworkScreen(),
     'project_goals_milestones': () => const ProjectFrameworkNextScreen(),
     'work_breakdown_structure': () => const WorkBreakdownStructureScreen(),
+    'requirements': () => const PlanningRequirementsScreen(),
     'organization_roles_responsibilities': () =>
         const OrganizationRolesResponsibilitiesScreen(),
     'organization_staffing_plan': () => const OrganizationStaffingPlanScreen(),
@@ -47,7 +49,7 @@ class ProjectRouteRegistry {
     'ssher': () => const SsherStackedScreen(),
     'quality_management': () => const QualityManagementScreen(),
     'execution_plan': () => const ExecutionPlanScreen(),
-    'design': () => const DesignPhaseScreen(activeItemLabel: 'Design'),
+    'design': () => const DesignPlanningScreen(),
     'technology': () => const FrontEndPlanningTechnologyScreen(),
     'interface_management': () => const InterfaceManagementScreen(),
     'risk_assessment': () => const RiskAssessmentScreen(),

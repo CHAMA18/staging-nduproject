@@ -122,11 +122,12 @@ class SidebarNavigationService {
     // Planning Phase
     SidebarItem(checkpoint: 'project_framework', label: 'Project Details'),
     SidebarItem(
-        checkpoint: 'project_goals_milestones',
-        label: 'Project Goals & Milestones'),
-    SidebarItem(
         checkpoint: 'work_breakdown_structure',
         label: 'Work Breakdown Structure'),
+    SidebarItem(
+        checkpoint: 'project_goals_milestones',
+        label: 'Project Goals & Milestones'),
+    SidebarItem(checkpoint: 'requirements', label: 'Requirements'),
     SidebarItem(checkpoint: 'ssher', label: 'SSHER'),
     SidebarItem(checkpoint: 'change_management', label: 'Change Management'),
     SidebarItem(checkpoint: 'issue_management', label: 'Issue Management'),

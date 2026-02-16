@@ -968,40 +968,29 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
       builder: (context, constraints) {
         final isBroad = constraints.maxWidth > 1100;
 
-        // Define cards based on context
-        final cards = <Widget>[];
-
-        // 1. Methodology-specific Doc Card
-        if (methodology == ProjectMethodology.agile) {
-          cards.add(const Expanded(child: _AgileBacklogCard()));
-        } else {
-          cards.add(const Expanded(child: DesignDocumentsCard()));
-        }
-
-        // 2. Industry-specific Tool Card
-        if (industry == ProjectIndustry.construction) {
-          cards.add(const Expanded(child: _BlueprintToolsCard()));
-        } else {
-          // Default for Software/Generic
-          cards.add(const Expanded(child: DesignToolsCard()));
-        }
+        final Widget primaryCard = methodology == ProjectMethodology.agile
+            ? const _AgileBacklogCard()
+            : const DesignDocumentsCard();
+        final Widget secondaryCard = industry == ProjectIndustry.construction
+            ? const _BlueprintToolsCard()
+            : const DesignToolsCard();
 
         if (isBroad) {
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // In broad mode, we can show both side-by-side with spacing
-              cards[0],
+              Expanded(child: primaryCard),
               const SizedBox(width: 16),
-              cards[1],
+              Expanded(child: secondaryCard),
             ],
           );
         } else {
           return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              cards[0],
+              primaryCard,
               const SizedBox(height: 16),
-              cards[1],
+              secondaryCard,
             ],
           );
         }

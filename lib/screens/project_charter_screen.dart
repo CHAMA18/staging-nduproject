@@ -317,7 +317,7 @@ class _ProjectCharterScreenState extends State<ProjectCharterScreen> {
                   const SizedBox(height: 32),
                   LaunchPhaseNavigation(
                     backLabel: 'Back',
-                    nextLabel: 'Next: Project framework',
+                    nextLabel: 'Next',
                     onBack: () => Navigator.pop(context),
                     onNext: () => ProjectFrameworkScreen.open(context),
                   ),

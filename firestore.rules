@@ -161,6 +161,38 @@ service cloud.firestore {
       match /design_tools/{toolId} {
         allow read, write: if isProjectMember();
       }
+
+      // Planning/Design/Execution section stores used by screen-level autosave
+      match /planning_phase/{docId} {
+        allow read, write: if isProjectMember();
+      }
+      match /organization_plan_sections/{docId} {
+        allow read, write: if isProjectMember();
+      }
+      match /project_plan_sections/{docId} {
+        allow read, write: if isProjectMember();
+      }
+      match /startup_planning_sections/{docId} {
+        allow read, write: if isProjectMember();
+      }
+      match /risk_assessment_entries/{docId} {
+        allow read, write: if isProjectMember();
+      }
+      match /design_phase_sections/{docId} {
+        allow read, write: if isProjectMember();
+      }
+      match /design/{docId} {
+        allow read, write: if isProjectMember();
+      }
+      match /execution_phase_sections/{docId} {
+        allow read, write: if isProjectMember();
+      }
+      match /execution_plan_sections/{docId} {
+        allow read, write: if isProjectMember();
+      }
+      match /execution_phase_entries/{docId} {
+        allow read, write: if isProjectMember();
+      }
     }
     
     // Programs collection

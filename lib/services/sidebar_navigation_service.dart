@@ -118,6 +118,8 @@ class SidebarNavigationService {
     SidebarItem(checkpoint: 'fep_security', label: 'Security'),
     SidebarItem(checkpoint: 'fep_allowance', label: 'Allowance'),
     SidebarItem(checkpoint: 'project_charter', label: 'Project Charter'),
+    SidebarItem(
+        checkpoint: 'project_activities_log', label: 'Project Activities Log'),
 
     // Planning Phase
     SidebarItem(checkpoint: 'project_framework', label: 'Project Details'),

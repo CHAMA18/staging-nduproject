@@ -73,8 +73,8 @@ class _AppLogoState extends State<AppLogo> with SingleTickerProviderStateMixin {
 
     // Use theme-aware logo selection: dark mode uses dark logo, light mode uses standard logo
     final assetPath = isDark
-        ? 'assets/images/Ndu_logodarkmode.png'  // Dark mode logo
-        : 'assets/images/Logo.png';              // Light mode logo (using Logo.png as requested)
+        ? 'assets/images/Ndu_logodarkmode.png' // Dark mode logo
+        : 'assets/images/Logo.png'; // Light mode logo (using Logo.png as requested)
 
     final image = Image.asset(
       assetPath,
@@ -97,12 +97,7 @@ class _AppLogoState extends State<AppLogo> with SingleTickerProviderStateMixin {
         behavior: HitTestBehavior.opaque,
         onTap: () {
           if (!mounted) return;
-          // Use post-frame callback to avoid lifecycle errors
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              NavigationContextService.instance.navigateFromLogo(context);
-            }
-          });
+          NavigationContextService.instance.navigateFromLogo(context);
         },
         child: AnimatedBuilder(
           animation: _controller,
@@ -118,7 +113,10 @@ class _AppLogoState extends State<AppLogo> with SingleTickerProviderStateMixin {
                   boxShadow: _isHovering
                       ? [
                           BoxShadow(
-                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.2),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),

@@ -17,6 +17,7 @@ import 'package:ndu_project/screens/front_end_planning_security.dart';
 import 'package:ndu_project/screens/front_end_planning_allowance.dart';
 import 'package:ndu_project/screens/front_end_planning_milestone.dart';
 import 'package:ndu_project/screens/project_charter_screen.dart';
+import 'package:ndu_project/screens/project_activities_log_screen.dart';
 import 'package:ndu_project/screens/project_framework_screen.dart';
 import 'package:ndu_project/screens/project_framework_next_screen.dart';
 import 'package:ndu_project/screens/work_breakdown_structure_screen.dart';
@@ -35,9 +36,12 @@ import 'package:ndu_project/screens/design_planning_screen.dart';
 import 'package:ndu_project/screens/front_end_planning_technology_screen.dart';
 import 'package:ndu_project/screens/interface_management_screen.dart';
 import 'package:ndu_project/screens/startup_planning_screen.dart';
+import 'package:ndu_project/screens/startup_planning_subsections_screen.dart';
 import 'package:ndu_project/screens/deliverables_roadmap_screen.dart';
+import 'package:ndu_project/screens/deliverable_roadmap_subsections_screen.dart';
 import 'package:ndu_project/screens/project_baseline_screen.dart';
 import 'package:ndu_project/screens/agile_project_baseline_screen.dart';
+import 'package:ndu_project/screens/project_plan_subsections_screen.dart';
 import 'package:ndu_project/screens/team_management_screen.dart';
 import 'package:ndu_project/screens/stakeholder_management_screen.dart';
 import 'package:ndu_project/screens/risk_assessment_screen.dart';
@@ -70,6 +74,8 @@ import 'package:ndu_project/screens/punchlist_actions_screen.dart';
 import 'package:ndu_project/screens/technical_debt_management_screen.dart';
 import 'package:ndu_project/screens/identify_staff_ops_team_screen.dart';
 import 'package:ndu_project/screens/salvage_disposal_team_screen.dart';
+import 'package:ndu_project/screens/actual_vs_planned_gap_analysis_screen.dart';
+import 'package:ndu_project/screens/finalize_project_screen.dart';
 import 'package:ndu_project/screens/deliver_project_closure_screen.dart';
 import 'package:ndu_project/screens/transition_to_prod_team_screen.dart';
 import 'package:ndu_project/screens/contract_close_out_screen.dart';
@@ -82,6 +88,8 @@ import 'package:ndu_project/screens/technical_development_screen.dart';
 import 'package:ndu_project/screens/lessons_learned_screen.dart';
 import 'package:ndu_project/screens/team_roles_responsibilities_screen.dart';
 import 'package:ndu_project/screens/team_training_building_screen.dart';
+import 'package:ndu_project/screens/execution_plan_interface_management_overview_screen.dart';
+import 'package:ndu_project/screens/commerce_viability_screen.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
@@ -90,10 +98,60 @@ import 'package:ndu_project/services/openai_service_secure.dart';
 class NavigationRouteResolver {
   NavigationRouteResolver._();
 
+  static const Map<String, String> _checkpointAliases = {
+    'fep_contracts': 'fep_contract_vendor_quotes',
+    'project_framework_next': 'project_goals_milestones',
+    'wbs': 'work_breakdown_structure',
+    'execution_plan_outline': 'execution_plan',
+    'execution_lessons_learned': 'execution_plan_lessons_learned',
+    'execution_best_practices': 'execution_plan_best_practices',
+    'execution_construction_plan': 'execution_plan_construction_plan',
+    'execution_infrastructure_plan': 'execution_plan_infrastructure_plan',
+    'execution_agile_delivery_plan': 'execution_plan_agile_delivery_plan',
+    'execution_interface_management': 'execution_plan_interface_management',
+    'execution_communication_plan': 'execution_plan_communication_plan',
+    'execution_interface_management_plan':
+        'execution_plan_interface_management_plan',
+    'execution_stakeholder_identification':
+        'execution_plan_stakeholder_identification',
+    'execution_plan_interface_overview':
+        'execution_plan_interface_management_overview',
+    'planning_schedule': 'schedule',
+    'planning_execution_plan_interface_overview':
+        'execution_plan_interface_management_overview',
+  };
+
+  static String _normalizeCheckpoint(String checkpoint) {
+    var normalized = checkpoint.trim();
+    if (normalized.isEmpty) return normalized;
+
+    if (normalized.startsWith('execution_execution_')) {
+      normalized = normalized.substring('execution_'.length);
+    }
+
+    if (normalized.startsWith('planning_')) {
+      final withoutPlanningPrefix =
+          normalized.substring('planning_'.length).trim();
+      final mappedWithoutPrefix = _checkpointAliases[withoutPlanningPrefix];
+      if (mappedWithoutPrefix != null && mappedWithoutPrefix.isNotEmpty) {
+        normalized = mappedWithoutPrefix;
+      } else if (withoutPlanningPrefix.isNotEmpty) {
+        normalized = withoutPlanningPrefix;
+      }
+    }
+
+    return _checkpointAliases[normalized] ?? normalized;
+  }
+
   /// Resolve a checkpoint string to a Widget screen
   /// Returns null if checkpoint is invalid or unknown
-  static Widget? resolveCheckpointToScreen(String? checkpoint, BuildContext context) {
-    if (checkpoint == null || checkpoint.isEmpty || checkpoint == 'initiation') {
+  static Widget? resolveCheckpointToScreen(
+      String? checkpoint, BuildContext context) {
+    if (checkpoint == null) {
+      return const InitiationPhaseScreen();
+    }
+    final normalizedCheckpoint = _normalizeCheckpoint(checkpoint);
+    if (normalizedCheckpoint.isEmpty || normalizedCheckpoint == 'initiation') {
       return const InitiationPhaseScreen();
     }
 
@@ -104,13 +162,16 @@ class NavigationRouteResolver {
     List<AiSolutionItem> buildSolutionItems(ProjectDataModel? data) {
       if (data == null) return [];
       final potential = data.potentialSolutions
-          .map((s) => AiSolutionItem(title: s.title.trim(), description: s.description.trim()))
+          .map((s) => AiSolutionItem(
+              title: s.title.trim(), description: s.description.trim()))
           .where((s) => s.title.isNotEmpty || s.description.isNotEmpty)
           .toList();
       if (potential.isNotEmpty) return potential;
 
       final preferred = data.preferredSolutionAnalysis?.solutionAnalyses
-              .map((s) => AiSolutionItem(title: s.solutionTitle.trim(), description: s.solutionDescription.trim()))
+              .map((s) => AiSolutionItem(
+                  title: s.solutionTitle.trim(),
+                  description: s.solutionDescription.trim()))
               .where((s) => s.title.isNotEmpty || s.description.isNotEmpty)
               .toList() ??
           [];
@@ -119,13 +180,15 @@ class NavigationRouteResolver {
       final fallbackTitle = data.solutionTitle.trim();
       final fallbackDescription = data.solutionDescription.trim();
       if (fallbackTitle.isNotEmpty || fallbackDescription.isNotEmpty) {
-        return [AiSolutionItem(title: fallbackTitle, description: fallbackDescription)];
+        return [
+          AiSolutionItem(title: fallbackTitle, description: fallbackDescription)
+        ];
       }
 
       return [];
     }
 
-    switch (checkpoint) {
+    switch (normalizedCheckpoint) {
       // Initiation Phase
       case 'business_case':
         return const InitiationPhaseScreen(scrollToBusinessCase: true);
@@ -139,17 +202,23 @@ class NavigationRouteResolver {
         );
       case 'it_considerations':
         return ITConsiderationsScreen(
-          notes: projectData?.itConsiderationsData?.notes ?? projectData?.notes ?? '',
+          notes: projectData?.itConsiderationsData?.notes ??
+              projectData?.notes ??
+              '',
           solutions: buildSolutionItems(projectData),
         );
       case 'infrastructure_considerations':
         return InfrastructureConsiderationsScreen(
-          notes: projectData?.infrastructureConsiderationsData?.notes ?? projectData?.notes ?? '',
+          notes: projectData?.infrastructureConsiderationsData?.notes ??
+              projectData?.notes ??
+              '',
           solutions: buildSolutionItems(projectData),
         );
       case 'core_stakeholders':
         return CoreStakeholdersScreen(
-          notes: projectData?.coreStakeholdersData?.notes ?? projectData?.notes ?? '',
+          notes: projectData?.coreStakeholdersData?.notes ??
+              projectData?.notes ??
+              '',
           solutions: buildSolutionItems(projectData),
         );
       case 'cost_analysis':
@@ -185,6 +254,8 @@ class NavigationRouteResolver {
         return const FrontEndPlanningMilestoneScreen();
       case 'project_charter':
         return const ProjectCharterScreen();
+      case 'project_activities_log':
+        return const ProjectActivitiesLogScreen();
 
       // Planning Phase
       case 'project_framework':
@@ -209,8 +280,52 @@ class NavigationRouteResolver {
         return const FrontEndPlanningContractsScreen();
       case 'project_plan':
         return const ProjectPlanScreen();
+      case 'project_plan_level1_schedule':
+        return const ProjectPlanLevel1ScheduleScreen();
+      case 'project_plan_detailed_schedule':
+        return const ProjectPlanDetailedScheduleScreen();
+      case 'project_plan_condensed_summary':
+        return const ProjectPlanCondensedSummaryScreen();
       case 'execution_plan':
         return const ExecutionPlanScreen();
+      case 'execution_plan_strategy':
+        return const ExecutionPlanSolutionsScreen();
+      case 'execution_plan_details':
+        return const ExecutionPlanDetailsScreen(
+          activeItemLabel: 'Execution Plan Details',
+          showPlanDetails: true,
+          showEarlyWorks: false,
+        );
+      case 'execution_early_works':
+        return const ExecutionPlanDetailsScreen(
+          activeItemLabel: 'Execution Early Works',
+          showPlanDetails: false,
+          showEarlyWorks: true,
+        );
+      case 'execution_enabling_work_plan':
+        return const ExecutionEnablingWorkPlanScreen();
+      case 'execution_issue_management':
+        return const ExecutionIssueManagementScreen();
+      case 'execution_plan_lessons_learned':
+        return const ExecutionPlanLessonsLearnedScreen();
+      case 'execution_plan_best_practices':
+        return const ExecutionPlanBestPracticesScreen();
+      case 'execution_plan_construction_plan':
+        return const ExecutionPlanConstructionPlanScreen();
+      case 'execution_plan_infrastructure_plan':
+        return const ExecutionPlanInfrastructurePlanScreen();
+      case 'execution_plan_agile_delivery_plan':
+        return const ExecutionPlanAgileDeliveryPlanScreen();
+      case 'execution_plan_interface_management':
+        return const ExecutionPlanInterfaceManagementScreen();
+      case 'execution_plan_communication_plan':
+        return const ExecutionPlanCommunicationPlanScreen();
+      case 'execution_plan_interface_management_plan':
+        return const ExecutionPlanInterfaceManagementPlanScreen();
+      case 'execution_plan_interface_management_overview':
+        return const ExecutionPlanInterfaceManagementOverviewScreen();
+      case 'execution_plan_stakeholder_identification':
+        return const ExecutionPlanStakeholderIdentificationScreen();
       case 'schedule':
         return const ScheduleScreen();
       case 'design':
@@ -223,8 +338,18 @@ class NavigationRouteResolver {
         return const InterfaceManagementScreen();
       case 'startup_planning':
         return const StartUpPlanningScreen();
+      case 'startup_planning_operations':
+        return const StartUpPlanningOperationsScreen();
+      case 'startup_planning_hypercare':
+        return const StartUpPlanningHypercareScreen();
+      case 'startup_planning_devops':
+        return const StartUpPlanningDevOpsScreen();
+      case 'startup_planning_closeout':
+        return const StartUpPlanningCloseOutPlanScreen();
       case 'deliverable_roadmap':
         return const DeliverablesRoadmapScreen();
+      case 'deliverable_roadmap_agile_map_out':
+        return const DeliverableRoadmapAgileMapOutScreen();
       case 'agile_project_baseline':
         return const AgileProjectBaselineScreen();
       case 'project_baseline':
@@ -300,7 +425,8 @@ class NavigationRouteResolver {
       case 'scope_completion':
         return const ScopeCompletionScreen();
       case 'gap_analysis_scope_reconcillation':
-        return const GapAnalysisScopeReconcillationScreen(activeItemLabel: 'Gap Analysis and Scope Reconciliation');
+        return const GapAnalysisScopeReconcillationScreen(
+            activeItemLabel: 'Gap Analysis and Scope Reconciliation');
       case 'punchlist_actions':
         return const PunchlistActionsScreen();
       case 'technical_debt_management':
@@ -309,6 +435,12 @@ class NavigationRouteResolver {
         return const IdentifyStaffOpsTeamScreen();
       case 'salvage_disposal_team':
         return const SalvageDisposalTeamScreen();
+      case 'actual_vs_planned_gap_analysis':
+        return const ActualVsPlannedGapAnalysisScreen();
+      case 'commerce_viability':
+        return const CommerceViabilityScreen();
+      case 'finalize_project':
+        return const FinalizeProjectScreen();
 
       // Launch Phase
       case 'deliver_project_closure':
@@ -327,7 +459,8 @@ class NavigationRouteResolver {
         return const DemobilizeTeamScreen();
 
       default:
-        debugPrint('⚠️ Unknown checkpoint: $checkpoint, defaulting to InitiationPhaseScreen');
+        debugPrint(
+            '⚠️ Unknown checkpoint: $checkpoint (normalized: $normalizedCheckpoint), defaulting to InitiationPhaseScreen');
         return const InitiationPhaseScreen();
     }
   }

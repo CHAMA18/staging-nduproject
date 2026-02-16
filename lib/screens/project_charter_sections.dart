@@ -89,11 +89,12 @@ class CharterExecutiveSnapshot extends StatelessWidget {
 
   Widget _buildSnapshotItem(String label, String value, Color valueColor) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           label,
+          textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.6),
             fontSize: 11,
@@ -104,6 +105,7 @@ class CharterExecutiveSnapshot extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           value,
+          textAlign: TextAlign.center,
           style: TextStyle(
             color: valueColor,
             fontSize: 18,

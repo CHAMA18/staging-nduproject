@@ -14,7 +14,9 @@ class ExecutionPlanInterfaceManagementOverviewScreen extends StatelessWidget {
 
   static void open(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ExecutionPlanInterfaceManagementOverviewScreen()),
+      MaterialPageRoute(
+          builder: (_) =>
+              const ExecutionPlanInterfaceManagementOverviewScreen()),
     );
   }
 
@@ -31,11 +33,14 @@ class ExecutionPlanInterfaceManagementOverviewScreen extends StatelessWidget {
           children: [
             DraggableSidebar(
               openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(activeItemLabel: 'Execution Plan - Interface Management Overview'),
+              child: const InitiationLikeSidebar(
+                  activeItemLabel:
+                      'Execution Plan - Interface Management Overview'),
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 32),
+                padding: EdgeInsets.symmetric(
+                    horizontal: horizontalPadding, vertical: 32),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -87,7 +92,10 @@ class _ExecutionPlanDetailsSection extends StatelessWidget {
         children: [
           const Text(
             'Execution Plan Details',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black87),
+            style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87),
           ),
           const SizedBox(height: 8),
           Text(
@@ -119,36 +127,64 @@ class _InterfaceManagementSection extends StatelessWidget {
         children: [
           const Text(
             'Interface management',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87),
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87),
           ),
           const SizedBox(height: 24),
           const Text(
             'Interface Architecture Overview',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
+            style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87),
           ),
           const SizedBox(height: 24),
           const _ExternalSystemsRow(
             title: 'External Systems',
             systems: [
-              _SystemCard(title: 'Payment Gateway', subtitle: 'Third party', color: Color(0xFFFFE4CC)),
-              _SystemCard(title: 'Identity Provider', subtitle: 'SSO Service', color: Color(0xFFFFE4CC)),
-              _SystemCard(title: 'CRM System', subtitle: 'Legacy', color: Color(0xFFFFE4CC)),
+              _SystemCard(
+                  title: 'Payment Gateway',
+                  subtitle: 'Third party',
+                  color: Color(0xFFFFE4CC)),
+              _SystemCard(
+                  title: 'Identity Provider',
+                  subtitle: 'SSO Service',
+                  color: Color(0xFFFFE4CC)),
+              _SystemCard(
+                  title: 'CRM System',
+                  subtitle: 'Legacy',
+                  color: Color(0xFFFFE4CC)),
             ],
           ),
           const SizedBox(height: 24),
           const _ExternalSystemsRow(
             title: 'External Systems',
             systems: [
-              _SystemCard(title: 'Api Gateway', subtitle: 'Routing, Security, Monitoring', color: Color(0xFFD4E4FF), fullWidth: true),
+              _SystemCard(
+                  title: 'Api Gateway',
+                  subtitle: 'Routing, Security, Monitoring',
+                  color: Color(0xFFD4E4FF),
+                  fullWidth: true),
             ],
           ),
           const SizedBox(height: 24),
           const _ExternalSystemsRow(
             title: 'External Systems',
             systems: [
-              _SystemCard(title: 'Web Application', subtitle: 'Frontend', color: Color(0xFFD4FFD4)),
-              _SystemCard(title: 'Business Logic', subtitle: 'Core Services', color: Color(0xFFD4FFD4)),
-              _SystemCard(title: 'Data Storage', subtitle: 'Database', color: Color(0xFFD4FFD4)),
+              _SystemCard(
+                  title: 'Web Application',
+                  subtitle: 'Frontend',
+                  color: Color(0xFFD4FFD4)),
+              _SystemCard(
+                  title: 'Business Logic',
+                  subtitle: 'Core Services',
+                  color: Color(0xFFD4FFD4)),
+              _SystemCard(
+                  title: 'Data Storage',
+                  subtitle: 'Database',
+                  color: Color(0xFFD4FFD4)),
             ],
           ),
         ],
@@ -180,7 +216,7 @@ class _OverviewAiEditorState extends State<_OverviewAiEditor> {
       final trimmed = value.trim();
       final success = await ProjectDataHelper.updateAndSave(
         context: context,
-        checkpoint: 'planning_execution_plan_interface_overview',
+        checkpoint: 'execution_plan_interface_management_overview',
         dataUpdater: (data) => data.copyWith(
           planningNotes: {
             ...data.planningNotes,
@@ -198,7 +234,9 @@ class _OverviewAiEditorState extends State<_OverviewAiEditor> {
   @override
   Widget build(BuildContext context) {
     if (_current.isEmpty) {
-      final saved = ProjectDataHelper.getData(context).planningNotes['execution_plan_interface_overview'] ?? '';
+      final saved = ProjectDataHelper.getData(context)
+              .planningNotes['execution_plan_interface_overview'] ??
+          '';
       if (saved.trim().isNotEmpty) {
         _current = saved;
       }
@@ -212,7 +250,8 @@ class _OverviewAiEditorState extends State<_OverviewAiEditor> {
           hintText: 'Input your notes here...',
           sectionLabel: 'Execution Plan - Interface Management Overview',
           showLabel: false,
-          initialText: ProjectDataHelper.getData(context).planningNotes['execution_plan_interface_overview'],
+          initialText: ProjectDataHelper.getData(context)
+              .planningNotes['execution_plan_interface_overview'],
           autoGenerate: true,
           autoGenerateSection: 'Interface Management Overview',
           onChanged: _handleChanged,
@@ -249,7 +288,8 @@ class _ExternalSystemsRow extends StatelessWidget {
       children: [
         Text(
           title,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
+          style: const TextStyle(
+              fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
         ),
         const SizedBox(height: 12),
         if (systems.length == 1 && systems.first.fullWidth)
@@ -293,7 +333,10 @@ class _SystemCard extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
+            style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
@@ -324,7 +367,8 @@ class _DoneButton extends StatelessWidget {
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
-      child: const Text('Done', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+      child: const Text('Done',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
     );
   }
 }

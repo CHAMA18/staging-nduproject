@@ -21,6 +21,7 @@ import 'package:ndu_project/screens/front_end_planning_security.dart';
 import 'package:ndu_project/screens/front_end_planning_allowance.dart';
 import 'package:ndu_project/screens/front_end_planning_milestone.dart';
 import 'package:ndu_project/screens/front_end_planning_summary.dart';
+import 'package:ndu_project/screens/project_activities_log_screen.dart';
 import 'package:ndu_project/screens/project_charter_screen.dart';
 import 'package:ndu_project/screens/ssher_stacked_screen.dart';
 import 'package:ndu_project/screens/execution_plan_screen.dart';
@@ -99,7 +100,6 @@ import 'package:ndu_project/screens/detailed_design_screen.dart';
 import 'package:ndu_project/screens/scope_tracking_implementation_screen.dart';
 import 'package:ndu_project/screens/stakeholder_alignment_screen.dart';
 import 'package:ndu_project/screens/update_ops_maintenance_plans_screen.dart';
-import 'package:ndu_project/services/project_service.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
 import 'package:ndu_project/services/sidebar_navigation_service.dart';
 import 'package:ndu_project/utils/phase_transition_helper.dart';
@@ -329,10 +329,12 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     if (provider != null && projectId != null && projectId.isNotEmpty) {
       // Update in-memory state immediately so other widgets (e.g. sidebars) can
       // reflect progress without waiting on Firestore.
-      provider.updateField((data) => data.copyWith(currentCheckpoint: checkpoint));
+      provider
+          .updateField((data) => data.copyWith(currentCheckpoint: checkpoint));
 
       // Fast local persistence for "resume where you left off".
-      Future<void>(() => ProjectNavigationService.instance.saveLastPageLocal(projectId, checkpoint));
+      Future<void>(() => ProjectNavigationService.instance
+          .saveLastPageLocal(projectId, checkpoint));
 
       // Full remote save in the background so user data isn't lost if the app
       // is terminated later.
@@ -517,8 +519,10 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     final provider = ProjectDataInherited.maybeOf(context);
     final projectId = provider?.projectData.projectId;
     if (provider != null && projectId != null && projectId.isNotEmpty) {
-      provider.updateField((data) => data.copyWith(currentCheckpoint: 'fep_summary'));
-      Future<void>(() => ProjectNavigationService.instance.saveLastPageLocal(projectId, 'fep_summary'));
+      provider.updateField(
+          (data) => data.copyWith(currentCheckpoint: 'fep_summary'));
+      Future<void>(() => ProjectNavigationService.instance
+          .saveLastPageLocal(projectId, 'fep_summary'));
       Future<void>(() async {
         try {
           await provider.saveToFirebase(checkpoint: 'fep_summary');
@@ -538,8 +542,10 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     final provider = ProjectDataInherited.maybeOf(context);
     final projectId = provider?.projectData.projectId;
     if (provider != null && projectId != null && projectId.isNotEmpty) {
-      provider.updateField((data) => data.copyWith(currentCheckpoint: 'project_charter'));
-      Future<void>(() => ProjectNavigationService.instance.saveLastPageLocal(projectId, 'project_charter'));
+      provider.updateField(
+          (data) => data.copyWith(currentCheckpoint: 'project_charter'));
+      Future<void>(() => ProjectNavigationService.instance
+          .saveLastPageLocal(projectId, 'project_charter'));
       Future<void>(() async {
         try {
           await provider.saveToFirebase(checkpoint: 'project_charter');
@@ -548,6 +554,11 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
         }
       });
     }
+  }
+
+  void _openProjectActivitiesLog() {
+    _navigateWithCheckpoint(
+        'project_activities_log', const ProjectActivitiesLogScreen());
   }
 
   void _openProcurement() {
@@ -1054,8 +1065,10 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
       // Persist checkpoint in the background (after we know we're actually opening).
       final projectId = projectData?.projectId;
       if (provider != null && projectId != null && projectId.isNotEmpty) {
-        provider.updateField((data) => data.copyWith(currentCheckpoint: 'executive_summary'));
-        Future<void>(() => ProjectNavigationService.instance.saveLastPageLocal(projectId, 'executive_summary'));
+        provider.updateField(
+            (data) => data.copyWith(currentCheckpoint: 'executive_summary'));
+        Future<void>(() => ProjectNavigationService.instance
+            .saveLastPageLocal(projectId, 'executive_summary'));
         Future<void>(() async {
           try {
             await provider.saveToFirebase(checkpoint: 'executive_summary');
@@ -1656,6 +1669,9 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
                 isActive: widget.activeItemLabel == 'Preferred Solutions'),
           ],
         ],
+        _buildSubMenuItem('Project Activities Log',
+            onTap: _openProjectActivitiesLog,
+            isActive: widget.activeItemLabel == 'Project Activities Log'),
         _buildSubExpandableHeader(
           'Front End Planning',
           expanded: _frontEndExpanded,
@@ -1707,6 +1723,9 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
           _buildSubSubMenuItem('Project Charter',
               onTap: _openProjectCharter,
               isActive: widget.activeItemLabel == 'Project Charter'),
+          _buildSubSubMenuItem('Project Activities Log',
+              onTap: _openProjectActivitiesLog,
+              isActive: widget.activeItemLabel == 'Project Activities Log'),
         ],
       ],
       _buildExpandableHeader(
@@ -2107,6 +2126,9 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
         _buildSubMenuItem('Risk Tracking',
             onTap: _openRiskTracking,
             isActive: widget.activeItemLabel == 'Risk Tracking'),
+        _buildSubMenuItem('Project Activities Log',
+            onTap: _openProjectActivitiesLog,
+            isActive: widget.activeItemLabel == 'Project Activities Log'),
         _buildSubMenuItem('Scope Completion',
             onTap: _openScopeCompletion,
             isActive: widget.activeItemLabel == 'Scope Completion'),
@@ -2440,6 +2462,14 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
       results.add(_buildMenuItem(Icons.description_outlined, 'Project Charter',
           onTap: _openProjectCharter,
           isActive: widget.activeItemLabel == 'Project Charter'));
+    }
+    if ('project activities log'.contains(query) ||
+        'activities log'.contains(query) ||
+        'activity log'.contains(query)) {
+      results.add(_buildMenuItem(
+          Icons.fact_check_outlined, 'Project Activities Log',
+          onTap: _openProjectActivitiesLog,
+          isActive: widget.activeItemLabel == 'Project Activities Log'));
     }
     if ('ssher'.contains(query)) {
       results.add(_buildMenuItem(Icons.shield_outlined, 'SSHER',

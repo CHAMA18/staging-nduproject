@@ -1,13 +1,17 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/program_model.dart';
+import '../models/portfolio_model.dart';
 import '../providers/project_data_provider.dart';
 import '../routing/app_router.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/navigation_context_service.dart';
+import '../services/portfolio_service.dart';
 import '../services/program_service.dart';
 import '../services/project_service.dart';
 import '../services/user_service.dart';
@@ -121,7 +125,8 @@ class _ProjectDashboardScreenState extends State<ProjectDashboardScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     filled: true,
-                    fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                    fillColor:
+                        scheme.surfaceContainerHighest.withValues(alpha: 0.3),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
@@ -817,45 +822,53 @@ class _StatusStrip extends StatelessWidget {
               builder: (context, programSnapshot) {
                 final programCount =
                     programSnapshot.hasData ? programSnapshot.data!.length : 0;
+                return StreamBuilder<List<PortfolioModel>>(
+                  stream: PortfolioService.streamPortfolios(ownerId: user.uid),
+                  builder: (context, portfolioSnapshot) {
+                    final portfolioCount = portfolioSnapshot.hasData
+                        ? portfolioSnapshot.data!.length
+                        : 0;
 
-                final metrics = [
-                  DashboardStatCard(
-                    label: 'Single Projects',
-                    value: '$projectCount',
-                    subLabel: 'Active workspaces',
-                    icon: Icons.folder_open_rounded,
-                    color: Colors.blue.shade600,
-                    onTap: openProjectDashboard,
-                  ),
-                  DashboardStatCard(
-                    label: 'Basic Projects',
-                    value: '$basicProjectCount',
-                    subLabel: 'Basic plan workspaces',
-                    icon: Icons.folder_special_rounded,
-                    color: Colors.teal.shade600,
-                    onTap: openBasicDashboard,
-                  ),
-                  DashboardStatCard(
-                    label: 'Programs',
-                    value: '$programCount',
-                    subLabel: 'Grouped projects',
-                    icon: Icons.layers_outlined,
-                    color: Colors.purple.shade600,
-                    onTap: openProgramDashboard,
-                  ),
-                  DashboardStatCard(
-                    label: 'Portfolios',
-                    value: '0',
-                    subLabel: 'Executive views',
-                    icon: Icons.pie_chart_outline_rounded,
-                    color: Colors.green.shade600,
-                    onTap: openPortfolioDashboard,
-                  ),
-                ];
+                    final metrics = [
+                      DashboardStatCard(
+                        label: 'Single Projects',
+                        value: '$projectCount',
+                        subLabel: 'Active workspaces',
+                        icon: Icons.folder_open_rounded,
+                        color: Colors.blue.shade600,
+                        onTap: openProjectDashboard,
+                      ),
+                      DashboardStatCard(
+                        label: 'Basic Projects',
+                        value: '$basicProjectCount',
+                        subLabel: 'Basic plan workspaces',
+                        icon: Icons.folder_special_rounded,
+                        color: Colors.teal.shade600,
+                        onTap: openBasicDashboard,
+                      ),
+                      DashboardStatCard(
+                        label: 'Programs',
+                        value: '$programCount',
+                        subLabel: 'Grouped projects',
+                        icon: Icons.layers_outlined,
+                        color: Colors.purple.shade600,
+                        onTap: openProgramDashboard,
+                      ),
+                      DashboardStatCard(
+                        label: 'Portfolios',
+                        value: '$portfolioCount',
+                        subLabel: 'Executive views',
+                        icon: Icons.pie_chart_outline_rounded,
+                        color: Colors.green.shade600,
+                        onTap: openPortfolioDashboard,
+                      ),
+                    ];
 
-                return DashboardStatLayout(
-                  cards: metrics,
-                  isStacked: isStacked,
+                    return DashboardStatLayout(
+                      cards: metrics,
+                      isStacked: isStacked,
+                    );
+                  },
                 );
               },
             );
@@ -2064,32 +2077,40 @@ class _ProgramsSummaryCard extends StatelessWidget {
               builder: (context, programSnapshot) {
                 final programCount =
                     programSnapshot.hasData ? programSnapshot.data!.length : 0;
-                // Portfolios are not yet implemented, so we show 0
-                const portfolioCount = 0;
+                return StreamBuilder<List<PortfolioModel>>(
+                  stream: PortfolioService.streamPortfolios(ownerId: user.uid),
+                  builder: (context, portfolioSnapshot) {
+                    final portfolioCount = portfolioSnapshot.hasData
+                        ? portfolioSnapshot.data!.length
+                        : 0;
 
-                final stats = [
-                  _SummaryStat(
-                    label: 'Programs',
-                    value: '$programCount',
-                    caption: programCount == 0
-                        ? 'Add three projects to unlock a program dashboard.'
-                        : 'Grouped projects',
-                  ),
-                  const _SummaryStat(
-                    label: 'Portfolios',
-                    value: '$portfolioCount',
-                    caption: 'Roll multiple programs into an executive view.',
-                  ),
-                  const _SummaryStat(
-                    label: 'Projects per program',
-                    value: 'Max 3',
-                    caption: 'Keep scope focused and interfaces manageable.',
-                  ),
-                ];
+                    final stats = [
+                      _SummaryStat(
+                        label: 'Programs',
+                        value: '$programCount',
+                        caption: programCount == 0
+                            ? 'Add three projects to unlock a program dashboard.'
+                            : 'Grouped projects',
+                      ),
+                      _SummaryStat(
+                        label: 'Portfolios',
+                        value: '$portfolioCount',
+                        caption:
+                            'Roll multiple programs into an executive view.',
+                      ),
+                      const _SummaryStat(
+                        label: 'Projects per program',
+                        value: 'Max 3',
+                        caption:
+                            'Keep scope focused and interfaces manageable.',
+                      ),
+                    ];
 
-                return LayoutBuilder(
-                  builder: (context, constraints) =>
-                      _buildStatsLayout(constraints, stats),
+                    return LayoutBuilder(
+                      builder: (context, constraints) =>
+                          _buildStatsLayout(constraints, stats),
+                    );
+                  },
                 );
               },
             ),
@@ -2306,12 +2327,23 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
   }
 
   Future<void> _openProject(BuildContext context) async {
-    debugPrint('🚀 Opening project: ${project.id} - ${project.name}');
+    debugPrint('Opening project: ${project.id} - ${project.name}');
 
-    // Show loading indicator
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
+    var loadingDialogVisible = false;
+
+    void dismissLoadingDialog() {
+      if (!loadingDialogVisible) return;
+      if (rootNavigator.mounted) {
+        rootNavigator.pop();
+      }
+      loadingDialogVisible = false;
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
+      useRootNavigator: true,
       builder: (context) => Center(
         child: Container(
           width: 140,
@@ -2342,41 +2374,44 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ).whenComplete(() {
+      loadingDialogVisible = false;
+    });
+    loadingDialogVisible = true;
 
     try {
       final provider = ProjectDataInherited.read(context);
-      debugPrint('📥 Calling loadFromFirebase for project: ${project.id}');
+      debugPrint('Calling loadFromFirebase for project: ${project.id}');
 
-      final success = await provider.loadFromFirebase(project.id);
+      final success = await provider
+          .loadFromFirebase(project.id)
+          .timeout(const Duration(seconds: 35));
 
-      debugPrint('📤 Load result: $success, error: ${provider.lastError}');
+      debugPrint('Load result: $success, error: ${provider.lastError}');
 
       if (!context.mounted) return;
-      final navigator = Navigator.of(context);
-      navigator.pop(); // Close loading dialog
+      dismissLoadingDialog();
 
       if (success) {
-        // Get checkpoint from Firestore (primary source) or fallback to SharedPreferences
         final checkpointRoute = project.checkpointRoute.isNotEmpty
             ? project.checkpointRoute
             : await ProjectNavigationService.instance.getLastPage(project.id);
         if (!context.mounted) return;
         debugPrint(
-            '✅ Project loaded successfully, navigating to checkpoint: $checkpointRoute');
+            'Project loaded successfully, navigating to checkpoint: $checkpointRoute');
 
-        // Resolve checkpoint to screen widget
         final screen = NavigationRouteResolver.resolveCheckpointToScreen(
           checkpointRoute.isEmpty ? 'initiation' : checkpointRoute,
           context,
         );
 
-        // Navigate to the resolved screen
-        navigator.push(
-          MaterialPageRoute(builder: (_) => screen ?? const InitiationPhaseScreen()),
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => screen ?? const InitiationPhaseScreen(),
+          ),
         );
       } else {
-        debugPrint('❌ Failed to load project: ${provider.lastError}');
+        debugPrint('Failed to load project: ${provider.lastError}');
         showDialog(
           context: context,
           builder: (dialogContext) => AlertDialog(
@@ -2390,8 +2425,11 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
                     color: Colors.red.shade50,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(Icons.error_outline,
-                      color: Colors.red.shade700, size: 24),
+                  child: Icon(
+                    Icons.error_outline,
+                    color: Colors.red.shade700,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(child: Text('Failed to Load Project')),
@@ -2404,7 +2442,9 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
                 Text(
                   'Project: ${project.name}',
                   style: const TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 15),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -2427,15 +2467,18 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(dialogContext).pop();
-                  _openProject(context); // Retry
+                  _openProject(context);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1A4DB3),
                   foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 child: const Text('Retry'),
               ),
@@ -2443,70 +2486,111 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
           ),
         );
       }
-	    } catch (e, stackTrace) {
-	      debugPrint('❌ Exception opening project: $e');
-	      debugPrint('Stack trace: $stackTrace');
+    } on TimeoutException catch (e, stackTrace) {
+      debugPrint('Timeout opening project: $e');
+      debugPrint('Stack trace: $stackTrace');
 
-	      if (!context.mounted) return;
-	      if (Navigator.canPop(context)) {
-	        Navigator.of(context).pop();
-	      }
-	      if (context.mounted) {
-	        showDialog(
-	          context: context,
-	          builder: (dialogContext) => AlertDialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(Icons.error_outline,
-                      color: Colors.red.shade700, size: 24),
+      if (!context.mounted) return;
+      dismissLoadingDialog();
+      showDialog(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                const SizedBox(width: 12),
-                const Expanded(child: Text('Error Opening Project')),
-              ],
+                child: Icon(Icons.timer_off_outlined,
+                    color: Colors.orange.shade700, size: 24),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(child: Text('Project Load Timed Out')),
+            ],
+          ),
+          content: const Text(
+            'The project is taking too long to load. Please retry in a moment.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Close'),
             ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'An unexpected error occurred:',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 15),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    e.toString(),
-                    style: TextStyle(
-                      color: Colors.grey.shade800,
-                      fontSize: 13,
-                      fontFamily: 'Satoshi',
-                    ),
-                  ),
-                ),
-              ],
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                _openProject(context);
+              },
+              child: const Text('Retry'),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('Close'),
+          ],
+        ),
+      );
+    } catch (e, stackTrace) {
+      debugPrint('Exception opening project: $e');
+      debugPrint('Stack trace: $stackTrace');
+
+      if (!context.mounted) return;
+      dismissLoadingDialog();
+      showDialog(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.error_outline,
+                    color: Colors.red.shade700, size: 24),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(child: Text('Error Opening Project')),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('An unexpected error occurred:',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  e.toString(),
+                  style: TextStyle(
+                    color: Colors.grey.shade800,
+                    fontSize: 13,
+                    fontFamily: 'Satoshi',
+                  ),
+                ),
               ),
             ],
           ),
-        );
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      if (context.mounted) {
+        dismissLoadingDialog();
       }
     }
   }

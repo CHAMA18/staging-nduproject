@@ -100,6 +100,48 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
     'Pending'
   ];
 
+  String _normalize(String value) {
+    return value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  List<ConstraintRow> _dedupeConstraints(Iterable<ConstraintRow> rows) {
+    final seen = <String>{};
+    final deduped = <ConstraintRow>[];
+    for (final row in rows) {
+      final key =
+          '${_normalize(row.constraint)}|${_normalize(row.guardrail)}|${_normalize(row.owner)}|${_normalize(row.status)}';
+      if (key == '|||') continue;
+      if (seen.add(key)) deduped.add(row);
+    }
+    return deduped;
+  }
+
+  List<RequirementMappingRow> _dedupeMappings(
+      Iterable<RequirementMappingRow> rows) {
+    final seen = <String>{};
+    final deduped = <RequirementMappingRow>[];
+    for (final row in rows) {
+      final key =
+          '${_normalize(row.requirement)}|${_normalize(row.approach)}|${_normalize(row.status)}';
+      if (key == '||') continue;
+      if (seen.add(key)) deduped.add(row);
+    }
+    return deduped;
+  }
+
+  List<DependencyDecisionRow> _dedupeDependencies(
+      Iterable<DependencyDecisionRow> rows) {
+    final seen = <String>{};
+    final deduped = <DependencyDecisionRow>[];
+    for (final row in rows) {
+      final key =
+          '${_normalize(row.item)}|${_normalize(row.detail)}|${_normalize(row.owner)}|${_normalize(row.status)}';
+      if (key == '|||') continue;
+      if (seen.add(key)) deduped.add(row);
+    }
+    return deduped;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -135,21 +177,27 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
           _notesController.text = data['notes']?.toString() ?? '';
 
           if (data['constraints'] != null) {
-            _constraints.clear();
-            _constraints.addAll((data['constraints'] as List)
-                .map((e) => ConstraintRow.fromMap(e as Map<String, dynamic>)));
+            final parsed = (data['constraints'] as List)
+                .map((e) => ConstraintRow.fromMap(e as Map<String, dynamic>));
+            _constraints
+              ..clear()
+              ..addAll(_dedupeConstraints(parsed));
           }
 
           if (data['mappings'] != null) {
-            _mappings.clear();
-            _mappings.addAll((data['mappings'] as List).map((e) =>
-                RequirementMappingRow.fromMap(e as Map<String, dynamic>)));
+            final parsed = (data['mappings'] as List).map((e) =>
+                RequirementMappingRow.fromMap(e as Map<String, dynamic>));
+            _mappings
+              ..clear()
+              ..addAll(_dedupeMappings(parsed));
           }
 
           if (data['dependencies'] != null) {
-            _dependencies.clear();
-            _dependencies.addAll((data['dependencies'] as List).map((e) =>
-                DependencyDecisionRow.fromMap(e as Map<String, dynamic>)));
+            final parsed = (data['dependencies'] as List).map((e) =>
+                DependencyDecisionRow.fromMap(e as Map<String, dynamic>));
+            _dependencies
+              ..clear()
+              ..addAll(_dedupeDependencies(parsed));
           }
         });
       }
@@ -217,22 +265,25 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
 
       setState(() {
         if (result.containsKey('constraints')) {
-          _constraints.clear();
-          for (var item in result['constraints']) {
-            _constraints.add(ConstraintRow.fromMap(item));
-          }
+          final parsed = (result['constraints'] as List)
+              .map((item) => ConstraintRow.fromMap(item));
+          _constraints
+            ..clear()
+            ..addAll(_dedupeConstraints(parsed));
         }
         if (result.containsKey('mappings')) {
-          _mappings.clear();
-          for (var item in result['mappings']) {
-            _mappings.add(RequirementMappingRow.fromMap(item));
-          }
+          final parsed = (result['mappings'] as List)
+              .map((item) => RequirementMappingRow.fromMap(item));
+          _mappings
+            ..clear()
+            ..addAll(_dedupeMappings(parsed));
         }
         if (result.containsKey('dependencies')) {
-          _dependencies.clear();
-          for (var item in result['dependencies']) {
-            _dependencies.add(DependencyDecisionRow.fromMap(item));
-          }
+          final parsed = (result['dependencies'] as List)
+              .map((item) => DependencyDecisionRow.fromMap(item));
+          _dependencies
+            ..clear()
+            ..addAll(_dedupeDependencies(parsed));
         }
       });
 
@@ -266,11 +317,10 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
 
     // Get team members from provider
     final provider = ProjectDataInherited.maybeOf(context);
-    final List<String> ownerOptions = provider?.projectData.teamMembers
-            .map((m) => m.name)
-            .where((n) => n.isNotEmpty)
-            .toList() ??
-        [];
+    final List<String> ownerOptions =
+        ((provider?.projectData.teamMembers ?? const [])
+            .map((m) => m.name.trim())
+            .where((n) => n.isNotEmpty)).toSet().toList();
 
     if (ownerOptions.isEmpty) {
       ownerOptions.add('Unassigned');
@@ -309,11 +359,6 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
                       fontWeight: FontWeight.w600,
                       color: Colors.black87,
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Capture the minimum set of technical decisions so the team can move forward confidently without over engineering or rework.',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                   ),
                   const SizedBox(height: 8),
                   Text(

@@ -63,6 +63,35 @@ class _RequirementsImplementationScreenState
     ),
   ];
 
+  String _normalize(String value) {
+    return value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  List<RequirementRow> _dedupeRequirements(Iterable<RequirementRow> rows) {
+    final seen = <String>{};
+    final deduped = <RequirementRow>[];
+    for (final row in rows) {
+      final key =
+          '${_normalize(row.title)}|${_normalize(row.owner)}|${_normalize(row.definition)}';
+      if (key == '||') continue;
+      if (seen.add(key)) deduped.add(row);
+    }
+    return deduped;
+  }
+
+  List<RequirementChecklistItem> _dedupeChecklist(
+      Iterable<RequirementChecklistItem> rows) {
+    final seen = <String>{};
+    final deduped = <RequirementChecklistItem>[];
+    for (final row in rows) {
+      final key =
+          '${_normalize(row.title)}|${_normalize(row.description)}|${row.status.name}|${_normalize(row.owner ?? '')}';
+      if (key == '|||') continue;
+      if (seen.add(key)) deduped.add(row);
+    }
+    return deduped;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -134,15 +163,19 @@ class _RequirementsImplementationScreenState
           _notesController.text = data['notes']?.toString() ?? '';
 
           if (data['requirements'] != null) {
-            _requirementRows.clear();
-            _requirementRows.addAll((data['requirements'] as List)
-                .map((e) => RequirementRow.fromMap(e as Map<String, dynamic>)));
+            final parsed = (data['requirements'] as List)
+                .map((e) => RequirementRow.fromMap(e as Map<String, dynamic>));
+            _requirementRows
+              ..clear()
+              ..addAll(_dedupeRequirements(parsed));
           }
 
           if (data['checklist'] != null) {
-            _checklistItems.clear();
-            _checklistItems.addAll((data['checklist'] as List).map((e) =>
-                RequirementChecklistItem.fromMap(e as Map<String, dynamic>)));
+            final parsed = (data['checklist'] as List).map((e) =>
+                RequirementChecklistItem.fromMap(e as Map<String, dynamic>));
+            _checklistItems
+              ..clear()
+              ..addAll(_dedupeChecklist(parsed));
           }
         });
       }
@@ -165,11 +198,13 @@ class _RequirementsImplementationScreenState
     if (projectId == null || projectId.isEmpty) return;
 
     try {
+      final dedupedRequirements = _dedupeRequirements(_requirementRows);
+      final dedupedChecklist = _dedupeChecklist(_checklistItems);
       await DesignPhaseService.instance.saveRequirementsImplementation(
         projectId,
         notes: _notesController.text,
-        requirements: _requirementRows,
-        checklist: _checklistItems,
+        requirements: dedupedRequirements,
+        checklist: dedupedChecklist,
       );
     } catch (e) {
       debugPrint('Error saving requirements: $e');
@@ -197,11 +232,10 @@ class _RequirementsImplementationScreenState
 
     // Get team members from provider
     final provider = ProjectDataInherited.maybeOf(context);
-    final List<String> ownerOptions = provider?.projectData.teamMembers
-            .map((m) => m.name)
-            .where((n) => n.isNotEmpty)
-            .toList() ??
-        [];
+    final List<String> ownerOptions =
+        ((provider?.projectData.teamMembers ?? const [])
+            .map((m) => m.name.trim())
+            .where((n) => n.isNotEmpty)).toSet().toList();
 
     if (ownerOptions.isEmpty) {
       ownerOptions.add('Unassigned');

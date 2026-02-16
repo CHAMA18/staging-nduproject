@@ -39,6 +39,49 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
     'In progress'
   ];
 
+  String _normalize(String value) {
+    return value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  List<SecurityPatternRow> _dedupeSecurityRows(
+      Iterable<SecurityPatternRow> rows) {
+    final seen = <String>{};
+    final deduped = <SecurityPatternRow>[];
+    for (final row in rows) {
+      final key =
+          '${_normalize(row.pattern)}|${_normalize(row.decision)}|${_normalize(row.owner)}|${_normalize(row.status)}';
+      if (key == '|||') continue;
+      if (seen.add(key)) deduped.add(row);
+    }
+    return deduped;
+  }
+
+  List<PerformancePatternRow> _dedupePerformanceRows(
+      Iterable<PerformancePatternRow> rows) {
+    final seen = <String>{};
+    final deduped = <PerformancePatternRow>[];
+    for (final row in rows) {
+      final key =
+          '${_normalize(row.hotspot)}|${_normalize(row.focus)}|${_normalize(row.sla)}|${_normalize(row.status)}';
+      if (key == '|||') continue;
+      if (seen.add(key)) deduped.add(row);
+    }
+    return deduped;
+  }
+
+  List<IntegrationFlowRow> _dedupeIntegrationRows(
+      Iterable<IntegrationFlowRow> rows) {
+    final seen = <String>{};
+    final deduped = <IntegrationFlowRow>[];
+    for (final row in rows) {
+      final key =
+          '${_normalize(row.flow)}|${_normalize(row.owner)}|${_normalize(row.system)}|${_normalize(row.status)}';
+      if (key == '|||') continue;
+      if (seen.add(key)) deduped.add(row);
+    }
+    return deduped;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -89,13 +132,13 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
         _notesController.text = data.notes;
         _securityRows
           ..clear()
-          ..addAll(data.securityPatterns);
+          ..addAll(_dedupeSecurityRows(data.securityPatterns));
         _performanceRows
           ..clear()
-          ..addAll(data.performancePatterns);
+          ..addAll(_dedupePerformanceRows(data.performancePatterns));
         _integrationRows
           ..clear()
-          ..addAll(data.integrationFlows);
+          ..addAll(_dedupeIntegrationRows(data.integrationFlows));
         _isLoading = false;
       });
     } catch (e) {
@@ -118,9 +161,9 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
 
     final data = SpecializedDesignData(
       notes: _notesController.text.trim(),
-      securityPatterns: _securityRows,
-      performancePatterns: _performanceRows,
-      integrationFlows: _integrationRows,
+      securityPatterns: _dedupeSecurityRows(_securityRows),
+      performancePatterns: _dedupePerformanceRows(_performanceRows),
+      integrationFlows: _dedupeIntegrationRows(_integrationRows),
     );
 
     await DesignPhaseService.instance.saveSpecializedDesign(projectId, data);
@@ -164,18 +207,21 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
         }
 
         if (result.securityPatterns.isNotEmpty) {
-          _securityRows.clear();
-          _securityRows.addAll(result.securityPatterns);
+          _securityRows
+            ..clear()
+            ..addAll(_dedupeSecurityRows(result.securityPatterns));
         }
 
         if (result.performancePatterns.isNotEmpty) {
-          _performanceRows.clear();
-          _performanceRows.addAll(result.performancePatterns);
+          _performanceRows
+            ..clear()
+            ..addAll(_dedupePerformanceRows(result.performancePatterns));
         }
 
         if (result.integrationFlows.isNotEmpty) {
-          _integrationRows.clear();
-          _integrationRows.addAll(result.integrationFlows);
+          _integrationRows
+            ..clear()
+            ..addAll(_dedupeIntegrationRows(result.integrationFlows));
         }
       });
 
@@ -205,9 +251,15 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
   // Helper to build list of context-aware options (Project members)
   List<String> _ownerOptions() {
     final data = ProjectDataHelper.getData(context);
-    List<String> members = data.teamMembers
-        .map((m) => '${m.name} (${m.role})')
+    final members = data.teamMembers
+        .map((m) {
+          final name = m.name.trim();
+          final role = m.role.trim();
+          if (name.isEmpty) return '';
+          return role.isEmpty ? name : '$name ($role)';
+        })
         .where((s) => s.isNotEmpty)
+        .toSet()
         .toList();
 
     if (members.isEmpty) {

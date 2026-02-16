@@ -7,7 +7,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../routing/app_router.dart';
 import '../models/program_model.dart';
+import '../models/portfolio_model.dart';
 import '../services/navigation_context_service.dart';
+import '../services/portfolio_service.dart';
 import '../services/program_service.dart';
 import '../services/project_service.dart';
 import '../services/project_navigation_service.dart';
@@ -37,9 +39,11 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
   StreamSubscription<List<ProgramModel>>? _programSubscription;
   StreamSubscription<List<ProjectRecord>>? _projectSubscription;
   StreamSubscription<List<ProjectRecord>>? _allProjectsSubscription;
+  StreamSubscription<List<PortfolioModel>>? _portfolioSubscription;
   int _totalProjects = 0;
   int _basicProjectCount = 0;
   int _programCount = 0;
+  int _portfolioCount = 0;
 
   @override
   void initState() {
@@ -52,12 +56,14 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
     _programSubscription?.cancel();
     _projectSubscription?.cancel();
     _allProjectsSubscription?.cancel();
+    _portfolioSubscription?.cancel();
     super.dispose();
   }
 
   Future<void> _loadProgramData() async {
     final user = FirebaseAuth.instance.currentUser;
     _allProjectsSubscription?.cancel();
+    _portfolioSubscription?.cancel();
     if (user == null) {
       setState(() {
         _isLoading = false;
@@ -67,6 +73,7 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
         _programCount = 0;
         _totalProjects = 0;
         _basicProjectCount = 0;
+        _portfolioCount = 0;
       });
       return;
     }
@@ -83,6 +90,16 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
       });
     }, onError: (error) {
       debugPrint('Error streaming all projects: $error');
+    });
+
+    _portfolioSubscription =
+        PortfolioService.streamPortfolios(ownerId: user.uid).listen((items) {
+      if (!mounted) return;
+      setState(() {
+        _portfolioCount = items.length;
+      });
+    }, onError: (error) {
+      debugPrint('Error streaming portfolios: $error');
     });
 
     try {
@@ -330,7 +347,7 @@ class _ProgramDashboardScreenState extends State<ProgramDashboardScreen> {
       ),
       DashboardStatCard(
         label: 'Portfolios',
-        value: '0',
+        value: '$_portfolioCount',
         subLabel: 'Executive views',
         icon: Icons.pie_chart_outline_rounded,
         color: const Color(0xFF16A34A),
@@ -375,7 +392,8 @@ class _Header extends StatelessWidget {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(40),
                       color: Colors.white,
-                      border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                      border:
+                          Border.all(color: Colors.grey.withValues(alpha: 0.2)),
                       boxShadow: [
                         BoxShadow(
                           offset: const Offset(0, 12),
@@ -1001,7 +1019,8 @@ class _RollupCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(26)),
                     textStyle: const TextStyle(fontWeight: FontWeight.w700),
                     elevation: 4,
-                    shadowColor: const Color(0xFFFFC812).withValues(alpha: 0.45),
+                    shadowColor:
+                        const Color(0xFFFFC812).withValues(alpha: 0.45),
                   ),
                   child: const Text('Roll up to portfolio'),
                 ),
@@ -1226,10 +1245,22 @@ class _ProjectRow extends StatelessWidget {
   }
 
   Future<void> _handleProjectTap(BuildContext context, String projectId) async {
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
+    var loadingDialogVisible = false;
+
+    void dismissLoadingDialog() {
+      if (!loadingDialogVisible) return;
+      if (rootNavigator.mounted) {
+        rootNavigator.pop();
+      }
+      loadingDialogVisible = false;
+    }
+
     // Show loading dialog
     showDialog(
       context: context,
       barrierDismissible: false,
+      useRootNavigator: true,
       builder: (context) => const Center(
         child: Card(
           child: Padding(
@@ -1249,19 +1280,24 @@ class _ProjectRow extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ).whenComplete(() {
+      loadingDialogVisible = false;
+    });
+    loadingDialogVisible = true;
 
     try {
       final provider = ProjectDataInherited.read(context);
-      debugPrint('📥 Calling loadFromFirebase for project: $projectId');
+      debugPrint('Calling loadFromFirebase for project: $projectId');
 
-      final success = await provider.loadFromFirebase(projectId);
+      final success = await provider
+          .loadFromFirebase(projectId)
+          .timeout(const Duration(seconds: 35));
 
-      debugPrint('📤 Load result: $success, error: ${provider.lastError}');
+      debugPrint('Load result: $success, error: ${provider.lastError}');
 
       if (!context.mounted) return;
 
-      Navigator.of(context).pop(); // Close loading dialog
+      dismissLoadingDialog();
 
       if (success) {
         // Get checkpoint from Firestore (primary source) or fallback to SharedPreferences
@@ -1271,7 +1307,7 @@ class _ProjectRow extends StatelessWidget {
             ? projectRecord!.checkpointRoute
             : await ProjectNavigationService.instance.getLastPage(projectId);
         debugPrint(
-            '✅ Project loaded successfully, navigating to checkpoint: $checkpointRoute');
+            'Project loaded successfully, navigating to checkpoint: $checkpointRoute');
 
         if (!context.mounted) return;
 
@@ -1288,7 +1324,7 @@ class _ProjectRow extends StatelessWidget {
               builder: (_) => screen ?? const InitiationPhaseScreen()),
         );
       } else {
-        debugPrint('❌ Failed to load project: ${provider.lastError}');
+        debugPrint('Failed to load project: ${provider.lastError}');
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1297,13 +1333,27 @@ class _ProjectRow extends StatelessWidget {
           );
         }
       }
+    } on TimeoutException catch (e) {
+      debugPrint('Error loading project: $e');
+      if (context.mounted) {
+        dismissLoadingDialog();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content:
+                  Text('Project load timed out. Please retry in a moment.')),
+        );
+      }
     } catch (e) {
       debugPrint('Error loading project: $e');
       if (context.mounted) {
-        Navigator.of(context).pop(); // Close loading dialog
+        dismissLoadingDialog();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading project: $e')),
         );
+      }
+    } finally {
+      if (context.mounted) {
+        dismissLoadingDialog();
       }
     }
   }

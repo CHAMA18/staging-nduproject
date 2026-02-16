@@ -177,76 +177,166 @@ class _FrontEndPlanningAllowanceScreenState
     final notesController = TextEditingController(text: item?.notes ?? '');
     String selectedType = item?.type ?? 'Contingency';
 
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(isEditing ? 'Edit Allowance' : 'Add Allowance'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                    labelText: 'Name', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: selectedType,
-                decoration: const InputDecoration(
-                    labelText: 'Type', border: OutlineInputBorder()),
-                items: ['Contingency', 'Training', 'Staffing', 'Tech', 'Other']
-                    .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                    .toList(),
-                onChanged: (val) => selectedType = val!,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: amountController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                    labelText: 'Amount',
-                    prefixText: '\$',
-                    border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: appliesToController,
-                decoration: const InputDecoration(
-                    labelText: 'Applies To (comma separated)',
-                    hintText: 'e.g., Estimate, Schedule, Training',
-                    border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: assignedToController,
-                decoration: const InputDecoration(
-                    labelText: 'Assigned To (Role or Person)',
-                    hintText: 'e.g., Finance Manager, John Doe',
-                    border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: notesController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                    labelText: 'Notes', border: OutlineInputBorder()),
-              ),
-            ],
+    InputDecoration fieldDecoration({
+      required String hintText,
+      String? prefixText,
+    }) {
+      const borderColor = Color(0xFFD1D5DB);
+      return InputDecoration(
+        hintText: hintText,
+        prefixText: prefixText,
+        prefixStyle: const TextStyle(color: Color(0xFF374151), fontSize: 20),
+        filled: true,
+        fillColor: const Color(0xFFF8FAFC),
+        isDense: true,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: borderColor),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 1.2),
+        ),
+      );
+    }
+
+    Widget fieldLabel(String text) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF374151),
           ),
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFC812),
-                foregroundColor: Colors.black),
-            child: const Text('Save'),
+      );
+    }
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          titlePadding:
+              const EdgeInsets.only(left: 24, right: 24, top: 20, bottom: 8),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          actionsPadding:
+              const EdgeInsets.only(left: 20, right: 20, bottom: 18, top: 8),
+          title: Text(
+            isEditing ? 'Edit Allowance' : 'Add Allowance',
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0F172A),
+            ),
           ),
-        ],
+          content: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 500,
+              maxHeight: MediaQuery.of(dialogContext).size.height * 0.68,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  fieldLabel('Name'),
+                  TextField(
+                    controller: nameController,
+                    decoration: fieldDecoration(hintText: 'Allowance name'),
+                  ),
+                  const SizedBox(height: 12),
+                  fieldLabel('Type'),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedType,
+                    isExpanded: true,
+                    decoration: fieldDecoration(hintText: 'Select type'),
+                    items: const [
+                      'Contingency',
+                      'Training',
+                      'Staffing',
+                      'Tech',
+                      'Other'
+                    ]
+                        .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                        .toList(),
+                    onChanged: (val) {
+                      if (val == null) return;
+                      setDialogState(() => selectedType = val);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  fieldLabel('Amount'),
+                  TextField(
+                    controller: amountController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration:
+                        fieldDecoration(hintText: '0', prefixText: '\$'),
+                  ),
+                  const SizedBox(height: 12),
+                  fieldLabel('Applies To'),
+                  TextField(
+                    controller: appliesToController,
+                    decoration: fieldDecoration(
+                        hintText: 'Estimate, Schedule, Training'),
+                  ),
+                  const SizedBox(height: 12),
+                  fieldLabel('Assigned To'),
+                  TextField(
+                    controller: assignedToController,
+                    decoration:
+                        fieldDecoration(hintText: 'Role or person name'),
+                  ),
+                  const SizedBox(height: 12),
+                  fieldLabel('Notes'),
+                  TextField(
+                    controller: notesController,
+                    maxLines: 4,
+                    decoration:
+                        fieldDecoration(hintText: 'Context or assumptions'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF2563EB),
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFC812),
+                foregroundColor: Colors.black,
+                elevation: 0,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999)),
+              ),
+              child: const Text(
+                'Save',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
       ),
     );
 
@@ -276,7 +366,8 @@ class _FrontEndPlanningAllowanceScreenState
       final editingItemId = item?.id;
       setState(() {
         if (isEditing && editingItemId != null) {
-          final index = _allowanceItems.indexWhere((i) => i.id == editingItemId);
+          final index =
+              _allowanceItems.indexWhere((i) => i.id == editingItemId);
           if (index != -1) _allowanceItems[index] = newItem;
         } else if (!isEditing) {
           _allowanceItems.add(newItem);

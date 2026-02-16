@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:ndu_project/theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
@@ -46,7 +47,7 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Future<void> _handleGoogleSignIn() async {
-    if (_isMobileViewport(context)) {
+    if (_isUnsupportedDevice(context)) {
       await _showDeviceRestrictionDialog();
       return;
     }
@@ -64,7 +65,7 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Future<void> _handleEmailSignIn() async {
-    if (_isMobileViewport(context)) {
+    if (_isUnsupportedDevice(context)) {
       await _showDeviceRestrictionDialog();
       return;
     }
@@ -193,10 +194,17 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  bool _isMobileViewport(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final shortestSide = size.shortestSide;
-    return shortestSide < 600;
+  bool _isUnsupportedDevice(BuildContext context) {
+    // Never block web logins based on viewport size; narrow desktop windows
+    // can otherwise be misclassified as "mobile".
+    if (kIsWeb) return false;
+
+    final platform = defaultTargetPlatform;
+    final isNativeMobile =
+        platform == TargetPlatform.android || platform == TargetPlatform.iOS;
+    if (!isNativeMobile) return false;
+
+    return AppBreakpoints.isMobile(context);
   }
 
   Future<void> _showDeviceRestrictionDialog() async {

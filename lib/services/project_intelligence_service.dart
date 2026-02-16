@@ -4,6 +4,38 @@ import 'package:ndu_project/models/project_data_model.dart';
 /// Central orchestration utility that builds a unified, cross-phase
 /// activity log from structured project data.
 class ProjectIntelligenceService {
+  static const Set<String> _executionSectionCheckpoints = <String>{
+    'staff_team',
+    'team_meetings',
+    'progress_tracking',
+    'contracts_tracking',
+    'vendor_tracking',
+    'detailed_design',
+    'agile_development_iterations',
+    'scope_tracking_implementation',
+    'stakeholder_alignment',
+    'update_ops_maintenance_plans',
+    'launch_checklist',
+    'risk_tracking',
+    'scope_completion',
+    'gap_analysis_scope_reconcillation',
+    'punchlist_actions',
+    'technical_debt_management',
+    'identify_staff_ops_team',
+    'salvage_disposal_team',
+  };
+
+  static const Set<String> _initiationSectionCheckpoints = <String>{
+    'business_case',
+    'potential_solutions',
+    'risk_identification',
+    'it_considerations',
+    'infrastructure_considerations',
+    'core_stakeholders',
+    'cost_analysis',
+    'preferred_solution_analysis',
+  };
+
   static const List<String> _estimateSections = <String>[
     'cost_analysis',
     'cost_estimate',
@@ -31,6 +63,13 @@ class ProjectIntelligenceService {
       final existing = existingById[draft.id];
       nextById[draft.id] = _mergeLifecycle(draft, existing);
     }
+
+    _upsertInitiationActivities(
+      data: data,
+      now: now,
+      existingById: existingById,
+      upsert: upsert,
+    );
 
     for (final item in data.frontEndPlanning.opportunityItems) {
       final title = item.opportunity.trim();
@@ -235,6 +274,13 @@ class ProjectIntelligenceService {
       upsert: upsert,
     );
 
+    _upsertExecutionActivities(
+      data: data,
+      now: now,
+      existingById: existingById,
+      upsert: upsert,
+    );
+
     final activities = nextById.values.toList()
       ..sort((a, b) {
         final sourceOrder = a.sourceSection.compareTo(b.sourceSection);
@@ -343,6 +389,197 @@ class ProjectIntelligenceService {
     }
   }
 
+  static void _upsertInitiationActivities({
+    required ProjectDataModel data,
+    required DateTime now,
+    required Map<String, ProjectActivity> existingById,
+    required void Function(ProjectActivity draft) upsert,
+  }) {
+    for (var i = 0; i < data.potentialSolutions.length; i++) {
+      final item = data.potentialSolutions[i];
+      final title = item.title.trim().isNotEmpty
+          ? item.title.trim()
+          : 'Potential Solution ${item.number}';
+      if (title.trim().isEmpty) continue;
+
+      final idSeed = item.id.trim().isNotEmpty ? item.id.trim() : '$i';
+      final id = 'activity_init_solution_$idSeed';
+      final description = item.description.trim().isNotEmpty
+          ? item.description.trim()
+          : 'Potential solution identified during Initiation.';
+
+      upsert(
+        ProjectActivity(
+          id: id,
+          title: title,
+          description: description,
+          sourceSection: 'potential_solutions',
+          phase: _phaseForSection('potential_solutions'),
+          discipline: 'Strategy',
+          role: 'Project Lead',
+          assignedTo: null,
+          applicableSections: const <String>[
+            'preferred_solution_analysis',
+            'fep_summary',
+            'project_charter',
+          ],
+          dueDate: '',
+          status: ProjectActivityStatus.pending,
+          approvalStatus: ProjectApprovalStatus.draft,
+          createdAt: existingById[id]?.createdAt ?? now,
+          updatedAt: now,
+        ),
+      );
+    }
+
+    for (var solutionIndex = 0;
+        solutionIndex < data.solutionRisks.length;
+        solutionIndex++) {
+      final solutionRisk = data.solutionRisks[solutionIndex];
+      final solutionTitle = solutionRisk.solutionTitle.trim().isNotEmpty
+          ? solutionRisk.solutionTitle.trim()
+          : 'Solution ${solutionIndex + 1}';
+      for (var riskIndex = 0;
+          riskIndex < solutionRisk.risks.length;
+          riskIndex++) {
+        final riskText = solutionRisk.risks[riskIndex].trim();
+        if (riskText.isEmpty) continue;
+        final id = 'activity_init_risk_${solutionIndex}_$riskIndex';
+        upsert(
+          ProjectActivity(
+            id: id,
+            title: riskText,
+            description: 'Risk identified for $solutionTitle.',
+            sourceSection: 'risk_identification',
+            phase: _phaseForSection('risk_identification'),
+            discipline: 'Risk Management',
+            role: 'Risk Owner',
+            assignedTo: null,
+            applicableSections: const <String>[
+              'preferred_solution_analysis',
+              'fep_risks',
+              'risk_assessment',
+            ],
+            dueDate: '',
+            status: ProjectActivityStatus.pending,
+            approvalStatus: ProjectApprovalStatus.draft,
+            createdAt: existingById[id]?.createdAt ?? now,
+            updatedAt: now,
+          ),
+        );
+      }
+    }
+  }
+
+  static void _upsertExecutionActivities({
+    required ProjectDataModel data,
+    required DateTime now,
+    required Map<String, ProjectActivity> existingById,
+    required void Function(ProjectActivity draft) upsert,
+  }) {
+    final executionData = data.executionPhaseData;
+    if (executionData == null) return;
+
+    final outline = executionData.executionPlanOutline?.trim() ?? '';
+    if (outline.isNotEmpty) {
+      const id = 'activity_exec_outline';
+      upsert(
+        ProjectActivity(
+          id: id,
+          title: 'Execution Plan Outline',
+          description: outline,
+          sourceSection: 'execution_plan',
+          phase: _phaseForSection('execution_plan'),
+          discipline: 'Execution',
+          role: 'Execution Manager',
+          assignedTo: null,
+          applicableSections: const <String>[
+            'execution_plan',
+            'schedule',
+            'project_charter',
+          ],
+          dueDate: '',
+          status: ProjectActivityStatus.pending,
+          approvalStatus: ProjectApprovalStatus.draft,
+          createdAt: existingById[id]?.createdAt ?? now,
+          updatedAt: now,
+        ),
+      );
+    }
+
+    final strategy = executionData.executionPlanStrategy?.trim() ?? '';
+    if (strategy.isNotEmpty) {
+      const id = 'activity_exec_strategy';
+      upsert(
+        ProjectActivity(
+          id: id,
+          title: 'Execution Plan Strategy',
+          description: strategy,
+          sourceSection: 'execution_plan_strategy',
+          phase: _phaseForSection('execution_plan_strategy'),
+          discipline: 'Execution',
+          role: 'Execution Manager',
+          assignedTo: null,
+          applicableSections: const <String>[
+            'execution_plan',
+            'project_plan',
+            'project_charter',
+          ],
+          dueDate: '',
+          status: ProjectActivityStatus.pending,
+          approvalStatus: ProjectApprovalStatus.draft,
+          createdAt: existingById[id]?.createdAt ?? now,
+          updatedAt: now,
+        ),
+      );
+    }
+
+    executionData.sectionData.forEach((sectionKey, rows) {
+      final normalizedSection = sectionKey.trim();
+      final sourceSection =
+          normalizedSection.isNotEmpty ? normalizedSection : 'execution_plan';
+      final sectionLabel = _humanizeSection(sourceSection);
+      final applicableSections = <String>{
+        sourceSection,
+        'execution_plan',
+        'project_charter',
+      }.toList();
+
+      for (var i = 0; i < rows.length; i++) {
+        final row = rows[i];
+        final title = row.title.trim();
+        final details = row.details.trim();
+        if (title.isEmpty && details.isEmpty) continue;
+
+        final rowTitle =
+            title.isNotEmpty ? title : '$sectionLabel activity ${i + 1}';
+        final rowDescription = details.isNotEmpty
+            ? details
+            : 'Execution activity captured in $sectionLabel.';
+        final id = 'activity_exec_${_slugToken(sourceSection)}_$i';
+
+        upsert(
+          ProjectActivity(
+            id: id,
+            title: rowTitle,
+            description: rowDescription,
+            sourceSection: sourceSection,
+            phase: _phaseForSection(sourceSection),
+            discipline: sectionLabel,
+            role: 'Execution Lead',
+            assignedTo: null,
+            applicableSections: applicableSections,
+            dueDate: '',
+            status: _statusFromExecutionEntry(row.status),
+            approvalStatus: ProjectApprovalStatus.draft,
+            createdAt: existingById[id]?.createdAt ?? now,
+            updatedAt: now,
+          ),
+        );
+      }
+    });
+  }
+
   static ProjectActivity _mergeLifecycle(
       ProjectActivity draft, ProjectActivity? existing) {
     if (existing == null) return draft;
@@ -379,11 +616,20 @@ class ProjectIntelligenceService {
   }
 
   static String _phaseForSection(String sourceSection) {
-    if (sourceSection.startsWith('fep_')) return 'Front End Planning';
-    if (sourceSection.startsWith('design_')) return 'Design Phase';
-    if (sourceSection.contains('execution')) return 'Execution Phase';
-    if (sourceSection.contains('launch')) return 'Launch Phase';
-    if (sourceSection.contains('project_')) return 'Planning Phase';
+    final normalized = sourceSection.trim().toLowerCase();
+    if (normalized.startsWith('fep_')) return 'Front End Planning';
+    if (_executionSectionCheckpoints.contains(normalized) ||
+        normalized.startsWith('execution_') ||
+        normalized.contains('execution')) {
+      return 'Execution Phase';
+    }
+    if (normalized.startsWith('design_')) return 'Design Phase';
+    if (normalized.contains('launch')) return 'Launch Phase';
+    if (_initiationSectionCheckpoints.contains(normalized) ||
+        normalized.startsWith('preferred_solution')) {
+      return 'Initiation Phase';
+    }
+    if (normalized.contains('project_')) return 'Planning Phase';
     return 'Initiation Phase';
   }
 
@@ -395,5 +641,44 @@ class ProjectIntelligenceService {
   static String? _nullable(String value) {
     final text = value.trim();
     return text.isEmpty ? null : text;
+  }
+
+  static String _humanizeSection(String value) {
+    final normalized = value.replaceAll('_', ' ').trim();
+    if (normalized.isEmpty) return 'Execution';
+    return normalized
+        .split(RegExp(r'\s+'))
+        .map((word) => word.isEmpty
+            ? word
+            : '${word[0].toUpperCase()}${word.substring(1)}')
+        .join(' ');
+  }
+
+  static String _slugToken(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_|_$'), '');
+  }
+
+  static ProjectActivityStatus _statusFromExecutionEntry(String rawStatus) {
+    final normalized = rawStatus.trim().toLowerCase();
+    if (normalized.contains('implement') ||
+        normalized.contains('complete') ||
+        normalized.contains('closed') ||
+        normalized == 'done') {
+      return ProjectActivityStatus.implemented;
+    }
+    if (normalized.contains('acknowledge')) {
+      return ProjectActivityStatus.acknowledged;
+    }
+    if (normalized.contains('reject')) {
+      return ProjectActivityStatus.rejected;
+    }
+    if (normalized.contains('defer') || normalized.contains('hold')) {
+      return ProjectActivityStatus.deferred;
+    }
+    return ProjectActivityStatus.pending;
   }
 }

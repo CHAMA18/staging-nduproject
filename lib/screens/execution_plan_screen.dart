@@ -19,6 +19,29 @@ import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/screens/quality_management_screen.dart';
 import 'package:ndu_project/screens/design_planning_screen.dart';
 
+const Map<String, String> _executionCheckpointAlias = {
+  'execution_plan_outline': 'execution_plan',
+  'execution_lessons_learned': 'execution_plan_lessons_learned',
+  'execution_best_practices': 'execution_plan_best_practices',
+  'execution_construction_plan': 'execution_plan_construction_plan',
+  'execution_infrastructure_plan': 'execution_plan_infrastructure_plan',
+  'execution_agile_delivery_plan': 'execution_plan_agile_delivery_plan',
+  'execution_interface_management': 'execution_plan_interface_management',
+  'execution_communication_plan': 'execution_plan_communication_plan',
+  'execution_interface_management_plan':
+      'execution_plan_interface_management_plan',
+  'execution_stakeholder_identification':
+      'execution_plan_stakeholder_identification',
+  'execution_plan_interface_overview':
+      'execution_plan_interface_management_overview',
+};
+
+String _resolveExecutionCheckpoint(String key) {
+  final trimmed = key.trim();
+  if (trimmed.isEmpty) return 'execution_plan';
+  return _executionCheckpointAlias[trimmed] ?? trimmed;
+}
+
 class ExecutionPlanScreen extends StatefulWidget {
   const ExecutionPlanScreen({super.key});
 
@@ -338,12 +361,13 @@ class _ExecutionPlanFormState extends State<_ExecutionPlanForm> {
     _currentText = value;
     final noteKey = widget.noteKey;
     if (noteKey == null || noteKey.trim().isEmpty) return;
+    final checkpoint = _resolveExecutionCheckpoint(noteKey);
     _saveDebounce?.cancel();
     _saveDebounce = Timer(const Duration(milliseconds: 700), () async {
       final trimmed = value.trim();
       final success = await ProjectDataHelper.updateAndSave(
         context: context,
-        checkpoint: 'execution_$noteKey',
+        checkpoint: checkpoint,
         dataUpdater: (data) {
           final currentExecutionData =
               data.executionPhaseData ?? ExecutionPhaseData();
@@ -4320,8 +4344,7 @@ class _AgileDeliveryPlanSection extends StatelessWidget {
               label: 'Next',
               onPressed: () => Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(
-                    builder: (_) => const DesignPlanningScreen()),
+                MaterialPageRoute(builder: (_) => const DesignPlanningScreen()),
               ),
             ),
           ],
@@ -4453,7 +4476,7 @@ class _PlanDecisionSectionState extends State<_PlanDecisionSection> {
     }
     final success = await ProjectDataHelper.updateAndSave(
       context: context,
-      checkpoint: 'planning_${widget.planKeyPrefix}',
+      checkpoint: _resolveExecutionCheckpoint(widget.planKeyPrefix),
       dataUpdater: (data) => data.copyWith(
         planningNotes: {
           ...data.planningNotes,

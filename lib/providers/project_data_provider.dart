@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -148,7 +150,8 @@ class ProjectDataProvider extends ChangeNotifier {
       // Avoid global rebuild churn on every save by notifying only when the
       // observable project state materially changed.
       final hasNewProjectId = previousProjectId != _projectData.projectId;
-      final hasCheckpointChange = previousCheckpoint != _projectData.currentCheckpoint;
+      final hasCheckpointChange =
+          previousCheckpoint != _projectData.currentCheckpoint;
       if (hasNewProjectId || hasCheckpointChange) {
         notifyListeners();
       }
@@ -164,6 +167,9 @@ class ProjectDataProvider extends ChangeNotifier {
 
   /// Load project data from Firebase by ID
   Future<bool> loadFromFirebase(String projectId) async {
+    const cacheValidationTimeout = Duration(seconds: 8);
+    const projectLoadTimeout = Duration(seconds: 25);
+
     // Skip if already loaded and cached, but only if data is valid
     if (_cachedProjectId == projectId &&
         _projectData.projectId == projectId &&
@@ -174,7 +180,8 @@ class ProjectDataProvider extends ChangeNotifier {
         final doc = await FirebaseFirestore.instance
             .collection('projects')
             .doc(projectId)
-            .get();
+            .get()
+            .timeout(cacheValidationTimeout);
         if (doc.exists) {
           return true; // Cached data is valid
         }
@@ -188,7 +195,8 @@ class ProjectDataProvider extends ChangeNotifier {
       final doc = await FirebaseFirestore.instance
           .collection('projects')
           .doc(projectId)
-          .get();
+          .get()
+          .timeout(projectLoadTimeout);
 
       if (!doc.exists) {
         _lastError = 'Project not found';
@@ -230,7 +238,12 @@ class ProjectDataProvider extends ChangeNotifier {
         return false;
       }
     } catch (e, stackTrace) {
-      _lastError = e.toString();
+      if (e is TimeoutException) {
+        _lastError =
+            'Request timed out while loading project data. Please try again.';
+      } else {
+        _lastError = e.toString();
+      }
       debugPrint('❌ Error loading project: $e');
       debugPrint('Stack trace: $stackTrace');
       notifyListeners();

@@ -37,6 +37,7 @@ class _FrontEndPlanningRisksScreenState
     extends State<FrontEndPlanningRisksScreen> {
   final TextEditingController _notesController = TextEditingController();
   bool _isSyncReady = false;
+  bool _isApplyingNotesSummary = false;
 
   // Backing rows for the table; built from incoming requirements (if any).
   late List<_RiskItem> _rows;
@@ -48,7 +49,8 @@ class _FrontEndPlanningRisksScreenState
     _rows = [];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final projectData = ProjectDataHelper.getData(context);
-      _notesController.text = projectData.frontEndPlanning.risks;
+      _notesController.text =
+          _summarizeNotesText(projectData.frontEndPlanning.risks);
       _notesController.addListener(_syncRisksToProvider);
       _isSyncReady = true;
       _syncRisksToProvider();
@@ -192,7 +194,7 @@ class _FrontEndPlanningRisksScreenState
               owner: '', // Can be filled by user later
               status: 'Identified',
             );
-            
+
             // Track AI-generated content in field history
             if (riskTitle.isNotEmpty) {
               provider.addFieldToHistory(
@@ -208,7 +210,7 @@ class _FrontEndPlanningRisksScreenState
                 isAiGenerated: true,
               );
             }
-            
+
             return riskItem;
           }).toList();
         } else {
@@ -251,7 +253,7 @@ class _FrontEndPlanningRisksScreenState
               owner: '',
               status: 'Identified',
             );
-            
+
             // Track AI-generated content in field history
             final riskTitle = riskData['title'] ?? '';
             if (riskTitle.isNotEmpty) {
@@ -268,7 +270,7 @@ class _FrontEndPlanningRisksScreenState
                 isAiGenerated: true,
               );
             }
-            
+
             return riskItem;
           }).toList();
         }
@@ -666,13 +668,22 @@ class _FrontEndPlanningRisksScreenState
   }
 
   void _syncRisksToProvider() {
-    if (!mounted || !_isSyncReady) return;
-    final risksText = _rows
-        .map((r) => '${r.risk}: ${r.description}')
-        .where((s) => s.trim().isNotEmpty)
-        .join('\n');
-    final value =
-        risksText.isNotEmpty ? risksText : _notesController.text.trim();
+    if (!mounted || !_isSyncReady || _isApplyingNotesSummary) return;
+    final summaryFromRows = _buildRiskSummaryFromRows();
+    final value = summaryFromRows.isNotEmpty
+        ? summaryFromRows
+        : _summarizeNotesText(_notesController.text.trim());
+
+    if (summaryFromRows.isNotEmpty &&
+        _notesController.text.trim() != summaryFromRows) {
+      _isApplyingNotesSummary = true;
+      _notesController.value = TextEditingValue(
+        text: summaryFromRows,
+        selection: TextSelection.collapsed(offset: summaryFromRows.length),
+      );
+      _isApplyingNotesSummary = false;
+    }
+
     final riskRegisterItems = _rows
         .map((r) => RiskRegisterItem(
               riskName: r.risk.trim(),
@@ -700,6 +711,92 @@ class _FrontEndPlanningRisksScreenState
         ),
       ),
     );
+  }
+
+  String _buildRiskSummaryFromRows({int previewCount = 4}) {
+    final populated = _rows.where((r) => r.risk.trim().isNotEmpty).toList();
+    if (populated.isEmpty) return '';
+
+    var highCount = 0;
+    var mediumCount = 0;
+    var lowCount = 0;
+
+    for (final row in populated) {
+      final normalized = _normalizeRiskLevel(
+        row.riskLevel.trim().isNotEmpty ? row.riskLevel : row.impact,
+      );
+      switch (normalized) {
+        case 'High':
+          highCount++;
+          break;
+        case 'Low':
+          lowCount++;
+          break;
+        default:
+          mediumCount++;
+          break;
+      }
+    }
+
+    final highlights = populated
+        .take(previewCount)
+        .map((row) => _shortRiskLabel(row.risk))
+        .where((value) => value.isNotEmpty)
+        .toList();
+    final remainingCount = populated.length - highlights.length;
+    final suffix = remainingCount > 0 ? ', +$remainingCount more' : '';
+
+    return 'Key risks: ${highlights.join(', ')}$suffix. Total ${populated.length} '
+        '(High: $highCount, Medium: $mediumCount, Low: $lowCount).';
+  }
+
+  String _summarizeNotesText(String text, {int maxItems = 4}) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return '';
+
+    final normalizedInline = trimmed.replaceAll(RegExp(r'\s+'), ' ');
+    if (!trimmed.contains('\n') && normalizedInline.length <= 220) {
+      return normalizedInline;
+    }
+
+    final lines = trimmed
+        .split(RegExp(r'[\r\n]+'))
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+    if (lines.isEmpty) {
+      return normalizedInline.length <= 220
+          ? normalizedInline
+          : '${normalizedInline.substring(0, 217)}...';
+    }
+
+    final highlights = lines.take(maxItems).map((line) {
+      final candidate = line.contains(':') ? line.split(':').first : line;
+      return _shortRiskLabel(candidate);
+    }).toList();
+
+    final remainingCount = lines.length - highlights.length;
+    final suffix = remainingCount > 0 ? ', +$remainingCount more' : '';
+    return 'Key risks: ${highlights.join(', ')}$suffix.';
+  }
+
+  String _normalizeRiskLevel(String rawValue) {
+    final normalized = rawValue.trim().toLowerCase();
+    if (normalized.contains('critical') || normalized == 'high') {
+      return 'High';
+    }
+    if (normalized == 'low') {
+      return 'Low';
+    }
+    return 'Medium';
+  }
+
+  String _shortRiskLabel(String value, {int maxChars = 54}) {
+    final normalized = value.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (normalized.length <= maxChars) {
+      return normalized;
+    }
+    return '${normalized.substring(0, maxChars - 3)}...';
   }
 
   @override
@@ -734,7 +831,8 @@ class _FrontEndPlanningRisksScreenState
                               _roundedField(
                                 controller: _notesController,
                                 hint: 'Input your notes here…',
-                                minLines: 3,
+                                minLines: 2,
+                                maxLines: 4,
                               ),
                               const SizedBox(height: 22),
                               Row(
@@ -742,7 +840,8 @@ class _FrontEndPlanningRisksScreenState
                                 children: [
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: const [
                                         EditableContentText(
                                           contentKey: 'fep_risks_title',
@@ -770,7 +869,9 @@ class _FrontEndPlanningRisksScreenState
                                   ),
                                   PageRegenerateAllButton(
                                     onRegenerateAll: () async {
-                                      final confirmed = await showRegenerateAllConfirmation(context);
+                                      final confirmed =
+                                          await showRegenerateAllConfirmation(
+                                              context);
                                       if (confirmed && mounted) {
                                         await _regenerateAllRisks();
                                       }
@@ -830,10 +931,7 @@ class _FrontEndPlanningRisksScreenState
                   const KazAiChatBubble(),
                   _BottomOverlays(
                     onNext: () async {
-                      final risksText = _rows
-                          .map((r) => '${r.risk}: ${r.description}')
-                          .where((s) => s.trim().isNotEmpty)
-                          .join('\n');
+                      final risksText = _buildRiskSummaryFromRows();
                       await ProjectDataHelper.saveAndNavigate(
                         context: context,
                         checkpoint: 'fep_risks',
@@ -843,7 +941,10 @@ class _FrontEndPlanningRisksScreenState
                         dataUpdater: (data) => data.copyWith(
                           frontEndPlanning: ProjectDataHelper.updateFEPField(
                             current: data.frontEndPlanning,
-                            risks: risksText,
+                            risks: risksText.isNotEmpty
+                                ? risksText
+                                : _summarizeNotesText(
+                                    _notesController.text.trim()),
                           ),
                         ),
                       );
@@ -1176,7 +1277,8 @@ class _BottomOverlays extends StatelessWidget {
 Widget _roundedField(
     {required TextEditingController controller,
     required String hint,
-    int minLines = 1}) {
+    int minLines = 1,
+    int maxLines = 4}) {
   return Container(
     width: double.infinity,
     decoration: BoxDecoration(
@@ -1188,12 +1290,12 @@ Widget _roundedField(
     child: TextField(
       controller: controller,
       minLines: minLines,
-      maxLines: null,
-      decoration: const InputDecoration(
+      maxLines: maxLines,
+      decoration: InputDecoration(
         isDense: true,
         border: InputBorder.none,
-        hintText: 'Input your notes here…',
-        hintStyle: TextStyle(color: Color(0xFF9CA3AF)),
+        hintText: hint,
+        hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
       ),
       style: const TextStyle(fontSize: 14, color: Color(0xFF374151)),
     ),

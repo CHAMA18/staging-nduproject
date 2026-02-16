@@ -37,6 +37,56 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
   bool _saving = false;
   DateTime? _lastSavedAt;
 
+  String _normalize(String value) {
+    return value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  List<String> _dedupeTextList(Iterable<String> values) {
+    final seen = <String>{};
+    final deduped = <String>[];
+    for (final value in values) {
+      final normalized = _normalize(value);
+      if (normalized.isEmpty) continue;
+      if (seen.add(normalized)) deduped.add(value.trim());
+    }
+    return deduped;
+  }
+
+  List<DesignDeliverablePipelineItem> _dedupePipeline(
+      Iterable<DesignDeliverablePipelineItem> items) {
+    final seen = <String>{};
+    final deduped = <DesignDeliverablePipelineItem>[];
+    for (final item in items) {
+      final key = '${_normalize(item.label)}|${_normalize(item.status)}';
+      if (key == '|') continue;
+      if (seen.add(key)) deduped.add(item);
+    }
+    return deduped;
+  }
+
+  List<DesignDeliverableRegisterItem> _dedupeRegister(
+      Iterable<DesignDeliverableRegisterItem> items) {
+    final seen = <String>{};
+    final deduped = <DesignDeliverableRegisterItem>[];
+    for (final item in items) {
+      final key =
+          '${_normalize(item.name)}|${_normalize(item.owner)}|${_normalize(item.status)}|${_normalize(item.due)}|${_normalize(item.risk)}';
+      if (key == '||||') continue;
+      if (seen.add(key)) deduped.add(item);
+    }
+    return deduped;
+  }
+
+  DesignDeliverablesData _dedupeData(DesignDeliverablesData data) {
+    return data.copyWith(
+      pipeline: _dedupePipeline(data.pipeline),
+      approvals: _dedupeTextList(data.approvals),
+      register: _dedupeRegister(data.register),
+      dependencies: _dedupeTextList(data.dependencies),
+      handoffChecklist: _dedupeTextList(data.handoffChecklist),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -134,8 +184,9 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
   }
 
   void _updateData(DesignDeliverablesData data, {bool saveImmediate = false}) {
-    final computed = _computeMetrics(data.register);
-    final nextData = data.copyWith(metrics: computed);
+    final deduped = _dedupeData(data);
+    final computed = _computeMetrics(deduped.register);
+    final nextData = deduped.copyWith(metrics: computed);
     setState(() => _data = nextData);
 
     // We update generic provider too, to keep UI consistent if other widgets rely on it,
@@ -152,8 +203,9 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
   }
 
   void _applyData(DesignDeliverablesData data) {
-    final computed = _computeMetrics(data.register);
-    setState(() => _data = data.copyWith(metrics: computed));
+    final deduped = _dedupeData(data);
+    final computed = _computeMetrics(deduped.register);
+    setState(() => _data = deduped.copyWith(metrics: computed));
   }
 
   DesignDeliverablesMetrics _computeMetrics(

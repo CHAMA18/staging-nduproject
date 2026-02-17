@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
@@ -38,6 +40,9 @@ class FrontEndPlanningProcurementScreen extends StatefulWidget {
 
 class _FrontEndPlanningProcurementScreenState
     extends State<FrontEndPlanningProcurementScreen> {
+  static const int _initialStreamLimit = 60;
+  static const int _streamLimitStep = 40;
+
   final TextEditingController _notes = TextEditingController();
 
   bool _approvedOnly = false;
@@ -88,6 +93,20 @@ class _FrontEndPlanningProcurementScreenState
 
   late final OpenAiServiceSecure _openAi;
   bool _isGeneratingData = false;
+  String? _streamError;
+  String? _activeProjectId;
+
+  int _itemsLimit = _initialStreamLimit;
+  int _strategiesLimit = _initialStreamLimit;
+  int _vendorsLimit = _initialStreamLimit;
+  int _rfqsLimit = _initialStreamLimit;
+  int _purchaseOrdersLimit = _initialStreamLimit;
+
+  StreamSubscription<List<ProcurementItemModel>>? _itemsSub;
+  StreamSubscription<List<ProcurementStrategyModel>>? _strategiesSub;
+  StreamSubscription<List<VendorModel>>? _vendorsSub;
+  StreamSubscription<List<RfqModel>>? _rfqsSub;
+  StreamSubscription<List<PurchaseOrderModel>>? _purchaseOrdersSub;
 
   @override
   void initState() {
@@ -101,51 +120,165 @@ class _FrontEndPlanningProcurementScreenState
 
       if (projectId.isNotEmpty) {
         _subscribeToStreams(projectId);
-        _seedProcurementDataIfNeeded(projectId, data);
       }
     });
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final projectId = ProjectDataHelper.getData(context).projectId ?? '';
+    if (projectId.isNotEmpty && projectId != _activeProjectId) {
+      _subscribeToStreams(projectId);
+    }
+  }
+
+  void _cancelSubscriptions() {
+    _itemsSub?.cancel();
+    _strategiesSub?.cancel();
+    _vendorsSub?.cancel();
+    _rfqsSub?.cancel();
+    _purchaseOrdersSub?.cancel();
+  }
+
   void _subscribeToStreams(String projectId) {
-    ProcurementService.streamItems(projectId).listen((data) {
-      if (mounted) setState(() => _items = data);
+    _cancelSubscriptions();
+    _activeProjectId = projectId;
+
+    _itemsSub =
+        ProcurementService.streamItems(projectId, limit: _itemsLimit).listen(
+      (data) {
+        if (!mounted) return;
+        setState(() {
+          _items = data;
+          _streamError = null;
+        });
+      },
+      onError: (error) {
+        if (!mounted) return;
+        setState(() => _streamError = 'Unable to load procurement items.');
+        debugPrint('Procurement items stream error: $error');
+      },
+    );
+
+    _strategiesSub = ProcurementService.streamStrategies(
+      projectId,
+      limit: _strategiesLimit,
+    ).listen(
+      (data) {
+        if (!mounted) return;
+        setState(() {
+          _strategies = data;
+          _streamError = null;
+        });
+      },
+      onError: (error) {
+        if (!mounted) return;
+        setState(() => _streamError = 'Unable to load procurement strategies.');
+        debugPrint('Procurement strategies stream error: $error');
+      },
+    );
+
+    _vendorsSub = VendorService.streamVendors(
+      projectId,
+      limit: _vendorsLimit,
+    ).listen(
+      (data) {
+        if (!mounted) return;
+        setState(() {
+          _vendors = data;
+          _streamError = null;
+        });
+      },
+      onError: (error) {
+        if (!mounted) return;
+        setState(() => _streamError = 'Unable to load vendors.');
+        debugPrint('Vendors stream error: $error');
+      },
+    );
+
+    _rfqsSub = ProcurementService.streamRfqs(
+      projectId,
+      limit: _rfqsLimit,
+    ).listen(
+      (data) {
+        if (!mounted) return;
+        setState(() {
+          _rfqs = data;
+          _streamError = null;
+        });
+      },
+      onError: (error) {
+        if (!mounted) return;
+        setState(() => _streamError = 'Unable to load RFQs.');
+        debugPrint('RFQ stream error: $error');
+      },
+    );
+
+    _purchaseOrdersSub = ProcurementService.streamPos(
+      projectId,
+      limit: _purchaseOrdersLimit,
+    ).listen(
+      (data) {
+        if (!mounted) return;
+        setState(() {
+          _purchaseOrders = data;
+          _streamError = null;
+        });
+      },
+      onError: (error) {
+        if (!mounted) return;
+        setState(() => _streamError = 'Unable to load purchase orders.');
+        debugPrint('Purchase orders stream error: $error');
+      },
+    );
+  }
+
+  void _refreshSubscriptionsForActiveProject() {
+    final projectId = _activeProjectId;
+    if (projectId == null || projectId.isEmpty) return;
+    _subscribeToStreams(projectId);
+  }
+
+  void _loadMoreForTab(_ProcurementTab tab) {
+    setState(() {
+      switch (tab) {
+        case _ProcurementTab.procurementDashboard:
+          _strategiesLimit += _streamLimitStep;
+          break;
+        case _ProcurementTab.itemsList:
+        case _ProcurementTab.itemTracking:
+          _itemsLimit += _streamLimitStep;
+          break;
+        case _ProcurementTab.vendorManagement:
+          _vendorsLimit += _streamLimitStep;
+          break;
+        case _ProcurementTab.rfqWorkflow:
+          _rfqsLimit += _streamLimitStep;
+          break;
+        case _ProcurementTab.purchaseOrders:
+          _purchaseOrdersLimit += _streamLimitStep;
+          break;
+        case _ProcurementTab.reports:
+          _itemsLimit += _streamLimitStep;
+          break;
+      }
     });
-    ProcurementService.streamStrategies(projectId).listen((data) {
-      if (mounted) setState(() => _strategies = data);
-    });
-    VendorService.streamVendors(projectId).listen((data) {
-      if (mounted) setState(() => _vendors = data);
-    });
-    ProcurementService.streamRfqs(projectId).listen((data) {
-      if (mounted) setState(() => _rfqs = data);
-    });
-    ProcurementService.streamPos(projectId).listen((data) {
-      if (mounted) setState(() => _purchaseOrders = data);
-    });
-    // Trackable items are just a filtered view of items, or we can treat them as such.
-    // Given the UI had a separate list, I'll filter _items for now or leave it empty if redundant.
-    // Actually, I map _items to _trackableItems in the build or listener?
-    // Let's rely on _items for tracking.
+    _refreshSubscriptionsForActiveProject();
   }
 
   Future<void> _regenerateAllProcurement() async {
-    // Regeneration disabled in persistent mode to prevent data loss.
-    // To reset, one would need to delete the subcollections.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-          content: Text('Regeneration disabled in persistent mode.')),
-    );
+    await _generateProcurementDataIfNeeded(showIfAlreadySeeded: true);
   }
 
   Future<void> _seedProcurementDataIfNeeded(
       String projectId, ProjectDataModel data) async {
     if (_isGeneratingData) return;
 
-    // Check if data exists by peeking at streams
-    final hasItems = await ProcurementService.streamItems(projectId)
-        .first
-        .then((l) => l.isNotEmpty);
-    // If we have items, we assume we have seeded.
+    final hasItems = await ProcurementService.hasAnyItems(projectId).timeout(
+      const Duration(seconds: 6),
+      onTimeout: () => true,
+    );
     if (hasItems) return;
 
     setState(() => _isGeneratingData = true);
@@ -495,6 +628,7 @@ class _FrontEndPlanningProcurementScreenState
 
   @override
   void dispose() {
+    _cancelSubscriptions();
     _notes.dispose();
     super.dispose();
   }
@@ -580,10 +714,38 @@ class _FrontEndPlanningProcurementScreenState
     );
   }
 
-  Future<void> _generateProcurementDataIfNeeded() async {
+  Future<void> _generateProcurementDataIfNeeded(
+      {bool showIfAlreadySeeded = false}) async {
     final data = ProjectDataHelper.getData(context);
     final projectId = data.projectId ?? '';
-    if (projectId.isEmpty) return;
+    if (projectId.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Project not initialized. Unable to generate data.'),
+          ),
+        );
+      }
+      return;
+    }
+
+    final hasItems = await ProcurementService.hasAnyItems(projectId).timeout(
+      const Duration(seconds: 6),
+      onTimeout: () => true,
+    );
+
+    if (hasItems) {
+      if (showIfAlreadySeeded && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Starter procurement data already exists. Add/edit records directly.'),
+          ),
+        );
+      }
+      return;
+    }
+
     await _seedProcurementDataIfNeeded(projectId, data);
   }
 
@@ -599,19 +761,11 @@ class _FrontEndPlanningProcurementScreenState
 
   void _handleItemListTap() {
     setState(() => _selectedTab = _ProcurementTab.itemsList);
-    // Trigger generation if items are empty
-    if (_items.isEmpty) {
-      _generateProcurementDataIfNeeded();
-    }
   }
 
   void _handleTabSelected(_ProcurementTab tab) {
     if (_selectedTab == tab) return;
     setState(() => _selectedTab = tab);
-    // Trigger generation if switching to items list and items are empty
-    if (tab == _ProcurementTab.itemsList && _items.isEmpty) {
-      _generateProcurementDataIfNeeded();
-    }
   }
 
   void _handleTrackableSelected(int index) {
@@ -754,6 +908,101 @@ class _FrontEndPlanningProcurementScreenState
     }
   }
 
+  Widget _buildStreamWindowControls() {
+    switch (_selectedTab) {
+      case _ProcurementTab.procurementDashboard:
+        final showStrategies = _strategies.length >= _strategiesLimit;
+        final showVendors = _vendors.length >= _vendorsLimit;
+        if (!showStrategies && !showVendors) {
+          return const SizedBox.shrink();
+        }
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            if (showStrategies)
+              OutlinedButton.icon(
+                onPressed: () =>
+                    _loadMoreForTab(_ProcurementTab.procurementDashboard),
+                icon: const Icon(Icons.unfold_more_rounded, size: 16),
+                label:
+                    Text('Load ${_streamLimitStep.toString()} more strategies'),
+              ),
+            if (showVendors)
+              OutlinedButton.icon(
+                onPressed: () =>
+                    _loadMoreForTab(_ProcurementTab.vendorManagement),
+                icon: const Icon(Icons.unfold_more_rounded, size: 16),
+                label: Text('Load ${_streamLimitStep.toString()} more vendors'),
+              ),
+          ],
+        );
+      case _ProcurementTab.itemsList:
+      case _ProcurementTab.itemTracking:
+      case _ProcurementTab.reports:
+        if (_items.length < _itemsLimit) return const SizedBox.shrink();
+        return OutlinedButton.icon(
+          onPressed: () => _loadMoreForTab(_ProcurementTab.itemsList),
+          icon: const Icon(Icons.unfold_more_rounded, size: 16),
+          label: Text('Load ${_streamLimitStep.toString()} more items'),
+        );
+      case _ProcurementTab.vendorManagement:
+        if (_vendors.length < _vendorsLimit) return const SizedBox.shrink();
+        return OutlinedButton.icon(
+          onPressed: () => _loadMoreForTab(_ProcurementTab.vendorManagement),
+          icon: const Icon(Icons.unfold_more_rounded, size: 16),
+          label: Text('Load ${_streamLimitStep.toString()} more vendors'),
+        );
+      case _ProcurementTab.rfqWorkflow:
+        if (_rfqs.length < _rfqsLimit) return const SizedBox.shrink();
+        return OutlinedButton.icon(
+          onPressed: () => _loadMoreForTab(_ProcurementTab.rfqWorkflow),
+          icon: const Icon(Icons.unfold_more_rounded, size: 16),
+          label: Text('Load ${_streamLimitStep.toString()} more RFQs'),
+        );
+      case _ProcurementTab.purchaseOrders:
+        if (_purchaseOrders.length < _purchaseOrdersLimit) {
+          return const SizedBox.shrink();
+        }
+        return OutlinedButton.icon(
+          onPressed: () => _loadMoreForTab(_ProcurementTab.purchaseOrders),
+          icon: const Icon(Icons.unfold_more_rounded, size: 16),
+          label: Text('Load ${_streamLimitStep.toString()} more orders'),
+        );
+    }
+  }
+
+  Widget _buildStreamErrorBanner() {
+    final error = _streamError;
+    if (error == null || error.isEmpty) return const SizedBox.shrink();
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFECACA)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, color: Color(0xFFB91C1C), size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              error,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF991B1B),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildNextSectionButton() {
     final nextTab = _nextTab();
     final nextLabel = nextTab?.label ?? 'Security';
@@ -793,9 +1042,14 @@ class _FrontEndPlanningProcurementScreenState
                 }
               },
               isLoading: _isGeneratingData,
-              tooltip: 'Regenerate all procurement data',
+              tooltip: 'Generate starter procurement data',
             ),
           ],
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'AI generation is manual-only on this page to prevent load-time spikes.',
+          style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
         ),
         const SizedBox(height: 16),
         const SizedBox(height: 8),
@@ -1030,6 +1284,8 @@ class _FrontEndPlanningProcurementScreenState
                                       Navigator.of(context).maybePop(),
                                   onForward: _goToNextSection,
                                 ),
+                                const SizedBox(height: 12),
+                                _buildStreamErrorBanner(),
                                 const SizedBox(height: 24),
                                 const PlanningAiNotesCard(
                                   title: 'Notes',
@@ -1053,6 +1309,11 @@ class _FrontEndPlanningProcurementScreenState
                                 AnimatedSwitcher(
                                   duration: const Duration(milliseconds: 250),
                                   child: _buildTabContent(),
+                                ),
+                                const SizedBox(height: 12),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: _buildStreamWindowControls(),
                                 ),
                                 const SizedBox(height: 24),
                                 _buildNextSectionButton(),

@@ -896,14 +896,12 @@ class _ContractingStrategyScreenState extends State<ContractingStrategyScreen> {
         });
       }
       _loadedStrategy = true;
-      if (_quotes.isEmpty) {
-        await _populateStrategyFromAi();
-      }
     } catch (error) {
       debugPrint('Failed to load contract strategy data: $error');
     }
   }
 
+  // ignore: unused_element
   Future<void> _populateStrategyFromAi() async {
     if (_aiGeneratedStrategy || _isGeneratingStrategy) return;
     final projectData = ProjectDataHelper.getData(context);
@@ -3183,7 +3181,7 @@ class _ContractDetailsScreenState extends State<ContractDetailsScreen> {
       if (_documents.isEmpty &&
           _bidderInfo.isEmpty &&
           _overviewMilestones.isEmpty) {
-        await _populateDetailsFromAi();
+        _applyContractFallbacks();
       } else {
         _applyContractFallbacks();
         if (!docExists && _primaryContract != null) {
@@ -3248,6 +3246,7 @@ class _ContractDetailsScreenState extends State<ContractDetailsScreen> {
     }
   }
 
+  // ignore: unused_element
   Future<void> _populateDetailsFromAi() async {
     if (_aiGeneratedDetails || _isGeneratingDetails) return;
     final projectData = ProjectDataHelper.getData(context);
@@ -3618,7 +3617,10 @@ class _ContractingStatusScreenState extends State<ContractingStatusScreen> {
       if (_timelineRows.isEmpty &&
           _contractors.isEmpty &&
           _executionSteps.isEmpty) {
-        await _populateStatusFromAi();
+        if (_contracts.isNotEmpty) {
+          _buildTimelineFromContracts();
+          _applySummaryFromContracts();
+        }
       } else if (_timelineRows.isEmpty && _contracts.isNotEmpty) {
         _buildTimelineFromContracts();
       }
@@ -3690,6 +3692,7 @@ class _ContractingStatusScreenState extends State<ContractingStatusScreen> {
     });
   }
 
+  // ignore: unused_element
   Future<void> _populateStatusFromAi() async {
     if (_aiGeneratedStatus || _isGeneratingStatus) return;
     final projectData = ProjectDataHelper.getData(context);
@@ -4147,8 +4150,6 @@ class _ContractingSummaryScreenState extends State<ContractingSummaryScreen> {
       if (_summaryRows.isEmpty && _contracts.isNotEmpty) {
         _buildSummaryFromContracts();
         await _persistSummary();
-      } else if (_summaryRows.isEmpty) {
-        await _populateSummaryFromAi();
       }
     } catch (error) {
       debugPrint('Failed to load contract summary: $error');
@@ -4257,6 +4258,7 @@ class _ContractingSummaryScreenState extends State<ContractingSummaryScreen> {
     ];
   }
 
+  // ignore: unused_element
   Future<void> _populateSummaryFromAi() async {
     if (_aiGeneratedSummary || _isGeneratingSummary) return;
     final projectData = ProjectDataHelper.getData(context);

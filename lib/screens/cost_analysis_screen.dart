@@ -637,89 +637,11 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
   }
 
   Drawer _buildMobileDrawer() {
-    // Match RiskIdentificationScreen drawer look
     return Drawer(
-      child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          children: [
-            const ListTile(
-              leading: CircleAvatar(
-                radius: 18,
-                backgroundColor: Color(0xFFFFD700),
-                child: Icon(Icons.person_outline, color: Colors.black87),
-              ),
-              title: Text('StackOne'),
-            ),
-            const Divider(height: 1),
-            _buildMenuItem(Icons.home_outlined, 'Home',
-                onTap: () => HomeScreen.open(context)),
-            _buildExpandableHeader(
-              Icons.flag_outlined,
-              'Initiation Phase',
-              expanded: _initiationExpanded,
-              onTap: () =>
-                  setState(() => _initiationExpanded = !_initiationExpanded),
-              isActive: true,
-            ),
-            if (_initiationExpanded) ...[
-              _buildExpandableHeaderLikeCost(
-                Icons.business_center_outlined,
-                'Business Case',
-                expanded: _businessCaseExpanded,
-                onTap: () => setState(
-                    () => _businessCaseExpanded = !_businessCaseExpanded),
-                isActive: false,
-              ),
-              if (_businessCaseExpanded) ...[
-                _buildNestedSubMenuItem('Business Case', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openBusinessCase();
-                }),
-                _buildNestedSubMenuItem('Potential Solutions', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openPotentialSolutions();
-                }),
-                _buildNestedSubMenuItem('Risk Identification', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openRiskIdentification();
-                }),
-                _buildNestedSubMenuItem('IT Considerations', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openITConsiderations();
-                }),
-                _buildNestedSubMenuItem('Infrastructure Considerations',
-                    onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openInfrastructureConsiderations();
-                }),
-                _buildNestedSubMenuItem('Core Stakeholders', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openCoreStakeholders();
-                }),
-                _buildNestedSubMenuItem(
-                    'Cost Benefit Analysis & Financial Metrics',
-                    isActive: true),
-                _buildNestedSubMenuItem('Preferred Solution Analysis',
-                    onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openPreferredSolutionAnalysis();
-                }),
-              ],
-            ],
-            _buildMenuItem(Icons.timeline, 'Initiation: Front End Planning'),
-            _buildMenuItem(Icons.account_tree_outlined, 'Workflow Roadmap'),
-            _buildMenuItem(Icons.flash_on, 'Agile Roadmap'),
-            _buildMenuItem(Icons.description_outlined, 'Contracting'),
-            _buildMenuItem(Icons.shopping_cart_outlined, 'Procurement'),
-            const Divider(height: 1),
-            _buildMenuItem(Icons.settings_outlined, 'Settings', onTap: () {
-              Navigator.of(context).maybePop();
-              SettingsScreen.open(context);
-            }),
-            _buildMenuItem(Icons.logout_outlined, 'LogOut',
-                onTap: () => AuthNav.signOutAndExit(context)),
-          ],
+      width: MediaQuery.sizeOf(context).width * 0.88,
+      child: const SafeArea(
+        child: InitiationLikeSidebar(
+          activeItemLabel: 'Cost Benefit Analysis & Financial Metrics',
         ),
       ),
     );

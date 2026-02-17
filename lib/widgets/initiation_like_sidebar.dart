@@ -21,7 +21,6 @@ import 'package:ndu_project/screens/front_end_planning_security.dart';
 import 'package:ndu_project/screens/front_end_planning_allowance.dart';
 import 'package:ndu_project/screens/front_end_planning_milestone.dart';
 import 'package:ndu_project/screens/front_end_planning_summary.dart';
-import 'package:ndu_project/screens/project_activities_log_screen.dart';
 import 'package:ndu_project/screens/project_charter_screen.dart';
 import 'package:ndu_project/screens/ssher_stacked_screen.dart';
 import 'package:ndu_project/screens/execution_plan_screen.dart';
@@ -554,11 +553,6 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
         }
       });
     }
-  }
-
-  void _openProjectActivitiesLog() {
-    _navigateWithCheckpoint(
-        'project_activities_log', const ProjectActivitiesLogScreen());
   }
 
   void _openProcurement() {
@@ -1669,9 +1663,6 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
                 isActive: widget.activeItemLabel == 'Preferred Solutions'),
           ],
         ],
-        _buildSubMenuItem('Project Activities Log',
-            onTap: _openProjectActivitiesLog,
-            isActive: widget.activeItemLabel == 'Project Activities Log'),
         _buildSubExpandableHeader(
           'Front End Planning',
           expanded: _frontEndExpanded,
@@ -1723,9 +1714,6 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
           _buildSubSubMenuItem('Project Charter',
               onTap: _openProjectCharter,
               isActive: widget.activeItemLabel == 'Project Charter'),
-          _buildSubSubMenuItem('Project Activities Log',
-              onTap: _openProjectActivitiesLog,
-              isActive: widget.activeItemLabel == 'Project Activities Log'),
         ],
       ],
       _buildExpandableHeader(
@@ -2126,9 +2114,6 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
         _buildSubMenuItem('Risk Tracking',
             onTap: _openRiskTracking,
             isActive: widget.activeItemLabel == 'Risk Tracking'),
-        _buildSubMenuItem('Project Activities Log',
-            onTap: _openProjectActivitiesLog,
-            isActive: widget.activeItemLabel == 'Project Activities Log'),
         _buildSubMenuItem('Scope Completion',
             onTap: _openScopeCompletion,
             isActive: widget.activeItemLabel == 'Scope Completion'),
@@ -2462,14 +2447,6 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
       results.add(_buildMenuItem(Icons.description_outlined, 'Project Charter',
           onTap: _openProjectCharter,
           isActive: widget.activeItemLabel == 'Project Charter'));
-    }
-    if ('project activities log'.contains(query) ||
-        'activities log'.contains(query) ||
-        'activity log'.contains(query)) {
-      results.add(_buildMenuItem(
-          Icons.fact_check_outlined, 'Project Activities Log',
-          onTap: _openProjectActivitiesLog,
-          isActive: widget.activeItemLabel == 'Project Activities Log'));
     }
     if ('ssher'.contains(query)) {
       results.add(_buildMenuItem(Icons.shield_outlined, 'SSHER',

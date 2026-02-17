@@ -54,7 +54,8 @@ class _InfrastructureConsiderationsScreenState
   bool _initiationExpanded = true;
   bool _businessCaseExpanded = true;
   bool _isAdmin = false;
-  bool get _canUseAdminControls => _isAdmin && AccessPolicy.isRestrictedAdminHost();
+  bool get _canUseAdminControls =>
+      _isAdmin && AccessPolicy.isRestrictedAdminHost();
   final OpenAiServiceSecure _openAi = OpenAiServiceSecure();
   bool _isGeneratingInfra = false;
 
@@ -153,33 +154,40 @@ class _InfrastructureConsiderationsScreenState
 
     try {
       final provider = ProjectDataHelper.getProvider(context);
-      
+
       // Add current values to history before regenerating
-      for (int i = 0; i < _solutions.length && i < _infraControllers.length; i++) {
+      for (int i = 0;
+          i < _solutions.length && i < _infraControllers.length;
+          i++) {
         final fieldKey = 'infra_${_solutions[i].title}_$i';
-        provider.addFieldToHistory(fieldKey, _infraControllers[i].text, isAiGenerated: true);
+        provider.addFieldToHistory(fieldKey, _infraControllers[i].text,
+            isAiGenerated: true);
       }
-      
+
       // Generate infrastructure suggestions (with tailored fallback if OpenAI not configured)
       final result = await _openAi.generateInfrastructureForSolutions(
-        _solutions, 
+        _solutions,
         contextNotes: _notesController.text,
       );
 
       if (!mounted) return;
-      for (int i = 0; i < _solutions.length && i < _infraControllers.length; i++) {
+      for (int i = 0;
+          i < _solutions.length && i < _infraControllers.length;
+          i++) {
         final title = _solutions[i].title.trim();
         final items = result[title] ?? const <String>[];
         if (items.isEmpty) continue;
         _infraControllers[i].text = items.map((e) => '- $e').join('\n');
       }
-      
+
       // Auto-save after regeneration
       await provider.saveToFirebase(checkpoint: 'infrastructure_regenerated');
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Infrastructure considerations regenerated successfully')),
+          const SnackBar(
+              content: Text(
+                  'Infrastructure considerations regenerated successfully')),
         );
       }
     } catch (e) {
@@ -197,32 +205,39 @@ class _InfrastructureConsiderationsScreenState
   Future<void> _regenerateAllInfrastructure() async {
     if (_isGeneratingInfra) return;
     setState(() => _isGeneratingInfra = true);
-    
+
     try {
       final provider = ProjectDataHelper.getProvider(context);
-      
+
       // Add current values to history
-      for (int i = 0; i < _solutions.length && i < _infraControllers.length; i++) {
+      for (int i = 0;
+          i < _solutions.length && i < _infraControllers.length;
+          i++) {
         final fieldKey = 'infra_${_solutions[i].title}_$i';
-        provider.addFieldToHistory(fieldKey, _infraControllers[i].text, isAiGenerated: true);
+        provider.addFieldToHistory(fieldKey, _infraControllers[i].text,
+            isAiGenerated: true);
       }
-      
+
       final result = await _openAi.generateInfrastructureForSolutions(
         _solutions,
         contextNotes: _notesController.text,
       );
-      
-      for (int i = 0; i < _solutions.length && i < _infraControllers.length; i++) {
+
+      for (int i = 0;
+          i < _solutions.length && i < _infraControllers.length;
+          i++) {
         final title = _solutions[i].title.trim();
         final items = result[title] ?? const <String>[];
-        _infraControllers[i].text = items.isEmpty ? '' : items.map((e) => '- $e').join('\n');
+        _infraControllers[i].text =
+            items.isEmpty ? '' : items.map((e) => '- $e').join('\n');
       }
-      
+
       await provider.saveToFirebase(checkpoint: 'infrastructure_regenerated');
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Infrastructure regenerated successfully')),
+          const SnackBar(
+              content: Text('Infrastructure regenerated successfully')),
         );
       }
     } catch (e) {
@@ -248,11 +263,14 @@ class _InfrastructureConsiderationsScreenState
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
+    if (isMobile) {
+      return _buildMobileScaffold();
+    }
     final sidebarWidth = AppBreakpoints.sidebarWidth(context);
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: Colors.white,
-      drawer: isMobile ? _buildMobileDrawer() : null,
+      drawer: null,
       body: Stack(
         children: [
           Column(children: [
@@ -269,6 +287,339 @@ class _InfrastructureConsiderationsScreenState
           ]),
           const KazAiChatBubble(),
           const AdminEditToggle(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileScaffold() {
+    final projectName = ProjectDataHelper.getData(context).projectName.trim();
+    final displayCount = _isAdmin
+        ? _solutions.length
+        : (_solutions.length > 3 ? 3 : _solutions.length);
+    return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor: const Color(0xFFF3F5F9),
+      drawer: _buildMobileDrawer(),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Container(
+              height: 56,
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                    icon: const Icon(Icons.menu_rounded, size: 18),
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'Infrastructure Considerations',
+                      style: TextStyle(
+                        fontSize: 15.7,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1F2937),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: _isGeneratingInfra
+                        ? null
+                        : _regenerateAllInfrastructure,
+                    icon: const Icon(Icons.refresh_rounded,
+                        color: Color(0xFFF59E0B), size: 18),
+                    tooltip: 'Regenerate all',
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 94),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${projectName.isEmpty ? 'PROJECT' : projectName.toUpperCase()}   >   Initiation Phase',
+                      style: const TextStyle(
+                        fontSize: 9.2,
+                        color: Color(0xFFF59E0B),
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.35,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Technical Foundations',
+                      style: TextStyle(
+                        fontSize: 36,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF111827),
+                        height: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Define and document the physical and digital infrastructure requirements for proposed solutions.',
+                      style: TextStyle(
+                          fontSize: 12.3, color: Colors.grey.shade600),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Notes',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF374151),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextFormattingToolbar(
+                      controller: _notesController,
+                      onBeforeUndo: _saveInfrastructureConsiderationsData,
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFDCE3EE)),
+                      ),
+                      child: TextField(
+                        controller: _notesController,
+                        minLines: 3,
+                        maxLines: 6,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: Color(0xFF374151),
+                        ),
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          hintText: 'Enter infrastructure notes here...',
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'SOLUTION ANALYSIS',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF9CA3AF),
+                        letterSpacing: 0.45,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    for (int i = 0; i < displayCount; i++) ...[
+                      _buildMobileInfrastructureCard(i),
+                      const SizedBox(height: 10),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+          decoration: const BoxDecoration(
+            color: Color(0xFFF3F5F9),
+            border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    await _saveInfrastructureConsiderationsData();
+                    if (!mounted) return;
+                    _openITConsiderations();
+                  },
+                  icon: const Icon(Icons.chevron_left_rounded, size: 17),
+                  label: const Text('Back'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF374151),
+                    backgroundColor: Colors.white,
+                    side: const BorderSide(color: Color(0xFFD1D5DB)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    textStyle: const TextStyle(
+                        fontWeight: FontWeight.w700, fontSize: 13.5),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _handleNextPressed,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFBBF24),
+                    foregroundColor: Colors.black,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    textStyle: const TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 13.5),
+                  ),
+                  child: const Text('Next Step'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileInfrastructureCard(int index) {
+    final provider = ProjectDataHelper.getProvider(context);
+    final solution = _solutions[index];
+    final title = solution.title.trim().isEmpty
+        ? 'Potential Solution ${index + 1}'
+        : solution.title.trim();
+    final fieldKey = 'infra_${solution.title}_$index';
+    final canUndo = provider.canUndoField(fieldKey);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 21,
+                height: 21,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFBBF24),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '${index + 1}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1F2937),
+                        height: 1.05,
+                      ),
+                    ),
+                    if (solution.description.trim().isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          solution.description.trim(),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFDDE3EE)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'MAJOR INFRASTRUCTURE',
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        color: Colors.grey.shade500,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.35,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => _regenerateSingleInfraField(
+                          _infraControllers[index], index),
+                      icon: const Icon(Icons.refresh_rounded, size: 15),
+                      visualDensity: VisualDensity.compact,
+                      splashRadius: 18,
+                      tooltip: 'Regenerate field',
+                    ),
+                    IconButton(
+                      onPressed: canUndo
+                          ? () async {
+                              final previous =
+                                  provider.projectData.undoField(fieldKey);
+                              if (previous != null) {
+                                _infraControllers[index].text = previous;
+                                await provider.saveToFirebase(
+                                    checkpoint: 'infra_undo');
+                              }
+                            }
+                          : null,
+                      icon: const Icon(Icons.undo_rounded, size: 15),
+                      visualDensity: VisualDensity.compact,
+                      splashRadius: 18,
+                      tooltip: 'Undo',
+                    ),
+                  ],
+                ),
+                TextField(
+                  controller: _infraControllers[index],
+                  minLines: 4,
+                  maxLines: null,
+                  style: const TextStyle(
+                    fontSize: 12.2,
+                    color: Color(0xFF334155),
+                    height: 1.4,
+                  ),
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    hintText:
+                        '- Cloud server hosting ...\n- Dedicated database ...',
+                    isDense: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -437,77 +788,10 @@ class _InfrastructureConsiderationsScreenState
 
   Drawer _buildMobileDrawer() {
     return Drawer(
-      child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          children: [
-            const ListTile(
-                leading: CircleAvatar(radius: 18, backgroundColor: Colors.grey),
-                title: Text('StackOne')),
-            const Divider(height: 1),
-            _buildMenuItem(Icons.home_outlined, 'Home'),
-            _buildExpandableHeader(
-              Icons.flag_outlined,
-              'Initiation Phase',
-              expanded: _initiationExpanded,
-              onTap: () =>
-                  setState(() => _initiationExpanded = !_initiationExpanded),
-              isActive: true,
-            ),
-            if (_initiationExpanded) ...[
-              _buildExpandableHeaderLikeCost(
-                Icons.business_center_outlined,
-                'Business Case',
-                expanded: _businessCaseExpanded,
-                onTap: () => setState(
-                    () => _businessCaseExpanded = !_businessCaseExpanded),
-                isActive: false,
-              ),
-              if (_businessCaseExpanded) ...[
-                _buildNestedSubMenuItem('Business Case', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openBusinessCase();
-                }),
-                _buildNestedSubMenuItem('Potential Solutions', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openPotentialSolutions();
-                }),
-                _buildNestedSubMenuItem('Risk Identification', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openRiskIdentification();
-                }),
-                _buildNestedSubMenuItem('IT Considerations', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openITConsiderations();
-                }),
-                _buildNestedSubMenuItem('Infrastructure Considerations',
-                    isActive: true),
-                _buildNestedSubMenuItem('Core Stakeholders', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openCoreStakeholders();
-                }),
-                _buildNestedSubMenuItem(
-                    'Cost Benefit Analysis & Financial Metrics', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openCostAnalysis();
-                }),
-                _buildNestedSubMenuItem('Preferred Solution Analysis',
-                    onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openPreferredSolutionAnalysis();
-                }),
-              ],
-            ],
-            _buildMenuItem(
-                Icons.timeline_outlined, 'Initiation: Front End Planning'),
-            _buildMenuItem(Icons.account_tree_outlined, 'Workflow Roadmap'),
-            _buildMenuItem(Icons.bolt_outlined, 'Agile Roadmap'),
-            _buildMenuItem(Icons.description_outlined, 'Contracting'),
-            _buildMenuItem(Icons.shopping_cart_outlined, 'Procurement'),
-            const Divider(height: 1),
-            _buildMenuItem(Icons.settings_outlined, 'Settings'),
-            _buildMenuItem(Icons.logout_outlined, 'LogOut'),
-          ],
+      width: MediaQuery.sizeOf(context).width * 0.88,
+      child: const SafeArea(
+        child: InitiationLikeSidebar(
+          activeItemLabel: 'Infrastructure Considerations',
         ),
       ),
     );
@@ -852,18 +1136,25 @@ class _InfrastructureConsiderationsScreenState
         const SizedBox(height: 24),
         if (isMobile) ...[
           Text('Reminder: update text within each box.',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600], fontStyle: FontStyle.italic)),
+              style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                  fontStyle: FontStyle.italic)),
           const SizedBox(height: 8),
           Column(children: List.generate(_solutions.length, (i) => _row(i))),
         ] else ...[
-          const Text('Main Infrastructure Consideration for each potential solution',
+          const Text(
+              'Main Infrastructure Consideration for each potential solution',
               style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: Colors.black)),
           const SizedBox(height: 6),
           Text('Reminder: update text within each box.',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600], fontStyle: FontStyle.italic)),
+              style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                  fontStyle: FontStyle.italic)),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -1129,7 +1420,9 @@ class _InfrastructureConsiderationsScreenState
                 ),
               ),
               const SizedBox(width: 16),
-              Expanded(child: _infraTextArea(_infraControllers[index], index: index)),
+              Expanded(
+                  child:
+                      _infraTextArea(_infraControllers[index], index: index)),
             ]),
     );
   }
@@ -1152,9 +1445,11 @@ class _InfrastructureConsiderationsScreenState
     );
   }
 
-  Widget _infraTextArea(TextEditingController controller, {required int index}) {
+  Widget _infraTextArea(TextEditingController controller,
+      {required int index}) {
     final provider = ProjectDataHelper.getProvider(context);
-    final solutionTitle = index < _solutions.length ? _solutions[index].title : '';
+    final solutionTitle =
+        index < _solutions.length ? _solutions[index].title : '';
     final fieldKey = 'infra_${solutionTitle}_$index';
     final canUndo = provider.canUndoField(fieldKey);
 
@@ -1164,7 +1459,8 @@ class _InfrastructureConsiderationsScreenState
       canUndo: canUndo,
       onRegenerate: () async {
         // Add current value to history
-        provider.addFieldToHistory(fieldKey, controller.text, isAiGenerated: true);
+        provider.addFieldToHistory(fieldKey, controller.text,
+            isAiGenerated: true);
         // Regenerate this specific infrastructure field
         await _regenerateSingleInfraField(controller, index);
       },
@@ -1197,7 +1493,8 @@ class _InfrastructureConsiderationsScreenState
                 border: InputBorder.none,
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
-                hintText: 'Enter main infrastructure considerations for Solution ${index + 1}...',
+                hintText:
+                    'Enter main infrastructure considerations for Solution ${index + 1}...',
                 hintStyle: TextStyle(color: Colors.grey[400]),
               ),
               style: const TextStyle(fontSize: 12, color: Colors.black87),
@@ -1208,7 +1505,8 @@ class _InfrastructureConsiderationsScreenState
     );
   }
 
-  Future<void> _regenerateSingleInfraField(TextEditingController controller, int index) async {
+  Future<void> _regenerateSingleInfraField(
+      TextEditingController controller, int index) async {
     if (index >= _solutions.length) return;
 
     final provider = ProjectDataHelper.getProvider(context);
@@ -1216,18 +1514,19 @@ class _InfrastructureConsiderationsScreenState
     try {
       final solution = _solutions[index];
       final solutionsToUse = [solution];
-      
+
       final result = await _openAi.generateInfrastructureForSolutions(
         solutionsToUse,
         contextNotes: _notesController.text,
       );
       if (!mounted) return;
-      
+
       final items = result[solution.title] ?? const <String>[];
-      controller.text = items.isEmpty ? '' : items.map((e) => '- $e').join('\n');
-      
+      controller.text =
+          items.isEmpty ? '' : items.map((e) => '- $e').join('\n');
+
       await provider.saveToFirebase(checkpoint: 'infra_field_regenerated');
-      
+
       if (mounted) {
         messenger.showSnackBar(
           const SnackBar(content: Text('Infrastructure field regenerated')),

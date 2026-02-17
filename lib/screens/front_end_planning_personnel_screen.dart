@@ -20,15 +20,18 @@ class FrontEndPlanningPersonnelScreen extends StatefulWidget {
 
   static void open(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const FrontEndPlanningPersonnelScreen()),
+      MaterialPageRoute(
+          builder: (_) => const FrontEndPlanningPersonnelScreen()),
     );
   }
 
   @override
-  State<FrontEndPlanningPersonnelScreen> createState() => _FrontEndPlanningPersonnelScreenState();
+  State<FrontEndPlanningPersonnelScreen> createState() =>
+      _FrontEndPlanningPersonnelScreenState();
 }
 
-class _FrontEndPlanningPersonnelScreenState extends State<FrontEndPlanningPersonnelScreen> {
+class _FrontEndPlanningPersonnelScreenState
+    extends State<FrontEndPlanningPersonnelScreen> {
   final TextEditingController _notes = TextEditingController();
 
   @override
@@ -48,11 +51,15 @@ class _FrontEndPlanningPersonnelScreenState extends State<FrontEndPlanningPerson
               const FrontEndPlanningHeader(),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _roundedField(controller: _notes, hint: 'Input your notes here…', minLines: 3),
+                      _roundedField(
+                          controller: _notes,
+                          hint: 'Input your notes here…',
+                          minLines: 3),
                       const SizedBox(height: 22),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
@@ -71,7 +78,8 @@ class _FrontEndPlanningPersonnelScreenState extends State<FrontEndPlanningPerson
               ),
             ],
           ),
-          _BottomOverlays(onSubmit: () => WorkBreakdownStructureScreen.open(context)),
+          _BottomOverlays(
+              onSubmit: () => WorkBreakdownStructureScreen.open(context)),
           const KazAiChatBubble(),
         ],
       ),
@@ -99,7 +107,8 @@ class _SectionTitle extends StatelessWidget {
         ),
         EditableContentText(
           contentKey: 'fep_personnel_subtitle',
-          fallback: '(Early identification of core project roles and people ( if known))',
+          fallback:
+              '(Early identification of core project roles and people ( if known))',
           category: 'front_end_planning',
           style: TextStyle(
             fontSize: 14,
@@ -124,7 +133,8 @@ class _AddRoleButton extends StatelessWidget {
           backgroundColor: const Color(0xFFF2F4F7),
           foregroundColor: const Color(0xFF111827),
           side: const BorderSide(color: Color(0xFFE5E7EB)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
         ),
@@ -140,7 +150,8 @@ class _PersonnelTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final border = const BorderSide(color: Color(0xFFE5E7EB));
-    final headerStyle = const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF4B5563));
+    final headerStyle = const TextStyle(
+        fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF4B5563));
     final cellStyle = const TextStyle(fontSize: 14, color: Color(0xFF111827));
 
     Widget th(String text) => Padding(
@@ -160,7 +171,8 @@ class _PersonnelTable extends StatelessWidget {
         child: Row(
           children: const [
             Expanded(
-              child: Text('Select...', style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14))),
+                child: Text('Select...',
+                    style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14))),
             Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF6B7280)),
           ],
         ),
@@ -187,33 +199,49 @@ class _PersonnelTable extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
-      child: Table(
-        columnWidths: const {
-          0: FixedColumnWidth(70),
-          1: FlexColumnWidth(2.2),
-          2: FlexColumnWidth(2.8),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final minTableWidth =
+              constraints.maxWidth > 980 ? constraints.maxWidth : 980.0;
+
+          return Scrollbar(
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: minTableWidth),
+                child: Table(
+                  columnWidths: const {
+                    0: FixedColumnWidth(70),
+                    1: FlexColumnWidth(2.2),
+                    2: FlexColumnWidth(2.8),
+                  },
+                  border: TableBorder(
+                    horizontalInside: border,
+                    verticalInside: border,
+                    top: border,
+                    bottom: border,
+                    left: border,
+                    right: border,
+                  ),
+                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                  children: [
+                    TableRow(
+                      decoration: const BoxDecoration(color: Color(0xFFF9FAFB)),
+                      children: [
+                        th('No'),
+                        th('Project Roles'),
+                        th('Definition'),
+                      ],
+                    ),
+                    buildRow(1),
+                    buildRow(2),
+                  ],
+                ),
+              ),
+            ),
+          );
         },
-        border: TableBorder(
-          horizontalInside: border,
-          verticalInside: border,
-          top: border,
-          bottom: border,
-          left: border,
-          right: border,
-        ),
-        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-        children: [
-          TableRow(
-            decoration: const BoxDecoration(color: Color(0xFFF9FAFB)),
-            children: [
-              th('No'),
-              th('Project Roles'),
-              th('Definition'),
-            ],
-          ),
-          buildRow(1),
-          buildRow(2),
-        ],
       ),
     );
   }
@@ -236,7 +264,8 @@ class _BottomOverlays extends StatelessWidget {
               child: Container(
                 width: 48,
                 height: 48,
-                decoration: const BoxDecoration(color: Color(0xFFB3D9FF), shape: BoxShape.circle),
+                decoration: const BoxDecoration(
+                    color: Color(0xFFB3D9FF), shape: BoxShape.circle),
                 child: const Icon(Icons.info_outline, color: Colors.white),
               ),
             ),
@@ -252,11 +281,15 @@ class _BottomOverlays extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFFD700),
                       foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 28, vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(22)),
                       elevation: 0,
                     ),
-                    child: const Text('Submit', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    child: const Text('Submit',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),
@@ -279,9 +312,12 @@ class _BottomOverlays extends StatelessWidget {
         children: const [
           Icon(Icons.auto_awesome, color: Color(0xFF2563EB)),
           SizedBox(width: 8),
-          Text('AI', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF2563EB))),
+          Text('AI',
+              style: TextStyle(
+                  fontWeight: FontWeight.w800, color: Color(0xFF2563EB))),
           SizedBox(width: 10),
-          Text('Focus on major risks associated with each potential solution.', style: TextStyle(color: Color(0xFF1F2937))),
+          Text('Focus on major risks associated with each potential solution.',
+              style: TextStyle(color: Color(0xFF1F2937))),
         ],
       ),
     );
@@ -305,7 +341,9 @@ class _TopBar extends StatelessWidget {
       child: Row(
         children: [
           Row(children: [
-            _circleButton(icon: Icons.arrow_back_ios_new_rounded, onTap: () => Navigator.maybePop(context)),
+            _circleButton(
+                icon: Icons.arrow_back_ios_new_rounded,
+                onTap: () => Navigator.maybePop(context)),
             const SizedBox(width: 8),
             _circleButton(icon: Icons.arrow_forward_ios_rounded, onTap: () {}),
           ]),
@@ -314,7 +352,10 @@ class _TopBar extends StatelessWidget {
             contentKey: 'fep_top_bar_title',
             fallback: 'Front End Planning',
             category: 'front_end_planning',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.black87),
+            style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.black87),
           ),
           const Spacer(),
           const UserAccessChip(),
@@ -341,7 +382,10 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-Widget _roundedField({required TextEditingController controller, required String hint, int minLines = 1}) {
+Widget _roundedField(
+    {required TextEditingController controller,
+    required String hint,
+    int minLines = 1}) {
   return Container(
     width: double.infinity,
     decoration: BoxDecoration(

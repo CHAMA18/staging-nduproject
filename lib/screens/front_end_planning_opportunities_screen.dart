@@ -14,6 +14,9 @@ import 'package:ndu_project/screens/project_charter_screen.dart';
 import 'package:ndu_project/services/sidebar_navigation_service.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
+import 'package:ndu_project/screens/home_screen.dart';
+import 'package:ndu_project/screens/design_phase_screen.dart';
+import 'package:ndu_project/screens/staff_team_screen.dart';
 
 /// Front End Planning – Project Opportunities page
 /// Built to match the provided screenshot exactly:
@@ -42,6 +45,7 @@ class FrontEndPlanningOpportunitiesScreen extends StatefulWidget {
 
 class _FrontEndPlanningOpportunitiesScreenState
     extends State<FrontEndPlanningOpportunitiesScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _notes = TextEditingController();
   bool _isSyncReady = false;
 
@@ -75,17 +79,6 @@ class _FrontEndPlanningOpportunitiesScreenState
       // Load saved opportunities
       _loadSavedOpportunities(projectData);
       _syncOpportunitiesToProvider();
-
-      // Generate opportunities if empty OR if opportunities exist but have empty fields
-      if (_rows.isEmpty ||
-          _rows.any((r) =>
-              r.opportunity.isEmpty ||
-              r.discipline.isEmpty ||
-              r.stakeholder.isEmpty ||
-              r.potentialCostSavings.isEmpty ||
-              r.potentialScheduleSavings.isEmpty)) {
-        _generateOpportunitiesFromContext();
-      }
       if (mounted) setState(() {});
     });
   }
@@ -341,6 +334,11 @@ class _FrontEndPlanningOpportunitiesScreenState
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = AppBreakpoints.isMobile(context);
+    if (isMobile) {
+      return _buildMobileScaffold(context);
+    }
+
     return Scaffold(
       // Ensure white background as requested
       backgroundColor: Colors.white,
@@ -467,9 +465,420 @@ class _FrontEndPlanningOpportunitiesScreenState
                       ),
                     ],
                   ),
-                  _BottomOverlays(rows: _rows),
+                  _BottomOverlays(onSubmit: _submitOpportunities),
                 ],
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submitOpportunities() async {
+    final oppText = _rows
+        .map((r) => '${r.opportunity}: ${r.discipline}')
+        .where((s) => s.trim().isNotEmpty)
+        .join('\n');
+
+    final isBasicPlan = ProjectDataHelper.getData(context).isBasicPlanProject;
+    final nextItem = SidebarNavigationService.instance
+        .getNextAccessibleItem('fep_opportunities', isBasicPlan);
+
+    Widget nextScreen;
+    if (nextItem?.checkpoint == 'fep_contract_vendor_quotes') {
+      nextScreen = const FrontEndPlanningContractVendorQuotesScreen();
+    } else if (nextItem?.checkpoint == 'fep_procurement') {
+      nextScreen = const FrontEndPlanningProcurementScreen();
+    } else if (nextItem?.checkpoint == 'project_charter') {
+      nextScreen = const ProjectCharterScreen();
+    } else {
+      nextScreen = const FrontEndPlanningContractVendorQuotesScreen();
+    }
+
+    await ProjectDataHelper.saveAndNavigate(
+      context: context,
+      checkpoint: 'fep_opportunities',
+      nextScreenBuilder: () => nextScreen,
+      dataUpdater: (data) => data.copyWith(
+        frontEndPlanning: ProjectDataHelper.updateFEPField(
+          current: data.frontEndPlanning,
+          opportunities: oppText,
+          opportunityItems: _rows,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileScaffold(BuildContext context) {
+    final projectName = ProjectDataHelper.getData(context).projectName.trim();
+    final topSummary = _rows.isEmpty
+        ? 'No opportunities captured yet.'
+        : _rows
+            .take(2)
+            .map((item) => item.opportunity.trim())
+            .where((value) => value.isNotEmpty)
+            .join(' ');
+
+    return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor: const Color(0xFFF5F6F8),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showAddOpportunityDialog(),
+        backgroundColor: const Color(0xFFF4B400),
+        foregroundColor: Colors.black,
+        elevation: 0,
+        child: const Icon(Icons.add),
+      ),
+      drawer: Drawer(
+        width: MediaQuery.sizeOf(context).width * 0.88,
+        child: const SafeArea(
+          child:
+              InitiationLikeSidebar(activeItemLabel: 'Project Opportunities'),
+        ),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 10, 6),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                    icon: const Icon(Icons.menu_rounded, size: 18),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'Front End Planning',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                  ),
+                  const CircleAvatar(
+                    radius: 13,
+                    backgroundColor: Color(0xFF2563EB),
+                    child: Text('C',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(12, 2, 12, 128),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'FRONT END PLANNING   >   ${projectName.isEmpty ? 'ZAMBIA HUB' : projectName.toUpperCase()}',
+                      style: const TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF9CA3AF),
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'AI-Generated Summaries',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF111827),
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => _showAddOpportunityDialog(),
+                          child: const Text('View All'),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                      ),
+                      child: Text(
+                        topSummary.isEmpty
+                            ? 'No summary available.'
+                            : topSummary,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: Color(0xFF374151),
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _rows.length > 2
+                          ? 'Showing ${_rows.length} opportunities...'
+                          : 'No additional opportunities.',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF2563EB),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        const Text(
+                          'ACTIVE OPPORTUNITIES',
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF374151),
+                              letterSpacing: 0.4),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${_rows.length} ITEMS',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF9CA3AF),
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ..._rows.asMap().entries.map(
+                          (entry) => Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _buildMobileOpportunityCard(
+                                context, entry.key, entry.value),
+                          ),
+                        ),
+                    OutlinedButton.icon(
+                      onPressed: () => _showAddOpportunityDialog(),
+                      icon: const Icon(Icons.add, size: 17),
+                      label: const Text(
+                        'Add Opportunity',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFD1D5DB)),
+                        foregroundColor: const Color(0xFF374151),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _submitOpportunities,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF4B400),
+                          foregroundColor: Colors.black,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                        ),
+                        child: const Text(
+                          'Next',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          height: 62,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _mobileNavItem(
+                icon: Icons.home_filled,
+                label: 'Home',
+                active: false,
+                onTap: () => HomeScreen.open(context),
+              ),
+              _mobileNavItem(
+                icon: Icons.auto_awesome_rounded,
+                label: 'AI Planning',
+                active: true,
+                onTap: () {},
+              ),
+              const SizedBox(width: 30),
+              _mobileNavItem(
+                icon: Icons.design_services_rounded,
+                label: 'Design',
+                active: false,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const DesignPhaseScreen(
+                        activeItemLabel: 'Design Management'),
+                  ),
+                ),
+              ),
+              _mobileNavItem(
+                icon: Icons.engineering_rounded,
+                label: 'Execution',
+                active: false,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const StaffTeamScreen()),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileOpportunityCard(
+      BuildContext context, int index, OpportunityItem item) {
+    return InkWell(
+      onTap: () => _showAddOpportunityDialog(existingItem: item),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    item.opportunity.trim().isEmpty
+                        ? 'Unnamed opportunity'
+                        : item.opportunity.trim(),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1F2937),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () =>
+                      _showAddOpportunityDialog(existingItem: item),
+                  icon: const Icon(Icons.more_vert_rounded,
+                      size: 17, color: Color(0xFF9CA3AF)),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    item.discipline.trim().isEmpty
+                        ? 'Discipline TBD'
+                        : item.discipline,
+                    style: const TextStyle(
+                        fontSize: 11.5,
+                        color: Color(0xFF6B7280),
+                        fontWeight: FontWeight.w600),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    item.stakeholder.trim().isEmpty
+                        ? 'Stakeholder TBD'
+                        : item.stakeholder,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                        fontSize: 11.5,
+                        color: Color(0xFF6B7280),
+                        fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${item.potentialCostSavings.trim().isEmpty ? '0' : item.potentialCostSavings} USD',
+                    style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF374151),
+                        fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    item.potentialScheduleSavings.trim().isEmpty
+                        ? '0 weeks'
+                        : item.potentialScheduleSavings,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                        fontSize: 13.5,
+                        color: Color(0xFF059669),
+                        fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _mobileNavItem({
+    required IconData icon,
+    required String label,
+    required bool active,
+    required VoidCallback onTap,
+  }) {
+    final color = active ? const Color(0xFF2563EB) : const Color(0xFF9CA3AF);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 17, color: color),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                  fontSize: 9.5, color: color, fontWeight: FontWeight.w700),
             ),
           ],
         ),
@@ -793,311 +1202,340 @@ class _OpportunityTable extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
-      child: Table(
-        columnWidths: const {
-          0: FixedColumnWidth(52),
-          1: FlexColumnWidth(2.0),
-          2: FlexColumnWidth(1.4),
-          3: FlexColumnWidth(1.4),
-          4: FlexColumnWidth(1.1),
-          5: FlexColumnWidth(1.1),
-          6: FixedColumnWidth(80), // Impact
-          7: FlexColumnWidth(1.8), // Implementation (Applies To + Assignee)
-          8: FixedColumnWidth(50), // Actions
-        },
-        border: TableBorder(
-          horizontalInside: border,
-          verticalInside: border,
-          top: border,
-          bottom: border,
-          left: border,
-          right: border,
-        ),
-        defaultVerticalAlignment: TableCellVerticalAlignment.top,
-        children: [
-          TableRow(
-            decoration: const BoxDecoration(color: Color(0xFFF9FAFB)),
-            children: [
-              _th('No', headerStyle),
-              _th('Potential Opportunity', headerStyle),
-              _th('Discipline', headerStyle),
-              _th('Stakeholder', headerStyle),
-              _th('Potential Cost Savings', headerStyle),
-              _th('Potential Cost Schedule Savings', headerStyle),
-              _th('Impact', headerStyle),
-              _th('Implementation', headerStyle),
-              _th('Actions', headerStyle),
-            ],
-          ),
-          ...List<TableRow>.generate(rows.length, (i) {
-            final r = rows[i];
-            return TableRow(children: [
-              td(Text('${i + 1}', style: cellStyle)),
-              td(Text(r.opportunity, style: cellStyle)),
-              td(Text(r.discipline, style: cellStyle)),
-              td(Text(r.stakeholder, style: cellStyle)),
-              td(Text(r.potentialCostSavings, style: cellStyle)),
-              td(Text(r.potentialScheduleSavings, style: cellStyle)),
-              td(_ImpactBadge(impact: r.impact)),
-              td(
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (r.assignedTo.isNotEmpty) ...[
-                      Row(
-                        children: [
-                          const Icon(Icons.person_outline,
-                              size: 14, color: Color(0xFF6B7280)),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              r.assignedTo,
-                              style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF374151)),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                    ],
-                    Wrap(
-                      spacing: 4,
-                      runSpacing: 4,
-                      children: r.appliesTo
-                          .map((tag) => Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEFF6FF),
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(
-                                      color: const Color(0xFFBFDBFE)),
-                                ),
-                                child: Text(
-                                  tag,
-                                  style: const TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w500,
-                                      color: Color(0xFF1E40AF)),
-                                ),
-                              ))
-                          .toList(),
-                    ),
-                  ],
-                ),
-              ),
-              td(
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_horiz, color: Color(0xFF9CA3AF)),
-                  tooltip: 'Actions',
-                  onSelected: (value) async {
-                    if (value == 'edit') {
-                      onEdit(r);
-                    } else if (value == 'delete') {
-                      onDelete(r.id);
-                    } else if (value == 'assign') {
-                      final controller =
-                          TextEditingController(text: r.assignedTo);
-                      final assigned = await showDialog<String>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Assign Opportunity'),
-                          content: TextField(
-                            controller: controller,
-                            decoration: const InputDecoration(
-                              labelText: 'Assign To (Role or Name)',
-                              border: OutlineInputBorder(),
-                            ),
-                            autofocus: true,
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              child: const Text('Cancel'),
-                            ),
-                            ElevatedButton(
-                              onPressed: () =>
-                                  Navigator.pop(ctx, controller.text.trim()),
-                              child: const Text('Assign'),
-                            ),
-                          ],
-                        ),
-                      );
-                      if (assigned != null) {
-                        onUpdate(
-                          i,
-                          OpportunityItem(
-                            id: r.id,
-                            opportunity: r.opportunity,
-                            discipline: r.discipline,
-                            stakeholder: r.stakeholder,
-                            potentialCostSavings: r.potentialCostSavings,
-                            potentialScheduleSavings:
-                                r.potentialScheduleSavings,
-                            impact: r.impact,
-                            appliesTo: r.appliesTo,
-                            assignedTo: assigned,
-                          ),
-                        );
-                      }
-                    } else if (value == 'toggle_estimate') {
-                      final list = List<String>.from(r.appliesTo);
-                      if (list.contains('Estimate')) {
-                        list.remove('Estimate');
-                      } else {
-                        list.add('Estimate');
-                      }
-                      onUpdate(
-                        i,
-                        OpportunityItem(
-                          id: r.id,
-                          opportunity: r.opportunity,
-                          discipline: r.discipline,
-                          stakeholder: r.stakeholder,
-                          potentialCostSavings: r.potentialCostSavings,
-                          potentialScheduleSavings: r.potentialScheduleSavings,
-                          impact: r.impact,
-                          appliesTo: list,
-                          assignedTo: r.assignedTo,
-                        ),
-                      );
-                    } else if (value == 'toggle_schedule') {
-                      final list = List<String>.from(r.appliesTo);
-                      if (list.contains('Schedule')) {
-                        list.remove('Schedule');
-                      } else {
-                        list.add('Schedule');
-                      }
-                      onUpdate(
-                        i,
-                        OpportunityItem(
-                          id: r.id,
-                          opportunity: r.opportunity,
-                          discipline: r.discipline,
-                          stakeholder: r.stakeholder,
-                          potentialCostSavings: r.potentialCostSavings,
-                          potentialScheduleSavings: r.potentialScheduleSavings,
-                          impact: r.impact,
-                          appliesTo: list,
-                          assignedTo: r.assignedTo,
-                        ),
-                      );
-                    } else if (value == 'toggle_training') {
-                      final list = List<String>.from(r.appliesTo);
-                      if (list.contains('Training')) {
-                        list.remove('Training');
-                      } else {
-                        list.add('Training');
-                      }
-                      onUpdate(
-                        i,
-                        OpportunityItem(
-                          id: r.id,
-                          opportunity: r.opportunity,
-                          discipline: r.discipline,
-                          stakeholder: r.stakeholder,
-                          potentialCostSavings: r.potentialCostSavings,
-                          potentialScheduleSavings: r.potentialScheduleSavings,
-                          impact: r.impact,
-                          appliesTo: list,
-                          assignedTo: r.assignedTo,
-                        ),
-                      );
-                    }
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final minTableWidth =
+              constraints.maxWidth > 1520 ? constraints.maxWidth : 1520.0;
+
+          return Scrollbar(
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: minTableWidth),
+                child: Table(
+                  columnWidths: const {
+                    0: FixedColumnWidth(52),
+                    1: FlexColumnWidth(2.0),
+                    2: FlexColumnWidth(1.4),
+                    3: FlexColumnWidth(1.4),
+                    4: FlexColumnWidth(1.1),
+                    5: FlexColumnWidth(1.1),
+                    6: FixedColumnWidth(80), // Impact
+                    7: FlexColumnWidth(
+                        1.8), // Implementation (Applies To + Assignee)
+                    8: FixedColumnWidth(50), // Actions
                   },
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: 'toggle_estimate',
-                      child: Row(
-                        children: [
-                          Icon(
-                            r.appliesTo.contains('Estimate')
-                                ? Icons.check_box
-                                : Icons.check_box_outline_blank,
-                            size: 18,
-                            color: Colors.blue,
+                  border: TableBorder(
+                    horizontalInside: border,
+                    verticalInside: border,
+                    top: border,
+                    bottom: border,
+                    left: border,
+                    right: border,
+                  ),
+                  defaultVerticalAlignment: TableCellVerticalAlignment.top,
+                  children: [
+                    TableRow(
+                      decoration: const BoxDecoration(color: Color(0xFFF9FAFB)),
+                      children: [
+                        _th('No', headerStyle),
+                        _th('Potential Opportunity', headerStyle),
+                        _th('Discipline', headerStyle),
+                        _th('Stakeholder', headerStyle),
+                        _th('Potential Cost Savings', headerStyle),
+                        _th('Potential Cost Schedule Savings', headerStyle),
+                        _th('Impact', headerStyle),
+                        _th('Implementation', headerStyle),
+                        _th('Actions', headerStyle),
+                      ],
+                    ),
+                    ...List<TableRow>.generate(rows.length, (i) {
+                      final r = rows[i];
+                      return TableRow(children: [
+                        td(Text('${i + 1}', style: cellStyle)),
+                        td(Text(r.opportunity, style: cellStyle)),
+                        td(Text(r.discipline, style: cellStyle)),
+                        td(Text(r.stakeholder, style: cellStyle)),
+                        td(Text(r.potentialCostSavings, style: cellStyle)),
+                        td(Text(r.potentialScheduleSavings, style: cellStyle)),
+                        td(_ImpactBadge(impact: r.impact)),
+                        td(
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (r.assignedTo.isNotEmpty) ...[
+                                Row(
+                                  children: [
+                                    const Icon(Icons.person_outline,
+                                        size: 14, color: Color(0xFF6B7280)),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        r.assignedTo,
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF374151)),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                              ],
+                              Wrap(
+                                spacing: 4,
+                                runSpacing: 4,
+                                children: r.appliesTo
+                                    .map((tag) => Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFEFF6FF),
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                            border: Border.all(
+                                                color: const Color(0xFFBFDBFE)),
+                                          ),
+                                          child: Text(
+                                            tag,
+                                            style: const TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w500,
+                                                color: Color(0xFF1E40AF)),
+                                          ),
+                                        ))
+                                    .toList(),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          const Text('Apply to Estimate'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'toggle_schedule',
-                      child: Row(
-                        children: [
-                          Icon(
-                            r.appliesTo.contains('Schedule')
-                                ? Icons.check_box
-                                : Icons.check_box_outline_blank,
-                            size: 18,
-                            color: Colors.blue,
+                        ),
+                        td(
+                          PopupMenuButton<String>(
+                            icon: const Icon(Icons.more_horiz,
+                                color: Color(0xFF9CA3AF)),
+                            tooltip: 'Actions',
+                            onSelected: (value) async {
+                              if (value == 'edit') {
+                                onEdit(r);
+                              } else if (value == 'delete') {
+                                onDelete(r.id);
+                              } else if (value == 'assign') {
+                                final controller =
+                                    TextEditingController(text: r.assignedTo);
+                                final assigned = await showDialog<String>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: const Text('Assign Opportunity'),
+                                    content: TextField(
+                                      controller: controller,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Assign To (Role or Name)',
+                                        border: OutlineInputBorder(),
+                                      ),
+                                      autofocus: true,
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(ctx),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () => Navigator.pop(
+                                            ctx, controller.text.trim()),
+                                        child: const Text('Assign'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (assigned != null) {
+                                  onUpdate(
+                                    i,
+                                    OpportunityItem(
+                                      id: r.id,
+                                      opportunity: r.opportunity,
+                                      discipline: r.discipline,
+                                      stakeholder: r.stakeholder,
+                                      potentialCostSavings:
+                                          r.potentialCostSavings,
+                                      potentialScheduleSavings:
+                                          r.potentialScheduleSavings,
+                                      impact: r.impact,
+                                      appliesTo: r.appliesTo,
+                                      assignedTo: assigned,
+                                    ),
+                                  );
+                                }
+                              } else if (value == 'toggle_estimate') {
+                                final list = List<String>.from(r.appliesTo);
+                                if (list.contains('Estimate')) {
+                                  list.remove('Estimate');
+                                } else {
+                                  list.add('Estimate');
+                                }
+                                onUpdate(
+                                  i,
+                                  OpportunityItem(
+                                    id: r.id,
+                                    opportunity: r.opportunity,
+                                    discipline: r.discipline,
+                                    stakeholder: r.stakeholder,
+                                    potentialCostSavings:
+                                        r.potentialCostSavings,
+                                    potentialScheduleSavings:
+                                        r.potentialScheduleSavings,
+                                    impact: r.impact,
+                                    appliesTo: list,
+                                    assignedTo: r.assignedTo,
+                                  ),
+                                );
+                              } else if (value == 'toggle_schedule') {
+                                final list = List<String>.from(r.appliesTo);
+                                if (list.contains('Schedule')) {
+                                  list.remove('Schedule');
+                                } else {
+                                  list.add('Schedule');
+                                }
+                                onUpdate(
+                                  i,
+                                  OpportunityItem(
+                                    id: r.id,
+                                    opportunity: r.opportunity,
+                                    discipline: r.discipline,
+                                    stakeholder: r.stakeholder,
+                                    potentialCostSavings:
+                                        r.potentialCostSavings,
+                                    potentialScheduleSavings:
+                                        r.potentialScheduleSavings,
+                                    impact: r.impact,
+                                    appliesTo: list,
+                                    assignedTo: r.assignedTo,
+                                  ),
+                                );
+                              } else if (value == 'toggle_training') {
+                                final list = List<String>.from(r.appliesTo);
+                                if (list.contains('Training')) {
+                                  list.remove('Training');
+                                } else {
+                                  list.add('Training');
+                                }
+                                onUpdate(
+                                  i,
+                                  OpportunityItem(
+                                    id: r.id,
+                                    opportunity: r.opportunity,
+                                    discipline: r.discipline,
+                                    stakeholder: r.stakeholder,
+                                    potentialCostSavings:
+                                        r.potentialCostSavings,
+                                    potentialScheduleSavings:
+                                        r.potentialScheduleSavings,
+                                    impact: r.impact,
+                                    appliesTo: list,
+                                    assignedTo: r.assignedTo,
+                                  ),
+                                );
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              PopupMenuItem(
+                                value: 'toggle_estimate',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      r.appliesTo.contains('Estimate')
+                                          ? Icons.check_box
+                                          : Icons.check_box_outline_blank,
+                                      size: 18,
+                                      color: Colors.blue,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text('Apply to Estimate'),
+                                  ],
+                                ),
+                              ),
+                              PopupMenuItem(
+                                value: 'toggle_schedule',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      r.appliesTo.contains('Schedule')
+                                          ? Icons.check_box
+                                          : Icons.check_box_outline_blank,
+                                      size: 18,
+                                      color: Colors.blue,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text('Apply to Schedule'),
+                                  ],
+                                ),
+                              ),
+                              PopupMenuItem(
+                                value: 'toggle_training',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      r.appliesTo.contains('Training')
+                                          ? Icons.check_box
+                                          : Icons.check_box_outline_blank,
+                                      size: 18,
+                                      color: Colors.blue,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text('Apply to Training'),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuDivider(),
+                              PopupMenuItem(
+                                value: 'assign',
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.person_add_alt_1,
+                                        size: 18, color: Colors.orange),
+                                    const SizedBox(width: 8),
+                                    Text(r.assignedTo.isNotEmpty
+                                        ? 'Reassign'
+                                        : 'Assign to Role'),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuDivider(),
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.edit,
+                                        size: 18, color: Colors.grey),
+                                    SizedBox(width: 8),
+                                    Text('Edit'),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.delete,
+                                        size: 18, color: Colors.red),
+                                    SizedBox(width: 8),
+                                    Text('Delete',
+                                        style: TextStyle(color: Colors.red)),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          const Text('Apply to Schedule'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'toggle_training',
-                      child: Row(
-                        children: [
-                          Icon(
-                            r.appliesTo.contains('Training')
-                                ? Icons.check_box
-                                : Icons.check_box_outline_blank,
-                            size: 18,
-                            color: Colors.blue,
-                          ),
-                          const SizedBox(width: 8),
-                          const Text('Apply to Training'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuDivider(),
-                    PopupMenuItem(
-                      value: 'assign',
-                      child: Row(
-                        children: [
-                          const Icon(Icons.person_add_alt_1,
-                              size: 18, color: Colors.orange),
-                          const SizedBox(width: 8),
-                          Text(r.assignedTo.isNotEmpty
-                              ? 'Reassign'
-                              : 'Assign to Role'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuDivider(),
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Row(
-                        children: [
-                          Icon(Icons.edit, size: 18, color: Colors.grey),
-                          SizedBox(width: 8),
-                          Text('Edit'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete, size: 18, color: Colors.red),
-                          SizedBox(width: 8),
-                          Text('Delete', style: TextStyle(color: Colors.red)),
-                        ],
-                      ),
-                    ),
+                        ),
+                      ]);
+                    }),
                   ],
                 ),
               ),
-            ]);
-          }),
-        ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -1116,8 +1554,8 @@ class _OpportunityTable extends StatelessWidget {
 }
 
 class _BottomOverlays extends StatelessWidget {
-  const _BottomOverlays({required this.rows});
-  final List<OpportunityItem> rows;
+  const _BottomOverlays({required this.onSubmit});
+  final Future<void> Function() onSubmit;
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
@@ -1144,47 +1582,7 @@ class _BottomOverlays extends StatelessWidget {
                   _aiHint(),
                   const SizedBox(width: 16),
                   ElevatedButton(
-                    onPressed: () async {
-                      // Legacy Text
-                      final oppText = rows
-                          .map((r) => '${r.opportunity}: ${r.discipline}')
-                          .where((s) => s.trim().isNotEmpty)
-                          .join('\n');
-
-                      final isBasicPlan =
-                          ProjectDataHelper.getData(context).isBasicPlanProject;
-                      final nextItem = SidebarNavigationService.instance
-                          .getNextAccessibleItem(
-                              'fep_opportunities', isBasicPlan);
-
-                      Widget nextScreen;
-                      if (nextItem?.checkpoint ==
-                          'fep_contract_vendor_quotes') {
-                        nextScreen =
-                            const FrontEndPlanningContractVendorQuotesScreen();
-                      } else if (nextItem?.checkpoint == 'fep_procurement') {
-                        nextScreen = const FrontEndPlanningProcurementScreen();
-                      } else if (nextItem?.checkpoint == 'project_charter') {
-                        nextScreen = const ProjectCharterScreen();
-                      } else {
-                        // Fallback
-                        nextScreen =
-                            const FrontEndPlanningContractVendorQuotesScreen();
-                      }
-
-                      await ProjectDataHelper.saveAndNavigate(
-                        context: context,
-                        checkpoint: 'fep_opportunities',
-                        nextScreenBuilder: () => nextScreen,
-                        dataUpdater: (data) => data.copyWith(
-                          frontEndPlanning: ProjectDataHelper.updateFEPField(
-                            current: data.frontEndPlanning,
-                            opportunities: oppText,
-                            opportunityItems: rows,
-                          ),
-                        ),
-                      );
-                    },
+                    onPressed: () => onSubmit(),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFFD700),
                       foregroundColor: Colors.black,

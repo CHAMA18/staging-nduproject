@@ -24,6 +24,7 @@ import 'basic_plan_dashboard_screen.dart';
 import 'initiation_phase_screen.dart';
 import 'portfolio_dashboard_screen.dart';
 import 'program_dashboard_screen.dart';
+import 'project_dashboard_mobile_shell.dart';
 
 class ProjectDashboardScreen extends StatefulWidget {
   const ProjectDashboardScreen({super.key, this.isBasicPlan = false});
@@ -84,6 +85,166 @@ class _ProjectDashboardScreenState extends State<ProjectDashboardScreen> {
       builder: (dialogContext) {
         final theme = Theme.of(dialogContext);
         final scheme = theme.colorScheme;
+        final isMobileDialog = MediaQuery.of(dialogContext).size.width <= 500;
+
+        if (isMobileDialog) {
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.14),
+                    blurRadius: 24,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF4CC),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.create_new_folder_outlined,
+                            size: 16,
+                            color: Color(0xFFCC8A00),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Text(
+                            'Name Your Project',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1C2430),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Provide a working title to spin up a new project workspace.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'PROJECT NAME*',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                        color: Color(0xFFFFB800),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: nameController,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: 'e.g., Terminal upgrade - Phase 2',
+                        prefixIcon: Icon(Icons.work_outline,
+                            color: Colors.grey.shade500),
+                        filled: true,
+                        fillColor: const Color(0xFFF5F7FC),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                              color: Color(0xFF2F6BFF), width: 1.8),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                              color: Color(0xFF2F6BFF), width: 1.8),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                              color: Color(0xFF2F6BFF), width: 2.0),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter a project name';
+                        }
+                        if (value.trim().length < 3) {
+                          return 'Project name must be at least 3 characters';
+                        }
+                        return null;
+                      },
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) async {
+                        if (formKey.currentState?.validate() ?? false) {
+                          final trimmed = nameController.text.trim();
+                          await _processDuplicateCheck(trimmed, dialogContext);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.of(dialogContext).pop(),
+                          child: const Text('Cancel'),
+                        ),
+                        const Spacer(),
+                        ElevatedButton(
+                          onPressed: () async {
+                            if (formKey.currentState?.validate() ?? false) {
+                              final trimmed = nameController.text.trim();
+                              await _processDuplicateCheck(
+                                  trimmed, dialogContext);
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFFC700),
+                            foregroundColor: Colors.black,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 22, vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            textStyle: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
+                          ),
+                          child: const Text('Continue'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
 
         return AlertDialog(
           shape:
@@ -286,6 +447,12 @@ class _ProjectDashboardScreenState extends State<ProjectDashboardScreen> {
     NavigationContextService.instance
         .setLastClientDashboard(AppRoutes.dashboard);
     final user = FirebaseAuth.instance.currentUser;
+    if (MediaQuery.sizeOf(context).width < 700) {
+      return ProjectDashboardMobileShell(
+        isBasicPlan: widget.isBasicPlan,
+        onAddProject: _handleAddProject,
+      );
+    }
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -1184,9 +1351,7 @@ class _SingleProjectsCardState extends State<_SingleProjectsCard> {
                     ? widget.projects
                         .where((project) => project.isBasicPlanProject)
                         .toList()
-                    : widget.projects
-                        .where((project) => !project.isBasicPlanProject)
-                        .toList();
+                    : List<ProjectRecord>.from(widget.projects);
 
                 // Apply search filter
                 final firebaseProjects = _searchQuery.isEmpty
@@ -1291,19 +1456,45 @@ class _SingleProjectsCardState extends State<_SingleProjectsCard> {
                             padding: const EdgeInsets.fromLTRB(28, 20, 28, 18),
                             child: Row(
                               children: const [
-                                Expanded(child: _TableHeaderLabel('Project')),
                                 Expanded(
-                                    child: _TableHeaderLabel('Stage',
-                                        alignment: Alignment.center)),
+                                  flex: 32,
+                                  child: _TableHeaderLabel('Project'),
+                                ),
                                 Expanded(
-                                    child: _TableHeaderLabel('Owner',
-                                        alignment: Alignment.center)),
+                                  flex: 16,
+                                  child: _TableHeaderLabel(
+                                    'Current Phase',
+                                    alignment: Alignment.center,
+                                  ),
+                                ),
                                 Expanded(
-                                    child: _TableHeaderLabel('Investment',
-                                        alignment: Alignment.center)),
+                                  flex: 20,
+                                  child: _TableHeaderLabel(
+                                    'Progress',
+                                    alignment: Alignment.center,
+                                  ),
+                                ),
                                 Expanded(
-                                    child: _TableHeaderLabel('Actions',
-                                        alignment: Alignment.center)),
+                                  flex: 12,
+                                  child: _TableHeaderLabel(
+                                    'Owner',
+                                    alignment: Alignment.center,
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 10,
+                                  child: _TableHeaderLabel(
+                                    'Investment',
+                                    alignment: Alignment.center,
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 18,
+                                  child: _TableHeaderLabel(
+                                    'Actions',
+                                    alignment: Alignment.center,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -1352,12 +1543,11 @@ class _SingleProjectsCardState extends State<_SingleProjectsCard> {
                       ),
                     );
 
-                    if (constraints.maxWidth < 900) {
+                    if (constraints.maxWidth < 1180) {
                       return SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(
-                              minWidth: 900, maxWidth: 900),
+                        child: SizedBox(
+                          width: 1180,
                           child: table,
                         ),
                       );
@@ -2266,6 +2456,7 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
   const _ProjectTableRowFromFirebase({required this.project});
 
   final ProjectRecord project;
+  static final Set<String> _openingProjectIds = <String>{};
 
   String _lastEditorName() {
     final ownerName = project.ownerName.trim();
@@ -2304,29 +2495,81 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
     return 'moments ago';
   }
 
-  Color _stageBackgroundColor(String status) {
-    final normalized = status.toLowerCase();
+  Color _stageBackgroundColor(String phase) {
+    final normalized = phase.toLowerCase();
     if (normalized.contains('execution')) return const Color(0xFFE6FAF1);
     if (normalized.contains('planning')) return const Color(0xFFFFF1CC);
+    if (normalized.contains('front end')) return const Color(0xFFFFF8E1);
     if (normalized.contains('design')) return const Color(0xFFE8E6FF);
+    if (normalized.contains('launch')) return const Color(0xFFE0F2FE);
+    if (normalized.contains('close')) return const Color(0xFFEFF6FF);
+    if (normalized.contains('completed')) return const Color(0xFFE8F0FF);
     if (normalized.contains('initiation') || normalized.contains('idea')) {
       return const Color(0xFFF3F4F8);
     }
     return const Color(0xFFF3F4F8);
   }
 
-  Color _stageForegroundColor(String status) {
-    final normalized = status.toLowerCase();
+  Color _stageForegroundColor(String phase) {
+    final normalized = phase.toLowerCase();
     if (normalized.contains('execution')) return const Color(0xFF14734E);
     if (normalized.contains('planning')) return const Color(0xFF875900);
+    if (normalized.contains('front end')) return const Color(0xFF9A6700);
     if (normalized.contains('design')) return const Color(0xFF5941C6);
+    if (normalized.contains('launch')) return const Color(0xFF075985);
+    if (normalized.contains('close')) return const Color(0xFF1D4ED8);
+    if (normalized.contains('completed')) return const Color(0xFF1D4ED8);
     if (normalized.contains('initiation') || normalized.contains('idea')) {
       return const Color(0xFF4A4D57);
     }
     return const Color(0xFF4A4D57);
   }
 
+  Color _progressStatusBackground(ProjectProgressHealth status) {
+    switch (status) {
+      case ProjectProgressHealth.completed:
+        return const Color(0xFFE0EDFF);
+      case ProjectProgressHealth.onTrack:
+        return const Color(0xFFDCFCE7);
+      case ProjectProgressHealth.behind:
+        return const Color(0xFFFEE2E2);
+      case ProjectProgressHealth.inProgress:
+        return const Color(0xFFFEF3C7);
+    }
+  }
+
+  Color _progressStatusForeground(ProjectProgressHealth status) {
+    switch (status) {
+      case ProjectProgressHealth.completed:
+        return const Color(0xFF1E40AF);
+      case ProjectProgressHealth.onTrack:
+        return const Color(0xFF166534);
+      case ProjectProgressHealth.behind:
+        return const Color(0xFF991B1B);
+      case ProjectProgressHealth.inProgress:
+        return const Color(0xFF92400E);
+    }
+  }
+
+  String _progressStatusLabel(ProjectProgressHealth status) {
+    switch (status) {
+      case ProjectProgressHealth.completed:
+        return 'Completed';
+      case ProjectProgressHealth.onTrack:
+        return 'On Track';
+      case ProjectProgressHealth.behind:
+        return 'Behind';
+      case ProjectProgressHealth.inProgress:
+        return 'In Progress';
+    }
+  }
+
   Future<void> _openProject(BuildContext context) async {
+    if (_openingProjectIds.contains(project.id)) {
+      debugPrint('Ignoring duplicate open request for project: ${project.id}');
+      return;
+    }
+    _openingProjectIds.add(project.id);
     debugPrint('Opening project: ${project.id} - ${project.name}');
 
     final rootNavigator = Navigator.of(context, rootNavigator: true);
@@ -2592,6 +2835,7 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
       if (context.mounted) {
         dismissLoadingDialog();
       }
+      _openingProjectIds.remove(project.id);
     }
   }
 
@@ -2839,10 +3083,18 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
   Widget build(BuildContext context) {
     final displayName =
         project.name.isNotEmpty ? project.name : 'Untitled Project';
-    final statusLabel =
-        project.status.isNotEmpty ? project.status : 'Initiation';
+    final phaseLabel = project.progressSnapshot.currentPhase.trim().isEmpty
+        ? (project.status.isNotEmpty ? project.status : 'Initiation')
+        : project.progressSnapshot.currentPhase.trim();
     final milestoneLabel =
         project.milestone.isNotEmpty ? project.milestone : 'Starting up';
+    final progressValue = project.progressSnapshot.completion.clamp(0.0, 1.0);
+    final progressPercent = project.progressSnapshot.completionPercent;
+    final progressDetail = project.progressSnapshot.totalActivities > 0
+        ? '${project.progressSnapshot.implementedActivities}/${project.progressSnapshot.totalActivities} implemented'
+        : project.progressSnapshot.totalMilestones > 0
+            ? '${project.progressSnapshot.achievedMilestones}/${project.progressSnapshot.totalMilestones} milestones'
+            : 'Awaiting activity data';
     final investment = project.investmentMillions > 0
         ? '\$${project.investmentMillions.toStringAsFixed(1)}M'
         : 'Not set';
@@ -2853,6 +3105,7 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
+            flex: 32,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -2874,22 +3127,28 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
                 Text(
                   milestoneLabel,
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: 14,
                     color: Colors.grey.shade600,
                     letterSpacing: 0.2,
                   ),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Last edited by ${_lastEditorName()} · ${_relativeTimeString(project.updatedAt)}',
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                  'Last edited by ${_lastEditorName()} - ${_relativeTimeString(project.updatedAt)}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
           Expanded(
+            flex: 16,
             child: Padding(
               padding: const EdgeInsets.only(right: 8),
               child: Center(
@@ -2897,15 +3156,15 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                   decoration: BoxDecoration(
-                    color: _stageBackgroundColor(statusLabel),
+                    color: _stageBackgroundColor(phaseLabel),
                     borderRadius: BorderRadius.circular(24),
                   ),
                   child: Text(
-                    statusLabel,
+                    phaseLabel,
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: _stageForegroundColor(statusLabel),
+                      fontSize: 13,
+                      color: _stageForegroundColor(phaseLabel),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -2916,12 +3175,108 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
             ),
           ),
           Expanded(
+            flex: 20,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        '$progressPercent%',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          progressDetail,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          textAlign: TextAlign.right,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      value: progressValue,
+                      minHeight: 8,
+                      backgroundColor: const Color(0xFFF3F4F6),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        _progressStatusForeground(
+                            project.progressSnapshot.health),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.center,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _progressStatusBackground(
+                          project.progressSnapshot.health,
+                        ),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              color: _progressStatusForeground(
+                                project.progressSnapshot.health,
+                              ),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _progressStatusLabel(
+                                project.progressSnapshot.health),
+                            style: TextStyle(
+                              color: _progressStatusForeground(
+                                project.progressSnapshot.health,
+                              ),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 12,
             child: Padding(
               padding: const EdgeInsets.only(right: 8),
               child: Center(child: _OwnerNameCell(project: project)),
             ),
           ),
           Expanded(
+            flex: 10,
             child: Padding(
               padding: const EdgeInsets.only(right: 8),
               child: Center(
@@ -2930,7 +3285,7 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
                   style: TextStyle(
                     color: Colors.grey.shade700,
                     fontWeight: FontWeight.w700,
-                    fontSize: 15,
+                    fontSize: 14,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -2940,6 +3295,7 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
             ),
           ),
           Expanded(
+            flex: 18,
             child: Center(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -2952,11 +3308,16 @@ class _ProjectTableRowFromFirebase extends StatelessWidget {
                       style: TextButton.styleFrom(
                         foregroundColor: const Color(0xFF1A4DB3),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 12),
+                          horizontal: 10,
+                          vertical: 10,
+                        ),
                         textStyle: const TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 15),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
                   ),
@@ -3038,6 +3399,8 @@ class _OwnerNameCell extends StatefulWidget {
 
 class _OwnerNameCellState extends State<_OwnerNameCell> {
   static final Map<String, String> _displayNameCache = <String, String>{};
+  static final Map<String, Future<String>> _pendingLookups =
+      <String, Future<String>>{};
 
   String _resolved = 'Unknown';
 
@@ -3047,6 +3410,18 @@ class _OwnerNameCellState extends State<_OwnerNameCell> {
     _resolved = _initialName();
     // Resolve asynchronously from Firestore with cache
     _resolveFromUserDoc();
+  }
+
+  @override
+  void didUpdateWidget(covariant _OwnerNameCell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final ownerChanged = oldWidget.project.ownerId != widget.project.ownerId ||
+        oldWidget.project.ownerEmail != widget.project.ownerEmail ||
+        oldWidget.project.ownerName != widget.project.ownerName;
+    if (ownerChanged) {
+      _resolved = _initialName();
+      _resolveFromUserDoc();
+    }
   }
 
   String _initialName() {
@@ -3090,26 +3465,34 @@ class _OwnerNameCellState extends State<_OwnerNameCell> {
       return;
     }
 
+    final lookup = _pendingLookups[uid] ??= _fetchOwnerDisplayName(uid);
+
     try {
-      final userModel = await UserService.getUser(uid);
-      String? best;
-      if (userModel != null) {
-        best = (userModel.displayName.trim().isNotEmpty)
-            ? userModel.displayName.trim()
-            : _prettifyFromEmail(userModel.email);
-      }
-
-      // If Firestore didn't have a record, fallback to prettified project email if any
-      final resolved = best ?? _initialName();
-
+      final resolved = await lookup;
       if (resolved.isNotEmpty) {
         _displayNameCache[uid] = resolved;
-        if (mounted) setState(() => _resolved = resolved);
+        if (mounted && _resolved != resolved) {
+          setState(() => _resolved = resolved);
+        }
       }
     } catch (e) {
       debugPrint('Owner name resolve failed for $uid: $e');
       // Keep initial fallback
+    } finally {
+      if (identical(_pendingLookups[uid], lookup)) {
+        _pendingLookups.remove(uid);
+      }
     }
+  }
+
+  Future<String> _fetchOwnerDisplayName(String uid) async {
+    final userModel = await UserService.getUser(uid);
+    if (userModel == null) return _initialName();
+
+    final displayName = userModel.displayName.trim();
+    if (displayName.isNotEmpty) return displayName;
+
+    return _prettifyFromEmail(userModel.email);
   }
 
   @override

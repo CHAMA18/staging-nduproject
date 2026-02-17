@@ -596,104 +596,11 @@ class _PreferredSolutionAnalysisScreenState
 
   // ignore: unused_element
   Drawer _buildMobileDrawer() {
-    // Match CostAnalysisScreen drawer look and behavior
     return Drawer(
-      child: SafeArea(
-        child: Builder(
-          builder: (builderContext) {
-            final provider = ProjectDataHelper.getProvider(builderContext);
-            final projectName = provider.projectData.projectName;
-            final displayName =
-                (projectName.isNotEmpty) ? projectName : 'Untitled Project';
-
-            return ListView(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    displayName,
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const Divider(height: 1),
-                _buildMenuItem(Icons.home_outlined, 'Home', onTap: () {
-                  Navigator.of(context).maybePop();
-                  HomeScreen.open(context);
-                }),
-                _buildExpandableHeader(
-                  Icons.flag_outlined,
-                  'Initiation Phase',
-                  expanded: _initiationExpanded,
-                  onTap: () => setState(
-                      () => _initiationExpanded = !_initiationExpanded),
-                  isActive: true,
-                ),
-                if (_initiationExpanded) ...[
-                  _buildExpandableHeaderLikeCost(
-                    Icons.business_center_outlined,
-                    'Business Case',
-                    expanded: _businessCaseExpanded,
-                    onTap: () => setState(
-                        () => _businessCaseExpanded = !_businessCaseExpanded),
-                    isActive: false,
-                  ),
-                  if (_businessCaseExpanded) ...[
-                    _buildNestedSubMenuItem('Business Case', onTap: () {
-                      Navigator.of(context).maybePop();
-                      _openBusinessCase();
-                    }),
-                    _buildNestedSubMenuItem('Potential Solutions', onTap: () {
-                      Navigator.of(context).maybePop();
-                      _openPotentialSolutions();
-                    }),
-                    _buildNestedSubMenuItem('Risk Identification', onTap: () {
-                      Navigator.of(context).maybePop();
-                      _openRiskIdentification();
-                    }),
-                    _buildNestedSubMenuItem('IT Considerations', onTap: () {
-                      Navigator.of(context).maybePop();
-                      _openITConsiderations();
-                    }),
-                    _buildNestedSubMenuItem('Infrastructure Considerations',
-                        onTap: () {
-                      Navigator.of(context).maybePop();
-                      _openInfrastructureConsiderations();
-                    }),
-                    _buildNestedSubMenuItem('Core Stakeholders', onTap: () {
-                      Navigator.of(context).maybePop();
-                      _openCoreStakeholders();
-                    }),
-                    _buildNestedSubMenuItem(
-                        'Cost Benefit Analysis & Financial Metrics', onTap: () {
-                      Navigator.of(context).maybePop();
-                      _openCostAnalysis();
-                    }),
-                    _buildNestedSubMenuItem('Preferred Solution Analysis',
-                        isActive: true),
-                  ],
-                ],
-                _buildMenuItem(
-                    Icons.timeline, 'Initiation: Front End Planning'),
-                _buildMenuItem(Icons.account_tree_outlined, 'Workflow Roadmap'),
-                _buildMenuItem(Icons.flash_on, 'Agile Roadmap'),
-                _buildMenuItem(Icons.description_outlined, 'Contracting'),
-                _buildMenuItem(Icons.shopping_cart_outlined, 'Procurement'),
-                const Divider(height: 1),
-                _buildMenuItem(Icons.settings_outlined, 'Settings', onTap: () {
-                  Navigator.of(context).maybePop();
-                  SettingsScreen.open(context);
-                }),
-                _buildMenuItem(Icons.logout_outlined, 'LogOut',
-                    onTap: () => AuthNav.signOutAndExit(context)),
-              ],
-            );
-          },
+      width: MediaQuery.sizeOf(context).width * 0.88,
+      child: const SafeArea(
+        child: InitiationLikeSidebar(
+          activeItemLabel: 'Preferred Solution Analysis',
         ),
       ),
     );

@@ -25,10 +25,12 @@ class FrontEndPlanningSecurityScreen extends StatefulWidget {
   }
 
   @override
-  State<FrontEndPlanningSecurityScreen> createState() => _FrontEndPlanningSecurityScreenState();
+  State<FrontEndPlanningSecurityScreen> createState() =>
+      _FrontEndPlanningSecurityScreenState();
 }
 
-class _FrontEndPlanningSecurityScreenState extends State<FrontEndPlanningSecurityScreen> {
+class _FrontEndPlanningSecurityScreenState
+    extends State<FrontEndPlanningSecurityScreen> {
   final TextEditingController _notes = TextEditingController();
   final TextEditingController _securityNotes = TextEditingController();
   bool _isSyncReady = false;
@@ -46,12 +48,7 @@ class _FrontEndPlanningSecurityScreenState extends State<FrontEndPlanningSecurit
       _securityNotes.addListener(_syncSecurityToProvider);
       _isSyncReady = true;
       _syncSecurityToProvider();
-      
-      // Auto-generate security content if empty
-      if (_securityNotes.text.trim().isEmpty) {
-        await _generateSecurityContent();
-      }
-      
+
       if (mounted) setState(() {});
     });
   }
@@ -67,8 +64,9 @@ class _FrontEndPlanningSecurityScreenState extends State<FrontEndPlanningSecurit
     try {
       final data = ProjectDataHelper.getData(context);
       final provider = ProjectDataHelper.getProvider(context);
-      final projectContext = ProjectDataHelper.buildFepContext(data, sectionLabel: 'Security');
-      
+      final projectContext =
+          ProjectDataHelper.buildFepContext(data, sectionLabel: 'Security');
+
       // Track field history before regenerating
       if (_securityNotes.text.trim().isNotEmpty) {
         provider.addFieldToHistory(
@@ -77,7 +75,7 @@ class _FrontEndPlanningSecurityScreenState extends State<FrontEndPlanningSecurit
           isAiGenerated: true,
         );
       }
-      
+
       if (projectContext.trim().isNotEmpty) {
         try {
           final generatedText = await _openAi.generateFepSectionText(
@@ -85,7 +83,7 @@ class _FrontEndPlanningSecurityScreenState extends State<FrontEndPlanningSecurit
             context: projectContext,
             maxTokens: 800,
           );
-          
+
           if (mounted && generatedText.isNotEmpty) {
             // Track new AI-generated content
             provider.addFieldToHistory(
@@ -93,7 +91,7 @@ class _FrontEndPlanningSecurityScreenState extends State<FrontEndPlanningSecurit
               generatedText,
               isAiGenerated: true,
             );
-            
+
             setState(() {
               _securityNotes.text = generatedText;
               _syncSecurityToProvider();
@@ -136,7 +134,6 @@ class _FrontEndPlanningSecurityScreenState extends State<FrontEndPlanningSecurit
       }
     }
   }
-
 
   String _getFallbackSecurityContent(ProjectDataModel data) {
     return '''Security Considerations and Requirements
@@ -216,52 +213,59 @@ Security Training:
                       const FrontEndPlanningHeader(),
                       Expanded(
                         child: SingleChildScrollView(
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 32, vertical: 24),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                        _roundedField(controller: _notes, hint: 'Input your notes here...', minLines: 3),
-                        const SizedBox(height: 24),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Expanded(
-                              child: Column(
+                              _roundedField(
+                                  controller: _notes,
+                                  hint: 'Input your notes here...',
+                                  minLines: 3),
+                              const SizedBox(height: 24),
+                              Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    'Security',
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF111827),
+                                  const Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Security',
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFF111827),
+                                          ),
+                                        ),
+                                        SizedBox(height: 6),
+                                        Text(
+                                          'Define security requirements and considerations for the project',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Color(0xFF6B7280),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  SizedBox(height: 6),
-                                  Text(
-                                    'Define security requirements and considerations for the project',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Color(0xFF6B7280),
-                                    ),
+                                  PageRegenerateAllButton(
+                                    onRegenerateAll: () async {
+                                      final confirmed =
+                                          await showRegenerateAllConfirmation(
+                                              context);
+                                      if (confirmed && mounted) {
+                                        await _regenerateAllSecurity();
+                                      }
+                                    },
+                                    isLoading: _isGenerating,
+                                    tooltip: 'Regenerate all security content',
                                   ),
                                 ],
                               ),
-                            ),
-                            PageRegenerateAllButton(
-                              onRegenerateAll: () async {
-                                final confirmed = await showRegenerateAllConfirmation(context);
-                                if (confirmed && mounted) {
-                                  await _regenerateAllSecurity();
-                                }
-                              },
-                              isLoading: _isGenerating,
-                              tooltip: 'Regenerate all security content',
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 18),
-                        _SecurityPanel(controller: _securityNotes),
+                              const SizedBox(height: 18),
+                              _SecurityPanel(controller: _securityNotes),
                               const SizedBox(height: 140),
                             ],
                           ),
@@ -312,7 +316,7 @@ class _SecurityPanel extends StatelessWidget {
 
 class _BottomOverlay extends StatelessWidget {
   const _BottomOverlay({required this.securityController});
-  
+
   final TextEditingController securityController;
 
   @override
@@ -328,7 +332,8 @@ class _BottomOverlay extends StatelessWidget {
               child: Container(
                 width: 48,
                 height: 48,
-                decoration: const BoxDecoration(color: Color(0xFFB3D9FF), shape: BoxShape.circle),
+                decoration: const BoxDecoration(
+                    color: Color(0xFFB3D9FF), shape: BoxShape.circle),
                 child: const Icon(Icons.info_outline, color: Colors.white),
               ),
             ),
@@ -338,7 +343,8 @@ class _BottomOverlay extends StatelessWidget {
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 18, vertical: 16),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE6F1FF),
                       borderRadius: BorderRadius.circular(14),
@@ -349,7 +355,10 @@ class _BottomOverlay extends StatelessWidget {
                       children: const [
                         Icon(Icons.auto_awesome, color: Color(0xFF2563EB)),
                         SizedBox(width: 10),
-                        Text('AI', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF2563EB))),
+                        Text('AI',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF2563EB))),
                         SizedBox(width: 12),
                         Text(
                           'Identify security measures and compliance requirements.',
@@ -365,7 +374,8 @@ class _BottomOverlay extends StatelessWidget {
                         context: context,
                         checkpoint: 'fep_security',
                         saveInBackground: true,
-                        nextScreenBuilder: () => const FrontEndPlanningAllowanceScreen(),
+                        nextScreenBuilder: () =>
+                            const FrontEndPlanningAllowanceScreen(),
                         dataUpdater: (data) => data.copyWith(
                           frontEndPlanning: ProjectDataHelper.updateFEPField(
                             current: data.frontEndPlanning,
@@ -373,15 +383,19 @@ class _BottomOverlay extends StatelessWidget {
                           ),
                         ),
                       );
-                    }, 
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFFC812),
                       foregroundColor: const Color(0xFF111827),
-                      padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 34, vertical: 16),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(22)),
                       elevation: 0,
                     ),
-                    child: const Text('Next', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                    child: const Text('Next',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w700)),
                   ),
                 ],
               ),
@@ -393,7 +407,10 @@ class _BottomOverlay extends StatelessWidget {
   }
 }
 
-Widget _roundedField({required TextEditingController controller, required String hint, int minLines = 1}) {
+Widget _roundedField(
+    {required TextEditingController controller,
+    required String hint,
+    int minLines = 1}) {
   return Container(
     width: double.infinity,
     decoration: BoxDecoration(

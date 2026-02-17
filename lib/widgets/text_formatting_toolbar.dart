@@ -12,6 +12,7 @@ class TextFormattingToolbar extends StatefulWidget {
 
   final TextEditingController controller;
   final bool enabled;
+
   /// Called immediately before undo. Use to save current state to avoid data loss.
   final VoidCallback? onBeforeUndo;
 
@@ -40,7 +41,9 @@ class _TextFormattingToolbarState extends State<TextFormattingToolbar> {
   void _onTextChanged() {
     // Save to history on significant changes (debounced)
     Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted && widget.controller.text != (_undoHistory.isEmpty ? '' : _undoHistory.last)) {
+      if (mounted &&
+          widget.controller.text !=
+              (_undoHistory.isEmpty ? '' : _undoHistory.last)) {
         _saveToHistory();
       }
     });
@@ -70,7 +73,8 @@ class _TextFormattingToolbarState extends State<TextFormattingToolbar> {
     final newText = text.replaceRange(start, end, '$before$selectedText$after');
     widget.controller.value = TextEditingValue(
       text: newText,
-      selection: TextSelection.collapsed(offset: start + before.length + selectedText.length + after.length),
+      selection: TextSelection.collapsed(
+          offset: start + before.length + selectedText.length + after.length),
     );
   }
 
@@ -122,43 +126,46 @@ class _TextFormattingToolbarState extends State<TextFormattingToolbar> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey[300]!),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _ToolbarButton(
-            icon: Icons.format_bold,
-            tooltip: 'Bold',
-            onPressed: () => _applyFormat('bold'),
-          ),
-          _ToolbarButton(
-            icon: Icons.format_italic,
-            tooltip: 'Italic',
-            onPressed: () => _applyFormat('italic'),
-          ),
-          _ToolbarButton(
-            icon: Icons.format_underlined,
-            tooltip: 'Underline',
-            onPressed: () => _applyFormat('underline'),
-          ),
-          const VerticalDivider(width: 1, thickness: 1),
-          _ToolbarButton(
-            icon: Icons.text_fields,
-            tooltip: 'Heading 1',
-            onPressed: () => _applyFormat('h1'),
-          ),
-          _ToolbarButton(
-            icon: Icons.title,
-            tooltip: 'Heading 2',
-            onPressed: () => _applyFormat('h2'),
-          ),
-          const VerticalDivider(width: 1, thickness: 1),
-          _ToolbarButton(
-            icon: Icons.undo,
-            tooltip: 'Undo',
-            onPressed: _isUndoAvailable ? _undo : null,
-            isDisabled: !_isUndoAvailable,
-          ),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _ToolbarButton(
+              icon: Icons.format_bold,
+              tooltip: 'Bold',
+              onPressed: () => _applyFormat('bold'),
+            ),
+            _ToolbarButton(
+              icon: Icons.format_italic,
+              tooltip: 'Italic',
+              onPressed: () => _applyFormat('italic'),
+            ),
+            _ToolbarButton(
+              icon: Icons.format_underlined,
+              tooltip: 'Underline',
+              onPressed: () => _applyFormat('underline'),
+            ),
+            const VerticalDivider(width: 1, thickness: 1),
+            _ToolbarButton(
+              icon: Icons.text_fields,
+              tooltip: 'Heading 1',
+              onPressed: () => _applyFormat('h1'),
+            ),
+            _ToolbarButton(
+              icon: Icons.title,
+              tooltip: 'Heading 2',
+              onPressed: () => _applyFormat('h2'),
+            ),
+            const VerticalDivider(width: 1, thickness: 1),
+            _ToolbarButton(
+              icon: Icons.undo,
+              tooltip: 'Undo',
+              onPressed: _isUndoAvailable ? _undo : null,
+              isDisabled: !_isUndoAvailable,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -183,7 +190,8 @@ class _ToolbarButton extends StatelessWidget {
       message: tooltip,
       child: IconButton(
         icon: Icon(icon, size: 18),
-        color: isDisabled || onPressed == null ? Colors.grey[400] : Colors.black87,
+        color:
+            isDisabled || onPressed == null ? Colors.grey[400] : Colors.black87,
         onPressed: onPressed,
         padding: const EdgeInsets.all(6),
         constraints: const BoxConstraints(minWidth: 32, minHeight: 32),

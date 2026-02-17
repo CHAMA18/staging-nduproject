@@ -776,7 +776,10 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
                 color: Colors.black)),
         const SizedBox(height: 6),
         Text('Reminder: update text within each box.',
-            style: TextStyle(fontSize: 12, color: Colors.grey[600], fontStyle: FontStyle.italic)),
+            style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+                fontStyle: FontStyle.italic)),
         const SizedBox(height: 12),
         // External (moved to top)
         const EditableContentText(
@@ -1090,7 +1093,8 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
   }
 
   Widget _buildStakeholderRow(
-      int index, TextEditingController controller, String hintText, {bool isInternal = true}) {
+      int index, TextEditingController controller, String hintText,
+      {bool isInternal = true}) {
     final isMobile = AppBreakpoints.isMobile(context);
     // Handle cases where we have more controllers than initial solutions (user added items)
     final s = index < _solutions.length
@@ -1158,7 +1162,9 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
               ),
               const SizedBox(width: 16),
               Expanded(
-                  flex: 3, child: _stakeholderTextArea(controller, hintText, index, isInternal)),
+                  flex: 3,
+                  child: _stakeholderTextArea(
+                      controller, hintText, index, isInternal)),
             ]),
     );
   }
@@ -1178,87 +1184,22 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
 
   Drawer _buildMobileDrawer() {
     return Drawer(
-      child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          children: [
-            const ListTile(
-                leading: CircleAvatar(radius: 18, backgroundColor: Colors.grey),
-                title: Text('StackOne')),
-            const Divider(height: 1),
-            _buildMenuItem(Icons.home_outlined, 'Home'),
-            _buildExpandableHeader(
-              Icons.flag_outlined,
-              'Initiation Phase',
-              expanded: _initiationExpanded,
-              onTap: () =>
-                  setState(() => _initiationExpanded = !_initiationExpanded),
-              isActive: true,
-            ),
-            if (_initiationExpanded) ...[
-              _buildExpandableHeaderLikeCost(
-                Icons.business_center_outlined,
-                'Business Case',
-                expanded: _businessCaseExpanded,
-                onTap: () => setState(
-                    () => _businessCaseExpanded = !_businessCaseExpanded),
-                isActive: false,
-              ),
-              if (_businessCaseExpanded) ...[
-                _buildNestedSubMenuItem('Business Case', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openBusinessCase();
-                }),
-                _buildNestedSubMenuItem('Potential Solutions', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openPotentialSolutions();
-                }),
-                _buildNestedSubMenuItem('Risk Identification', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openRiskIdentification();
-                }),
-                _buildNestedSubMenuItem('IT Considerations', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openITConsiderations();
-                }),
-                _buildNestedSubMenuItem('Infrastructure Considerations',
-                    onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openInfrastructureConsiderations();
-                }),
-                _buildNestedSubMenuItem('Core Stakeholders', isActive: true),
-                _buildNestedSubMenuItem(
-                    'Cost Benefit Analysis & Financial Metrics', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openCostAnalysis();
-                }),
-                _buildNestedSubMenuItem('Preferred Solution Analysis',
-                    onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openPreferredSolutionAnalysis();
-                }),
-              ],
-            ],
-            _buildMenuItem(
-                Icons.timeline_outlined, 'Initiation: Front End Planning'),
-            _buildMenuItem(Icons.account_tree_outlined, 'Workflow Roadmap'),
-            _buildMenuItem(Icons.bolt_outlined, 'Agile Roadmap'),
-            _buildMenuItem(Icons.description_outlined, 'Contracting'),
-            _buildMenuItem(Icons.shopping_cart_outlined, 'Procurement'),
-            const Divider(height: 1),
-            _buildMenuItem(Icons.settings_outlined, 'Settings'),
-            _buildMenuItem(Icons.logout_outlined, 'LogOut'),
-          ],
+      width: MediaQuery.sizeOf(context).width * 0.88,
+      child: const SafeArea(
+        child: InitiationLikeSidebar(
+          activeItemLabel: 'Core Stakeholders',
         ),
       ),
     );
   }
 
-  Widget _stakeholderTextArea(
-      TextEditingController controller, String hintText, int index, bool isInternal) {
+  Widget _stakeholderTextArea(TextEditingController controller, String hintText,
+      int index, bool isInternal) {
     final provider = ProjectDataHelper.getProvider(context);
-    final solutionTitle = index < _solutions.length ? _solutions[index].title : '';
-    final fieldKey = 'stakeholder_${isInternal ? 'internal' : 'external'}_${solutionTitle}_$index';
+    final solutionTitle =
+        index < _solutions.length ? _solutions[index].title : '';
+    final fieldKey =
+        'stakeholder_${isInternal ? 'internal' : 'external'}_${solutionTitle}_$index';
     final canUndo = provider.canUndoField(fieldKey);
 
     return HoverableFieldControls(
@@ -1267,7 +1208,8 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
       canUndo: canUndo,
       onRegenerate: () async {
         // Add current value to history
-        provider.addFieldToHistory(fieldKey, controller.text, isAiGenerated: true);
+        provider.addFieldToHistory(fieldKey, controller.text,
+            isAiGenerated: true);
         // Regenerate this specific stakeholder field
         await _regenerateSingleStakeholderField(controller, index, isInternal);
       },
@@ -1333,7 +1275,8 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
             : externalStakeholders.map((e) => '- $e').join('\n');
       }
 
-      await provider.saveToFirebase(checkpoint: 'stakeholder_field_regenerated');
+      await provider.saveToFirebase(
+          checkpoint: 'stakeholder_field_regenerated');
 
       if (!mounted) return;
       messenger.showSnackBar(
@@ -1341,7 +1284,8 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text('Failed to regenerate: $e')));
+      messenger
+          .showSnackBar(SnackBar(content: Text('Failed to regenerate: $e')));
     }
   }
 
@@ -1359,11 +1303,15 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
       for (int i = 0; i < _solutions.length; i++) {
         if (i < _internalStakeholderControllers.length) {
           final fieldKey = 'stakeholder_internal_${_solutions[i].title}';
-          provider.addFieldToHistory(fieldKey, _internalStakeholderControllers[i].text, isAiGenerated: true);
+          provider.addFieldToHistory(
+              fieldKey, _internalStakeholderControllers[i].text,
+              isAiGenerated: true);
         }
         if (i < _externalStakeholderControllers.length) {
           final fieldKey = 'stakeholder_external_${_solutions[i].title}';
-          provider.addFieldToHistory(fieldKey, _externalStakeholderControllers[i].text, isAiGenerated: true);
+          provider.addFieldToHistory(
+              fieldKey, _externalStakeholderControllers[i].text,
+              isAiGenerated: true);
         }
       }
 

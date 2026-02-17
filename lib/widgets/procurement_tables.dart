@@ -3,11 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:ndu_project/models/procurement/procurement_models.dart';
 import 'package:ndu_project/widgets/expandable_text.dart';
 
-class ContractsTable extends StatelessWidget {
-  final List<ContractModel> contracts;
-  final Function(ContractModel)? onEdit;
-  final Function(ContractModel)? onDelete;
-
+class ContractsTable extends StatefulWidget {
   const ContractsTable({
     super.key,
     required this.contracts,
@@ -15,223 +11,385 @@ class ContractsTable extends StatelessWidget {
     this.onDelete,
   });
 
+  final List<ContractModel> contracts;
+  final Function(ContractModel)? onEdit;
+  final Function(ContractModel)? onDelete;
+
+  @override
+  State<ContractsTable> createState() => _ContractsTableState();
+}
+
+class _ContractsTableState extends State<ContractsTable> {
+  static const int _rowsPerPage = 12;
+  int _pageIndex = 0;
+
+  @override
+  void didUpdateWidget(covariant ContractsTable oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.contracts.length == widget.contracts.length) return;
+    final totalPages = ((widget.contracts.length - 1) ~/ _rowsPerPage) + 1;
+    if (_pageIndex >= totalPages) {
+      _pageIndex = totalPages - 1;
+    }
+    if (_pageIndex < 0) _pageIndex = 0;
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (contracts.isEmpty) {
+    if (widget.contracts.isEmpty) {
       return _EmptyState(label: 'contracts');
     }
 
+    final totalPages = ((widget.contracts.length - 1) ~/ _rowsPerPage) + 1;
+    final safePageIndex = _pageIndex.clamp(0, totalPages - 1);
+    final start = safePageIndex * _rowsPerPage;
+    final end = (start + _rowsPerPage).clamp(0, widget.contracts.length);
+    final visible = widget.contracts.sublist(start, end);
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: constraints.maxWidth),
-            child: DataTable(
-              columnSpacing: 24,
-              horizontalMargin: 16,
-              headingRowColor: WidgetStateProperty.all(Colors.grey[50]),
-              dataRowMinHeight: 56, // Enterprise standard height
-              dataRowMaxHeight: 72,
-              border: TableBorder(
-                bottom: BorderSide(color: Colors.grey[200]!),
-                verticalInside: BorderSide.none,
-              ),
-              columns: const [
-                DataColumn(
-                    label: Text('CONTRACT ITEM',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                            fontSize: 12,
-                            color: Color(0xFF64748B)))),
-                DataColumn(
-                    label: Text('VENDOR',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                            fontSize: 12,
-                            color: Color(0xFF64748B)))),
-                DataColumn(
-                    label: Text('VALUE',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                            fontSize: 12,
-                            color: Color(0xFF64748B)))),
-                DataColumn(
-                    label: Text('TIMELINE',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                            fontSize: 12,
-                            color: Color(0xFF64748B)))),
-                DataColumn(
-                    label: Text('OWNER',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                            fontSize: 12,
-                            color: Color(0xFF64748B)))),
-                DataColumn(
-                    label: Text('STATUS',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                            fontSize: 12,
-                            color: Color(0xFF64748B)))),
-                DataColumn(label: Text('')), // Actions
-              ],
-              rows: contracts.map((contract) {
-                return DataRow(
-                  cells: [
-                    DataCell(
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(contract.title,
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.w600)),
-                          Text(contract.description,
-                              style: TextStyle(
-                                  fontSize: 11, color: Colors.grey[500]),
-                              overflow: TextOverflow.ellipsis),
-                        ],
-                      ),
-                    ),
-                    DataCell(_TextCell(contract.contractorName)),
-                    DataCell(_PriceCell(contract.estimatedCost)),
-                    DataCell(Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (contract.startDate != null)
-                          Text(
-                              'Start: ${DateFormat('MMM dd, yyyy').format(contract.startDate!)}',
-                              style: const TextStyle(fontSize: 11)),
-                        if (contract.endDate != null)
-                          Text(
-                              'End: ${DateFormat('MMM dd, yyyy').format(contract.endDate!)}',
-                              style: const TextStyle(fontSize: 11)),
-                        if (contract.startDate == null &&
-                            contract.endDate == null)
-                          const Text('-', style: TextStyle(color: Colors.grey)),
-                      ],
-                    )),
-                    DataCell(_OwnerBadge(name: contract.owner)),
-                    DataCell(_ContractStatusBadge(status: contract.status)),
-                    DataCell(
-                      PopupMenuButton(
-                        icon: const Icon(Icons.more_horiz, color: Colors.grey),
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'edit',
-                            child: Row(
-                              children: [
-                                Icon(Icons.edit, size: 16),
-                                SizedBox(width: 8),
-                                Text('Edit Contract'),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete, size: 16, color: Colors.red),
-                                SizedBox(width: 8),
-                                Text('Delete',
-                                    style: TextStyle(color: Colors.red)),
-                              ],
-                            ),
-                          ),
-                        ],
-                        onSelected: (value) {
-                          if (value == 'edit' && onEdit != null) {
-                            onEdit!(contract);
-                          } else if (value == 'delete' && onDelete != null) {
-                            onDelete!(contract);
-                          }
-                        },
-                      ),
-                    ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: DataTable(
+                  columnSpacing: 24,
+                  horizontalMargin: 16,
+                  headingRowColor: WidgetStateProperty.all(Colors.grey[50]),
+                  dataRowMinHeight: 56,
+                  dataRowMaxHeight: 72,
+                  border: TableBorder(
+                    bottom: BorderSide(color: Colors.grey[200]!),
+                    verticalInside: BorderSide.none,
+                  ),
+                  columns: const [
+                    DataColumn(
+                        label: Text('CONTRACT ITEM',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                                fontSize: 12,
+                                color: Color(0xFF64748B)))),
+                    DataColumn(
+                        label: Text('VENDOR',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                                fontSize: 12,
+                                color: Color(0xFF64748B)))),
+                    DataColumn(
+                        label: Text('VALUE',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                                fontSize: 12,
+                                color: Color(0xFF64748B)))),
+                    DataColumn(
+                        label: Text('TIMELINE',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                                fontSize: 12,
+                                color: Color(0xFF64748B)))),
+                    DataColumn(
+                        label: Text('OWNER',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                                fontSize: 12,
+                                color: Color(0xFF64748B)))),
+                    DataColumn(
+                        label: Text('STATUS',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                                fontSize: 12,
+                                color: Color(0xFF64748B)))),
+                    DataColumn(label: Text('')),
                   ],
-                );
-              }).toList(),
+                  rows: visible.map((contract) {
+                    return DataRow(
+                      cells: [
+                        DataCell(
+                          Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                contract.title,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600),
+                              ),
+                              Text(
+                                contract.description,
+                                style: TextStyle(
+                                    fontSize: 11, color: Colors.grey[500]),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        DataCell(_TextCell(contract.contractorName)),
+                        DataCell(_PriceCell(contract.estimatedCost)),
+                        DataCell(
+                          Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (contract.startDate != null)
+                                Text(
+                                  'Start: ${DateFormat('MMM dd, yyyy').format(contract.startDate!)}',
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                              if (contract.endDate != null)
+                                Text(
+                                  'End: ${DateFormat('MMM dd, yyyy').format(contract.endDate!)}',
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                              if (contract.startDate == null &&
+                                  contract.endDate == null)
+                                const Text('-',
+                                    style: TextStyle(color: Colors.grey)),
+                            ],
+                          ),
+                        ),
+                        DataCell(_OwnerBadge(name: contract.owner)),
+                        DataCell(_ContractStatusBadge(status: contract.status)),
+                        DataCell(
+                          PopupMenuButton(
+                            icon: const Icon(Icons.more_horiz,
+                                color: Colors.grey),
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.edit, size: 16),
+                                    SizedBox(width: 8),
+                                    Text('Edit Contract'),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.delete,
+                                        size: 16, color: Colors.red),
+                                    SizedBox(width: 8),
+                                    Text('Delete',
+                                        style: TextStyle(color: Colors.red)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            onSelected: (value) {
+                              if (value == 'edit' && widget.onEdit != null) {
+                                widget.onEdit!(contract);
+                              } else if (value == 'delete' &&
+                                  widget.onDelete != null) {
+                                widget.onDelete!(contract);
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                ),
+              ),
             ),
-          ),
+            _TablePager(
+              totalCount: widget.contracts.length,
+              pageIndex: safePageIndex,
+              pageSize: _rowsPerPage,
+              onPrev: safePageIndex > 0
+                  ? () => setState(() => _pageIndex = safePageIndex - 1)
+                  : null,
+              onNext: safePageIndex < totalPages - 1
+                  ? () => setState(() => _pageIndex = safePageIndex + 1)
+                  : null,
+            ),
+          ],
         );
       },
     );
   }
 }
 
-class ProcurementTable extends StatelessWidget {
+class ProcurementTable extends StatefulWidget {
+  const ProcurementTable({super.key, required this.items});
+
   final List<ProcurementItemModel> items;
 
-  const ProcurementTable({super.key, required this.items});
+  @override
+  State<ProcurementTable> createState() => _ProcurementTableState();
+}
+
+class _ProcurementTableState extends State<ProcurementTable> {
+  static const int _rowsPerPage = 12;
+  int _pageIndex = 0;
+
+  @override
+  void didUpdateWidget(covariant ProcurementTable oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.items.length == widget.items.length) return;
+    final totalPages = ((widget.items.length - 1) ~/ _rowsPerPage) + 1;
+    if (_pageIndex >= totalPages) {
+      _pageIndex = totalPages - 1;
+    }
+    if (_pageIndex < 0) _pageIndex = 0;
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (items.isEmpty) {
+    if (widget.items.isEmpty) {
       return _EmptyState(label: 'vendors/items');
     }
 
+    final totalPages = ((widget.items.length - 1) ~/ _rowsPerPage) + 1;
+    final safePageIndex = _pageIndex.clamp(0, totalPages - 1);
+    final start = safePageIndex * _rowsPerPage;
+    final end = (start + _rowsPerPage).clamp(0, widget.items.length);
+    final visible = widget.items.sublist(start, end);
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: constraints.maxWidth),
-            child: DataTable(
-              columnSpacing: 24,
-              horizontalMargin: 12,
-              headingRowColor: WidgetStateProperty.all(Colors.grey[100]),
-              border: TableBorder.all(
-                  color: Colors.grey[300]!,
-                  width: 0.5,
-                  borderRadius: BorderRadius.circular(8)),
-              columns: const [
-                DataColumn(
-                    label: Text('Item / Equipment',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(
-                    label: Text('Stage',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(
-                    label: Text('Responsible',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(
-                    label: Text('Est. Price',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(
-                    label: Text('Status',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(
-                    label: Text('Comments',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
-              ],
-              rows: items.map((item) {
-                return DataRow(
-                  cells: [
-                    DataCell(_TextCell(item.name, bold: true)),
-                    DataCell(_TextCell(item.projectPhase.isNotEmpty
-                        ? item.projectPhase
-                        : 'Planning')),
-                    DataCell(_TextCell(item.responsibleMember.isNotEmpty
-                        ? item.responsibleMember
-                        : 'Unassigned')),
-                    DataCell(_PriceCell(item.budget)),
-                    DataCell(_StatusCell(item.status.name)),
-                    DataCell(_ExpandableCell(item.comments)),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: DataTable(
+                  columnSpacing: 24,
+                  horizontalMargin: 12,
+                  headingRowColor: WidgetStateProperty.all(Colors.grey[100]),
+                  border: TableBorder.all(
+                      color: Colors.grey[300]!,
+                      width: 0.5,
+                      borderRadius: BorderRadius.circular(8)),
+                  columns: const [
+                    DataColumn(
+                        label: Text('Item / Equipment',
+                            style: TextStyle(fontWeight: FontWeight.bold))),
+                    DataColumn(
+                        label: Text('Stage',
+                            style: TextStyle(fontWeight: FontWeight.bold))),
+                    DataColumn(
+                        label: Text('Responsible',
+                            style: TextStyle(fontWeight: FontWeight.bold))),
+                    DataColumn(
+                        label: Text('Est. Price',
+                            style: TextStyle(fontWeight: FontWeight.bold))),
+                    DataColumn(
+                        label: Text('Status',
+                            style: TextStyle(fontWeight: FontWeight.bold))),
+                    DataColumn(
+                        label: Text('Comments',
+                            style: TextStyle(fontWeight: FontWeight.bold))),
                   ],
-                );
-              }).toList(),
+                  rows: visible.map((item) {
+                    return DataRow(
+                      cells: [
+                        DataCell(_TextCell(item.name, bold: true)),
+                        DataCell(_TextCell(item.projectPhase.isNotEmpty
+                            ? item.projectPhase
+                            : 'Planning')),
+                        DataCell(_TextCell(item.responsibleMember.isNotEmpty
+                            ? item.responsibleMember
+                            : 'Unassigned')),
+                        DataCell(_PriceCell(item.budget)),
+                        DataCell(_StatusCell(item.status.name)),
+                        DataCell(_ExpandableCell(item.comments)),
+                      ],
+                    );
+                  }).toList(),
+                ),
+              ),
             ),
-          ),
+            _TablePager(
+              totalCount: widget.items.length,
+              pageIndex: safePageIndex,
+              pageSize: _rowsPerPage,
+              onPrev: safePageIndex > 0
+                  ? () => setState(() => _pageIndex = safePageIndex - 1)
+                  : null,
+              onNext: safePageIndex < totalPages - 1
+                  ? () => setState(() => _pageIndex = safePageIndex + 1)
+                  : null,
+            ),
+          ],
         );
       },
+    );
+  }
+}
+
+class _TablePager extends StatelessWidget {
+  const _TablePager({
+    required this.totalCount,
+    required this.pageIndex,
+    required this.pageSize,
+    required this.onPrev,
+    required this.onNext,
+  });
+
+  final int totalCount;
+  final int pageIndex;
+  final int pageSize;
+  final VoidCallback? onPrev;
+  final VoidCallback? onNext;
+
+  @override
+  Widget build(BuildContext context) {
+    if (totalCount <= pageSize) return const SizedBox.shrink();
+    final start = pageIndex * pageSize;
+    final end = (start + pageSize).clamp(0, totalCount);
+    final pages = ((totalCount - 1) ~/ pageSize) + 1;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Wrap(
+        alignment: WrapAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 10,
+        runSpacing: 8,
+        children: [
+          Text(
+            'Showing ${start + 1}-$end of $totalCount',
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF6B7280),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            'Page ${pageIndex + 1} of $pages',
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF6B7280),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          IconButton(
+            onPressed: onPrev,
+            icon: const Icon(Icons.chevron_left_rounded),
+            tooltip: 'Previous',
+            visualDensity: VisualDensity.compact,
+          ),
+          IconButton(
+            onPressed: onNext,
+            icon: const Icon(Icons.chevron_right_rounded),
+            tooltip: 'Next',
+            visualDensity: VisualDensity.compact,
+          ),
+        ],
+      ),
     );
   }
 }

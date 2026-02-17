@@ -13,6 +13,8 @@ class ProjectDataProvider extends ChangeNotifier {
   String? _lastError;
   String? _cachedProjectId; // Cache to prevent redundant loads
   Future<bool>? _activeSaveFuture;
+  Future<bool>? _activeLoadFuture;
+  String? _activeLoadProjectId;
   bool _queuedAnotherSave = false;
   String? _queuedCheckpoint;
 
@@ -167,6 +169,29 @@ class ProjectDataProvider extends ChangeNotifier {
 
   /// Load project data from Firebase by ID
   Future<bool> loadFromFirebase(String projectId) async {
+    if (_activeLoadFuture != null) {
+      if (_activeLoadProjectId == projectId) {
+        return _activeLoadFuture!;
+      }
+      // Serialize distinct project loads to avoid parallel heavy deserialization.
+      await _activeLoadFuture;
+    }
+
+    final loadFuture = _loadFromFirebaseInternal(projectId);
+    _activeLoadFuture = loadFuture;
+    _activeLoadProjectId = projectId;
+
+    try {
+      return await loadFuture;
+    } finally {
+      if (identical(_activeLoadFuture, loadFuture)) {
+        _activeLoadFuture = null;
+        _activeLoadProjectId = null;
+      }
+    }
+  }
+
+  Future<bool> _loadFromFirebaseInternal(String projectId) async {
     const cacheValidationTimeout = Duration(seconds: 8);
     const projectLoadTimeout = Duration(seconds: 25);
 
@@ -200,7 +225,7 @@ class ProjectDataProvider extends ChangeNotifier {
 
       if (!doc.exists) {
         _lastError = 'Project not found';
-        debugPrint('❌ Project not found: $projectId');
+        debugPrint('Project not found: $projectId');
         notifyListeners();
         return false;
       }
@@ -208,12 +233,12 @@ class ProjectDataProvider extends ChangeNotifier {
       final data = doc.data();
       if (data == null) {
         _lastError = 'Project data is empty';
-        debugPrint('❌ Project data is null: $projectId');
+        debugPrint('Project data is null: $projectId');
         notifyListeners();
         return false;
       }
 
-      debugPrint('📦 Loading project data for: $projectId');
+      debugPrint('Loading project data for: $projectId');
       debugPrint('Raw data keys: ${data.keys.toList()}');
 
       // Convert Firestore Timestamps to ISO8601 strings for compatibility (recursive)
@@ -221,21 +246,31 @@ class ProjectDataProvider extends ChangeNotifier {
           _sanitizeTimestampsRecursive(data) as Map<String, dynamic>;
 
       try {
-        _projectData = ProjectDataModel.fromJson(sanitizedData);
-        _projectData = ProjectIntelligenceService.rebuildActivityLog(
-          _projectData.copyWith(projectId: projectId),
-        );
+        _projectData = _decodeProjectData(sanitizedData, projectId);
         _cachedProjectId = projectId;
-        debugPrint(
-            '✅ Project loaded successfully: ${_projectData.projectName}');
+        debugPrint('Project loaded successfully: ${_projectData.projectName}');
         notifyListeners();
         return true;
       } catch (parseError) {
-        _lastError = 'Failed to parse project data: ${parseError.toString()}';
-        debugPrint('❌ Parse error: $parseError');
-        debugPrint('Sanitized data: $sanitizedData');
-        notifyListeners();
-        return false;
+        // Avoid logging full payloads (large docs can cause memory pressure).
+        debugPrint('Primary parse failed for $projectId: $parseError');
+        debugPrint('Payload summary: ${_summarizePayload(sanitizedData)}');
+
+        final compactPayload = _compactPayloadForRecovery(sanitizedData);
+        try {
+          _projectData = _decodeProjectData(compactPayload, projectId);
+          _cachedProjectId = projectId;
+          debugPrint(
+              'Project loaded in safe recovery mode: ${_projectData.projectName}');
+          notifyListeners();
+          return true;
+        } catch (recoveryError) {
+          _lastError =
+              'Failed to parse project data: ${recoveryError.toString()}';
+          debugPrint('Recovery parse failed: $recoveryError');
+          notifyListeners();
+          return false;
+        }
       }
     } catch (e, stackTrace) {
       if (e is TimeoutException) {
@@ -244,11 +279,91 @@ class ProjectDataProvider extends ChangeNotifier {
       } else {
         _lastError = e.toString();
       }
-      debugPrint('❌ Error loading project: $e');
+      debugPrint('Error loading project: $e');
       debugPrint('Stack trace: $stackTrace');
       notifyListeners();
       return false;
     }
+  }
+
+  ProjectDataModel _decodeProjectData(
+      Map<String, dynamic> source, String projectId) {
+    final parsed = ProjectDataModel.fromJson(source);
+    return ProjectIntelligenceService.rebuildActivityLog(
+      parsed.copyWith(projectId: projectId),
+    );
+  }
+
+  static String _summarizePayload(Map<String, dynamic> payload) {
+    int listCount(String key) {
+      final value = payload[key];
+      return value is List ? value.length : -1;
+    }
+
+    final execution = payload['executionPhaseData'];
+    var executionSections = 0;
+    if (execution is Map && execution['sectionData'] is Map) {
+      executionSections = (execution['sectionData'] as Map).length;
+    }
+
+    return 'keys=${payload.length}, '
+        'projectActivities=${listCount('projectActivities')}, '
+        'goalWorkItems=${listCount('goalWorkItems')}, '
+        'aiRecommendations=${listCount('aiRecommendations')}, '
+        'aiIntegrations=${listCount('aiIntegrations')}, '
+        'executionSections=$executionSections';
+  }
+
+  static Map<String, dynamic> _compactPayloadForRecovery(
+      Map<String, dynamic> payload) {
+    final compact = Map<String, dynamic>.from(payload);
+
+    List<dynamic>? compactList(String key, int maxItems) {
+      final raw = payload[key];
+      if (raw is! List) return null;
+      if (raw.length <= maxItems) return raw;
+      return raw.sublist(0, maxItems);
+    }
+
+    final activities = compactList('projectActivities', 350);
+    if (activities != null) {
+      compact['projectActivities'] = activities;
+    }
+
+    final workItems = compactList('goalWorkItems', 900);
+    if (workItems != null) {
+      compact['goalWorkItems'] = workItems;
+    }
+
+    final aiRecommendations = compactList('aiRecommendations', 300);
+    if (aiRecommendations != null) {
+      compact['aiRecommendations'] = aiRecommendations;
+    }
+
+    final aiIntegrations = compactList('aiIntegrations', 200);
+    if (aiIntegrations != null) {
+      compact['aiIntegrations'] = aiIntegrations;
+    }
+
+    final execution = payload['executionPhaseData'];
+    if (execution is Map) {
+      final executionMap = Map<String, dynamic>.from(execution);
+      final sectionData = executionMap['sectionData'];
+      if (sectionData is Map) {
+        final trimmedSectionData = <String, dynamic>{};
+        sectionData.forEach((key, value) {
+          if (value is List && value.length > 120) {
+            trimmedSectionData[key.toString()] = value.sublist(0, 120);
+          } else {
+            trimmedSectionData[key.toString()] = value;
+          }
+        });
+        executionMap['sectionData'] = trimmedSectionData;
+      }
+      compact['executionPhaseData'] = executionMap;
+    }
+
+    return compact;
   }
 
   /// Recursively sanitize Timestamp objects in nested data structures

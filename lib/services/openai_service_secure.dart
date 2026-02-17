@@ -309,9 +309,26 @@ class OpenAiServiceSecure {
   final http.Client _client;
   static const int maxRetries = 2;
   static const Duration retryDelay = Duration(seconds: 2);
+  static const Duration _interRequestDelay = Duration(milliseconds: 120);
+  static Future<void> _serializedQueue = Future<void>.value();
 
   OpenAiServiceSecure({http.Client? client})
       : _client = client ?? http.Client();
+
+  Future<T> _runSerialized<T>(Future<T> Function() operation) {
+    final completer = Completer<T>();
+    _serializedQueue = _serializedQueue.catchError((_) {}).then((_) async {
+      try {
+        final result = await operation();
+        completer.complete(result);
+      } catch (error, stackTrace) {
+        completer.completeError(error, stackTrace);
+      } finally {
+        await Future<void>.delayed(_interRequestDelay);
+      }
+    });
+    return completer.future;
+  }
 
   Future<String> generateCompletion(
     String prompt, {
@@ -324,33 +341,36 @@ class OpenAiServiceSecure {
       throw const OpenAiNotConfiguredException();
     }
 
-    final uri = OpenAiConfig.chatUri();
-    final headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
-    };
+    return _runSerialized(() async {
+      final uri = OpenAiConfig.chatUri();
+      final headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+      };
 
-    final body = jsonEncode({
-      'model': OpenAiConfig.model,
-      'temperature': temperature,
-      'max_tokens': maxTokens,
-      'messages': [
-        {'role': 'system', 'content': 'Return only the response text.'},
-        {'role': 'user', 'content': trimmedPrompt},
-      ],
+      final body = jsonEncode({
+        'model': OpenAiConfig.model,
+        'temperature': temperature,
+        'max_tokens': maxTokens,
+        'messages': [
+          {'role': 'system', 'content': 'Return only the response text.'},
+          {'role': 'user', 'content': trimmedPrompt},
+        ],
+      });
+
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 16));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+            'OpenAI error ${response.statusCode}: ${response.body}');
+      }
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content =
+          (data['choices'] as List).first['message']['content'] as String;
+      return content.trim();
     });
-
-    final response = await _client
-        .post(uri, headers: headers, body: body)
-        .timeout(const Duration(seconds: 16));
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('OpenAI error ${response.statusCode}: ${response.body}');
-    }
-    final data =
-        jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-    final content =
-        (data['choices'] as List).first['message']['content'] as String;
-    return content.trim();
   }
 
   // Generate a concise section text for Front End Planning pages based on full project context.
@@ -2550,7 +2570,9 @@ $c
       }
       return _mergeWithFallbackCost(solutions, result);
     } catch (e) {
-      if (kDebugMode) debugPrint('generateCostBreakdownForSolutions failed: $e');
+      if (kDebugMode) {
+        debugPrint('generateCostBreakdownForSolutions failed: $e');
+      }
       return _fallbackCostBreakdown(solutions);
     }
   }
@@ -2990,7 +3012,9 @@ Return ONLY JSON.
       }
       return scenarios;
     } catch (e) {
-      if (kDebugMode) debugPrint('generateBenefitSavingsSuggestions failed: $e');
+      if (kDebugMode) {
+        debugPrint('generateBenefitSavingsSuggestions failed: $e');
+      }
       return _fallbackSavingsSuggestions(items, currency: currency);
     }
   }
@@ -3132,7 +3156,9 @@ Remember: Return ONLY a JSON object with key "savings_scenarios".
       }
       return _mergeWithFallbackInfra(solutions, result);
     } catch (e) {
-      if (kDebugMode) debugPrint('generateInfrastructureForSolutions failed: $e');
+      if (kDebugMode) {
+        debugPrint('generateInfrastructureForSolutions failed: $e');
+      }
       return _fallbackInfrastructure(solutions);
     }
   }

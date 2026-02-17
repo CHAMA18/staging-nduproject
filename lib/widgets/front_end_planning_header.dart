@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:ndu_project/screens/project_activities_log_screen.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/services/user_service.dart';
@@ -12,17 +13,21 @@ class FrontEndPlanningHeader extends StatelessWidget {
     this.title = 'Front End Planning',
     this.onBackPressed,
     this.scaffoldKey,
+    this.showActivityLogAction = true,
+    this.onOpenActivityLog,
   });
 
   final String title;
   final VoidCallback? onBackPressed;
   final GlobalKey<ScaffoldState>? scaffoldKey;
+  final bool showActivityLogAction;
+  final VoidCallback? onOpenActivityLog;
 
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
     final double headerHeight = isMobile ? 72 : 88;
-    
+
     return Container(
       height: headerHeight,
       color: Colors.white,
@@ -56,6 +61,10 @@ class FrontEndPlanningHeader extends StatelessWidget {
               ),
             ),
           const Spacer(),
+          if (showActivityLogAction) ...[
+            _buildActivityLogAction(context, isMobile),
+            SizedBox(width: isMobile ? 8 : 12),
+          ],
           // User Profile with RepaintBoundary to prevent unnecessary repaints
           RepaintBoundary(child: _buildUserProfile(isMobile)),
         ],
@@ -63,12 +72,58 @@ class FrontEndPlanningHeader extends StatelessWidget {
     );
   }
 
+  Widget _buildActivityLogAction(BuildContext context, bool isMobile) {
+    final action =
+        onOpenActivityLog ?? () => ProjectActivitiesLogScreen.open(context);
+
+    return Tooltip(
+      message: 'Project Activity Log',
+      child: InkWell(
+        onTap: action,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 8 : 10,
+            vertical: 8,
+          ),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF7E0),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFFFD873)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.fact_check_outlined,
+                size: 18,
+                color: Color(0xFFB45309),
+              ),
+              if (!isMobile) ...[
+                const SizedBox(width: 6),
+                const Text(
+                  'Activity Log',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFB45309),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildUserProfile(bool isMobile) {
     final user = FirebaseAuth.instance.currentUser;
-    final displayName = FirebaseAuthService.displayNameOrEmail(fallback: 'User');
+    final displayName =
+        FirebaseAuthService.displayNameOrEmail(fallback: 'User');
     final email = user?.email ?? '';
-    final initial = displayName.trim().isNotEmpty 
-        ? displayName.trim().characters.first.toUpperCase() 
+    final initial = displayName.trim().isNotEmpty
+        ? displayName.trim().characters.first.toUpperCase()
         : 'U';
     final photoUrl = user?.photoURL;
 
@@ -123,7 +178,8 @@ class FrontEndPlanningHeader extends StatelessWidget {
               StreamBuilder<bool>(
                 stream: UserService.watchAdminStatus(),
                 builder: (context, snapshot) {
-                  final isAdmin = snapshot.data ?? UserService.isAdminEmail(email);
+                  final isAdmin =
+                      snapshot.data ?? UserService.isAdminEmail(email);
                   final role = isAdmin ? 'Admin' : 'Member';
                   return Text(
                     role,

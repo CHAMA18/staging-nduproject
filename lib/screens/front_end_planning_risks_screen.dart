@@ -35,6 +35,7 @@ class FrontEndPlanningRisksScreen extends StatefulWidget {
 
 class _FrontEndPlanningRisksScreenState
     extends State<FrontEndPlanningRisksScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _notesController = TextEditingController();
   bool _isSyncReady = false;
   bool _isApplyingNotesSummary = false;
@@ -57,12 +58,6 @@ class _FrontEndPlanningRisksScreenState
 
       // Load existing risks from saved data if available
       _loadSavedRisks(projectData);
-
-      // Generate risks if no existing risks OR if risks exist but have empty risk fields
-      if (_rows.isEmpty ||
-          _rows.any((r) => r.risk.isEmpty || r.category.isEmpty)) {
-        _generateRequirementsFromBusinessCase();
-      }
 
       if (mounted) setState(() {});
     });
@@ -799,8 +794,31 @@ class _FrontEndPlanningRisksScreenState
     return '${normalized.substring(0, maxChars - 3)}...';
   }
 
+  Future<void> _saveAndContinue() async {
+    final risksText = _buildRiskSummaryFromRows();
+    await ProjectDataHelper.saveAndNavigate(
+      context: context,
+      checkpoint: 'fep_risks',
+      saveInBackground: true,
+      nextScreenBuilder: () => const FrontEndPlanningOpportunitiesScreen(),
+      dataUpdater: (data) => data.copyWith(
+        frontEndPlanning: ProjectDataHelper.updateFEPField(
+          current: data.frontEndPlanning,
+          risks: risksText.isNotEmpty
+              ? risksText
+              : _summarizeNotesText(_notesController.text.trim()),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isMobile = AppBreakpoints.isMobile(context);
+    if (isMobile) {
+      return _buildMobileScaffold(context);
+    }
+
     return Scaffold(
       // Ensure white background as requested
       backgroundColor: Colors.white,
@@ -930,25 +948,7 @@ class _FrontEndPlanningRisksScreenState
                   ),
                   const KazAiChatBubble(),
                   _BottomOverlays(
-                    onNext: () async {
-                      final risksText = _buildRiskSummaryFromRows();
-                      await ProjectDataHelper.saveAndNavigate(
-                        context: context,
-                        checkpoint: 'fep_risks',
-                        saveInBackground: true,
-                        nextScreenBuilder: () =>
-                            const FrontEndPlanningOpportunitiesScreen(),
-                        dataUpdater: (data) => data.copyWith(
-                          frontEndPlanning: ProjectDataHelper.updateFEPField(
-                            current: data.frontEndPlanning,
-                            risks: risksText.isNotEmpty
-                                ? risksText
-                                : _summarizeNotesText(
-                                    _notesController.text.trim()),
-                          ),
-                        ),
-                      );
-                    },
+                    onNext: _saveAndContinue,
                   ),
                 ],
               ),
@@ -957,6 +957,381 @@ class _FrontEndPlanningRisksScreenState
         ),
       ),
     );
+  }
+
+  Widget _buildMobileScaffold(BuildContext context) {
+    final data = ProjectDataHelper.getData(context);
+    final projectName = data.projectName.trim().isEmpty
+        ? 'Project Workspace'
+        : data.projectName.trim();
+
+    return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor: const Color(0xFFF5F6F8),
+      drawer: Drawer(
+        width: MediaQuery.sizeOf(context).width * 0.88,
+        child: const SafeArea(
+          child: InitiationLikeSidebar(activeItemLabel: 'Project Risks'),
+        ),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 10, 6),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.maybePop(context),
+                    icon:
+                        const Icon(Icons.arrow_back_ios_new_rounded, size: 17),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'Front End Planning',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => _scaffoldKey.currentState?.openDrawer(),
+                    borderRadius: BorderRadius.circular(20),
+                    child: const CircleAvatar(
+                      radius: 13,
+                      backgroundColor: Color(0xFF2563EB),
+                      child: Text('C',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(12, 2, 12, 110),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'ZAMBIA PHARMACY HUB EXPANSION',
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF9CA3AF),
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      projectName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Project Risks',
+                      style: TextStyle(
+                        fontSize: 31,
+                        height: 1.0,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      '(Highlight and quantify known and/or anticipated risks here)',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
+                    ),
+                    const SizedBox(height: 10),
+                    ..._rows.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final row = entry.value;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildMobileRiskCard(index, row),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed:
+                      _isGeneratingRequirements ? null : _regenerateAllRisks,
+                  icon: _isGeneratingRequirements
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.auto_awesome_rounded, size: 15),
+                  label: const Text(
+                    'AI Suggestions',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF2563EB),
+                    side: const BorderSide(color: Color(0xFFBFDBFE)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _saveAndContinue,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF4B400),
+                    foregroundColor: Colors.black,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                  ),
+                  child: const Text(
+                    'Next',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileRiskCard(int index, _RiskItem row) {
+    final probability =
+        row.probability.trim().isEmpty ? 'Medium' : row.probability;
+    final impact = row.impact.trim().isEmpty ? 'Medium' : row.impact;
+    final probabilityValue = _levelToSlider(probability);
+    final impactValue = _levelToSlider(impact);
+
+    return InkWell(
+      onTap: () => _showEditRiskSheet(index),
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFECFDF5),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    (row.requirementType.isEmpty
+                            ? 'Operational'
+                            : row.requirementType)
+                        .toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF059669),
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  'ID: ${row.id}',
+                  style:
+                      const TextStyle(fontSize: 10.5, color: Color(0xFF9CA3AF)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerRight,
+              child: InkWell(
+                onTap: _isGeneratingRequirements ? null : _regenerateAllRisks,
+                borderRadius: BorderRadius.circular(999),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF2F4FA),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: const Color(0xFFDCE2F0)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.auto_awesome_rounded,
+                          size: 11, color: Color(0xFF4F46E5)),
+                      SizedBox(width: 4),
+                      Text(
+                        'AI ASSISTANCE',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF4F46E5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              row.risk.trim().isEmpty
+                  ? row.requirement.trim().isEmpty
+                      ? 'Tap to define risk title'
+                      : row.requirement.trim()
+                  : row.risk.trim(),
+              style: const TextStyle(
+                fontSize: 26,
+                height: 1.0,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1F2937),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              row.requirement.trim().isEmpty
+                  ? 'Requirement not set.'
+                  : 'Requirement: ${row.requirement.trim()}',
+              style: const TextStyle(fontSize: 11.5, color: Color(0xFF9CA3AF)),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildSliderColumn('PROBABILITY', probabilityValue),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildSliderColumn('IMPACT', impactValue),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'MITIGATION PLAN',
+              style: TextStyle(
+                  fontSize: 9.5,
+                  color: Color(0xFF9CA3AF),
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.35),
+            ),
+            const SizedBox(height: 5),
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: TextFormField(
+                initialValue: row.mitigation,
+                minLines: 2,
+                maxLines: 3,
+                onChanged: (value) {
+                  if (index >= 0 && index < _rows.length) {
+                    setState(() {
+                      _rows[index] = _rows[index].copyWith(mitigation: value);
+                    });
+                    _syncRisksToProvider();
+                  }
+                },
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  hintText: 'Describe how to mitigate this risk...',
+                  hintStyle: TextStyle(color: Color(0xFFB6BDC8)),
+                ),
+                style:
+                    const TextStyle(fontSize: 12.5, color: Color(0xFF374151)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSliderColumn(String label, double value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 9.5,
+            color: Color(0xFF9CA3AF),
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.35,
+          ),
+        ),
+        SliderTheme(
+          data: SliderThemeData(
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+            overlayShape: SliderComponentShape.noOverlay,
+            activeTrackColor: const Color(0xFFF4B400),
+            inactiveTrackColor: const Color(0xFFE5E7EB),
+          ),
+          child: Slider(
+            value: value,
+            min: 0,
+            max: 1,
+            onChanged: null,
+          ),
+        ),
+        const Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('LOW',
+                style: TextStyle(fontSize: 8.5, color: Color(0xFF9CA3AF))),
+            Text('MED',
+                style: TextStyle(fontSize: 8.5, color: Color(0xFF9CA3AF))),
+            Text('HIGH',
+                style: TextStyle(fontSize: 8.5, color: Color(0xFF9CA3AF))),
+          ],
+        ),
+      ],
+    );
+  }
+
+  double _levelToSlider(String value) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized == 'high' || normalized == 'critical') return 0.9;
+    if (normalized == 'low') return 0.2;
+    return 0.55;
   }
 
   Widget _buildRiskTable(BuildContext context) {
@@ -979,128 +1354,131 @@ class _FrontEndPlanningRisksScreenState
               ? minTableWidth
               : constraints.maxWidth;
 
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: tableWidth,
-              child: Table(
-                columnWidths: const {
-                  0: FixedColumnWidth(60),
-                  1: FixedColumnWidth(150),
-                  2: FixedColumnWidth(150),
-                  3: FixedColumnWidth(150),
-                  4: FixedColumnWidth(200),
-                  5: FixedColumnWidth(100),
-                  6: FixedColumnWidth(100),
-                  7: FixedColumnWidth(100),
-                  8: FixedColumnWidth(100),
-                  9: FixedColumnWidth(120),
-                  10: FixedColumnWidth(150),
-                  11: FixedColumnWidth(100),
-                  12: FixedColumnWidth(100),
-                  13: FixedColumnWidth(100),
-                  14: FixedColumnWidth(80),
-                },
-                border: TableBorder(
-                  horizontalInside: border,
-                  verticalInside: border,
-                  top: border,
-                  bottom: border,
-                  left: border,
-                  right: border,
-                ),
-                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                children: [
-                  TableRow(
-                    decoration: const BoxDecoration(color: Color(0xFFF9FAFB)),
-                    children: [
-                      _th('ID', headerStyle),
-                      _th('Requirement', headerStyle),
-                      _th('Requirement Type', headerStyle),
-                      _th('Risk Title', headerStyle),
-                      _th('Description', headerStyle),
-                      _th('Category', headerStyle),
-                      _th('Probability', headerStyle),
-                      _th('Impact', headerStyle),
-                      _th('Risk Value', headerStyle),
-                      _th('Risk Level', headerStyle),
-                      _th('Mitigation', headerStyle),
-                      _th('Discipline', headerStyle),
-                      _th('Owner', headerStyle),
-                      _th('Status', headerStyle),
-                      _th('Ac', headerStyle),
-                    ],
+          return Scrollbar(
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: tableWidth,
+                child: Table(
+                  columnWidths: const {
+                    0: FixedColumnWidth(60),
+                    1: FixedColumnWidth(150),
+                    2: FixedColumnWidth(150),
+                    3: FixedColumnWidth(150),
+                    4: FixedColumnWidth(200),
+                    5: FixedColumnWidth(100),
+                    6: FixedColumnWidth(100),
+                    7: FixedColumnWidth(100),
+                    8: FixedColumnWidth(100),
+                    9: FixedColumnWidth(120),
+                    10: FixedColumnWidth(150),
+                    11: FixedColumnWidth(100),
+                    12: FixedColumnWidth(100),
+                    13: FixedColumnWidth(100),
+                    14: FixedColumnWidth(80),
+                  },
+                  border: TableBorder(
+                    horizontalInside: border,
+                    verticalInside: border,
+                    top: border,
+                    bottom: border,
+                    left: border,
+                    right: border,
                   ),
-                  ...List.generate(_rows.length, (i) {
-                    final r = _rows[i];
-                    return TableRow(children: [
-                      _td(Text(r.id, style: cellStyle)),
-                      _td(Text(
-                        r.requirement,
-                        style: cellStyle,
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 2,
-                      )),
-                      _td(r.requirementType.isEmpty
-                          ? const SizedBox.shrink()
-                          : _chip(r.requirementType, const Color(0xFFDCFCE7),
-                              const Color(0xFF16A34A))),
-                      _td(Text(
-                        r.risk,
-                        style: cellStyle,
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 2,
-                      )),
-                      _td(Text(
-                        r.description,
-                        style: cellStyle,
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 2,
-                      )),
-                      _td(r.category.isEmpty
-                          ? const SizedBox.shrink()
-                          : _chip(r.category, const Color(0xFFF3E8FF),
-                              const Color(0xFF7C3AED))),
-                      _td(Text(r.probability, style: cellStyle)),
-                      _td(Text(r.impact, style: cellStyle)),
-                      _td(Text(r.riskValue, style: cellStyle)),
-                      _td(r.riskLevel.isEmpty
-                          ? const SizedBox.shrink()
-                          : _chip(r.riskLevel, const Color(0xFFFFE4E6),
-                              const Color(0xFFDC2626))),
-                      _td(Text(r.mitigation, style: cellStyle)),
-                      _td(Text(r.discipline, style: cellStyle)),
-                      _td(Text(r.owner, style: cellStyle)),
-                      _td(r.status.isEmpty
-                          ? const SizedBox.shrink()
-                          : _statusPill(r.status)),
-                      _td(Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          InkWell(
-                            onTap: () => _showEditRiskSheet(i),
-                            borderRadius: BorderRadius.circular(8),
-                            child: const Padding(
-                              padding: EdgeInsets.all(4.0),
-                              child: Icon(Icons.edit,
-                                  size: 18, color: Color(0xFF6B7280)),
+                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                  children: [
+                    TableRow(
+                      decoration: const BoxDecoration(color: Color(0xFFF9FAFB)),
+                      children: [
+                        _th('ID', headerStyle),
+                        _th('Requirement', headerStyle),
+                        _th('Requirement Type', headerStyle),
+                        _th('Risk Title', headerStyle),
+                        _th('Description', headerStyle),
+                        _th('Category', headerStyle),
+                        _th('Probability', headerStyle),
+                        _th('Impact', headerStyle),
+                        _th('Risk Value', headerStyle),
+                        _th('Risk Level', headerStyle),
+                        _th('Mitigation', headerStyle),
+                        _th('Discipline', headerStyle),
+                        _th('Owner', headerStyle),
+                        _th('Status', headerStyle),
+                        _th('Ac', headerStyle),
+                      ],
+                    ),
+                    ...List.generate(_rows.length, (i) {
+                      final r = _rows[i];
+                      return TableRow(children: [
+                        _td(Text(r.id, style: cellStyle)),
+                        _td(Text(
+                          r.requirement,
+                          style: cellStyle,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
+                        )),
+                        _td(r.requirementType.isEmpty
+                            ? const SizedBox.shrink()
+                            : _chip(r.requirementType, const Color(0xFFDCFCE7),
+                                const Color(0xFF16A34A))),
+                        _td(Text(
+                          r.risk,
+                          style: cellStyle,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
+                        )),
+                        _td(Text(
+                          r.description,
+                          style: cellStyle,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
+                        )),
+                        _td(r.category.isEmpty
+                            ? const SizedBox.shrink()
+                            : _chip(r.category, const Color(0xFFF3E8FF),
+                                const Color(0xFF7C3AED))),
+                        _td(Text(r.probability, style: cellStyle)),
+                        _td(Text(r.impact, style: cellStyle)),
+                        _td(Text(r.riskValue, style: cellStyle)),
+                        _td(r.riskLevel.isEmpty
+                            ? const SizedBox.shrink()
+                            : _chip(r.riskLevel, const Color(0xFFFFE4E6),
+                                const Color(0xFFDC2626))),
+                        _td(Text(r.mitigation, style: cellStyle)),
+                        _td(Text(r.discipline, style: cellStyle)),
+                        _td(Text(r.owner, style: cellStyle)),
+                        _td(r.status.isEmpty
+                            ? const SizedBox.shrink()
+                            : _statusPill(r.status)),
+                        _td(Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            InkWell(
+                              onTap: () => _showEditRiskSheet(i),
+                              borderRadius: BorderRadius.circular(8),
+                              child: const Padding(
+                                padding: EdgeInsets.all(4.0),
+                                child: Icon(Icons.edit,
+                                    size: 18, color: Color(0xFF6B7280)),
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          InkWell(
-                            onTap: () => _confirmAndDeleteRow(i),
-                            borderRadius: BorderRadius.circular(8),
-                            child: const Padding(
-                              padding: EdgeInsets.all(4.0),
-                              child: Icon(Icons.delete_outline,
-                                  size: 18, color: Color(0xFF6B7280)),
+                            const SizedBox(width: 10),
+                            InkWell(
+                              onTap: () => _confirmAndDeleteRow(i),
+                              borderRadius: BorderRadius.circular(8),
+                              child: const Padding(
+                                padding: EdgeInsets.all(4.0),
+                                child: Icon(Icons.delete_outline,
+                                    size: 18, color: Color(0xFF6B7280)),
+                              ),
                             ),
-                          ),
-                        ],
-                      )),
-                    ]);
-                  }),
-                ],
+                          ],
+                        )),
+                      ]);
+                    }),
+                  ],
+                ),
               ),
             ),
           );
@@ -1195,6 +1573,40 @@ class _RiskItem {
     required this.owner,
     required this.status,
   });
+
+  _RiskItem copyWith({
+    String? id,
+    String? requirement,
+    String? requirementType,
+    String? risk,
+    String? description,
+    String? category,
+    String? probability,
+    String? impact,
+    String? riskValue,
+    String? riskLevel,
+    String? mitigation,
+    String? discipline,
+    String? owner,
+    String? status,
+  }) {
+    return _RiskItem(
+      id: id ?? this.id,
+      requirement: requirement ?? this.requirement,
+      requirementType: requirementType ?? this.requirementType,
+      risk: risk ?? this.risk,
+      description: description ?? this.description,
+      category: category ?? this.category,
+      probability: probability ?? this.probability,
+      impact: impact ?? this.impact,
+      riskValue: riskValue ?? this.riskValue,
+      riskLevel: riskLevel ?? this.riskLevel,
+      mitigation: mitigation ?? this.mitigation,
+      discipline: discipline ?? this.discipline,
+      owner: owner ?? this.owner,
+      status: status ?? this.status,
+    );
+  }
 }
 
 class _BottomOverlays extends StatelessWidget {

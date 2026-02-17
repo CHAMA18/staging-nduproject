@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
+import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
+import 'package:ndu_project/screens/home_screen.dart';
 
 import 'package:ndu_project/screens/front_end_planning_requirements_screen.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
@@ -35,6 +38,8 @@ class FrontEndPlanningSummaryScreen extends StatefulWidget {
 
 class _FrontEndPlanningSummaryScreenState
     extends State<FrontEndPlanningSummaryScreen> {
+  final GlobalKey<ScaffoldState> _mobileScaffoldKey =
+      GlobalKey<ScaffoldState>();
   final TextEditingController _notes = TextEditingController();
   final TextEditingController _summaryNotes = TextEditingController();
   bool _isSyncReady = false;
@@ -46,8 +51,10 @@ class _FrontEndPlanningSummaryScreenState
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _summaryNotes.addListener(_syncSummaryToProvider);
+      _notes.addListener(_syncNotesToProvider);
       _isSyncReady = true;
       final data = ProjectDataHelper.getData(context);
+      _notes.text = data.frontEndPlanning.requirementsNotes;
 
       // Auto-populate summary if it's empty, concatenating from:
       // Project Vision (notes) + Core Stakeholders + Business Case + Selected Preferred Solution
@@ -59,6 +66,7 @@ class _FrontEndPlanningSummaryScreenState
       }
 
       _syncSummaryToProvider();
+      _syncNotesToProvider();
       if (mounted) setState(() {});
     });
   }
@@ -113,6 +121,7 @@ class _FrontEndPlanningSummaryScreenState
   void dispose() {
     if (_isSyncReady) {
       _summaryNotes.removeListener(_syncSummaryToProvider);
+      _notes.removeListener(_syncNotesToProvider);
     }
     _notes.dispose();
     _summaryNotes.dispose();
@@ -132,8 +141,25 @@ class _FrontEndPlanningSummaryScreenState
     );
   }
 
+  void _syncNotesToProvider() {
+    if (!mounted) return;
+    final provider = ProjectDataHelper.getProvider(context);
+    provider.updateField(
+      (data) => data.copyWith(
+        frontEndPlanning: ProjectDataHelper.updateFEPField(
+          current: data.frontEndPlanning,
+          requirementsNotes: _notes.text.trim(),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (AppBreakpoints.isMobile(context)) {
+      return _buildMobileScaffold(context);
+    }
+
     return ResponsiveScaffold(
       activeItemLabel: 'Details',
       backgroundColor: Colors.white,
@@ -170,6 +196,317 @@ class _FrontEndPlanningSummaryScreenState
           ),
           _BottomOverlay(summaryController: _summaryNotes),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMobileScaffold(BuildContext context) {
+    final data = ProjectDataHelper.getData(context);
+    final projectName = data.projectName.trim().isEmpty
+        ? 'Untitled Project'
+        : data.projectName.trim();
+    final stakeholders = data.coreStakeholdersData?.solutionStakeholderData
+            .map((item) => item.notableStakeholders.trim())
+            .where((value) => value.isNotEmpty)
+            .toList() ??
+        <String>[];
+
+    return Scaffold(
+      key: _mobileScaffoldKey,
+      backgroundColor: const Color(0xFFF5F6F8),
+      drawer: Drawer(
+        width: MediaQuery.sizeOf(context).width * 0.88,
+        child: const SafeArea(
+          child: InitiationLikeSidebar(activeItemLabel: 'Details'),
+        ),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 10, 10, 6),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () =>
+                        _mobileScaffoldKey.currentState?.openDrawer(),
+                    icon: const Icon(Icons.menu_rounded, size: 18),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  const SizedBox(width: 4),
+                  const Expanded(
+                    child: Text(
+                      'Details',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                  ),
+                  CircleAvatar(
+                    radius: 14,
+                    backgroundColor: const Color(0xFF2563EB),
+                    child: Text(
+                      (projectName.isNotEmpty ? projectName[0] : 'P')
+                          .toUpperCase(),
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(14, 4, 14, 110),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'FRONT END PLANNING',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF9CA3AF),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      projectName,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF4B5563),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F4F8),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'NOTES',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF9CA3AF),
+                              letterSpacing: 0.6,
+                            ),
+                          ),
+                          TextField(
+                            controller: _notes,
+                            minLines: 3,
+                            maxLines: 5,
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              hintText: 'Input your notes here...',
+                              hintStyle: TextStyle(color: Color(0xFFB6BDC8)),
+                            ),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF374151),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: const [
+                              Text(
+                                'Description',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF111827),
+                                ),
+                              ),
+                              SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  '(Summary of activities)',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Color(0xFF9CA3AF),
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Project Vision :',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF374151),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF3F4F6),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              data.notes.trim().isEmpty
+                                  ? 'No project vision captured yet.'
+                                  : data.notes.trim(),
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                color: Color(0xFF374151),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'Core Stakeholders:',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF374151),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          if (stakeholders.isEmpty)
+                            const Text(
+                              '- No stakeholders captured yet.',
+                              style: TextStyle(
+                                  fontSize: 12.5, color: Color(0xFF6B7280)),
+                            )
+                          else
+                            ...stakeholders.take(3).map(
+                                  (entry) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 4),
+                                    child: Text(
+                                      '- $entry',
+                                      style: const TextStyle(
+                                        fontSize: 12.5,
+                                        color: Color(0xFF4B5563),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Business Case:',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF374151),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            data.businessCase.trim().isEmpty
+                                ? 'No business case defined yet.'
+                                : data.businessCase.trim(),
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              color: Color(0xFF4B5563),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+          child: Row(
+            children: [
+              IconButton(
+                onPressed: () => HomeScreen.open(context),
+                icon: const Icon(Icons.home_rounded, color: Color(0xFF94A3B8)),
+              ),
+              IconButton(
+                onPressed: () => _mobileScaffoldKey.currentState?.openDrawer(),
+                icon:
+                    const Icon(Icons.search_rounded, color: Color(0xFF94A3B8)),
+              ),
+              Expanded(
+                child: Center(
+                  child: InkWell(
+                    onTap: () => _mobileScaffoldKey.currentState?.openDrawer(),
+                    borderRadius: BorderRadius.circular(999),
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF4B400),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.add, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  await ProjectDataHelper.saveAndNavigate(
+                    context: context,
+                    checkpoint: 'fep_summary',
+                    nextScreenBuilder: () =>
+                        const FrontEndPlanningRequirementsScreen(),
+                    dataUpdater: (projectData) => projectData.copyWith(
+                      frontEndPlanning: ProjectDataHelper.updateFEPField(
+                        current: projectData.frontEndPlanning,
+                        summary: _summaryNotes.text.trim(),
+                        requirementsNotes: _notes.text.trim(),
+                      ),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFF4B400),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                child: const Text(
+                  'Next',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

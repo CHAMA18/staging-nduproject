@@ -199,11 +199,14 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
+    if (isMobile) {
+      return _buildMobileScaffold();
+    }
     final sidebarWidth = AppBreakpoints.sidebarWidth(context);
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: Colors.white,
-      drawer: isMobile ? _buildMobileDrawer() : null,
+      drawer: null,
       body: Stack(
         children: [
           Column(
@@ -228,6 +231,327 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
           ),
           const KazAiChatBubble(),
           const AdminEditToggle(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileScaffold() {
+    final projectName = ProjectDataHelper.getData(context).projectName.trim();
+    final displayCount = _isAdminHost
+        ? _solutions.length
+        : (_solutions.length > 3 ? 3 : _solutions.length);
+
+    return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor: const Color(0xFFF3F5F9),
+      drawer: _buildMobileDrawer(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButton: FloatingActionButton(
+        onPressed: _solutions.length >= 3 ? null : _addManualSolution,
+        backgroundColor: const Color(0xFFFBBF24),
+        foregroundColor: Colors.black,
+        elevation: 0,
+        child: const Icon(Icons.add),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                    icon: const Icon(Icons.menu_rounded, size: 18),
+                    visualDensity: VisualDensity.compact,
+                    splashRadius: 18,
+                  ),
+                  const Icon(Icons.workspaces_outline,
+                      size: 15, color: Color(0xFFFBBF24)),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'PROJECT WORKSPACE',
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF9CA3AF),
+                      letterSpacing: 0.45,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 2, 10, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      projectName.isEmpty ? 'Project Workspace' : projectName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1F2937),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEAFBF2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'INITIATION PHASE',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF16A34A),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 96),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Potential Solutions',
+                      style: TextStyle(
+                        fontSize: 35,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF111827),
+                        height: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      'List and describe up to 3 high-level solutions to achieve the project\'s needs.',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    if (_isLoadingSolutions) _buildShimmerLoader(),
+                    if (!_isLoadingSolutions && _solutions.isEmpty)
+                      _buildEmptyState(),
+                    for (int i = 0; i < displayCount; i++) ...[
+                      _buildScreenshotMobileSolutionCard(_solutions[i], i),
+                      const SizedBox(height: 10),
+                    ],
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: const Color(0xFFD1D5DB),
+                          style: BorderStyle.solid,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.add_circle_outline,
+                            size: 16,
+                            color: _solutions.length >= 3
+                                ? const Color(0xFF9CA3AF)
+                                : const Color(0xFF2563EB),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _solutions.length >= 3
+                                ? 'Max 3 Solutions reached'
+                                : 'Add another solution',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF6B7280),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+          decoration: const BoxDecoration(
+            color: Color(0xFFF3F5F9),
+            border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _openBusinessCase,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF6B7280),
+                    backgroundColor: Colors.white,
+                    side: const BorderSide(color: Color(0xFFD1D5DB)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    textStyle: const TextStyle(
+                        fontWeight: FontWeight.w700, fontSize: 13.5),
+                  ),
+                  child: const Text('Skip'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _handleNextPressed,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFBBF24),
+                    foregroundColor: Colors.black,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    textStyle: const TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 13.5),
+                  ),
+                  child: const Text('Next'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScreenshotMobileSolutionCard(SolutionRow solution, int index) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 20,
+                height: 20,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE5E7EB),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '${index + 1}',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF6B7280),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Solution #${index + 1}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1F2937),
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Delete solution',
+                onPressed: () => _confirmDeleteSolution(index),
+                icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                visualDensity: VisualDensity.compact,
+                splashRadius: 18,
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'SOLUTION TITLE',
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF9CA3AF),
+              letterSpacing: 0.3,
+            ),
+          ),
+          const SizedBox(height: 4),
+          TextField(
+            controller: solution.titleController,
+            onChanged: (_) => _saveSolutions(),
+            decoration: InputDecoration(
+              hintText: 'Solution title',
+              filled: true,
+              fillColor: const Color(0xFFF3F4F6),
+              isDense: true,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
+              ),
+            ),
+            style: const TextStyle(fontSize: 13.2, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'DESCRIPTION',
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF9CA3AF),
+              letterSpacing: 0.3,
+            ),
+          ),
+          const SizedBox(height: 4),
+          TextField(
+            controller: solution.descriptionController,
+            minLines: 3,
+            maxLines: 5,
+            onChanged: (_) => _saveSolutions(),
+            decoration: InputDecoration(
+              hintText: 'Describe this solution...',
+              filled: true,
+              fillColor: const Color(0xFFF3F4F6),
+              isDense: true,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
+              ),
+            ),
+            style: const TextStyle(
+              fontSize: 12.5,
+              color: Color(0xFF374151),
+              height: 1.35,
+            ),
+          ),
         ],
       ),
     );
@@ -469,101 +793,11 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
   }
 
   Drawer _buildMobileDrawer() {
-    // Match the RiskIdentificationScreen drawer look
     return Drawer(
-      child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          children: [
-            const ListTile(
-              leading: CircleAvatar(
-                radius: 18,
-                backgroundColor: Color(0xFFFFD700),
-                child: Icon(Icons.person_outline, color: Colors.black87),
-              ),
-              title: Text('StackOne'),
-            ),
-            const Divider(height: 1),
-            _buildMenuItemLikeRisk(Icons.home_outlined, 'Home',
-                onTap: () => HomeScreen.open(context)),
-            _buildExpandableHeaderLikeCost(
-              Icons.flag_outlined,
-              'Initiation Phase',
-              expanded: _initiationExpanded,
-              onTap: () =>
-                  setState(() => _initiationExpanded = !_initiationExpanded),
-              isActive: true,
-            ),
-            if (_initiationExpanded) ...[
-              _buildExpandableHeaderLikeCost(
-                Icons.business_center_outlined,
-                'Business Case',
-                expanded: _businessCaseExpanded,
-                onTap: () => setState(
-                    () => _businessCaseExpanded = !_businessCaseExpanded),
-                isActive: false,
-              ),
-              if (_businessCaseExpanded) ...[
-                _buildNestedSubMenuItem('Potential Solutions', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _scrollToSolutions();
-                }, isActive: true),
-                _buildNestedSubMenuItem('Risk Identification', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openRiskIdentification();
-                }),
-                _buildNestedSubMenuItem('IT Considerations', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openITConsiderations();
-                }),
-                _buildNestedSubMenuItem('Infrastructure Considerations',
-                    onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openInfrastructureConsiderations();
-                }),
-                _buildNestedSubMenuItem('Core Stakeholders', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openCoreStakeholders();
-                }),
-                _buildNestedSubMenuItem(
-                    'Cost Benefit Analysis & Financial Metrics', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openCostAnalysis();
-                }),
-                _buildNestedSubMenuItem('Preferred Solution Analysis',
-                    onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openPreferredSolutionAnalysis();
-                }),
-              ],
-              _buildExpandableHeaderLikeCost(
-                  Icons.timeline, 'Initiation: Front End Planning',
-                  expanded: _frontEndExpanded, onTap: () {
-                setState(() => _frontEndExpanded = !_frontEndExpanded);
-              }, isActive: false),
-              if (_frontEndExpanded) ...[
-                _buildNestedSubMenuItem('Project Requirements',
-                    onTap: () => Navigator.of(context).maybePop()),
-                _buildNestedSubMenuItem('Project Risks',
-                    onTap: () => Navigator.of(context).maybePop()),
-                _buildNestedSubMenuItem('Project Opportunities',
-                    onTap: () => Navigator.of(context).maybePop()),
-              ],
-            ],
-            _buildMenuItemLikeRisk(
-                Icons.account_tree_outlined, 'Workflow Roadmap'),
-            _buildMenuItemLikeRisk(Icons.flash_on, 'Agile Roadmap'),
-            _buildMenuItemLikeRisk(Icons.description_outlined, 'Contracting'),
-            _buildMenuItemLikeRisk(Icons.shopping_cart_outlined, 'Procurement'),
-            const Divider(height: 1),
-            _buildMenuItemLikeRisk(Icons.settings_outlined, 'Settings',
-                onTap: () {
-              Navigator.of(context).maybePop();
-              SettingsScreen.open(context);
-            }),
-            _buildMenuItemLikeRisk(Icons.logout_outlined, 'LogOut',
-                onTap: () => AuthNav.signOutAndExit(context)),
-          ],
+      width: MediaQuery.sizeOf(context).width * 0.88,
+      child: const SafeArea(
+        child: InitiationLikeSidebar(
+          activeItemLabel: 'Potential Solutions',
         ),
       ),
     );
@@ -1639,7 +1873,8 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      messenger.showSnackBar(SnackBar(content: Text('Failed to regenerate field: $e')));
+      messenger.showSnackBar(
+          SnackBar(content: Text('Failed to regenerate field: $e')));
     }
   }
 

@@ -54,9 +54,18 @@ class ProjectIntelligenceService {
 
   static ProjectDataModel rebuildActivityLog(ProjectDataModel data) {
     final now = DateTime.now();
+    final hiddenIds = data.hiddenProjectActivityIds
+        .map((id) => id.trim())
+        .where((id) => id.isNotEmpty)
+        .toSet();
     final existingById = <String, ProjectActivity>{
       for (final activity in data.projectActivities) activity.id: activity,
     };
+    for (final activity in data.customProjectActivities) {
+      final id = activity.id.trim();
+      if (id.isEmpty) continue;
+      existingById.putIfAbsent(id, () => activity);
+    }
     final nextById = <String, ProjectActivity>{};
 
     void upsert(ProjectActivity draft) {
@@ -281,6 +290,44 @@ class ProjectIntelligenceService {
       upsert: upsert,
     );
 
+    final customById = <String, ProjectActivity>{
+      for (final activity in data.customProjectActivities)
+        if (activity.id.trim().isNotEmpty) activity.id.trim(): activity,
+    };
+    for (final activity in data.projectActivities) {
+      final id = activity.id.trim();
+      if (!_isCustomActivityId(id) || customById.containsKey(id)) {
+        continue;
+      }
+      customById[id] = activity;
+    }
+
+    for (final custom in customById.values) {
+      final id = custom.id.trim();
+      if (id.isEmpty || hiddenIds.contains(id)) continue;
+
+      final existing = existingById[id];
+      nextById[id] = custom.copyWith(
+        title: _fallback(custom.title, 'Custom Activity'),
+        description: _fallback(custom.description, 'Custom activity entry.'),
+        sourceSection: _fallback(custom.sourceSection, 'manual_activity'),
+        phase: _fallback(custom.phase, 'Planning Phase'),
+        discipline: _fallback(custom.discipline, 'Project Management'),
+        role: _fallback(custom.role, 'Project Lead'),
+        assignedTo: custom.assignedTo,
+        applicableSections: custom.applicableSections,
+        dueDate: custom.dueDate,
+        status: custom.status,
+        approvalStatus: custom.approvalStatus,
+        createdAt: existing?.createdAt ?? custom.createdAt,
+        updatedAt: custom.updatedAt,
+      );
+    }
+
+    if (hiddenIds.isNotEmpty) {
+      nextById.removeWhere((id, _) => hiddenIds.contains(id));
+    }
+
     final activities = nextById.values.toList()
       ..sort((a, b) {
         final sourceOrder = a.sourceSection.compareTo(b.sourceSection);
@@ -288,7 +335,11 @@ class ProjectIntelligenceService {
         return a.title.compareTo(b.title);
       });
 
-    return data.copyWith(projectActivities: activities);
+    return data.copyWith(
+      projectActivities: activities,
+      customProjectActivities: customById.values.toList(),
+      hiddenProjectActivityIds: hiddenIds.toList(),
+    );
   }
 
   static String buildContextScan(ProjectDataModel data,
@@ -660,6 +711,10 @@ class ProjectIntelligenceService {
         .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
         .replaceAll(RegExp(r'_+'), '_')
         .replaceAll(RegExp(r'^_|_$'), '');
+  }
+
+  static bool _isCustomActivityId(String id) {
+    return id.startsWith('activity_custom_');
   }
 
   static ProjectActivityStatus _statusFromExecutionEntry(String rawStatus) {

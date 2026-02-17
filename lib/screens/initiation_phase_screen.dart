@@ -49,14 +49,15 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
   final TextEditingController _businessCaseController = TextEditingController();
   final FocusNode _notesFocusNode = FocusNode();
   final FocusNode _businessFocusNode = FocusNode();
-    // Anchor key for sidebar navigation
-    final GlobalKey _businessCaseSectionKey = GlobalKey();
+  // Anchor key for sidebar navigation
+  final GlobalKey _businessCaseSectionKey = GlobalKey();
   bool _initiationExpanded = true;
-  
+
   bool get _isBusinessCaseValid =>
       _meetsBusinessMinimum(_businessCaseController.text.trim());
 
-  void _requireBusinessCaseBefore(String destinationName, VoidCallback proceed) {
+  void _requireBusinessCaseBefore(
+      String destinationName, VoidCallback proceed) {
     // Blocks navigation to later sections until Business Case has content
     if (_isBusinessCaseValid) {
       proceed();
@@ -131,9 +132,9 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     super.initState();
     _notesFocusNode.addListener(_handleNotesFocusChange);
     _businessFocusNode.addListener(_handleBusinessFocusChange);
-    
+
     // Notes & Business Case = prose; no auto-bullet
-    
+
     // Load existing data from provider
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final projectData = ProjectDataHelper.getData(context);
@@ -143,7 +144,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
       if (projectData.businessCase.isNotEmpty) {
         _businessCaseController.text = projectData.businessCase;
       }
-      
+
       // Show hint on first visit
       if (mounted) {
         PageHintDialog.showIfNeeded(
@@ -154,12 +155,12 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
               'Enter your project notes and detailed business case here. Use the formatting toolbar above text fields for bold, underline, headings, and undo functionality.',
         );
       }
-      
+
       // If requested, scroll to Business Case
       if (widget.scrollToBusinessCase) {
         _scrollToBusinessCase();
       }
-      
+
       if (mounted) setState(() {});
     });
   }
@@ -211,13 +212,15 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
   }
 
   int _wordCount(String text) {
-    final words = text.trim().split(RegExp(r'\s+')).where((word) => word.isNotEmpty);
+    final words =
+        text.trim().split(RegExp(r'\s+')).where((word) => word.isNotEmpty);
     return words.length;
   }
 
   bool _meetsNotesMinimum(String text) => _wordCount(text) >= _notesWordMinimum;
 
-  bool _meetsBusinessMinimum(String text) => _wordCount(text) >= _businessWordMinimum;
+  bool _meetsBusinessMinimum(String text) =>
+      _wordCount(text) >= _businessWordMinimum;
 
   bool _canRequestNotesSuggestions(String text) => text.trim().length >= 12;
   bool _canRequestBusinessSuggestions(String text) => text.trim().length >= 18;
@@ -261,7 +264,9 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
 
   Future<void> _fetchNotesSuggestions(String text) async {
     if (!_notesFocusNode.hasFocus || !_canRequestNotesSuggestions(text)) return;
-    if (!_notesSuggestLoading && text == _notesLastQuery && _notesSuggestions.isNotEmpty) {
+    if (!_notesSuggestLoading &&
+        text == _notesLastQuery &&
+        _notesSuggestions.isNotEmpty) {
       return;
     }
 
@@ -271,7 +276,8 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     });
 
     try {
-      final suggestions = await OpenAiAutocompleteService.instance.fetchSuggestions(
+      final suggestions =
+          await OpenAiAutocompleteService.instance.fetchSuggestions(
         fieldName: 'Initiation Notes',
         currentText: text,
         context: _businessCaseController.text,
@@ -302,7 +308,9 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
   }
 
   Future<void> _fetchBusinessSuggestions(String text) async {
-    if (!_businessFocusNode.hasFocus || !_canRequestBusinessSuggestions(text)) return;
+    if (!_businessFocusNode.hasFocus || !_canRequestBusinessSuggestions(text)) {
+      return;
+    }
     if (!_businessSuggestLoading &&
         text == _businessLastQuery &&
         _businessSuggestions.isNotEmpty) {
@@ -315,7 +323,8 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     });
 
     try {
-      final suggestions = await OpenAiAutocompleteService.instance.fetchSuggestions(
+      final suggestions =
+          await OpenAiAutocompleteService.instance.fetchSuggestions(
         fieldName: 'Business Case',
         currentText: text,
         context: _notesController.text,
@@ -408,7 +417,8 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     }
   }
 
-  void _undoSuggestion(TextEditingController controller, {required bool isNotes}) {
+  void _undoSuggestion(TextEditingController controller,
+      {required bool isNotes}) {
     final stack = isNotes ? _notesUndoStack : _businessUndoStack;
     if (stack.isEmpty) return;
     final previous = stack.removeLast();
@@ -459,7 +469,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
       notes: notes,
       businessCase: business,
     );
-    
+
     // Save to Firebase
     await provider.saveToFirebase(checkpoint: 'business_case');
 
@@ -488,14 +498,14 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     // If business case is empty, generate it with AI
     if (_businessCaseController.text.trim().isEmpty) {
       if (!mounted) return;
-      
+
       // Show loading overlay
       setState(() => _isGeneratingAI = true);
-      
+
       try {
         final provider = ProjectDataHelper.getProvider(context);
         final projectData = provider.projectData;
-        
+
         // Generate business case using AI
         final openAiService = OpenAiServiceSecure();
         final generatedBusinessCase = await openAiService.generateBusinessCase(
@@ -504,24 +514,24 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
           solutionTitle: projectData.solutionTitle,
           solutionDescription: projectData.solutionDescription,
         );
-        
+
         if (!mounted) return;
-        
+
         // Populate the controller
         _businessCaseController.text = generatedBusinessCase;
-        
+
         // Update provider state
         provider.updateInitiationData(
           notes: _notesController.text.trim(),
           businessCase: generatedBusinessCase,
         );
-        
+
         // Save to Firebase
         await provider.saveToFirebase(checkpoint: 'business_case');
-        
+
         if (!mounted) return;
         setState(() => _isGeneratingAI = false);
-        
+
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -530,12 +540,12 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
             duration: Duration(seconds: 2),
           ),
         );
-        
+
         return; // Don't proceed to skip flow, user can now review/edit the generated content
       } catch (e) {
         if (!mounted) return;
         setState(() => _isGeneratingAI = false);
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to generate Business Case: ${e.toString()}'),
@@ -569,9 +579,13 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             ),
             SizedBox(height: 16),
-            _RequirementItem(icon: Icons.people_outline, text: 'Core Stakeholders'),
-            _RequirementItem(icon: Icons.computer_outlined, text: 'IT Considerations'),
-            _RequirementItem(icon: Icons.business_outlined, text: 'Infrastructure Considerations'),
+            _RequirementItem(
+                icon: Icons.people_outline, text: 'Core Stakeholders'),
+            _RequirementItem(
+                icon: Icons.computer_outlined, text: 'IT Considerations'),
+            _RequirementItem(
+                icon: Icons.business_outlined,
+                text: 'Infrastructure Considerations'),
             SizedBox(height: 12),
             Text(
               'You will be directed to fill these fields before proceeding to Front End Planning.',
@@ -603,12 +617,12 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
 
     // Check which mandatory fields are missing
     final missingFields = <String, String>{};
-    
+
     // Check Core Stakeholders - validation: lists must not be empty (regardless of AI or manual entry)
     final hasCoreStakeholders = projectData.coreStakeholdersData != null &&
         projectData.coreStakeholdersData!.solutionStakeholderData.isNotEmpty &&
-        projectData.coreStakeholdersData!.solutionStakeholderData.any((item) => 
-          item.notableStakeholders.trim().isNotEmpty);
+        projectData.coreStakeholdersData!.solutionStakeholderData
+            .any((item) => item.notableStakeholders.trim().isNotEmpty);
     if (!hasCoreStakeholders) {
       missingFields['Core Stakeholders'] = 'core_stakeholders';
     }
@@ -616,25 +630,28 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     // Check IT Considerations - validation: lists must not be empty (regardless of AI or manual entry)
     final hasITConsiderations = projectData.itConsiderationsData != null &&
         projectData.itConsiderationsData!.solutionITData.isNotEmpty &&
-        projectData.itConsiderationsData!.solutionITData.any((item) => 
-          item.coreTechnology.trim().isNotEmpty);
+        projectData.itConsiderationsData!.solutionITData
+            .any((item) => item.coreTechnology.trim().isNotEmpty);
     if (!hasITConsiderations) {
       missingFields['IT Considerations'] = 'it_considerations';
     }
 
     // Check Infrastructure Considerations - validation: lists must not be empty (regardless of AI or manual entry)
-    final hasInfrastructure = projectData.infrastructureConsiderationsData != null &&
-        projectData.infrastructureConsiderationsData!.solutionInfrastructureData.isNotEmpty &&
-        projectData.infrastructureConsiderationsData!.solutionInfrastructureData.any((item) => 
-          item.majorInfrastructure.trim().isNotEmpty);
+    final hasInfrastructure = projectData.infrastructureConsiderationsData !=
+            null &&
+        projectData.infrastructureConsiderationsData!.solutionInfrastructureData
+            .isNotEmpty &&
+        projectData.infrastructureConsiderationsData!.solutionInfrastructureData
+            .any((item) => item.majorInfrastructure.trim().isNotEmpty);
     if (!hasInfrastructure) {
-      missingFields['Infrastructure Considerations'] = 'infrastructure_considerations';
+      missingFields['Infrastructure Considerations'] =
+          'infrastructure_considerations';
     }
 
     // If fields are missing, route to the first missing screen
     if (missingFields.isNotEmpty) {
       if (!mounted) return;
-      
+
       // Save current data first
       provider.updateInitiationData(
         notes: _notesController.text.trim(),
@@ -647,7 +664,8 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
       await showDialog(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text('Required Information Missing'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -656,15 +674,17 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
               const Text('Please complete the following sections:'),
               const SizedBox(height: 12),
               ...missingFields.keys.map((field) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  children: [
-                    Icon(Icons.circle, size: 8, color: Colors.orange),
-                    const SizedBox(width: 8),
-                    Text(field, style: const TextStyle(fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              )),
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        Icon(Icons.circle, size: 8, color: Colors.orange),
+                        const SizedBox(width: 8),
+                        Text(field,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  )),
             ],
           ),
           actions: [
@@ -698,7 +718,10 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     final projectId = provider.projectData.projectId;
     if (projectId != null && projectId.isNotEmpty) {
       try {
-        await FirebaseFirestore.instance.collection('projects').doc(projectId).update({
+        await FirebaseFirestore.instance
+            .collection('projects')
+            .doc(projectId)
+            .update({
           'status': 'Planning',
           'milestone': 'planning',
           'checkpointRoute': 'fep_summary',
@@ -708,7 +731,9 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Warning: Unable to update project status. ${e.toString()}')),
+            SnackBar(
+                content: Text(
+                    'Warning: Unable to update project status. ${e.toString()}')),
           );
         }
       }
@@ -718,7 +743,8 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
 
     // Show Select Project dialog on Scope Statement page so user can pick a solution
     final options = projectData.potentialSolutions
-        .map((s) => SolutionOption(title: s.title, description: s.description, projectName: null))
+        .map((s) => SolutionOption(
+            title: s.title, description: s.description, projectName: null))
         .toList(growable: false);
 
     final selection = await showDialog<SolutionOption?>(
@@ -730,74 +756,115 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
         String? nameError;
         return StatefulBuilder(builder: (ctx, setState) {
           return Dialog(
-            insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            insetPadding:
+                const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 640),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(28, 28, 28, 24),
-                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    const Expanded(child: Text('Choose a project to progress', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700))),
-                    IconButton(onPressed: () => Navigator.of(ctx).pop(null), icon: const Icon(Icons.close)),
-                  ]),
-                  const SizedBox(height: 12),
-                  const Text('Pick the solution you want to advance and give your project a memorable name.', style: TextStyle(fontSize: 14, color: Colors.black54)),
-                  const SizedBox(height: 20),
-                  ConstrainedBox(
-                    constraints: BoxConstraints(maxHeight: options.length >= 3 ? 360 : 240),
-                    child: SingleChildScrollView(
-                      child: Column(children: [
-                        for (var i = 0; i < options.length; i++)
-                          ListTile(
-                            leading: Radio<int?>(
-                              value: i,
-                              // ignore: deprecated_member_use
-                              groupValue: selectedIndex,
-                              // ignore: deprecated_member_use
-                              onChanged: (v) =>
-                                  setState(() => selectedIndex = v),
-                            ),
-                            title: Text(options[i].title.isNotEmpty ? options[i].title : 'Untitled Solution', style: const TextStyle(fontWeight: FontWeight.w700)),
-                            subtitle: Text(options[i].description, maxLines: 2, overflow: TextOverflow.ellipsis),
-                            onTap: () {
-                              setState(() {
-                                selectedIndex = i;
-                                if (projectName == null || projectName!.trim().isEmpty) projectName = options[i].title;
-                              });
-                            },
-                          ),
+                child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(children: [
+                        const Expanded(
+                            child: Text('Choose a project to progress',
+                                style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700))),
+                        IconButton(
+                            onPressed: () => Navigator.of(ctx).pop(null),
+                            icon: const Icon(Icons.close)),
                       ]),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    decoration: InputDecoration(labelText: 'Project name', errorText: nameError, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
-                    controller: TextEditingController(text: projectName),
-                    onChanged: (v) => projectName = v,
-                  ),
-                  const SizedBox(height: 20),
-                  Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                    TextButton(onPressed: () => Navigator.of(ctx).pop(null), child: const Text('Cancel')),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: () {
-                        if (selectedIndex == null) {
-                          ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Select a project first.')));
-                          return;
-                        }
-                        final name = (projectName ?? '').trim();
-                        if (name.isEmpty) {
-                          setState(() => nameError = 'Give your project a name to continue.');
-                          return;
-                        }
-                        Navigator.of(ctx).pop(SolutionOption(title: options[selectedIndex!].title, description: options[selectedIndex!].description, projectName: name));
-                      },
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFD700), foregroundColor: Colors.black),
-                      child: const Text('Save & Continue'),
-                    ),
-                  ])
-                ]),
+                      const SizedBox(height: 12),
+                      const Text(
+                          'Pick the solution you want to advance and give your project a memorable name.',
+                          style:
+                              TextStyle(fontSize: 14, color: Colors.black54)),
+                      const SizedBox(height: 20),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                            maxHeight: options.length >= 3 ? 360 : 240),
+                        child: SingleChildScrollView(
+                          child: Column(children: [
+                            for (var i = 0; i < options.length; i++)
+                              ListTile(
+                                leading: Radio<int?>(
+                                  value: i,
+                                  // ignore: deprecated_member_use
+                                  groupValue: selectedIndex,
+                                  // ignore: deprecated_member_use
+                                  onChanged: (v) =>
+                                      setState(() => selectedIndex = v),
+                                ),
+                                title: Text(
+                                    options[i].title.isNotEmpty
+                                        ? options[i].title
+                                        : 'Untitled Solution',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w700)),
+                                subtitle: Text(options[i].description,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis),
+                                onTap: () {
+                                  setState(() {
+                                    selectedIndex = i;
+                                    if (projectName == null ||
+                                        projectName!.trim().isEmpty) {
+                                      projectName = options[i].title;
+                                    }
+                                  });
+                                },
+                              ),
+                          ]),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        decoration: InputDecoration(
+                            labelText: 'Project name',
+                            errorText: nameError,
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12))),
+                        controller: TextEditingController(text: projectName),
+                        onChanged: (v) => projectName = v,
+                      ),
+                      const SizedBox(height: 20),
+                      Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                        TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(null),
+                            child: const Text('Cancel')),
+                        const SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed: () {
+                            if (selectedIndex == null) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                  const SnackBar(
+                                      content:
+                                          Text('Select a project first.')));
+                              return;
+                            }
+                            final name = (projectName ?? '').trim();
+                            if (name.isEmpty) {
+                              setState(() => nameError =
+                                  'Give your project a name to continue.');
+                              return;
+                            }
+                            Navigator.of(ctx).pop(SolutionOption(
+                                title: options[selectedIndex!].title,
+                                description:
+                                    options[selectedIndex!].description,
+                                projectName: name));
+                          },
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFFD700),
+                              foregroundColor: Colors.black),
+                          child: const Text('Save & Continue'),
+                        ),
+                      ])
+                    ]),
               ),
             ),
           );
@@ -811,19 +878,27 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sign in to save your project.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sign in to save your project.')));
       return;
     }
 
-    final ownerName = FirebaseAuthService.displayNameOrEmail(fallback: 'Leader');
+    final ownerName =
+        FirebaseAuthService.displayNameOrEmail(fallback: 'Leader');
     final trimmedNotes = _notesController.text.trim();
     final trimmedBusinessCase = _businessCaseController.text.trim();
-    final tags = ['Initiation', if (selection.title.trim().isNotEmpty) selection.title.trim()];
+    final tags = [
+      'Initiation',
+      if (selection.title.trim().isNotEmpty) selection.title.trim()
+    ];
 
     bool dialogShown = false;
     if (mounted) {
       dialogShown = true;
-      showDialog<void>(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
+      showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const Center(child: CircularProgressIndicator()));
     }
 
     try {
@@ -840,13 +915,18 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
         checkpointRoute: 'project_decision_summary',
       );
     } catch (e) {
-      if (dialogShown && mounted) Navigator.of(context, rootNavigator: true).pop();
+      if (dialogShown && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to save project. Try again.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to save project. Try again.')));
       return;
     }
 
-    if (dialogShown && mounted) Navigator.of(context, rootNavigator: true).pop();
+    if (dialogShown && mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
 
     if (!mounted) return;
     FrontEndPlanningSummaryScreen.open(context);
@@ -862,7 +942,8 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
         screen = CoreStakeholdersScreen(
           notes: projectData.coreStakeholdersData?.notes ?? projectData.notes,
           solutions: projectData.potentialSolutions
-              .map((s) => AiSolutionItem(title: s.title, description: s.description))
+              .map((s) =>
+                  AiSolutionItem(title: s.title, description: s.description))
               .toList(),
         );
         break;
@@ -870,15 +951,18 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
         screen = ITConsiderationsScreen(
           notes: projectData.itConsiderationsData?.notes ?? projectData.notes,
           solutions: projectData.potentialSolutions
-              .map((s) => AiSolutionItem(title: s.title, description: s.description))
+              .map((s) =>
+                  AiSolutionItem(title: s.title, description: s.description))
               .toList(),
         );
         break;
       case 'infrastructure_considerations':
         screen = InfrastructureConsiderationsScreen(
-          notes: projectData.infrastructureConsiderationsData?.notes ?? projectData.notes,
+          notes: projectData.infrastructureConsiderationsData?.notes ??
+              projectData.notes,
           solutions: projectData.potentialSolutions
-              .map((s) => AiSolutionItem(title: s.title, description: s.description))
+              .map((s) =>
+                  AiSolutionItem(title: s.title, description: s.description))
               .toList(),
         );
         break;
@@ -956,7 +1040,8 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.auto_awesome, size: 18, color: Color(0xFFFFD700)),
+              const Icon(Icons.auto_awesome,
+                  size: 18, color: Color(0xFFFFD700)),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -973,7 +1058,8 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
                   icon: const Icon(Icons.refresh, size: 16),
                   label: const Text('Refresh'),
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                 ),
               if (canUndo && onUndo != null)
@@ -982,7 +1068,8 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
                   icon: const Icon(Icons.undo, size: 16),
                   label: const Text('Undo'),
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                 ),
             ],
@@ -1016,7 +1103,8 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
                 child: _buildSuggestionOption(
                   suggestion,
                   onTap: () => onSelect(suggestion),
-                  onInsert: onInsert == null ? null : () => onInsert(suggestion),
+                  onInsert:
+                      onInsert == null ? null : () => onInsert(suggestion),
                   onCopy: onCopy == null ? null : () => onCopy(suggestion),
                 ),
               ),
@@ -1120,29 +1208,33 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
+    if (isMobile) {
+      return _buildMobileScaffold();
+    }
     final sidebarWidth = AppBreakpoints.sidebarWidth(context);
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: Colors.white,
-      drawer: isMobile ? _buildMobileDrawer() : null,
+      drawer: null,
       body: Stack(
         children: [
           Column(
-        children: [
-          // Top Header
-          BusinessCaseHeader(scaffoldKey: _scaffoldKey),
-          Expanded(
-            child: Row(
-              children: [
-                DraggableSidebar(
-                  openWidth: sidebarWidth,
-                  child: const InitiationLikeSidebar(activeItemLabel: 'Business Case Detail'),
+            children: [
+              // Top Header
+              BusinessCaseHeader(scaffoldKey: _scaffoldKey),
+              Expanded(
+                child: Row(
+                  children: [
+                    DraggableSidebar(
+                      openWidth: sidebarWidth,
+                      child: const InitiationLikeSidebar(
+                          activeItemLabel: 'Business Case Detail'),
+                    ),
+                    Expanded(child: _buildMainContent()),
+                  ],
                 ),
-                Expanded(child: _buildMainContent()),
-              ],
-            ),
-          ),
-        ],
+              ),
+            ],
           ),
           const KazAiChatBubble(),
           const AdminEditToggle(),
@@ -1155,7 +1247,8 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFD700)),
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(Color(0xFFFFD700)),
                     ),
                     SizedBox(height: 16),
                     Text(
@@ -1186,7 +1279,8 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
-          right: BorderSide(color: Colors.grey.withValues(alpha: 0.25), width: 0.8),
+          right: BorderSide(
+              color: Colors.grey.withValues(alpha: 0.25), width: 0.8),
         ),
       ),
       child: Column(
@@ -1215,7 +1309,11 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('StackOne', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black)),
+                    Text('StackOne',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black)),
                   ],
                 )
               ],
@@ -1225,32 +1323,52 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 20),
               children: [
-                _buildMenuItem(Icons.home_outlined, 'Home', onTap: () => HomeScreen.open(context)),
+                _buildMenuItem(Icons.home_outlined, 'Home',
+                    onTap: () => HomeScreen.open(context)),
                 _buildExpandableHeader(
                   Icons.flag_outlined,
                   'Initiation Phase',
                   expanded: _initiationExpanded,
-                  onTap: () => setState(() => _initiationExpanded = !_initiationExpanded),
+                  onTap: () => setState(
+                      () => _initiationExpanded = !_initiationExpanded),
                   isActive: true,
                 ),
                 if (_initiationExpanded) ...[
-                  _buildSubMenuItem('Scope Statement', onTap: _scrollToBusinessCase, isActive: true),
-                  _buildSubMenuItem('Potential Solutions', onTap: _openPotentialSolutions, disabled: !_isBusinessCaseValid),
-                  _buildSubMenuItem('Risk Identification', onTap: _openRiskIdentification, disabled: !_isBusinessCaseValid),
-                  _buildSubMenuItem('IT Considerations', onTap: _openITConsiderations, disabled: !_isBusinessCaseValid),
-                  _buildSubMenuItem('Infrastructure Considerations', onTap: _openInfrastructureConsiderations, disabled: !_isBusinessCaseValid),
-                  _buildSubMenuItem('Core Stakeholders', onTap: _openCoreStakeholders, disabled: !_isBusinessCaseValid),
-                  _buildSubMenuItem('Cost Benefit Analysis & Financial Metrics', onTap: _openCostAnalysis, disabled: !_isBusinessCaseValid),
-                  _buildSubMenuItem('Preferred Solution Analysis', onTap: _openPreferredSolutionAnalysis, disabled: !_isBusinessCaseValid),
+                  _buildSubMenuItem('Scope Statement',
+                      onTap: _scrollToBusinessCase, isActive: true),
+                  _buildSubMenuItem('Potential Solutions',
+                      onTap: _openPotentialSolutions,
+                      disabled: !_isBusinessCaseValid),
+                  _buildSubMenuItem('Risk Identification',
+                      onTap: _openRiskIdentification,
+                      disabled: !_isBusinessCaseValid),
+                  _buildSubMenuItem('IT Considerations',
+                      onTap: _openITConsiderations,
+                      disabled: !_isBusinessCaseValid),
+                  _buildSubMenuItem('Infrastructure Considerations',
+                      onTap: _openInfrastructureConsiderations,
+                      disabled: !_isBusinessCaseValid),
+                  _buildSubMenuItem('Core Stakeholders',
+                      onTap: _openCoreStakeholders,
+                      disabled: !_isBusinessCaseValid),
+                  _buildSubMenuItem('Cost Benefit Analysis & Financial Metrics',
+                      onTap: _openCostAnalysis,
+                      disabled: !_isBusinessCaseValid),
+                  _buildSubMenuItem('Preferred Solution Analysis',
+                      onTap: _openPreferredSolutionAnalysis,
+                      disabled: !_isBusinessCaseValid),
                 ],
-                _buildMenuItem(Icons.timeline, 'Initiation: Front End Planning'),
+                _buildMenuItem(
+                    Icons.timeline, 'Initiation: Front End Planning'),
                 _buildMenuItem(Icons.account_tree_outlined, 'Workflow Roadmap'),
                 _buildMenuItem(Icons.flash_on, 'Agile Roadmap'),
                 _buildMenuItem(Icons.description_outlined, 'Contracting'),
                 _buildMenuItem(Icons.shopping_cart_outlined, 'Procurement'),
                 const SizedBox(height: 20),
-                _buildMenuItem(Icons.settings_outlined, 'Settings', onTap: () => SettingsScreen.open(context)),
-                _buildMenuItem(Icons.logout_outlined, 'LogOut', onTap: () => AuthNav.signOutAndExit(context)),
+                _buildMenuItem(Icons.settings_outlined, 'Settings',
+                    onTap: () => SettingsScreen.open(context)),
+                _buildMenuItem(Icons.logout_outlined, 'LogOut',
+                    onTap: () => AuthNav.signOutAndExit(context)),
               ],
             ),
           ),
@@ -1261,104 +1379,458 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
 
   Drawer _buildMobileDrawer() {
     return Drawer(
-      child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+      width: MediaQuery.sizeOf(context).width * 0.88,
+      child: const SafeArea(
+        child: InitiationLikeSidebar(
+          activeItemLabel: 'Business Case Detail',
+        ),
+      ),
+    );
+  }
+
+  bool get _mobileDraftMode =>
+      _businessCaseController.text.trim().isNotEmpty &&
+      _wordCount(_businessCaseController.text) >= 8;
+
+  void _applyAllMobileSuggestions() {
+    final suggestions = _businessSuggestions.isEmpty
+        ? const <String>[
+            'Add specific budget constraints to clarify financial boundaries.',
+            'Define exclusion criteria to avoid scope creep in Phase 2.',
+          ]
+        : _businessSuggestions.take(2).toList(growable: false);
+    if (suggestions.isEmpty) return;
+    final base = _businessCaseController.text.trim();
+    final extra = suggestions.map((item) => '- $item').join('\n');
+    final merged = base.isEmpty ? extra : '$base\n\n$extra';
+    _businessCaseController.text = merged;
+    _onBusinessChanged(merged);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('AI refinement suggestions applied.')),
+    );
+  }
+
+  Widget _buildMobileTopBar({required bool draftMode}) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(6, 8, 8, 6),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+            icon: const Icon(Icons.menu_rounded, size: 20),
+            visualDensity: VisualDensity.compact,
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              draftMode ? 'Scope Statement' : 'Initiation Phase',
+              style: const TextStyle(
+                fontSize: 19,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827),
+              ),
+            ),
+          ),
+          CircleAvatar(
+            radius: 14,
+            backgroundColor: const Color(0xFF3B82F6),
+            child: Text(
+              FirebaseAuthService.displayNameOrEmail(fallback: 'U')
+                  .trim()
+                  .characters
+                  .first
+                  .toUpperCase(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobilePhaseMeta({required bool draftMode}) {
+    if (draftMode) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+        child: Text(
+          'INITIATION PHASE  •  PROJECT: ${ProjectDataHelper.getData(context).projectName.isEmpty ? 'PROJECT' : ProjectDataHelper.getData(context).projectName.toUpperCase()}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 9.8,
+            letterSpacing: 0.45,
+            color: Color(0xFF94A3B8),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
+    }
+    return Container(
+      margin: const EdgeInsets.fromLTRB(8, 2, 8, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+          bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+        ),
+      ),
+      child: Row(
+        children: const [
+          _MobilePhaseStep(index: '1', label: 'Initiation', active: true),
+          SizedBox(width: 10),
+          _MobilePhaseStep(index: '2', label: 'Design'),
+          SizedBox(width: 10),
+          _MobilePhaseStep(index: '3', label: 'Execution'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileActionRow({required bool draftMode}) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 12, 0, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _handleSkipPressed,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF111827),
+                backgroundColor: Colors.white,
+                side: const BorderSide(color: Color(0xFFE5E7EB)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                textStyle: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
+              child: const Text('Skip'),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: _handleNextPressed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFBBF24),
+                foregroundColor: Colors.black,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                textStyle: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                ),
+              ),
+              child: Text(draftMode ? 'Save & Next' : 'Next'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileBottomNav() {
+    return BottomAppBar(
+      shape: const CircularNotchedRectangle(),
+      notchMargin: 8,
+      elevation: 12,
+      child: SizedBox(
+        height: 62,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            const ListTile(
-              leading: CircleAvatar(
-                radius: 18,
-                backgroundColor: Color(0xFFFFD700),
-                child: Icon(Icons.person_outline, color: Colors.black87),
-              ),
-              title: Text('StackOne'),
+            _MobileBottomItem(
+              icon: Icons.home_filled,
+              label: 'Home',
+              onTap: () => HomeScreen.open(context),
             ),
-            const Divider(height: 1),
-            _buildMenuItem(Icons.home_outlined, 'Home', onTap: () => HomeScreen.open(context)),
-            _buildExpandableHeader(
-              Icons.flag_outlined,
-              'Initiation Phase',
-              expanded: _initiationExpanded,
-              onTap: () => setState(() => _initiationExpanded = !_initiationExpanded),
-              isActive: true,
+            const _MobileBottomItem(
+              icon: Icons.folder_open,
+              label: 'Projects',
+              active: true,
             ),
-            if (_initiationExpanded) ...[
-              _buildSubMenuItem(
-                'Business Case',
-                onTap: () {
-                  Navigator.of(_scaffoldKey.currentContext!).maybePop();
-                  _scrollToBusinessCase();
-                },
-                isActive: true,
-              ),
-              _buildSubMenuItem(
-                'Potential Solutions',
-                onTap: () {
-                  Navigator.of(_scaffoldKey.currentContext!).maybePop();
-                  _openPotentialSolutions();
-                },
-              ),
-              _buildSubMenuItem(
-                'Risk Identification',
-                onTap: () {
-                  Navigator.of(_scaffoldKey.currentContext!).maybePop();
-                  _openRiskIdentification();
-                },
-              ),
-              _buildSubMenuItem(
-                'IT Considerations',
-                onTap: () {
-                  Navigator.of(_scaffoldKey.currentContext!).maybePop();
-                  _openITConsiderations();
-                },
-              ),
-              _buildSubMenuItem(
-                'Infrastructure Considerations',
-                onTap: () {
-                  Navigator.of(_scaffoldKey.currentContext!).maybePop();
-                  _openInfrastructureConsiderations();
-                },
-              ),
-              _buildSubMenuItem(
-                'Core Stakeholders',
-                onTap: () {
-                  Navigator.of(_scaffoldKey.currentContext!).maybePop();
-                  _openCoreStakeholders();
-                },
-              ),
-              _buildSubMenuItem(
-                'Cost Benefit Analysis & Financial Metrics',
-                onTap: () {
-                  Navigator.of(_scaffoldKey.currentContext!).maybePop();
-                  _openCostAnalysis();
-                },
-              ),
-              _buildSubMenuItem(
-                'Preferred Solution Analysis',
-                onTap: () {
-                  Navigator.of(_scaffoldKey.currentContext!).maybePop();
-                  _openPreferredSolutionAnalysis();
-                },
-              ),
-            ],
-            _buildMenuItem(Icons.timeline, 'Initiation: Front End Planning'),
-            _buildMenuItem(Icons.account_tree_outlined, 'Workflow Roadmap'),
-            _buildMenuItem(Icons.flash_on, 'Agile Roadmap'),
-            _buildMenuItem(Icons.description_outlined, 'Contracting'),
-            _buildMenuItem(Icons.shopping_cart_outlined, 'Procurement'),
-            const Divider(height: 1),
-            _buildMenuItem(Icons.settings_outlined, 'Settings', onTap: () {
-              Navigator.of(_scaffoldKey.currentContext!).maybePop();
-              SettingsScreen.open(context);
-            }),
-            _buildMenuItem(Icons.logout_outlined, 'LogOut', onTap: () => AuthNav.signOutAndExit(context)),
+            const SizedBox(width: 36),
+            const _MobileBottomItem(
+                icon: Icons.notifications_none, label: 'Alerts'),
+            _MobileBottomItem(
+              icon: Icons.settings_outlined,
+              label: 'Settings',
+              onTap: () => SettingsScreen.open(context),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMenuItem(IconData icon, String title, {VoidCallback? onTap, bool isActive = false}) {
+  Widget _buildMobileEntryContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Notes',
+          style: TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF111827),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormattingToolbar(
+          controller: _notesController,
+          onBeforeUndo: _saveBeforeUndo,
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: TextField(
+            controller: _notesController,
+            focusNode: _notesFocusNode,
+            minLines: 3,
+            maxLines: 5,
+            onChanged: _onNotesChanged,
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              hintText: 'Input your notes here...',
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
+        const Text(
+          'Scope Statement',
+          style: TextStyle(
+            fontSize: 27,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF111827),
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          '(Describe the aim of this project)',
+          style: TextStyle(
+            fontSize: 12.5,
+            color: Colors.grey.shade600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormattingToolbar(
+          controller: _businessCaseController,
+          onBeforeUndo: _saveBeforeUndo,
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+                color: _businessInvalid ? Colors.red : const Color(0xFFE2E8F0)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: TextField(
+            controller: _businessCaseController,
+            focusNode: _businessFocusNode,
+            minLines: 6,
+            maxLines: 10,
+            onChanged: _onBusinessChanged,
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              hintText: '(Describe the aim of this project)',
+            ),
+          ),
+        ),
+        _buildMobileActionRow(draftMode: false),
+      ],
+    );
+  }
+
+  Widget _buildMobileDraftContent() {
+    final suggestions = _businessSuggestions.isEmpty
+        ? const <String>[
+            'Add specific budget constraints to clarify financial boundaries.',
+            'Define exclusion criteria to avoid scope creep in Phase 2.',
+          ]
+        : _businessSuggestions.take(2).toList(growable: false);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: const [
+                  Expanded(
+                    child: Text(
+                      'Draft Scope Statement',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16.5,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                  ),
+                  Icon(Icons.info_outline_rounded,
+                      color: Color(0xFFCBD5E1), size: 18),
+                ],
+              ),
+              const SizedBox(height: 8),
+              TextFormattingToolbar(
+                controller: _businessCaseController,
+                onBeforeUndo: _saveBeforeUndo,
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _businessCaseController,
+                focusNode: _businessFocusNode,
+                minLines: 6,
+                maxLines: 10,
+                onChanged: _onBusinessChanged,
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  hintText: 'Write your scope statement...',
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF2F4FA),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE3E8F3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'AI Refinement Suggestions',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: Color(0xFF3744A6),
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...suggestions.map(
+                (item) => Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE4E8F5)),
+                  ),
+                  child: Text(
+                    item,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      height: 1.35,
+                      color: Color(0xFF334155),
+                    ),
+                  ),
+                ),
+              ),
+              Align(
+                alignment: Alignment.center,
+                child: TextButton(
+                  onPressed: _applyAllMobileSuggestions,
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF3347C4),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  child: const Text('Apply All Suggestions'),
+                ),
+              ),
+            ],
+          ),
+        ),
+        _buildMobileActionRow(draftMode: true),
+      ],
+    );
+  }
+
+  Widget _buildMobileScaffold() {
+    final draftMode = _mobileDraftMode;
+    return Scaffold(
+      key: _scaffoldKey,
+      drawer: _buildMobileDrawer(),
+      backgroundColor: const Color(0xFFF3F5F9),
+      floatingActionButtonLocation: draftMode
+          ? FloatingActionButtonLocation.centerDocked
+          : FloatingActionButtonLocation.endFloat,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('AI assistant opened.')),
+        ),
+        backgroundColor:
+            draftMode ? const Color(0xFF111827) : const Color(0xFFFBBF24),
+        child: Icon(
+          draftMode ? Icons.add : Icons.chat_outlined,
+          color: draftMode ? Colors.white : Colors.black,
+        ),
+      ),
+      bottomNavigationBar: draftMode ? _buildMobileBottomNav() : null,
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
+              children: [
+                _buildMobileTopBar(draftMode: draftMode),
+                _buildMobilePhaseMeta(draftMode: draftMode),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 90),
+                    child: draftMode
+                        ? _buildMobileDraftContent()
+                        : _buildMobileEntryContent(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_isGeneratingAI)
+            Container(
+              color: Colors.black.withValues(alpha: 0.5),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFD700)),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuItem(IconData icon, String title,
+      {VoidCallback? onTap, bool isActive = false}) {
     final primary = Theme.of(context).colorScheme.primary;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 2),
@@ -1367,7 +1839,8 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: isActive ? primary.withValues(alpha: 0.12) : Colors.transparent,
+            color:
+                isActive ? primary.withValues(alpha: 0.12) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -1411,9 +1884,8 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: isActive
-                ? primary.withValues(alpha: 0.10)
-                : Colors.transparent,
+            color:
+                isActive ? primary.withValues(alpha: 0.10) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -1434,8 +1906,7 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
                     color: isActive
                         ? primary
                         : (disabled ? Colors.black45 : Colors.black87),
-                    fontWeight:
-                        isActive ? FontWeight.w600 : FontWeight.normal,
+                    fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -1448,7 +1919,10 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
     );
   }
 
-  Widget _buildExpandableHeader(IconData icon, String title, {required bool expanded, required VoidCallback onTap, bool isActive = false}) {
+  Widget _buildExpandableHeader(IconData icon, String title,
+      {required bool expanded,
+      required VoidCallback onTap,
+      bool isActive = false}) {
     final primary = Theme.of(context).colorScheme.primary;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 2),
@@ -1457,7 +1931,8 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: isActive ? primary.withValues(alpha: 0.12) : Colors.transparent,
+            color:
+                isActive ? primary.withValues(alpha: 0.12) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -1477,14 +1952,18 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Icon(expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: Colors.grey[700], size: 20),
+              Icon(
+                  expanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                  color: Colors.grey[700],
+                  size: 20),
             ],
           ),
         ),
       ),
     );
   }
-
 
   Widget _buildMainContent() {
     final isMobile = AppBreakpoints.isMobile(context);
@@ -1516,7 +1995,10 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: _notesInvalid ? Colors.red : Colors.grey.withValues(alpha: 0.3)),
+              border: Border.all(
+                  color: _notesInvalid
+                      ? Colors.red
+                      : Colors.grey.withValues(alpha: 0.3)),
             ),
             child: TextField(
               controller: _notesController,
@@ -1585,7 +2067,10 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: _businessInvalid ? Colors.red : Colors.grey.withValues(alpha: 0.3)),
+              border: Border.all(
+                  color: _businessInvalid
+                      ? Colors.red
+                      : Colors.grey.withValues(alpha: 0.3)),
             ),
             child: TextField(
               controller: _businessCaseController,
@@ -1759,6 +2244,99 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
   }
 }
 
+class _MobilePhaseStep extends StatelessWidget {
+  const _MobilePhaseStep({
+    required this.index,
+    required this.label,
+    this.active = false,
+  });
+
+  final String index;
+  final String label;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Row(
+        children: [
+          Container(
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              color: active ? const Color(0xFFFBBF24) : const Color(0xFFE5E7EB),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              index,
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                color: active ? Colors.black : const Color(0xFF6B7280),
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                color:
+                    active ? const Color(0xFF111827) : const Color(0xFF9CA3AF),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MobileBottomItem extends StatelessWidget {
+  const _MobileBottomItem({
+    required this.icon,
+    required this.label,
+    this.active = false,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool active;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = active ? const Color(0xFF2563EB) : const Color(0xFF94A3B8);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: SizedBox(
+        width: 58,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 17, color: color),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _RiskIdentificationTransitionDialog extends StatefulWidget {
   const _RiskIdentificationTransitionDialog();
 
@@ -1768,7 +2346,8 @@ class _RiskIdentificationTransitionDialog extends StatefulWidget {
 }
 
 class _RiskIdentificationTransitionDialogState
-    extends State<_RiskIdentificationTransitionDialog> with TickerProviderStateMixin {
+    extends State<_RiskIdentificationTransitionDialog>
+    with TickerProviderStateMixin {
   late final AnimationController _rotationController;
   late final AnimationController _pulseController;
   Timer? _dismissTimer;
@@ -1820,7 +2399,8 @@ class _RiskIdentificationTransitionDialogState
               scale: 1.0 + (_pulseController.value * 0.02),
               duration: const Duration(milliseconds: 200),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(28),
@@ -1851,7 +2431,8 @@ class _RiskIdentificationTransitionDialogState
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 16),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFFD700),
                         borderRadius: BorderRadius.circular(40),
@@ -1940,7 +2521,10 @@ class _RiskIdentificationTransitionDialogState
 }
 
 class _ShimmerText extends StatefulWidget {
-  const _ShimmerText({required this.text, required this.baseColor, required this.highlightColor});
+  const _ShimmerText(
+      {required this.text,
+      required this.baseColor,
+      required this.highlightColor});
 
   final String text;
   final Color baseColor;

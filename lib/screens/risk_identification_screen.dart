@@ -282,17 +282,18 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
         return;
       }
       final provider = ProjectDataHelper.getProvider(context);
-      
+
       // Add current values to history before regenerating
       for (int i = 0; i < _solutions.length; i++) {
         for (int r = 0; r < 3; r++) {
           if (i < _riskControllers.length && r < _riskControllers[i].length) {
             final fieldKey = 'risk_${_solutions[i].title}_$r';
-            provider.addFieldToHistory(fieldKey, _riskControllers[i][r].text, isAiGenerated: true);
+            provider.addFieldToHistory(fieldKey, _riskControllers[i][r].text,
+                isAiGenerated: true);
           }
         }
       }
-      
+
       final map = await _openAi.generateRisksForSolutions(_solutions,
           contextNotes: _notesController.text.trim());
       for (int i = 0; i < _solutions.length; i++) {
@@ -305,10 +306,10 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
           }
         }
       }
-      
+
       // Auto-save after regeneration
       await provider.saveToFirebase(checkpoint: 'risk_regenerated');
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Risks regenerated successfully')),
@@ -333,11 +334,14 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
+    if (isMobile) {
+      return _buildMobileScaffold();
+    }
     final sidebarWidth = AppBreakpoints.sidebarWidth(context);
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: Colors.white,
-      drawer: isMobile ? _buildMobileDrawer() : null,
+      drawer: null,
       body: Stack(
         children: [
           Column(
@@ -359,6 +363,290 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
           ),
           const KazAiChatBubble(),
           const AdminEditToggle(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileScaffold() {
+    final projectName = ProjectDataHelper.getData(context).projectName.trim();
+    final displayCount = _isAdmin
+        ? _solutions.length
+        : (_solutions.length > 3 ? 3 : _solutions.length);
+    return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor: const Color(0xFFF3F5F9),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+              child: Row(
+                children: [
+                  const Icon(Icons.workspaces_outline,
+                      size: 15, color: Color(0xFFFBBF24)),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'PROJECT WORKSPACE',
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF9CA3AF),
+                      letterSpacing: 0.45,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                    icon: const Icon(Icons.more_horiz, size: 18),
+                    visualDensity: VisualDensity.compact,
+                    splashRadius: 18,
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 2, 10, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      projectName.isEmpty ? 'Project Workspace' : projectName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1F2937),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEAFBF2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'INITIATION PHASE',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF16A34A),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 90),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Risk Identification',
+                      style: TextStyle(
+                        fontSize: 35,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF111827),
+                        height: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      'Identify and describe up to 3 risks for each solution defined in the previous step.',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    for (int i = 0; i < displayCount; i++) ...[
+                      _buildMobileRiskCard(i),
+                      const SizedBox(height: 10),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      drawer: _buildMobileDrawer(),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+          decoration: const BoxDecoration(
+            color: Color(0xFFF3F5F9),
+            border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _handleNextPressed,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF6B7280),
+                    backgroundColor: Colors.white,
+                    side: const BorderSide(color: Color(0xFFD1D5DB)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    textStyle: const TextStyle(
+                        fontWeight: FontWeight.w700, fontSize: 13.5),
+                  ),
+                  child: const Text('Skip'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _handleNextPressed,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFBBF24),
+                    foregroundColor: Colors.black,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    textStyle: const TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 13.5),
+                  ),
+                  child: const Text('Next'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileRiskCard(int index) {
+    final solution = _solutions[index];
+    final title = solution.title.trim().isEmpty
+        ? 'Potential Solution'
+        : solution.title.trim();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 20,
+                height: 20,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE5E7EB),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '${index + 1}',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF6B7280),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1F2937),
+                  ),
+                ),
+              ),
+              InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () => _showKazAiSuggestions(
+                    _riskControllers[index][0], index, 0, solution.title),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF2F4FA),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFDCE2F0)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.auto_awesome_rounded,
+                          size: 12, color: Color(0xFF4F46E5)),
+                      SizedBox(width: 4),
+                      Text(
+                        'AI ASSISTANCE',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF4F46E5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          for (int r = 0; r < 3; r++) ...[
+            Text(
+              'RISK #${r + 1}',
+              style: const TextStyle(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF9CA3AF),
+                letterSpacing: 0.3,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: TextField(
+                controller: _riskControllers[index][r],
+                minLines: 1,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  hintText: r == 0
+                      ? 'Potential risk...'
+                      : r == 1
+                          ? 'Another risk...'
+                          : 'Third risk...',
+                  hintStyle: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF9CA3AF),
+                  ),
+                ),
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  color: Color(0xFF374151),
+                ),
+              ),
+            ),
+            if (r < 2) const SizedBox(height: 8),
+          ],
         ],
       ),
     );
@@ -538,87 +826,10 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
 
   Drawer _buildMobileDrawer() {
     return Drawer(
-      child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          children: [
-            ListTile(
-              leading: const CircleAvatar(
-                radius: 18,
-                backgroundColor: Color(0xFFFFD700),
-                child: Icon(Icons.person_outline, color: Colors.black87),
-              ),
-              title: const Text('StackOne'),
-            ),
-            const Divider(height: 1),
-            _buildMenuItem(Icons.home_outlined, 'Home',
-                onTap: () => HomeScreen.open(context)),
-            _buildExpandableHeader(Icons.flag_outlined, 'Initiation Phase',
-                expanded: _initiationExpanded, onTap: () {
-              setState(() => _initiationExpanded = !_initiationExpanded);
-            }, isActive: true),
-            if (_initiationExpanded) ...[
-              _buildExpandableHeader(
-                  Icons.business_center_outlined, 'Business Case',
-                  expanded: _businessCaseExpanded, onTap: () {
-                setState(() => _businessCaseExpanded = !_businessCaseExpanded);
-              }, isActive: false),
-              if (_businessCaseExpanded) ...[
-                _buildNestedSubMenuItem('Potential Solutions', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openPotentialSolutions();
-                }),
-                _buildNestedSubMenuItem('Risk Identification', isActive: true),
-                _buildNestedSubMenuItem('IT Considerations', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openITConsiderations();
-                }),
-                _buildNestedSubMenuItem('Infrastructure Considerations',
-                    onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openInfrastructureConsiderations();
-                }),
-                _buildNestedSubMenuItem('Core Stakeholders', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openCoreStakeholders();
-                }),
-                _buildNestedSubMenuItem(
-                    'Cost Benefit Analysis & Financial Metrics', onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openCostAnalysis();
-                }),
-                _buildNestedSubMenuItem('Preferred Solution Analysis',
-                    onTap: () {
-                  Navigator.of(context).maybePop();
-                  _openPreferredSolutionAnalysis();
-                }),
-              ],
-              _buildExpandableHeader(
-                  Icons.timeline, 'Initiation: Front End Planning',
-                  expanded: _frontEndExpanded, onTap: () {
-                setState(() => _frontEndExpanded = !_frontEndExpanded);
-              }, isActive: false),
-              if (_frontEndExpanded) ...[
-                _buildNestedSubMenuItem('Project Requirements',
-                    onTap: () => Navigator.of(context).maybePop()),
-                _buildNestedSubMenuItem('Project Risks',
-                    onTap: () => Navigator.of(context).maybePop()),
-                _buildNestedSubMenuItem('Project Opportunities',
-                    onTap: () => Navigator.of(context).maybePop()),
-              ],
-            ],
-            _buildMenuItem(Icons.account_tree_outlined, 'Workflow Roadmap'),
-            _buildMenuItem(Icons.flash_on, 'Agile Roadmap'),
-            _buildMenuItem(Icons.description_outlined, 'Contracting'),
-            _buildMenuItem(Icons.shopping_cart_outlined, 'Procurement'),
-            const Divider(height: 1),
-            _buildMenuItem(Icons.settings_outlined, 'Settings', onTap: () {
-              Navigator.of(context).maybePop();
-              SettingsScreen.open(context);
-            }),
-            _buildMenuItem(Icons.logout_outlined, 'LogOut',
-                onTap: () => AuthNav.signOutAndExit(context)),
-          ],
+      width: MediaQuery.sizeOf(context).width * 0.88,
+      child: const SafeArea(
+        child: InitiationLikeSidebar(
+          activeItemLabel: 'Risk Identification',
         ),
       ),
     );
@@ -1241,9 +1452,11 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
       canUndo: canUndo,
       onRegenerate: () async {
         // Add current value to history
-        provider.addFieldToHistory(fieldKey, controller.text, isAiGenerated: true);
+        provider.addFieldToHistory(fieldKey, controller.text,
+            isAiGenerated: true);
         // Regenerate this specific risk
-        await _regenerateSingleRisk(controller, solutionIndex, riskIndex, solutionTitle);
+        await _regenerateSingleRisk(
+            controller, solutionIndex, riskIndex, solutionTitle);
       },
       onUndo: () async {
         final data = provider.projectData;
@@ -1308,16 +1521,17 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
         [solution],
         contextNotes: _notesController.text.trim(),
       );
-      
-      if (risks.containsKey(solution.title) && risks[solution.title]!.isNotEmpty) {
+
+      if (risks.containsKey(solution.title) &&
+          risks[solution.title]!.isNotEmpty) {
         final riskList = risks[solution.title]!;
-        final riskText = riskIndex < riskList.length 
-            ? riskList[riskIndex] 
+        final riskText = riskIndex < riskList.length
+            ? riskList[riskIndex]
             : (riskList.isNotEmpty ? riskList.first : '');
         controller.text = riskText;
-        
+
         await provider.saveToFirebase(checkpoint: 'risk_field_regenerated');
-        
+
         if (!mounted) return;
         messenger.showSnackBar(
           const SnackBar(content: Text('Risk field regenerated')),

@@ -39,6 +39,7 @@ class FrontEndPlanningRequirementsScreen extends StatefulWidget {
 
 class _FrontEndPlanningRequirementsScreenState
     extends State<FrontEndPlanningRequirementsScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _notesController = TextEditingController();
   bool _isGeneratingRequirements = false;
   bool _isRegeneratingRow = false;
@@ -62,12 +63,6 @@ class _FrontEndPlanningRequirementsScreenState
       _notesController.text = projectData.frontEndPlanning.requirementsNotes;
       _notesController.addListener(_handleNotesChanged);
       _loadSavedRequirements(projectData);
-      // Seed requirement rows from AI if empty
-      if (_rows.isEmpty ||
-          (_rows.length == 1 &&
-              _rows.first.descriptionController.text.trim().isEmpty)) {
-        _generateRequirementsFromContext();
-      }
       if (mounted) setState(() {});
     });
   }
@@ -132,7 +127,7 @@ class _FrontEndPlanningRequirementsScreenState
             );
           }
         }
-        
+
         setState(() {
           _rows
             ..clear()
@@ -142,7 +137,7 @@ class _FrontEndPlanningRequirementsScreenState
               r.descriptionController.text = requirementText;
               r.commentsController.text = '';
               r.selectedType = (e.value['requirementType'] ?? '').toString();
-              
+
               // Track new AI-generated content
               if (requirementText.isNotEmpty) {
                 provider.addFieldToHistory(
@@ -151,7 +146,7 @@ class _FrontEndPlanningRequirementsScreenState
                   isAiGenerated: true,
                 );
               }
-              
+
               return r;
             }));
           _isGeneratingRequirements = false;
@@ -198,7 +193,7 @@ class _FrontEndPlanningRequirementsScreenState
       final row = _rows[index];
       final provider = ProjectDataHelper.getProvider(context);
       final fieldKey = 'fep_requirement_${row.number}_description';
-      
+
       // Track history before regenerating
       if (row.descriptionController.text.trim().isNotEmpty) {
         provider.addFieldToHistory(
@@ -207,10 +202,10 @@ class _FrontEndPlanningRequirementsScreenState
           isAiGenerated: true,
         );
       }
-      
+
       row.aiUndoText = row.descriptionController.text;
       row.descriptionController.text = nextText;
-      
+
       // Track new AI-generated content
       if (nextText.isNotEmpty) {
         provider.addFieldToHistory(
@@ -219,7 +214,7 @@ class _FrontEndPlanningRequirementsScreenState
           isAiGenerated: true,
         );
       }
-      
+
       _commitAutoSave(showSnack: false);
       // Persist so the regenerated version is what Firestore gets.
       await provider.saveToFirebase(checkpoint: 'fep_requirements');
@@ -246,14 +241,14 @@ class _FrontEndPlanningRequirementsScreenState
     final row = _rows[index];
     final provider = ProjectDataHelper.getProvider(context);
     final fieldKey = 'fep_requirement_${row.number}_description';
-    
+
     // Try provider's undo first, then fallback to local aiUndoText
     final data = provider.projectData;
     final previousValue = data.undoField(fieldKey);
     final previous = previousValue ?? row.aiUndoText;
-    
+
     if (previous == null || previous.isEmpty) return;
-    
+
     row.descriptionController.text = previous;
     row.aiUndoText = null;
     _commitAutoSave(showSnack: false);
@@ -275,6 +270,11 @@ class _FrontEndPlanningRequirementsScreenState
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = AppBreakpoints.isMobile(context);
+    if (isMobile) {
+      return _buildMobileScaffold(context);
+    }
+
     return Scaffold(
       // Ensure white background as requested
       backgroundColor: Colors.white,
@@ -343,7 +343,9 @@ class _FrontEndPlanningRequirementsScreenState
                                   // Page-level regenerate button
                                   PageRegenerateAllButton(
                                     onRegenerateAll: () async {
-                                      final confirmed = await showRegenerateAllConfirmation(context);
+                                      final confirmed =
+                                          await showRegenerateAllConfirmation(
+                                              context);
                                       if (confirmed && mounted) {
                                         await _generateRequirementsFromContext();
                                       }
@@ -390,50 +392,492 @@ class _FrontEndPlanningRequirementsScreenState
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
-      child: Table(
-        columnWidths: const {
-          0: FixedColumnWidth(70),
-          1: FlexColumnWidth(2.5),
-          2: FixedColumnWidth(220),
-          3: FlexColumnWidth(2.5),
-          4: FixedColumnWidth(60),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final minTableWidth =
+              constraints.maxWidth > 1320 ? constraints.maxWidth : 1320.0;
+
+          return Scrollbar(
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: minTableWidth),
+                child: Table(
+                  columnWidths: const {
+                    0: FixedColumnWidth(70),
+                    1: FlexColumnWidth(2.5),
+                    2: FixedColumnWidth(220),
+                    3: FlexColumnWidth(2.5),
+                    4: FixedColumnWidth(60),
+                  },
+                  border: TableBorder(
+                    horizontalInside: border,
+                    verticalInside: border,
+                    top: border,
+                    bottom: border,
+                    left: border,
+                    right: border,
+                  ),
+                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                  children: [
+                    TableRow(
+                      decoration: const BoxDecoration(color: Color(0xFFF9FAFB)),
+                      children: [
+                        _th('No', headerStyle),
+                        _th('Requirement', headerStyle),
+                        _th('Requirement type', headerStyle),
+                        _th('Comments', headerStyle),
+                        _th('', headerStyle), // Empty header for delete column
+                      ],
+                    ),
+                    ..._rows.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final row = entry.value;
+                      final isRowLoading =
+                          _isRegeneratingRow && _regeneratingRowIndex == index;
+                      return row.buildRow(
+                        context,
+                        index,
+                        _deleteRow,
+                        isRegenerating: isRowLoading,
+                        onRegenerate: () => _regenerateRequirementRow(index),
+                        onUndo: () async => await _undoRequirementRow(index),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ),
+          );
         },
-        border: TableBorder(
-          horizontalInside: border,
-          verticalInside: border,
-          top: border,
-          bottom: border,
-          left: border,
-          right: border,
+      ),
+    );
+  }
+
+  Widget _buildMobileScaffold(BuildContext context) {
+    final projectData = ProjectDataHelper.getData(context);
+    final projectName = projectData.projectName.trim().isEmpty
+        ? 'Project Workspace'
+        : projectData.projectName.trim();
+
+    return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor: const Color(0xFFF5F6F8),
+      drawer: Drawer(
+        width: MediaQuery.sizeOf(context).width * 0.88,
+        child: const SafeArea(
+          child: InitiationLikeSidebar(activeItemLabel: 'Project Requirements'),
         ),
-        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-        children: [
-          TableRow(
-            decoration: const BoxDecoration(color: Color(0xFFF9FAFB)),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 10, 6),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.maybePop(context),
+                    icon:
+                        const Icon(Icons.arrow_back_ios_new_rounded, size: 17),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'Front End Planning',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => _scaffoldKey.currentState?.openDrawer(),
+                    borderRadius: BorderRadius.circular(20),
+                    child: const CircleAvatar(
+                      radius: 13,
+                      backgroundColor: Color(0xFF2563EB),
+                      child: Text(
+                        'C',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(12, 2, 12, 110),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'PROJECT WORKSPACE',
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF9CA3AF),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      projectName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 30,
+                        height: 1.0,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'INTERNAL NOTES',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF9CA3AF),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          TextField(
+                            controller: _notesController,
+                            minLines: 2,
+                            maxLines: 4,
+                            onChanged: (_) =>
+                                _scheduleAutoSave(showSnack: false),
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              hintText:
+                                  'Add context or notes for these requirements...',
+                              hintStyle: TextStyle(color: Color(0xFFB6BDC8)),
+                            ),
+                            style: const TextStyle(
+                                fontSize: 12.5, color: Color(0xFF374151)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Text(
+                          'REQUIREMENTS',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF9CA3AF),
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${_rows.length} Items',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ..._rows.asMap().entries.map(
+                          (entry) => Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _buildMobileRequirementCard(
+                                context, entry.key, entry.value),
+                          ),
+                        ),
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        setState(() => _rows.add(_createRow(_rows.length + 1)));
+                        _scheduleAutoSave(showSnack: false);
+                      },
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text(
+                        'Add Requirement',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF374151),
+                        side: const BorderSide(color: Color(0xFFD1D5DB)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          child: Row(
             children: [
-              _th('No', headerStyle),
-              _th('Requirement', headerStyle),
-              _th('Requirement type', headerStyle),
-              _th('Comments', headerStyle),
-              _th('', headerStyle), // Empty header for delete column
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _isGeneratingRequirements
+                      ? null
+                      : _generateRequirementsFromContext,
+                  icon: _isGeneratingRequirements
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.auto_awesome_rounded, size: 16),
+                  label: const Text(
+                    'AI Insights',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF2563EB),
+                    side: const BorderSide(color: Color(0xFFBFDBFE)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _handleSubmit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF4B400),
+                    foregroundColor: Colors.black,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                  ),
+                  child: const Text(
+                    'Submit Requirements',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
             ],
           ),
-          ..._rows.asMap().entries.map((entry) {
-            final index = entry.key;
-            final row = entry.value;
-            final isRowLoading =
-                _isRegeneratingRow && _regeneratingRowIndex == index;
-            return row.buildRow(
-              context,
-              index,
-              _deleteRow,
-              isRegenerating: isRowLoading,
-              onRegenerate: () => _regenerateRequirementRow(index),
-              onUndo: () async => await _undoRequirementRow(index),
-            );
-          }),
-        ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildMobileRequirementCard(
+      BuildContext context, int index, _RequirementRow row) {
+    final typeLabel = (row.selectedType ?? '').trim().isEmpty
+        ? 'GENERAL'
+        : (row.selectedType ?? '').trim().toUpperCase();
+    final title = row.descriptionController.text.trim().isEmpty
+        ? 'Tap to add requirement'
+        : row.descriptionController.text.trim();
+    final hashTag = row.commentsController.text.trim().isEmpty
+        ? '#n/a'
+        : '#${row.commentsController.text.trim().replaceAll(' ', '_')}';
+
+    return InkWell(
+      onTap: () => _openMobileRequirementEditor(context, index, row),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFECFDF5),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    typeLabel,
+                    style: const TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF059669),
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: () =>
+                      _openMobileRequirementEditor(context, index, row),
+                  icon: const Icon(Icons.edit_outlined,
+                      size: 16, color: Color(0xFF9CA3AF)),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 21,
+                height: 1.1,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1F2937),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              hashTag,
+              style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openMobileRequirementEditor(
+      BuildContext context, int index, _RequirementRow row) async {
+    final descriptionController =
+        TextEditingController(text: row.descriptionController.text);
+    final commentsController =
+        TextEditingController(text: row.commentsController.text);
+    String? selectedType = row.selectedType;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (sheetContext) {
+        final inset = MediaQuery.of(sheetContext).viewInsets.bottom;
+        return Padding(
+          padding: EdgeInsets.fromLTRB(16, 12, 16, inset + 14),
+          child: StatefulBuilder(
+            builder: (context, setLocalState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Edit Requirement',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: descriptionController,
+                    minLines: 2,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Requirement',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: const Color(0xFFD1D5DB)),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedType,
+                        hint: const Text('Requirement Type'),
+                        isExpanded: true,
+                        items: const [
+                          'Technical',
+                          'Regulatory',
+                          'Functional',
+                          'Operational',
+                          'Non-Functional',
+                          'Business',
+                          'Stakeholder',
+                          'Solutions',
+                          'Transitional',
+                          'Other'
+                        ]
+                            .map((value) => DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(value),
+                                ))
+                            .toList(),
+                        onChanged: (value) =>
+                            setLocalState(() => selectedType = value),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: commentsController,
+                    decoration: const InputDecoration(
+                      labelText: 'Tag / comments',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(sheetContext),
+                        child: const Text('Cancel'),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () {
+                          if (index >= 0 && index < _rows.length) {
+                            setState(() {
+                              row.descriptionController.text =
+                                  descriptionController.text;
+                              row.commentsController.text =
+                                  commentsController.text;
+                              row.selectedType = selectedType;
+                            });
+                            _scheduleAutoSave(showSnack: false);
+                          }
+                          Navigator.pop(sheetContext);
+                        },
+                        child: const Text('Save'),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -584,8 +1028,6 @@ class _FrontEndPlanningRequirementsScreenState
         ),
       );
   }
-
-
 }
 
 class _RequirementRow {
@@ -657,7 +1099,10 @@ class _RequirementRow {
                       child: IconButton(
                         onPressed: (aiUndoText != null) ? onUndo : null,
                         icon: Icon(Icons.undo,
-                            size: 18, color: aiUndoText != null ? const Color(0xFF6B7280) : Colors.grey.shade300),
+                            size: 18,
+                            color: aiUndoText != null
+                                ? const Color(0xFF6B7280)
+                                : Colors.grey.shade300),
                         padding: const EdgeInsets.all(6),
                         constraints:
                             const BoxConstraints(minWidth: 36, minHeight: 36),

@@ -60,6 +60,8 @@ class ProjectDataModel {
 
   List<String> opportunities;
   List<ProjectActivity> projectActivities;
+  List<ProjectActivity> customProjectActivities;
+  List<String> hiddenProjectActivityIds;
 
   // Project Charter (editable in Project Charter screen)
   String charterAssumptions;
@@ -220,6 +222,8 @@ class ProjectDataModel {
     List<List<WorkItem>>? goalWorkItems,
     List<WorkItem>? wbsTree,
     List<ProjectActivity>? projectActivities,
+    List<ProjectActivity>? customProjectActivities,
+    List<String>? hiddenProjectActivityIds,
     List<IssueLogItem>? issueLogItems,
     List<LessonRecord>? lessonsLearned,
     List<Map<String, dynamic>>? technologyDefinitions,
@@ -271,6 +275,8 @@ class ProjectDataModel {
         goalWorkItems = goalWorkItems ?? List.generate(3, (_) => []),
         wbsTree = wbsTree ?? [],
         projectActivities = projectActivities ?? [],
+        customProjectActivities = customProjectActivities ?? [],
+        hiddenProjectActivityIds = hiddenProjectActivityIds ?? [],
         issueLogItems = issueLogItems ?? [],
         lessonsLearned = lessonsLearned ?? [],
         technologyDefinitions = technologyDefinitions ?? [],
@@ -354,6 +360,8 @@ class ProjectDataModel {
     List<List<WorkItem>>? goalWorkItems,
     List<WorkItem>? wbsTree,
     List<ProjectActivity>? projectActivities,
+    List<ProjectActivity>? customProjectActivities,
+    List<String>? hiddenProjectActivityIds,
     List<IssueLogItem>? issueLogItems,
     List<LessonRecord>? lessonsLearned,
     FrontEndPlanningData? frontEndPlanning,
@@ -443,6 +451,10 @@ class ProjectDataModel {
       goalWorkItems: goalWorkItems ?? this.goalWorkItems,
       wbsTree: wbsTree ?? this.wbsTree,
       projectActivities: projectActivities ?? this.projectActivities,
+      customProjectActivities:
+          customProjectActivities ?? this.customProjectActivities,
+      hiddenProjectActivityIds:
+          hiddenProjectActivityIds ?? this.hiddenProjectActivityIds,
       issueLogItems: issueLogItems ?? this.issueLogItems,
       lessonsLearned: lessonsLearned ?? this.lessonsLearned,
       technologyDefinitions:
@@ -544,6 +556,9 @@ class ProjectDataModel {
       'goalWorkItems': flattenedWorkItems,
       'wbsTree': wbsTree.map((item) => item.toJson()).toList(),
       'projectActivities': projectActivities.map((x) => x.toJson()).toList(),
+      'customProjectActivities':
+          customProjectActivities.map((x) => x.toJson()).toList(),
+      'hiddenProjectActivityIds': hiddenProjectActivityIds,
       'issueLogItems': issueLogItems.map((item) => item.toJson()).toList(),
       'lessonsLearned': lessonsLearned.map((l) => l.toJson()).toList(),
       'technologyDefinitions': technologyDefinitions,
@@ -759,6 +774,12 @@ class ProjectDataModel {
       wbsTree: safeParseList('wbsTree', WorkItem.fromJson),
       projectActivities:
           safeParseList('projectActivities', ProjectActivity.fromJson),
+      customProjectActivities:
+          safeParseList('customProjectActivities', ProjectActivity.fromJson),
+      hiddenProjectActivityIds: (json['hiddenProjectActivityIds'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
       issueLogItems: safeParseList('issueLogItems', IssueLogItem.fromJson),
       lessonsLearned: safeParseList('lessonsLearned', LessonRecord.fromJson),
       technologyDefinitions: (json['technologyDefinitions'] as List?)

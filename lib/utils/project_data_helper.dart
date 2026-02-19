@@ -183,6 +183,31 @@ class ProjectDataHelper {
     );
   }
 
+  static List<String> _formatInterfaceEntriesForContext(
+      List<InterfaceEntry> entries) {
+    final formatted = <String>[];
+    for (final entry in entries) {
+      final boundary = entry.boundary.trim().isNotEmpty
+          ? entry.boundary.trim()
+          : 'Unnamed interface';
+      final details = [
+        if (entry.owner.trim().isNotEmpty) 'Owner: ${entry.owner.trim()}',
+        if (entry.cadence.trim().isNotEmpty)
+          'Cadence: ${entry.cadence.trim()}',
+        if (entry.risk.trim().isNotEmpty) 'Risk: ${entry.risk.trim()}',
+        if (entry.status.trim().isNotEmpty)
+          'Status: ${entry.status.trim()}',
+        if (entry.lastSync.trim().isNotEmpty)
+          'Last sync: ${entry.lastSync.trim()}',
+        if (entry.notes.trim().isNotEmpty) 'Notes: ${entry.notes.trim()}',
+      ].join(' | ');
+      final entryText =
+          details.isNotEmpty ? '$boundary | $details' : boundary;
+      formatted.add(entryText);
+    }
+    return formatted;
+  }
+
   static String buildFepContext(ProjectDataModel data, {String? sectionLabel}) {
     final buf = StringBuffer();
     void w(String label, String? value) {
@@ -266,6 +291,16 @@ class ProjectDataHelper {
     w('Front End Planning – Technology', fep.technology);
     w('Front End Planning – Personnel', fep.personnel);
     w('Front End Planning – Infrastructure', fep.infrastructure);
+
+    final interfaceEntriesContext =
+        _formatInterfaceEntriesForContext(data.interfaceEntries);
+    if (interfaceEntriesContext.isNotEmpty) {
+      buf.writeln('Interface Register:');
+      for (final entry in interfaceEntriesContext) {
+        buf.writeln('- $entry');
+      }
+      buf.writeln();
+    }
 
     if ((sectionLabel ?? '').isNotEmpty) {
       buf.writeln('Target Section: ${sectionLabel!.trim()}');
@@ -431,6 +466,8 @@ class ProjectDataHelper {
     w('Front End Planning – Personnel', fep.personnel);
     w('Front End Planning – Infrastructure', fep.infrastructure);
     w('Front End Planning – Contracts', fep.contracts);
+    wList('Interface Register',
+        _formatInterfaceEntriesForContext(data.interfaceEntries));
 
     if (data.teamMembers.isNotEmpty) {
       final items = data.teamMembers.map((m) {

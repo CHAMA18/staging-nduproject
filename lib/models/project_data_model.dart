@@ -92,6 +92,7 @@ class ProjectDataModel {
   List<PlanningGoal> planningGoals;
   List<Milestone> keyMilestones;
   Map<String, String> planningNotes;
+  List<InterfaceEntry> interfaceEntries;
 
   // Work Breakdown Structure Data
   String? wbsCriteriaA;
@@ -212,6 +213,7 @@ class ProjectDataModel {
     List<PlanningGoal>? planningGoals,
     List<Milestone>? keyMilestones,
     Map<String, String>? planningNotes,
+    List<InterfaceEntry>? interfaceEntries,
     this.wbsCriteriaA,
     this.wbsCriteriaB,
     List<String>? assumptions,
@@ -272,6 +274,7 @@ class ProjectDataModel {
             List.generate(3, (i) => PlanningGoal(goalNumber: i + 1)),
         keyMilestones = keyMilestones ?? [],
         planningNotes = planningNotes ?? {},
+        interfaceEntries = interfaceEntries ?? [],
         goalWorkItems = goalWorkItems ?? List.generate(3, (_) => []),
         wbsTree = wbsTree ?? [],
         projectActivities = projectActivities ?? [],
@@ -403,6 +406,7 @@ class ProjectDataModel {
     List<PlanningDashboardItem>? outOfScopeItems,
     List<PlanningDashboardItem>? assumptionItems,
     List<PlanningDashboardItem>? constraintItems,
+    List<InterfaceEntry>? interfaceEntries,
   }) {
     return ProjectDataModel(
       projectName: projectName ?? this.projectName,
@@ -446,6 +450,7 @@ class ProjectDataModel {
       planningGoals: planningGoals ?? this.planningGoals,
       keyMilestones: keyMilestones ?? this.keyMilestones,
       planningNotes: planningNotes ?? this.planningNotes,
+      interfaceEntries: interfaceEntries ?? this.interfaceEntries,
       wbsCriteriaA: wbsCriteriaA ?? this.wbsCriteriaA,
       wbsCriteriaB: wbsCriteriaB ?? this.wbsCriteriaB,
       goalWorkItems: goalWorkItems ?? this.goalWorkItems,
@@ -551,6 +556,7 @@ class ProjectDataModel {
       'planningGoals': planningGoals.map((g) => g.toJson()).toList(),
       'keyMilestones': keyMilestones.map((m) => m.toJson()).toList(),
       'planningNotes': planningNotes,
+      'interfaceEntries': interfaceEntries.map((entry) => entry.toJson()).toList(),
       'wbsCriteriaA': wbsCriteriaA,
       'wbsCriteriaB': wbsCriteriaB,
       'goalWorkItems': flattenedWorkItems,
@@ -768,6 +774,8 @@ class ProjectDataModel {
                   (key, value) => MapEntry(key.toString(), value.toString())),
             )
           : {},
+      interfaceEntries:
+          safeParseList('interfaceEntries', InterfaceEntry.fromJson),
       wbsCriteriaA: json['wbsCriteriaA']?.toString(),
       wbsCriteriaB: json['wbsCriteriaB']?.toString(),
       goalWorkItems: reconstructedGoalWorkItems,
@@ -5209,6 +5217,73 @@ class LaunchPhaseData {
       launchPlan: json['launchPlan'] ?? '',
       goNoGoCriteria: json['goNoGoCriteria'] ?? '',
       postLaunchReview: json['postLaunchReview'] ?? '',
+    );
+  }
+}
+
+class InterfaceEntry {
+  final String id;
+  final String boundary;
+  final String owner;
+  final String cadence;
+  final String risk;
+  final String status;
+  final String lastSync;
+  final String notes;
+
+  InterfaceEntry({
+    String? id,
+    this.boundary = '',
+    this.owner = '',
+    this.cadence = '',
+    this.risk = '',
+    this.status = '',
+    this.lastSync = '',
+    this.notes = '',
+  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+
+  InterfaceEntry copyWith({
+    String? boundary,
+    String? owner,
+    String? cadence,
+    String? risk,
+    String? status,
+    String? lastSync,
+    String? notes,
+  }) {
+    return InterfaceEntry(
+      id: id,
+      boundary: boundary ?? this.boundary,
+      owner: owner ?? this.owner,
+      cadence: cadence ?? this.cadence,
+      risk: risk ?? this.risk,
+      status: status ?? this.status,
+      lastSync: lastSync ?? this.lastSync,
+      notes: notes ?? this.notes,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'boundary': boundary,
+        'owner': owner,
+        'cadence': cadence,
+        'risk': risk,
+        'status': status,
+        'lastSync': lastSync,
+        'notes': notes,
+      };
+
+  factory InterfaceEntry.fromJson(Map<String, dynamic> json) {
+    return InterfaceEntry(
+      id: json['id']?.toString(),
+      boundary: json['boundary']?.toString() ?? '',
+      owner: json['owner']?.toString() ?? '',
+      cadence: json['cadence']?.toString() ?? '',
+      risk: json['risk']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
+      lastSync: json['lastSync']?.toString() ?? '',
+      notes: json['notes']?.toString() ?? '',
     );
   }
 }

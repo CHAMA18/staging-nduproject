@@ -370,7 +370,7 @@ class _FrontEndPlanningRequirementsScreenState
                   const Positioned(
                     right: 24,
                     bottom: 90,
-                    child: KazAiChatBubble(),
+                    child: KazAiChatBubble(positioned: false),
                   ),
                 ],
               ),

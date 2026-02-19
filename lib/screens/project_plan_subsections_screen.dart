@@ -149,7 +149,9 @@ class _ProjectPlanSectionScreen extends StatelessWidget {
                     ),
                   ),
                   const Positioned(
-                      right: 24, bottom: 24, child: KazAiChatBubble()),
+                      right: 24,
+                      bottom: 24,
+                      child: KazAiChatBubble(positioned: false)),
                 ],
               ),
             ),
@@ -240,7 +242,8 @@ class _UserChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final displayName = FirebaseAuthService.displayNameOrEmail(fallback: 'User');
+    final displayName =
+        FirebaseAuthService.displayNameOrEmail(fallback: 'User');
     final email = user?.email ?? '';
 
     return StreamBuilder<bool>(
@@ -261,11 +264,18 @@ class _UserChip extends StatelessWidget {
               CircleAvatar(
                 radius: 16,
                 backgroundColor: const Color(0xFFE5E7EB),
-                backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
+                backgroundImage: user?.photoURL != null
+                    ? NetworkImage(user!.photoURL!)
+                    : null,
                 child: user?.photoURL == null
                     ? Text(
-                        displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+                        displayName.isNotEmpty
+                            ? displayName[0].toUpperCase()
+                            : 'U',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151)),
                       )
                     : null,
               ),
@@ -274,12 +284,17 @@ class _UserChip extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(displayName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                  Text(role, style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280))),
+                  Text(displayName,
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600)),
+                  Text(role,
+                      style: const TextStyle(
+                          fontSize: 10, color: Color(0xFF6B7280))),
                 ],
               ),
               const SizedBox(width: 6),
-              const Icon(Icons.keyboard_arrow_down, size: 18, color: Color(0xFF9CA3AF)),
+              const Icon(Icons.keyboard_arrow_down,
+                  size: 18, color: Color(0xFF9CA3AF)),
             ],
           ),
         );

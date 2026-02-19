@@ -31,6 +31,6 @@ flutter pub get
 # 6. Build the web app
 echo "🏗️ Building Web App (User interface)..."
 # Using the same target as in your deploy.sh
-flutter build web --target=lib/main.dart --release
+flutter build web --target=lib/main.dart --release --pwa-strategy=none
 
 echo "✅ Build completed successfully!"

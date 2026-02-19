@@ -9,7 +9,6 @@ import 'package:ndu_project/utils/text_sanitizer.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
 import 'package:ndu_project/models/procurement/procurement_models.dart';
-import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/services/procurement_service.dart';
 import 'package:ndu_project/widgets/procurement_tables.dart';
 import 'package:ndu_project/widgets/procurement_dialogs.dart';
@@ -20,7 +19,6 @@ import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/widgets/responsive.dart'; // Added for AppBreakpoints
-import 'package:intl/intl.dart';
 
 /// Front End Planning – Contracting screen (formerly Contract & Vendor Quotes).
 /// Updated to use the standard FEP layout with DraggableSidebar and FrontEndPlanningHeader.
@@ -45,14 +43,6 @@ class _FrontEndPlanningContractVendorQuotesScreenState
   static const int _initialItemsLimit = 40;
   static const int _loadMoreStep = 40;
   static const int _maxAiImportRows = 25;
-  final NumberFormat _currency = NumberFormat.currency(
-    symbol: '\$',
-    decimalDigits: 0,
-  );
-  final NumberFormat _compactCurrency = NumberFormat.compactCurrency(
-    symbol: '\$',
-    decimalDigits: 1,
-  );
 
   final TextEditingController _notesController = TextEditingController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -206,6 +196,115 @@ class _FrontEndPlanningContractVendorQuotesScreenState
     }
   }
 
+  Future<void> _openEditItemDialog(ProcurementItemModel item) async {
+    final categoryOptions = const [
+      'Materials',
+      'Equipment',
+      'Services',
+      'IT Equipment',
+      'Construction Services',
+      'Furniture',
+      'Security',
+      'Logistics',
+      'Consulting',
+      'Labor'
+    ];
+
+    final result = await showDialog<ProcurementItemModel>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (dialogContext) {
+        return AddItemDialog(
+          contextChips: _buildDialogContextChips(),
+          categoryOptions: categoryOptions,
+          initialItem: item,
+        );
+      },
+    );
+
+    if (result == null) return;
+
+    try {
+      await ProcurementService.updateItem(item.projectId, item.id, {
+        'name': result.name,
+        'description': result.description,
+        'category': result.category,
+        'status': result.status.name,
+        'priority': result.priority.name,
+        'budget': result.budget,
+        'spent': result.spent,
+        'estimatedDelivery': result.estimatedDelivery,
+        'actualDelivery': result.actualDelivery,
+        'progress': result.progress,
+        'vendorId': result.vendorId,
+        'contractId': result.contractId,
+        'events': result.events.map((e) => e.toJson()).toList(),
+        'notes': result.notes,
+        'projectPhase': result.projectPhase,
+        'responsibleMember': result.responsibleMember,
+        'comments': result.comments,
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Procurement item updated.')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error updating item: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating item: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteItem(ProcurementItemModel item) async {
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Delete procurement item?'),
+            content: Text(
+              'This will permanently remove "${item.name}" from this project.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text(
+                  'Delete',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!confirmed) return;
+
+    try {
+      await ProcurementService.deleteItem(item.projectId, item.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Procurement item deleted.')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error deleting item: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting item: $e')),
+        );
+      }
+    }
+  }
+
   List<Widget> _buildDialogContextChips() {
     final data = ProjectDataHelper.getData(context);
     final chips = <Widget>[
@@ -350,13 +449,18 @@ class _FrontEndPlanningContractVendorQuotesScreenState
   }
 
   void _syncContractNotes() {
-    if (!mounted) return;
+    if (!mounted || !_isNotesSyncReady) return;
     final provider = ProjectDataHelper.getProvider(context);
+    final nextNotes = _notesController.text.trim();
+    final currentNotes =
+        provider.projectData.frontEndPlanning.contractVendorQuotes.trim();
+    if (nextNotes == currentNotes) return;
+
     provider.updateField(
       (data) => data.copyWith(
         frontEndPlanning: ProjectDataHelper.updateFEPField(
           current: data.frontEndPlanning,
-          contractVendorQuotes: _notesController.text.trim(),
+          contractVendorQuotes: nextNotes,
         ),
       ),
     );
@@ -703,7 +807,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
       key: _scaffoldKey,
       backgroundColor: Colors.white,
       drawer: null,
-      floatingActionButton: const KazAiChatBubble(),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: Stack(
         children: [
           Row(
@@ -842,7 +946,11 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                                       crossAxisAlignment:
                                           CrossAxisAlignment.stretch,
                                       children: [
-                                        ProcurementTable(items: items),
+                                        ProcurementTable(
+                                          items: items,
+                                          onEdit: _openEditItemDialog,
+                                          onDelete: _deleteItem,
+                                        ),
                                         if (items.length >= _itemQueryLimit)
                                           Align(
                                             alignment: Alignment.centerRight,
@@ -891,10 +999,6 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                                     ],
                                   ),
                                 ),
-
-                                // New Cost Basis Section (Placeholder)
-                                const SizedBox(height: 60),
-                                _buildCostBasisPlaceholder(),
                                 const SizedBox(height: 120), // Bottom padding
                               ],
                             ),
@@ -907,424 +1011,9 @@ class _FrontEndPlanningContractVendorQuotesScreenState
               ),
             ],
           ),
-          // AI Bottom Overlay
-          _BottomOverlay(onNext: () async {
-            await _navigateToProcurement();
-          }),
         ],
       ),
-    );
-  }
-
-  Widget _buildCostBasisPlaceholder() {
-    final projectData = ProjectDataHelper.getData(context, listen: true);
-    final costData = projectData.costAnalysisData;
-
-    if (costData == null) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(28),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF0F2A48), Color(0xFF173E69)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFF2E5A8B)),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x1A0F172A),
-              blurRadius: 12,
-              offset: Offset(0, 6),
-            ),
-          ],
-        ),
-        child: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.insights_outlined,
-                    color: Color(0xFFFACF3A), size: 20),
-                SizedBox(width: 10),
-                Text(
-                  'Cost Basis Intelligence',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 14),
-            Text(
-              'No Cost Basis data found yet. Complete Cost Analysis to surface live contracting financials here.',
-              style: TextStyle(
-                color: Color(0xFFDCE7F6),
-                fontSize: 14,
-                height: 1.5,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    final preferredSolution = projectData.potentialSolutions.firstWhere(
-      (solution) => solution.id == projectData.preferredSolutionId,
-      orElse: () => PotentialSolution.empty(id: '', number: 0),
-    );
-
-    final preferredTitle = preferredSolution.title.trim();
-    SolutionCostData? matchedSolutionCost;
-    if (preferredTitle.isNotEmpty) {
-      for (final solutionCost in costData.solutionCosts) {
-        if (solutionCost.solutionTitle.trim() == preferredTitle) {
-          matchedSolutionCost = solutionCost;
-          break;
-        }
-      }
-    }
-
-    final selectedCostRows = matchedSolutionCost != null
-        ? matchedSolutionCost.costRows
-        : costData.solutionCosts
-            .expand((solutionCost) => solutionCost.costRows)
-            .toList();
-
-    final parsedRows = selectedCostRows
-        .map((row) => (
-              item: row.itemName.trim().isEmpty
-                  ? 'Unnamed cost item'
-                  : row.itemName.trim(),
-              amount: _parseCurrency(row.cost),
-            ))
-        .where((row) => row.amount > 0)
-        .toList()
-      ..sort((a, b) => b.amount.compareTo(a.amount));
-
-    final totalCost =
-        parsedRows.fold<double>(0, (sum, row) => sum + row.amount);
-    final topDrivers = parsedRows.take(4).toList();
-    final topDriverMax = topDrivers.isEmpty ? 1.0 : topDrivers.first.amount;
-
-    final totalBenefits = costData.benefitLineItems.fold<double>(
-      0,
-      (sum, item) =>
-          sum + _parseCurrency(item.unitValue) * _parseCurrency(item.units),
-    );
-    final projectValue = _parseCurrency(costData.projectValueAmount);
-    final savingsTarget = _parseCurrency(costData.savingsTarget);
-    final coverageRatio =
-        projectValue > 0 && totalCost > 0 ? (projectValue / totalCost) : 0.0;
-    final normalizedCoverage = coverageRatio.clamp(0.0, 1.0);
-    final delta = projectValue - totalCost;
-    final deltaLabel = delta >= 0 ? 'Value surplus' : 'Cost exposure';
-    final activeSolutionLabel = preferredTitle.isNotEmpty
-        ? preferredTitle
-        : matchedSolutionCost?.solutionTitle.trim().isNotEmpty == true
-            ? matchedSolutionCost!.solutionTitle.trim()
-            : 'All cost basis entries';
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0F2A48), Color(0xFF173E69)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFF2E5A8B)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x1A0F172A),
-            blurRadius: 12,
-            offset: Offset(0, 6),
-          )
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.insights_outlined,
-                  color: Color(0xFFFACF3A), size: 20),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  'Cost Basis Intelligence',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFACF3A).withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: const Color(0xFFFACF3A)),
-                ),
-                child: const Text(
-                  'Live from Cost Basis',
-                  style: TextStyle(
-                    color: Color(0xFFFCE588),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Active baseline: $activeSolutionLabel',
-            style: const TextStyle(
-              color: Color(0xFFDCE7F6),
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 18),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              _costInsightTile(
-                icon: Icons.account_balance_wallet_outlined,
-                label: 'Total Cost Basis',
-                value: _currency.format(totalCost),
-              ),
-              _costInsightTile(
-                icon: Icons.trending_up_outlined,
-                label: 'Project Value',
-                value: projectValue > 0 ? _currency.format(projectValue) : '--',
-              ),
-              _costInsightTile(
-                icon: Icons.savings_outlined,
-                label: 'Benefit Potential',
-                value: totalBenefits > 0
-                    ? _compactCurrency.format(totalBenefits)
-                    : '--',
-              ),
-              _costInsightTile(
-                icon: Icons.flag_outlined,
-                label: 'Savings Target',
-                value: savingsTarget > 0
-                    ? _compactCurrency.format(savingsTarget)
-                    : '--',
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0A223B).withValues(alpha: 0.55),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF315B86)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Text(
-                      'Cost Coverage vs Value',
-                      style: TextStyle(
-                        color: Color(0xFFDCE7F6),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      '${(coverageRatio * 100).toStringAsFixed(1)}%',
-                      style: const TextStyle(
-                        color: Color(0xFFFCE588),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: normalizedCoverage,
-                    minHeight: 8,
-                    backgroundColor: const Color(0xFF1F3E62),
-                    valueColor:
-                        const AlwaysStoppedAnimation<Color>(Color(0xFFF4C430)),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '$deltaLabel: ${_currency.format(delta.abs())}',
-                  style: const TextStyle(
-                    color: Color(0xFFDCE7F6),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (topDrivers.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            const Text(
-              'Top Cost Drivers',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 10),
-            for (final row in topDrivers) ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      row.item,
-                      style: const TextStyle(
-                        color: Color(0xFFDCE7F6),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    _compactCurrency.format(row.amount),
-                    style: const TextStyle(
-                      color: Color(0xFFFCE588),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(999),
-                child: LinearProgressIndicator(
-                  value: (row.amount / topDriverMax).clamp(0.0, 1.0),
-                  minHeight: 6,
-                  backgroundColor: const Color(0xFF1F3E62),
-                  valueColor:
-                      const AlwaysStoppedAnimation<Color>(Color(0xFF60A5FA)),
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-          ],
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _costSignalChip(
-                label:
-                    'Benefit Items: ${costData.benefitLineItems.length.toString()}',
-              ),
-              _costSignalChip(
-                label:
-                    'Basis: ${costData.basisFrequency ?? costData.trackerBasisFrequency}',
-              ),
-              if (costData.savingsTarget.trim().isNotEmpty)
-                _costSignalChip(
-                    label: 'Target: ${costData.savingsTarget.trim()}'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  double _parseCurrency(String raw) {
-    final clean = raw.replaceAll(RegExp(r'[^0-9.-]'), '');
-    return double.tryParse(clean) ?? 0;
-  }
-
-  Widget _costInsightTile({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Container(
-      width: 220,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0A223B).withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF315B86)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: const Color(0xFF93C5FD)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Color(0xFFAFC7E4),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _costSignalChip({required String label}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1B3A5C),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFF315B86)),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Color(0xFFDCE7F6),
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      bottomNavigationBar: _BottomOverlay(onNext: _navigateToProcurement),
     );
   }
 }
@@ -1336,49 +1025,70 @@ class _BottomOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      right: 24,
-      bottom: 24,
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE6F1FF),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFD7E5FF)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(Icons.auto_awesome, color: Color(0xFF2563EB)),
-                SizedBox(width: 10),
-                Text('AI',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w800, color: Color(0xFF2563EB))),
-                SizedBox(width: 12),
-                Text(
-                  'Focus on major risks associated with each potential solution.',
-                  style: TextStyle(color: Color(0xFF1F2937)),
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            top: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE6F1FF),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFD7E5FF)),
                 ),
-              ],
+                child: const Row(
+                  children: [
+                    Icon(Icons.auto_awesome, color: Color(0xFF2563EB)),
+                    SizedBox(width: 10),
+                    Text(
+                      'AI',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF2563EB),
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Focus on major risks associated with each potential solution.',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: Color(0xFF1F2937)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-          const SizedBox(width: 16),
-          ElevatedButton(
-            onPressed: onNext,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFF6C437),
-              foregroundColor: const Color(0xFF111827),
-              padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 16),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(22)),
-              elevation: 0,
+            const SizedBox(width: 16),
+            ElevatedButton(
+              onPressed: onNext,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF6C437),
+                foregroundColor: const Color(0xFF111827),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 34, vertical: 16),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(22)),
+                elevation: 0,
+              ),
+              child: const Text(
+                'Next',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
             ),
-            child: const Text('Next',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

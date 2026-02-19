@@ -32,13 +32,15 @@ class StartUpPlanningScreen extends StatelessWidget {
           children: [
             DraggableSidebar(
               openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(activeItemLabel: 'Start-Up Planning'),
+              child: const InitiationLikeSidebar(
+                  activeItemLabel: 'Start-Up Planning'),
             ),
             Expanded(
               child: Stack(
                 children: [
                   SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 24),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding, vertical: 24),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final width = constraints.maxWidth;
@@ -48,11 +50,13 @@ class StartUpPlanningScreen extends StatelessWidget {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _TopHeader(onBack: () => Navigator.maybePop(context)),
+                            _TopHeader(
+                                onBack: () => Navigator.maybePop(context)),
                             const SizedBox(height: 12),
                             const Text(
                               'Plan readiness, go-live criteria, and transition activities.',
-                              style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+                              style: TextStyle(
+                                  fontSize: 14, color: Color(0xFF6B7280)),
                             ),
                             const SizedBox(height: 20),
                             const PlanningAiNotesCard(
@@ -60,7 +64,8 @@ class StartUpPlanningScreen extends StatelessWidget {
                               sectionLabel: 'Start-Up Planning',
                               noteKey: 'planning_startup_planning_notes',
                               checkpoint: 'startup_planning',
-                              description: 'Summarize launch readiness, dependencies, and cutover approach.',
+                              description:
+                                  'Summarize launch readiness, dependencies, and cutover approach.',
                             ),
                             const SizedBox(height: 24),
                             const _ReadinessRow(),
@@ -69,8 +74,12 @@ class StartUpPlanningScreen extends StatelessWidget {
                               spacing: gap,
                               runSpacing: gap,
                               children: [
-                                SizedBox(width: halfWidth, child: const _GoLiveChecklistCard()),
-                                SizedBox(width: halfWidth, child: const _TrainingEnablementCard()),
+                                SizedBox(
+                                    width: halfWidth,
+                                    child: const _GoLiveChecklistCard()),
+                                SizedBox(
+                                    width: halfWidth,
+                                    child: const _TrainingEnablementCard()),
                               ],
                             ),
                             const SizedBox(height: 24),
@@ -80,8 +89,12 @@ class StartUpPlanningScreen extends StatelessWidget {
                               spacing: gap,
                               runSpacing: gap,
                               children: [
-                                SizedBox(width: halfWidth, child: const _HypercarePlanCard()),
-                                SizedBox(width: halfWidth, child: const _OpsHandoffCard()),
+                                SizedBox(
+                                    width: halfWidth,
+                                    child: const _HypercarePlanCard()),
+                                SizedBox(
+                                    width: halfWidth,
+                                    child: const _OpsHandoffCard()),
                               ],
                             ),
                             const SizedBox(height: 28),
@@ -89,7 +102,8 @@ class StartUpPlanningScreen extends StatelessWidget {
                               backLabel: 'Back: Interface Management',
                               nextLabel: 'Next: Deliverable Roadmap',
                               onBack: () => Navigator.of(context).maybePop(),
-                              onNext: () => DeliverablesRoadmapScreen.open(context),
+                              onNext: () =>
+                                  DeliverablesRoadmapScreen.open(context),
                             ),
                             const SizedBox(height: 40),
                           ],
@@ -97,7 +111,10 @@ class StartUpPlanningScreen extends StatelessWidget {
                       },
                     ),
                   ),
-                  const Positioned(right: 24, bottom: 24, child: KazAiChatBubble()),
+                  const Positioned(
+                      right: 24,
+                      bottom: 24,
+                      child: KazAiChatBubble(positioned: false)),
                 ],
               ),
             ),
@@ -117,13 +134,17 @@ class _TopHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _CircleIconButton(icon: Icons.arrow_back_ios_new_rounded, onTap: onBack),
+        _CircleIconButton(
+            icon: Icons.arrow_back_ios_new_rounded, onTap: onBack),
         const SizedBox(width: 12),
         const _CircleIconButton(icon: Icons.arrow_forward_ios_rounded),
         const SizedBox(width: 16),
         const Text(
           'Start-Up Planning',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+          style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827)),
         ),
         const Spacer(),
         const _UserChip(),
@@ -163,7 +184,8 @@ class _UserChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final displayName = FirebaseAuthService.displayNameOrEmail(fallback: 'User');
+    final displayName =
+        FirebaseAuthService.displayNameOrEmail(fallback: 'User');
     final email = user?.email ?? '';
 
     return StreamBuilder<bool>(
@@ -185,11 +207,18 @@ class _UserChip extends StatelessWidget {
               CircleAvatar(
                 radius: 16,
                 backgroundColor: const Color(0xFFE5E7EB),
-                backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
+                backgroundImage: user?.photoURL != null
+                    ? NetworkImage(user!.photoURL!)
+                    : null,
                 child: user?.photoURL == null
                     ? Text(
-                        displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+                        displayName.isNotEmpty
+                            ? displayName[0].toUpperCase()
+                            : 'U',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151)),
                       )
                     : null,
               ),
@@ -198,12 +227,17 @@ class _UserChip extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(displayName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                  Text(role, style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280))),
+                  Text(displayName,
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600)),
+                  Text(role,
+                      style: const TextStyle(
+                          fontSize: 10, color: Color(0xFF6B7280))),
                 ],
               ),
               const SizedBox(width: 6),
-              const Icon(Icons.keyboard_arrow_down, size: 18, color: Color(0xFF9CA3AF)),
+              const Icon(Icons.keyboard_arrow_down,
+                  size: 18, color: Color(0xFF9CA3AF)),
             ],
           ),
         );
@@ -221,17 +255,24 @@ class _ReadinessRow extends StatelessWidget {
       spacing: 16,
       runSpacing: 16,
       children: const [
-        _MetricCard(label: 'Readiness Score', value: '82%', accent: Color(0xFF10B981)),
-        _MetricCard(label: 'Open Readiness Tasks', value: '9', accent: Color(0xFFF59E0B)),
-        _MetricCard(label: 'Launch Window', value: 'Jul 8', accent: Color(0xFF2563EB)),
-        _MetricCard(label: 'Hypercare Days', value: '14', accent: Color(0xFF8B5CF6)),
+        _MetricCard(
+            label: 'Readiness Score', value: '82%', accent: Color(0xFF10B981)),
+        _MetricCard(
+            label: 'Open Readiness Tasks',
+            value: '9',
+            accent: Color(0xFFF59E0B)),
+        _MetricCard(
+            label: 'Launch Window', value: 'Jul 8', accent: Color(0xFF2563EB)),
+        _MetricCard(
+            label: 'Hypercare Days', value: '14', accent: Color(0xFF8B5CF6)),
       ],
     );
   }
 }
 
 class _MetricCard extends StatelessWidget {
-  const _MetricCard({required this.label, required this.value, required this.accent});
+  const _MetricCard(
+      {required this.label, required this.value, required this.accent});
 
   final String label;
   final String value;
@@ -250,11 +291,13 @@ class _MetricCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+          Text(label,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
           const SizedBox(height: 6),
           Text(
             value,
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: accent),
+            style: TextStyle(
+                fontSize: 20, fontWeight: FontWeight.w700, color: accent),
           ),
         ],
       ),
@@ -292,8 +335,10 @@ class _TrainingEnablementCard extends StatelessWidget {
       subtitle: 'Ensure teams are ready for launch day.',
       child: Column(
         children: const [
-          _BulletRow(text: 'Role-based training sessions scheduled for all teams.'),
-          _BulletRow(text: 'Runbooks distributed and validated with support leads.'),
+          _BulletRow(
+              text: 'Role-based training sessions scheduled for all teams.'),
+          _BulletRow(
+              text: 'Runbooks distributed and validated with support leads.'),
           _BulletRow(text: 'Internal FAQ and escalation guides published.'),
         ],
       ),
@@ -311,10 +356,14 @@ class _CutoverPlanCard extends StatelessWidget {
       subtitle: 'Sequenced steps for the go-live window.',
       child: Column(
         children: const [
-          _TimelineRow(time: 'T-48h', task: 'Freeze scope and final smoke tests'),
-          _TimelineRow(time: 'T-24h', task: 'Data migration + validation checks'),
-          _TimelineRow(time: 'T-4h', task: 'Enable monitoring + switch traffic routing'),
-          _TimelineRow(time: 'T+0', task: 'Launch announcement + live verification'),
+          _TimelineRow(
+              time: 'T-48h', task: 'Freeze scope and final smoke tests'),
+          _TimelineRow(
+              time: 'T-24h', task: 'Data migration + validation checks'),
+          _TimelineRow(
+              time: 'T-4h', task: 'Enable monitoring + switch traffic routing'),
+          _TimelineRow(
+              time: 'T+0', task: 'Launch announcement + live verification'),
           _TimelineRow(time: 'T+4h', task: 'Hypercare war room begins'),
         ],
       ),
@@ -361,7 +410,8 @@ class _OpsHandoffCard extends StatelessWidget {
 }
 
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.title, required this.subtitle, required this.child});
+  const _SectionCard(
+      {required this.title, required this.subtitle, required this.child});
 
   final String title;
   final String subtitle;
@@ -376,15 +426,22 @@ class _SectionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: const [
-          BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 6)),
+          BoxShadow(
+              color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 6)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827))),
           const SizedBox(height: 6),
-          Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280), height: 1.4)),
+          Text(subtitle,
+              style: const TextStyle(
+                  fontSize: 12, color: Color(0xFF6B7280), height: 1.4)),
           const SizedBox(height: 16),
           child,
         ],
@@ -404,9 +461,13 @@ class _ChecklistRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
-          const Icon(Icons.check_circle_outline, size: 16, color: Color(0xFF10B981)),
+          const Icon(Icons.check_circle_outline,
+              size: 16, color: Color(0xFF10B981)),
           const SizedBox(width: 8),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 12, color: Color(0xFF374151)))),
+          Expanded(
+              child: Text(text,
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFF374151)))),
         ],
       ),
     );
@@ -427,7 +488,10 @@ class _BulletRow extends StatelessWidget {
         children: [
           const Icon(Icons.circle, size: 8, color: Color(0xFF9CA3AF)),
           const SizedBox(width: 10),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 12, color: Color(0xFF374151), height: 1.4))),
+          Expanded(
+              child: Text(text,
+                  style: const TextStyle(
+                      fontSize: 12, color: Color(0xFF374151), height: 1.4))),
         ],
       ),
     );
@@ -449,8 +513,15 @@ class _TimelineRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          SizedBox(width: 60, child: Text(time, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
-          Expanded(child: Text(task, style: const TextStyle(fontSize: 12, color: Color(0xFF374151)))),
+          SizedBox(
+              width: 60,
+              child: Text(time,
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w600))),
+          Expanded(
+              child: Text(task,
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFF374151)))),
         ],
       ),
     );

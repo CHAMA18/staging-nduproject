@@ -5,40 +5,46 @@ import 'package:http/http.dart' as http;
 import 'package:ndu_project/openai/openai_config.dart';
 
 class KazAiChatBubble extends StatelessWidget {
-  const KazAiChatBubble({super.key});
+  const KazAiChatBubble({super.key, this.positioned = true});
+
+  final bool positioned;
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      bottom: 90,
-      right: 24,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _openKazAiChat(context),
-          borderRadius: BorderRadius.circular(32),
-          child: Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFFFFC812),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFFFC812).withValues(alpha: 0.4),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Icon(
-              Icons.chat_bubble_rounded,
-              color: Colors.white,
-              size: 28,
-            ),
+    final bubble = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _openKazAiChat(context),
+        borderRadius: BorderRadius.circular(32),
+        child: Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFFFFC812),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFFC812).withValues(alpha: 0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.chat_bubble_rounded,
+            color: Colors.white,
+            size: 28,
           ),
         ),
       ),
+    );
+
+    if (!positioned) return bubble;
+
+    return Positioned(
+      bottom: 90,
+      right: 24,
+      child: bubble,
     );
   }
 
@@ -49,7 +55,8 @@ class KazAiChatBubble extends StatelessWidget {
       barrierDismissible: true,
       barrierLabel: 'Close chat',
       transitionDuration: const Duration(milliseconds: 200),
-      pageBuilder: (context, animation, secondaryAnimation) => const _KazAiChatPopup(),
+      pageBuilder: (context, animation, secondaryAnimation) =>
+          const _KazAiChatPopup(),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         return FadeTransition(
           opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
@@ -84,7 +91,8 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup> {
   void initState() {
     super.initState();
     _messages.add(_ChatMessage(
-      text: 'Hi! I\'m KAZ AI, your project management assistant. How can I help you today?',
+      text:
+          'Hi! I\'m KAZ AI, your project management assistant. How can I help you today?',
       isUser: false,
       timestamp: DateTime.now(),
     ));
@@ -158,17 +166,20 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup> {
         'messages': [
           {
             'role': 'system',
-            'content': 'You are KAZ AI, a helpful project management assistant. Provide concise, actionable advice for project planning, execution, and team collaboration. Keep responses under 150 words.'
+            'content':
+                'You are KAZ AI, a helpful project management assistant. Provide concise, actionable advice for project planning, execution, and team collaboration. Keep responses under 150 words.'
           },
           {'role': 'user', 'content': userMessage},
         ],
       });
 
-      final response = await http.post(
-        uri,
-        headers: headers,
-        body: body,
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .post(
+            uri,
+            headers: headers,
+            body: body,
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 401) {
         return 'Invalid API key. Please check your OpenAI configuration.';
@@ -180,8 +191,10 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup> {
         return 'I encountered an error (${response.statusCode}). Please try again.';
       }
 
-      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-      final content = (data['choices'] as List).first['message']['content'] as String;
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content =
+          (data['choices'] as List).first['message']['content'] as String;
       return content.trim();
     } catch (e) {
       return 'I\'m having trouble connecting right now. Please try again later.';
@@ -206,7 +219,7 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup> {
     final scheme = theme.colorScheme;
     final screenSize = MediaQuery.of(context).size;
     final isSmallScreen = screenSize.width < 600;
-    
+
     final popupWidth = isSmallScreen ? screenSize.width * 0.95 : 380.0;
     final popupHeight = isSmallScreen ? screenSize.height * 0.75 : 520.0;
 
@@ -231,170 +244,190 @@ class _KazAiChatPopupState extends State<_KazAiChatPopup> {
               ],
             ),
             child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              decoration: const BoxDecoration(
-                color: Color(0xFFFFC812),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.25),
-                    ),
-                    child: Icon(Icons.psychology_rounded, color: scheme.onPrimary, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'KAZ AI',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Text(
-                          'Project Assistant',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFFC812),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded, color: Colors.white),
-                    onPressed: () => Navigator.of(context).pop(),
-                    tooltip: 'Close',
-                    iconSize: 22,
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) => _ChatBubble(
-                message: _messages[index],
-                scheme: scheme,
-                theme: theme,
-              ),
-            ),
-          ),
-          if (_isLoading)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(scheme.primary),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'KAZ AI is typing...',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurface.withValues(alpha: 0.7),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: scheme.surface.withValues(alpha: 0.95),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
-              border: Border(top: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.3))),
-            ),
-            child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _messageController,
-                      decoration: InputDecoration(
-                        hintText: 'Ask anything...',
-                        hintStyle: TextStyle(fontSize: 14, color: scheme.onSurface.withValues(alpha: 0.5)),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5)),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: BorderSide(color: scheme.primary, width: 1.5),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      ),
-                      style: const TextStyle(fontSize: 14),
-                      maxLines: null,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendMessage(),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _isLoading ? null : _sendMessage,
-                      borderRadius: BorderRadius.circular(24),
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: const BoxDecoration(
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Color(0xFFFFC812),
+                          color: Colors.white.withValues(alpha: 0.25),
                         ),
-                        child: const Icon(
-                          Icons.send_rounded,
-                          color: Colors.white,
-                          size: 20,
+                        child: Icon(Icons.psychology_rounded,
+                            color: scheme.onPrimary, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'KAZ AI',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            Text(
+                              'Project Assistant',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.white.withValues(alpha: 0.85),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded,
+                            color: Colors.white),
+                        onPressed: () => Navigator.of(context).pop(),
+                        tooltip: 'Close',
+                        iconSize: 22,
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 20),
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) => _ChatBubble(
+                      message: _messages[index],
+                      scheme: scheme,
+                      theme: theme,
                     ),
                   ),
+                ),
+                if (_isLoading)
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: scheme.surfaceContainerHighest
+                                .withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      scheme.primary),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'KAZ AI is typing...',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color:
+                                      scheme.onSurface.withValues(alpha: 0.7),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: scheme.surface.withValues(alpha: 0.95),
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                    ),
+                    border: Border(
+                        top: BorderSide(
+                            color:
+                                scheme.outlineVariant.withValues(alpha: 0.3))),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _messageController,
+                          decoration: InputDecoration(
+                            hintText: 'Ask anything...',
+                            hintStyle: TextStyle(
+                                fontSize: 14,
+                                color: scheme.onSurface.withValues(alpha: 0.5)),
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: BorderSide(
+                                  color: scheme.outlineVariant
+                                      .withValues(alpha: 0.5)),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide: BorderSide(
+                                  color: scheme.outlineVariant
+                                      .withValues(alpha: 0.5)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              borderSide:
+                                  BorderSide(color: scheme.primary, width: 1.5),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
+                          ),
+                          style: const TextStyle(fontSize: 14),
+                          maxLines: null,
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) => _sendMessage(),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _isLoading ? null : _sendMessage,
+                          borderRadius: BorderRadius.circular(24),
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Color(0xFFFFC812),
+                            ),
+                            child: const Icon(
+                              Icons.send_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
-            ),
-          ),
-            ],
             ),
           ),
         ),
@@ -434,7 +467,8 @@ class _ChatBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
-        mainAxisAlignment: message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+            message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!message.isUser) ...[
@@ -445,7 +479,8 @@ class _ChatBubble extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: Color(0xFFFFC812),
               ),
-              child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 18),
+              child: const Icon(Icons.psychology_rounded,
+                  color: Colors.white, size: 18),
             ),
             const SizedBox(width: 12),
           ],
@@ -459,10 +494,14 @@ class _ChatBubble extends StatelessWidget {
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(20),
                   topRight: const Radius.circular(20),
-                  bottomLeft: message.isUser ? const Radius.circular(20) : const Radius.circular(4),
-                  bottomRight: message.isUser ? const Radius.circular(4) : const Radius.circular(20),
+                  bottomLeft: message.isUser
+                      ? const Radius.circular(20)
+                      : const Radius.circular(4),
+                  bottomRight: message.isUser
+                      ? const Radius.circular(4)
+                      : const Radius.circular(20),
                 ),
-            ),
+              ),
               child: MarkdownBody(
                 data: message.text,
                 styleSheet: markdownStyle,
@@ -479,7 +518,8 @@ class _ChatBubble extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: scheme.primaryContainer,
               ),
-              child: Icon(Icons.person_rounded, color: scheme.onPrimaryContainer, size: 18),
+              child: Icon(Icons.person_rounded,
+                  color: scheme.onPrimaryContainer, size: 18),
             ),
           ],
         ],

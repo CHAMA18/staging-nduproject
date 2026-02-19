@@ -118,7 +118,8 @@ class ProjectDataHelper {
     if (saveInBackground) {
       // Update checkpoint in-memory so downstream widgets can reflect progress
       // immediately without waiting on network IO.
-      provider.updateField((data) => data.copyWith(currentCheckpoint: checkpoint));
+      provider
+          .updateField((data) => data.copyWith(currentCheckpoint: checkpoint));
 
       // Navigate immediately to reduce perceived latency.
       if (context.mounted) {
@@ -541,7 +542,7 @@ class ProjectDataHelper {
           ].join(' | ');
           return details.isEmpty ? title : '$title ($details)';
         });
-        wList('Benefit Line Items', items.take(6));
+        wList('Project Benefits', items.take(6));
       }
     }
 
@@ -1025,10 +1026,14 @@ class ProjectDataHelper {
       projectValueAmount: base.projectValueAmount,
       projectValueBenefits: base.projectValueBenefits,
       benefitLineItems: merged,
+      solutionProjectBenefits: base.solutionProjectBenefits,
+      solutionCategoryCosts: base.solutionCategoryCosts,
+      solutionCostAssumptions: base.solutionCostAssumptions,
       savingsNotes: base.savingsNotes,
       savingsTarget: base.savingsTarget,
       basisFrequency: base.basisFrequency,
       trackerBasisFrequency: base.trackerBasisFrequency,
+      npvDiscountRate: base.npvDiscountRate,
     );
   }
 

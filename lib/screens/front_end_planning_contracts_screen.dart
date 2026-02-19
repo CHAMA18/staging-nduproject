@@ -481,20 +481,40 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
                                   // Update provider if data changed
                                   if (provider != null) {
                                     final currentData = provider.projectData;
+                                    final syncedProjectName =
+                                        projectName.isNotEmpty
+                                            ? projectName
+                                            : currentData.projectName;
+                                    final syncedSolutionTitle =
+                                        solutionTitle.isNotEmpty
+                                            ? solutionTitle
+                                            : currentData.solutionTitle;
+
                                     if (currentData.projectName !=
-                                            projectName ||
+                                            syncedProjectName ||
                                         currentData.solutionTitle !=
-                                            solutionTitle) {
+                                            syncedSolutionTitle) {
                                       WidgetsBinding.instance
                                           .addPostFrameCallback((_) {
-                                        provider.updateInitiationData(
-                                          projectName: projectName.isNotEmpty
-                                              ? projectName
-                                              : currentData.projectName,
-                                          solutionTitle:
-                                              solutionTitle.isNotEmpty
-                                                  ? solutionTitle
-                                                  : currentData.solutionTitle,
+                                        if (!mounted) return;
+                                        final latestProvider =
+                                            ProjectDataInherited.maybeOf(
+                                                context);
+                                        final latestData =
+                                            latestProvider?.projectData;
+                                        if (latestProvider == null ||
+                                            latestData == null) {
+                                          return;
+                                        }
+                                        if (latestData.projectName ==
+                                                syncedProjectName &&
+                                            latestData.solutionTitle ==
+                                                syncedSolutionTitle) {
+                                          return;
+                                        }
+                                        latestProvider.updateInitiationData(
+                                          projectName: syncedProjectName,
+                                          solutionTitle: syncedSolutionTitle,
                                         );
                                       });
                                     }

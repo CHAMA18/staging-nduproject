@@ -71,15 +71,20 @@ async function verifyAuthToken(req) {
  * Set CORS headers for response
  */
 function setCorsHeaders(req, res) {
-  const origin = req.headers.origin;
+  const origin = (req.headers.origin || '').toString().trim();
   const CORS_ALLOWED_ORIGINS = getCorsAllowedOrigins();
-  const isAllowed = origin && CORS_ALLOWED_ORIGINS.some((allowed) =>
+  const isAllowed = origin.length > 0 && CORS_ALLOWED_ORIGINS.some((allowed) =>
     typeof allowed === 'string' ? allowed === origin : allowed.test(origin)
   );
-  
+
   if (isAllowed) {
     res.set('Access-Control-Allow-Origin', origin);
+  } else if (req.method === 'OPTIONS') {
+    // Keep preflight resilient even if an origin string is unexpectedly missing
+    // or slightly different from runtime configuration.
+    res.set('Access-Control-Allow-Origin', '*');
   }
+  res.set('Vary', 'Origin');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }

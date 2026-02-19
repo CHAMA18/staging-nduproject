@@ -33,7 +33,7 @@ flutter pub get
 
 echo ""
 echo -e "${BLUE}Step 2:${NC} Building user app..."
-flutter build web --target=lib/main.dart --release
+flutter build web --target=lib/main.dart --release --pwa-strategy=none
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ User app built successfully${NC}"
 else
@@ -43,7 +43,7 @@ fi
 
 echo ""
 echo -e "${BLUE}Step 3:${NC} Building admin app..."
-flutter build web --target=lib/main_admin.dart --release --output=build/admin_web/
+flutter build web --target=lib/main_admin.dart --release --output=build/admin_web/ --pwa-strategy=none
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ Admin app built successfully${NC}"
 else

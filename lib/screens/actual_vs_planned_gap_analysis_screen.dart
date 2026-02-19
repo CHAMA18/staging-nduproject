@@ -16,15 +16,18 @@ class ActualVsPlannedGapAnalysisScreen extends StatefulWidget {
 
   static void open(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ActualVsPlannedGapAnalysisScreen()),
+      MaterialPageRoute(
+          builder: (_) => const ActualVsPlannedGapAnalysisScreen()),
     );
   }
 
   @override
-  State<ActualVsPlannedGapAnalysisScreen> createState() => _ActualVsPlannedGapAnalysisScreenState();
+  State<ActualVsPlannedGapAnalysisScreen> createState() =>
+      _ActualVsPlannedGapAnalysisScreenState();
 }
 
-class _ActualVsPlannedGapAnalysisScreenState extends State<ActualVsPlannedGapAnalysisScreen> {
+class _ActualVsPlannedGapAnalysisScreenState
+    extends State<ActualVsPlannedGapAnalysisScreen> {
   final List<LaunchEntry> _scheduleGaps = [];
   final List<LaunchEntry> _costGaps = [];
   final List<LaunchEntry> _scopeGaps = [];
@@ -49,9 +52,10 @@ class _ActualVsPlannedGapAnalysisScreenState extends State<ActualVsPlannedGapAna
     return ResponsiveScaffold(
       activeItemLabel: 'Project Financial Review',
       backgroundColor: const Color(0xFFF5F7FB),
-      floatingActionButton: const KazAiChatBubble(),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SingleChildScrollView(
-        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: isMobile ? 16 : 28),
+        padding: EdgeInsets.symmetric(
+            horizontal: horizontalPadding, vertical: isMobile ? 16 : 28),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -59,30 +63,38 @@ class _ActualVsPlannedGapAnalysisScreenState extends State<ActualVsPlannedGapAna
             const SizedBox(height: 20),
             LaunchEditableSection(
               title: 'Schedule gap analysis',
-              description: 'Document the biggest timeline variances and what drove them.',
+              description:
+                  'Document the biggest timeline variances and what drove them.',
               entries: _scheduleGaps,
-              onAdd: () => _addEntry(_scheduleGaps, includeStatus: true, titleLabel: 'Milestone'),
+              onAdd: () => _addEntry(_scheduleGaps,
+                  includeStatus: true, titleLabel: 'Milestone'),
               onRemove: (index) => _removeEntry(_scheduleGaps, index),
             ),
             LaunchEditableSection(
               title: 'Cost & budget gaps',
-              description: 'Capture where spend diverged from plan and the drivers.',
+              description:
+                  'Capture where spend diverged from plan and the drivers.',
               entries: _costGaps,
-              onAdd: () => _addEntry(_costGaps, includeStatus: true, titleLabel: 'Cost item'),
+              onAdd: () => _addEntry(_costGaps,
+                  includeStatus: true, titleLabel: 'Cost item'),
               onRemove: (index) => _removeEntry(_costGaps, index),
             ),
             LaunchEditableSection(
               title: 'Scope & quality gaps',
-              description: 'Note any descoped items, quality issues, or additions.',
+              description:
+                  'Note any descoped items, quality issues, or additions.',
               entries: _scopeGaps,
-              onAdd: () => _addEntry(_scopeGaps, includeStatus: true, titleLabel: 'Scope item'),
+              onAdd: () => _addEntry(_scopeGaps,
+                  includeStatus: true, titleLabel: 'Scope item'),
               onRemove: (index) => _removeEntry(_scopeGaps, index),
             ),
             LaunchEditableSection(
               title: 'Benefits & root causes',
-              description: 'Summarize realized benefits and the root causes behind gaps.',
+              description:
+                  'Summarize realized benefits and the root causes behind gaps.',
               entries: _benefitsAndCauses,
-              onAdd: () => _addEntry(_benefitsAndCauses, includeStatus: true, titleLabel: 'Benefit or cause'),
+              onAdd: () => _addEntry(_benefitsAndCauses,
+                  includeStatus: true, titleLabel: 'Benefit or cause'),
               onRemove: (index) => _removeEntry(_benefitsAndCauses, index),
             ),
             const SizedBox(height: 24),
@@ -208,7 +220,10 @@ class _ActualVsPlannedGapAnalysisScreenState extends State<ActualVsPlannedGapAna
         });
       }
       _loadedEntries = true;
-      if (_scheduleGaps.isEmpty && _costGaps.isEmpty && _scopeGaps.isEmpty && _benefitsAndCauses.isEmpty) {
+      if (_scheduleGaps.isEmpty &&
+          _costGaps.isEmpty &&
+          _scopeGaps.isEmpty &&
+          _benefitsAndCauses.isEmpty) {
         await _populateFromAi();
       }
     } catch (error) {
@@ -219,7 +234,8 @@ class _ActualVsPlannedGapAnalysisScreenState extends State<ActualVsPlannedGapAna
   Future<void> _populateFromAi() async {
     if (_aiGenerated || _isGenerating) return;
     final projectData = ProjectDataHelper.getData(context);
-    final contextText = ProjectDataHelper.buildFepContext(projectData, sectionLabel: 'Actual vs Planned Gap Analysis');
+    final contextText = ProjectDataHelper.buildFepContext(projectData,
+        sectionLabel: 'Actual vs Planned Gap Analysis');
     if (contextText.trim().isEmpty) return;
 
     setState(() => _isGenerating = true);
@@ -240,7 +256,10 @@ class _ActualVsPlannedGapAnalysisScreenState extends State<ActualVsPlannedGapAna
     }
 
     if (!mounted) return;
-    if (_scheduleGaps.isNotEmpty || _costGaps.isNotEmpty || _scopeGaps.isNotEmpty || _benefitsAndCauses.isNotEmpty) {
+    if (_scheduleGaps.isNotEmpty ||
+        _costGaps.isNotEmpty ||
+        _scopeGaps.isNotEmpty ||
+        _benefitsAndCauses.isNotEmpty) {
       setState(() => _isGenerating = false);
       _aiGenerated = true;
       return;
@@ -271,7 +290,9 @@ class _ActualVsPlannedGapAnalysisScreenState extends State<ActualVsPlannedGapAna
         .map((item) => LaunchEntry(
               title: (item['title'] ?? '').toString().trim(),
               details: (item['details'] ?? '').toString().trim(),
-              status: (item['status'] ?? '').toString().trim().isEmpty ? null : item['status'].toString().trim(),
+              status: (item['status'] ?? '').toString().trim().isEmpty
+                  ? null
+                  : item['status'].toString().trim(),
             ))
         .where((entry) => entry.title.isNotEmpty)
         .toList();

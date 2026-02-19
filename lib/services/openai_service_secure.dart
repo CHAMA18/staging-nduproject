@@ -9,6 +9,8 @@ import 'package:ndu_project/models/design_phase_models.dart';
 // Remove markdown bold markers commonly produced by the model (e.g. *text* or **text**)
 String _stripAsterisks(String s) => s.replaceAll('*', '');
 
+enum _AiProjectType { physical, digital, hybrid, unknown }
+
 class AiSolutionItem {
   final String title;
   final String description;
@@ -1861,11 +1863,18 @@ $c
     String assumptions = '',
     String currency = 'USD',
     String contextNotes = '',
+    String estimationMode = 'cost_item',
+    String basisFrequency = '',
   }) async {
     final String trimmed = itemName.trim();
     if (trimmed.isEmpty) return 0;
 
     if (!OpenAiConfig.isConfigured) throw const OpenAiNotConfiguredException();
+
+    final projectType = _detectProjectType(
+      '$trimmed $description $assumptions $contextNotes',
+    );
+    final budgetAnchor = _extractLargestCurrencyAnchor(contextNotes);
 
     final uri = OpenAiConfig.chatUri();
     final headers = {
@@ -1879,6 +1888,10 @@ $c
       assumptions: assumptions,
       currency: currency,
       contextNotes: contextNotes,
+      projectType: projectType,
+      budgetAnchor: budgetAnchor,
+      estimationMode: estimationMode,
+      basisFrequency: basisFrequency,
     );
 
     final body = jsonEncode({
@@ -1890,7 +1903,7 @@ $c
         {
           'role': 'system',
           'content':
-              'You are a senior cost analyst. Always return a JSON object only.'
+              'You are a senior cost analyst. Return JSON only with keys: estimated_cost (number), confidence (0..1), needs_more_context (boolean), rationale (string).'
         },
         {
           'role': 'user',
@@ -1921,7 +1934,29 @@ $c
       final parsed = jsonDecode(content) as Map<String, dynamic>;
       final dynamic value =
           parsed['estimated_cost'] ?? parsed['cost'] ?? parsed['value'];
-      return _toDouble(value);
+      final estimated = _toDouble(value);
+      final confidence =
+          _toDouble(parsed['confidence'] ?? parsed['confidence_score']);
+      final needsMoreContext = _toBool(
+        parsed['needs_more_context'] ?? parsed['insufficient_context'],
+      );
+
+      if (!estimated.isFinite || estimated <= 0) return 0;
+      if (needsMoreContext) return 0;
+      if (confidence > 0 && confidence < 0.58) return 0;
+
+      // Guardrail against generic placeholder values unless confidence is high.
+      if (_looksGenericRoundNumber(estimated) && confidence < 0.82) {
+        return 0;
+      }
+
+      if (budgetAnchor > 0 &&
+          estimated > (budgetAnchor * 3) &&
+          confidence < 0.7) {
+        return 0;
+      }
+
+      return _normalizeEstimatedCost(estimated);
     } catch (e) {
       rethrow;
     }
@@ -1934,6 +1969,12 @@ $c
     return double.tryParse(s) ?? 0;
   }
 
+  bool _toBool(dynamic v) {
+    if (v is bool) return v;
+    final text = (v ?? '').toString().trim().toLowerCase();
+    return text == 'true' || text == '1' || text == 'yes';
+  }
+
 // Removed small deterministic fallback helpers — API failures must surface to the UI.
 
   String _singleItemEstimatePrompt({
@@ -1942,23 +1983,55 @@ $c
     required String assumptions,
     required String currency,
     required String contextNotes,
+    required _AiProjectType projectType,
+    required double budgetAnchor,
+    required String estimationMode,
+    required String basisFrequency,
   }) {
     final safeName = _escape(itemName);
     final safeDesc = _escape(description);
     final safeAssumptions = _escape(assumptions);
     final notes = contextNotes.trim().isEmpty ? 'None' : _escape(contextNotes);
+    final typeLabel = _projectTypeLabel(projectType);
+    final budgetNote =
+        budgetAnchor > 0 ? budgetAnchor.toStringAsFixed(0) : 'Not available';
+    final mode = estimationMode.trim().isEmpty ? 'cost_item' : estimationMode;
+    final basis =
+        basisFrequency.trim().isEmpty ? 'Not specified' : basisFrequency;
+    final unitModeRules = mode == 'benefit_unit_value'
+        ? '''
+- This request is for a BENEFIT UNIT VALUE, not a full project total.
+- Return the value for ONE unit only, grounded in the provided category/title/assumptions.
+- Respect the selected basis frequency when interpreting the unit value: "$basis".
+- If context is not enough for a reliable unit value, return estimated_cost as 0 and needs_more_context as true.
+'''
+        : '';
     return '''
 Estimate a realistic one-off cost for a single project line item in $currency.
 
 Return ONLY valid JSON like this example:
 {
-  "estimated_cost": 12345
+  "estimated_cost": 12345,
+  "confidence": 0.84,
+  "needs_more_context": false,
+  "rationale": "Short reason"
 }
+
+Rules:
+- Infer the likely project type and align the estimate to that domain.
+- Avoid generic placeholder values (e.g., 100000, 250000, 500000) unless explicitly justified by quantities.
+- Use context anchors, including project value and scope, before producing a number.
+- If confidence is low, return estimated_cost as 0 and needs_more_context as true.
+- For physical projects, avoid software lifecycle assumptions (MVP, sprint, API integration) unless explicitly stated.
+$unitModeRules
 
 Item: "$safeName"
 Description: "$safeDesc"
 Assumptions: "$safeAssumptions"
 Additional context: "$notes"
+Detected project type hint: "$typeLabel"
+Largest numeric anchor found in context: "$budgetNote $currency"
+Estimation mode: "$mode"
 ''';
   }
 
@@ -1969,6 +2042,7 @@ Additional context: "$notes"
     final trimmed = context.trim();
     if (trimmed.isEmpty) throw Exception('No context provided');
     if (!OpenAiConfig.isConfigured) throw const OpenAiNotConfiguredException();
+    final projectType = _detectProjectType(trimmed);
 
     final uri = OpenAiConfig.chatUri();
     final headers = {
@@ -1985,11 +2059,14 @@ Additional context: "$notes"
         {
           'role': 'system',
           'content':
-              'You are a project cost estimator. Suggest 3-5 relevant cost items based on the project context. Return strict JSON only.'
+              'You are a project cost estimator. Return strict JSON only. Suggest practical cost items using project type and scope. Avoid generic placeholder values. If context is weak, return an empty "items" array.'
         },
         {
           'role': 'user',
-          'content': _costSuggestionsPrompt(trimmed),
+          'content': _costSuggestionsPrompt(
+            trimmed,
+            projectType: projectType,
+          ),
         },
       ],
     });
@@ -2025,7 +2102,10 @@ Additional context: "$notes"
           }).toList() ??
           [];
 
-      return list.where((i) => i.title.isNotEmpty).toList();
+      return _sanitizeCostEstimateSuggestions(
+        list,
+        projectType: projectType,
+      );
     } catch (e) {
       rethrow;
     }
@@ -2148,8 +2228,12 @@ $c
 ''';
   }
 
-  String _costSuggestionsPrompt(String context) {
+  String _costSuggestionsPrompt(
+    String context, {
+    required _AiProjectType projectType,
+  }) {
     final c = _escape(context);
+    final typeLabel = _projectTypeLabel(projectType);
     return '''
 Based on the project context below, suggest 3-5 realistic cost estimate items (mix of direct and indirect costs if appropriate).
 
@@ -2165,11 +2249,48 @@ Return ONLY valid JSON with this structure:
   ]
 }
 
+Rules:
+- Align suggestions to the detected project type: $typeLabel.
+- Avoid generic placeholders like 100000, 250000, or 500000.
+- If context is insufficient, return {"items": []}.
+- For physical projects, do not output software phases such as Discovery and Planning, MVP Build, Integration, or Data.
+
 Project Context:
 """
 $c
 """
 ''';
+  }
+
+  List<CostEstimateItem> _sanitizeCostEstimateSuggestions(
+    List<CostEstimateItem> items, {
+    required _AiProjectType projectType,
+  }) {
+    final seen = <String>{};
+    final filtered = <CostEstimateItem>[];
+    for (final item in items) {
+      final title = _stripAsterisks(item.title).trim();
+      if (title.isEmpty) continue;
+      final amount = item.amount;
+      if (!amount.isFinite || amount <= 0) continue;
+      if (_looksGenericRoundNumber(amount)) continue;
+      if (projectType != _AiProjectType.digital &&
+          _isSoftwarePhaseLabel('$title ${item.notes}')) {
+        continue;
+      }
+      final key = '${title.toLowerCase()}|${amount.round()}';
+      if (seen.contains(key)) continue;
+      seen.add(key);
+      filtered.add(
+        CostEstimateItem(
+          title: title,
+          amount: _normalizeEstimatedCost(amount),
+          notes: item.notes.trim(),
+          costType: item.costType,
+        ),
+      );
+    }
+    return filtered;
   }
 
   // SOLUTIONS
@@ -2516,7 +2637,12 @@ $c
     String currency = 'USD',
   }) async {
     if (solutions.isEmpty) return {};
-    if (!OpenAiConfig.isConfigured) return _fallbackCostBreakdown(solutions);
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackCostBreakdown(
+        solutions,
+        contextNotes: contextNotes,
+      );
+    }
 
     final uri = OpenAiConfig.chatUri();
     final headers = {
@@ -2525,15 +2651,16 @@ $c
     };
     final body = jsonEncode({
       'model': OpenAiConfig.model,
-      'temperature': 0.5,
+      'temperature': 0.45,
       'max_tokens': 1400,
       'response_format': {'type': 'json_object'},
       'messages': [
         {
           'role': 'system',
-          'content':
-              'You are a cost analyst. For each solution, produce a detailed cost breakdown: 8–20 project items with description, estimated cost ('
-                  '$currency), expected ROI% and NPV values for 3, 5, and 10-year horizons (same currency). Use realistic but round numbers. Be detailed and specific: do not use "etc.", "and similar", or vague groupings. State each cost item explicitly. Return strict JSON only.'
+          'content': 'You are a cost analyst. For each solution, produce a detailed cost breakdown with context-aware estimates. Return strict JSON only. '
+              'Each solution must be distinct, non-generic, and grounded in the provided scope. '
+              'Do not use placeholder round values unless explicitly supported by quantities. '
+              'If a solution is physical/infrastructure, avoid software lifecycle phases such as Discovery and Planning, MVP Build, Integration, or Data.'
         },
         {
           'role': 'user',
@@ -2568,67 +2695,411 @@ $c
             .toList();
         if (title.isNotEmpty && items.isNotEmpty) result[title] = items;
       }
-      return _mergeWithFallbackCost(solutions, result);
+
+      final sanitized = _sanitizeGeneratedCostBreakdown(
+        solutions: solutions,
+        generated: result,
+        contextNotes: contextNotes,
+      );
+
+      return _mergeWithFallbackCost(
+        solutions,
+        sanitized,
+        contextNotes: contextNotes,
+      );
     } catch (e) {
       if (kDebugMode) {
         debugPrint('generateCostBreakdownForSolutions failed: $e');
       }
-      return _fallbackCostBreakdown(solutions);
+      return _fallbackCostBreakdown(
+        solutions,
+        contextNotes: contextNotes,
+      );
     }
   }
 
   Map<String, List<AiCostItem>> _mergeWithFallbackCost(
-      List<AiSolutionItem> solutions, Map<String, List<AiCostItem>> generated) {
-    final fallback = _fallbackCostBreakdown(solutions);
+    List<AiSolutionItem> solutions,
+    Map<String, List<AiCostItem>> generated, {
+    String contextNotes = '',
+  }) {
+    final fallback = _fallbackCostBreakdown(
+      solutions,
+      contextNotes: contextNotes,
+    );
     final merged = <String, List<AiCostItem>>{};
-    for (final s in solutions) {
-      final g = generated[s.title];
-      merged[s.title] = (g != null && g.isNotEmpty)
-          ? g.take(5).toList()
-          : (fallback[s.title] ?? []);
+    for (int i = 0; i < solutions.length; i++) {
+      final solution = solutions[i];
+      final generatedItems = generated[solution.title];
+      merged[solution.title] =
+          (generatedItems != null && generatedItems.isNotEmpty)
+              ? generatedItems.take(5).toList()
+              : (fallback[solution.title] ??
+                  _fallbackCostItemsForSolution(
+                    solution,
+                    index: i,
+                    contextNotes: contextNotes,
+                  ));
     }
     return merged;
   }
 
+  Map<String, List<AiCostItem>> _sanitizeGeneratedCostBreakdown({
+    required List<AiSolutionItem> solutions,
+    required Map<String, List<AiCostItem>> generated,
+    required String contextNotes,
+  }) {
+    final normalized = <String, List<AiCostItem>>{};
+    final seenItemCostPairs = <String>{};
+    final usedSignatures = <String>{};
+
+    for (int i = 0; i < solutions.length; i++) {
+      final solution = solutions[i];
+      final projectType = _detectProjectTypeForSolution(solution, contextNotes);
+      final rawItems = List<AiCostItem>.from(
+          generated[solution.title] ?? const <AiCostItem>[]);
+      final seenNames = <String>{};
+      final cleaned = <AiCostItem>[];
+
+      for (int j = 0; j < rawItems.length; j++) {
+        final raw = rawItems[j];
+        final itemName = _stripAsterisks(raw.item).trim();
+        if (itemName.isEmpty) continue;
+        final description = _stripAsterisks(raw.description).trim();
+
+        if (projectType != _AiProjectType.digital &&
+            _isSoftwarePhaseLabel('$itemName $description')) {
+          continue;
+        }
+
+        final amount = raw.estimatedCost;
+        if (!amount.isFinite || amount <= 0) continue;
+        if (_looksGenericRoundNumber(amount)) continue;
+
+        final nameKey = itemName.toLowerCase();
+        if (seenNames.contains(nameKey)) continue;
+        seenNames.add(nameKey);
+
+        var normalizedCost = _normalizeEstimatedCost(amount);
+        var npvByYear = Map<int, double>.from(raw.npvByYear);
+        var pairKey = '$nameKey|${normalizedCost.toStringAsFixed(0)}';
+
+        if (seenItemCostPairs.contains(pairKey)) {
+          final adjustedCost = _nudgeDuplicateCost(
+            normalizedCost,
+            solutionIndex: i,
+            itemIndex: j,
+          );
+          npvByYear = _scaleNpvByCost(
+            npvByYear,
+            normalizedCost,
+            adjustedCost,
+          );
+          normalizedCost = adjustedCost;
+          pairKey = '$nameKey|${normalizedCost.toStringAsFixed(0)}';
+        }
+        seenItemCostPairs.add(pairKey);
+
+        cleaned.add(AiCostItem(
+          item: itemName,
+          description: description,
+          estimatedCost: normalizedCost,
+          roiPercent: raw.roiPercent,
+          npvByYear: npvByYear,
+        ));
+      }
+
+      List<AiCostItem> chosen = cleaned;
+      if (chosen.isEmpty) {
+        chosen = _fallbackCostItemsForSolution(
+          solution,
+          index: i,
+          contextNotes: contextNotes,
+        );
+      }
+
+      var signature = chosen
+          .map((e) =>
+              '${e.item.toLowerCase()}|${e.estimatedCost.toStringAsFixed(0)}')
+          .join(';');
+      if (usedSignatures.contains(signature)) {
+        chosen = _fallbackCostItemsForSolution(
+          solution,
+          index: i,
+          contextNotes: contextNotes,
+        );
+        signature = chosen
+            .map((e) =>
+                '${e.item.toLowerCase()}|${e.estimatedCost.toStringAsFixed(0)}')
+            .join(';');
+      }
+
+      usedSignatures.add(signature);
+      normalized[solution.title] = chosen;
+    }
+
+    return normalized;
+  }
+
   Map<String, List<AiCostItem>> _fallbackCostBreakdown(
-      List<AiSolutionItem> solutions) {
+    List<AiSolutionItem> solutions, {
+    String contextNotes = '',
+  }) {
     final map = <String, List<AiCostItem>>{};
-    for (final s in solutions) {
-      map[s.title] = [
-        AiCostItem(
-          item: 'Discovery & Planning',
-          description: 'Workshops, requirements, roadmap and governance setup',
-          estimatedCost: 25000,
-          roiPercent: 12,
-          npvByYear: const {3: 6000, 5: 8000, 10: 14000},
-        ),
-        AiCostItem(
-          item: 'MVP Build',
-          description: 'Design, engineering, testing for initial release',
-          estimatedCost: 120000,
-          roiPercent: 22,
-          npvByYear: const {3: 18000, 5: 24000, 10: 42000},
-        ),
-        AiCostItem(
-          item: 'Integration & Data',
-          description: 'APIs, data migration, and quality checks',
-          estimatedCost: 45000,
-          roiPercent: 15,
-          npvByYear: const {3: 7000, 5: 9000, 10: 16000},
-        ),
-      ];
+    for (int i = 0; i < solutions.length; i++) {
+      final solution = solutions[i];
+      map[solution.title] = _fallbackCostItemsForSolution(
+        solution,
+        index: i,
+        contextNotes: contextNotes,
+      );
     }
     return map;
   }
 
+  List<AiCostItem> _fallbackCostItemsForSolution(
+    AiSolutionItem solution, {
+    required int index,
+    String contextNotes = '',
+  }) {
+    final type = _detectProjectTypeForSolution(solution, contextNotes);
+    final templates = _fallbackCostTemplatesForType(type);
+    final seed =
+        _stableHash('${solution.title}|${solution.description}|$contextNotes');
+    final titleScale = 0.88 + ((seed % 35) / 100);
+    final indexScale = 1 + (index * 0.08);
+    final items = <AiCostItem>[];
+
+    for (int i = 0; i < templates.length; i++) {
+      final template = templates[i];
+      final baseCost = (template['cost'] as num).toDouble();
+      final baseRoi = (template['roi'] as num).toDouble();
+      final variation = 0.94 + (((seed + (i * 17)) % 13) / 100);
+      final estimate = _normalizeEstimatedCost(
+          baseCost * titleScale * indexScale * variation);
+      final roi = _clampDouble(
+        baseRoi + ((((seed + i) % 7) - 3) * 0.6),
+        6,
+        35,
+      );
+
+      items.add(AiCostItem(
+        item: (template['item'] ?? '').toString(),
+        description: (template['description'] ?? '').toString(),
+        estimatedCost: estimate,
+        roiPercent: roi,
+        npvByYear: _deriveFallbackNpv(estimate, roi),
+      ));
+    }
+
+    return items;
+  }
+
+  List<Map<String, Object>> _fallbackCostTemplatesForType(_AiProjectType type) {
+    switch (type) {
+      case _AiProjectType.physical:
+        return const [
+          {
+            'item': 'Site survey and feasibility studies',
+            'description':
+                'Topographic surveys, engineering feasibility, and early design validation.',
+            'cost': 48200,
+            'roi': 10.5
+          },
+          {
+            'item': 'Permitting and regulatory approvals',
+            'description':
+                'Permit submissions, inspections, and statutory compliance documentation.',
+            'cost': 36500,
+            'roi': 9.2
+          },
+          {
+            'item': 'Detailed engineering and technical drawings',
+            'description':
+                'Final design packages, safety calculations, and construction-ready drawings.',
+            'cost': 72400,
+            'roi': 11.8
+          },
+          {
+            'item': 'Materials and equipment procurement',
+            'description':
+                'Purchase of long-lead materials, core equipment, and logistics handling.',
+            'cost': 156800,
+            'roi': 14.6
+          },
+          {
+            'item': 'Civil works and installation',
+            'description':
+                'Ground works, structural installation, electrical/mechanical fit-out, and supervision.',
+            'cost': 218500,
+            'roi': 16.3
+          },
+          {
+            'item': 'Commissioning, testing, and handover',
+            'description':
+                'Site acceptance tests, certification, and transition to operations.',
+            'cost': 54800,
+            'roi': 13.4
+          },
+        ];
+      case _AiProjectType.digital:
+        return const [
+          {
+            'item': 'Requirements and solution architecture',
+            'description':
+                'Domain analysis, architecture design, and delivery planning.',
+            'cost': 42800,
+            'roi': 15.0
+          },
+          {
+            'item': 'Core platform and feature development',
+            'description':
+                'Implementation of core modules, workflows, and service components.',
+            'cost': 138600,
+            'roi': 20.4
+          },
+          {
+            'item': 'Integration and data services',
+            'description':
+                'API orchestration, data pipelines, validation rules, and mapping.',
+            'cost': 86400,
+            'roi': 18.1
+          },
+          {
+            'item': 'Security controls and compliance hardening',
+            'description':
+                'Identity controls, audit trail design, encryption, and compliance checks.',
+            'cost': 57400,
+            'roi': 16.2
+          },
+          {
+            'item': 'Quality assurance and user acceptance testing',
+            'description':
+                'Automated and manual test cycles, defect remediation, and release readiness.',
+            'cost': 51600,
+            'roi': 14.9
+          },
+          {
+            'item': 'Deployment, enablement, and support transition',
+            'description':
+                'Production rollout, user onboarding, runbook setup, and stabilization support.',
+            'cost': 46300,
+            'roi': 13.8
+          },
+        ];
+      case _AiProjectType.hybrid:
+        return const [
+          {
+            'item': 'Program mobilization and integrated planning',
+            'description':
+                'Joint planning across facility, operations, and digital delivery streams.',
+            'cost': 59800,
+            'roi': 12.7
+          },
+          {
+            'item': 'Facility and infrastructure preparation',
+            'description':
+                'Physical site preparation, utilities readiness, and installation pre-work.',
+            'cost': 129400,
+            'roi': 15.4
+          },
+          {
+            'item': 'Application build and configuration',
+            'description':
+                'Configuration of software components that support the physical rollout.',
+            'cost': 102800,
+            'roi': 17.3
+          },
+          {
+            'item': 'Systems integration and data onboarding',
+            'description':
+                'Integration between new assets, enterprise systems, and reporting platforms.',
+            'cost': 78100,
+            'roi': 16.0
+          },
+          {
+            'item': 'Operational readiness and workforce training',
+            'description':
+                'Process handover, SOP updates, and role-based enablement training.',
+            'cost': 49400,
+            'roi': 13.2
+          },
+          {
+            'item': 'Cutover, stabilization, and optimization',
+            'description':
+                'Go-live support, performance tuning, and early value capture tracking.',
+            'cost': 43600,
+            'roi': 14.1
+          },
+        ];
+      case _AiProjectType.unknown:
+        return const [
+          {
+            'item': 'Scope definition and delivery planning',
+            'description':
+                'Detailed scope baseline, scheduling, and dependency planning.',
+            'cost': 45600,
+            'roi': 11.5
+          },
+          {
+            'item': 'Vendor and specialist mobilization',
+            'description':
+                'Procurement, vendor onboarding, and contract activation costs.',
+            'cost': 68400,
+            'roi': 13.1
+          },
+          {
+            'item': 'Implementation work packages',
+            'description':
+                'Execution of core workstreams needed to deliver project outcomes.',
+            'cost': 122900,
+            'roi': 15.9
+          },
+          {
+            'item': 'Quality assurance and compliance controls',
+            'description':
+                'Assurance gates, quality checks, and regulatory control activities.',
+            'cost': 53700,
+            'roi': 12.4
+          },
+          {
+            'item': 'Change enablement and operational transition',
+            'description':
+                'Operational handoff, training, and adoption support for target users.',
+            'cost': 41200,
+            'roi': 10.9
+          },
+          {
+            'item': 'Post-go-live performance optimization',
+            'description':
+                'Performance tuning, issue reduction, and early-stage enhancement work.',
+            'cost': 38900,
+            'roi': 12.0
+          },
+        ];
+    }
+  }
+
   String _costBreakdownPrompt(
       List<AiSolutionItem> solutions, String notes, String currency) {
-    final list = solutions
-        .map((s) =>
-            '{"title": "${_escape(s.title)}", "description": "${_escape(s.description)}"}')
-        .join(',');
+    final safeNotes = notes.trim().isEmpty ? 'None' : _escape(notes.trim());
+    final list = solutions.map((s) {
+      final typeHint = _projectTypeLabel(
+        _detectProjectTypeForSolution(s, notes),
+      );
+      return '{"title": "${_escape(s.title)}", "description": "${_escape(s.description)}", "project_type_hint": "$typeHint"}';
+    }).join(',');
     return '''
- For each solution below, provide a cost breakdown with up to 20 items (aim for 12–20 when possible). For each item include: item (name), description, estimated_cost (number in $currency), roi_percent (number), npv_by_years (object with keys "3_years", "5_years", "10_years" and numeric values in $currency). Be detailed and specific: do not use "etc.", "and similar", or vague groupings. State each cost item explicitly.
+For each solution below, provide a cost breakdown with up to 20 items (aim for 8-20 when possible).
+Each item must include: item, description, estimated_cost (number in $currency), roi_percent (number), and npv_by_years (keys "3_years", "5_years", "10_years" with numeric values in $currency).
+
+Rules:
+- Detect the project type per solution (physical construction/infrastructure, digital/software, or hybrid) and use domain-appropriate line items.
+- Physical solutions must not use software lifecycle placeholders such as Discovery and Planning, MVP Build, Integration, or Data.
+- Do not return repetitive placeholder amounts (100000, 250000, 500000) unless explicitly justified from context quantities.
+- Ensure solutions are distinct: avoid identical item lists and identical costs across different solutions.
+- If confidence is low for a specific line item, omit it instead of inventing a generic entry.
+- Be detailed and specific: do not use "etc.", "and similar", or vague groupings.
 
 Return ONLY valid JSON with this exact structure:
 {
@@ -2641,8 +3112,277 @@ Return ONLY valid JSON with this exact structure:
 
 Solutions: [$list]
 
-Context notes (optional): $notes
+Context notes (optional): $safeNotes
 ''';
+  }
+
+  String _projectTypeLabel(_AiProjectType type) {
+    switch (type) {
+      case _AiProjectType.physical:
+        return 'physical';
+      case _AiProjectType.digital:
+        return 'digital';
+      case _AiProjectType.hybrid:
+        return 'hybrid';
+      case _AiProjectType.unknown:
+        return 'unknown';
+    }
+  }
+
+  _AiProjectType _detectProjectType(String text) {
+    final normalized = text.toLowerCase();
+    if (normalized.trim().isEmpty) return _AiProjectType.unknown;
+
+    int physicalScore = 0;
+    int digitalScore = 0;
+
+    bool hasAny(List<String> terms) =>
+        terms.any((term) => _containsKeyword(normalized, term));
+
+    if (hasAny([
+      'construction',
+      'building',
+      'facility',
+      'fire station',
+      'civil works',
+      'infrastructure',
+      'site',
+      'foundation',
+      'equipment installation',
+      'procurement',
+      'plant',
+      'warehouse',
+      'road',
+      'bridge',
+      'hospital wing',
+      'physical',
+      'utilities',
+      'commissioning',
+      'contractor',
+    ])) {
+      physicalScore += 4;
+    }
+
+    if (hasAny([
+      'software',
+      'application',
+      'platform',
+      'api',
+      'integration service',
+      'cloud',
+      'data pipeline',
+      'mobile',
+      'web portal',
+      'erp',
+      'crm',
+      'sprint',
+      'release',
+      'devops',
+      'database',
+      'automation script',
+    ])) {
+      digitalScore += 4;
+    }
+
+    if (hasAny(
+        ['sensor', 'iot', 'smart facility', 'scada', 'control system'])) {
+      physicalScore += 2;
+      digitalScore += 2;
+    }
+
+    if (physicalScore >= 4 && digitalScore >= 4) {
+      return _AiProjectType.hybrid;
+    }
+    if (physicalScore >= digitalScore + 2 && physicalScore >= 3) {
+      return _AiProjectType.physical;
+    }
+    if (digitalScore >= physicalScore + 2 && digitalScore >= 3) {
+      return _AiProjectType.digital;
+    }
+    if (physicalScore > 0 && digitalScore == 0) return _AiProjectType.physical;
+    if (digitalScore > 0 && physicalScore == 0) return _AiProjectType.digital;
+    return _AiProjectType.unknown;
+  }
+
+  bool _containsKeyword(String normalizedText, String term) {
+    final trimmed = term.trim().toLowerCase();
+    if (trimmed.isEmpty) return false;
+    if (trimmed.contains(' ')) {
+      return normalizedText.contains(trimmed);
+    }
+    final pattern = RegExp('\\b${RegExp.escape(trimmed)}\\b');
+    return pattern.hasMatch(normalizedText);
+  }
+
+  bool _containsAnyKeywords(String normalizedText, List<String> terms) {
+    for (final term in terms) {
+      if (_containsKeyword(normalizedText, term)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  _AiProjectType _detectProjectTypeForSolution(
+    AiSolutionItem solution,
+    String contextNotes,
+  ) {
+    final solutionOnly =
+        '${solution.title} ${solution.description}'.toLowerCase();
+
+    final hasStrongPhysicalCue = _containsAnyKeywords(solutionOnly, [
+      'construction',
+      'building',
+      'facility',
+      'fire station',
+      'civil works',
+      'infrastructure',
+      'site',
+      'foundation',
+      'commissioning',
+      'contractor',
+      'procurement',
+    ]);
+
+    final hasStrongDigitalCue = _containsAnyKeywords(solutionOnly, [
+      'software',
+      'application',
+      'platform',
+      'api',
+      'mobile',
+      'web portal',
+      'cloud',
+      'devops',
+      'database',
+      'data pipeline',
+      'automation script',
+    ]);
+
+    if (hasStrongPhysicalCue && !hasStrongDigitalCue) {
+      return _AiProjectType.physical;
+    }
+
+    final directType = _detectProjectType(solutionOnly);
+    if (directType != _AiProjectType.unknown) {
+      return directType;
+    }
+
+    return _detectProjectType(
+      '$solutionOnly $contextNotes',
+    );
+  }
+
+  double _extractLargestCurrencyAnchor(String text) {
+    if (text.trim().isEmpty) return 0;
+    final matches = RegExp(
+      r'(?:(?:usd|eur|gbp|zmw|\$)\s*)?([0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]+)?|[0-9]+(?:\.[0-9]+)?)',
+      caseSensitive: false,
+    ).allMatches(text);
+
+    double largest = 0;
+    for (final match in matches) {
+      final raw = match.group(1);
+      if (raw == null || raw.isEmpty) continue;
+      final parsed = double.tryParse(raw.replaceAll(',', ''));
+      if (parsed == null || parsed < 1000) continue;
+      if (parsed > largest) largest = parsed;
+    }
+    return largest;
+  }
+
+  bool _looksGenericRoundNumber(double value) {
+    if (!value.isFinite || value <= 0) return false;
+    final rounded = value.roundToDouble();
+    if ((value - rounded).abs() > 0.01) return false;
+    final intValue = rounded.toInt().abs();
+    if (intValue < 50000) return false;
+
+    return intValue % 50000 == 0 ||
+        intValue == 250000 ||
+        intValue == 500000 ||
+        intValue == 1000000;
+  }
+
+  bool _isSoftwarePhaseLabel(String text) {
+    final normalized = text.toLowerCase();
+    const softwarePatterns = [
+      'discovery and planning',
+      'discovery & planning',
+      'mvp build',
+      'integration & data',
+      'integration and data',
+      'sprint',
+      'backlog',
+      'user story',
+      'api integration',
+      'data migration',
+      'release pipeline',
+      'devops',
+      'qa automation',
+    ];
+    return softwarePatterns.any((pattern) => normalized.contains(pattern));
+  }
+
+  double _normalizeEstimatedCost(double value) {
+    if (!value.isFinite || value <= 0) return 0;
+    final normalized = (value / 50).round() * 50.0;
+    return normalized > 0 ? normalized : 0;
+  }
+
+  double _nudgeDuplicateCost(
+    double baseCost, {
+    required int solutionIndex,
+    required int itemIndex,
+  }) {
+    final multiplier =
+        1 + ((solutionIndex + 1) * 0.03) + ((itemIndex % 4) * 0.01);
+    final scaled = _normalizeEstimatedCost(baseCost * multiplier);
+    final offset = ((solutionIndex + 1) * 35) + ((itemIndex + 1) * 10);
+    return _normalizeEstimatedCost(scaled + offset);
+  }
+
+  Map<int, double> _scaleNpvByCost(
+    Map<int, double> current,
+    double oldCost,
+    double newCost,
+  ) {
+    if (current.isEmpty || !oldCost.isFinite || oldCost <= 0) {
+      return _deriveFallbackNpv(newCost, 12);
+    }
+    final factor = newCost / oldCost;
+    final scaled = <int, double>{};
+    for (final entry in current.entries) {
+      scaled[entry.key] = _normalizeEstimatedCost(entry.value * factor);
+    }
+    return scaled;
+  }
+
+  Map<int, double> _deriveFallbackNpv(double estimatedCost, double roiPercent) {
+    final annualReturn = estimatedCost * (roiPercent / 100);
+    double positive(double value) {
+      if (!value.isFinite || value <= 0) return 0;
+      return _normalizeEstimatedCost(value);
+    }
+
+    return {
+      3: positive((annualReturn * 1.9) - (estimatedCost * 0.12)),
+      5: positive((annualReturn * 3.1) - (estimatedCost * 0.18)),
+      10: positive((annualReturn * 5.8) - (estimatedCost * 0.25)),
+    };
+  }
+
+  double _clampDouble(double value, double min, double max) {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+  }
+
+  int _stableHash(String input) {
+    var hash = 0;
+    for (final codeUnit in input.codeUnits) {
+      hash = ((hash * 31) + codeUnit) & 0x7fffffff;
+    }
+    return hash;
   }
 
   Future<AiProjectValueInsights> generateProjectValueInsights(

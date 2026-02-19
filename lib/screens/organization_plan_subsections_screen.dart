@@ -595,7 +595,9 @@ class _OrganizationStaffingPlanScreenState
                     ),
                   ),
                   const Positioned(
-                      right: 24, bottom: 24, child: KazAiChatBubble()),
+                      right: 24,
+                      bottom: 24,
+                      child: KazAiChatBubble(positioned: false)),
                 ],
               ),
             ),
@@ -901,7 +903,9 @@ class _PlanningSubsectionScreen extends StatelessWidget {
                     ),
                   ),
                   const Positioned(
-                      right: 24, bottom: 24, child: KazAiChatBubble()),
+                      right: 24,
+                      bottom: 24,
+                      child: KazAiChatBubble(positioned: false)),
                 ],
               ),
             ),

@@ -62,10 +62,12 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
   String _confidenceNote = 'Trending stable · no net-new blockers escalated';
 
   double _readinessProgress = 0.72;
-  String _readinessSummary = '5 of 7 critical path items cleared · Next review Tue 10:00 AM';
+  String _readinessSummary =
+      '5 of 7 critical path items cleared · Next review Tue 10:00 AM';
 
   double _timelineProgress = 0.62;
-  String _timelineSummary = 'Current phase: Cutover rehearsals · Go / no-go rehearsal in 3 days';
+  String _timelineSummary =
+      'Current phase: Cutover rehearsals · Go / no-go rehearsal in 3 days';
 
   String _coordinatorName = '';
   String _coordinatorRole = '';
@@ -135,27 +137,41 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
         _contextChips = chips.isEmpty ? _defaultContextChips() : chips;
         _statusMetrics = metrics.isEmpty ? _defaultStatusMetrics() : metrics;
         _milestones = milestones.isEmpty ? _defaultMilestones() : milestones;
-        _approvalItems = approvals.isEmpty ? _defaultApprovalItems() : approvals;
-        _checklistRows = checklist.isEmpty ? _defaultChecklistRows() : checklist;
+        _approvalItems =
+            approvals.isEmpty ? _defaultApprovalItems() : approvals;
+        _checklistRows =
+            checklist.isEmpty ? _defaultChecklistRows() : checklist;
         _timelineStages = stages.isEmpty ? _defaultTimelineStages() : stages;
-        _timelineInfoPills = pills.isEmpty ? _defaultTimelineInfoPills() : pills;
-        _highlightItems = highlights.isEmpty ? _defaultHighlightItems() : highlights;
+        _timelineInfoPills =
+            pills.isEmpty ? _defaultTimelineInfoPills() : pills;
+        _highlightItems =
+            highlights.isEmpty ? _defaultHighlightItems() : highlights;
         _insightCards = insights.isEmpty ? _defaultInsightCards() : insights;
         _readinessTags = tags.isEmpty ? _defaultReadinessTags() : tags;
 
         _confidencePercent = _toDouble(data['confidencePercent'], fallback: 68);
         _confidenceStatus = data['confidenceStatus']?.toString() ?? 'On track';
-        _confidenceNote = data['confidenceNote']?.toString() ?? 'Trending stable · no net-new blockers escalated';
-        _readinessProgress = _toDouble(data['readinessProgress'], fallback: 0.72).clamp(0.0, 1.0);
-        _readinessSummary = data['readinessSummary']?.toString() ?? '5 of 7 critical path items cleared · Next review Tue 10:00 AM';
-        _timelineProgress = _toDouble(data['timelineProgress'], fallback: 0.62).clamp(0.0, 1.0);
-        _timelineSummary = data['timelineSummary']?.toString() ?? 'Current phase: Cutover rehearsals · Go / no-go rehearsal in 3 days';
+        _confidenceNote = data['confidenceNote']?.toString() ??
+            'Trending stable · no net-new blockers escalated';
+        _readinessProgress =
+            _toDouble(data['readinessProgress'], fallback: 0.72)
+                .clamp(0.0, 1.0);
+        _readinessSummary = data['readinessSummary']?.toString() ??
+            '5 of 7 critical path items cleared · Next review Tue 10:00 AM';
+        _timelineProgress =
+            _toDouble(data['timelineProgress'], fallback: 0.62).clamp(0.0, 1.0);
+        _timelineSummary = data['timelineSummary']?.toString() ??
+            'Current phase: Cutover rehearsals · Go / no-go rehearsal in 3 days';
 
-        final coordinator = Map<String, dynamic>.from(data['coordinator'] as Map? ?? {});
+        final coordinator =
+            Map<String, dynamic>.from(data['coordinator'] as Map? ?? {});
         _coordinatorName = coordinator['name']?.toString() ?? 'Morgan Reyes';
-        _coordinatorRole = coordinator['role']?.toString() ?? 'Program Launch Director';
-        _coordinatorEmail = coordinator['email']?.toString() ?? 'morgan.reyes@example.com';
-        _coordinatorPhone = coordinator['phone']?.toString() ?? '+1 312 555 0196';
+        _coordinatorRole =
+            coordinator['role']?.toString() ?? 'Program Launch Director';
+        _coordinatorEmail =
+            coordinator['email']?.toString() ?? 'morgan.reyes@example.com';
+        _coordinatorPhone =
+            coordinator['phone']?.toString() ?? '+1 312 555 0196';
       });
     } catch (error) {
       debugPrint('Launch checklist load error: $error');
@@ -214,10 +230,26 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
   String _newId() => DateTime.now().microsecondsSinceEpoch.toString();
 
   List<_InfoChipData> _defaultContextChips() => [
-        _InfoChipData(id: _newId(), iconKey: 'flag', label: 'Program', value: 'AI operations uplift · Launch phase'),
-        _InfoChipData(id: _newId(), iconKey: 'layers', label: 'Workstream', value: 'Customer experience platform'),
-        _InfoChipData(id: _newId(), iconKey: 'calendar', label: 'Go-live window', value: 'Target 18 Aug · T−9 days'),
-        _InfoChipData(id: _newId(), iconKey: 'update', label: 'Last sync', value: 'Executive review · 2h ago'),
+        _InfoChipData(
+            id: _newId(),
+            iconKey: 'flag',
+            label: 'Program',
+            value: 'AI operations uplift · Launch phase'),
+        _InfoChipData(
+            id: _newId(),
+            iconKey: 'layers',
+            label: 'Workstream',
+            value: 'Customer experience platform'),
+        _InfoChipData(
+            id: _newId(),
+            iconKey: 'calendar',
+            label: 'Go-live window',
+            value: 'Target 18 Aug · T−9 days'),
+        _InfoChipData(
+            id: _newId(),
+            iconKey: 'update',
+            label: 'Last sync',
+            value: 'Executive review · 2h ago'),
       ];
 
   List<_StatusMetricData> _defaultStatusMetrics() => [
@@ -355,7 +387,8 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
         _TimelineStage(
           id: _newId(),
           label: 'Final readiness review',
-          detail: 'All cutover and rollback artefacts verified with stakeholders.',
+          detail:
+              'All cutover and rollback artefacts verified with stakeholders.',
           date: 'Thu · 10 Aug',
           iconKey: 'factcheck',
           accent: const Color(0xFF2563EB),
@@ -363,7 +396,8 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
         _TimelineStage(
           id: _newId(),
           label: 'Go / no-go rehearsal',
-          detail: 'Dry run with scenario walk-through and escalation practices.',
+          detail:
+              'Dry run with scenario walk-through and escalation practices.',
           date: 'Fri · 11 Aug',
           iconKey: 'groups',
           accent: const Color(0xFF7C3AED),
@@ -371,16 +405,26 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
       ];
 
   List<_InfoPillData> _defaultTimelineInfoPills() => [
-        _InfoPillData(id: _newId(), iconKey: 'flag_circle', label: 'Go-live decision: 17 Aug, 09:00 AM'),
-        _InfoPillData(id: _newId(), iconKey: 'groups', label: 'Hypercare squad rota confirmed'),
-        _InfoPillData(id: _newId(), iconKey: 'safety', label: 'Rollback rehearsal scheduled for Fri'),
+        _InfoPillData(
+            id: _newId(),
+            iconKey: 'flag_circle',
+            label: 'Go-live decision: 17 Aug, 09:00 AM'),
+        _InfoPillData(
+            id: _newId(),
+            iconKey: 'groups',
+            label: 'Hypercare squad rota confirmed'),
+        _InfoPillData(
+            id: _newId(),
+            iconKey: 'safety',
+            label: 'Rollback rehearsal scheduled for Fri'),
       ];
 
   List<_HighlightItem> _defaultHighlightItems() => [
         _HighlightItem(
           id: _newId(),
           title: 'Stakeholder communications',
-          detail: 'Exec sponsor updates drafted · customer comms ready for approval.',
+          detail:
+              'Exec sponsor updates drafted · customer comms ready for approval.',
           status: 'In review',
           iconKey: 'campaign',
           accent: const Color(0xFF6366F1),
@@ -398,17 +442,22 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
       ];
 
   List<_ReadinessTagData> _defaultReadinessTags() => [
-        _ReadinessTagData(id: _newId(), label: 'Cutover rehearsal', status: 'Complete'),
-        _ReadinessTagData(id: _newId(), label: 'Rollback playbook', status: 'In review'),
-        _ReadinessTagData(id: _newId(), label: 'Support playbooks', status: 'At risk'),
-        _ReadinessTagData(id: _newId(), label: 'Customer comms', status: 'On track'),
+        _ReadinessTagData(
+            id: _newId(), label: 'Cutover rehearsal', status: 'Complete'),
+        _ReadinessTagData(
+            id: _newId(), label: 'Rollback playbook', status: 'In review'),
+        _ReadinessTagData(
+            id: _newId(), label: 'Support playbooks', status: 'At risk'),
+        _ReadinessTagData(
+            id: _newId(), label: 'Customer comms', status: 'On track'),
       ];
 
   List<_InsightCardData> _defaultInsightCards() => [
         _InsightCardData(
           id: _newId(),
           title: 'Checklist overview at a glance',
-          subtitle: 'Item progress, ownership coverage, and upcoming due dates.',
+          subtitle:
+              'Item progress, ownership coverage, and upcoming due dates.',
           tag: 'Execution',
           tagColor: const Color(0xFF2563EB),
           entries: [
@@ -439,9 +488,10 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'Launch Checklist',
       backgroundColor: const Color(0xFFF5F7FB),
-      floatingActionButton: const KazAiChatBubble(),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SingleChildScrollView(
-        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: isMobile ? 16 : 28),
+        padding: EdgeInsets.symmetric(
+            horizontal: horizontalPadding, vertical: isMobile ? 16 : 28),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -505,7 +555,8 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
       children: [
         ..._contextChips.map((chip) {
           return Container(
-            padding: EdgeInsets.symmetric(horizontal: isCompact ? 12 : 16, vertical: 10),
+            padding: EdgeInsets.symmetric(
+                horizontal: isCompact ? 12 : 16, vertical: 10),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(18),
@@ -521,7 +572,8 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(_iconForKey(chip.iconKey), size: 18, color: const Color(0xFF6366F1)),
+                Icon(_iconForKey(chip.iconKey),
+                    size: 18, color: const Color(0xFF6366F1)),
                 const SizedBox(width: 10),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -533,8 +585,12 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                         key: ValueKey('chip-label-${chip.id}'),
                         initialValue: chip.label,
                         decoration: _inlineDecoration('Label'),
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
-                        onChanged: (value) => _updateContextChip(chip.copyWith(label: value)),
+                        style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF6B7280)),
+                        onChanged: (value) =>
+                            _updateContextChip(chip.copyWith(label: value)),
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -544,14 +600,19 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                         key: ValueKey('chip-value-${chip.id}'),
                         initialValue: chip.value,
                         decoration: _inlineDecoration('Value'),
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
-                        onChanged: (value) => _updateContextChip(chip.copyWith(value: value)),
+                        style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF111827)),
+                        onChanged: (value) =>
+                            _updateContextChip(chip.copyWith(value: value)),
                       ),
                     ),
                   ],
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)),
+                  icon: const Icon(Icons.delete_outline,
+                      size: 18, color: Color(0xFFEF4444)),
                   onPressed: () => _deleteContextChip(chip.id),
                 ),
               ],
@@ -610,17 +671,22 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                     icon: const Icon(Icons.article_outlined, size: 18),
                     label: const Text('Export runbook'),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
                     ),
                   ),
                   FilledButton.icon(
                     onPressed: () {},
-                    icon: const Icon(Icons.notifications_active_outlined, size: 18),
+                    icon: const Icon(Icons.notifications_active_outlined,
+                        size: 18),
                     label: const Text('Send launch update'),
                     style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 18, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
                     ),
                   ),
                 ],
@@ -642,14 +708,20 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                         ..add(option);
                     }),
                     showCheckmark: false,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18)),
                     selectedColor: primary.withValues(alpha: 0.12),
                     backgroundColor: const Color(0xFFF3F4F6),
                     labelStyle: TextStyle(
-                      fontWeight: _selectedFocusFilters.contains(option) ? FontWeight.w700 : FontWeight.w500,
-                      color: _selectedFocusFilters.contains(option) ? primary : const Color(0xFF4B5563),
+                      fontWeight: _selectedFocusFilters.contains(option)
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: _selectedFocusFilters.contains(option)
+                          ? primary
+                          : const Color(0xFF4B5563),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
                   ),
                 )
                 .toList(),
@@ -677,10 +749,14 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                     selectedColor: const Color(0xFFEEF2FF),
                     labelStyle: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: _selectedVisibilityFilters.contains(option) ? const Color(0xFF3730A3) : const Color(0xFF4B5563),
+                      color: _selectedVisibilityFilters.contains(option)
+                          ? const Color(0xFF3730A3)
+                          : const Color(0xFF4B5563),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18)),
                   ),
                 )
                 .toList(),
@@ -797,19 +873,26 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                   value: (_confidencePercent / 100).clamp(0.0, 1.0),
                   strokeWidth: 12,
                   backgroundColor: const Color(0xFFE0E7FF),
-                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+                  valueColor:
+                      const AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
                 ),
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       '${_confidencePercent.round()}%',
-                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: Color(0xFF312E81)),
+                      style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF312E81)),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       _confidenceStatus,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF4338CA)),
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF4338CA)),
                     ),
                   ],
                 ),
@@ -843,7 +926,10 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
             initialValue: _confidenceNote,
             decoration: _inlineDecoration('Status note'),
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF1E3A8A), fontWeight: FontWeight.w600),
+            style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF1E3A8A),
+                fontWeight: FontWeight.w600),
             onChanged: (value) {
               setState(() => _confidenceNote = value);
               _scheduleSave();
@@ -886,7 +972,8 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                       color: metric.accentColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(_iconForKey(metric.iconKey), size: 20, color: metric.accentColor),
+                    child: Icon(_iconForKey(metric.iconKey),
+                        size: 20, color: metric.accentColor),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -897,30 +984,43 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                           key: ValueKey('metric-label-${metric.id}'),
                           initialValue: metric.label,
                           decoration: _inlineDecoration('Metric label'),
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF4B5563)),
-                          onChanged: (value) => _updateStatusMetric(metric.copyWith(label: value)),
+                          style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF4B5563)),
+                          onChanged: (value) => _updateStatusMetric(
+                              metric.copyWith(label: value)),
                         ),
                         const SizedBox(height: 4),
                         TextFormField(
                           key: ValueKey('metric-value-${metric.id}'),
                           initialValue: metric.value,
                           decoration: _inlineDecoration('Metric value'),
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
-                          onChanged: (value) => _updateStatusMetric(metric.copyWith(value: value)),
+                          style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF111827)),
+                          onChanged: (value) => _updateStatusMetric(
+                              metric.copyWith(value: value)),
                         ),
                         const SizedBox(height: 4),
                         TextFormField(
                           key: ValueKey('metric-annotation-${metric.id}'),
                           initialValue: metric.annotation ?? '',
                           decoration: _inlineDecoration('Annotation'),
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
-                          onChanged: (value) => _updateStatusMetric(metric.copyWith(annotation: value)),
+                          style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF6B7280)),
+                          onChanged: (value) => _updateStatusMetric(
+                              metric.copyWith(annotation: value)),
                         ),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
+                    icon: const Icon(Icons.delete_outline,
+                        color: Color(0xFFEF4444)),
                     onPressed: () => _deleteStatusMetric(metric.id),
                   ),
                 ],
@@ -950,7 +1050,10 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
         children: [
           const Text(
             'Launch playbook',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF1F2937)),
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1F2937)),
           ),
           const SizedBox(height: 10),
           ..._milestones.map((milestone) {
@@ -966,7 +1069,8 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                       color: const Color(0xFFE0F2FE),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(_iconForKey(milestone.iconKey), color: const Color(0xFF0C4A6E), size: 20),
+                    child: Icon(_iconForKey(milestone.iconKey),
+                        color: const Color(0xFF0C4A6E), size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -977,38 +1081,55 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                           key: ValueKey('milestone-title-${milestone.id}'),
                           initialValue: milestone.title,
                           decoration: _inlineDecoration('Milestone'),
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
-                          onChanged: (value) => _updateMilestone(milestone.copyWith(title: value)),
+                          style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF111827)),
+                          onChanged: (value) => _updateMilestone(
+                              milestone.copyWith(title: value)),
                         ),
                         const SizedBox(height: 4),
                         TextFormField(
                           key: ValueKey('milestone-detail-${milestone.id}'),
                           initialValue: milestone.detail,
                           decoration: _inlineDecoration('Detail'),
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF4B5563)),
-                          onChanged: (value) => _updateMilestone(milestone.copyWith(detail: value)),
+                          style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF4B5563)),
+                          onChanged: (value) => _updateMilestone(
+                              milestone.copyWith(detail: value)),
                         ),
                         const SizedBox(height: 6),
                         TextFormField(
                           key: ValueKey('milestone-date-${milestone.id}'),
                           initialValue: milestone.dateLabel,
                           decoration: _inlineDecoration('Due date'),
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF2563EB)),
-                          onChanged: (value) => _updateMilestone(milestone.copyWith(dateLabel: value)),
+                          style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF2563EB)),
+                          onChanged: (value) => _updateMilestone(
+                              milestone.copyWith(dateLabel: value)),
                         ),
                         const SizedBox(height: 6),
                         TextFormField(
                           key: ValueKey('milestone-badge-${milestone.id}'),
                           initialValue: milestone.badgeLabel,
                           decoration: _inlineDecoration('Badge'),
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: milestone.badgeColor),
-                          onChanged: (value) => _updateMilestone(milestone.copyWith(badgeLabel: value)),
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: milestone.badgeColor),
+                          onChanged: (value) => _updateMilestone(
+                              milestone.copyWith(badgeLabel: value)),
                         ),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
+                    icon: const Icon(Icons.delete_outline,
+                        color: Color(0xFFEF4444)),
                     onPressed: () => _deleteMilestone(milestone.id),
                   ),
                 ],
@@ -1051,7 +1172,10 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
             children: const [
               Text(
                 'Launch readiness tracker',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF111827)),
               ),
               SizedBox(width: 10),
               _StatusPill('On track'),
@@ -1064,14 +1188,18 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
               value: _readinessProgress.clamp(0.0, 1.0),
               minHeight: 14,
               backgroundColor: Color(0xFFE5E7EB),
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF16A34A)),
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(Color(0xFF16A34A)),
             ),
           ),
           const SizedBox(height: 10),
           TextFormField(
             initialValue: _readinessSummary,
             decoration: _inlineDecoration('Summary'),
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF4B5563)),
+            style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF4B5563)),
             onChanged: (value) {
               setState(() => _readinessSummary = value);
               _scheduleSave();
@@ -1083,8 +1211,10 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
             decoration: _inlineDecoration('Progress %'),
             keyboardType: TextInputType.number,
             onChanged: (value) {
-              final parsed = double.tryParse(value) ?? (_readinessProgress * 100);
-              setState(() => _readinessProgress = (parsed / 100).clamp(0.0, 1.0));
+              final parsed =
+                  double.tryParse(value) ?? (_readinessProgress * 100);
+              setState(
+                  () => _readinessProgress = (parsed / 100).clamp(0.0, 1.0));
               _scheduleSave();
             },
           ),
@@ -1096,8 +1226,10 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
               ..._readinessTags.map((tag) => _ReadinessTag(
                     label: tag.label,
                     status: tag.status,
-                    onChangedLabel: (value) => _updateReadinessTag(tag.copyWith(label: value)),
-                    onChangedStatus: (value) => _updateReadinessTag(tag.copyWith(status: value)),
+                    onChangedLabel: (value) =>
+                        _updateReadinessTag(tag.copyWith(label: value)),
+                    onChangedStatus: (value) =>
+                        _updateReadinessTag(tag.copyWith(status: value)),
                     onDelete: () => _deleteReadinessTag(tag.id),
                   )),
               TextButton.icon(
@@ -1125,7 +1257,10 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
         children: [
           const Text(
             'Critical approvals & ownership',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827)),
           ),
           const SizedBox(height: 16),
           ..._approvalItems.map((item) {
@@ -1141,7 +1276,8 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                       color: item.iconBackground,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(_iconForKey(item.iconKey), color: item.iconColor, size: 18),
+                    child: Icon(_iconForKey(item.iconKey),
+                        color: item.iconColor, size: 18),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1155,14 +1291,19 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                                 key: ValueKey('approval-label-${item.id}'),
                                 initialValue: item.label,
                                 decoration: _inlineDecoration('Approval'),
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
-                                onChanged: (value) => _updateApprovalItem(item.copyWith(label: value)),
+                                style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF111827)),
+                                onChanged: (value) => _updateApprovalItem(
+                                    item.copyWith(label: value)),
                               ),
                             ),
                             const SizedBox(width: 8),
                             _StatusDropdown(
                               value: item.status,
-                              onChanged: (value) => _updateApprovalItem(item.copyWith(status: value)),
+                              onChanged: (value) => _updateApprovalItem(
+                                  item.copyWith(status: value)),
                             ),
                           ],
                         ),
@@ -1171,14 +1312,19 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                           key: ValueKey('approval-detail-${item.id}'),
                           initialValue: item.detail,
                           decoration: _inlineDecoration('Detail'),
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF4B5563)),
-                          onChanged: (value) => _updateApprovalItem(item.copyWith(detail: value)),
+                          style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF4B5563)),
+                          onChanged: (value) =>
+                              _updateApprovalItem(item.copyWith(detail: value)),
                         ),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
+                    icon: const Icon(Icons.delete_outline,
+                        color: Color(0xFFEF4444)),
                     onPressed: () => _deleteApprovalItem(item.id),
                   ),
                 ],
@@ -1219,13 +1365,19 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                     children: [
                       const Text(
                         'Launch coordinator',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF4B5563)),
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF4B5563)),
                       ),
                       const SizedBox(height: 6),
                       TextFormField(
                         initialValue: _coordinatorName,
                         decoration: _inlineDecoration('Name'),
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                        style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF111827)),
                         onChanged: (value) {
                           setState(() => _coordinatorName = value);
                           _scheduleSave();
@@ -1235,7 +1387,10 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                       TextFormField(
                         initialValue: _coordinatorRole,
                         decoration: _inlineDecoration('Role'),
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF4B5563)),
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF4B5563)),
                         onChanged: (value) {
                           setState(() => _coordinatorRole = value);
                           _scheduleSave();
@@ -1248,7 +1403,10 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                             child: TextFormField(
                               initialValue: _coordinatorEmail,
                               decoration: _inlineDecoration('Email'),
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF4B5563)),
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF4B5563)),
                               onChanged: (value) {
                                 setState(() => _coordinatorEmail = value);
                                 _scheduleSave();
@@ -1260,7 +1418,10 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                             child: TextFormField(
                               initialValue: _coordinatorPhone,
                               decoration: _inlineDecoration('Phone'),
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF4B5563)),
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF4B5563)),
                               onChanged: (value) {
                                 setState(() => _coordinatorPhone = value);
                                 _scheduleSave();
@@ -1312,12 +1473,18 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                   children: const [
                     Text(
                       'Checklist items',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF111827)),
                     ),
                     SizedBox(height: 6),
                     Text(
                       'Track execution readiness and align owners on every launch-critical activity.',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF4B5563)),
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF4B5563)),
                     ),
                   ],
                 ),
@@ -1331,8 +1498,10 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                     icon: const Icon(Icons.assignment_ind_outlined, size: 18),
                     label: const Text('Assign owners'),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
                     ),
                   ),
                   FilledButton.icon(
@@ -1340,8 +1509,10 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                     icon: const Icon(Icons.add_rounded, size: 20),
                     label: const Text('Add checklist item'),
                     style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
                     ),
                   ),
                 ],
@@ -1390,24 +1561,37 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                           key: ValueKey('checklist-title-${row.id}'),
                           initialValue: row.title,
                           decoration: _inlineDecoration('Checklist item'),
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
-                          onChanged: (value) => _updateChecklistRow(row.copyWith(title: value)),
+                          style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF111827)),
+                          onChanged: (value) =>
+                              _updateChecklistRow(row.copyWith(title: value)),
                         ),
                         const SizedBox(height: 4),
                         TextFormField(
                           key: ValueKey('checklist-detail-${row.id}'),
                           initialValue: row.detail,
                           decoration: _inlineDecoration('Detail'),
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
-                          onChanged: (value) => _updateChecklistRow(row.copyWith(detail: value)),
+                          style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF6B7280)),
+                          onChanged: (value) =>
+                              _updateChecklistRow(row.copyWith(detail: value)),
                         ),
                         const SizedBox(height: 6),
                         TextFormField(
                           key: ValueKey('checklist-flag-${row.id}'),
                           initialValue: row.flagLabel ?? '',
-                          decoration: _inlineDecoration('Flag/alert (optional)'),
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFB91C1C)),
-                          onChanged: (value) => _updateChecklistRow(row.copyWith(flagLabel: value)),
+                          decoration:
+                              _inlineDecoration('Flag/alert (optional)'),
+                          style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFFB91C1C)),
+                          onChanged: (value) => _updateChecklistRow(
+                              row.copyWith(flagLabel: value)),
                         ),
                       ],
                     ),
@@ -1418,8 +1602,12 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                       key: ValueKey('checklist-owner-${row.id}'),
                       initialValue: row.owner,
                       decoration: _inlineDecoration('Owner'),
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1F2937)),
-                      onChanged: (value) => _updateChecklistRow(row.copyWith(owner: value)),
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1F2937)),
+                      onChanged: (value) =>
+                          _updateChecklistRow(row.copyWith(owner: value)),
                     ),
                   ),
                   Expanded(
@@ -1428,8 +1616,12 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                       key: ValueKey('checklist-due-${row.id}'),
                       initialValue: row.due,
                       decoration: _inlineDecoration('Due'),
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1F2937)),
-                      onChanged: (value) => _updateChecklistRow(row.copyWith(due: value)),
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1F2937)),
+                      onChanged: (value) =>
+                          _updateChecklistRow(row.copyWith(due: value)),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -1437,13 +1629,15 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                     flex: 2,
                     child: _StatusDropdown(
                       value: row.status,
-                      onChanged: (value) => _updateChecklistRow(row.copyWith(status: value)),
+                      onChanged: (value) =>
+                          _updateChecklistRow(row.copyWith(status: value)),
                     ),
                   ),
                   IconButton(
                     tooltip: 'Delete',
                     onPressed: () => _deleteChecklistRow(row.id),
-                    icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
+                    icon: const Icon(Icons.delete_outline,
+                        color: Color(0xFFEF4444)),
                   ),
                 ],
               ),
@@ -1487,7 +1681,10 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
             children: const [
               Text(
                 'Launch timeline & guardrails',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF111827)),
               ),
               SizedBox(width: 10),
               _StatusPill('In review'),
@@ -1500,14 +1697,18 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
               value: _timelineProgress.clamp(0.0, 1.0),
               minHeight: 10,
               backgroundColor: Color(0xFFE5E7EB),
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
             ),
           ),
           const SizedBox(height: 12),
           TextFormField(
             initialValue: _timelineSummary,
             decoration: _inlineDecoration('Timeline summary'),
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF4B5563)),
+            style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF4B5563)),
             onChanged: (value) {
               setState(() => _timelineSummary = value);
               _scheduleSave();
@@ -1519,8 +1720,10 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
             decoration: _inlineDecoration('Timeline progress %'),
             keyboardType: TextInputType.number,
             onChanged: (value) {
-              final parsed = double.tryParse(value) ?? (_timelineProgress * 100);
-              setState(() => _timelineProgress = (parsed / 100).clamp(0.0, 1.0));
+              final parsed =
+                  double.tryParse(value) ?? (_timelineProgress * 100);
+              setState(
+                  () => _timelineProgress = (parsed / 100).clamp(0.0, 1.0));
               _scheduleSave();
             },
           ),
@@ -1538,7 +1741,8 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                       color: stage.accent.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(_iconForKey(stage.iconKey), color: stage.accent, size: 18),
+                    child: Icon(_iconForKey(stage.iconKey),
+                        color: stage.accent, size: 18),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1552,8 +1756,12 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                                 key: ValueKey('timeline-label-${stage.id}'),
                                 initialValue: stage.label,
                                 decoration: _inlineDecoration('Stage'),
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
-                                onChanged: (value) => _updateTimelineStage(stage.copyWith(label: value)),
+                                style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF111827)),
+                                onChanged: (value) => _updateTimelineStage(
+                                    stage.copyWith(label: value)),
                               ),
                             ),
                             SizedBox(
@@ -1562,8 +1770,12 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                                 key: ValueKey('timeline-date-${stage.id}'),
                                 initialValue: stage.date,
                                 decoration: _inlineDecoration('Date'),
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF2563EB)),
-                                onChanged: (value) => _updateTimelineStage(stage.copyWith(date: value)),
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF2563EB)),
+                                onChanged: (value) => _updateTimelineStage(
+                                    stage.copyWith(date: value)),
                               ),
                             ),
                           ],
@@ -1573,14 +1785,19 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                           key: ValueKey('timeline-detail-${stage.id}'),
                           initialValue: stage.detail,
                           decoration: _inlineDecoration('Detail'),
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
-                          onChanged: (value) => _updateTimelineStage(stage.copyWith(detail: value)),
+                          style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF6B7280)),
+                          onChanged: (value) => _updateTimelineStage(
+                              stage.copyWith(detail: value)),
                         ),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
+                    icon: const Icon(Icons.delete_outline,
+                        color: Color(0xFFEF4444)),
                     onPressed: () => _deleteTimelineStage(stage.id),
                   ),
                 ],
@@ -1596,7 +1813,8 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                 return _InfoPill(
                   icon: _iconForKey(pill.iconKey),
                   label: pill.label,
-                  onChanged: (value) => _updateTimelineInfoPill(pill.copyWith(label: value)),
+                  onChanged: (value) =>
+                      _updateTimelineInfoPill(pill.copyWith(label: value)),
                   onDelete: () => _deleteTimelineInfoPill(pill.id),
                 );
               }),
@@ -1637,12 +1855,18 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
         children: [
           const Text(
             'Guardrails & escalation paths',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827)),
           ),
           const SizedBox(height: 12),
           const Text(
             'Keep stakeholders ready across risk scenarios, comms, and analytics coverage.',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF4B5563)),
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF4B5563)),
           ),
           const SizedBox(height: 16),
           ..._highlightItems.map((item) {
@@ -1665,7 +1889,8 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                         color: item.accent.withValues(alpha: 0.16),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Icon(_iconForKey(item.iconKey), color: item.accent, size: 18),
+                      child: Icon(_iconForKey(item.iconKey),
+                          color: item.accent, size: 18),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -1679,13 +1904,18 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                                   key: ValueKey('highlight-title-${item.id}'),
                                   initialValue: item.title,
                                   decoration: _inlineDecoration('Highlight'),
-                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
-                                  onChanged: (value) => _updateHighlightItem(item.copyWith(title: value)),
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF111827)),
+                                  onChanged: (value) => _updateHighlightItem(
+                                      item.copyWith(title: value)),
                                 ),
                               ),
                               _StatusDropdown(
                                 value: item.status,
-                                onChanged: (value) => _updateHighlightItem(item.copyWith(status: value)),
+                                onChanged: (value) => _updateHighlightItem(
+                                    item.copyWith(status: value)),
                               ),
                             ],
                           ),
@@ -1694,8 +1924,12 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                             key: ValueKey('highlight-detail-${item.id}'),
                             initialValue: item.detail,
                             decoration: _inlineDecoration('Detail'),
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
-                            onChanged: (value) => _updateHighlightItem(item.copyWith(detail: value)),
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF6B7280)),
+                            onChanged: (value) => _updateHighlightItem(
+                                item.copyWith(detail: value)),
                           ),
                           if (item.ctaLabel != null) ...[
                             const SizedBox(height: 8),
@@ -1703,15 +1937,19 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
                               key: ValueKey('highlight-cta-${item.id}'),
                               initialValue: item.ctaLabel ?? '',
                               decoration: _inlineDecoration('CTA label'),
-                              style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF2563EB)),
-                              onChanged: (value) => _updateHighlightItem(item.copyWith(ctaLabel: value)),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF2563EB)),
+                              onChanged: (value) => _updateHighlightItem(
+                                  item.copyWith(ctaLabel: value)),
                             ),
                           ],
                         ],
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
+                      icon: const Icon(Icons.delete_outline,
+                          color: Color(0xFFEF4444)),
                       onPressed: () => _deleteHighlightItem(item.id),
                     ),
                   ],
@@ -1739,8 +1977,10 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
             onUpdateCard: (card) => _updateInsightCard(card),
             onDeleteCard: () => _deleteInsightCard(_insightCards[i].id),
             onAddEntry: () => _addInsightEntry(_insightCards[i].id),
-            onUpdateEntry: (entry) => _updateInsightEntry(_insightCards[i].id, entry),
-            onDeleteEntry: (entryId) => _deleteInsightEntry(_insightCards[i].id, entryId),
+            onUpdateEntry: (entry) =>
+                _updateInsightEntry(_insightCards[i].id, entry),
+            onDeleteEntry: (entryId) =>
+                _deleteInsightEntry(_insightCards[i].id, entryId),
           ),
           if (i != _insightCards.length - 1) const SizedBox(height: 20),
         ],
@@ -1755,7 +1995,8 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
 
   void _addContextChip() {
     setState(() {
-      _contextChips.add(_InfoChipData(id: _newId(), iconKey: 'flag', label: '', value: ''));
+      _contextChips.add(
+          _InfoChipData(id: _newId(), iconKey: 'flag', label: '', value: ''));
     });
     _scheduleSave();
   }
@@ -1908,7 +2149,8 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
 
   void _addTimelineInfoPill() {
     setState(() {
-      _timelineInfoPills.add(_InfoPillData(id: _newId(), iconKey: 'flag_circle', label: ''));
+      _timelineInfoPills
+          .add(_InfoPillData(id: _newId(), iconKey: 'flag_circle', label: ''));
     });
     _scheduleSave();
   }
@@ -1954,7 +2196,8 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
 
   void _addReadinessTag() {
     setState(() {
-      _readinessTags.add(_ReadinessTagData(id: _newId(), label: '', status: 'On track'));
+      _readinessTags
+          .add(_ReadinessTagData(id: _newId(), label: '', status: 'On track'));
     });
     _scheduleSave();
   }
@@ -2025,7 +2268,8 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
     if (entryIndex == -1) return;
     final updatedEntries = [...card.entries];
     updatedEntries[entryIndex] = entry;
-    setState(() => _insightCards[cardIndex] = card.copyWith(entries: updatedEntries));
+    setState(() =>
+        _insightCards[cardIndex] = card.copyWith(entries: updatedEntries));
     _scheduleSave();
   }
 
@@ -2033,8 +2277,10 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
     final cardIndex = _insightCards.indexWhere((item) => item.id == cardId);
     if (cardIndex == -1) return;
     final card = _insightCards[cardIndex];
-    final updatedEntries = card.entries.where((item) => item.id != entryId).toList();
-    setState(() => _insightCards[cardIndex] = card.copyWith(entries: updatedEntries));
+    final updatedEntries =
+        card.entries.where((item) => item.id != entryId).toList();
+    setState(() =>
+        _insightCards[cardIndex] = card.copyWith(entries: updatedEntries));
     _scheduleSave();
   }
 }
@@ -2085,21 +2331,30 @@ class _LaunchInsightCard extends StatelessWidget {
                     TextFormField(
                       initialValue: data.title,
                       decoration: _inlineDecoration('Card title'),
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
-                      onChanged: (value) => onUpdateCard(data.copyWith(title: value)),
+                      style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF111827)),
+                      onChanged: (value) =>
+                          onUpdateCard(data.copyWith(title: value)),
                     ),
                     const SizedBox(height: 4),
                     TextFormField(
                       initialValue: data.subtitle,
                       decoration: _inlineDecoration('Subtitle'),
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
-                      onChanged: (value) => onUpdateCard(data.copyWith(subtitle: value)),
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF6B7280)),
+                      onChanged: (value) =>
+                          onUpdateCard(data.copyWith(subtitle: value)),
                     ),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: data.tagColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(14),
@@ -2109,13 +2364,18 @@ class _LaunchInsightCard extends StatelessWidget {
                   child: TextFormField(
                     initialValue: data.tag,
                     decoration: _inlineDecoration('Tag'),
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: data.tagColor),
-                    onChanged: (value) => onUpdateCard(data.copyWith(tag: value)),
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: data.tagColor),
+                    onChanged: (value) =>
+                        onUpdateCard(data.copyWith(tag: value)),
                   ),
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
+                icon:
+                    const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
                 onPressed: onDeleteCard,
               ),
             ],
@@ -2134,7 +2394,8 @@ class _LaunchInsightCard extends StatelessWidget {
                       color: entry.iconColor.withValues(alpha: 0.14),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(_iconForKey(entry.iconKey), color: entry.iconColor, size: 16),
+                    child: Icon(_iconForKey(entry.iconKey),
+                        color: entry.iconColor, size: 16),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -2147,13 +2408,18 @@ class _LaunchInsightCard extends StatelessWidget {
                               child: TextFormField(
                                 initialValue: entry.label,
                                 decoration: _inlineDecoration('Entry label'),
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
-                                onChanged: (value) => onUpdateEntry(entry.copyWith(label: value)),
+                                style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF111827)),
+                                onChanged: (value) =>
+                                    onUpdateEntry(entry.copyWith(label: value)),
                               ),
                             ),
                             _StatusDropdown(
                               value: entry.status ?? 'On track',
-                              onChanged: (value) => onUpdateEntry(entry.copyWith(status: value)),
+                              onChanged: (value) =>
+                                  onUpdateEntry(entry.copyWith(status: value)),
                             ),
                           ],
                         ),
@@ -2161,14 +2427,19 @@ class _LaunchInsightCard extends StatelessWidget {
                         TextFormField(
                           initialValue: entry.detail,
                           decoration: _inlineDecoration('Entry detail'),
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
-                          onChanged: (value) => onUpdateEntry(entry.copyWith(detail: value)),
+                          style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF6B7280)),
+                          onChanged: (value) =>
+                              onUpdateEntry(entry.copyWith(detail: value)),
                         ),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
+                    icon: const Icon(Icons.delete_outline,
+                        color: Color(0xFFEF4444)),
                     onPressed: () => onDeleteEntry(entry.id),
                   ),
                 ],
@@ -2186,8 +2457,10 @@ class _LaunchInsightCard extends StatelessWidget {
             TextFormField(
               initialValue: data.footerLabel ?? '',
               decoration: _inlineDecoration('Footer link label'),
-              style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF2563EB)),
-              onChanged: (value) => onUpdateCard(data.copyWith(footerLabel: value)),
+              style: const TextStyle(
+                  fontWeight: FontWeight.w700, color: Color(0xFF2563EB)),
+              onChanged: (value) =>
+                  onUpdateCard(data.copyWith(footerLabel: value)),
             ),
           ],
         ],
@@ -2205,7 +2478,8 @@ class _TableHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label,
-      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF4B5563)),
+      style: const TextStyle(
+          fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF4B5563)),
     );
   }
 }
@@ -2276,7 +2550,10 @@ class _ReadinessTag extends StatelessWidget {
             child: TextFormField(
               initialValue: label,
               decoration: _inlineDecoration('Tag'),
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+              style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827)),
               onChanged: onChangedLabel,
             ),
           ),
@@ -2288,7 +2565,8 @@ class _ReadinessTag extends StatelessWidget {
           if (onDelete != null) ...[
             const SizedBox(width: 6),
             IconButton(
-              icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)),
+              icon: const Icon(Icons.delete_outline,
+                  size: 18, color: Color(0xFFEF4444)),
               onPressed: onDelete,
             ),
           ],
@@ -2329,14 +2607,18 @@ class _InfoPill extends StatelessWidget {
             child: TextFormField(
               initialValue: label,
               decoration: _inlineDecoration('Guardrail'),
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1F2937)),
+              style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1F2937)),
               onChanged: onChanged,
             ),
           ),
           if (onDelete != null) ...[
             const SizedBox(width: 6),
             IconButton(
-              icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)),
+              icon: const Icon(Icons.delete_outline,
+                  size: 18, color: Color(0xFFEF4444)),
               onPressed: onDelete,
             ),
           ],
@@ -2380,7 +2662,8 @@ class _InfoChipData {
     return data.map((item) {
       final map = Map<String, dynamic>.from(item as Map? ?? {});
       return _InfoChipData(
-        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: map['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         iconKey: map['iconKey']?.toString() ?? 'flag',
         label: map['label']?.toString() ?? '',
         value: map['value']?.toString() ?? '',
@@ -2447,14 +2730,18 @@ class _StatusMetricData {
     return data.map((item) {
       final map = Map<String, dynamic>.from(item as Map? ?? {});
       return _StatusMetricData(
-        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: map['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         label: map['label']?.toString() ?? '',
         value: map['value']?.toString() ?? '',
         annotation: map['annotation']?.toString(),
         iconKey: map['iconKey']?.toString() ?? 'stacked',
-        accentColor: Color(map['accentColor'] is int ? map['accentColor'] as int : 0xFF2563EB),
-        background: Color(map['background'] is int ? map['background'] as int : 0xFFEFF6FF),
-        borderColor: Color(map['borderColor'] is int ? map['borderColor'] as int : 0xFFD2E3FC),
+        accentColor: Color(
+            map['accentColor'] is int ? map['accentColor'] as int : 0xFF2563EB),
+        background: Color(
+            map['background'] is int ? map['background'] as int : 0xFFEFF6FF),
+        borderColor: Color(
+            map['borderColor'] is int ? map['borderColor'] as int : 0xFFD2E3FC),
       );
     }).toList();
   }
@@ -2513,12 +2800,14 @@ class _MilestoneData {
     return data.map((item) {
       final map = Map<String, dynamic>.from(item as Map? ?? {});
       return _MilestoneData(
-        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: map['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         title: map['title']?.toString() ?? '',
         detail: map['detail']?.toString() ?? '',
         dateLabel: map['dateLabel']?.toString() ?? '',
         badgeLabel: map['badgeLabel']?.toString() ?? '',
-        badgeColor: Color(map['badgeColor'] is int ? map['badgeColor'] as int : 0xFF2563EB),
+        badgeColor: Color(
+            map['badgeColor'] is int ? map['badgeColor'] as int : 0xFF2563EB),
         iconKey: map['iconKey']?.toString() ?? 'present',
       );
     }).toList();
@@ -2578,13 +2867,17 @@ class _ApprovalItem {
     return data.map((item) {
       final map = Map<String, dynamic>.from(item as Map? ?? {});
       return _ApprovalItem(
-        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: map['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         label: map['label']?.toString() ?? '',
         detail: map['detail']?.toString() ?? '',
         status: map['status']?.toString() ?? 'On track',
         iconKey: map['iconKey']?.toString() ?? 'check',
-        iconColor: Color(map['iconColor'] is int ? map['iconColor'] as int : 0xFF16A34A),
-        iconBackground: Color(map['iconBackground'] is int ? map['iconBackground'] as int : 0xFFDCFCE7),
+        iconColor: Color(
+            map['iconColor'] is int ? map['iconColor'] as int : 0xFF16A34A),
+        iconBackground: Color(map['iconBackground'] is int
+            ? map['iconBackground'] as int
+            : 0xFFDCFCE7),
       );
     }).toList();
   }
@@ -2643,7 +2936,8 @@ class _ChecklistRowData {
     return data.map((item) {
       final map = Map<String, dynamic>.from(item as Map? ?? {});
       return _ChecklistRowData(
-        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: map['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         title: map['title']?.toString() ?? '',
         detail: map['detail']?.toString() ?? '',
         owner: map['owner']?.toString() ?? '',
@@ -2703,7 +2997,8 @@ class _TimelineStage {
     return data.map((item) {
       final map = Map<String, dynamic>.from(item as Map? ?? {});
       return _TimelineStage(
-        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: map['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         label: map['label']?.toString() ?? '',
         detail: map['detail']?.toString() ?? '',
         date: map['date']?.toString() ?? '',
@@ -2767,7 +3062,8 @@ class _HighlightItem {
     return data.map((item) {
       final map = Map<String, dynamic>.from(item as Map? ?? {});
       return _HighlightItem(
-        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: map['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         title: map['title']?.toString() ?? '',
         detail: map['detail']?.toString() ?? '',
         status: map['status']?.toString() ?? 'On track',
@@ -2832,11 +3128,13 @@ class _InsightCardData {
     return data.map((item) {
       final map = Map<String, dynamic>.from(item as Map? ?? {});
       return _InsightCardData(
-        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: map['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         title: map['title']?.toString() ?? '',
         subtitle: map['subtitle']?.toString() ?? '',
         tag: map['tag']?.toString() ?? '',
-        tagColor: Color(map['tagColor'] is int ? map['tagColor'] as int : 0xFF2563EB),
+        tagColor:
+            Color(map['tagColor'] is int ? map['tagColor'] as int : 0xFF2563EB),
         entries: _InsightEntryData.fromList(map['entries']),
         footerLabel: map['footerLabel']?.toString(),
       );
@@ -2892,11 +3190,13 @@ class _InsightEntryData {
     return data.map((item) {
       final map = Map<String, dynamic>.from(item as Map? ?? {});
       return _InsightEntryData(
-        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: map['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         label: map['label']?.toString() ?? '',
         detail: map['detail']?.toString() ?? '',
         iconKey: map['iconKey']?.toString() ?? 'checklist',
-        iconColor: Color(map['iconColor'] is int ? map['iconColor'] as int : 0xFF2563EB),
+        iconColor: Color(
+            map['iconColor'] is int ? map['iconColor'] as int : 0xFF2563EB),
         status: map['status']?.toString(),
       );
     }).toList();
@@ -2933,7 +3233,8 @@ class _InfoPillData {
     return data.map((item) {
       final map = Map<String, dynamic>.from(item as Map? ?? {});
       return _InfoPillData(
-        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: map['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         iconKey: map['iconKey']?.toString() ?? 'flag_circle',
         label: map['label']?.toString() ?? '',
       );
@@ -2971,7 +3272,8 @@ class _ReadinessTagData {
     return data.map((item) {
       final map = Map<String, dynamic>.from(item as Map? ?? {});
       return _ReadinessTagData(
-        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: map['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         label: map['label']?.toString() ?? '',
         status: map['status']?.toString() ?? 'On track',
       );
@@ -3005,7 +3307,8 @@ class _StatusDropdown extends StatelessWidget {
       child: DropdownButton<String>(
         value: _statusOptions.contains(value) ? value : _statusOptions.first,
         items: _statusOptions
-            .map((status) => DropdownMenuItem(value: status, child: _StatusPill(status)))
+            .map((status) =>
+                DropdownMenuItem(value: status, child: _StatusPill(status)))
             .toList(),
         onChanged: (value) => onChanged(value ?? _statusOptions.first),
       ),
@@ -3098,7 +3401,8 @@ const Map<String, _StatusVisual> _statusVisuals = {
 };
 
 class _Debouncer {
-  _Debouncer({Duration? delay}) : delay = delay ?? const Duration(milliseconds: 600);
+  _Debouncer({Duration? delay})
+      : delay = delay ?? const Duration(milliseconds: 600);
 
   final Duration delay;
   Timer? _timer;

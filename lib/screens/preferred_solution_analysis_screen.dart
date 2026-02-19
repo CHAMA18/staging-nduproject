@@ -53,6 +53,13 @@ class PreferredSolutionAnalysisScreen extends StatefulWidget {
 class _PreferredSolutionAnalysisScreenState
     extends State<PreferredSolutionAnalysisScreen>
     with SingleTickerProviderStateMixin {
+  static const String _finalSelectionWarning =
+      'This selection will form the basis of the entire project and cannot be changed once confirmed. Please ensure you have reviewed all options carefully.';
+  static const Set<String> _authorizedSelectionRoles = {
+    'owner',
+    'project manager',
+    'founder',
+  };
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late final TextEditingController _notesController;
   late List<AiSolutionItem> _solutions;
@@ -67,6 +74,7 @@ class _PreferredSolutionAnalysisScreenState
   late final TextEditingController _projectNameController;
   String? _projectNameError;
   Timer? _notesSaveTimer;
+  String _currentUserRole = 'Member';
 
   @override
   void initState() {
@@ -96,6 +104,7 @@ class _PreferredSolutionAnalysisScreenState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadExistingDataAndAnalysis().then((_) {
         if (!mounted) return;
+        _resolveCurrentUserRole();
         PageHintDialog.showIfNeeded(
           context: context,
           pageId: 'preferred_solution_analysis',
@@ -321,6 +330,105 @@ class _PreferredSolutionAnalysisScreenState
     return x.isNotEmpty && y.isNotEmpty && x == y;
   }
 
+  String _normalizeRole(String role) {
+    final lower = role.trim().toLowerCase();
+    if (lower == 'project_manager' || lower == 'project manager') {
+      return 'project manager';
+    }
+    return lower;
+  }
+
+  bool _isUserAuthorizedToFinalize() {
+    return _authorizedSelectionRoles.contains(_normalizeRole(_currentUserRole));
+  }
+
+  bool _matchesIdentity(String candidate, String displayName, String email) {
+    final normalizedCandidate = candidate.trim().toLowerCase();
+    if (normalizedCandidate.isEmpty) return false;
+
+    final normalizedDisplay = displayName.trim().toLowerCase();
+    final emailLocal = email.contains('@')
+        ? email.split('@').first.trim().toLowerCase()
+        : email.trim().toLowerCase();
+
+    if (normalizedDisplay.isNotEmpty) {
+      if (normalizedCandidate == normalizedDisplay) return true;
+      if (normalizedDisplay.contains(normalizedCandidate) ||
+          normalizedCandidate.contains(normalizedDisplay)) {
+        return true;
+      }
+    }
+
+    if (emailLocal.isNotEmpty) {
+      if (normalizedCandidate == emailLocal) return true;
+      if (emailLocal.contains(normalizedCandidate) ||
+          normalizedCandidate.contains(emailLocal)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  Future<void> _resolveCurrentUserRole() async {
+    String resolvedRole = 'Member';
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      final provider = ProjectDataHelper.getProvider(context);
+      final projectData = provider.projectData;
+      final email = user?.email?.trim().toLowerCase() ?? '';
+      final uid = user?.uid ?? '';
+      final displayName =
+          FirebaseAuthService.displayNameOrEmail(fallback: '').trim();
+
+      final projectId = projectData.projectId?.trim() ?? '';
+      if (uid.isNotEmpty && projectId.isNotEmpty) {
+        final project = await ProjectService.getProjectById(projectId);
+        if (project != null) {
+          final ownerEmail = project.ownerEmail.trim().toLowerCase();
+          if (project.ownerId == uid ||
+              (email.isNotEmpty && ownerEmail == email)) {
+            resolvedRole = 'Owner';
+          }
+        }
+      }
+
+      if (!_authorizedSelectionRoles.contains(_normalizeRole(resolvedRole))) {
+        for (final member in projectData.teamMembers) {
+          final memberEmail = member.email.trim().toLowerCase();
+          final memberName = member.name.trim().toLowerCase();
+          final role = member.role.trim();
+          final matchesByEmail = email.isNotEmpty &&
+              memberEmail.isNotEmpty &&
+              memberEmail == email;
+          final matchesByName = displayName.isNotEmpty &&
+              memberName.isNotEmpty &&
+              memberName == displayName.toLowerCase();
+
+          if ((matchesByEmail || matchesByName) && role.isNotEmpty) {
+            resolvedRole = role;
+            break;
+          }
+        }
+      }
+
+      if (!_authorizedSelectionRoles.contains(_normalizeRole(resolvedRole))) {
+        final pmName = projectData.charterProjectManagerName.trim();
+        if (_matchesIdentity(pmName, displayName, email)) {
+          resolvedRole = 'Project Manager';
+        }
+      }
+    } catch (e) {
+      debugPrint('Error resolving user role: $e');
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _currentUserRole = resolvedRole;
+    });
+  }
+
   static List<String> _lines(String s) {
     if (s.trim().isEmpty) return [];
     return s
@@ -334,7 +442,8 @@ class _PreferredSolutionAnalysisScreenState
     if (!mounted) return;
     final projectData = ProjectDataHelper.getData(context);
     final enriched = <_SolutionAnalysisData>[];
-    for (final item in _analysis) {
+    for (int i = 0; i < _analysis.length; i++) {
+      final item = _analysis[i];
       final title = item.solution.title;
       List<String>? risks;
       List<String>? stakeholders;
@@ -342,6 +451,7 @@ class _PreferredSolutionAnalysisScreenState
       List<String>? externalSh;
       String? itText;
       String? infraText;
+      List<AiCostItem>? cbaCosts;
 
       for (final sr in projectData.solutionRisks) {
         if (_matchSolutionTitle(sr.solutionTitle, title)) {
@@ -381,13 +491,19 @@ class _PreferredSolutionAnalysisScreenState
         }
       }
 
+      cbaCosts = _buildCostsFromCostAnalysis(
+        projectData,
+        title,
+        solutionIndex: i,
+      );
+
       enriched.add(_SolutionAnalysisData(
         solution: item.solution,
         stakeholders: stakeholders ?? item.stakeholders,
         risks: risks ?? item.risks,
         technologies: item.technologies,
         infrastructure: item.infrastructure,
-        costs: item.costs,
+        costs: cbaCosts ?? item.costs,
         internalStakeholders: internalSh,
         externalStakeholders: externalSh,
         itConsiderationText: itText ?? item.itConsiderationText,
@@ -878,13 +994,21 @@ class _PreferredSolutionAnalysisScreenState
     );
   }
 
+  void _openCostAnalysisForSolution(int index) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CostAnalysisScreen(
+          notes: _notesController.text,
+          solutions: _solutions,
+          initialStepIndex: 1,
+          initialSolutionIndex: index,
+        ),
+      ),
+    );
+  }
+
   Widget _buildMainContent() {
-    // ignore: unused_local_variable
-    final isMobile = AppBreakpoints.isMobile(context);
-    final projectData = ProjectDataHelper.getData(context);
-    final selectedSolutionTitle =
-        projectData.preferredSolutionAnalysis?.selectedSolutionTitle ?? '';
-    final hasSelection = selectedSolutionTitle.trim().isNotEmpty;
     return SingleChildScrollView(
       padding: EdgeInsets.all(AppBreakpoints.pagePadding(context)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -903,13 +1027,511 @@ class _PreferredSolutionAnalysisScreenState
         if (!_isLoading) ...[
           _buildCardBasedView(),
           const SizedBox(height: 16),
-          // Select Project button (KAZ) - only show if a solution is selected
-          if (hasSelection) _buildSelectProjectButton(),
+          _buildBottomPreferredActions(),
           const SizedBox(height: 24),
         ],
         if (_isLoading) const SizedBox(height: 24),
       ]),
     );
+  }
+
+  int? _effectiveSelectedSolutionIndex() {
+    if (_selectedSolutionIndex != null &&
+        _selectedSolutionIndex! >= 0 &&
+        _selectedSolutionIndex! < _analysis.length) {
+      return _selectedSolutionIndex;
+    }
+
+    final projectData = ProjectDataHelper.getData(context);
+    final preferred = projectData.preferredSolutionAnalysis;
+    if (preferred?.selectedSolutionIndex != null) {
+      final index = preferred!.selectedSolutionIndex!;
+      if (index >= 0 && index < _analysis.length) {
+        return index;
+      }
+    }
+
+    final selectedTitle = preferred?.selectedSolutionTitle?.trim() ?? '';
+    if (selectedTitle.isNotEmpty) {
+      for (int i = 0; i < _analysis.length; i++) {
+        if (_matchSolutionTitle(_analysis[i].solution.title, selectedTitle)) {
+          return i;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  Widget _buildBottomPreferredActions() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Next Step',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Review all potential solutions and select preferred option.',
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 14),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton.icon(
+              onPressed: _analysis.isEmpty ? null : _handleNextToSelectionPage,
+              icon: const Icon(Icons.arrow_forward, size: 18),
+              label: const Text('Next'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFD700),
+                foregroundColor: Colors.black,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 0,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String? _resolveSolutionIdForIndex(
+      ProjectDataModel projectData, int index, String solutionTitle) {
+    if (index >= 0 && index < projectData.potentialSolutions.length) {
+      return projectData.potentialSolutions[index].id;
+    }
+
+    for (final solution in projectData.potentialSolutions) {
+      if (_matchSolutionTitle(solution.title, solutionTitle)) {
+        final id = solution.id.trim();
+        if (id.isNotEmpty) return id;
+      }
+    }
+    return null;
+  }
+
+  Future<bool> _persistPreferredSelection({
+    required int index,
+    bool showSuccessMessage = true,
+    bool finalizeSelection = false,
+  }) async {
+    if (index < 0 || index >= _analysis.length) return false;
+    final provider = ProjectDataHelper.getProvider(context);
+    final projectData = provider.projectData;
+    final currentAnalysis = projectData.preferredSolutionAnalysis;
+    final analysis = _analysis[index];
+
+    if (currentAnalysis?.isSelectionFinalized == true) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Preferred solution is already finalized and cannot be changed.',
+            ),
+          ),
+        );
+      }
+      return false;
+    }
+
+    final solutionId = _resolveSolutionIdForIndex(
+      projectData,
+      index,
+      analysis.solution.title,
+    );
+
+    if (solutionId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not match solution to save selection.',
+            ),
+          ),
+        );
+      }
+      return false;
+    }
+
+    await provider.setPreferredSolution(
+      solutionId,
+      checkpoint: 'preferred_solution_selected',
+    );
+
+    final updatedAnalysis = PreferredSolutionAnalysis(
+      workingNotes:
+          currentAnalysis?.workingNotes ?? _notesController.text.trim(),
+      solutionAnalyses: currentAnalysis?.solutionAnalyses ?? const [],
+      selectedSolutionTitle: analysis.solution.title,
+      selectedSolutionId: solutionId,
+      selectedSolutionIndex: index,
+      isSelectionFinalized:
+          finalizeSelection || (currentAnalysis?.isSelectionFinalized ?? false),
+    );
+
+    provider.updateField((data) => data.copyWith(
+          preferredSolutionAnalysis: updatedAnalysis,
+        ));
+    await provider.saveToFirebase(checkpoint: 'preferred_solution_selected');
+
+    if (mounted) {
+      setState(() {
+        _selectedSolutionIndex = index;
+      });
+      if (showSuccessMessage) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(finalizeSelection
+                  ? 'Preferred solution finalized'
+                  : 'Preferred solution saved')),
+        );
+      }
+    }
+    return true;
+  }
+
+  Future<void> _openPreferredSelectionPage({int? preferredIndex}) async {
+    await _saveAnalysisData();
+    if (!mounted) return;
+
+    final provider = ProjectDataHelper.getProvider(context);
+    final projectData = provider.projectData;
+    final allSolutions = _analysis
+        .map((item) => AiSolutionItem(
+              title: item.solution.title,
+              description: item.solution.description,
+            ))
+        .toList(growable: false);
+
+    if (allSolutions.isEmpty) return;
+
+    final safeIndex = (preferredIndex ?? _effectiveSelectedSolutionIndex() ?? 0)
+        .clamp(0, allSolutions.length - 1)
+        .toInt();
+    final selectedSolution = allSolutions[safeIndex];
+    final projectName = projectData.projectName.trim().isNotEmpty
+        ? projectData.projectName.trim()
+        : selectedSolution.title;
+    final businessCase = projectData.businessCase.trim().isNotEmpty
+        ? projectData.businessCase.trim()
+        : widget.businessCase.trim();
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ProjectDecisionSummaryScreen(
+          projectName: projectName.isEmpty ? 'Untitled Project' : projectName,
+          selectedSolution: selectedSolution,
+          allSolutions: allSolutions,
+          businessCase: businessCase,
+          notes: _notesController.text.trim(),
+        ),
+      ),
+    );
+  }
+
+  // ignore: unused_element
+  Future<void> _handleBottomSelectPreferred() async {
+    final selectedIndex = _effectiveSelectedSolutionIndex();
+    if (selectedIndex == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Choose a solution first')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSavingPreferredSelection = true;
+      _savingPreferredIndex = selectedIndex;
+    });
+    try {
+      await _persistPreferredSelection(index: selectedIndex);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save preferred solution: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSavingPreferredSelection = false;
+          _savingPreferredIndex = null;
+        });
+      }
+    }
+  }
+
+  // ignore: unused_element
+  Future<void> _showPreferredSelectionDialog() async {
+    await _resolveCurrentUserRole();
+    if (!mounted) return;
+
+    final provider = ProjectDataHelper.getProvider(context);
+    final finalized =
+        provider.projectData.preferredSolutionAnalysis?.isSelectionFinalized ==
+            true;
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 980, maxHeight: 760),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Select Preferred Solution',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  finalized
+                      ? 'Preferred solution is already finalized. You can only view details.'
+                      : 'Select one solution for preferred status. You can review full details for each option before selecting.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                ),
+                const SizedBox(height: 14),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: _analysis.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final solution = _analysis[index].solution;
+                      final title = solution.title.trim().isNotEmpty
+                          ? solution.title
+                          : 'Solution ${index + 1}';
+                      final selected =
+                          _effectiveSelectedSolutionIndex() == index;
+                      return Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? const Color(0xFFFFF8E1)
+                              : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: selected
+                                ? const Color(0xFFFFD700)
+                                : const Color(0xFFE5E7EB),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Solution ${index + 1}: $title',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            if (solution.description.trim().isNotEmpty) ...[
+                              const SizedBox(height: 6),
+                              Text(
+                                solution.description,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                    fontSize: 12, color: Colors.grey[700]),
+                              ),
+                            ],
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 10,
+                              children: [
+                                OutlinedButton.icon(
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                    _navigateToSolutionDetails(index);
+                                  },
+                                  icon: const Icon(Icons.visibility_outlined,
+                                      size: 18),
+                                  label: const Text('View This Solution'),
+                                ),
+                                ElevatedButton.icon(
+                                  onPressed: finalized
+                                      ? null
+                                      : () async {
+                                          Navigator.of(context).pop();
+                                          await _attemptSelectPreferredFromDialog(
+                                              index: index);
+                                        },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFFFD700),
+                                    foregroundColor: Colors.black,
+                                    elevation: 0,
+                                  ),
+                                  icon: const Icon(Icons.check_circle_outline,
+                                      size: 18),
+                                  label: const Text(
+                                      'Select as Preferred Solution'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Close'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _attemptSelectPreferredFromDialog({required int index}) async {
+    if (!_isUserAuthorizedToFinalize()) {
+      _showAuthorizationBlockedDialog();
+      return;
+    }
+    await _showFinalPreferredConfirmation(index: index);
+  }
+
+  void _showAuthorizationBlockedDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Selection Blocked'),
+        content: Text(
+          'Only Owner, Project Manager, or Founder can finalize preferred solution selection.\n\nYour current role: $_currentUserRole',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showFinalPreferredConfirmation({required int index}) async {
+    if (index < 0 || index >= _analysis.length) return;
+    bool authorityChecked = false;
+
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return AlertDialog(
+            title: const Text('Finalize Preferred Solution'),
+            content: SizedBox(
+              width: 560,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _finalSelectionWarning,
+                    style: const TextStyle(fontSize: 13.5, height: 1.45),
+                  ),
+                  const SizedBox(height: 14),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: authorityChecked,
+                    onChanged: (value) {
+                      setModalState(() {
+                        authorityChecked = value ?? false;
+                      });
+                    },
+                    title: const Text(
+                      'I have the authority to select a preferred solution and have aligned with stakeholders.',
+                      style: TextStyle(fontSize: 12.5),
+                    ),
+                    controlAffinity: ListTileControlAffinity.leading,
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: authorityChecked
+                    ? () => Navigator.of(context).pop(true)
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFD700),
+                  foregroundColor: Colors.black,
+                  elevation: 0,
+                ),
+                child: const Text('Proceed with this Preferred Solution'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    if (proceed != true || !mounted) return;
+
+    setState(() {
+      _isSavingPreferredSelection = true;
+      _savingPreferredIndex = index;
+    });
+    try {
+      await _persistPreferredSelection(
+        index: index,
+        showSuccessMessage: true,
+        finalizeSelection: true,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save preferred solution: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSavingPreferredSelection = false;
+          _savingPreferredIndex = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleNextToSelectionPage() async {
+    final preferredIndex = _effectiveSelectedSolutionIndex();
+    await _openPreferredSelectionPage(preferredIndex: preferredIndex);
   }
 
   // ignore: unused_element
@@ -1171,6 +1793,7 @@ class _PreferredSolutionAnalysisScreenState
       selectedSolutionTitle: current?.selectedSolutionTitle,
       selectedSolutionId: current?.selectedSolutionId,
       selectedSolutionIndex: current?.selectedSolutionIndex,
+      isSelectionFinalized: current?.isSelectionFinalized ?? false,
     );
 
     provider.updateField((data) => data.copyWith(
@@ -1329,16 +1952,252 @@ class _PreferredSolutionAnalysisScreenState
     );
   }
 
-  List<CostRowData> _getCbaCostRowsForSolution(
-      ProjectDataModel projectData, String solutionTitle) {
+  static const Map<String, String> _costCategoryLabels = {
+    'revenue': 'Revenue',
+    'cost_saving': 'Cost Saving',
+    'ops_efficiency': 'Operations Efficiency',
+    'productivity': 'Productivity',
+    'regulatory_compliance': 'Regulatory & Compliance',
+    'process_improvement': 'Process Improvement',
+    'brand_image': 'Brand Image',
+    'stakeholder_commitment': 'Stakeholder Commitment',
+    'other': 'Other',
+  };
+
+  String _normalizedTitle(String value) => value.trim().toLowerCase();
+
+  bool _hasMeaningfulCostRow(CostRowData row) {
+    final hasName = row.itemName.trim().isNotEmpty;
+    final hasDescription = row.description.trim().isNotEmpty;
+    final hasAssumptions = row.assumptions.trim().isNotEmpty;
+    final hasCost = _parseNumericAmount(row.cost) > 0;
+    return hasName || hasDescription || hasAssumptions || hasCost;
+  }
+
+  List<CostRowData> _meaningfulRows(List<CostRowData> rows) =>
+      rows.where(_hasMeaningfulCostRow).toList(growable: false);
+
+  List<CostRowData> _categoryRowsFromCostAnalysis(
+    ProjectDataModel projectData,
+    String solutionTitle, {
+    int? solutionIndex,
+  }) {
     final cba = projectData.costAnalysisData;
-    if (cba == null) return [];
-    for (final sc in cba.solutionCosts) {
-      if (_matchSolutionTitle(sc.solutionTitle, solutionTitle)) {
-        return sc.costRows;
+    if (cba == null) return const [];
+
+    SolutionCategoryCostData? categoryData;
+    for (final item in cba.solutionCategoryCosts) {
+      if (_matchSolutionTitle(item.solutionTitle, solutionTitle)) {
+        categoryData = item;
+        break;
       }
     }
-    return [];
+
+    if (categoryData == null &&
+        solutionIndex != null &&
+        solutionIndex >= 0 &&
+        solutionIndex < cba.solutionCategoryCosts.length) {
+      categoryData = cba.solutionCategoryCosts[solutionIndex];
+    }
+
+    if (categoryData == null) return const [];
+
+    final rows = <CostRowData>[];
+    for (final entry in categoryData.categoryCosts.entries) {
+      final rawCost = entry.value.trim();
+      if (rawCost.isEmpty) continue;
+      final parsedCost = _parseNumericAmount(rawCost);
+      if (parsedCost <= 0) continue;
+      final label = _costCategoryLabels[entry.key] ?? entry.key;
+      final note = categoryData.categoryNotes[entry.key]?.trim() ?? '';
+      rows.add(
+        CostRowData(
+          itemName: '$label estimate',
+          description: 'Initial cost estimate category',
+          cost: rawCost,
+          assumptions: note,
+        ),
+      );
+    }
+    return rows;
+  }
+
+  List<CostRowData> _getCbaCostRowsForSolution(
+    ProjectDataModel projectData,
+    String solutionTitle, {
+    int? solutionIndex,
+  }) {
+    final cba = projectData.costAnalysisData;
+    if (cba == null) return const [];
+
+    final normalized = _normalizedTitle(solutionTitle);
+    final solutionCosts = cba.solutionCosts;
+
+    for (final solutionCost in solutionCosts) {
+      if (_normalizedTitle(solutionCost.solutionTitle) != normalized) continue;
+      final rows = _meaningfulRows(solutionCost.costRows);
+      if (rows.isNotEmpty) return rows;
+    }
+
+    if (solutionIndex != null &&
+        solutionIndex >= 0 &&
+        solutionIndex < solutionCosts.length) {
+      final indexedRows =
+          _meaningfulRows(solutionCosts[solutionIndex].costRows);
+      if (indexedRows.isNotEmpty) return indexedRows;
+    }
+
+    if (solutionIndex != null &&
+        solutionIndex >= 0 &&
+        solutionIndex < projectData.potentialSolutions.length) {
+      final potentialTitle =
+          projectData.potentialSolutions[solutionIndex].title;
+      for (final solutionCost in solutionCosts) {
+        if (!_matchSolutionTitle(solutionCost.solutionTitle, potentialTitle)) {
+          continue;
+        }
+        final rows = _meaningfulRows(solutionCost.costRows);
+        if (rows.isNotEmpty) return rows;
+      }
+    }
+
+    return _categoryRowsFromCostAnalysis(
+      projectData,
+      solutionTitle,
+      solutionIndex: solutionIndex,
+    );
+  }
+
+  double _parseNumericAmount(String raw) {
+    final sanitized = raw.replaceAll(RegExp(r'[^0-9\.-]'), '');
+    return double.tryParse(sanitized) ?? 0.0;
+  }
+
+  double _annualizeProjectValue(double value, String? basisFrequency) {
+    if (value <= 0) return 0;
+    switch ((basisFrequency ?? '').trim().toLowerCase()) {
+      case 'monthly':
+        return value * 12;
+      case 'quarterly':
+        return value * 4;
+      default:
+        return value;
+    }
+  }
+
+  double _benefitTotalFromLineItems(CostAnalysisData cba) {
+    double total = 0.0;
+    for (final item in cba.benefitLineItems) {
+      final unitValue = _parseNumericAmount(item.unitValue);
+      final units = _parseNumericAmount(item.units);
+      final value = unitValue * units;
+      if (value <= 0) continue;
+      total += cba.trackerBasisFrequency == 'Monthly' ? value * 12 : value;
+    }
+    return total;
+  }
+
+  double _benefitTotalForSolution(
+    ProjectDataModel projectData,
+    String solutionTitle, {
+    int? solutionIndex,
+  }) {
+    final cba = projectData.costAnalysisData;
+    if (cba == null) return 0.0;
+
+    SolutionProjectBenefitData? matchedSolutionBenefit;
+    for (final entry in cba.solutionProjectBenefits) {
+      if (_matchSolutionTitle(entry.solutionTitle, solutionTitle)) {
+        matchedSolutionBenefit = entry;
+        break;
+      }
+    }
+    if (matchedSolutionBenefit == null &&
+        solutionIndex != null &&
+        solutionIndex >= 0 &&
+        solutionIndex < cba.solutionProjectBenefits.length) {
+      matchedSolutionBenefit = cba.solutionProjectBenefits[solutionIndex];
+    }
+    matchedSolutionBenefit ??=
+        SolutionProjectBenefitData(solutionTitle: solutionTitle);
+
+    final solutionProjectValue = _annualizeProjectValue(
+      _parseNumericAmount(matchedSolutionBenefit.projectValueAmount),
+      cba.basisFrequency,
+    );
+    if (solutionProjectValue > 0) {
+      return solutionProjectValue;
+    }
+
+    final legacyProjectValue = _annualizeProjectValue(
+      _parseNumericAmount(cba.projectValueAmount),
+      cba.basisFrequency,
+    );
+    if (legacyProjectValue > 0) {
+      return legacyProjectValue;
+    }
+
+    return _benefitTotalFromLineItems(cba);
+  }
+
+  double _solutionNpv({
+    required double totalCost,
+    required double totalBenefits,
+    int horizonYears = 5,
+    double discountRate = 0.10,
+  }) {
+    if (totalCost <= 0 || totalBenefits <= 0 || horizonYears <= 0) {
+      return 0.0;
+    }
+    final annualBenefit = totalBenefits / horizonYears;
+    double npv = -totalCost;
+    for (int year = 1; year <= horizonYears; year++) {
+      npv += annualBenefit / math.pow(1 + discountRate, year);
+    }
+    return npv;
+  }
+
+  List<AiCostItem>? _buildCostsFromCostAnalysis(
+    ProjectDataModel projectData,
+    String solutionTitle, {
+    int? solutionIndex,
+  }) {
+    final cbaRows = _getCbaCostRowsForSolution(
+      projectData,
+      solutionTitle,
+      solutionIndex: solutionIndex,
+    );
+    if (cbaRows.isEmpty) return null;
+
+    final totalCost = cbaRows.fold<double>(
+      0.0,
+      (sum, row) => sum + _parseNumericAmount(row.cost),
+    );
+    final totalBenefits = _benefitTotalForSolution(
+      projectData,
+      solutionTitle,
+      solutionIndex: solutionIndex,
+    );
+    final roi = (totalCost > 0 && totalBenefits > 0)
+        ? ((totalBenefits - totalCost) / totalCost) * 100
+        : 0.0;
+    final npv5 = _solutionNpv(
+      totalCost: totalCost,
+      totalBenefits: totalBenefits,
+      horizonYears: 5,
+    );
+
+    return cbaRows
+        .map(
+          (row) => AiCostItem(
+            item: row.itemName.trim().isEmpty ? 'Cost item' : row.itemName,
+            description: row.description,
+            estimatedCost: _parseNumericAmount(row.cost),
+            roiPercent: roi,
+            npvByYear: {5: npv5},
+          ),
+        )
+        .toList(growable: false);
   }
 
   void _showViewMoreDetails(
@@ -1347,8 +2206,11 @@ class _PreferredSolutionAnalysisScreenState
         ? data.solution.title
         : 'Solution ${index + 1}';
     final projectData = ProjectDataHelper.getData(context);
-    final cbaRows =
-        _getCbaCostRowsForSolution(projectData, data.solution.title);
+    final cbaRows = _getCbaCostRowsForSolution(
+      projectData,
+      data.solution.title,
+      solutionIndex: index,
+    );
 
     showDialog<void>(
       context: context,
@@ -1885,6 +2747,22 @@ class _PreferredSolutionAnalysisScreenState
             );
           },
         ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            for (int i = 0; i < _analysis.length; i++)
+              OutlinedButton.icon(
+                onPressed: () => _navigateToSolutionDetails(i),
+                icon: const Icon(Icons.visibility_outlined, size: 16),
+                label: Text(
+                  'View This Solution / View more - ${i + 1}',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+          ],
+        ),
       ],
     );
   }
@@ -2043,8 +2921,9 @@ class _PreferredSolutionAnalysisScreenState
         ? fullContent
         : _truncateContent(fullContent);
 
+    final isCostOverview = category == 'Cost Benefit Analysis Overview';
     return InkWell(
-      onTap: () => _navigateToSolutionDetails(index),
+      onTap: isCostOverview ? null : () => _navigateToSolutionDetails(index),
       child: Container(
         padding: const EdgeInsets.all(12),
         constraints: const BoxConstraints(minHeight: 100),
@@ -2092,6 +2971,57 @@ class _PreferredSolutionAnalysisScreenState
                 ),
               ),
             ],
+            if (category == 'Cost Benefit Analysis Overview') ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  TextButton.icon(
+                    onPressed: () => _navigateToSolutionDetails(index),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      minimumSize: const Size(0, 30),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    icon: const Icon(Icons.visibility_outlined, size: 14),
+                    label: const Text(
+                      'View This Solution',
+                      style: TextStyle(fontSize: 11.5),
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => _navigateToSolutionDetails(index),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      minimumSize: const Size(0, 30),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    icon: const Icon(Icons.expand_more, size: 14),
+                    label: const Text(
+                      'View more',
+                      style: TextStyle(fontSize: 11.5),
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => _openCostAnalysisForSolution(index),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      minimumSize: const Size(0, 30),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    icon: const Icon(Icons.open_in_new, size: 14),
+                    label: const Text(
+                      'Open Cost Analysis',
+                      style: TextStyle(fontSize: 11.5),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -2123,17 +3053,17 @@ class _PreferredSolutionAnalysisScreenState
       case 'Risk Identification':
         final risks = analysis.risks;
         if (risks.isEmpty) return 'No risks identified';
-        return risks.map((r) => '• $r').join('\n');
+        return risks.map((r) => '- $r').join('\n');
 
       case 'IT Considerations':
         final tech = analysis.technologies;
         if (tech.isEmpty) return 'No IT considerations';
-        return tech.map((t) => '• $t').join('\n');
+        return tech.map((t) => '- $t').join('\n');
 
       case 'Infrastructure Considerations':
         final infra = analysis.infrastructure;
         if (infra.isEmpty) return 'No infrastructure considerations';
-        return infra.map((i) => '• $i').join('\n');
+        return infra.map((i) => '- $i').join('\n');
 
       case 'Core Stakeholders':
         final internal = analysis.internalStakeholders ?? [];
@@ -2141,28 +3071,37 @@ class _PreferredSolutionAnalysisScreenState
         final lines = <String>[];
         if (internal.isNotEmpty) {
           lines.add('Internal:');
-          lines.addAll(internal.map((s) => '• $s'));
+          lines.addAll(internal.map((s) => '- $s'));
         }
         if (external.isNotEmpty) {
           if (lines.isNotEmpty) lines.add('');
           lines.add('External:');
-          lines.addAll(external.map((s) => '• $s'));
+          lines.addAll(external.map((s) => '- $s'));
         }
         return lines.isEmpty ? 'No stakeholders identified' : lines.join('\n');
 
       case 'Cost Benefit Analysis Overview':
-        final cbaRows =
-            _getCbaCostRowsForSolution(projectData, analysis.solution.title);
+        final cbaRows = _getCbaCostRowsForSolution(
+          projectData,
+          analysis.solution.title,
+          solutionIndex: index,
+        );
         if (cbaRows.isEmpty) return 'No cost analysis available';
         final totalCost = cbaRows.fold<double>(
-            0,
-            (sum, row) =>
-                sum +
-                (double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ??
-                    0));
+          0,
+          (sum, row) => sum + _parseNumericAmount(row.cost),
+        );
+        final totalBenefits = _benefitTotalForSolution(
+          projectData,
+          analysis.solution.title,
+          solutionIndex: index,
+        );
         final items =
-            cbaRows.map((r) => '• ${r.itemName}: ${r.cost}').join('\n');
-        return 'Total: \$${totalCost.toStringAsFixed(0)}\n\n$items';
+            cbaRows.map((r) => '- ${r.itemName}: ${r.cost}').join('\n');
+        final benefitLine = totalBenefits > 0
+            ? 'Total benefits: ${_formatCurrency(totalBenefits)}\n'
+            : '';
+        return 'Total cost: ${_formatCurrency(totalCost)}\n$benefitLine\n$items';
 
       default:
         return '';
@@ -2189,37 +3128,60 @@ class _PreferredSolutionAnalysisScreenState
       onTap: () => _navigateToSolutionDetails(index),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 24,
-              height: 24,
-              decoration: const BoxDecoration(
-                color: Color(0xFFF59E0B),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  '${index + 1}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
+            Row(
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF59E0B),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${index + 1}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                displayTitle,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF111827),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    displayTitle,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF111827),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              ],
+            ),
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => _navigateToSolutionDetails(index),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(0, 30),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                icon: const Icon(Icons.open_in_new, size: 14),
+                label: const Text(
+                  'View This Solution',
+                  style: TextStyle(fontSize: 11.5),
+                ),
               ),
             ),
           ],
@@ -2308,18 +3270,29 @@ class _PreferredSolutionAnalysisScreenState
         return allStakeholders.take(3).map((s) => '- $s').join('\n');
 
       case 'Cost Benefit Analysis Overview':
-        final cbaRows =
-            _getCbaCostRowsForSolution(projectData, analysis.solution.title);
+        final cbaRows = _getCbaCostRowsForSolution(
+          projectData,
+          analysis.solution.title,
+          solutionIndex: index,
+        );
         if (cbaRows.isEmpty) return 'No cost analysis available';
+
         final totalCost = cbaRows.fold<double>(
-            0,
-            (sum, row) =>
-                sum +
-                (double.tryParse(row.cost.replaceAll(RegExp(r'[^\d.]'), '')) ??
-                    0));
+          0,
+          (sum, row) => sum + _parseNumericAmount(row.cost),
+        );
+        final totalBenefits = _benefitTotalForSolution(
+          projectData,
+          analysis.solution.title,
+          solutionIndex: index,
+        );
+
         final items =
             cbaRows.take(3).map((r) => '- ${r.itemName}: ${r.cost}').join('\n');
-        return 'Project Value: ${projectData.preferredSolutionAnalysis?.solutionAnalyses.isEmpty ?? true ? "Not set" : "\$${totalCost.toStringAsFixed(0)}"}\n$items';
+        final benefitLine = totalBenefits > 0
+            ? 'Project Benefits: ${_formatCurrency(totalBenefits)}'
+            : 'Project Benefits: Not set';
+        return '$benefitLine\nEstimated Cost: ${_formatCurrency(totalCost)}\n$items';
 
       default:
         return '';
@@ -2333,35 +3306,11 @@ class _PreferredSolutionAnalysisScreenState
   // ignore: unused_element
   Future<void> _confirmSelectPreferredFromCard({
     required int index,
-    required String title,
   }) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select Preferred Solution'),
-        content: Text(
-          'You are about to select:\n\n"Solution #${index + 1}: $title"\n\nas your preferred solution.\n\nThis will move you to the next phase of the project. You can still review details before finalizing.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFFFD700),
-              foregroundColor: Colors.black,
-            ),
-            child: const Text('Confirm & Continue'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    await _selectPreferredAndContinue(index: index);
+    await _attemptSelectPreferredFromDialog(index: index);
   }
 
+  // ignore: unused_element
   Future<void> _selectPreferredAndContinue({required int index}) async {
     if (index < 0 || index >= _analysis.length) return;
     if (_isSavingPreferredSelection) return;
@@ -2372,113 +3321,12 @@ class _PreferredSolutionAnalysisScreenState
     });
 
     try {
-      final provider = ProjectDataHelper.getProvider(context);
-      final projectData = provider.projectData;
-      final analysis = _analysis[index];
-
-      // Primary: Try index-based matching (most reliable)
-      String? solutionId;
-      if (index < projectData.potentialSolutions.length) {
-        solutionId = projectData.potentialSolutions[index].id;
-      } else {
-        // Fallback 1: Try UUID/ID matching if we have stored ID
-        final currentAnalysis = projectData.preferredSolutionAnalysis;
-        if (currentAnalysis?.selectedSolutionId != null) {
-          final matchById = projectData.potentialSolutions
-              .where((s) => s.id == currentAnalysis!.selectedSolutionId)
-              .firstOrNull;
-          if (matchById != null) {
-            solutionId = matchById.id;
-          }
-        }
-
-        // Fallback 2: Try title matching (last resort)
-        if (solutionId == null) {
-          final matchByTitle = projectData.potentialSolutions
-              .where(
-                  (s) => _matchSolutionTitle(s.title, analysis.solution.title))
-              .firstOrNull;
-          solutionId = matchByTitle?.id;
-        }
-      }
-
-      if (solutionId == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text(
-                    'Could not match solution to select. Please ensure solutions are properly configured.')),
-          );
-        }
-        return;
-      }
-
-      // Update both provider and PreferredSolutionAnalysis with UUID and index
-      await provider.setPreferredSolution(solutionId,
-          checkpoint: 'preferred_solution_selected');
-
-      // Also update PreferredSolutionAnalysis with UUID and index for persistence
-      final currentAnalysis = provider.projectData.preferredSolutionAnalysis;
-      final updatedAnalysis = PreferredSolutionAnalysis(
-        workingNotes:
-            currentAnalysis?.workingNotes ?? _notesController.text.trim(),
-        solutionAnalyses: currentAnalysis?.solutionAnalyses ?? [],
-        selectedSolutionTitle: analysis.solution.title,
-        selectedSolutionId: solutionId,
-        selectedSolutionIndex: index,
+      final saved = await _persistPreferredSelection(
+        index: index,
+        showSuccessMessage: false,
       );
-
-      provider.updateField((data) => data.copyWith(
-            preferredSolutionAnalysis: updatedAnalysis,
-          ));
-
-      await provider.saveToFirebase(checkpoint: 'preferred_solution_selected');
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Solution selected successfully')),
-      );
-
-      // Navigate to Preferred Solutions screen (ProjectDecisionSummaryScreen)
-      final potentialSolutions = projectData.potentialSolutions;
-      final solutions = potentialSolutions
-          .map(
-              (s) => AiSolutionItem(title: s.title, description: s.description))
-          .toList();
-      final safeSolutions = solutions.isNotEmpty
-          ? solutions
-          : [
-              AiSolutionItem(
-                title: projectData.projectName.isNotEmpty
-                    ? projectData.projectName
-                    : 'Preferred Solution',
-                description: projectData.businessCase.isNotEmpty
-                    ? projectData.businessCase
-                    : '',
-              ),
-            ];
-      final selectedSolution = safeSolutions.firstWhere(
-        (s) => _matchSolutionTitle(s.title, analysis.solution.title),
-        orElse: () => safeSolutions.first,
-      );
-
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => ProjectDecisionSummaryScreen(
-            projectName: projectData.projectName.isNotEmpty
-                ? projectData.projectName
-                : 'Untitled Project',
-            selectedSolution: selectedSolution,
-            allSolutions: safeSolutions,
-            businessCase: projectData.businessCase.isNotEmpty
-                ? projectData.businessCase
-                : '',
-            notes: updatedAnalysis.workingNotes.isNotEmpty
-                ? updatedAnalysis.workingNotes
-                : '',
-          ),
-        ),
-      );
+      if (!saved || !mounted) return;
+      await _openPreferredSelectionPage(preferredIndex: index);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2497,15 +3345,25 @@ class _PreferredSolutionAnalysisScreenState
   void _navigateToSolutionDetails(int index) {
     if (index < 0 || index >= _analysis.length) return;
 
+    setState(() {
+      _selectedSolutionIndex = index;
+    });
+
     final analysis = _analysis[index];
+    final projectData = ProjectDataHelper.getData(context);
+    final cbaRows = _getCbaCostRowsForSolution(
+      projectData,
+      analysis.solution.title,
+      solutionIndex: index,
+    );
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => _PreferredSolutionDetailsScreen(
           analysis: analysis,
           index: index,
+          cbaRows: cbaRows,
           onSelectPreferred: () => _confirmSelectPreferredFromDetails(
             index: index,
-            title: analysis.solution.title,
           ),
         ),
       ),
@@ -2514,41 +3372,19 @@ class _PreferredSolutionAnalysisScreenState
 
   Future<void> _confirmSelectPreferredFromDetails({
     required int index,
-    required String title,
   }) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select Preferred Solution'),
-        content: Text(
-          'You are about to select:\n\n"Solution #${index + 1}: $title"\n\nas your preferred solution.\n\nThis will move you to the next phase of the project.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFFFD700),
-              foregroundColor: Colors.black,
-            ),
-            child: const Text('Confirm & Continue'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    await _selectPreferredAndContinue(index: index);
+    await _attemptSelectPreferredFromDialog(index: index);
   }
 
   // ignore: unused_element
   void _showSolutionDetailsDialog(_SolutionAnalysisData analysis, int index) {
     final provider = ProjectDataHelper.getProvider(context);
     final projectData = provider.projectData;
-    final cbaRows =
-        _getCbaCostRowsForSolution(projectData, analysis.solution.title);
+    final cbaRows = _getCbaCostRowsForSolution(
+      projectData,
+      analysis.solution.title,
+      solutionIndex: index,
+    );
 
     showDialog(
       context: context,
@@ -2975,9 +3811,12 @@ class _PreferredSolutionAnalysisScreenState
     summaryRows.add(
       TableRow(children: [
         _buildMatrixCellText('Cost Benefit Analysis Overview', emphasize: true),
-        for (final data in _analysis)
-          _buildMatrixCellText(
-              _getCostBenefitDataForSolution(projectData, data.solution.title))
+        for (int i = 0; i < _analysis.length; i++)
+          _buildMatrixCellText(_getCostBenefitDataForSolution(
+            projectData,
+            _analysis[i].solution.title,
+            solutionIndex: i,
+          ))
       ]),
     );
 
@@ -3099,6 +3938,7 @@ class _PreferredSolutionAnalysisScreenState
   }
 
   // Add KAZ Select Project button below the inline selection container
+  // ignore: unused_element
   Widget _buildSelectProjectButton() {
     final options = _analysis
         .map((d) => SolutionOption(
@@ -3334,6 +4174,9 @@ class _PreferredSolutionAnalysisScreenState
         }).toList(),
         selectedSolutionTitle:
             currentAnalysis?.selectedSolutionTitle, // Preserve selection
+        selectedSolutionId: currentAnalysis?.selectedSolutionId,
+        selectedSolutionIndex: currentAnalysis?.selectedSolutionIndex,
+        isSelectionFinalized: currentAnalysis?.isSelectionFinalized ?? false,
       );
 
       provider.updateField((data) => data.copyWith(
@@ -3348,6 +4191,19 @@ class _PreferredSolutionAnalysisScreenState
   }
 
   void _onInlineSelect(int index) {
+    final provider = ProjectDataHelper.getProvider(context);
+    final currentAnalysis = provider.projectData.preferredSolutionAnalysis;
+    if (currentAnalysis?.isSelectionFinalized == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Preferred solution is already finalized and cannot be changed.',
+          ),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _selectedSolutionIndex = index;
       if (_projectNameController.text.trim().isEmpty) {
@@ -3361,14 +4217,18 @@ class _PreferredSolutionAnalysisScreenState
 
     // Immediately save selectedSolutionTitle to provider for state persistence
     final selectedTitle = _analysis[index].solution.title;
-    final provider = ProjectDataHelper.getProvider(context);
-    final currentAnalysis = provider.projectData.preferredSolutionAnalysis;
+    final selectedId = index < provider.projectData.potentialSolutions.length
+        ? provider.projectData.potentialSolutions[index].id
+        : null;
 
     final updatedAnalysis = PreferredSolutionAnalysis(
       workingNotes:
           currentAnalysis?.workingNotes ?? _notesController.text.trim(),
       solutionAnalyses: currentAnalysis?.solutionAnalyses ?? [],
       selectedSolutionTitle: selectedTitle,
+      selectedSolutionId: selectedId ?? currentAnalysis?.selectedSolutionId,
+      selectedSolutionIndex: index,
+      isSelectionFinalized: currentAnalysis?.isSelectionFinalized ?? false,
     );
 
     provider.updateField((data) => data.copyWith(
@@ -3656,38 +4516,40 @@ class _PreferredSolutionAnalysisScreenState
   }
 
   String _getCostBenefitDataForSolution(
-      ProjectDataModel projectData, String solutionTitle) {
-    if (projectData.costAnalysisData == null) {
-      return 'No cost analysis available';
-    }
+    ProjectDataModel projectData,
+    String solutionTitle, {
+    int? solutionIndex,
+  }) {
+    final cbaRows = _getCbaCostRowsForSolution(
+      projectData,
+      solutionTitle,
+      solutionIndex: solutionIndex,
+    );
+    if (cbaRows.isEmpty) return 'No cost analysis available';
 
-    final costData = projectData.costAnalysisData!.solutionCosts.firstWhere(
-      (cost) =>
-          cost.solutionTitle.trim().toLowerCase() ==
-          solutionTitle.trim().toLowerCase(),
-      orElse: () => SolutionCostData(solutionTitle: solutionTitle),
+    final totalCost = cbaRows.fold<double>(
+      0,
+      (sum, row) => sum + _parseNumericAmount(row.cost),
+    );
+    final totalBenefits = _benefitTotalForSolution(
+      projectData,
+      solutionTitle,
+      solutionIndex: solutionIndex,
     );
 
-    if (costData.costRows.isEmpty) return 'No cost analysis available';
+    final lines = <String>[
+      'Estimated Cost: ${_formatCurrency(totalCost)}',
+      'Project Benefits: ${totalBenefits > 0 ? _formatCurrency(totalBenefits) : 'Not set'}',
+    ];
 
-    final lines = <String>[];
-
-    // Add project value if available
-    if (projectData.costAnalysisData!.projectValueAmount.trim().isNotEmpty) {
-      lines.add(
-          'Project Value: ${projectData.costAnalysisData!.projectValueAmount}');
-    }
-
-    // Add top cost items
-    final topCosts = costData.costRows
-        .take(3)
-        .where((row) => row.itemName.trim().isNotEmpty);
+    final topCosts =
+        cbaRows.where((row) => row.itemName.trim().isNotEmpty).take(3);
     for (final cost in topCosts) {
       final costStr = cost.cost.trim().isNotEmpty ? cost.cost : 'TBD';
       lines.add('- ${cost.itemName}: $costStr');
     }
 
-    return lines.isEmpty ? 'No cost analysis available' : lines.join('\n');
+    return lines.join('\n');
   }
 }
 
@@ -4720,11 +5582,13 @@ class _PreferredSolutionDetailsScreen extends StatefulWidget {
     super.key,
     required this.analysis,
     required this.index,
+    required this.cbaRows,
     required this.onSelectPreferred,
   });
 
   final _SolutionAnalysisData analysis;
   final int index;
+  final List<CostRowData> cbaRows;
   final Future<void> Function() onSelectPreferred;
 
   @override
@@ -4736,6 +5600,7 @@ class _PreferredSolutionDetailsScreenState
     extends State<_PreferredSolutionDetailsScreen> {
   _SolutionAnalysisData get analysis => widget.analysis;
   int get index => widget.index;
+  List<CostRowData> get cbaRows => widget.cbaRows;
   Future<void> Function() get onSelectPreferred => widget.onSelectPreferred;
 
   Widget _buildCbaDataTable(List<CostRowData> cbaRows, String currency) {
@@ -4877,7 +5742,7 @@ class _PreferredSolutionDetailsScreenState
                                 child: Center(
                                   child: Text(
                                     cbaRows[i].cost.isEmpty
-                                        ? '—'
+                                        ? '-'
                                         : cbaRows[i].cost,
                                     style: const TextStyle(
                                       fontSize: 11,
@@ -4892,7 +5757,7 @@ class _PreferredSolutionDetailsScreenState
                                 child: Center(
                                   child: Text(
                                     cbaRows[i].description.isEmpty
-                                        ? '—'
+                                        ? '-'
                                         : cbaRows[i].description,
                                     style: const TextStyle(fontSize: 11),
                                     textAlign: TextAlign.center,
@@ -5378,11 +6243,6 @@ class _PreferredSolutionDetailsScreenState
       isSelected = titlesMatch(selectedTitle, analysis.solution.title);
     }
 
-    final cbaRows = (projectData.costAnalysisData?.solutionCosts ?? const [])
-        .where((s) => titlesMatch(s.solutionTitle, analysis.solution.title))
-        .expand((s) => s.costRows)
-        .toList();
-
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
@@ -5540,8 +6400,8 @@ class _PreferredSolutionDetailsScreenState
                   onPressed: () async => onSelectPreferred(),
                   icon: const Icon(Icons.check_circle),
                   label: Text(isSelected
-                      ? 'Select as Preferred & Continue'
-                      : 'Select as Preferred & Continue'),
+                      ? 'Preferred Solution Selected'
+                      : 'Select Preferred Solution'),
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFFF59E0B),
                     foregroundColor: Colors.white,

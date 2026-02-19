@@ -22,7 +22,8 @@ class StartUpPlanningOperationsScreen extends StatelessWidget {
     return _StartUpPlanningSectionScreen(
       config: _StartUpPlanningSectionConfig(
         title: 'Operations Plan & Manual',
-        subtitle: 'Define runbooks, ownership, and operating procedures for launch readiness.',
+        subtitle:
+            'Define runbooks, ownership, and operating procedures for launch readiness.',
         noteKey: 'planning_startup_operations_notes',
         checkpoint: 'startup_planning_operations',
         activeItemLabel: 'Start-Up Planning - Operations Plan and Manual',
@@ -36,20 +37,25 @@ class StartUpPlanningOperationsScreen extends StatelessWidget {
         sections: const [
           _SectionData(
             title: 'Runbook and SOPs',
-            subtitle: 'Ensure operational playbooks cover critical flows and recovery steps.',
+            subtitle:
+                'Ensure operational playbooks cover critical flows and recovery steps.',
             bullets: [
-              _BulletData('Critical service runbooks reviewed with owners', true),
+              _BulletData(
+                  'Critical service runbooks reviewed with owners', true),
               _BulletData('Failure modes and rollback steps validated', true),
               _BulletData('Dependency map and contacts documented', false),
             ],
             statusRows: [
-              _StatusRowData('Runbook completeness', 'On track', Color(0xFF10B981)),
-              _StatusRowData('Ownership matrix', 'In review', Color(0xFFF59E0B)),
+              _StatusRowData(
+                  'Runbook completeness', 'On track', Color(0xFF10B981)),
+              _StatusRowData(
+                  'Ownership matrix', 'In review', Color(0xFFF59E0B)),
             ],
           ),
           _SectionData(
             title: 'On-call and escalation',
-            subtitle: 'Define coverage, escalation paths, and decision authority.',
+            subtitle:
+                'Define coverage, escalation paths, and decision authority.',
             bullets: [
               _BulletData('Primary and secondary roster published', true),
               _BulletData('War room channels and tooling ready', true),
@@ -126,19 +132,39 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
   void _configureTemplatesAndRoles() {
     switch (widget.sectionId) {
       case 'startup_hypercare_plan':
-        _templates = ['Hypercare checklist', 'Monitoring rota', 'Incident response', 'Handover notes'];
+        _templates = [
+          'Hypercare checklist',
+          'Monitoring rota',
+          'Incident response',
+          'Handover notes'
+        ];
         _roles = ['Hypercare Lead', 'Support', 'Monitoring', 'QA', 'Product'];
         break;
       case 'startup_devops':
-        _templates = ['Pipeline checklist', 'Release playbook', 'Infrastructure readiness', 'Rollback plan'];
+        _templates = [
+          'Pipeline checklist',
+          'Release playbook',
+          'Infrastructure readiness',
+          'Rollback plan'
+        ];
         _roles = ['DevOps Lead', 'SRE', 'Release Manager', 'Security', 'QA'];
         break;
       case 'startup_closeout_plan':
-        _templates = ['Acceptance checklist', 'Handover summary', 'Post-launch review', 'Backlog triage'];
+        _templates = [
+          'Acceptance checklist',
+          'Handover summary',
+          'Post-launch review',
+          'Backlog triage'
+        ];
         _roles = ['Project Lead', 'Ops', 'Support', 'Finance', 'Legal'];
         break;
       default:
-        _templates = ['Runbook', 'On-call rota', 'Escalation steps', 'Monitoring checklist'];
+        _templates = [
+          'Runbook',
+          'On-call rota',
+          'Escalation steps',
+          'Monitoring checklist'
+        ];
         _roles = ['Ops Lead', 'SRE', 'Support', 'QA', 'Product'];
     }
     _selectedRoles
@@ -150,22 +176,35 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
     setState(() {
       _selectedTemplate = template;
       _editorCtrl.text = switch (template) {
-        'Runbook' => 'Objective:\n\nScope:\n\nStep 1: ...\nStep 2: ...\n\nContact: Ops Lead',
-        'On-call rota' => 'Week 1: Primary\nWeek 2: Secondary\n\nEscalation: ...',
+        'Runbook' =>
+          'Objective:\n\nScope:\n\nStep 1: ...\nStep 2: ...\n\nContact: Ops Lead',
+        'On-call rota' =>
+          'Week 1: Primary\nWeek 2: Secondary\n\nEscalation: ...',
         'Escalation steps' => '1. Triage\n2. Notify\n3. Escalate to vendor',
-        'Monitoring checklist' => '1. Metrics to watch\n2. Alert thresholds\n3. Runbook link',
-        'Hypercare checklist' => 'Day 1: Stabilization checks\nDay 2: Performance sweep\nDay 3: Feedback review',
-        'Monitoring rota' => 'Shift A: 08:00-16:00\nShift B: 16:00-00:00\nShift C: 00:00-08:00',
-        'Incident response' => '1. Declare incident\n2. Assign commander\n3. Communicate status',
+        'Monitoring checklist' =>
+          '1. Metrics to watch\n2. Alert thresholds\n3. Runbook link',
+        'Hypercare checklist' =>
+          'Day 1: Stabilization checks\nDay 2: Performance sweep\nDay 3: Feedback review',
+        'Monitoring rota' =>
+          'Shift A: 08:00-16:00\nShift B: 16:00-00:00\nShift C: 00:00-08:00',
+        'Incident response' =>
+          '1. Declare incident\n2. Assign commander\n3. Communicate status',
         'Handover notes' => 'Known issues:\n\nMitigations:\n\nOwner contacts:',
-        'Pipeline checklist' => 'Build passes\nTest coverage met\nArtifact signed\nDeploy automation ready',
-        'Release playbook' => 'Pre-flight checks\nCanary rollout\nPost-deploy validation',
-        'Infrastructure readiness' => 'IaC drift check\nSecrets rotation\nCapacity validation',
-        'Rollback plan' => 'Rollback trigger\nData recovery steps\nCommunication plan',
-        'Acceptance checklist' => 'Criteria met\nStakeholder sign-off\nAudit evidence captured',
-        'Handover summary' => 'Service overview\nKey contacts\nSupport SLAs\nRunbook links',
+        'Pipeline checklist' =>
+          'Build passes\nTest coverage met\nArtifact signed\nDeploy automation ready',
+        'Release playbook' =>
+          'Pre-flight checks\nCanary rollout\nPost-deploy validation',
+        'Infrastructure readiness' =>
+          'IaC drift check\nSecrets rotation\nCapacity validation',
+        'Rollback plan' =>
+          'Rollback trigger\nData recovery steps\nCommunication plan',
+        'Acceptance checklist' =>
+          'Criteria met\nStakeholder sign-off\nAudit evidence captured',
+        'Handover summary' =>
+          'Service overview\nKey contacts\nSupport SLAs\nRunbook links',
         'Post-launch review' => 'KPIs baseline\nLessons learned\nAction items',
-        'Backlog triage' => 'Outstanding requests\nPriority ranking\nOwner assignments',
+        'Backlog triage' =>
+          'Outstanding requests\nPriority ranking\nOwner assignments',
         _ => _editorCtrl.text,
       };
     });
@@ -188,7 +227,8 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
       );
       if (result == null || result.files.isEmpty) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No file selected.')));
+          ScaffoldMessenger.of(context)
+              .showSnackBar(const SnackBar(content: Text('No file selected.')));
         }
         return;
       }
@@ -198,7 +238,8 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
       final bytes = file.bytes;
       if (bytes == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Unable to read file bytes. Try a smaller file.')),
+          const SnackBar(
+              content: Text('Unable to read file bytes. Try a smaller file.')),
         );
         return;
       }
@@ -206,9 +247,11 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
       setState(() => _isUploading = true);
       final fileName = file.name;
       final extension = file.extension?.toLowerCase();
-      final storagePath = 'projects/$projectId/startup_planning_sections/${widget.sectionId}/${DateTime.now().millisecondsSinceEpoch}_$fileName';
+      final storagePath =
+          'projects/$projectId/startup_planning_sections/${widget.sectionId}/${DateTime.now().millisecondsSinceEpoch}_$fileName';
       final storageRef = FirebaseStorage.instance.ref(storagePath);
-      final metadata = SettableMetadata(contentType: _contentTypeForExtension(extension));
+      final metadata =
+          SettableMetadata(contentType: _contentTypeForExtension(extension));
       final snapshot = await storageRef.putData(bytes, metadata);
       final downloadUrl = await snapshot.ref.getDownloadURL();
       final attachment = _AttachmentMeta(
@@ -264,7 +307,8 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
           }
           _selectedTemplate = savedTemplate;
         }
-        final savedRoles = (data['roles'] as List?)?.whereType<String>().toList() ?? [];
+        final savedRoles =
+            (data['roles'] as List?)?.whereType<String>().toList() ?? [];
         if (savedRoles.isNotEmpty) {
           for (final role in savedRoles) {
             if (!_roles.contains(role)) {
@@ -275,7 +319,8 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
             ..clear()
             ..addAll(savedRoles);
         }
-        _lastSavedAt = _readTimestamp(data['updatedAt']) ?? _readTimestamp(data['createdAt']);
+        _lastSavedAt = _readTimestamp(data['updatedAt']) ??
+            _readTimestamp(data['createdAt']);
         _publishedAt = _readTimestamp(data['publishedAt']);
         _attachments = _decodeAttachments(data['attachments']);
       }
@@ -295,7 +340,8 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
     final projectId = ProjectDataHelper.getData(context).projectId;
     if (projectId == null || projectId.isEmpty) {
       if (showToast && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Select a project to save this plan.')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Select a project to save this plan.')));
       }
       return;
     }
@@ -307,7 +353,8 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
       'body': _editorCtrl.text.trim(),
       'roles': _selectedRoles.toList()..sort(),
       'template': _selectedTemplate,
-      'attachments': _attachments.map((attachment) => attachment.toJson()).toList(),
+      'attachments':
+          _attachments.map((attachment) => attachment.toJson()).toList(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
     if (!_hasExistingDoc) {
@@ -364,17 +411,20 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
     try {
       await _docRef(projectId).set(
         {
-          'attachments': _attachments.map((attachment) => attachment.toJson()).toList(),
+          'attachments':
+              _attachments.map((attachment) => attachment.toJson()).toList(),
           'updatedAt': FieldValue.serverTimestamp(),
         },
         SetOptions(merge: true),
       );
       if (showToast && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Attachment uploaded.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Attachment uploaded.')));
       }
     } catch (error) {
       if (showToast && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to save attachment metadata: $error')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Failed to save attachment metadata: $error')));
       }
     }
   }
@@ -382,7 +432,8 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
   Future<void> _removeAttachment(_AttachmentMeta attachment) async {
     final projectId = ProjectDataHelper.getData(context).projectId;
     if (projectId == null || projectId.isEmpty) return;
-    setState(() => _attachments.removeWhere((item) => item.id == attachment.id));
+    setState(
+        () => _attachments.removeWhere((item) => item.id == attachment.id));
     await _persistAttachments();
     await _deleteStorageObject(attachment.storagePath);
   }
@@ -445,10 +496,15 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Clear draft?'),
-        content: const Text('This will permanently delete the saved plan for this section.'),
+        content: const Text(
+            'This will permanently delete the saved plan for this section.'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Delete')),
         ],
       ),
     );
@@ -486,14 +542,16 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
         _isSaving = false;
         _isHydrating = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Draft cleared.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Draft cleared.')));
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _isSaving = false;
         _isHydrating = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to clear draft: $error')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to clear draft: $error')));
     }
   }
 
@@ -538,9 +596,12 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
         children: [
           Row(
             children: [
-              const Text('Attachments', style: TextStyle(fontWeight: FontWeight.w700)),
+              const Text('Attachments',
+                  style: TextStyle(fontWeight: FontWeight.w700)),
               const Spacer(),
-              Text('${_attachments.length} files', style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+              Text('${_attachments.length} files',
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
             ],
           ),
           const SizedBox(height: 8),
@@ -555,19 +616,25 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.insert_drive_file_outlined, size: 18, color: Color(0xFF6B7280)),
+                  const Icon(Icons.insert_drive_file_outlined,
+                      size: 18, color: Color(0xFF6B7280)),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(attachment.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                        Text(_formatFileSize(attachment.sizeBytes), style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                        Text(attachment.name,
+                            style: const TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w600)),
+                        Text(_formatFileSize(attachment.sizeBytes),
+                            style: const TextStyle(
+                                fontSize: 11, color: Color(0xFF6B7280))),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)),
+                    icon: const Icon(Icons.delete_outline,
+                        size: 18, color: Color(0xFFEF4444)),
                     onPressed: () => _removeAttachment(attachment),
                     tooltip: 'Remove',
                   ),
@@ -583,10 +650,16 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
   Widget build(BuildContext context) {
     final chips = <Widget>[];
     if (_isSaving) {
-      chips.add(const _StatusPill(label: 'Saving...', color: Color(0xFF64748B), background: Color(0xFFE2E8F0)));
+      chips.add(const _StatusPill(
+          label: 'Saving...',
+          color: Color(0xFF64748B),
+          background: Color(0xFFE2E8F0)));
     }
     if (_isUploading) {
-      chips.add(const _StatusPill(label: 'Uploading...', color: Color(0xFF0F172A), background: Color(0xFFE2E8F0)));
+      chips.add(const _StatusPill(
+          label: 'Uploading...',
+          color: Color(0xFF0F172A),
+          background: Color(0xFFE2E8F0)));
     }
     if (_publishedAt != null) {
       chips.add(
@@ -614,7 +687,10 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 6))],
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 6))
+        ],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if (_isLoading) const LinearProgressIndicator(minHeight: 2),
@@ -635,7 +711,9 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
             onPressed: _attachFile,
             icon: const Icon(Icons.attach_file, size: 18),
             label: const Text('Attach'),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF3F4F6), foregroundColor: Colors.black),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF3F4F6),
+                foregroundColor: Colors.black),
           ),
         ]),
         if (chips.isNotEmpty) ...[
@@ -646,7 +724,6 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
           ),
         ],
         const SizedBox(height: 12),
-
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final t in _templates)
             ChoiceChip(
@@ -659,22 +736,25 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
             ),
         ]),
         const SizedBox(height: 12),
-
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: const Color(0xFFF8F9FB), borderRadius: BorderRadius.circular(10)),
+          decoration: BoxDecoration(
+              color: const Color(0xFFF8F9FB),
+              borderRadius: BorderRadius.circular(10)),
           child: Wrap(spacing: 8, runSpacing: 8, children: [
-            const Text('Assign roles: ', style: TextStyle(fontWeight: FontWeight.w700)),
+            const Text('Assign roles: ',
+                style: TextStyle(fontWeight: FontWeight.w700)),
             for (final r in _roles)
               FilterChip(
                 label: Text(r),
                 selected: _selectedRoles.contains(r),
                 onSelected: (v) {
-                  setState(() => v ? _selectedRoles.add(r) : _selectedRoles.remove(r));
+                  setState(() =>
+                      v ? _selectedRoles.add(r) : _selectedRoles.remove(r));
                   _scheduleAutosave();
                 },
-            ),
+              ),
           ]),
         ),
         const SizedBox(height: 12),
@@ -682,7 +762,6 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
           _buildAttachmentsList(),
           const SizedBox(height: 12),
         ],
-
         Container(
           constraints: const BoxConstraints(minHeight: 220),
           padding: const EdgeInsets.all(12),
@@ -698,18 +777,20 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
             style: const TextStyle(fontSize: 14, height: 1.6),
             decoration: const InputDecoration(
               border: InputBorder.none,
-              hintText: 'Start writing your plan — use templates above to get started.',
+              hintText:
+                  'Start writing your plan — use templates above to get started.',
             ),
           ),
         ),
         const SizedBox(height: 14),
-
         Row(children: [
           ElevatedButton.icon(
             onPressed: _isSaving ? null : () => _saveDraft(showToast: true),
             icon: const Icon(Icons.save_outlined),
             label: const Text('Save draft'),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEFF6FF), foregroundColor: const Color(0xFF2563EB)),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFEFF6FF),
+                foregroundColor: const Color(0xFF2563EB)),
           ),
           const SizedBox(width: 12),
           OutlinedButton.icon(
@@ -719,9 +800,14 @@ class _WorldClassOpsEditorState extends State<_WorldClassOpsEditor> {
           ),
           const Spacer(),
           ElevatedButton(
-            onPressed: _isSaving ? null : () => _saveDraft(publish: true, showToast: true),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFD700), foregroundColor: Colors.black),
-            child: const Text('Publish', style: TextStyle(fontWeight: FontWeight.w700)),
+            onPressed: _isSaving
+                ? null
+                : () => _saveDraft(publish: true, showToast: true),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFD700),
+                foregroundColor: Colors.black),
+            child: const Text('Publish',
+                style: TextStyle(fontWeight: FontWeight.w700)),
           ),
         ])
       ]),
@@ -737,7 +823,8 @@ class StartUpPlanningHypercareScreen extends StatelessWidget {
     return _StartUpPlanningSectionScreen(
       config: _StartUpPlanningSectionConfig(
         title: 'Hypercare Plan',
-        subtitle: 'Define post-launch monitoring, coverage, and escalation routines.',
+        subtitle:
+            'Define post-launch monitoring, coverage, and escalation routines.',
         noteKey: 'planning_startup_hypercare_notes',
         checkpoint: 'startup_planning_hypercare',
         activeItemLabel: 'Start-Up Planning - Hypercare Plan',
@@ -751,7 +838,8 @@ class StartUpPlanningHypercareScreen extends StatelessWidget {
         sections: const [
           _SectionData(
             title: 'Hypercare operating model',
-            subtitle: 'Define cadence, ownership, and stabilization responsibilities.',
+            subtitle:
+                'Define cadence, ownership, and stabilization responsibilities.',
             bullets: [
               _BulletData('War room schedule and rotations set', true),
               _BulletData('Incident commander assigned', true),
@@ -759,7 +847,8 @@ class StartUpPlanningHypercareScreen extends StatelessWidget {
             ],
             statusRows: [
               _StatusRowData('Coverage staffed', 'Planned', Color(0xFF2563EB)),
-              _StatusRowData('Decision authority', 'Confirmed', Color(0xFF10B981)),
+              _StatusRowData(
+                  'Decision authority', 'Confirmed', Color(0xFF10B981)),
             ],
           ),
           _SectionData(
@@ -772,7 +861,8 @@ class StartUpPlanningHypercareScreen extends StatelessWidget {
             ],
             statusRows: [
               _StatusRowData('Comms readiness', 'Ready', Color(0xFF10B981)),
-              _StatusRowData('Support enablement', 'On track', Color(0xFF2563EB)),
+              _StatusRowData(
+                  'Support enablement', 'On track', Color(0xFF2563EB)),
             ],
           ),
           _SectionData(
@@ -802,7 +892,8 @@ class StartUpPlanningDevOpsScreen extends StatelessWidget {
     return _StartUpPlanningSectionScreen(
       config: _StartUpPlanningSectionConfig(
         title: 'DevOps',
-        subtitle: 'Assess pipeline readiness, environments, and automation coverage.',
+        subtitle:
+            'Assess pipeline readiness, environments, and automation coverage.',
         noteKey: 'planning_startup_devops_notes',
         checkpoint: 'startup_planning_devops',
         activeItemLabel: 'Start-Up Planning - DevOps',
@@ -816,7 +907,8 @@ class StartUpPlanningDevOpsScreen extends StatelessWidget {
         sections: const [
           _SectionData(
             title: 'CI/CD pipeline',
-            subtitle: 'Automate builds, tests, and releases with compliance gates.',
+            subtitle:
+                'Automate builds, tests, and releases with compliance gates.',
             bullets: [
               _BulletData('Automated tests gated on merge', true),
               _BulletData('Artifact signing and provenance checks', true),
@@ -824,7 +916,8 @@ class StartUpPlanningDevOpsScreen extends StatelessWidget {
             ],
             statusRows: [
               _StatusRowData('Pipeline readiness', 'Ready', Color(0xFF10B981)),
-              _StatusRowData('Rollback automation', 'In progress', Color(0xFFF59E0B)),
+              _StatusRowData(
+                  'Rollback automation', 'In progress', Color(0xFFF59E0B)),
             ],
           ),
           _SectionData(
@@ -842,7 +935,8 @@ class StartUpPlanningDevOpsScreen extends StatelessWidget {
           ),
           _SectionData(
             title: 'Release governance',
-            subtitle: 'Align change approvals and progressive delivery strategy.',
+            subtitle:
+                'Align change approvals and progressive delivery strategy.',
             bullets: [
               _BulletData('Change approvals mapped to risk tiers', true),
               _BulletData('Canary rollout strategy defined', true),
@@ -850,7 +944,8 @@ class StartUpPlanningDevOpsScreen extends StatelessWidget {
             ],
             statusRows: [
               _StatusRowData('Release cadence', 'Stable', Color(0xFF2563EB)),
-              _StatusRowData('Change governance', 'On track', Color(0xFF10B981)),
+              _StatusRowData(
+                  'Change governance', 'On track', Color(0xFF10B981)),
             ],
           ),
         ],
@@ -867,7 +962,8 @@ class StartUpPlanningCloseOutPlanScreen extends StatelessWidget {
     return _StartUpPlanningSectionScreen(
       config: _StartUpPlanningSectionConfig(
         title: 'Close Out Plan',
-        subtitle: 'Outline post-launch closure activities and acceptance criteria.',
+        subtitle:
+            'Outline post-launch closure activities and acceptance criteria.',
         noteKey: 'planning_startup_closeout_notes',
         checkpoint: 'startup_planning_closeout',
         activeItemLabel: 'Start-Up Planning - Close Out Plan',
@@ -883,7 +979,8 @@ class StartUpPlanningCloseOutPlanScreen extends StatelessWidget {
             title: 'Acceptance and closure',
             subtitle: 'Define criteria, sign-offs, and residual risk tracking.',
             bullets: [
-              _BulletData('Acceptance criteria reviewed with stakeholders', true),
+              _BulletData(
+                  'Acceptance criteria reviewed with stakeholders', true),
               _BulletData('Final audit checklist prepared', true),
               _BulletData('Residual risk register updated', false),
             ],
@@ -894,7 +991,8 @@ class StartUpPlanningCloseOutPlanScreen extends StatelessWidget {
           ),
           _SectionData(
             title: 'Knowledge transfer',
-            subtitle: 'Ensure operations, support, and clients have the materials they need.',
+            subtitle:
+                'Ensure operations, support, and clients have the materials they need.',
             bullets: [
               _BulletData('Runbooks and SOPs handed off', true),
               _BulletData('Ops training sessions completed', false),
@@ -907,14 +1005,16 @@ class StartUpPlanningCloseOutPlanScreen extends StatelessWidget {
           ),
           _SectionData(
             title: 'Post-launch review',
-            subtitle: 'Capture outcomes, lessons learned, and next-step backlog.',
+            subtitle:
+                'Capture outcomes, lessons learned, and next-step backlog.',
             bullets: [
               _BulletData('KPIs baseline recorded', true),
               _BulletData('Lessons learned workshop scheduled', true),
               _BulletData('Backlog triage for enhancements', false),
             ],
             statusRows: [
-              _StatusRowData('Review readiness', 'Scheduled', Color(0xFF2563EB)),
+              _StatusRowData(
+                  'Review readiness', 'Scheduled', Color(0xFF2563EB)),
               _StatusRowData('Backlog triage', 'Queued', Color(0xFFF59E0B)),
             ],
           ),
@@ -942,28 +1042,34 @@ class _StartUpPlanningSectionScreen extends StatelessWidget {
           children: [
             DraggableSidebar(
               openWidth: AppBreakpoints.sidebarWidth(context),
-              child: InitiationLikeSidebar(activeItemLabel: config.activeItemLabel),
+              child: InitiationLikeSidebar(
+                  activeItemLabel: config.activeItemLabel),
             ),
             Expanded(
               child: Stack(
                 children: [
                   SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 24),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding, vertical: 24),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final width = constraints.maxWidth;
                         final gap = 24.0;
                         final twoCol = width >= 980;
                         final halfWidth = twoCol ? (width - gap) / 2 : width;
-                        final hasContent = config.metrics.isNotEmpty || config.sections.isNotEmpty;
+                        final hasContent = config.metrics.isNotEmpty ||
+                            config.sections.isNotEmpty;
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _TopHeader(title: config.title, onBack: () => Navigator.maybePop(context)),
+                            _TopHeader(
+                                title: config.title,
+                                onBack: () => Navigator.maybePop(context)),
                             const SizedBox(height: 12),
                             Text(
                               config.subtitle,
-                              style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+                              style: const TextStyle(
+                                  fontSize: 14, color: Color(0xFF6B7280)),
                             ),
                             const SizedBox(height: 20),
                             PlanningAiNotesCard(
@@ -971,7 +1077,8 @@ class _StartUpPlanningSectionScreen extends StatelessWidget {
                               sectionLabel: config.title,
                               noteKey: config.noteKey,
                               checkpoint: config.checkpoint,
-                              description: 'Capture critical decisions, dependencies, and readiness updates.',
+                              description:
+                                  'Capture critical decisions, dependencies, and readiness updates.',
                             ),
                             const SizedBox(height: 24),
                             if (hasContent) ...[
@@ -994,7 +1101,10 @@ class _StartUpPlanningSectionScreen extends StatelessWidget {
                       },
                     ),
                   ),
-                  const Positioned(right: 24, bottom: 24, child: KazAiChatBubble()),
+                  const Positioned(
+                      right: 24,
+                      bottom: 24,
+                      child: KazAiChatBubble(positioned: false)),
                 ],
               ),
             ),
@@ -1037,13 +1147,17 @@ class _TopHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _CircleIconButton(icon: Icons.arrow_back_ios_new_rounded, onTap: onBack),
+        _CircleIconButton(
+            icon: Icons.arrow_back_ios_new_rounded, onTap: onBack),
         const SizedBox(width: 12),
         const _CircleIconButton(icon: Icons.arrow_forward_ios_rounded),
         const SizedBox(width: 16),
         Text(
           title,
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+          style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827)),
         ),
         const Spacer(),
         const _UserChip(),
@@ -1083,7 +1197,8 @@ class _UserChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final displayName = FirebaseAuthService.displayNameOrEmail(fallback: 'User');
+    final displayName =
+        FirebaseAuthService.displayNameOrEmail(fallback: 'User');
     final email = user?.email ?? '';
 
     return StreamBuilder<bool>(
@@ -1105,11 +1220,18 @@ class _UserChip extends StatelessWidget {
               CircleAvatar(
                 radius: 16,
                 backgroundColor: const Color(0xFFE5E7EB),
-                backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
+                backgroundImage: user?.photoURL != null
+                    ? NetworkImage(user!.photoURL!)
+                    : null,
                 child: user?.photoURL == null
                     ? Text(
-                        displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+                        displayName.isNotEmpty
+                            ? displayName[0].toUpperCase()
+                            : 'U',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151)),
                       )
                     : null,
               ),
@@ -1118,12 +1240,17 @@ class _UserChip extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(displayName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                  Text(role, style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280))),
+                  Text(displayName,
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600)),
+                  Text(role,
+                      style: const TextStyle(
+                          fontSize: 10, color: Color(0xFF6B7280))),
                 ],
               ),
               const SizedBox(width: 6),
-              const Icon(Icons.keyboard_arrow_down, size: 18, color: Color(0xFF9CA3AF)),
+              const Icon(Icons.keyboard_arrow_down,
+                  size: 18, color: Color(0xFF9CA3AF)),
             ],
           ),
         );
@@ -1200,11 +1327,16 @@ class _StartUpPlanningInputsState extends State<_StartUpPlanningInputs> {
           .get();
       final data = doc.data() ?? {};
       final metricsRaw = data.containsKey('metrics') ? data['metrics'] : null;
-      final sectionsRaw = data.containsKey('sections') ? data['sections'] : null;
+      final sectionsRaw =
+          data.containsKey('sections') ? data['sections'] : null;
 
       setState(() {
-        _metrics = metricsRaw == null ? _seedMetrics(widget.defaultMetrics) : _decodeMetrics(metricsRaw);
-        _sections = sectionsRaw == null ? _seedSections(widget.defaultSections) : _decodeSections(sectionsRaw);
+        _metrics = metricsRaw == null
+            ? _seedMetrics(widget.defaultMetrics)
+            : _decodeMetrics(metricsRaw);
+        _sections = sectionsRaw == null
+            ? _seedSections(widget.defaultSections)
+            : _decodeSections(sectionsRaw);
         _lastSavedAt = _readTimestamp(data['updatedAt']);
         _loading = false;
         _hydrating = false;
@@ -1236,13 +1368,13 @@ class _StartUpPlanningInputsState extends State<_StartUpPlanningInputs> {
           .collection('startup_planning_sections')
           .doc(widget.sectionId)
           .set(
-            {
-              'metrics': _metrics.map((metric) => metric.toJson()).toList(),
-              'sections': _sections.map((section) => section.toJson()).toList(),
-              'updatedAt': FieldValue.serverTimestamp(),
-            },
-            SetOptions(merge: true),
-          );
+        {
+          'metrics': _metrics.map((metric) => metric.toJson()).toList(),
+          'sections': _sections.map((section) => section.toJson()).toList(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
       if (!mounted) return;
       setState(() {
         _saving = false;
@@ -1278,10 +1410,15 @@ class _StartUpPlanningInputsState extends State<_StartUpPlanningInputs> {
             title: section.title,
             subtitle: section.subtitle,
             bullets: section.bullets
-                .map((bullet) => _EditableBullet(id: _newId(), text: bullet.text, isCheck: bullet.isCheck))
+                .map((bullet) => _EditableBullet(
+                    id: _newId(), text: bullet.text, isCheck: bullet.isCheck))
                 .toList(),
             statuses: section.statusRows
-                .map((row) => _EditableStatus(id: _newId(), label: row.label, value: row.value, colorValue: row.color.toARGB32()))
+                .map((row) => _EditableStatus(
+                    id: _newId(),
+                    label: row.label,
+                    value: row.value,
+                    colorValue: row.color.toARGB32()))
                 .toList(),
           ),
         )
@@ -1343,7 +1480,10 @@ class _StartUpPlanningInputsState extends State<_StartUpPlanningInputs> {
   String _newId() => DateTime.now().microsecondsSinceEpoch.toString();
 
   String _slug(String value) {
-    final slug = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_').replaceAll(RegExp(r'^_|_$'), '');
+    final slug = value
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'^_|_$'), '');
     return slug.isEmpty ? _newId() : slug;
   }
 
@@ -1397,11 +1537,15 @@ class _StartUpPlanningInputsState extends State<_StartUpPlanningInputs> {
   Widget build(BuildContext context) {
     final statusPills = <Widget>[];
     if (_saving) {
-      statusPills.add(const _StatusPill(label: 'Saving...', color: Color(0xFF64748B), background: Color(0xFFE2E8F0)));
+      statusPills.add(const _StatusPill(
+          label: 'Saving...',
+          color: Color(0xFF64748B),
+          background: Color(0xFFE2E8F0)));
     } else if (_lastSavedAt != null) {
       statusPills.add(
         _StatusPill(
-          label: 'Saved ${TimeOfDay.fromDateTime(_lastSavedAt!).format(context)}',
+          label:
+              'Saved ${TimeOfDay.fromDateTime(_lastSavedAt!).format(context)}',
           color: const Color(0xFF16A34A),
           background: const Color(0xFFECFDF3),
         ),
@@ -1413,7 +1557,8 @@ class _StartUpPlanningInputsState extends State<_StartUpPlanningInputs> {
       children: [
         Row(
           children: [
-            const Text('Operational inputs', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            const Text('Operational inputs',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             const Spacer(),
             Wrap(spacing: 8, runSpacing: 8, children: statusPills),
           ],
@@ -1453,7 +1598,8 @@ class _StartUpPlanningInputsState extends State<_StartUpPlanningInputs> {
                 child: _EditableSectionCard(
                   section: _sections[i],
                   statusColors: _statusColors,
-                  onRemove: _sections.length > 1 ? () => _removeSection(i) : null,
+                  onRemove:
+                      _sections.length > 1 ? () => _removeSection(i) : null,
                   onSectionChanged: (updated) {
                     setState(() => _sections[i] = updated);
                     _scheduleSave();
@@ -1595,14 +1741,20 @@ class _MetricInputCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(width: 8, height: 8, decoration: BoxDecoration(color: metric.color, shape: BoxShape.circle)),
+              Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                      color: metric.color, shape: BoxShape.circle)),
               const SizedBox(width: 8),
-              const Text('Metric', style: TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+              const Text('Metric',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
               const Spacer(),
               if (onRemove != null)
                 InkWell(
                   onTap: onRemove,
-                  child: const Icon(Icons.close, size: 16, color: Color(0xFF9CA3AF)),
+                  child: const Icon(Icons.close,
+                      size: 16, color: Color(0xFF9CA3AF)),
                 ),
             ],
           ),
@@ -1617,7 +1769,11 @@ class _MetricInputCard extends StatelessWidget {
             ),
             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             onChanged: (value) => onChanged(
-              _EditableMetric(id: metric.id, label: value.trim(), value: metric.value, color: metric.color),
+              _EditableMetric(
+                  id: metric.id,
+                  label: value.trim(),
+                  value: metric.value,
+                  color: metric.color),
             ),
           ),
           const SizedBox(height: 6),
@@ -1629,9 +1785,14 @@ class _MetricInputCard extends StatelessWidget {
               isDense: true,
               border: InputBorder.none,
             ),
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: metric.color),
+            style: TextStyle(
+                fontSize: 18, fontWeight: FontWeight.w700, color: metric.color),
             onChanged: (value) => onChanged(
-              _EditableMetric(id: metric.id, label: metric.label, value: value.trim(), color: metric.color),
+              _EditableMetric(
+                  id: metric.id,
+                  label: metric.label,
+                  value: value.trim(),
+                  color: metric.color),
             ),
           ),
         ],
@@ -1662,7 +1823,8 @@ class _MetricAddCard extends StatelessWidget {
             children: [
               Icon(Icons.add_circle_outline, color: Color(0xFF6B7280)),
               SizedBox(height: 6),
-              Text('Add metric', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+              Text('Add metric',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
             ],
           ),
         ),
@@ -1693,7 +1855,8 @@ class _EditableSectionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: const [
-          BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 6)),
+          BoxShadow(
+              color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 6)),
         ],
       ),
       child: Column(
@@ -1710,7 +1873,10 @@ class _EditableSectionCard extends StatelessWidget {
                     isDense: true,
                     border: InputBorder.none,
                   ),
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                  style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF111827)),
                   onChanged: (value) {
                     section.title = value.trim();
                     onSectionChanged(section);
@@ -1719,7 +1885,8 @@ class _EditableSectionCard extends StatelessWidget {
               ),
               if (onRemove != null)
                 IconButton(
-                  icon: const Icon(Icons.close, size: 18, color: Color(0xFF9CA3AF)),
+                  icon: const Icon(Icons.close,
+                      size: 18, color: Color(0xFF9CA3AF)),
                   onPressed: onRemove,
                 ),
             ],
@@ -1732,14 +1899,19 @@ class _EditableSectionCard extends StatelessWidget {
               isDense: true,
               border: InputBorder.none,
             ),
-            style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280), height: 1.4),
+            style: const TextStyle(
+                fontSize: 12, color: Color(0xFF6B7280), height: 1.4),
             onChanged: (value) {
               section.subtitle = value.trim();
               onSectionChanged(section);
             },
           ),
           const SizedBox(height: 14),
-          const Text('Key checkpoints', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+          const Text('Key checkpoints',
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827))),
           const SizedBox(height: 8),
           for (var i = 0; i < section.bullets.length; i++)
             _BulletInputRow(
@@ -1758,14 +1930,21 @@ class _EditableSectionCard extends StatelessWidget {
           const SizedBox(height: 8),
           TextButton.icon(
             onPressed: () {
-              section.bullets.add(_EditableBullet(id: DateTime.now().microsecondsSinceEpoch.toString(), text: '', isCheck: false));
+              section.bullets.add(_EditableBullet(
+                  id: DateTime.now().microsecondsSinceEpoch.toString(),
+                  text: '',
+                  isCheck: false));
               onSectionChanged(section);
             },
             icon: const Icon(Icons.add, size: 16),
             label: const Text('Add checkpoint'),
           ),
           const SizedBox(height: 12),
-          const Text('Status signals', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+          const Text('Status signals',
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827))),
           const SizedBox(height: 8),
           for (var i = 0; i < section.statuses.length; i++)
             _StatusInputRow(
@@ -1825,7 +2004,8 @@ class _BulletInputRow extends StatelessWidget {
           Checkbox(
             value: bullet.isCheck,
             onChanged: (value) => onChanged(
-              _EditableBullet(id: bullet.id, text: bullet.text, isCheck: value ?? false),
+              _EditableBullet(
+                  id: bullet.id, text: bullet.text, isCheck: value ?? false),
             ),
           ),
           Expanded(
@@ -1837,9 +2017,11 @@ class _BulletInputRow extends StatelessWidget {
                 isDense: true,
                 border: InputBorder.none,
               ),
-              style: const TextStyle(fontSize: 12, color: Color(0xFF374151), height: 1.4),
+              style: const TextStyle(
+                  fontSize: 12, color: Color(0xFF374151), height: 1.4),
               onChanged: (value) => onChanged(
-                _EditableBullet(id: bullet.id, text: value.trim(), isCheck: bullet.isCheck),
+                _EditableBullet(
+                    id: bullet.id, text: value.trim(), isCheck: bullet.isCheck),
               ),
             ),
           ),
@@ -1881,7 +2063,8 @@ class _StatusInputRow extends StatelessWidget {
               decoration: const InputDecoration(
                 hintText: 'Label',
                 isDense: true,
-                border: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFFE5E7EB))),
+                border: OutlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFFE5E7EB))),
               ),
               style: const TextStyle(fontSize: 12),
               onChanged: (value) => onChanged(
@@ -1903,7 +2086,8 @@ class _StatusInputRow extends StatelessWidget {
               decoration: const InputDecoration(
                 hintText: 'Value',
                 isDense: true,
-                border: OutlineInputBorder(borderSide: BorderSide(color: Color(0xFFE5E7EB))),
+                border: OutlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFFE5E7EB))),
               ),
               style: const TextStyle(fontSize: 12),
               onChanged: (value) => onChanged(
@@ -1926,9 +2110,14 @@ class _StatusInputRow extends StatelessWidget {
                       value: option.color.toARGB32(),
                       child: Row(
                         children: [
-                          Container(width: 10, height: 10, decoration: BoxDecoration(color: option.color, shape: BoxShape.circle)),
+                          Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                  color: option.color, shape: BoxShape.circle)),
                           const SizedBox(width: 6),
-                          Text(option.label, style: const TextStyle(fontSize: 12)),
+                          Text(option.label,
+                              style: const TextStyle(fontSize: 12)),
                         ],
                       ),
                     ),
@@ -1980,7 +2169,8 @@ class _AddSectionCard extends StatelessWidget {
             children: [
               Icon(Icons.add_circle_outline, color: Color(0xFF6B7280)),
               SizedBox(height: 6),
-              Text('Add section', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+              Text('Add section',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
             ],
           ),
         ),
@@ -2051,7 +2241,8 @@ class _AttachmentMeta {
 }
 
 class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.label, required this.color, required this.background});
+  const _StatusPill(
+      {required this.label, required this.color, required this.background});
 
   final String label;
   final Color color;
@@ -2067,14 +2258,16 @@ class _StatusPill extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+        style:
+            TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
       ),
     );
   }
 }
 
 class _Debouncer {
-  _Debouncer({Duration? delay}) : delay = delay ?? const Duration(milliseconds: 700);
+  _Debouncer({Duration? delay})
+      : delay = delay ?? const Duration(milliseconds: 700);
 
   final Duration delay;
   Timer? _timer;

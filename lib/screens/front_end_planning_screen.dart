@@ -24,7 +24,8 @@ class _FrontEndPlanningScreenState extends State<FrontEndPlanningScreen> {
       final pid = provider?.projectData.projectId;
       if (pid != null && pid.isNotEmpty) {
         // Save this page as the last visited page for the project
-        await ProjectNavigationService.instance.saveLastPage(pid, 'front_end_planning');
+        await ProjectNavigationService.instance
+            .saveLastPage(pid, 'front_end_planning');
       }
     });
   }
@@ -44,14 +45,15 @@ class _FrontEndPlanningScreenState extends State<FrontEndPlanningScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'Project Summary',
       backgroundColor: const Color(0xFFF9FAFC),
-      floatingActionButton: const KazAiChatBubble(),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: Stack(
         children: [
           const Positioned.fill(child: _StripedBackdrop()),
           const AdminEditToggle(),
           Center(
             child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(vertical: isMobile ? 32 : 64, horizontal: padding),
+              padding: EdgeInsets.symmetric(
+                  vertical: isMobile ? 32 : 64, horizontal: padding),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -73,11 +75,14 @@ class _FrontEndPlanningScreenState extends State<FrontEndPlanningScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFFD700),
                 foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(22)),
                 elevation: 0,
               ),
-              child: const Text('Next', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              child: const Text('Next',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             ),
           ),
         ],
@@ -277,7 +282,8 @@ class _TableRowCells extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
             child: Center(
               child: EditableContentText(
-                contentKey: 'fep_charter_cell_${labels[index].toLowerCase().replaceAll(' ', '_')}',
+                contentKey:
+                    'fep_charter_cell_${labels[index].toLowerCase().replaceAll(' ', '_')}',
                 fallback: labels[index],
                 category: 'front_end_planning',
                 textAlign: TextAlign.center,

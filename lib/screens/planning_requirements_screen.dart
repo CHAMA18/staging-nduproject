@@ -46,7 +46,7 @@ class _PlanningRequirementsScreenState
       _notesController.text = projectData.frontEndPlanning.requirementsNotes;
       _notesController.addListener(_handleNotesChanged);
       _loadSavedRequirements(projectData);
-      
+
       if (_rows.isEmpty ||
           (_rows.length == 1 &&
               _rows.first.descriptionController.text.trim().isEmpty)) {
@@ -143,7 +143,7 @@ class _PlanningRequirementsScreenState
       row.aiUndoText = row.descriptionController.text;
       row.descriptionController.text = nextText;
       _commitAutoSave(showSnack: false);
-      
+
       await ProjectDataHelper.getProvider(context)
           .saveToFirebase(checkpoint: 'requirements');
       if (mounted) setState(() {});
@@ -193,8 +193,8 @@ class _PlanningRequirementsScreenState
           children: [
             DraggableSidebar(
               openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(
-                  activeItemLabel: 'Requirements'),
+              child:
+                  const InitiationLikeSidebar(activeItemLabel: 'Requirements'),
             ),
             Expanded(
               child: Stack(
@@ -275,7 +275,7 @@ class _PlanningRequirementsScreenState
                   const Positioned(
                     right: 24,
                     bottom: 90,
-                    child: KazAiChatBubble(),
+                    child: KazAiChatBubble(positioned: false),
                   ),
                 ],
               ),
@@ -288,9 +288,12 @@ class _PlanningRequirementsScreenState
 
   Widget _buildHeader(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final displayName = FirebaseAuthService.displayNameOrEmail(fallback: 'User');
+    final displayName =
+        FirebaseAuthService.displayNameOrEmail(fallback: 'User');
     final email = user?.email ?? '';
-    final initial = displayName.trim().isNotEmpty ? displayName.trim().characters.first.toUpperCase() : 'U';
+    final initial = displayName.trim().isNotEmpty
+        ? displayName.trim().characters.first.toUpperCase()
+        : 'U';
 
     return Container(
       height: 88,
@@ -306,10 +309,11 @@ class _PlanningRequirementsScreenState
             onPressed: () {
               final idx = PlanningPhaseNavigation.getPageIndex('requirements');
               if (idx > 0) {
-                 final prev = PlanningPhaseNavigation.pages[idx - 1];
-                 Navigator.pushReplacement(context, MaterialPageRoute(builder: prev.builder));
+                final prev = PlanningPhaseNavigation.pages[idx - 1];
+                Navigator.pushReplacement(
+                    context, MaterialPageRoute(builder: prev.builder));
               } else {
-                 Navigator.pop(context);
+                Navigator.pop(context);
               }
             },
           ),
@@ -318,15 +322,19 @@ class _PlanningRequirementsScreenState
             onPressed: () {
               final idx = PlanningPhaseNavigation.getPageIndex('requirements');
               if (idx < PlanningPhaseNavigation.pages.length - 1) {
-                 final next = PlanningPhaseNavigation.pages[idx + 1];
-                 Navigator.pushReplacement(context, MaterialPageRoute(builder: next.builder));
+                final next = PlanningPhaseNavigation.pages[idx + 1];
+                Navigator.pushReplacement(
+                    context, MaterialPageRoute(builder: next.builder));
               }
             },
           ),
           const Spacer(),
           const Text(
             'Planning Phase',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+            style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827)),
           ),
           const Spacer(),
           Row(
@@ -334,19 +342,28 @@ class _PlanningRequirementsScreenState
               CircleAvatar(
                 radius: 16,
                 backgroundColor: const Color(0xFFFFC812),
-                child: Text(initial, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black)),
+                child: Text(initial,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black)),
               ),
               const SizedBox(width: 8),
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(displayName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  Text(displayName,
+                      style: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w600)),
                   StreamBuilder<bool>(
                     stream: UserService.watchAdminStatus(),
                     builder: (context, snapshot) {
-                      final isAdmin = snapshot.data ?? UserService.isAdminEmail(email);
-                      return Text(isAdmin ? 'Admin' : 'Member', style: const TextStyle(fontSize: 11, color: Colors.grey));
+                      final isAdmin =
+                          snapshot.data ?? UserService.isAdminEmail(email);
+                      return Text(isAdmin ? 'Admin' : 'Member',
+                          style: const TextStyle(
+                              fontSize: 11, color: Colors.grey));
                     },
                   ),
                 ],
@@ -448,7 +465,8 @@ class _PlanningRequirementsScreenState
           backgroundColor: const Color(0xFFF2F4F7),
           foregroundColor: const Color(0xFF111827),
           side: const BorderSide(color: Color(0xFFE5E7EB)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         ),
         child: const Text('Add another',
@@ -825,13 +843,14 @@ class _BottomOverlays extends StatelessWidget {
           _circleButton(
             icon: Icons.arrow_back_ios_new_rounded,
             onTap: () {
-               final idx = PlanningPhaseNavigation.getPageIndex('requirements');
-               if (idx > 0) {
-                  final prev = PlanningPhaseNavigation.pages[idx - 1];
-                  Navigator.pushReplacement(context, MaterialPageRoute(builder: prev.builder));
-               } else {
-                  Navigator.pop(context);
-               }
+              final idx = PlanningPhaseNavigation.getPageIndex('requirements');
+              if (idx > 0) {
+                final prev = PlanningPhaseNavigation.pages[idx - 1];
+                Navigator.pushReplacement(
+                    context, MaterialPageRoute(builder: prev.builder));
+              } else {
+                Navigator.pop(context);
+              }
             },
           ),
           ElevatedButton(
@@ -840,19 +859,22 @@ class _BottomOverlays extends StatelessWidget {
               backgroundColor: const Color(0xFFFFC812),
               foregroundColor: Colors.black,
               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18)),
               elevation: 4,
             ),
-            child: const Text('Submit Requirements', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text('Submit Requirements',
+                style: TextStyle(fontWeight: FontWeight.bold)),
           ),
           _circleButton(
             icon: Icons.arrow_forward_ios_rounded,
             onTap: () {
-               final idx = PlanningPhaseNavigation.getPageIndex('requirements');
-               if (idx < PlanningPhaseNavigation.pages.length - 1) {
-                  final next = PlanningPhaseNavigation.pages[idx + 1];
-                  Navigator.pushReplacement(context, MaterialPageRoute(builder: next.builder));
-               }
+              final idx = PlanningPhaseNavigation.getPageIndex('requirements');
+              if (idx < PlanningPhaseNavigation.pages.length - 1) {
+                final next = PlanningPhaseNavigation.pages[idx + 1];
+                Navigator.pushReplacement(
+                    context, MaterialPageRoute(builder: next.builder));
+              }
             },
           ),
         ],
@@ -871,7 +893,10 @@ class _BottomOverlays extends StatelessWidget {
           color: Colors.white,
           shape: BoxShape.circle,
           border: Border.all(color: const Color(0xFFE5E7EB)),
-          boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 8, offset: Offset(0, 4))],
+          boxShadow: const [
+            BoxShadow(
+                color: Color(0x14000000), blurRadius: 8, offset: Offset(0, 4))
+          ],
         ),
         child: Icon(icon, color: Colors.black87, size: 20),
       ),

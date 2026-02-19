@@ -163,7 +163,7 @@ class _FrontEndPlanningSummaryScreenState
     return ResponsiveScaffold(
       activeItemLabel: 'Details',
       backgroundColor: Colors.white,
-      floatingActionButton: const KazAiChatBubble(),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: Stack(
         children: [
           const AdminEditToggle(),

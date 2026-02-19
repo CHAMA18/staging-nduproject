@@ -2137,6 +2137,7 @@ class PreferredSolutionAnalysis {
   String? selectedSolutionTitle;
   String? selectedSolutionId; // UUID/ID for reliable matching
   int? selectedSolutionIndex; // Index fallback for matching
+  bool isSelectionFinalized;
 
   PreferredSolutionAnalysis({
     this.workingNotes = '',
@@ -2144,6 +2145,7 @@ class PreferredSolutionAnalysis {
     this.selectedSolutionTitle,
     this.selectedSolutionId,
     this.selectedSolutionIndex,
+    this.isSelectionFinalized = false,
   }) : solutionAnalyses = solutionAnalyses ?? [];
 
   Map<String, dynamic> toJson() => {
@@ -2152,6 +2154,7 @@ class PreferredSolutionAnalysis {
         'selectedSolutionTitle': selectedSolutionTitle,
         'selectedSolutionId': selectedSolutionId,
         'selectedSolutionIndex': selectedSolutionIndex,
+        'isSelectionFinalized': isSelectionFinalized,
       };
 
   factory PreferredSolutionAnalysis.fromJson(Map<String, dynamic> json) {
@@ -2168,6 +2171,7 @@ class PreferredSolutionAnalysis {
           : (json['selectedSolutionIndex'] != null
               ? int.tryParse(json['selectedSolutionIndex'].toString())
               : null),
+      isSelectionFinalized: json['isSelectionFinalized'] == true,
     );
   }
 }
@@ -2322,10 +2326,17 @@ class CostAnalysisData {
   String projectValueAmount;
   Map<String, String> projectValueBenefits;
   List<BenefitLineItem> benefitLineItems;
+  // Per-solution financial inputs
+  List<SolutionProjectBenefitData> solutionProjectBenefits;
+  // Per-solution category estimates from Initial Cost Estimate
+  List<SolutionCategoryCostData> solutionCategoryCosts;
+  // Per-solution assumptions and narrative context
+  List<SolutionCostAssumptionData> solutionCostAssumptions;
   String savingsNotes;
   String savingsTarget;
   String? basisFrequency;
   String trackerBasisFrequency;
+  double npvDiscountRate;
 
   CostAnalysisData({
     this.notes = '',
@@ -2333,13 +2344,20 @@ class CostAnalysisData {
     this.projectValueAmount = '',
     Map<String, String>? projectValueBenefits,
     List<BenefitLineItem>? benefitLineItems,
+    List<SolutionProjectBenefitData>? solutionProjectBenefits,
+    List<SolutionCategoryCostData>? solutionCategoryCosts,
+    List<SolutionCostAssumptionData>? solutionCostAssumptions,
     this.savingsNotes = '',
     this.savingsTarget = '',
     this.basisFrequency,
     this.trackerBasisFrequency = 'Annual',
+    this.npvDiscountRate = 0.10,
   })  : solutionCosts = solutionCosts ?? [],
         projectValueBenefits = projectValueBenefits ?? {},
-        benefitLineItems = benefitLineItems ?? [];
+        benefitLineItems = benefitLineItems ?? [],
+        solutionProjectBenefits = solutionProjectBenefits ?? [],
+        solutionCategoryCosts = solutionCategoryCosts ?? [],
+        solutionCostAssumptions = solutionCostAssumptions ?? [];
 
   Map<String, dynamic> toJson() => {
         'notes': notes,
@@ -2347,24 +2365,63 @@ class CostAnalysisData {
         'projectValueAmount': projectValueAmount,
         'projectValueBenefits': projectValueBenefits,
         'benefitLineItems': benefitLineItems.map((b) => b.toJson()).toList(),
+        'solutionProjectBenefits':
+            solutionProjectBenefits.map((s) => s.toJson()).toList(),
+        'solutionCategoryCosts':
+            solutionCategoryCosts.map((s) => s.toJson()).toList(),
+        'solutionCostAssumptions':
+            solutionCostAssumptions.map((s) => s.toJson()).toList(),
         'savingsNotes': savingsNotes,
         'savingsTarget': savingsTarget,
         'basisFrequency': basisFrequency,
         'trackerBasisFrequency': trackerBasisFrequency,
+        'npvDiscountRate': npvDiscountRate,
       };
 
   factory CostAnalysisData.fromJson(Map<String, dynamic> json) {
+    final parsedProjectBenefits = (json['solutionProjectBenefits'] as List?)
+            ?.map((s) => SolutionProjectBenefitData.fromJson(s))
+            .toList() ??
+        [];
+    final legacyBenefitLineItems = (json['benefitLineItems'] as List?)
+            ?.map((b) => BenefitLineItem.fromJson(b))
+            .toList() ??
+        [];
+    final projectValueAmount = json['projectValueAmount'] ?? '';
+    final projectValueBenefits =
+        Map<String, String>.from(json['projectValueBenefits'] ?? {});
+
+    final solutionProjectBenefits = parsedProjectBenefits.isNotEmpty
+        ? parsedProjectBenefits
+        : (projectValueAmount.toString().trim().isNotEmpty ||
+                projectValueBenefits.isNotEmpty ||
+                legacyBenefitLineItems.isNotEmpty)
+            ? [
+                SolutionProjectBenefitData(
+                  solutionTitle: '',
+                  projectValueAmount: projectValueAmount,
+                  projectValueBenefits: projectValueBenefits,
+                  projectBenefits: legacyBenefitLineItems,
+                )
+              ]
+            : <SolutionProjectBenefitData>[];
+
     return CostAnalysisData(
       notes: json['notes'] ?? '',
       solutionCosts: (json['solutionCosts'] as List?)
               ?.map((s) => SolutionCostData.fromJson(s))
               .toList() ??
           [],
-      projectValueAmount: json['projectValueAmount'] ?? '',
-      projectValueBenefits:
-          Map<String, String>.from(json['projectValueBenefits'] ?? {}),
-      benefitLineItems: (json['benefitLineItems'] as List?)
-              ?.map((b) => BenefitLineItem.fromJson(b))
+      projectValueAmount: projectValueAmount,
+      projectValueBenefits: projectValueBenefits,
+      benefitLineItems: legacyBenefitLineItems,
+      solutionProjectBenefits: solutionProjectBenefits,
+      solutionCategoryCosts: (json['solutionCategoryCosts'] as List?)
+              ?.map((s) => SolutionCategoryCostData.fromJson(s))
+              .toList() ??
+          [],
+      solutionCostAssumptions: (json['solutionCostAssumptions'] as List?)
+              ?.map((s) => SolutionCostAssumptionData.fromJson(s))
               .toList() ??
           [],
       savingsNotes: json['savingsNotes'] ?? '',
@@ -2372,6 +2429,10 @@ class CostAnalysisData {
       basisFrequency: json['basisFrequency']?.toString(),
       trackerBasisFrequency:
           json['trackerBasisFrequency']?.toString() ?? 'Annual',
+      npvDiscountRate: json['npvDiscountRate'] is num
+          ? (json['npvDiscountRate'] as num).toDouble()
+          : (double.tryParse(json['npvDiscountRate']?.toString() ?? '') ??
+              0.10),
     );
   }
 }
@@ -2397,6 +2458,108 @@ class SolutionCostData {
               ?.map((r) => CostRowData.fromJson(r))
               .toList() ??
           [],
+    );
+  }
+}
+
+class SolutionProjectBenefitData {
+  String solutionTitle;
+  String projectValueAmount;
+  Map<String, String> projectValueBenefits;
+  List<BenefitLineItem> projectBenefits;
+
+  SolutionProjectBenefitData({
+    this.solutionTitle = '',
+    this.projectValueAmount = '',
+    Map<String, String>? projectValueBenefits,
+    List<BenefitLineItem>? projectBenefits,
+  })  : projectValueBenefits = projectValueBenefits ?? {},
+        projectBenefits = projectBenefits ?? [];
+
+  Map<String, dynamic> toJson() => {
+        'solutionTitle': solutionTitle,
+        'projectValueAmount': projectValueAmount,
+        'projectValueBenefits': projectValueBenefits,
+        'projectBenefits': projectBenefits.map((b) => b.toJson()).toList(),
+      };
+
+  factory SolutionProjectBenefitData.fromJson(Map<String, dynamic> json) {
+    return SolutionProjectBenefitData(
+      solutionTitle: json['solutionTitle']?.toString() ?? '',
+      projectValueAmount: json['projectValueAmount']?.toString() ?? '',
+      projectValueBenefits:
+          Map<String, String>.from(json['projectValueBenefits'] ?? {}),
+      projectBenefits: (json['projectBenefits'] as List?)
+              ?.map((b) => BenefitLineItem.fromJson(b))
+              .toList() ??
+          [],
+    );
+  }
+}
+
+class SolutionCategoryCostData {
+  String solutionTitle;
+  Map<String, String> categoryCosts;
+  Map<String, String> categoryNotes;
+
+  SolutionCategoryCostData({
+    this.solutionTitle = '',
+    Map<String, String>? categoryCosts,
+    Map<String, String>? categoryNotes,
+  })  : categoryCosts = categoryCosts ?? {},
+        categoryNotes = categoryNotes ?? {};
+
+  Map<String, dynamic> toJson() => {
+        'solutionTitle': solutionTitle,
+        'categoryCosts': categoryCosts,
+        'categoryNotes': categoryNotes,
+      };
+
+  factory SolutionCategoryCostData.fromJson(Map<String, dynamic> json) {
+    return SolutionCategoryCostData(
+      solutionTitle: json['solutionTitle']?.toString() ?? '',
+      categoryCosts: Map<String, String>.from(json['categoryCosts'] ?? {}),
+      categoryNotes: Map<String, String>.from(json['categoryNotes'] ?? {}),
+    );
+  }
+}
+
+class SolutionCostAssumptionData {
+  String solutionTitle;
+  int resourceIndex;
+  int timelineIndex;
+  int complexityIndex;
+  String justification;
+
+  SolutionCostAssumptionData({
+    this.solutionTitle = '',
+    this.resourceIndex = 0,
+    this.timelineIndex = 1,
+    this.complexityIndex = 0,
+    this.justification = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'solutionTitle': solutionTitle,
+        'resourceIndex': resourceIndex,
+        'timelineIndex': timelineIndex,
+        'complexityIndex': complexityIndex,
+        'justification': justification,
+      };
+
+  factory SolutionCostAssumptionData.fromJson(Map<String, dynamic> json) {
+    int parseIndex(dynamic value, int fallback) {
+      if (value is num) return value.toInt();
+      if (value is String) return int.tryParse(value) ?? fallback;
+      return fallback;
+    }
+
+    return SolutionCostAssumptionData(
+      solutionTitle: json['solutionTitle']?.toString() ?? '',
+      resourceIndex: parseIndex(json['resourceIndex'], 0),
+      timelineIndex: parseIndex(json['timelineIndex'], 1),
+      complexityIndex: parseIndex(json['complexityIndex'], 0),
+      justification: json['justification']?.toString() ?? '',
     );
   }
 }

@@ -34,6 +34,7 @@ jobs:
           # --no-tree-shake-icons is required because icons are loaded dynamically from JSON data
           # HTML renderer is configured in web/index.html to avoid canvaskit CDN timeout errors
           flutter build web --release --no-tree-shake-icons \
+            --pwa-strategy=none \
             --dart-define=OPENAI_PROXY_API_KEY=${OPENAI_PROXY_API_KEY} \
             --dart-define=OPENAI_PROXY_ENDPOINT=${OPENAI_PROXY_ENDPOINT}
 

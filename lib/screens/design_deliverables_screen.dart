@@ -397,7 +397,9 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
                     ),
                   ),
                   const Positioned(
-                      right: 24, bottom: 24, child: KazAiChatBubble()),
+                      right: 24,
+                      bottom: 24,
+                      child: KazAiChatBubble(positioned: false)),
                 ],
               ),
             ),

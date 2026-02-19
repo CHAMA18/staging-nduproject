@@ -49,9 +49,10 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'Demobilize Team',
       backgroundColor: const Color(0xFFF5F7FB),
-      floatingActionButton: const KazAiChatBubble(),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SingleChildScrollView(
-        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: isMobile ? 16 : 28),
+        padding: EdgeInsets.symmetric(
+            horizontal: horizontalPadding, vertical: isMobile ? 16 : 28),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -59,36 +60,45 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
             const SizedBox(height: 20),
             LaunchEditableSection(
               title: 'Team ramp-down plan',
-              description: 'Add actions and decisions for releasing core team members.',
+              description:
+                  'Add actions and decisions for releasing core team members.',
               entries: _teamRampDown,
-              onAdd: () => _addEntry(_teamRampDown, titleLabel: 'Ramp-down item'),
+              onAdd: () =>
+                  _addEntry(_teamRampDown, titleLabel: 'Ramp-down item'),
               onRemove: (index) => _removeEntry(_teamRampDown, index),
             ),
             LaunchEditableSection(
               title: 'Knowledge transfer & handover',
-              description: 'Capture the sessions, artifacts, and owners for knowledge capture.',
+              description:
+                  'Capture the sessions, artifacts, and owners for knowledge capture.',
               entries: _knowledgeTransfer,
-              onAdd: () => _addEntry(_knowledgeTransfer, titleLabel: 'Knowledge item'),
+              onAdd: () =>
+                  _addEntry(_knowledgeTransfer, titleLabel: 'Knowledge item'),
               onRemove: (index) => _removeEntry(_knowledgeTransfer, index),
             ),
             LaunchEditableSection(
               title: 'Vendor & access offboarding',
-              description: 'Track vendor exits, tool access clean-up, and remaining obligations.',
+              description:
+                  'Track vendor exits, tool access clean-up, and remaining obligations.',
               entries: _vendorOffboarding,
-              onAdd: () => _addEntry(_vendorOffboarding, titleLabel: 'Offboarding item', includeStatus: true),
+              onAdd: () => _addEntry(_vendorOffboarding,
+                  titleLabel: 'Offboarding item', includeStatus: true),
               onRemove: (index) => _removeEntry(_vendorOffboarding, index),
             ),
             LaunchEditableSection(
               title: 'Communications & people care',
-              description: 'Log communications, FAQs, and support for impacted people.',
+              description:
+                  'Log communications, FAQs, and support for impacted people.',
               entries: _communications,
-              onAdd: () => _addEntry(_communications, titleLabel: 'Communication item'),
+              onAdd: () =>
+                  _addEntry(_communications, titleLabel: 'Communication item'),
               onRemove: (index) => _removeEntry(_communications, index),
               showStatusChip: false,
             ),
             const SizedBox(height: 24),
             LaunchPhaseNavigation(
-              backLabel: 'Back: Project Financial Review - Scope Reconcillation',
+              backLabel:
+                  'Back: Project Financial Review - Scope Reconcillation',
               nextLabel: 'Next: Project Close Out',
               onBack: () => GapAnalysisScopeReconcillationScreen.open(context),
               onNext: () => ProjectCloseOutScreen.open(context),
@@ -209,7 +219,10 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
         });
       }
       _loadedEntries = true;
-      if (_teamRampDown.isEmpty && _knowledgeTransfer.isEmpty && _vendorOffboarding.isEmpty && _communications.isEmpty) {
+      if (_teamRampDown.isEmpty &&
+          _knowledgeTransfer.isEmpty &&
+          _vendorOffboarding.isEmpty &&
+          _communications.isEmpty) {
         await _populateFromAi();
       }
     } catch (error) {
@@ -220,7 +233,8 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
   Future<void> _populateFromAi() async {
     if (_aiGenerated || _isGenerating) return;
     final projectData = ProjectDataHelper.getData(context);
-    final contextText = ProjectDataHelper.buildFepContext(projectData, sectionLabel: 'Demobilize Team');
+    final contextText = ProjectDataHelper.buildFepContext(projectData,
+        sectionLabel: 'Demobilize Team');
     if (contextText.trim().isEmpty) return;
 
     setState(() => _isGenerating = true);
@@ -241,7 +255,10 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
     }
 
     if (!mounted) return;
-    if (_teamRampDown.isNotEmpty || _knowledgeTransfer.isNotEmpty || _vendorOffboarding.isNotEmpty || _communications.isNotEmpty) {
+    if (_teamRampDown.isNotEmpty ||
+        _knowledgeTransfer.isNotEmpty ||
+        _vendorOffboarding.isNotEmpty ||
+        _communications.isNotEmpty) {
       setState(() => _isGenerating = false);
       _aiGenerated = true;
       return;
@@ -272,7 +289,9 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
         .map((item) => LaunchEntry(
               title: (item['title'] ?? '').toString().trim(),
               details: (item['details'] ?? '').toString().trim(),
-              status: (item['status'] ?? '').toString().trim().isEmpty ? null : item['status'].toString().trim(),
+              status: (item['status'] ?? '').toString().trim().isEmpty
+                  ? null
+                  : item['status'].toString().trim(),
             ))
         .where((entry) => entry.title.isNotEmpty)
         .toList();

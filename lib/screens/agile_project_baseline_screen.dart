@@ -31,13 +31,15 @@ class AgileProjectBaselineScreen extends StatelessWidget {
           children: [
             DraggableSidebar(
               openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(activeItemLabel: 'Agile Project Baseline'),
+              child: const InitiationLikeSidebar(
+                  activeItemLabel: 'Agile Project Baseline'),
             ),
             Expanded(
               child: Stack(
                 children: [
                   SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 24),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding, vertical: 24),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final width = constraints.maxWidth;
@@ -47,11 +49,13 @@ class AgileProjectBaselineScreen extends StatelessWidget {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _TopHeader(onBack: () => Navigator.maybePop(context)),
+                            _TopHeader(
+                                onBack: () => Navigator.maybePop(context)),
                             const SizedBox(height: 12),
                             const Text(
                               'Manage roles and responsibilities',
-                              style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+                              style: TextStyle(
+                                  fontSize: 14, color: Color(0xFF6B7280)),
                             ),
                             const SizedBox(height: 20),
                             const PlanningAiNotesCard(
@@ -59,7 +63,8 @@ class AgileProjectBaselineScreen extends StatelessWidget {
                               sectionLabel: 'Agile Project Baseline',
                               noteKey: 'planning_agile_project_baseline_notes',
                               checkpoint: 'agile_project_baseline',
-                              description: 'Capture baseline scope, delivery cadence, and key assumptions.',
+                              description:
+                                  'Capture baseline scope, delivery cadence, and key assumptions.',
                             ),
                             const SizedBox(height: 24),
                             _MetricsRow(isMobile: isMobile),
@@ -68,8 +73,12 @@ class AgileProjectBaselineScreen extends StatelessWidget {
                               spacing: gap,
                               runSpacing: gap,
                               children: [
-                                SizedBox(width: halfWidth, child: const _BaselineScopeCard()),
-                                SizedBox(width: halfWidth, child: const _DefinitionOfDoneCard()),
+                                SizedBox(
+                                    width: halfWidth,
+                                    child: const _BaselineScopeCard()),
+                                SizedBox(
+                                    width: halfWidth,
+                                    child: const _DefinitionOfDoneCard()),
                               ],
                             ),
                             const SizedBox(height: 24),
@@ -79,8 +88,12 @@ class AgileProjectBaselineScreen extends StatelessWidget {
                               spacing: gap,
                               runSpacing: gap,
                               children: [
-                                SizedBox(width: halfWidth, child: const _AssumptionsCard()),
-                                SizedBox(width: halfWidth, child: const _ChangeControlCard()),
+                                SizedBox(
+                                    width: halfWidth,
+                                    child: const _AssumptionsCard()),
+                                SizedBox(
+                                    width: halfWidth,
+                                    child: const _ChangeControlCard()),
                               ],
                             ),
                             const SizedBox(height: 24),
@@ -89,17 +102,22 @@ class AgileProjectBaselineScreen extends StatelessWidget {
                             Align(
                               alignment: Alignment.centerRight,
                               child: ElevatedButton(
-                                onPressed: () => ProjectBaselineScreen.open(context),
+                                onPressed: () =>
+                                    ProjectBaselineScreen.open(context),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFFFFD700),
                                   foregroundColor: const Color(0xFF111827),
                                   elevation: 0,
-                                  padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 14),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 36, vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20)),
                                 ),
                                 child: const Text(
                                   'Next',
-                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700),
                                 ),
                               ),
                             ),
@@ -109,7 +127,10 @@ class AgileProjectBaselineScreen extends StatelessWidget {
                       },
                     ),
                   ),
-                  const Positioned(right: 24, bottom: 24, child: KazAiChatBubble()),
+                  const Positioned(
+                      right: 24,
+                      bottom: 24,
+                      child: KazAiChatBubble(positioned: false)),
                 ],
               ),
             ),
@@ -129,13 +150,17 @@ class _TopHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _CircleIconButton(icon: Icons.arrow_back_ios_new_rounded, onTap: onBack),
+        _CircleIconButton(
+            icon: Icons.arrow_back_ios_new_rounded, onTap: onBack),
         const SizedBox(width: 12),
         const _CircleIconButton(icon: Icons.arrow_forward_ios_rounded),
         const SizedBox(width: 16),
         const Text(
           'Agile Project Baseline',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+          style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827)),
         ),
         const Spacer(),
         const _UserChip(),
@@ -175,7 +200,8 @@ class _UserChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final displayName = FirebaseAuthService.displayNameOrEmail(fallback: 'User');
+    final displayName =
+        FirebaseAuthService.displayNameOrEmail(fallback: 'User');
     final email = user?.email ?? '';
 
     return StreamBuilder<bool>(
@@ -197,11 +223,18 @@ class _UserChip extends StatelessWidget {
               CircleAvatar(
                 radius: 16,
                 backgroundColor: const Color(0xFFE5E7EB),
-                backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
+                backgroundImage: user?.photoURL != null
+                    ? NetworkImage(user!.photoURL!)
+                    : null,
                 child: user?.photoURL == null
                     ? Text(
-                        displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+                        displayName.isNotEmpty
+                            ? displayName[0].toUpperCase()
+                            : 'U',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151)),
                       )
                     : null,
               ),
@@ -210,12 +243,17 @@ class _UserChip extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(displayName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                  Text(role, style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280))),
+                  Text(displayName,
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600)),
+                  Text(role,
+                      style: const TextStyle(
+                          fontSize: 10, color: Color(0xFF6B7280))),
                 ],
               ),
               const SizedBox(width: 6),
-              const Icon(Icons.keyboard_arrow_down, size: 18, color: Color(0xFF9CA3AF)),
+              const Icon(Icons.keyboard_arrow_down,
+                  size: 18, color: Color(0xFF9CA3AF)),
             ],
           ),
         );
@@ -236,17 +274,28 @@ class _MetricsRow extends StatelessWidget {
       spacing: gap,
       runSpacing: gap,
       children: const [
-        _MetricCard(label: 'Sprint Length', value: '2 weeks', accent: Color(0xFF2563EB)),
-        _MetricCard(label: 'Baseline Velocity', value: '42 pts', accent: Color(0xFF10B981)),
-        _MetricCard(label: 'Committed Epics', value: '6', accent: Color(0xFFF59E0B)),
-        _MetricCard(label: 'Target Release', value: 'Aug 2025', accent: Color(0xFF8B5CF6)),
+        _MetricCard(
+            label: 'Sprint Length',
+            value: '2 weeks',
+            accent: Color(0xFF2563EB)),
+        _MetricCard(
+            label: 'Baseline Velocity',
+            value: '42 pts',
+            accent: Color(0xFF10B981)),
+        _MetricCard(
+            label: 'Committed Epics', value: '6', accent: Color(0xFFF59E0B)),
+        _MetricCard(
+            label: 'Target Release',
+            value: 'Aug 2025',
+            accent: Color(0xFF8B5CF6)),
       ],
     );
   }
 }
 
 class _MetricCard extends StatelessWidget {
-  const _MetricCard({required this.label, required this.value, required this.accent});
+  const _MetricCard(
+      {required this.label, required this.value, required this.accent});
 
   final String label;
   final String value;
@@ -262,17 +311,20 @@ class _MetricCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: const [
-          BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 6)),
+          BoxShadow(
+              color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 6)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+          Text(label,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
           const SizedBox(height: 6),
           Text(
             value,
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: accent),
+            style: TextStyle(
+                fontSize: 20, fontWeight: FontWeight.w700, color: accent),
           ),
         ],
       ),
@@ -312,7 +364,8 @@ class _DefinitionOfDoneCard extends StatelessWidget {
       subtitle: 'Baseline quality gates applied to every sprint.',
       child: Column(
         children: const [
-          _ChecklistRow(text: 'Acceptance criteria validated with stakeholders'),
+          _ChecklistRow(
+              text: 'Acceptance criteria validated with stakeholders'),
           _ChecklistRow(text: 'Automated tests passing at 90% coverage'),
           _ChecklistRow(text: 'Performance budget met (<= 2s page load)'),
           _ChecklistRow(text: 'Security review signed off'),
@@ -332,10 +385,22 @@ class _SprintCadenceCard extends StatelessWidget {
       subtitle: 'Baseline schedule for the next four sprints.',
       child: Column(
         children: const [
-          _SprintRow(sprint: 'Sprint 1', dates: 'May 6 - May 17', goal: 'Core flows + baseline QA'),
-          _SprintRow(sprint: 'Sprint 2', dates: 'May 20 - May 31', goal: 'Vendor workflows + APIs'),
-          _SprintRow(sprint: 'Sprint 3', dates: 'Jun 3 - Jun 14', goal: 'Analytics + reporting'),
-          _SprintRow(sprint: 'Sprint 4', dates: 'Jun 17 - Jun 28', goal: 'Security + release hardening'),
+          _SprintRow(
+              sprint: 'Sprint 1',
+              dates: 'May 6 - May 17',
+              goal: 'Core flows + baseline QA'),
+          _SprintRow(
+              sprint: 'Sprint 2',
+              dates: 'May 20 - May 31',
+              goal: 'Vendor workflows + APIs'),
+          _SprintRow(
+              sprint: 'Sprint 3',
+              dates: 'Jun 3 - Jun 14',
+              goal: 'Analytics + reporting'),
+          _SprintRow(
+              sprint: 'Sprint 4',
+              dates: 'Jun 17 - Jun 28',
+              goal: 'Security + release hardening'),
         ],
       ),
     );
@@ -352,9 +417,14 @@ class _AssumptionsCard extends StatelessWidget {
       subtitle: 'Guardrails that keep delivery aligned to plan.',
       child: Column(
         children: const [
-          _BulletRow(text: 'Team capacity stays at 7 FTE with two dedicated QA resources.'),
-          _BulletRow(text: 'Vendor onboarding completes by Sprint 2 to unblock integrations.'),
-          _BulletRow(text: 'No additional scope added without Change Control review.'),
+          _BulletRow(
+              text:
+                  'Team capacity stays at 7 FTE with two dedicated QA resources.'),
+          _BulletRow(
+              text:
+                  'Vendor onboarding completes by Sprint 2 to unblock integrations.'),
+          _BulletRow(
+              text: 'No additional scope added without Change Control review.'),
         ],
       ),
     );
@@ -371,9 +441,13 @@ class _ChangeControlCard extends StatelessWidget {
       subtitle: 'How baseline scope changes are evaluated.',
       child: Column(
         children: const [
-          _StepRow(step: '1', text: 'Change request logged with impact summary'),
-          _StepRow(step: '2', text: 'Product + Delivery review within 48 hours'),
-          _StepRow(step: '3', text: 'Baseline updated if approved by Steering Committee'),
+          _StepRow(
+              step: '1', text: 'Change request logged with impact summary'),
+          _StepRow(
+              step: '2', text: 'Product + Delivery review within 48 hours'),
+          _StepRow(
+              step: '3',
+              text: 'Baseline updated if approved by Steering Committee'),
         ],
       ),
     );
@@ -392,16 +466,22 @@ class _RiskSnapshotRow extends StatelessWidget {
       spacing: gap,
       runSpacing: gap,
       children: const [
-        _MiniCard(title: 'Capacity Risk', value: 'Medium', color: Color(0xFFF59E0B)),
-        _MiniCard(title: 'Vendor Dependency', value: 'High', color: Color(0xFFEF4444)),
-        _MiniCard(title: 'Scope Volatility', value: 'Low', color: Color(0xFF10B981)),
+        _MiniCard(
+            title: 'Capacity Risk', value: 'Medium', color: Color(0xFFF59E0B)),
+        _MiniCard(
+            title: 'Vendor Dependency',
+            value: 'High',
+            color: Color(0xFFEF4444)),
+        _MiniCard(
+            title: 'Scope Volatility', value: 'Low', color: Color(0xFF10B981)),
       ],
     );
   }
 }
 
 class _MiniCard extends StatelessWidget {
-  const _MiniCard({required this.title, required this.value, required this.color});
+  const _MiniCard(
+      {required this.title, required this.value, required this.color});
 
   final String title;
   final String value;
@@ -420,7 +500,8 @@ class _MiniCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+          Text(title,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -430,7 +511,8 @@ class _MiniCard extends StatelessWidget {
             ),
             child: Text(
               value,
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color),
+              style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w700, color: color),
             ),
           ),
         ],
@@ -440,7 +522,8 @@ class _MiniCard extends StatelessWidget {
 }
 
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.title, required this.subtitle, required this.child});
+  const _SectionCard(
+      {required this.title, required this.subtitle, required this.child});
 
   final String title;
   final String subtitle;
@@ -455,15 +538,22 @@ class _SectionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: const [
-          BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 6)),
+          BoxShadow(
+              color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 6)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827))),
           const SizedBox(height: 6),
-          Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280), height: 1.4)),
+          Text(subtitle,
+              style: const TextStyle(
+                  fontSize: 12, color: Color(0xFF6B7280), height: 1.4)),
           const SizedBox(height: 16),
           child,
         ],
@@ -513,9 +603,13 @@ class _ChecklistRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
-          const Icon(Icons.check_circle_outline, size: 16, color: Color(0xFF10B981)),
+          const Icon(Icons.check_circle_outline,
+              size: 16, color: Color(0xFF10B981)),
           const SizedBox(width: 8),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 12, color: Color(0xFF374151)))),
+          Expanded(
+              child: Text(text,
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFF374151)))),
         ],
       ),
     );
@@ -523,7 +617,8 @@ class _ChecklistRow extends StatelessWidget {
 }
 
 class _SprintRow extends StatelessWidget {
-  const _SprintRow({required this.sprint, required this.dates, required this.goal});
+  const _SprintRow(
+      {required this.sprint, required this.dates, required this.goal});
 
   final String sprint;
   final String dates;
@@ -538,9 +633,20 @@ class _SprintRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          SizedBox(width: 90, child: Text(sprint, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
-          SizedBox(width: 140, child: Text(dates, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)))),
-          Expanded(child: Text(goal, style: const TextStyle(fontSize: 12, color: Color(0xFF374151)))),
+          SizedBox(
+              width: 90,
+              child: Text(sprint,
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w600))),
+          SizedBox(
+              width: 140,
+              child: Text(dates,
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFF6B7280)))),
+          Expanded(
+              child: Text(goal,
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFF374151)))),
         ],
       ),
     );
@@ -561,7 +667,10 @@ class _BulletRow extends StatelessWidget {
         children: [
           const Icon(Icons.circle, size: 8, color: Color(0xFF9CA3AF)),
           const SizedBox(width: 10),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 12, color: Color(0xFF374151), height: 1.4))),
+          Expanded(
+              child: Text(text,
+                  style: const TextStyle(
+                      fontSize: 12, color: Color(0xFF374151), height: 1.4))),
         ],
       ),
     );
@@ -588,10 +697,17 @@ class _StepRow extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             alignment: Alignment.center,
-            child: Text(step, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF92400E))),
+            child: Text(step,
+                style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF92400E))),
           ),
           const SizedBox(width: 10),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 12, color: Color(0xFF374151)))),
+          Expanded(
+              child: Text(text,
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFF374151)))),
         ],
       ),
     );

@@ -221,9 +221,16 @@ class _ContractsTableState extends State<ContractsTable> {
 }
 
 class ProcurementTable extends StatefulWidget {
-  const ProcurementTable({super.key, required this.items});
+  const ProcurementTable({
+    super.key,
+    required this.items,
+    this.onEdit,
+    this.onDelete,
+  });
 
   final List<ProcurementItemModel> items;
+  final Function(ProcurementItemModel)? onEdit;
+  final Function(ProcurementItemModel)? onDelete;
 
   @override
   State<ProcurementTable> createState() => _ProcurementTableState();
@@ -255,6 +262,7 @@ class _ProcurementTableState extends State<ProcurementTable> {
     final start = safePageIndex * _rowsPerPage;
     final end = (start + _rowsPerPage).clamp(0, widget.items.length);
     final visible = widget.items.sublist(start, end);
+    final hasActions = widget.onEdit != null || widget.onDelete != null;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -273,27 +281,60 @@ class _ProcurementTableState extends State<ProcurementTable> {
                       color: Colors.grey[300]!,
                       width: 0.5,
                       borderRadius: BorderRadius.circular(8)),
-                  columns: const [
-                    DataColumn(
+                  columns: [
+                    const DataColumn(
                         label: Text('Item / Equipment',
                             style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(
+                    const DataColumn(
                         label: Text('Stage',
                             style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(
+                    const DataColumn(
                         label: Text('Responsible',
                             style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(
+                    const DataColumn(
                         label: Text('Est. Price',
                             style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(
+                    const DataColumn(
                         label: Text('Status',
                             style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(
+                    const DataColumn(
                         label: Text('Comments',
                             style: TextStyle(fontWeight: FontWeight.bold))),
+                    if (hasActions) const DataColumn(label: Text('')),
                   ],
                   rows: visible.map((item) {
+                    final actionItems = <PopupMenuEntry<String>>[];
+                    if (widget.onEdit != null) {
+                      actionItems.add(
+                        const PopupMenuItem<String>(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit_outlined, size: 16),
+                              SizedBox(width: 8),
+                              Text('Edit item'),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+                    if (widget.onDelete != null) {
+                      actionItems.add(
+                        const PopupMenuItem<String>(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete_outline,
+                                  size: 16, color: Colors.red),
+                              SizedBox(width: 8),
+                              Text('Delete',
+                                  style: TextStyle(color: Colors.red)),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
                     return DataRow(
                       cells: [
                         DataCell(_TextCell(item.name, bold: true)),
@@ -306,6 +347,22 @@ class _ProcurementTableState extends State<ProcurementTable> {
                         DataCell(_PriceCell(item.budget)),
                         DataCell(_StatusCell(item.status.name)),
                         DataCell(_ExpandableCell(item.comments)),
+                        if (hasActions)
+                          DataCell(
+                            PopupMenuButton<String>(
+                              icon: const Icon(Icons.more_horiz,
+                                  color: Colors.grey),
+                              itemBuilder: (_) => actionItems,
+                              onSelected: (value) {
+                                if (value == 'edit' && widget.onEdit != null) {
+                                  widget.onEdit!(item);
+                                } else if (value == 'delete' &&
+                                    widget.onDelete != null) {
+                                  widget.onDelete!(item);
+                                }
+                              },
+                            ),
+                          ),
                       ],
                     );
                   }).toList(),

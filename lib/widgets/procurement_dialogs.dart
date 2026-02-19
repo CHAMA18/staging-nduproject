@@ -245,10 +245,12 @@ class AddItemDialog extends StatefulWidget {
     super.key,
     required this.contextChips,
     required this.categoryOptions,
+    this.initialItem,
   });
 
   final List<Widget> contextChips;
   final List<String> categoryOptions;
+  final ProcurementItemModel? initialItem;
 
   @override
   State<AddItemDialog> createState() => _AddItemDialogState();
@@ -269,14 +271,21 @@ class _AddItemDialogState extends State<AddItemDialog> {
 
   final FocusNode _nameFocus = FocusNode();
   late final OpenAiServiceSecure _openAi;
+  bool get _isEditing => widget.initialItem != null;
 
   @override
   void initState() {
     super.initState();
-    _nameCtrl = TextEditingController();
-    _descCtrl = TextEditingController();
-    _budgetCtrl = TextEditingController();
-    _category = widget.categoryOptions.first;
+    final existing = widget.initialItem;
+    _nameCtrl = TextEditingController(text: existing?.name ?? '');
+    _descCtrl = TextEditingController(text: existing?.description ?? '');
+    _budgetCtrl = TextEditingController(
+      text: existing != null ? existing.budget.toStringAsFixed(0) : '',
+    );
+    _category = existing?.category ?? widget.categoryOptions.first;
+    _status = existing?.status ?? ProcurementItemStatus.planning;
+    _priority = existing?.priority ?? ProcurementPriority.medium;
+    _deliveryDate = existing?.estimatedDelivery;
     _openAi = OpenAiServiceSecure();
     ApiKeyManager.initializeApiKey();
 
@@ -397,12 +406,18 @@ class _AddItemDialogState extends State<AddItemDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final categoryOptions = widget.categoryOptions.contains(_category)
+        ? widget.categoryOptions
+        : [_category, ...widget.categoryOptions];
+
     return ProcurementDialogShell(
-      title: 'Add Procurement Item',
-      subtitle: 'Capture scope, budget, and delivery timing.',
+      title: _isEditing ? 'Edit Procurement Item' : 'Add Procurement Item',
+      subtitle: _isEditing
+          ? 'Update scope, budget, and delivery timing.'
+          : 'Capture scope, budget, and delivery timing.',
       icon: Icons.inventory_2_outlined,
       contextChips: widget.contextChips,
-      primaryLabel: 'Add Item',
+      primaryLabel: _isEditing ? 'Save Changes' : 'Add Item',
       secondaryLabel: 'Cancel',
       onSecondary: () => Navigator.of(context).pop(),
       onPrimary: () {
@@ -412,11 +427,13 @@ class _AddItemDialogState extends State<AddItemDialog> {
           setState(() => _showDateError = true);
           return;
         }
-        final projectId =
-            ProjectDataHelper.getData(context).projectId ?? 'project-1';
+        final projectId = widget.initialItem?.projectId ??
+            ProjectDataHelper.getData(context).projectId ??
+            'project-1';
         final budget = _parseCurrency(_budgetCtrl.text);
+        final existing = widget.initialItem;
         final item = ProcurementItemModel(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          id: existing?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
           projectId: projectId,
           name: _nameCtrl.text.trim(),
           description: _descCtrl.text.trim(),
@@ -424,12 +441,18 @@ class _AddItemDialogState extends State<AddItemDialog> {
           status: _status,
           priority: _priority,
           budget: budget.toDouble(),
-          spent: 0.0,
+          spent: existing?.spent ?? 0.0,
           estimatedDelivery: _deliveryDate,
-          progress: 0,
-          events: [],
-          notes: '',
-          createdAt: DateTime.now(),
+          actualDelivery: existing?.actualDelivery,
+          progress: existing?.progress ?? 0,
+          vendorId: existing?.vendorId,
+          contractId: existing?.contractId,
+          events: existing?.events ?? [],
+          notes: existing?.notes ?? '',
+          projectPhase: existing?.projectPhase ?? 'Planning',
+          responsibleMember: existing?.responsibleMember ?? '',
+          comments: existing?.comments ?? '',
+          createdAt: existing?.createdAt ?? DateTime.now(),
           updatedAt: DateTime.now(),
         );
         Navigator.of(context).pop(item);
@@ -496,7 +519,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
                   child: DropdownButtonFormField<String>(
                     initialValue: _category,
                     decoration: _dialogDecoration(label: 'Category'),
-                    items: widget.categoryOptions
+                    items: categoryOptions
                         .map((option) => DropdownMenuItem(
                             value: option, child: Text(option)))
                         .toList(),

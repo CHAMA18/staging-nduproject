@@ -21,7 +21,8 @@ class CommerceViabilityScreen extends StatefulWidget {
   }
 
   @override
-  State<CommerceViabilityScreen> createState() => _CommerceViabilityScreenState();
+  State<CommerceViabilityScreen> createState() =>
+      _CommerceViabilityScreenState();
 }
 
 class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
@@ -48,9 +49,10 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'Warranties & Operations Support',
       backgroundColor: const Color(0xFFF5F7FB),
-      floatingActionButton: const KazAiChatBubble(),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SingleChildScrollView(
-        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: isMobile ? 16 : 28),
+        padding: EdgeInsets.symmetric(
+            horizontal: horizontalPadding, vertical: isMobile ? 16 : 28),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -58,23 +60,29 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
             const SizedBox(height: 20),
             LaunchEditableSection(
               title: 'Viability checkpoints',
-              description: 'Add the checks you want to run to confirm the business case still holds.',
+              description:
+                  'Add the checks you want to run to confirm the business case still holds.',
               entries: _viabilityChecks,
-              onAdd: () => _addEntry(_viabilityChecks, titleLabel: 'Checkpoint'),
+              onAdd: () =>
+                  _addEntry(_viabilityChecks, titleLabel: 'Checkpoint'),
               onRemove: (index) => _removeEntry(_viabilityChecks, index),
             ),
             LaunchEditableSection(
               title: 'Financial signals & unit economics',
-              description: 'Capture demand, margins, and cost-to-serve data as you collect it.',
+              description:
+                  'Capture demand, margins, and cost-to-serve data as you collect it.',
               entries: _financialSignals,
-              onAdd: () => _addEntry(_financialSignals, titleLabel: 'Signal', includeStatus: true),
+              onAdd: () => _addEntry(_financialSignals,
+                  titleLabel: 'Signal', includeStatus: true),
               onRemove: (index) => _removeEntry(_financialSignals, index),
             ),
             LaunchEditableSection(
               title: 'Decisions & recommendations',
-              description: 'Record the go / grow / pause call with supporting context.',
+              description:
+                  'Record the go / grow / pause call with supporting context.',
               entries: _decisions,
-              onAdd: () => _addEntry(_decisions, titleLabel: 'Decision', includeStatus: true),
+              onAdd: () => _addEntry(_decisions,
+                  titleLabel: 'Decision', includeStatus: true),
               onRemove: (index) => _removeEntry(_decisions, index),
             ),
             const SizedBox(height: 24),
@@ -192,7 +200,9 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
         });
       }
       _loadedEntries = true;
-      if (_viabilityChecks.isEmpty && _financialSignals.isEmpty && _decisions.isEmpty) {
+      if (_viabilityChecks.isEmpty &&
+          _financialSignals.isEmpty &&
+          _decisions.isEmpty) {
         await _populateFromAi();
       }
     } catch (error) {
@@ -203,7 +213,8 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
   Future<void> _populateFromAi() async {
     if (_aiGenerated || _isGenerating) return;
     final projectData = ProjectDataHelper.getData(context);
-    final contextText = ProjectDataHelper.buildFepContext(projectData, sectionLabel: 'Commerce Viability');
+    final contextText = ProjectDataHelper.buildFepContext(projectData,
+        sectionLabel: 'Commerce Viability');
     if (contextText.trim().isEmpty) return;
 
     setState(() => _isGenerating = true);
@@ -223,7 +234,9 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
     }
 
     if (!mounted) return;
-    if (_viabilityChecks.isNotEmpty || _financialSignals.isNotEmpty || _decisions.isNotEmpty) {
+    if (_viabilityChecks.isNotEmpty ||
+        _financialSignals.isNotEmpty ||
+        _decisions.isNotEmpty) {
       setState(() => _isGenerating = false);
       _aiGenerated = true;
       return;
@@ -251,7 +264,9 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
         .map((item) => LaunchEntry(
               title: (item['title'] ?? '').toString().trim(),
               details: (item['details'] ?? '').toString().trim(),
-              status: (item['status'] ?? '').toString().trim().isEmpty ? null : item['status'].toString().trim(),
+              status: (item['status'] ?? '').toString().trim().isEmpty
+                  ? null
+                  : item['status'].toString().trim(),
             ))
         .where((entry) => entry.title.isNotEmpty)
         .toList();

@@ -92,6 +92,7 @@ class ProjectDataModel {
   List<PlanningGoal> planningGoals;
   List<Milestone> keyMilestones;
   Map<String, String> planningNotes;
+  Map<String, String> riskMitigationPlans;
   List<InterfaceEntry> interfaceEntries;
 
   // Work Breakdown Structure Data
@@ -213,6 +214,7 @@ class ProjectDataModel {
     List<PlanningGoal>? planningGoals,
     List<Milestone>? keyMilestones,
     Map<String, String>? planningNotes,
+    Map<String, String>? riskMitigationPlans,
     List<InterfaceEntry>? interfaceEntries,
     this.wbsCriteriaA,
     this.wbsCriteriaB,
@@ -274,6 +276,7 @@ class ProjectDataModel {
             List.generate(3, (i) => PlanningGoal(goalNumber: i + 1)),
         keyMilestones = keyMilestones ?? [],
         planningNotes = planningNotes ?? {},
+        riskMitigationPlans = riskMitigationPlans ?? {},
         interfaceEntries = interfaceEntries ?? [],
         goalWorkItems = goalWorkItems ?? List.generate(3, (_) => []),
         wbsTree = wbsTree ?? [],
@@ -358,6 +361,7 @@ class ProjectDataModel {
     List<PlanningGoal>? planningGoals,
     List<Milestone>? keyMilestones,
     Map<String, String>? planningNotes,
+    Map<String, String>? riskMitigationPlans,
     String? wbsCriteriaA,
     String? wbsCriteriaB,
     List<List<WorkItem>>? goalWorkItems,
@@ -450,6 +454,8 @@ class ProjectDataModel {
       planningGoals: planningGoals ?? this.planningGoals,
       keyMilestones: keyMilestones ?? this.keyMilestones,
       planningNotes: planningNotes ?? this.planningNotes,
+      riskMitigationPlans:
+          riskMitigationPlans ?? this.riskMitigationPlans,
       interfaceEntries: interfaceEntries ?? this.interfaceEntries,
       wbsCriteriaA: wbsCriteriaA ?? this.wbsCriteriaA,
       wbsCriteriaB: wbsCriteriaB ?? this.wbsCriteriaB,
@@ -556,6 +562,7 @@ class ProjectDataModel {
       'planningGoals': planningGoals.map((g) => g.toJson()).toList(),
       'keyMilestones': keyMilestones.map((m) => m.toJson()).toList(),
       'planningNotes': planningNotes,
+      'riskMitigationPlans': riskMitigationPlans,
       'interfaceEntries': interfaceEntries.map((entry) => entry.toJson()).toList(),
       'wbsCriteriaA': wbsCriteriaA,
       'wbsCriteriaB': wbsCriteriaB,
@@ -774,6 +781,14 @@ class ProjectDataModel {
                   (key, value) => MapEntry(key.toString(), value.toString())),
             )
           : {},
+      riskMitigationPlans:
+          (json['riskMitigationPlans'] is Map)
+              ? Map<String, String>.from(
+                  (json['riskMitigationPlans'] as Map).map((key, value) {
+                    return MapEntry(key.toString(), value.toString());
+                  }),
+                )
+              : {},
       interfaceEntries:
           safeParseList('interfaceEntries', InterfaceEntry.fromJson),
       wbsCriteriaA: json['wbsCriteriaA']?.toString(),

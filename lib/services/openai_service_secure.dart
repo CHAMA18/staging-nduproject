@@ -92,6 +92,18 @@ class AiCostItem {
   }
 }
 
+class RiskMitigationRequest {
+  final String id;
+  final String risk;
+  final String solutionTitle;
+
+  RiskMitigationRequest({
+    required this.id,
+    required this.risk,
+    this.solutionTitle = '',
+  });
+}
+
 class AiProjectValueInsights {
   final double estimatedProjectValue;
   final Map<String, String> benefits;
@@ -933,6 +945,122 @@ class OpenAiServiceSecure {
       debugPrint('Error generating risks: $e');
       return {'risks': [], 'constraints': []};
     }
+  }
+
+  Future<Map<String, String>> generateRiskMitigationPlans({
+    required List<RiskMitigationRequest> risks,
+    required String context,
+    int maxTokens = 900,
+    double temperature = 0.5,
+  }) async {
+    final trimmedRisks = risks
+        .map((r) => RiskMitigationRequest(
+            id: r.id,
+            risk: r.risk.trim(),
+            solutionTitle: r.solutionTitle.trim()))
+        .where((r) => r.risk.isNotEmpty)
+        .toList();
+
+    if (trimmedRisks.isEmpty) return {};
+
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackMitigationPlans(trimmedRisks);
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final prompt = _buildMitigationPrompt(trimmedRisks, context);
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a pragmatic project risk manager. Provide a concise mitigation plan for each supplied risk. Return only a JSON object with key "mitigations" whose value is an array of objects containing "id" and "plan".'
+        },
+        {
+          'role': 'user',
+          'content': prompt,
+        }
+      ],
+    });
+
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 14));
+      if (response.statusCode >= 300) {
+        return _fallbackMitigationPlans(trimmedRisks);
+      }
+
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content =
+          (data['choices'] as List).first['message']['content'] as String;
+      final parsed = jsonDecode(content) as Map<String, dynamic>;
+
+      final mitigations = <String, String>{};
+      if (parsed['mitigations'] is List) {
+        for (final item in parsed['mitigations'] as List) {
+          if (item is Map) {
+            final id = item['id']?.toString();
+            final plan = _stripAsterisks(item['plan']?.toString() ?? '');
+            if (id != null && plan.trim().isNotEmpty) {
+              mitigations[id] = plan.trim();
+            }
+          }
+        }
+      }
+      return mitigations.isEmpty
+          ? _fallbackMitigationPlans(trimmedRisks)
+          : mitigations;
+    } catch (e) {
+      debugPrint('generateRiskMitigationPlans failed: $e');
+      return _fallbackMitigationPlans(trimmedRisks);
+    }
+  }
+
+  String _buildMitigationPrompt(
+    List<RiskMitigationRequest> risks,
+    String context,
+  ) {
+    final buffer = StringBuffer();
+    if (context.trim().isNotEmpty) {
+      buffer.writeln('Project context:');
+      buffer.writeln(context.trim());
+      buffer.writeln();
+    }
+    buffer.writeln('Risks requiring mitigation:');
+    for (final risk in risks) {
+      buffer.writeln('- ID: ${risk.id}');
+      if (risk.solutionTitle.isNotEmpty) {
+        buffer.writeln('  Solution: ${risk.solutionTitle}');
+      }
+      buffer.writeln('  Risk: ${risk.risk}');
+    }
+    buffer.writeln();
+    buffer.writeln(
+        'For each risk, provide one practical plan that outlines the immediate mitigation steps, ownership, and cadence.');
+    return buffer.toString();
+  }
+
+  Map<String, String> _fallbackMitigationPlans(
+      List<RiskMitigationRequest> risks) {
+    final fallback = <String, String>{};
+    for (final risk in risks) {
+      final base = risk.risk.isNotEmpty ? risk.risk : 'the listed risk';
+      fallback[risk.id] =
+          'Document mitigation actions for "$base", assign an owner, and monitor progress weekly.';
+    }
+    return fallback;
   }
 
   // Generate Technical Requirements (IT and Infra)

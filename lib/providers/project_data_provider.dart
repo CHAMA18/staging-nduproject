@@ -401,6 +401,7 @@ class ProjectDataProvider extends ChangeNotifier {
     List<String>? tags,
     List<PotentialSolution>? potentialSolutions,
     List<SolutionRisk>? solutionRisks,
+    Map<String, String>? riskMitigationPlans,
   }) {
     _projectData = _projectData.copyWith(
       projectName: projectName ?? _projectData.projectName,
@@ -412,6 +413,8 @@ class ProjectDataProvider extends ChangeNotifier {
       tags: tags ?? _projectData.tags,
       potentialSolutions: potentialSolutions ?? _projectData.potentialSolutions,
       solutionRisks: solutionRisks ?? _projectData.solutionRisks,
+      riskMitigationPlans:
+          riskMitigationPlans ?? _projectData.riskMitigationPlans,
     );
     notifyListeners();
   }

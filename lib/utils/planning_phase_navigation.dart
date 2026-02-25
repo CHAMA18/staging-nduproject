@@ -104,7 +104,7 @@ class PlanningPhaseNavigation {
     ),
     PlanningPage(
       id: 'risk_management',
-      title: 'Risk Management',
+      title: 'Risk Planning',
       builder: (_) => const RiskAssessmentScreen(),
     ),
     PlanningPage(

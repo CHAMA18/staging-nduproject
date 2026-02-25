@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -13,10 +15,17 @@ import 'package:ndu_project/services/contract_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ndu_project/routing/app_router.dart';
-import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/widgets/ai_suggesting_textfield.dart';
 
 const String _contractingCollection = 'contracting';
+const String _contractPlanNoteKey = 'planning_contract_plan';
+const String _contractPlanMarketKey = 'planning_contract_market';
+const String _contractPlanCommercialKey = 'planning_contract_commercial';
+const String _contractPlanScopeKey = 'planning_contract_scope';
+const String _contractPlanApprovalsKey = 'planning_contract_approvals';
+const String _contractPlanRisksKey = 'planning_contract_risks';
+const String _contractPlanTimelineKey = 'planning_contract_timeline';
 
 String _formatShortDate(DateTime? date) {
   if (date == null) return 'TBD';
@@ -132,6 +141,7 @@ class _FrontEndPlanningContractsScreenState
   @override
   Widget build(BuildContext context) {
     final projectData = ProjectDataHelper.getData(context);
+    final isNarrow = MediaQuery.sizeOf(context).width < 1100;
     final hasContractData =
         (projectData.planningNotes['contract_dashboard_payload'] ?? '')
             .trim()
@@ -168,43 +178,158 @@ class _FrontEndPlanningContractsScreenState
                               _ContractTabs(
                                 selectedIndex: _selectedTabIndex,
                                 onTabSelected: (index) {
-                                  if (index == 1) {
-                                    // Navigate to the dedicated Contract Details dashboard screen
-                                    // using the named route for clean, web-friendly URLs.
-                                    context
-                                        .pushNamed(AppRoutes.contractDetails);
-                                    return;
-                                  }
                                   setState(() => _selectedTabIndex = index);
                                 },
                               ),
                               const SizedBox(height: 20),
-                              const PlanningAiNotesCard(
-                                title: 'Notes',
-                                sectionLabel: 'Contract',
-                                noteKey: 'planning_contract_notes',
-                                checkpoint: 'contracts',
-                                description:
-                                    'Summarize contract scope, vendor commitments, and negotiation priorities.',
+                              _PlanningSummaryRow(
+                                projectId: projectData.projectId,
+                                approvalsText: projectData
+                                    .planningNotes[_contractPlanApprovalsKey],
+                                timelineText: projectData
+                                    .planningNotes[_contractPlanTimelineKey],
                               ),
                               const SizedBox(height: 20),
-                              _NotesField(
-                                controller: _notesController,
-                                onChanged: (value) async {
-                                  await ProjectDataHelper.updateAndSave(
-                                    context: context,
-                                    checkpoint: 'contracts',
-                                    dataUpdater: (data) => data.copyWith(
-                                      frontEndPlanning:
-                                          ProjectDataHelper.updateFEPField(
-                                        current: data.frontEndPlanning,
-                                        contracts: value.trim(),
+                              _PlanningSectionCard(
+                                title: 'Contract Plan',
+                                subtitle:
+                                    'AI drafts a contract plan using your prior planning context. Edit it to match your strategy, vendors, and approvals.',
+                                child: AiSuggestingTextField(
+                                  fieldLabel: 'Contract Plan',
+                                  hintText:
+                                      'Outline scope, delivery model, commercial terms, milestones, vendor roles, and approval gates.',
+                                  sectionLabel: 'Contract Plan',
+                                  autoGenerate: true,
+                                  autoGenerateSection: 'Contract Plan',
+                                  initialText: projectData
+                                      .planningNotes[_contractPlanNoteKey],
+                                  onChanged: (value) async {
+                                    final trimmed = value.trim();
+                                    final provider =
+                                        ProjectDataHelper.getProvider(context);
+                                    provider.updateField(
+                                      (data) => data.copyWith(
+                                        planningNotes: {
+                                          ...data.planningNotes,
+                                          _contractPlanNoteKey: trimmed,
+                                        },
+                                      ),
+                                    );
+                                    await ProjectDataHelper.updateAndSave(
+                                      context: context,
+                                      checkpoint: 'contracts',
+                                      dataUpdater: (data) => data.copyWith(
+                                        planningNotes: {
+                                          ...data.planningNotes,
+                                          _contractPlanNoteKey: trimmed,
+                                        },
+                                      ),
+                                      showSnackbar: false,
+                                    );
+                                  },
+                                  onAutoGenerated: (value) async {
+                                    final trimmed = value.trim();
+                                    final provider =
+                                        ProjectDataHelper.getProvider(context);
+                                    provider.updateField(
+                                      (data) => data.copyWith(
+                                        planningNotes: {
+                                          ...data.planningNotes,
+                                          _contractPlanNoteKey: trimmed,
+                                        },
+                                      ),
+                                    );
+                                    await ProjectDataHelper.updateAndSave(
+                                      context: context,
+                                      checkpoint: 'contracts',
+                                      dataUpdater: (data) => data.copyWith(
+                                        planningNotes: {
+                                          ...data.planningNotes,
+                                          _contractPlanNoteKey: trimmed,
+                                        },
+                                      ),
+                                      showSnackbar: false,
+                                    );
+                                  },
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              if (isNarrow) ...[
+                                const _PlanningInputsSection(),
+                                const SizedBox(height: 20),
+                                const _ApprovalRiskSection(),
+                                const SizedBox(height: 20),
+                                const _TimelinePlanSection(),
+                                const SizedBox(height: 20),
+                                _ContractsPreviewSection(
+                                    projectId: projectData.projectId),
+                                const SizedBox(height: 20),
+                                _AdditionalNotesSection(
+                                  controller: _notesController,
+                                  onChanged: (value) async {
+                                    await ProjectDataHelper.updateAndSave(
+                                      context: context,
+                                      checkpoint: 'contracts',
+                                      dataUpdater: (data) => data.copyWith(
+                                        frontEndPlanning:
+                                            ProjectDataHelper.updateFEPField(
+                                          current: data.frontEndPlanning,
+                                          contracts: value.trim(),
+                                        ),
+                                      ),
+                                      showSnackbar: false,
+                                    );
+                                  },
+                                ),
+                              ] else ...[
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        children: [
+                                          const _PlanningInputsSection(),
+                                          const SizedBox(height: 20),
+                                          _ContractsPreviewSection(
+                                              projectId: projectData.projectId),
+                                          const SizedBox(height: 20),
+                                          _AdditionalNotesSection(
+                                            controller: _notesController,
+                                            onChanged: (value) async {
+                                              await ProjectDataHelper
+                                                  .updateAndSave(
+                                                context: context,
+                                                checkpoint: 'contracts',
+                                                dataUpdater: (data) =>
+                                                    data.copyWith(
+                                                  frontEndPlanning:
+                                                      ProjectDataHelper
+                                                          .updateFEPField(
+                                                    current:
+                                                        data.frontEndPlanning,
+                                                    contracts: value.trim(),
+                                                  ),
+                                                ),
+                                                showSnackbar: false,
+                                              );
+                                            },
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    showSnackbar: false,
-                                  );
-                                },
-                              ),
+                                    const SizedBox(width: 20),
+                                    const Expanded(
+                                      child: Column(
+                                        children: [
+                                          _ApprovalRiskSection(),
+                                          SizedBox(height: 20),
+                                          _TimelinePlanSection(),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                               const SizedBox(height: 28),
                               if (!hasContractData)
                                 const _EmptyContractsState()
@@ -379,12 +504,7 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
           const SnackBar(content: Text('Contract saved successfully.')));
 
       if (!mounted) return;
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          settings: const RouteSettings(name: 'ContractingStrategyScreen'),
-          builder: (_) => const ContractingStrategyScreen(),
-        ),
-      );
+      Navigator.of(context).pop();
     } catch (e) {
       debugPrint('❌ Failed to save contract: $e');
       messenger.showSnackBar(const SnackBar(
@@ -2035,14 +2155,520 @@ class _ContractTabs extends StatelessWidget {
             isSelected: selectedIndex == 0,
             onTap: () => onTabSelected(0),
           ),
-          const SizedBox(width: 8),
-          _TabButton(
-            label: 'Contract Details',
-            isSelected: selectedIndex == 1,
-            onTap: () => onTabSelected(1),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlanningSummaryRow extends StatelessWidget {
+  const _PlanningSummaryRow({
+    required this.projectId,
+    required this.approvalsText,
+    required this.timelineText,
+  });
+
+  final String? projectId;
+  final String? approvalsText;
+  final String? timelineText;
+
+  @override
+  Widget build(BuildContext context) {
+    final approvalsDefined = (approvalsText ?? '').trim().isNotEmpty;
+    final timelineDefined = (timelineText ?? '').trim().isNotEmpty;
+    if (projectId == null || projectId!.isEmpty) {
+      return _PlanningSummaryCards(
+        stats: [
+          _SummaryStatData('Planned Contracts', '—', 'No project selected',
+              const Color(0xFF2563EB)),
+          _SummaryStatData('Estimated Value', '—', 'Set in preview list',
+              const Color(0xFF059669)),
+          _SummaryStatData('Approval Readiness', '—', 'Define checkpoints',
+              const Color(0xFFF59E0B)),
+          _SummaryStatData('Target Award Window', '—', 'Set timeline targets',
+              const Color(0xFF7C3AED)),
+        ],
+      );
+    }
+
+    return StreamBuilder<List<ContractModel>>(
+      stream: ContractService.streamContracts(projectId!),
+      builder: (context, snapshot) {
+        final contracts = snapshot.data ?? const <ContractModel>[];
+        final plannedCount = contracts.length;
+        final totalValue =
+            contracts.fold<double>(0.0, (total, c) => total + c.estimatedValue);
+        final stats = [
+          _SummaryStatData(
+              'Planned Contracts',
+              plannedCount.toString(),
+              plannedCount == 0 ? 'Add contracts below' : 'Pre-award list',
+              const Color(0xFF2563EB)),
+          _SummaryStatData(
+              'Estimated Value',
+              plannedCount == 0 ? 'TBD' : _formatCurrency(totalValue),
+              'Budget alignment',
+              const Color(0xFF059669)),
+          _SummaryStatData(
+              'Approval Readiness',
+              approvalsDefined ? 'Defined' : 'Not set',
+              approvalsDefined ? 'Check owners & dates' : 'Add checkpoints',
+              const Color(0xFFF59E0B)),
+          _SummaryStatData(
+              'Target Award Window',
+              timelineDefined ? 'Defined' : 'Not set',
+              timelineDefined ? 'Review milestones' : 'Add timeline targets',
+              const Color(0xFF7C3AED)),
+        ];
+        return _PlanningSummaryCards(stats: stats);
+      },
+    );
+  }
+}
+
+class _PlanningSummaryCards extends StatelessWidget {
+  const _PlanningSummaryCards({required this.stats});
+
+  final List<_SummaryStatData> stats;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, constraints) {
+      const gap = 12.0;
+      var cardWidth = constraints.maxWidth;
+      if (constraints.maxWidth >= 980) {
+        cardWidth = (constraints.maxWidth - gap * 3) / 4;
+      } else if (constraints.maxWidth >= 620) {
+        cardWidth = (constraints.maxWidth - gap) / 2;
+      }
+      return Wrap(
+        spacing: gap,
+        runSpacing: gap,
+        children: stats
+            .map((stat) => SizedBox(
+                  width: cardWidth,
+                  child: _SummaryStatCard(stat: stat),
+                ))
+            .toList(),
+      );
+    });
+  }
+}
+
+class _SummaryStatCard extends StatelessWidget {
+  const _SummaryStatCard({required this.stat});
+
+  final _SummaryStatData stat;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x08000000), blurRadius: 10, offset: Offset(0, 6)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(stat.value,
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: stat.color)),
+          const SizedBox(height: 6),
+          Text(stat.label,
+              style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF6B7280))),
+          const SizedBox(height: 6),
+          Text(stat.supporting,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlanningSectionCard extends StatelessWidget {
+  const _PlanningSectionCard({
+    required this.title,
+    required this.child,
+    this.subtitle,
+    this.trailing,
+  });
+
+  final String title;
+  final String? subtitle;
+  final Widget child;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x0A000000), blurRadius: 12, offset: Offset(0, 6)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF111827))),
+                    if ((subtitle ?? '').trim().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(subtitle!,
+                          style: const TextStyle(
+                              fontSize: 12, color: Color(0xFF6B7280))),
+                    ],
+                  ],
+                ),
+              ),
+              if (trailing != null) trailing!,
+            ],
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _PlanningInputsSection extends StatelessWidget {
+  const _PlanningInputsSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: const [
+        _PlanningSectionCard(
+          title: 'Vendor & Market Strategy',
+          subtitle:
+              'Define sourcing approach, shortlist criteria, and negotiation posture.',
+          child: _PlanningTextArea(
+            noteKey: _contractPlanMarketKey,
+            hintText:
+                'Example: RFP to 3 qualified vendors, weight on delivery record, target 10% cost leverage.',
+          ),
+        ),
+        SizedBox(height: 20),
+        _PlanningSectionCard(
+          title: 'Commercial Structure',
+          subtitle: 'Outline contract type, payment model, and incentives.',
+          child: _PlanningTextArea(
+            noteKey: _contractPlanCommercialKey,
+            hintText:
+                'Example: Fixed-price with milestone payments, performance holdbacks, change order rules.',
+          ),
+        ),
+        SizedBox(height: 20),
+        _PlanningSectionCard(
+          title: 'Scope & Deliverables',
+          subtitle: 'Capture scope boundaries, assumptions, and exclusions.',
+          child: _PlanningTextArea(
+            noteKey: _contractPlanScopeKey,
+            hintText:
+                'Example: Includes implementation and training; excludes ongoing support after 12 months.',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ApprovalRiskSection extends StatelessWidget {
+  const _ApprovalRiskSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: const [
+        _PlanningSectionCard(
+          title: 'Approval Readiness',
+          subtitle: 'List required approvals, owners, and readiness gaps.',
+          child: _PlanningTextArea(
+            noteKey: _contractPlanApprovalsKey,
+            hintText:
+                'Example: Legal review (owner: J. Smith), Finance sign-off, CIO approval by May 10.',
+          ),
+        ),
+        SizedBox(height: 20),
+        _PlanningSectionCard(
+          title: 'Early Risk Signals',
+          subtitle: 'Flag negotiation risks and mitigation actions.',
+          child: _PlanningTextArea(
+            noteKey: _contractPlanRisksKey,
+            hintText:
+                'Example: Single-source dependency; mitigate with alternative vendor option.',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TimelinePlanSection extends StatelessWidget {
+  const _TimelinePlanSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _PlanningSectionCard(
+      title: 'Contract Timeline Plan',
+      subtitle: 'Define key dates from RFP to award and mobilization.',
+      child: _PlanningTextArea(
+        noteKey: _contractPlanTimelineKey,
+        hintText:
+            'Example: RFP release 4/15, evaluations 5/01-5/20, award 6/05, start 7/01.',
+      ),
+    );
+  }
+}
+
+class _ContractsPreviewSection extends StatelessWidget {
+  const _ContractsPreviewSection({required this.projectId});
+
+  final String? projectId;
+
+  @override
+  Widget build(BuildContext context) {
+    return _PlanningSectionCard(
+      title: 'Contracts Preview',
+      subtitle: 'Pre-define contracts that will feed execution tracking.',
+      child: projectId == null || projectId!.isEmpty
+          ? const Text('Open a project to add contracts.',
+              style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)))
+          : StreamBuilder<List<ContractModel>>(
+              stream: ContractService.streamContracts(projectId!),
+              builder: (context, snapshot) {
+                final contracts = snapshot.data ?? const <ContractModel>[];
+                if (contracts.isEmpty) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text('No planned contracts yet.',
+                          style: TextStyle(
+                              fontSize: 13, color: Color(0xFF6B7280))),
+                      SizedBox(height: 10),
+                      Text(
+                          'Use “Create Contract” to define vendors, value, and dates.',
+                          style: TextStyle(
+                              fontSize: 12, color: Color(0xFF94A3B8))),
+                    ],
+                  );
+                }
+                return Column(
+                  children: contracts
+                      .take(5)
+                      .map(
+                          (contract) => _ContractPreviewRow(contract: contract))
+                      .toList(),
+                );
+              },
+            ),
+    );
+  }
+}
+
+class _ContractPreviewRow extends StatelessWidget {
+  const _ContractPreviewRow({required this.contract});
+
+  final ContractModel contract;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(contract.name,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827))),
+                const SizedBox(height: 4),
+                Text(
+                  contract.contractType.isNotEmpty
+                      ? contract.contractType
+                      : 'Contract type TBD',
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(_formatCurrency(contract.estimatedValue),
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF2563EB))),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              '${_formatShortDate(contract.startDate)} - ${_formatShortDate(contract.endDate)}',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+            ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AdditionalNotesSection extends StatelessWidget {
+  const _AdditionalNotesSection(
+      {required this.controller, required this.onChanged});
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Additional Notes',
+          style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827)),
+        ),
+        const SizedBox(height: 10),
+        _NotesField(controller: controller, onChanged: onChanged),
+      ],
+    );
+  }
+}
+
+class _PlanningTextArea extends StatefulWidget {
+  const _PlanningTextArea({
+    required this.noteKey,
+    required this.hintText,
+    this.minLines = 4,
+    this.maxLines = 8,
+  });
+
+  final String noteKey;
+  final String hintText;
+  final int minLines;
+  final int maxLines;
+
+  @override
+  State<_PlanningTextArea> createState() => _PlanningTextAreaState();
+}
+
+class _PlanningTextAreaState extends State<_PlanningTextArea> {
+  final _saveDebounce = _Debouncer();
+  late TextEditingController _controller;
+  bool _didInit = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didInit) return;
+    final data = ProjectDataHelper.getData(context);
+    final saved = data.planningNotes[widget.noteKey] ?? '';
+    _controller = TextEditingController(text: saved);
+    _didInit = true;
+  }
+
+  @override
+  void dispose() {
+    _saveDebounce.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleChanged(String value) {
+    final trimmed = value.trim();
+    final provider = ProjectDataHelper.getProvider(context);
+    provider.updateField(
+      (data) => data.copyWith(
+        planningNotes: {
+          ...data.planningNotes,
+          widget.noteKey: trimmed,
+        },
+      ),
+    );
+    _saveDebounce.run(() async {
+      await ProjectDataHelper.updateAndSave(
+        context: context,
+        checkpoint: 'contracts',
+        dataUpdater: (data) => data.copyWith(
+          planningNotes: {
+            ...data.planningNotes,
+            widget.noteKey: trimmed,
+          },
+        ),
+        showSnackbar: false,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      minLines: widget.minLines,
+      maxLines: widget.maxLines,
+      onChanged: _handleChanged,
+      decoration: InputDecoration(
+        hintText: widget.hintText,
+        hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 13),
+        filled: true,
+        fillColor: const Color(0xFFF8FAFC),
+        contentPadding: const EdgeInsets.all(14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.2),
+        ),
+      ),
+      style: const TextStyle(fontSize: 13, color: Color(0xFF1F2937)),
     );
   }
 }
@@ -2080,6 +2706,30 @@ class _NotesField extends StatelessWidget {
       ),
     );
   }
+}
+
+class _Debouncer {
+  _Debouncer({Duration? delay})
+      : delay = delay ?? const Duration(milliseconds: 700);
+
+  final Duration delay;
+  Timer? _timer;
+
+  void run(void Function() action) {
+    _timer?.cancel();
+    _timer = Timer(delay, action);
+  }
+
+  void dispose() => _timer?.cancel();
+}
+
+class _SummaryStatData {
+  const _SummaryStatData(this.label, this.value, this.supporting, this.color);
+
+  final String label;
+  final String value;
+  final String supporting;
+  final Color color;
 }
 
 class _EmptyContractsState extends StatelessWidget {

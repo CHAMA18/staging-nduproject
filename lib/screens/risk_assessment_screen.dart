@@ -5,14 +5,17 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:provider/provider.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
+import 'dart:math' as math;
 
 class RiskAssessmentScreen extends StatefulWidget {
   const RiskAssessmentScreen({super.key});
@@ -35,9 +38,19 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
 
   final TextEditingController _notesController = TextEditingController();
   final _Debouncer _notesDebounce = _Debouncer();
+  final OpenAiServiceSecure _openAi = OpenAiServiceSecure();
+  final Map<String, TextEditingController> _mitigationControllers = {};
+  final Map<String, String> _mitigationPlans = {};
+  final _Debouncer _mitigationDebounce = _Debouncer();
   bool _notesSaving = false;
   DateTime? _notesSavedAt;
+  bool _mitigationSaving = false;
+  DateTime? _mitigationSavedAt;
   bool _didInitNotes = false;
+  bool _loadingMitigationSuggestions = false;
+  String? _mitigationSuggestionError;
+  final Set<String> _seededRiskDescriptions = {};
+  final Set<String> _regeneratingMitigationIds = {};
 
   @override
   void initState() {
@@ -61,6 +74,10 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
     _searchController.dispose();
     _notesController.dispose();
     _notesDebounce.dispose();
+    _mitigationDebounce.dispose();
+    for (final controller in _mitigationControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -75,14 +92,24 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
           .collection('risk_assessment_entries')
           .orderBy('createdAt', descending: true)
           .get();
-      final entries =
+      final firestoreEntries =
           snapshot.docs.map((doc) => _RiskEntry.fromFirestore(doc)).toList();
+      final provider = ProjectDataHelper.getProvider(context);
+      final projectData = provider.projectData;
+      final mergedEntries = await _mergeEntriesWithSolutionRisks(
+          firestoreEntries, projectData.solutionRisks);
       if (!mounted) return;
       setState(() {
         _entries
           ..clear()
-          ..addAll(entries);
+          ..addAll(mergedEntries);
+        _mitigationPlans
+          ..clear()
+          ..addAll(projectData.riskMitigationPlans);
+        _mitigationSuggestionError = null;
       });
+      _ensureMitigationControllers(mergedEntries);
+      await _maybeSeedMitigationPlans(mergedEntries, projectData);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -227,6 +254,8 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
       probability: probabilityController.text.trim(),
       impact: impactController.text.trim(),
       score: scoreController.text.trim(),
+      discipline: '',
+      role: '',
       owner: ownerController.text.trim(),
       status: statusController.text.trim().isEmpty
           ? 'Open'
@@ -312,6 +341,7 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
     final bool isMobile = AppBreakpoints.isMobile(context);
     final double horizontalPadding = isMobile ? 20 : 36;
     final entries = _filteredEntries();
+    final stats = _RiskStats.fromEntries(entries);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -345,9 +375,21 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
                           onChanged: _handleNotesChanged,
                         ),
                         const SizedBox(height: 24),
-                        _MetricsWrap(isMobile: isMobile),
+                        _MetricsWrap(isMobile: isMobile, stats: stats),
                         const SizedBox(height: 28),
-                        const _RiskMatrixCard(),
+                        _RiskMatrixCard(stats: stats),
+                        const SizedBox(height: 28),
+                        _MitigationPlanCard(
+                          entries: entries,
+                          controllers: _mitigationControllers,
+                          onChanged: _handleMitigationChanged,
+                          onRegenerate: _regenerateMitigationForEntry,
+                          loadingSuggestions: _loadingMitigationSuggestions,
+                          suggestionError: _mitigationSuggestionError,
+                          saving: _mitigationSaving,
+                          savedAt: _mitigationSavedAt,
+                          regeneratingIds: _regeneratingMitigationIds,
+                        ),
                         const SizedBox(height: 28),
                         _RiskRegister(
                           entries: entries,
@@ -372,6 +414,222 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
         ),
       ),
     );
+  }
+
+  String _normalizeRiskDescription(String value) => value.trim().toLowerCase();
+
+  Future<List<_RiskEntry>> _mergeEntriesWithSolutionRisks(
+    List<_RiskEntry> baseEntries,
+    List<SolutionRisk> solutionRisks,
+  ) async {
+    final normalizedExisting = <String>{};
+    for (final entry in baseEntries) {
+      final normalized = _normalizeRiskDescription(entry.description);
+      if (normalized.isNotEmpty) {
+        normalizedExisting.add(normalized);
+      }
+    }
+    _seededRiskDescriptions
+        .removeWhere((description) => normalizedExisting.contains(description));
+
+    final merged = List<_RiskEntry>.from(baseEntries);
+    for (final solutionRisk in solutionRisks) {
+      final solutionTitle = solutionRisk.solutionTitle.trim();
+      for (final riskTextRaw in solutionRisk.risks) {
+        final riskText = riskTextRaw.trim();
+        if (riskText.isEmpty) continue;
+        final normalized = _normalizeRiskDescription(riskText);
+        if (normalizedExisting.contains(normalized) ||
+            _seededRiskDescriptions.contains(normalized)) continue;
+
+        final newEntry = _RiskEntry(
+          docId: _newEntryId(),
+          id: 'R-${DateTime.now().millisecondsSinceEpoch}',
+          description: riskText,
+          category:
+              solutionTitle.isNotEmpty ? solutionTitle : 'Initiation risk',
+          probability: 'Medium',
+          impact: 'Medium',
+          score: '0',
+          discipline: '',
+          role: '',
+          owner: '',
+          status: 'Open',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        merged.insert(0, newEntry);
+        normalizedExisting.add(normalized);
+        _seededRiskDescriptions.add(normalized);
+        try {
+          await _persistEntry(newEntry, isNew: true);
+        } catch (e) {
+          debugPrint('Could not persist seeded risk: $e');
+        }
+      }
+    }
+    return merged;
+  }
+
+  void _ensureMitigationControllers(List<_RiskEntry> entries) {
+    final desired = entries.map((e) => e.docId).toSet();
+    for (final entry in entries) {
+      final controller = _mitigationControllers[entry.docId];
+      final stored = _mitigationPlans[entry.docId] ?? '';
+      if (controller == null) {
+        _mitigationControllers[entry.docId] =
+            TextEditingController(text: stored);
+      } else if (controller.text != stored) {
+        controller.text = stored;
+      }
+    }
+    final toRemove = _mitigationControllers.keys
+        .where((id) => !desired.contains(id))
+        .toList();
+    for (final id in toRemove) {
+      _mitigationControllers[id]?.dispose();
+      _mitigationControllers.remove(id);
+    }
+  }
+
+  Future<void> _maybeSeedMitigationPlans(
+    List<_RiskEntry> entries,
+    ProjectDataModel projectData,
+  ) async {
+    if (_loadingMitigationSuggestions) return;
+    final missing = entries.where((entry) {
+      final stored = _mitigationPlans[entry.docId]?.trim() ?? '';
+      return stored.isEmpty;
+    }).toList();
+    if (missing.isEmpty) return;
+
+    setState(() => _loadingMitigationSuggestions = true);
+    final mitigationContext = ProjectDataHelper.buildProjectContextScan(
+        projectData,
+        sectionLabel: 'Risk Mitigation Plan');
+    try {
+      final requests = missing
+          .map((entry) => RiskMitigationRequest(
+              id: entry.docId,
+              risk: entry.description,
+              solutionTitle: entry.category))
+          .toList();
+      final suggestions = await _openAi.generateRiskMitigationPlans(
+        risks: requests,
+        context: mitigationContext,
+      );
+      if (suggestions.isNotEmpty) {
+        var updated = false;
+        for (final entry in missing) {
+          final plan = suggestions[entry.docId];
+          if (plan == null || plan.trim().isEmpty) continue;
+          final trimmed = plan.trim();
+          final existing = _mitigationPlans[entry.docId]?.trim() ?? '';
+          if (existing == trimmed) continue;
+          _mitigationPlans[entry.docId] = trimmed;
+          final controller = _mitigationControllers[entry.docId];
+          if (controller != null) {
+            controller.text = trimmed;
+          }
+          updated = true;
+        }
+        if (updated) {
+          await _persistMitigationPlans();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _mitigationSuggestionError = e.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _loadingMitigationSuggestions = false);
+      }
+    }
+  }
+
+  void _handleMitigationChanged(String docId, String value) {
+    _mitigationPlans[docId] = value;
+    _scheduleMitigationSave();
+  }
+
+  void _scheduleMitigationSave() {
+    _mitigationDebounce.run(() {
+      _persistMitigationPlans();
+    });
+  }
+
+  Future<void> _persistMitigationPlans({bool showSnackbar = false}) async {
+    if (!mounted) return;
+    final trimmed = <String, String>{};
+    for (final entry in _mitigationPlans.entries) {
+      trimmed[entry.key] = entry.value.trim();
+    }
+    setState(() => _mitigationSaving = true);
+    final success = await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'risk_assessment',
+      dataUpdater: (data) => data.copyWith(riskMitigationPlans: trimmed),
+      showSnackbar: showSnackbar,
+    );
+    if (!mounted) return;
+    setState(() {
+      _mitigationSaving = false;
+      if (success) _mitigationSavedAt = DateTime.now();
+    });
+  }
+
+  Future<void> _regenerateMitigationForEntry(_RiskEntry entry) async {
+    if (_regeneratingMitigationIds.contains(entry.docId)) return;
+    setState(() => _regeneratingMitigationIds.add(entry.docId));
+    final provider = ProjectDataHelper.getProvider(context);
+    final mitigationContext = ProjectDataHelper.buildProjectContextScan(
+        provider.projectData,
+        sectionLabel: 'Risk Mitigation Plan');
+    try {
+      final suggestions = await _openAi.generateRiskMitigationPlans(
+        risks: [
+          RiskMitigationRequest(
+            id: entry.docId,
+            risk: entry.description,
+            solutionTitle: entry.category,
+          )
+        ],
+        context: mitigationContext,
+      );
+      final plan = suggestions[entry.docId];
+      if (plan != null && plan.trim().isNotEmpty) {
+        final trimmed = plan.trim();
+        _mitigationPlans[entry.docId] = trimmed;
+        final controller = _mitigationControllers[entry.docId];
+        if (controller != null) {
+          controller.text = trimmed;
+        }
+        await _persistMitigationPlans();
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('AI did not return a mitigation plan.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to regenerate mitigation plan: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _regeneratingMitigationIds.remove(entry.docId));
+      }
+    }
   }
 }
 
@@ -665,7 +923,7 @@ class _PageHeading extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Risk Assessment',
+          'Risk Planning',
           style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w600,
@@ -681,28 +939,123 @@ class _PageHeading extends StatelessWidget {
   }
 }
 
+class _RiskStats {
+  _RiskStats({
+    required this.total,
+    required this.statusCounts,
+    required this.statusSubtitle,
+    required this.progress,
+    required this.topRiskArea,
+    required this.openCount,
+    required this.matrixCounts,
+  });
+
+  factory _RiskStats.fromEntries(List<_RiskEntry> entries) {
+    final total = entries.length;
+    final statusCounts = <String, int>{};
+    int closedCount = 0;
+    final areaCounts = <String, int>{};
+    final matrixCounts = {
+      for (final level in _levels)
+        level: {for (final inner in _levels) inner: 0}
+    };
+
+    for (final entry in entries) {
+      final status = entry.status.trim();
+      if (status.isNotEmpty) {
+        statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+        if (status.toLowerCase() == 'closed') {
+          closedCount += 1;
+        }
+      }
+      final category = entry.category.trim();
+      if (category.isNotEmpty) {
+        areaCounts[category] = (areaCounts[category] ?? 0) + 1;
+      }
+      final probability = _normalizeLevel(entry.probability);
+      final impact = _normalizeLevel(entry.impact);
+      matrixCounts[probability]?[impact] =
+          (matrixCounts[probability]?[impact] ?? 0) + 1;
+    }
+
+    final statusList = statusCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final statusSubtitle = statusList.isEmpty
+        ? '—'
+        : statusList
+            .take(3)
+            .map((entry) => '${entry.key}: ${entry.value}')
+            .join(' · ');
+
+    final topRiskArea = areaCounts.entries.isEmpty
+        ? '—'
+        : areaCounts.entries
+            .reduce(
+              (current, next) => next.value > current.value ? next : current,
+            )
+            .key;
+
+    final openCount = total - closedCount;
+    final progress =
+        total > 0 ? (closedCount / total).clamp(0, 1).toDouble() : null;
+
+    return _RiskStats(
+      total: total,
+      statusCounts: statusCounts,
+      statusSubtitle: statusSubtitle,
+      progress: progress,
+      topRiskArea: topRiskArea,
+      openCount: openCount,
+      matrixCounts: matrixCounts,
+    );
+  }
+
+  static const List<String> _levels = ['Low', 'Medium', 'High'];
+
+  static String _normalizeLevel(String value) {
+    final lower = value.trim().toLowerCase();
+    if (lower.startsWith('h')) return 'High';
+    if (lower.startsWith('m')) return 'Medium';
+    return 'Low';
+  }
+
+  final int total;
+  final Map<String, int> statusCounts;
+  final String statusSubtitle;
+  final double? progress;
+  final String topRiskArea;
+  final int openCount;
+  final Map<String, Map<String, int>> matrixCounts;
+
+  int countFor(String likelihood, String impact) =>
+      matrixCounts[likelihood]?[impact] ?? 0;
+
+  int get maxCellCount {
+    var maxCount = 0;
+    for (final row in matrixCounts.values) {
+      for (final cell in row.values) {
+        if (cell > maxCount) {
+          maxCount = cell;
+        }
+      }
+    }
+    return maxCount;
+  }
+}
+
 class _MetricsWrap extends StatelessWidget {
-  const _MetricsWrap({required this.isMobile});
+  const _MetricsWrap({required this.isMobile, required this.stats});
 
   final bool isMobile;
+  final _RiskStats stats;
 
   @override
   Widget build(BuildContext context) {
-    // Derive metrics dynamically from project data; no hardcoded defaults.
-    final totalRisks = context.select<ProjectDataProvider, int>(
-      (provider) => provider.projectData.solutionRisks
-          .expand((sr) => sr.risks)
-          .where((r) => r.trim().isNotEmpty)
-          .length,
-    );
-
-    // Placeholder logic for areas/status until richer data exists.
-    // Keep UI consistent without implying default data.
-    const String unknown = '—';
-    final double? progress = null; // Unknown until mitigation statuses exist
-    final String statusSubtitle = unknown;
-    final String topRiskArea = unknown;
-    final String unaddressed = totalRisks == 0 ? '0' : unknown;
+    final totalRisks = stats.total;
+    final String statusSubtitle = stats.statusSubtitle;
+    final double? progress = stats.progress;
+    final String topRiskArea = stats.topRiskArea;
+    final String unaddressed = totalRisks == 0 ? '0' : '${stats.openCount}';
 
     const double cardHeight =
         148; // Uniform height to prevent visual jumps/overflow
@@ -711,16 +1064,17 @@ class _MetricsWrap extends StatelessWidget {
         height: cardHeight,
         title: 'Total Risks',
         subtitle: '$totalRisks',
-        // Show simple category summary only if present later; keep minimal now.
       ),
       _MetricCard(
         height: cardHeight,
+        width: 320,
         title: 'Risk Status',
         subtitle: statusSubtitle,
         progress: progress,
       ),
       _MetricCard(
         height: cardHeight,
+        width: 320,
         title: 'Top Risk Area',
         subtitle: topRiskArea,
         footer: totalRisks == 0 ? 'No risks yet' : null,
@@ -752,7 +1106,7 @@ class _MetricsWrap extends StatelessWidget {
       runSpacing: 16,
       children: cards
           .map(
-            (card) => SizedBox(width: 260, child: card),
+            (card) => SizedBox(width: card.width ?? 260, child: card),
           )
           .toList(),
     );
@@ -764,6 +1118,7 @@ class _MetricCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     this.height,
+    this.width,
     List<_Badge>? badges,
     this.progress,
     this.footer,
@@ -773,6 +1128,7 @@ class _MetricCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final double? height;
+  final double? width;
   final List<_Badge> badges;
   final double? progress;
   final String? footer;
@@ -851,10 +1207,11 @@ class _MetricCard extends StatelessWidget {
       ),
     );
 
-    if (height != null) {
-      return SizedBox(height: height, child: content);
+    Widget sized = content;
+    if (height != null || width != null) {
+      sized = SizedBox(height: height, width: width, child: content);
     }
-    return content;
+    return sized;
   }
 }
 
@@ -884,7 +1241,9 @@ class _Badge extends StatelessWidget {
 }
 
 class _RiskMatrixCard extends StatelessWidget {
-  const _RiskMatrixCard();
+  const _RiskMatrixCard({required this.stats});
+
+  final _RiskStats stats;
 
   static const Color _high = Color(0xFFFEE2E2);
   static const Color _medium = Color(0xFFFEF3C7);
@@ -924,6 +1283,7 @@ class _RiskMatrixCard extends StatelessWidget {
           LayoutBuilder(
             builder: (context, constraints) {
               final double cellHeight = constraints.maxWidth < 540 ? 64 : 80;
+              final maxCount = stats.maxCellCount;
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -946,20 +1306,25 @@ class _RiskMatrixCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Column(
-                    children: [
-                      _MatrixRow(
-                          label: 'Low',
-                          height: cellHeight,
-                          colors: const [_low, _low, _medium]),
-                      _MatrixRow(
-                          label: 'Medium',
-                          height: cellHeight,
-                          colors: const [_low, _medium, _high]),
-                      _MatrixRow(
-                          label: 'High',
-                          height: cellHeight,
-                          colors: const [_medium, _high, _high]),
-                    ],
+                    children: _RiskStats._levels
+                        .map(
+                          (likelihood) => _MatrixRow(
+                            label: likelihood,
+                            height: cellHeight,
+                            cells: _RiskStats._levels
+                                .map(
+                                  (impact) => _MatrixCellData(
+                                    color: _cellColor(likelihood, impact),
+                                    count: stats.countFor(likelihood, impact),
+                                    highlight: maxCount > 0 &&
+                                        stats.countFor(likelihood, impact) ==
+                                            maxCount,
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        )
+                        .toList(),
                   ),
                 ],
               );
@@ -968,6 +1333,21 @@ class _RiskMatrixCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Color _cellColor(String likelihood, String impact) {
+    if (likelihood == 'Low') {
+      if (impact == 'High') return _medium;
+      return _low;
+    }
+    if (likelihood == 'Medium') {
+      if (impact == 'High') return _high;
+      if (impact == 'Medium') return _medium;
+      return _low;
+    }
+    // High likelihood
+    if (impact == 'Low') return _medium;
+    return _high;
   }
 }
 
@@ -1025,11 +1405,11 @@ class _MatrixHeaderRow extends StatelessWidget {
 
 class _MatrixRow extends StatelessWidget {
   const _MatrixRow(
-      {required this.label, required this.height, required this.colors});
+      {required this.label, required this.height, required this.cells});
 
   final String label;
   final double height;
-  final List<Color> colors;
+  final List<_MatrixCellData> cells;
 
   @override
   Widget build(BuildContext context) {
@@ -1049,16 +1429,41 @@ class _MatrixRow extends StatelessWidget {
           ),
           Expanded(
             child: Row(
-              children: colors
+              children: cells
                   .map(
-                    (color) => Expanded(
+                    (cell) => Expanded(
                       child: Container(
                         height: height,
                         margin: const EdgeInsets.only(left: 10),
                         decoration: BoxDecoration(
-                          color: color,
+                          color: cell.color,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                          border: Border.all(
+                            color: cell.highlight
+                                ? const Color(0xFF111827)
+                                : const Color(0xFFE5E7EB),
+                            width: cell.highlight ? 1.5 : 1,
+                          ),
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                cell.count > 0 ? '${cell.count}' : '—',
+                                style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF111827)),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'risks',
+                                style: TextStyle(
+                                    fontSize: 12, color: Colors.grey.shade600),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -1068,6 +1473,194 @@ class _MatrixRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MatrixCellData {
+  const _MatrixCellData({
+    required this.color,
+    required this.count,
+    required this.highlight,
+  });
+
+  final Color color;
+  final int count;
+  final bool highlight;
+}
+
+class _MitigationPlanCard extends StatelessWidget {
+  const _MitigationPlanCard({
+    required this.entries,
+    required this.controllers,
+    required this.onChanged,
+    required this.onRegenerate,
+    required this.loadingSuggestions,
+    required this.suggestionError,
+    required this.saving,
+    required this.savedAt,
+    required this.regeneratingIds,
+  });
+
+  final List<_RiskEntry> entries;
+  final Map<String, TextEditingController> controllers;
+  final void Function(String docId, String value) onChanged;
+  final Future<void> Function(_RiskEntry entry) onRegenerate;
+  final bool loadingSuggestions;
+  final String? suggestionError;
+  final bool saving;
+  final DateTime? savedAt;
+  final Set<String> regeneratingIds;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.shield_rounded, color: Color(0xFF111827)),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Mitigation plan',
+                  style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF111827)),
+                ),
+              ),
+              if (saving)
+                const _StatusChip(label: 'Saving...', color: Color(0xFF64748B))
+              else if (savedAt != null)
+                _StatusChip(
+                  label:
+                      'Saved ${TimeOfDay.fromDateTime(savedAt!).format(context)}',
+                  color: const Color(0xFF16A34A),
+                  background: const Color(0xFFECFDF3),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Auto-filled with AI suggestions from initiation-phase risks. Update owners, steps, and cadence below.',
+            style:
+                TextStyle(fontSize: 13, color: Color(0xFF6B7280), height: 1.4),
+          ),
+          if (loadingSuggestions) ...[
+            const SizedBox(height: 16),
+            const LinearProgressIndicator(minHeight: 4),
+          ],
+          if (suggestionError != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              suggestionError!,
+              style: const TextStyle(color: Color(0xFFB91C1C), fontSize: 12),
+            ),
+          ],
+          const SizedBox(height: 16),
+          if (entries.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 28),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: const Center(
+                child: Text(
+                  'Risk register is empty. Add risks to capture mitigation plans.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                ),
+              ),
+            )
+          else ...[
+            for (int i = 0; i < entries.length; i++) ...[
+              _buildMitigationRow(context, entries[i]),
+              if (i < entries.length - 1)
+                const Divider(
+                    height: 28, thickness: 1, color: Color(0xFFF3F4F6)),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMitigationRow(BuildContext context, _RiskEntry entry) {
+    final controller = controllers[entry.docId];
+    if (controller == null) return const SizedBox.shrink();
+    final isRegenerating = regeneratingIds.contains(entry.docId);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                entry.description,
+                style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF111827)),
+              ),
+            ),
+            Text(
+              entry.category.isNotEmpty ? entry.category : 'Uncategorized',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Mitigation plan',
+              style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+            ),
+            IconButton(
+              icon: isRegenerating
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.autorenew, size: 18),
+              onPressed: () => onRegenerate(entry),
+              tooltip: 'Refresh AI suggestion',
+            ),
+          ],
+        ),
+        TextField(
+          controller: controller,
+          onChanged: (value) => onChanged(entry.docId, value),
+          minLines: 3,
+          maxLines: 6,
+          decoration: InputDecoration(
+            hintText: 'Capture mitigation steps, owner, and cadence...',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+            ),
+            filled: true,
+            fillColor: const Color(0xFFF9FAFB),
+            contentPadding: const EdgeInsets.all(12),
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
     );
   }
 }
@@ -1093,7 +1686,7 @@ class _RiskRegister extends StatelessWidget {
   final ValueChanged<_RiskEntry> onView;
   final ValueChanged<_RiskEntry> onEdit;
 
-  static const List<int> _columnFlex = [2, 3, 2, 2, 3, 2, 2, 2];
+  static const List<int> _columnFlex = [4, 3, 2, 2, 2, 1, 2, 2];
 
   @override
   Widget build(BuildContext context) {
@@ -1117,7 +1710,7 @@ class _RiskRegister extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Monitor risk exposure and mitigation status across the project portfolio.',
+            'Monitor risk exposure and mitigation status across the project',
             style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
           ),
           const SizedBox(height: 18),
@@ -1200,25 +1793,44 @@ class _RiskRegister extends StatelessWidget {
               ),
             ),
           ] else ...[
-            _RegisterHeader(columnFlex: _columnFlex),
-            const SizedBox(height: 12),
-            ...List.generate(entries.length, (index) {
-              final entry = entries[index];
-              final bool isLast = index == entries.length - 1;
-              return Column(
-                children: [
-                  _RegisterRow(
-                    entry: entry,
-                    columnFlex: _columnFlex,
-                    onView: () => onView(entry),
-                    onEdit: () => onEdit(entry),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final viewportWidth = MediaQuery.of(context).size.width -
+                    72; // account for padding
+                final tableWidth = math.max(1080.0, viewportWidth);
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: tableWidth,
+                    child: Column(
+                      children: [
+                        _RegisterHeader(columnFlex: _columnFlex),
+                        const SizedBox(height: 12),
+                        ...List.generate(entries.length, (index) {
+                          final entry = entries[index];
+                          final bool isLast = index == entries.length - 1;
+                          return Column(
+                            children: [
+                              _RegisterRow(
+                                entry: entry,
+                                columnFlex: _columnFlex,
+                                onView: () => onView(entry),
+                                onEdit: () => onEdit(entry),
+                              ),
+                              if (!isLast)
+                                const Divider(
+                                    height: 26,
+                                    thickness: 1,
+                                    color: Color(0xFFF3F4F6)),
+                            ],
+                          );
+                        }),
+                      ],
+                    ),
                   ),
-                  if (!isLast)
-                    const Divider(
-                        height: 26, thickness: 1, color: Color(0xFFF3F4F6)),
-                ],
-              );
-            }),
+                );
+              },
+            ),
           ],
         ],
       ),
@@ -1232,12 +1844,13 @@ class _RegisterHeader extends StatelessWidget {
   final List<int> columnFlex;
 
   static const List<String> _labels = [
-    'Risk ID',
     'Description',
     'Category',
-    'Probability',
+    'Prob.',
     'Impact',
-    'Risk Score',
+    'Value',
+    'Discipline',
+    'Role',
     'Owner',
     'Status',
     'Actions',
@@ -1305,48 +1918,55 @@ class _RegisterRow extends StatelessWidget {
         Expanded(
           flex: columnFlex[0],
           child: Text(
-            entry.id,
+            entry.description,
             style: const TextStyle(fontSize: 13, color: Color(0xFF111827)),
           ),
         ),
         Expanded(
           flex: columnFlex[1],
           child: Text(
-            entry.description,
-            style: const TextStyle(fontSize: 13, color: Color(0xFF111827)),
-          ),
-        ),
-        Expanded(
-          flex: columnFlex[2],
-          child: Text(
             entry.category,
             style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
           ),
         ),
         Expanded(
-          flex: columnFlex[3],
+          flex: columnFlex[2],
           child: _RiskTag(label: entry.probability),
         ),
         Expanded(
-          flex: columnFlex[4],
+          flex: columnFlex[3],
           child: _RiskTag(label: entry.impact),
         ),
         Expanded(
-          flex: columnFlex[5],
+          flex: columnFlex[4],
           child: Text(
             entry.score,
             style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
           ),
         ),
         Expanded(
+          flex: columnFlex[5],
+          child: Text(
+            entry.discipline,
+            style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+          ),
+        ),
+        Expanded(
           flex: columnFlex[6],
+          child: Text(
+            entry.role,
+            style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+          ),
+        ),
+        Expanded(
+          flex: columnFlex[7],
           child: Text(
             entry.owner,
             style: const TextStyle(fontSize: 13, color: Color(0xFF111827)),
           ),
         ),
         Expanded(
-          flex: columnFlex[7],
+          flex: columnFlex[8],
           child: Align(
             alignment: Alignment.centerLeft,
             child: Container(
@@ -1431,6 +2051,8 @@ class _RiskEntry {
     required this.probability,
     required this.impact,
     required this.score,
+    required this.discipline,
+    required this.role,
     required this.owner,
     required this.status,
     required this.createdAt,
@@ -1444,6 +2066,8 @@ class _RiskEntry {
   final String probability;
   final String impact;
   final String score;
+  final String discipline;
+  final String role;
   final String owner;
   final String status;
   final DateTime createdAt;
@@ -1459,6 +2083,8 @@ class _RiskEntry {
       probability: data['probability']?.toString() ?? '',
       impact: data['impact']?.toString() ?? '',
       score: data['score']?.toString() ?? '',
+      discipline: data['discipline']?.toString() ?? '',
+      role: data['role']?.toString() ?? '',
       owner: data['owner']?.toString() ?? '',
       status: data['status']?.toString() ?? '',
       createdAt: _readTimestamp(data['createdAt']),
@@ -1474,6 +2100,8 @@ class _RiskEntry {
       'probability': probability,
       'impact': impact,
       'score': score,
+      'discipline': discipline,
+      'role': role,
       'owner': owner,
       'status': status,
       if (isNew) 'createdAt': Timestamp.now(),

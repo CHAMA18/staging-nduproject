@@ -70,20 +70,28 @@ class _WorkBreakdownStructureBodyState
   static const int _maxWbsDepth = 3;
   static const List<Map<String, String>> _criteriaOptions = [
     {
-      'value': 'Project Area',
-      'description': 'Segment work by functional zones or geographical regions',
+      'value': 'Deliverable',
+      'description':
+          'Focuses on what must be produced, not activities. Standard approach.',
     },
     {
       'value': 'Discipline',
-      'description': 'Segment work by professional specialty or skill set',
+      'description':
+          'Segment by major components or systems (e.g., structural, electrical).',
     },
     {
-      'value': 'Contract Type',
-      'description': 'Segment by contractual boundaries and vendor agreements',
+      'value': 'Functional Areas',
+      'description':
+          'Organize by who performs the work (department designation).',
     },
     {
-      'value': 'Sub Scope',
-      'description': 'Segment into logical sub-projects or feature modules',
+      'value': 'Geographic Location',
+      'description':
+          'Used in multi-site projects or infrastructure rollouts.',
+    },
+    {
+      'value': 'Project Phases',
+      'description': 'Least preferred. Based on lifecycle stages.',
     },
   ];
 
@@ -99,9 +107,10 @@ class _WorkBreakdownStructureBodyState
   String? _selectedCriteriaA;
   bool _isAiLoading = false;
   List<WorkItem> _wbsItems = [];
-  final List<String> _goalTitles = List.filled(3, '');
-  final List<String> _goalDescriptions = List.filled(3, '');
+  final List<String> _goalTitles = List.filled(5, '');
+  final List<String> _goalDescriptions = List.filled(5, '');
   final Set<String> _collapsedNodeIds = {};
+  bool _contextExpanded = false;
   Map<String, dynamic>? _contextSnapshot;
   DateTime? _contextCapturedAt;
 
@@ -119,6 +128,7 @@ class _WorkBreakdownStructureBodyState
           projectData.goalWorkItems.any((list) => list.isNotEmpty)) {
         _migrateFromGoalsToTree(projectData.goalWorkItems);
       }
+      _syncGoalFrameworks(projectData);
 
       setState(() {});
     });
@@ -172,6 +182,7 @@ class _WorkBreakdownStructureBodyState
         TextEditingController(text: existingNode?.description);
     final formKey = GlobalKey<FormState>();
     var selectedStatus = existingNode?.status ?? 'not_started';
+    var selectedFramework = existingNode?.framework ?? '';
     WorkItem? result;
 
     await showDialog<void>(
@@ -239,6 +250,26 @@ class _WorkBreakdownStructureBodyState
                             }
                           },
                         ),
+                        if (parentId.isEmpty) ...[
+                          const SizedBox(height: 16),
+                          DropdownButtonFormField<String>(
+                            initialValue:
+                                selectedFramework.isEmpty ? null : selectedFramework,
+                            decoration: const InputDecoration(
+                                labelText: 'Framework (Goal level)'),
+                            items: const [
+                              DropdownMenuItem(
+                                  value: 'Waterfall', child: Text('Waterfall')),
+                              DropdownMenuItem(
+                                  value: 'Agile', child: Text('Agile')),
+                              DropdownMenuItem(
+                                  value: 'Hybrid', child: Text('Hybrid')),
+                            ],
+                            onChanged: (value) {
+                              setStateDialog(() => selectedFramework = value ?? '');
+                            },
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -259,6 +290,9 @@ class _WorkBreakdownStructureBodyState
                   existingNode.title = titleController.text.trim();
                   existingNode.description = descriptionController.text.trim();
                   existingNode.status = selectedStatus;
+                  if (existingNode.parentId.isEmpty) {
+                    existingNode.framework = selectedFramework;
+                  }
                   result = existingNode;
                 } else {
                   result = WorkItem(
@@ -266,6 +300,7 @@ class _WorkBreakdownStructureBodyState
                     title: titleController.text.trim(),
                     description: descriptionController.text.trim(),
                     status: selectedStatus,
+                    framework: parentId.isEmpty ? selectedFramework : '',
                   );
                 }
                 Navigator.of(dialogContext).pop();
@@ -385,12 +420,12 @@ class _WorkBreakdownStructureBodyState
   }
 
   void _syncGoalContext(ProjectDataModel data) {
-    for (var i = 0; i < 3; i++) {
+    for (var i = 0; i < 5; i++) {
       _goalTitles[i] = '';
       _goalDescriptions[i] = '';
     }
 
-    for (var i = 0; i < data.planningGoals.length && i < 3; i++) {
+    for (var i = 0; i < data.planningGoals.length && i < 5; i++) {
       final planningGoal = data.planningGoals[i];
       final title = planningGoal.title.trim();
       final description = planningGoal.description.trim();
@@ -405,7 +440,7 @@ class _WorkBreakdownStructureBodyState
       }
     }
 
-    for (var i = 0; i < data.projectGoals.length && i < 3; i++) {
+    for (var i = 0; i < data.projectGoals.length && i < 5; i++) {
       if (_goalTitles[i].isEmpty) {
         _goalTitles[i] = data.projectGoals[i].name.trim();
       }
@@ -415,14 +450,47 @@ class _WorkBreakdownStructureBodyState
     }
   }
 
+  void _syncGoalFrameworks(ProjectDataModel data) {
+    if (_wbsItems.isEmpty || data.projectGoals.isEmpty) return;
+    var updatedGoals = false;
+    final goals = List<ProjectGoal>.from(data.projectGoals);
+
+    for (int i = 0; i < _wbsItems.length && i < goals.length; i++) {
+      final item = _wbsItems[i];
+      final goal = goals[i];
+      final itemFramework = item.framework.trim();
+      final goalFramework = (goal.framework ?? '').trim();
+
+      if (itemFramework.isEmpty && goalFramework.isNotEmpty) {
+        item.framework = goalFramework;
+      } else if (itemFramework.isNotEmpty && goalFramework.isEmpty) {
+        goals[i] = ProjectGoal(
+          name: goal.name,
+          description: goal.description,
+          framework: itemFramework,
+        );
+        updatedGoals = true;
+      }
+    }
+
+    if (updatedGoals) {
+      ProjectDataHelper.getProvider(context).updateField(
+        (data) => data.copyWith(projectGoals: goals),
+      );
+    }
+  }
+
   Widget _buildCriteriaDropdown(
       {required String hint,
       required String? value,
       required ValueChanged<String?> onChanged}) {
+    final normalizedValue = _criteriaOptions.any((o) => o['value'] == value)
+        ? value
+        : null;
     return SizedBox(
       width: 280,
       child: DropdownButtonFormField<String>(
-        initialValue: value,
+        initialValue: normalizedValue,
         decoration: InputDecoration(
           filled: true,
           fillColor: Colors.white,
@@ -505,7 +573,11 @@ class _WorkBreakdownStructureBodyState
                 CircularProgressIndicator(strokeWidth: 3, color: _kAccentColor),
           ),
         ElevatedButton.icon(
-          onPressed: _isAiLoading ? null : _handleGenerateWbsAi,
+          onPressed: (_isAiLoading ||
+                  _selectedCriteriaA == null ||
+                  _selectedCriteriaA!.isEmpty)
+              ? null
+              : _handleGenerateWbsAi,
           icon: _isAiLoading
               ? const SizedBox(
                   width: 18,
@@ -600,6 +672,7 @@ class _WorkBreakdownStructureBodyState
     final canAddChild = path.length < _maxWbsDepth;
     final displayTitle = _formatWbsTitle(path: path, title: item.title);
     final isCollapsed = _collapsedNodeIds.contains(item.id);
+    final goalIndex = path.isNotEmpty ? path.first - 1 : 0;
     return Container(
       width: 280,
       decoration: BoxDecoration(
@@ -670,6 +743,10 @@ class _WorkBreakdownStructureBodyState
                         fontWeight: FontWeight.w500,
                         color: _kSecondaryText),
                   ),
+                ],
+                if (level == 0) ...[
+                  const SizedBox(height: 10),
+                  _buildFrameworkDropdown(item, goalIndex),
                 ],
                 if (item.children.isNotEmpty && isCollapsed) ...[
                   const SizedBox(height: 8),
@@ -788,13 +865,13 @@ class _WorkBreakdownStructureBodyState
     if (path.isEmpty) return title;
     final goalIndex = path.first;
     final suffix = path.length > 1 ? '.${path.sublist(1).join('.')}' : '';
-    final label = 'G$goalIndex$suffix';
+    final label = 'S$goalIndex$suffix';
     final cleanTitle = _stripWbsPrefix(title);
     return '$label: $cleanTitle';
   }
 
   String _stripWbsPrefix(String title) {
-    final pattern = RegExp(r'^G\d+(?:\.\d+)*:\s*');
+    final pattern = RegExp(r'^[GS]\d+(?:\.\d+)*(?:\s*[:\-])?\s*');
     return title.replaceFirst(pattern, '');
   }
 
@@ -848,6 +925,55 @@ class _WorkBreakdownStructureBodyState
         color = Colors.grey;
     }
     return Icon(icon, size: 16, color: color);
+  }
+
+  Widget _buildFrameworkDropdown(WorkItem item, int goalIndex) {
+    return DropdownButtonFormField<String>(
+      value: item.framework.isEmpty ? null : item.framework,
+      isDense: true,
+      decoration: InputDecoration(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        filled: true,
+        fillColor: const Color(0xFFF9FAFB),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: _kCardBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: _kCardBorder),
+        ),
+      ),
+      hint: const Text(
+        'Select framework',
+        style: TextStyle(fontSize: 12, color: _kSecondaryText),
+      ),
+      icon: const Icon(Icons.keyboard_arrow_down_rounded,
+          color: _kSecondaryText, size: 18),
+      items: const [
+        DropdownMenuItem(value: 'Waterfall', child: Text('Waterfall')),
+        DropdownMenuItem(value: 'Agile', child: Text('Agile')),
+        DropdownMenuItem(value: 'Hybrid', child: Text('Hybrid')),
+      ],
+      onChanged: (value) {
+        final framework = value ?? '';
+        setState(() => item.framework = framework);
+        _updateGoalFramework(goalIndex, framework);
+      },
+    );
+  }
+
+  void _updateGoalFramework(int goalIndex, String framework) {
+    final provider = ProjectDataHelper.getProvider(context);
+    final goals = List<ProjectGoal>.from(provider.projectData.projectGoals);
+    if (goalIndex < 0 || goalIndex >= goals.length) return;
+    final goal = goals[goalIndex];
+    goals[goalIndex] = ProjectGoal(
+      name: goal.name,
+      description: goal.description,
+      framework: framework,
+    );
+    provider.updateField((data) => data.copyWith(projectGoals: goals));
   }
 
   Widget _buildNotesCard() {
@@ -1101,110 +1227,128 @@ class _WorkBreakdownStructureBodyState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Project Context Used For WBS',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: _kPrimaryText),
+          InkWell(
+            onTap: () => setState(() => _contextExpanded = !_contextExpanded),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Project Context Used For WBS',
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: _kPrimaryText),
+                  ),
                 ),
-              ),
-              OutlinedButton.icon(
-                onPressed: () => _downloadContextPdf(contextData),
-                icon: const Icon(Icons.download_outlined, size: 18),
-                label: const Text('Download PDF'),
-              ),
-            ],
-          ),
-          Text(
-            caption,
-            style: const TextStyle(fontSize: 11, color: _kSecondaryText),
-          ),
-          const SizedBox(height: 16),
-          _buildContextField(
-              'Project Name', (contextData['projectName'] ?? '').toString()),
-          const SizedBox(height: 12),
-          _buildContextField('Project Objective',
-              (contextData['projectObjective'] ?? '').toString()),
-          const SizedBox(height: 12),
-          _buildContextField(
-            'Breakdown Dimension',
-            dimension.isNotEmpty ? dimension : 'Not selected',
-          ),
-          if (dimension.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            _buildContextField('Dimension Rationale', dimensionDescription),
-          ],
-          const SizedBox(height: 16),
-          const Text(
-            'Project Goals',
-            style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: _kPrimaryText),
-          ),
-          const SizedBox(height: 8),
-          if (goals.isEmpty)
-            const Text(
-              'No project goals provided yet.',
-              style: TextStyle(fontSize: 12, color: _kSecondaryText),
-            )
-          else
-            Column(
-              children: goals.map((goal) {
-                final goalMap = goal is Map
-                    ? goal
-                    : {'name': '', 'description': goal.toString()};
-                final name = (goalMap['name'] ?? '').toString();
-                final description =
-                    (goalMap['description'] ?? '').toString();
-                final framework = (goalMap['framework'] ?? '').toString();
-                if (name.trim().isEmpty && description.trim().isEmpty) {
-                  return const SizedBox.shrink();
-                }
-                return Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF9FAFB),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _kCardBorder),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name.isNotEmpty ? name : 'Goal',
-                        style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: _kPrimaryText),
-                      ),
-                      if (description.trim().isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          description,
-                          style: const TextStyle(
-                              fontSize: 12, color: _kSecondaryText),
-                        ),
-                      ],
-                      if (framework.trim().isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          'Framework: $framework',
-                          style: const TextStyle(
-                              fontSize: 11, color: _kSecondaryText),
-                        ),
-                      ],
-                    ],
-                  ),
-                );
-              }).toList(),
+                Icon(
+                  _contextExpanded
+                      ? Icons.expand_less
+                      : Icons.expand_more,
+                  color: _kSecondaryText,
+                ),
+              ],
             ),
+          ),
+          if (_contextExpanded) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    caption,
+                    style: const TextStyle(fontSize: 11, color: _kSecondaryText),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _downloadContextPdf(contextData),
+                  icon: const Icon(Icons.download_outlined, size: 18),
+                  label: const Text('Download PDF'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildContextField(
+                'Project Name', (contextData['projectName'] ?? '').toString()),
+            const SizedBox(height: 12),
+            _buildContextField('Project Objective',
+                (contextData['projectObjective'] ?? '').toString()),
+            const SizedBox(height: 12),
+            _buildContextField(
+              'Breakdown Dimension',
+              dimension.isNotEmpty ? dimension : 'Not selected',
+            ),
+            if (dimension.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _buildContextField('Dimension Rationale', dimensionDescription),
+            ],
+            const SizedBox(height: 16),
+            const Text(
+              'Project Goals',
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: _kPrimaryText),
+            ),
+            const SizedBox(height: 8),
+            if (goals.isEmpty)
+              const Text(
+                'No project goals provided yet.',
+                style: TextStyle(fontSize: 12, color: _kSecondaryText),
+              )
+            else
+              Column(
+                children: goals.map((goal) {
+                  final goalMap = goal is Map
+                      ? goal
+                      : {'name': '', 'description': goal.toString()};
+                  final name = (goalMap['name'] ?? '').toString();
+                  final description =
+                      (goalMap['description'] ?? '').toString();
+                  final framework = (goalMap['framework'] ?? '').toString();
+                  if (name.trim().isEmpty && description.trim().isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9FAFB),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: _kCardBorder),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name.isNotEmpty ? name : 'Goal',
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: _kPrimaryText),
+                        ),
+                        if (description.trim().isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            description,
+                            style: const TextStyle(
+                                fontSize: 12, color: _kSecondaryText),
+                          ),
+                        ],
+                        if (framework.trim().isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            'Framework: $framework',
+                            style: const TextStyle(
+                                fontSize: 11, color: _kSecondaryText),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+          ],
         ],
       ),
     );
@@ -1287,9 +1431,9 @@ class _WorkBreakdownStructureBodyState
                             children: [
                               _buildInfoBanner(),
                               const SizedBox(height: 20),
-                              _buildContextCard(),
-                              const SizedBox(height: 28),
                               _buildCriteriaRow(),
+                              const SizedBox(height: 28),
+                              _buildContextCard(),
                               const SizedBox(height: 32),
                               _buildWbsTreeView(),
                               const SizedBox(height: 28),

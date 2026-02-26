@@ -26,6 +26,8 @@ const String _contractPlanScopeKey = 'planning_contract_scope';
 const String _contractPlanApprovalsKey = 'planning_contract_approvals';
 const String _contractPlanRisksKey = 'planning_contract_risks';
 const String _contractPlanTimelineKey = 'planning_contract_timeline';
+const Color _kFabYellow = Color(0xFFFBBF24);
+const Color _kFabOnYellow = Color(0xFF111827);
 
 String _formatShortDate(DateTime? date) {
   if (date == null) return 'TBD';
@@ -112,6 +114,12 @@ class _FrontEndPlanningContractsScreenState
     );
   }
 
+  void _openEditContract(ContractModel contract) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => CreateContractScreen(contract: contract)),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -142,7 +150,7 @@ class _FrontEndPlanningContractsScreenState
   Widget build(BuildContext context) {
     final projectData = ProjectDataHelper.getData(context);
     final isNarrow = MediaQuery.sizeOf(context).width < 1100;
-    final hasContractData =
+    final hasDashboardPayload =
         (projectData.planningNotes['contract_dashboard_payload'] ?? '')
             .trim()
             .isNotEmpty;
@@ -188,6 +196,24 @@ class _FrontEndPlanningContractsScreenState
                                     .planningNotes[_contractPlanApprovalsKey],
                                 timelineText: projectData
                                     .planningNotes[_contractPlanTimelineKey],
+                              ),
+                              const SizedBox(height: 20),
+                              _AdditionalNotesSection(
+                                controller: _notesController,
+                                onChanged: (value) async {
+                                  await ProjectDataHelper.updateAndSave(
+                                    context: context,
+                                    checkpoint: 'contracts',
+                                    dataUpdater: (data) => data.copyWith(
+                                      frontEndPlanning:
+                                          ProjectDataHelper.updateFEPField(
+                                        current: data.frontEndPlanning,
+                                        contracts: value.trim(),
+                                      ),
+                                    ),
+                                    showSnackbar: false,
+                                  );
+                                },
                               ),
                               const SizedBox(height: 20),
                               _PlanningSectionCard(
@@ -262,25 +288,10 @@ class _FrontEndPlanningContractsScreenState
                                 const _TimelinePlanSection(),
                                 const SizedBox(height: 20),
                                 _ContractsPreviewSection(
-                                    projectId: projectData.projectId),
-                                const SizedBox(height: 20),
-                                _AdditionalNotesSection(
-                                  controller: _notesController,
-                                  onChanged: (value) async {
-                                    await ProjectDataHelper.updateAndSave(
-                                      context: context,
-                                      checkpoint: 'contracts',
-                                      dataUpdater: (data) => data.copyWith(
-                                        frontEndPlanning:
-                                            ProjectDataHelper.updateFEPField(
-                                          current: data.frontEndPlanning,
-                                          contracts: value.trim(),
-                                        ),
-                                      ),
-                                      showSnackbar: false,
-                                    );
-                                  },
+                                  projectId: projectData.projectId,
+                                  onEdit: _openEditContract,
                                 ),
+                                const SizedBox(height: 20),
                               ] else ...[
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -291,28 +302,8 @@ class _FrontEndPlanningContractsScreenState
                                           const _PlanningInputsSection(),
                                           const SizedBox(height: 20),
                                           _ContractsPreviewSection(
-                                              projectId: projectData.projectId),
-                                          const SizedBox(height: 20),
-                                          _AdditionalNotesSection(
-                                            controller: _notesController,
-                                            onChanged: (value) async {
-                                              await ProjectDataHelper
-                                                  .updateAndSave(
-                                                context: context,
-                                                checkpoint: 'contracts',
-                                                dataUpdater: (data) =>
-                                                    data.copyWith(
-                                                  frontEndPlanning:
-                                                      ProjectDataHelper
-                                                          .updateFEPField(
-                                                    current:
-                                                        data.frontEndPlanning,
-                                                    contracts: value.trim(),
-                                                  ),
-                                                ),
-                                                showSnackbar: false,
-                                              );
-                                            },
+                                            projectId: projectData.projectId,
+                                            onEdit: _openEditContract,
                                           ),
                                         ],
                                       ),
@@ -331,23 +322,18 @@ class _FrontEndPlanningContractsScreenState
                                 ),
                               ],
                               const SizedBox(height: 28),
-                              if (!hasContractData)
-                                const _EmptyContractsState()
-                              else ...[
-                                _TimelineSection(),
-                                const SizedBox(height: 40),
-                                const _ContractDashboardSection(),
-                                const SizedBox(height: 32),
-                                const _ContractingNoteBanner(),
-                              ],
+                              _ContractsDataSection(
+                                projectId: projectData.projectId,
+                                hasDashboardPayload: hasDashboardPayload,
+                              ),
                               const SizedBox(height: 32),
                               Align(
                                 alignment: Alignment.centerRight,
                                 child: ElevatedButton(
                                   onPressed: _navigateToProcurement,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF0987FF),
-                                    foregroundColor: Colors.white,
+                                    backgroundColor: _kFabYellow,
+                                    foregroundColor: _kFabOnYellow,
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 32, vertical: 16),
                                     elevation: 0,
@@ -380,7 +366,9 @@ class _FrontEndPlanningContractsScreenState
 }
 
 class CreateContractScreen extends StatefulWidget {
-  const CreateContractScreen({super.key});
+  const CreateContractScreen({super.key, this.contract});
+
+  final ContractModel? contract;
 
   @override
   State<CreateContractScreen> createState() => _CreateContractScreenState();
@@ -401,6 +389,28 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
   String _status = 'Not Started';
   DateTime? _startDate;
   DateTime? _endDate;
+
+  bool get _isEdit => widget.contract != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final contract = widget.contract;
+    if (contract == null) return;
+    _contractNameController.text = contract.name;
+    _descriptionController.text = contract.description;
+    _estimatedValueController.text = contract.estimatedValue.toStringAsFixed(0);
+    _scopeController.text = contract.scope;
+    _disciplineController.text = contract.discipline;
+    _notesController.text = contract.notes;
+    _contractType =
+        contract.contractType.isNotEmpty ? contract.contractType : _contractType;
+    _paymentType =
+        contract.paymentType.isNotEmpty ? contract.paymentType : _paymentType;
+    _status = contract.status.isNotEmpty ? contract.status : _status;
+    _startDate = contract.startDate;
+    _endDate = contract.endDate;
+  }
 
   @override
   void dispose() {
@@ -443,7 +453,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
   Future<void> _handleSubmit() async {
     final messenger = ScaffoldMessenger.of(context);
     final projectProvider = ProjectDataInherited.maybeOf(context);
-    final projectId = projectProvider?.projectData.projectId;
+    final projectId =
+        widget.contract?.projectId ?? projectProvider?.projectData.projectId;
 
     if (!(_formKey.currentState?.validate() ?? false)) {
       messenger.showSnackBar(const SnackBar(
@@ -482,26 +493,44 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
     }
 
     try {
-      await ContractService.createContract(
-        projectId: projectId,
-        name: _contractNameController.text.trim(),
-        description: _descriptionController.text.trim(),
-        contractType: _contractType,
-        paymentType: _paymentType,
-        status: _status,
-        estimatedValue: estValue,
-        startDate: _startDate!,
-        endDate: _endDate!,
-        scope: _scopeController.text.trim(),
-        discipline: _disciplineController.text.trim(),
-        notes: _notesController.text.trim(),
-        createdById: user.uid,
-        createdByEmail: user.email ?? '',
-        createdByName: user.displayName ?? (user.email ?? 'User'),
-      );
+      if (_isEdit) {
+        await ContractService.updateContract(
+          projectId: projectId,
+          contractId: widget.contract!.id,
+          name: _contractNameController.text.trim(),
+          description: _descriptionController.text.trim(),
+          contractType: _contractType,
+          paymentType: _paymentType,
+          status: _status,
+          estimatedValue: estValue,
+          startDate: _startDate!,
+          endDate: _endDate!,
+          scope: _scopeController.text.trim(),
+          discipline: _disciplineController.text.trim(),
+          notes: _notesController.text.trim(),
+        );
+      } else {
+        await ContractService.createContract(
+          projectId: projectId,
+          name: _contractNameController.text.trim(),
+          description: _descriptionController.text.trim(),
+          contractType: _contractType,
+          paymentType: _paymentType,
+          status: _status,
+          estimatedValue: estValue,
+          startDate: _startDate!,
+          endDate: _endDate!,
+          scope: _scopeController.text.trim(),
+          discipline: _disciplineController.text.trim(),
+          notes: _notesController.text.trim(),
+          createdById: user.uid,
+          createdByEmail: user.email ?? '',
+          createdByName: user.displayName ?? (user.email ?? 'User'),
+        );
+      }
 
       messenger.showSnackBar(
-          const SnackBar(content: Text('Contract saved successfully.')));
+          SnackBar(content: Text(_isEdit ? 'Contract updated.' : 'Contract saved successfully.')));
 
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -922,9 +951,8 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
                                     ElevatedButton(
                                       onPressed: _handleSubmit,
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor:
-                                            const Color(0xFF0987FF),
-                                        foregroundColor: Colors.white,
+                                        backgroundColor: _kFabYellow,
+                                        foregroundColor: _kFabOnYellow,
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 34, vertical: 18),
                                         elevation: 0,
@@ -934,13 +962,16 @@ class _CreateContractScreenState extends State<CreateContractScreen> {
                                       ),
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
-                                        children: const [
-                                          Text('Next',
-                                              style: TextStyle(
+                                        children: [
+                                          Text(_isEdit ? 'Save' : 'Next',
+                                              style: const TextStyle(
                                                   fontSize: 15,
                                                   fontWeight: FontWeight.w600)),
-                                          SizedBox(width: 12),
-                                          Icon(Icons.arrow_forward, size: 18),
+                                          if (!_isEdit) ...[
+                                            const SizedBox(width: 12),
+                                            const Icon(Icons.arrow_forward,
+                                                size: 18),
+                                          ],
                                         ],
                                       ),
                                     ),
@@ -2117,8 +2148,8 @@ class _ContractHeader extends StatelessWidget {
         ElevatedButton(
           onPressed: onCreateContract,
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF0987FF),
-            foregroundColor: Colors.white,
+            backgroundColor: _kFabYellow,
+            foregroundColor: _kFabOnYellow,
             padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 16),
             elevation: 0,
             shape:
@@ -2448,9 +2479,13 @@ class _TimelinePlanSection extends StatelessWidget {
 }
 
 class _ContractsPreviewSection extends StatelessWidget {
-  const _ContractsPreviewSection({required this.projectId});
+  const _ContractsPreviewSection({
+    required this.projectId,
+    required this.onEdit,
+  });
 
   final String? projectId;
+  final ValueChanged<ContractModel> onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -2483,7 +2518,11 @@ class _ContractsPreviewSection extends StatelessWidget {
                   children: contracts
                       .take(5)
                       .map(
-                          (contract) => _ContractPreviewRow(contract: contract))
+                        (contract) => _ContractPreviewRow(
+                          contract: contract,
+                          onTap: () => onEdit(contract),
+                        ),
+                      )
                       .toList(),
                 );
               },
@@ -2493,60 +2532,102 @@ class _ContractsPreviewSection extends StatelessWidget {
 }
 
 class _ContractPreviewRow extends StatelessWidget {
-  const _ContractPreviewRow({required this.contract});
+  const _ContractPreviewRow({required this.contract, required this.onTap});
 
   final ContractModel contract;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(contract.name,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF111827))),
-                const SizedBox(height: 4),
-                Text(
-                  contract.contractType.isNotEmpty
-                      ? contract.contractType
-                      : 'Contract type TBD',
-                  style:
-                      const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-                ),
-              ],
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(contract.name,
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF111827))),
+                  const SizedBox(height: 4),
+                  Text(
+                    contract.contractType.isNotEmpty
+                        ? contract.contractType
+                        : 'Contract type TBD',
+                    style:
+                        const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(_formatCurrency(contract.estimatedValue),
-                style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF2563EB))),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              '${_formatShortDate(contract.startDate)} - ${_formatShortDate(contract.endDate)}',
-              style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+            Expanded(
+              flex: 2,
+              child: Text(_formatCurrency(contract.estimatedValue),
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF2563EB))),
             ),
-          ),
-        ],
+            Expanded(
+              flex: 2,
+              child: Text(
+                '${_formatShortDate(contract.startDate)} - ${_formatShortDate(contract.endDate)}',
+                style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _ContractsDataSection extends StatelessWidget {
+  const _ContractsDataSection({
+    required this.projectId,
+    required this.hasDashboardPayload,
+  });
+
+  final String? projectId;
+  final bool hasDashboardPayload;
+
+  @override
+  Widget build(BuildContext context) {
+    if (projectId == null || projectId!.isEmpty) {
+      return const _EmptyContractsState();
+    }
+    return StreamBuilder<List<ContractModel>>(
+      stream: ContractService.streamContracts(projectId!),
+      builder: (context, snapshot) {
+        final contracts = snapshot.data ?? const <ContractModel>[];
+        final hasContractData = hasDashboardPayload || contracts.isNotEmpty;
+        if (!hasContractData) {
+          return const _EmptyContractsState();
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: const [
+            _TimelineSection(),
+            SizedBox(height: 40),
+            _ContractDashboardSection(),
+            SizedBox(height: 32),
+            _ContractingNoteBanner(),
+          ],
+        );
+      },
     );
   }
 }
@@ -7254,8 +7335,8 @@ class _ExecutionTimelineRow extends StatelessWidget {
                   ElevatedButton(
                     onPressed: () {},
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0987FF),
-                      foregroundColor: Colors.white,
+                      backgroundColor: _kFabYellow,
+                      foregroundColor: _kFabOnYellow,
                       padding: const EdgeInsets.symmetric(
                           horizontal: 22, vertical: 14),
                       shape: RoundedRectangleBorder(

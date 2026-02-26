@@ -980,6 +980,18 @@ class ProjectGoal {
     this.framework,
   });
 
+  ProjectGoal copyWith({
+    String? name,
+    String? description,
+    String? framework,
+  }) {
+    return ProjectGoal(
+      name: name ?? this.name,
+      description: description ?? this.description,
+      framework: framework ?? this.framework,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
         'name': name,
         'description': description,
@@ -1202,6 +1214,7 @@ class WorkItem {
   String title;
   String description;
   String status;
+  String framework;
   List<WorkItem> children;
   List<String> dependencies;
 
@@ -1211,6 +1224,7 @@ class WorkItem {
     this.title = '',
     this.description = '',
     this.status = 'not_started',
+    this.framework = '',
     List<WorkItem>? children,
     List<String>? dependencies,
   })  : id = id ?? DateTime.now().microsecondsSinceEpoch.toString(),
@@ -1223,6 +1237,7 @@ class WorkItem {
         'title': title,
         'description': description,
         'status': status,
+        'framework': framework,
         'children': children.map((c) => c.toJson()).toList(),
         'dependencies': dependencies,
       };
@@ -1234,6 +1249,7 @@ class WorkItem {
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       status: json['status'] ?? 'not_started',
+      framework: json['framework']?.toString() ?? '',
       children: (json['children'] as List?)
               ?.map((c) => WorkItem.fromJson(c as Map<String, dynamic>))
               .toList() ??

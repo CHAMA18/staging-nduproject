@@ -14,6 +14,8 @@ import 'package:ndu_project/screens/ssher_stacked_screen.dart';
 import 'package:ndu_project/services/sidebar_navigation_service.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/utils/phase_transition_helper.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/services/api_key_manager.dart';
 
 class ProjectFrameworkScreen extends StatefulWidget {
   const ProjectFrameworkScreen({super.key});
@@ -37,6 +39,11 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
   late TextEditingController _projectObjectiveController;
   late FocusNode _projectNameFocus;
   late FocusNode _projectObjectiveFocus;
+  late final OpenAiServiceSecure _openAi;
+  bool _isGeneratingObjective = false;
+  bool _objectiveGenerationAttempted = false;
+  bool _isGeneratingGoals = false;
+  bool _goalsGenerationAttempted = false;
 
   @override
   void initState() {
@@ -45,6 +52,8 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
     _projectObjectiveController = TextEditingController();
     _projectNameFocus = FocusNode()..addListener(_onFocusChange);
     _projectObjectiveFocus = FocusNode()..addListener(_onFocusChange);
+    _openAi = OpenAiServiceSecure();
+    ApiKeyManager.initializeApiKey();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final projectData = ProjectDataHelper.getData(context);
@@ -63,20 +72,7 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
       }
       _projectNameController.text = projectName;
 
-      // Enhanced project objectives population with fallback hierarchy
-      String projectObjective = projectData.projectObjective;
-      if (projectObjective.isEmpty) {
-        projectObjective = projectData.businessCase;
-      }
-      if (projectObjective.isEmpty) {
-        projectObjective = projectData.solutionDescription;
-      }
-      if (projectObjective.isEmpty &&
-          projectData.charterAssumptions.isNotEmpty) {
-        // Extract objectives from charter assumptions if available
-        projectObjective = projectData.charterAssumptions;
-      }
-      _projectObjectiveController.text = projectObjective;
+      _projectObjectiveController.text = projectData.projectObjective.trim();
 
       if (projectData.projectGoals.isNotEmpty) {
         _goals.clear();
@@ -132,6 +128,9 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
           return d.copyWith(planningNotes: newNotes);
         });
       }
+
+      await _ensureProjectObjectiveSummary(projectData);
+      await _ensureProjectGoalsFromContext(projectData);
     });
   }
 
@@ -163,7 +162,7 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
 
     try {
       await ProjectDataHelper.updateAndSave(
-        context: context,
+        context: this.context,
         checkpoint: 'project_framework',
         dataUpdater: (data) => data.copyWith(
           projectName: _projectNameController.text.trim(),
@@ -186,6 +185,139 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
     }
   }
 
+  Future<void> _ensureProjectObjectiveSummary(
+      ProjectDataModel projectData) async {
+    if (_objectiveGenerationAttempted || _isGeneratingObjective) return;
+
+    final existing = projectData.projectObjective.trim();
+    final fallbackCandidates = [
+      projectData.businessCase.trim(),
+      projectData.solutionDescription.trim(),
+      projectData.charterAssumptions.trim(),
+    ];
+    final isFallback = existing.isEmpty ||
+        fallbackCandidates.any((v) => v.isNotEmpty && v == existing);
+
+    if (!isFallback) return;
+
+    final objectiveContext =
+        ProjectDataHelper.buildProjectObjectiveContext(projectData).trim();
+    if (objectiveContext.isEmpty) return;
+
+    _objectiveGenerationAttempted = true;
+    setState(() => _isGeneratingObjective = true);
+
+    try {
+      final summary = await _openAi.generateProjectObjectiveSummary(
+        context: objectiveContext,
+      );
+      final cleaned = _clampToMaxSentences(summary.trim(), 5);
+      if (cleaned.isEmpty || !mounted) return;
+      _projectObjectiveController.text = cleaned;
+      await ProjectDataHelper.updateAndSave(
+        context: context,
+        checkpoint: 'project_framework',
+        dataUpdater: (data) => data.copyWith(projectObjective: cleaned),
+        showSnackbar: false,
+      );
+    } catch (e) {
+      debugPrint('Error generating project objective summary: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isGeneratingObjective = false);
+      }
+    }
+  }
+
+  String _clampToMaxSentences(String text, int maxSentences) {
+    if (text.isEmpty) return text;
+    final sentences =
+        text.split(RegExp(r'(?<=[.!?])\s+')).where((s) => s.isNotEmpty).toList();
+    if (sentences.length <= maxSentences) return text;
+    return sentences.take(maxSentences).join(' ').trim();
+  }
+
+  Future<void> _ensureProjectGoalsFromContext(
+      ProjectDataModel projectData) async {
+    if (_goalsGenerationAttempted || _isGeneratingGoals) return;
+
+    bool isMeaningfulName(String name) {
+      final trimmed = name.trim();
+      if (trimmed.isEmpty) return false;
+      final isDefaultName =
+          RegExp(r'^Goal\\s+\\d+$', caseSensitive: false).hasMatch(trimmed);
+      return !isDefaultName;
+    }
+
+    final hasMeaningfulGoals = _goals.any((g) {
+      final name = g.nameController.text.trim();
+      final desc = g.controller.text.trim();
+      return isMeaningfulName(name) || desc.isNotEmpty;
+    });
+    if (hasMeaningfulGoals) return;
+
+    final goalContext =
+        ProjectDataHelper.buildProjectObjectiveContext(projectData).trim();
+    if (goalContext.isEmpty) return;
+
+    _goalsGenerationAttempted = true;
+    setState(() => _isGeneratingGoals = true);
+
+    try {
+      final result =
+          await _openAi.suggestProjectFrameworkGoals(context: goalContext);
+      if (!mounted) return;
+
+      final generatedGoals = result.goals.take(5).toList();
+      if (generatedGoals.isEmpty) return;
+
+      setState(() {
+        _goals.clear();
+        for (int i = 0; i < generatedGoals.length; i++) {
+          final g = generatedGoals[i];
+          final goal = _Goal(
+            id: i + 1,
+            name: g.name.isNotEmpty ? g.name : 'Goal ${i + 1}',
+            description: g.description,
+            framework: (_selectedOverallFramework == 'Waterfall' ||
+                    _selectedOverallFramework == 'Agile')
+                ? _selectedOverallFramework
+                : null,
+          );
+          _attachGoalListeners(goal);
+          _goals.add(goal);
+          _setupGoalNomenclature(goal);
+        }
+        if ((_selectedOverallFramework ?? '').isEmpty &&
+            result.framework.isNotEmpty) {
+          _selectedOverallFramework = result.framework;
+        }
+      });
+
+      await ProjectDataHelper.updateAndSave(
+        context: context,
+        checkpoint: 'project_framework',
+        dataUpdater: (data) => data.copyWith(
+          overallFramework: _selectedOverallFramework,
+          projectGoals: _goals
+              .map((g) => ProjectGoal(
+                    name: g.nameController.text.trim(),
+                    description: g.controller.text.trim(),
+                    framework: g.framework,
+                  ))
+              .toList(),
+        ),
+        showSnackbar: false,
+      );
+    } catch (e) {
+      debugPrint('Error generating project goals: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isGeneratingGoals = false);
+      }
+    }
+  }
+
   @override
   void dispose() {
     _projectNameController.dispose();
@@ -199,10 +331,10 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
   }
 
   void _addGoal() {
-    if (_goals.length >= 3) {
+    if (_goals.length >= 5) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Maximum of 3 goals allowed'),
+          content: Text('Maximum of 5 goals allowed'),
           backgroundColor: Color(0xFFEF4444),
         ),
       );
@@ -233,7 +365,7 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
             .map((w) => w[0].toUpperCase())
             .join();
         if (initials.isNotEmpty) {
-          final newTitle = 'G${goal.id} $initials';
+          final newTitle = 'S${goal.id} $initials';
           if (goal.nameController.text != newTitle) {
             goal.nameController.text = newTitle;
           }
@@ -381,18 +513,24 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
                                   _saveData();
                                 },
                                 goals: _goals,
-                                onGoalFrameworkChanged: (goalId, framework) {
-                                  setState(() {
-                                    _goals
-                                        .firstWhere((g) => g.id == goalId)
-                                        .framework = framework;
-                                  });
-                                  _saveData();
-                                },
                                 onAddGoal: _addGoal,
                                 onDeleteGoal: (goalId) {
                                   _deleteGoal(goalId);
                                   _saveData();
+                                },
+                                onGoalTitleResize: (goalId, height) {
+                                  setState(() {
+                                    _goals
+                                        .firstWhere((g) => g.id == goalId)
+                                        .titleHeight = height;
+                                  });
+                                },
+                                onGoalDescriptionResize: (goalId, height) {
+                                  setState(() {
+                                    _goals
+                                        .firstWhere((g) => g.id == goalId)
+                                        .descriptionHeight = height;
+                                  });
                                 },
                               ),
                               const SizedBox(height: 24),
@@ -422,8 +560,14 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
 }
 
 class _Goal {
-  _Goal({required this.id, String? name, this.framework, String? description})
-      : controller = TextEditingController(text: description),
+  _Goal({
+    required this.id,
+    String? name,
+    this.framework,
+    String? description,
+    this.titleHeight = 54,
+    this.descriptionHeight = 110,
+  })  : controller = TextEditingController(text: description),
         nameController = TextEditingController(text: name),
         nameFocus = FocusNode(),
         descFocus = FocusNode();
@@ -434,6 +578,8 @@ class _Goal {
   final FocusNode nameFocus;
   final FocusNode descFocus;
   String? framework;
+  double titleHeight;
+  double descriptionHeight;
 
   void dispose() {
     nameController.dispose();
@@ -452,9 +598,10 @@ class _MainContentCard extends StatelessWidget {
     required this.selectedOverallFramework,
     required this.onOverallFrameworkChanged,
     required this.goals,
-    required this.onGoalFrameworkChanged,
     required this.onAddGoal,
     required this.onDeleteGoal,
+    required this.onGoalTitleResize,
+    required this.onGoalDescriptionResize,
   });
 
   final TextEditingController projectNameController;
@@ -464,9 +611,10 @@ class _MainContentCard extends StatelessWidget {
   final String? selectedOverallFramework;
   final ValueChanged<String?> onOverallFrameworkChanged;
   final List<_Goal> goals;
-  final void Function(int goalId, String? framework) onGoalFrameworkChanged;
   final VoidCallback onAddGoal;
   final void Function(int goalId) onDeleteGoal;
+  final void Function(int goalId, double height) onGoalTitleResize;
+  final void Function(int goalId, double height) onGoalDescriptionResize;
 
   @override
   Widget build(BuildContext context) {
@@ -532,10 +680,10 @@ class _MainContentCard extends StatelessWidget {
           const SizedBox(height: 48),
           _GoalsSection(
             goals: goals,
-            overallFramework: selectedOverallFramework,
-            onGoalFrameworkChanged: onGoalFrameworkChanged,
             onAddGoal: onAddGoal,
             onDeleteGoal: onDeleteGoal,
+            onGoalTitleResize: onGoalTitleResize,
+            onGoalDescriptionResize: onGoalDescriptionResize,
           ),
         ],
       ),
@@ -554,44 +702,94 @@ class _OverallFrameworkSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const options = [
+      _FrameworkOption(
+        value: 'Waterfall',
+        title: 'Waterfall',
+        description:
+            'A linear project method where work is completed in sequential phases. Most suitable for traditional and physical projects.',
+      ),
+      _FrameworkOption(
+        value: 'Agile',
+        title: 'Agile',
+        description:
+            'A flexible, iterative project method where work is delivered in small increments, allowing continuous feedback, adaptation, and improvement throughout the project. Most suitable for software projects.',
+      ),
+      _FrameworkOption(
+        value: 'Hybrid',
+        title: 'Hybrid',
+        description:
+            'A combination of Waterfall and Agile approaches, using structured planning for some phases and flexible, iterative development for others.',
+      ),
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Overall Project Framework',
+          'Project Framework',
           style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
               color: Color(0xFF111827)),
         ),
         const SizedBox(height: 16),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFD1D5DB)),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: selectedFramework,
-              hint: const Text('Select a Framework',
-                  style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 15)),
-              isExpanded: true,
-              icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                  color: Color(0xFF6B7280)),
-              items: ['Waterfall', 'Agile', 'Hybrid'].map((framework) {
-                return DropdownMenuItem<String>(
-                    value: framework, child: Text(framework));
-              }).toList(),
-              onChanged: onChanged,
-            ),
-          ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 900;
+            if (isNarrow) {
+              return Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                children: options
+                    .map((option) => SizedBox(
+                          width: constraints.maxWidth,
+                          child: _FrameworkOptionCard(
+                            title: option.title,
+                            description: option.description,
+                            isSelected: selectedFramework == option.value,
+                            onTap: () => onChanged(option.value),
+                          ),
+                        ))
+                    .toList(),
+              );
+            }
+
+            return Row(
+              children: [
+                Expanded(
+                  child: _FrameworkOptionCard(
+                    title: options[0].title,
+                    description: options[0].description,
+                    isSelected: selectedFramework == options[0].value,
+                    onTap: () => onChanged(options[0].value),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _FrameworkOptionCard(
+                    title: options[1].title,
+                    description: options[1].description,
+                    isSelected: selectedFramework == options[1].value,
+                    onTap: () => onChanged(options[1].value),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _FrameworkOptionCard(
+                    title: options[2].title,
+                    description: options[2].description,
+                    isSelected: selectedFramework == options[2].value,
+                    onTap: () => onChanged(options[2].value),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 12),
         const Text(
-          'If \'Waterfall\' or \'Agile\' is chosen, all goals below will inherit this framework. If \'Hybrid\' is chosen, you can set a framework for each goal individually .',
+          'If \'Waterfall\' or \'Agile\' is chosen, all goals will inherit this framework. If \'Hybrid\' is chosen, set a framework for each goal in the WBS.',
           style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
         ),
       ],
@@ -599,20 +797,92 @@ class _OverallFrameworkSection extends StatelessWidget {
   }
 }
 
+class _FrameworkOption {
+  const _FrameworkOption({
+    required this.value,
+    required this.title,
+    required this.description,
+  });
+
+  final String value;
+  final String title;
+  final String description;
+}
+
+class _FrameworkOptionCard extends StatelessWidget {
+  const _FrameworkOptionCard({
+    required this.title,
+    required this.description,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String title;
+  final String description;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor =
+        isSelected ? const Color(0xFF111827) : const Color(0xFFD1D5DB);
+    final backgroundColor =
+        isSelected ? const Color(0xFFFFF3BF) : Colors.white;
+
+    return Material(
+      color: backgroundColor,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: borderColor, width: 1.4),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                description,
+                style: const TextStyle(
+                  fontSize: 13,
+                  height: 1.35,
+                  color: Color(0xFF6B7280),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _GoalsSection extends StatelessWidget {
   const _GoalsSection({
     required this.goals,
-    required this.overallFramework,
-    required this.onGoalFrameworkChanged,
     required this.onAddGoal,
     required this.onDeleteGoal,
+    required this.onGoalTitleResize,
+    required this.onGoalDescriptionResize,
   });
 
   final List<_Goal> goals;
-  final String? overallFramework;
-  final void Function(int goalId, String? framework) onGoalFrameworkChanged;
   final VoidCallback onAddGoal;
   final void Function(int goalId) onDeleteGoal;
+  final void Function(int goalId, double height) onGoalTitleResize;
+  final void Function(int goalId, double height) onGoalDescriptionResize;
 
   @override
   Widget build(BuildContext context) {
@@ -634,7 +904,7 @@ class _GoalsSection extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'Breakdown the project objective into attainable areas',
+                  'Indicate upto 5 key high-level outcomes for this project',
                   style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -659,17 +929,22 @@ class _GoalsSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 24),
-        ...goals.map((goal) => Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: _GoalCard(
-                goal: goal,
-                isLocked: overallFramework == 'Waterfall' ||
-                    overallFramework == 'Agile',
-                onFrameworkChanged: (framework) =>
-                    onGoalFrameworkChanged(goal.id, framework),
-                onDelete: () => onDeleteGoal(goal.id),
-              ),
-            )),
+        ...goals.asMap().entries.map((entry) {
+          final index = entry.key;
+          final goal = entry.value;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: _GoalCard(
+              index: index,
+              goal: goal,
+              onDelete: () => onDeleteGoal(goal.id),
+              onTitleResize: (height) =>
+                  onGoalTitleResize(goal.id, height),
+              onDescriptionResize: (height) =>
+                  onGoalDescriptionResize(goal.id, height),
+            ),
+          );
+        }),
       ],
     );
   }
@@ -677,16 +952,18 @@ class _GoalsSection extends StatelessWidget {
 
 class _GoalCard extends StatelessWidget {
   const _GoalCard({
+    required this.index,
     required this.goal,
-    required this.isLocked,
-    required this.onFrameworkChanged,
     required this.onDelete,
+    required this.onTitleResize,
+    required this.onDescriptionResize,
   });
 
+  final int index;
   final _Goal goal;
-  final bool isLocked;
-  final ValueChanged<String?> onFrameworkChanged;
   final VoidCallback onDelete;
+  final ValueChanged<double> onTitleResize;
+  final ValueChanged<double> onDescriptionResize;
 
   @override
   Widget build(BuildContext context) {
@@ -701,79 +978,56 @@ class _GoalCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Container(
+                width: 28,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF3BF),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                ),
+                child: Text(
+                  '${index + 1}',
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF111827)),
+                ),
+              ),
+              const SizedBox(width: 12),
               SizedBox(
-                width: 120,
-                child: TextField(
+                width: 180,
+                child: _ResizableTextField(
                   controller: goal.nameController,
                   focusNode: goal.nameFocus,
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    contentPadding: EdgeInsets.zero,
-                    border: InputBorder.none,
-                    hintText: 'Goal Name',
-                    hintStyle:
-                        TextStyle(color: Color(0xFF9CA3AF), fontSize: 16),
-                  ),
-                  style: const TextStyle(
+                  minHeight: 44,
+                  maxHeight: 110,
+                  height: goal.titleHeight,
+                  maxLines: 2,
+                  hintText: 'Goal title',
+                  textStyle: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF111827)),
+                  onResize: onTitleResize,
                 ),
               ),
               const SizedBox(width: 20),
               Expanded(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF9FAFB),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFD1D5DB)),
-                  ),
-                  child: TextField(
-                    controller: goal.controller,
-                    focusNode: goal.descFocus,
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                      border: InputBorder.none,
-                      hintText: 'Enter goal description...',
-                      hintStyle:
-                          TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
-                    ),
-                    style:
-                        const TextStyle(fontSize: 14, color: Color(0xFF374151)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 20),
-              Container(
-                width: 200,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFD1D5DB)),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: goal.framework,
-                    hint: const Text('Select Framework',
-                        style:
-                            TextStyle(color: Color(0xFF9CA3AF), fontSize: 14)),
-                    isExpanded: true,
-                    icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                        color: Color(0xFF6B7280)),
-                    items: ['Waterfall', 'Agile', 'Hybrid'].map((framework) {
-                      return DropdownMenuItem<String>(
-                          value: framework,
-                          child: Text(framework,
-                              style: const TextStyle(fontSize: 14)));
-                    }).toList(),
-                    onChanged: isLocked ? null : onFrameworkChanged,
-                  ),
+                child: _ResizableTextField(
+                  controller: goal.controller,
+                  focusNode: goal.descFocus,
+                  minHeight: 90,
+                  maxHeight: 220,
+                  height: goal.descriptionHeight,
+                  maxLines: null,
+                  hintText: 'Enter goal description...',
+                  textStyle:
+                      const TextStyle(fontSize: 14, color: Color(0xFF374151)),
+                  onResize: onDescriptionResize,
                 ),
               ),
               const SizedBox(width: 12),
@@ -793,6 +1047,89 @@ class _GoalCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ResizableTextField extends StatelessWidget {
+  const _ResizableTextField({
+    required this.controller,
+    required this.focusNode,
+    required this.height,
+    required this.minHeight,
+    required this.maxHeight,
+    required this.hintText,
+    required this.textStyle,
+    required this.maxLines,
+    required this.onResize,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final double height;
+  final double minHeight;
+  final double maxHeight;
+  final String hintText;
+  final TextStyle textStyle;
+  final int? maxLines;
+  final ValueChanged<double> onResize;
+
+  @override
+  Widget build(BuildContext context) {
+    final clampedHeight = height.clamp(minHeight, maxHeight);
+    final isExpandable = maxLines == null;
+
+    return Stack(
+      children: [
+        Container(
+          height: clampedHeight,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF9FAFB),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFD1D5DB)),
+          ),
+          child: TextField(
+            controller: controller,
+            focusNode: focusNode,
+            minLines: isExpandable ? null : 1,
+            maxLines: isExpandable ? null : maxLines,
+            expands: isExpandable,
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
+              border: InputBorder.none,
+              hintText: hintText,
+              hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
+            ),
+            style: textStyle,
+          ),
+        ),
+        Positioned(
+          right: 6,
+          bottom: 6,
+          child: MouseRegion(
+            cursor: SystemMouseCursors.resizeUpDown,
+            child: GestureDetector(
+              onPanUpdate: (details) {
+                final next = (clampedHeight + details.delta.dy)
+                    .clamp(minHeight, maxHeight);
+                onResize(next);
+              },
+              child: Container(
+                width: 16,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E7EB),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Icon(Icons.drag_handle,
+                    size: 14, color: Color(0xFF6B7280)),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

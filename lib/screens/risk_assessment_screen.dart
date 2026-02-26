@@ -1686,7 +1686,7 @@ class _RiskRegister extends StatelessWidget {
   final ValueChanged<_RiskEntry> onView;
   final ValueChanged<_RiskEntry> onEdit;
 
-  static const List<int> _columnFlex = [4, 3, 2, 2, 2, 1, 2, 2];
+  static const List<int> _columnFlex = [4, 3, 2, 2, 2, 1, 2, 2, 2];
 
   @override
   Widget build(BuildContext context) {

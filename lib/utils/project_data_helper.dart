@@ -310,6 +310,121 @@ class ProjectDataHelper {
     return buf.toString().trim();
   }
 
+  /// Build context for AI-generated Project Objective summaries.
+  /// Includes charter inputs and front-end planning details without reusing
+  /// an existing objective to avoid circular summaries.
+  static String buildProjectObjectiveContext(ProjectDataModel data) {
+    final buf = StringBuffer();
+
+    void w(String label, String? value) {
+      final v = (value ?? '').trim();
+      if (v.isEmpty) return;
+      buf.writeln('$label:');
+      buf.writeln(v);
+      buf.writeln();
+    }
+
+    void wList(String label, Iterable<String> items) {
+      final list = items.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      if (list.isEmpty) return;
+      buf.writeln('$label:');
+      for (final item in list) {
+        buf.writeln('- $item');
+      }
+      buf.writeln();
+    }
+
+    buf.writeln('Project Context');
+    buf.writeln('================');
+    w('Project Name', data.projectName);
+    w('Solution Title', data.solutionTitle);
+    w('Solution Description', data.solutionDescription);
+    w('Business Case', data.businessCase);
+    w('Initiation Notes', data.notes);
+    w('Potential Solution', data.potentialSolution);
+    w('Overall Framework', data.overallFramework);
+
+    w('Charter Assumptions', data.charterAssumptions);
+    w('Charter Constraints', data.charterConstraints);
+
+    if (data.projectGoals.isNotEmpty) {
+      final items = data.projectGoals.map((g) {
+        final name = g.name.trim().isEmpty ? 'Goal' : g.name.trim();
+        final desc = g.description.trim();
+        return desc.isEmpty ? name : '$name: $desc';
+      });
+      wList('Project Goals', items);
+    }
+
+    if (data.planningGoals.isNotEmpty) {
+      final items = data.planningGoals.map((g) {
+        final title =
+            g.title.trim().isEmpty ? 'Goal ${g.goalNumber}' : g.title.trim();
+        final year = g.targetYear.trim();
+        final desc = g.description.trim();
+        final suffix = [
+          if (year.isNotEmpty) 'Target: $year',
+          if (desc.isNotEmpty) desc,
+        ].join(' | ');
+        return suffix.isEmpty ? title : '$title ($suffix)';
+      });
+      wList('Planning Goals', items);
+    }
+
+    if (data.keyMilestones.isNotEmpty) {
+      final items = data.keyMilestones.map((m) {
+        final name = m.name.trim().isNotEmpty ? m.name.trim() : 'Milestone';
+        final due = m.dueDate.trim();
+        final discipline = m.discipline.trim();
+        final details = [
+          if (due.isNotEmpty) 'Due: $due',
+          if (discipline.isNotEmpty) 'Discipline: $discipline',
+        ].join(' | ');
+        return details.isEmpty ? name : '$name ($details)';
+      });
+      wList('Key Milestones', items);
+    }
+
+    wList('Within Scope', data.withinScopeItems.map((e) => e.description));
+    wList('Out of Scope', data.outOfScopeItems.map((e) => e.description));
+    wList('Assumptions', data.assumptionItems.map((e) => e.description));
+    wList('Constraints', data.constraintItems.map((e) => e.description));
+
+    if (data.planningNotes.isNotEmpty) {
+      final items = data.planningNotes.entries
+          .where((e) => e.value.trim().isNotEmpty)
+          .map((e) => '${e.key}: ${e.value}');
+      wList('Planning Notes', items);
+    }
+
+    final fep = data.frontEndPlanning;
+    w('Front End Planning – Requirements Notes', fep.requirementsNotes);
+    w('Front End Planning – Requirements', fep.requirements);
+    w('Front End Planning – Risks', fep.risks);
+    w('Front End Planning – Opportunities', fep.opportunities);
+    w('Front End Planning – Contracting', fep.contractVendorQuotes);
+    w('Front End Planning – Procurement', fep.procurement);
+    w('Front End Planning – Security', fep.security);
+    w('Front End Planning – Allowance', fep.allowance);
+    w('Front End Planning – Summary', fep.summary);
+    w('Front End Planning – Technology', fep.technology);
+    w('Front End Planning – Personnel', fep.personnel);
+    w('Front End Planning – Infrastructure', fep.infrastructure);
+
+    final interfaceEntriesContext =
+        _formatInterfaceEntriesForContext(data.interfaceEntries);
+    if (interfaceEntriesContext.isNotEmpty) {
+      buf.writeln('Interface Register:');
+      for (final entry in interfaceEntriesContext) {
+        buf.writeln('- $entry');
+      }
+      buf.writeln();
+    }
+
+    buf.writeln('Target Section: Project Objective Summary');
+    return buf.toString().trim();
+  }
+
   /// Build a richer, cross-application context string for executive plan diagrams.
   /// Includes only populated fields to avoid noise and random output.
   static String buildExecutivePlanContext(ProjectDataModel data,

@@ -1223,6 +1223,77 @@ Rules:
     }
   }
 
+  /// Generate a concise AI project objective summary (max 5 sentences).
+  Future<String> generateProjectObjectiveSummary({
+    required String context,
+    int maxTokens = 360,
+    double temperature = 0.4,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) return '';
+    if (!OpenAiConfig.isConfigured) return '';
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final prompt = '''
+You are a senior project planning assistant. Using the project context below, write a concise project objective summary.
+Requirements:
+- 3 to 5 complete sentences, maximum 5 sentences.
+- No bullet points or numbering.
+- Focus on measurable actions and targets required to accomplish the project.
+- Reference goals, milestones, scope, and constraints when relevant.
+- Use clear, direct language.
+
+Context:
+$trimmedContext
+
+Return ONLY valid JSON: {"objective": "..." }
+''';
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a project planning assistant. Return only valid JSON.'
+        },
+        {'role': 'user', 'content': prompt},
+      ],
+    });
+
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 16));
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+            'OpenAI error ${response.statusCode}: ${response.body}');
+      }
+
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content =
+          (data['choices'] as List).first['message']['content'] as String;
+      final parsed = jsonDecode(content) as Map<String, dynamic>;
+      final objective = _stripAsterisks(
+        (parsed['objective'] ?? '').toString().trim(),
+      );
+      return objective;
+    } catch (e) {
+      debugPrint('Error generating project objective summary: $e');
+      return '';
+    }
+  }
+
   // Generate structured execution plan fields for plan input cards.
   Future<Map<String, String>> generateExecutionPlanSectionFields({
     required String section,
@@ -6432,8 +6503,12 @@ Return JSON in this format:
     List<ProjectGoal>? goals,
     required String contextNotes,
   }) {
+    String stripPrefix(String name) {
+      return name.replaceFirst(RegExp(r'^[GS]\d+(?:\.\d+)*\s*[:\-]\s*'), '');
+    }
+
     final goalsText = goals != null && goals.isNotEmpty
-        ? "\nProject Goals (IMPORTANT: Use these as Level 1 items):\n${goals.map((g) => "- ${g.name}: ${g.description}").join("\n")}"
+        ? "\nProject Goals (IMPORTANT: Use these as Level 1 items):\n${goals.map((g) => "- ${stripPrefix(g.name)}: ${g.description}").join("\n")}"
         : "";
 
     final dimensionContext = dimensionDescription.isNotEmpty
@@ -6448,15 +6523,17 @@ Segmentation Dimension: $dimension$dimensionContext
 
 CRITICAL Requirements:
 1. Level 1 items MUST be named after the Project Goals listed above (if goals are provided).
+   - Names must reflect the selected segmentation dimension ("$dimension").
+   - Use the dimension guidance to shape item names and descriptions (avoid generic activities).
 2. Level 2 items are specific milestones/deliverables for each goal - these will populate the project milestones.
 3. Each item MUST have a "title" and "description".
 4. Use "children" for sub-items.
 5. Use "dependencies" as a list of titles of sibling items that must be completed first.
 6. Keep the structure 2-3 levels deep (never deeper than Level 3).
-7. Prefix titles with WBS numbering using the Goal-based scheme:
-   - Level 1: "G1: Goal Title", "G2: Goal Title" in order
-   - Level 2: "G1.1: Deliverable", "G1.2: Deliverable"
-   - Level 3: "G1.1.1: Sub-deliverable"
+7. Prefix titles with WBS numbering using the Segment-based scheme:
+   - Level 1: "S1: Goal Title", "S2: Goal Title" in order
+   - Level 2: "S1.1: Deliverable", "S1.2: Deliverable"
+   - Level 3: "S1.1.1: Sub-deliverable"
 
 Return strict JSON only in this format:
 {

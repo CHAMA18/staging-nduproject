@@ -2663,7 +2663,7 @@ class _PlanningTextArea extends StatefulWidget {
     required this.noteKey,
     required this.hintText,
     this.minLines = 4,
-    this.maxLines = 8,
+    this.maxLines = 7,
   });
 
   final String noteKey;

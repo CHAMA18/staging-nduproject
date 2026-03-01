@@ -440,7 +440,9 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
         if (riskText.isEmpty) continue;
         final normalized = _normalizeRiskDescription(riskText);
         if (normalizedExisting.contains(normalized) ||
-            _seededRiskDescriptions.contains(normalized)) continue;
+            _seededRiskDescriptions.contains(normalized)) {
+          continue;
+        }
 
         final newEntry = _RiskEntry(
           docId: _newEntryId(),

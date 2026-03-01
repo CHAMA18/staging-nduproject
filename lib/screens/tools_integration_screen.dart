@@ -1502,10 +1502,7 @@ class _IntegrationItem {
         provider: provider,
         name: map['name']?.toString() ?? '',
         subtitle: map['subtitle']?.toString() ?? '',
-        icon: IconData(
-          map['icon'] is int ? map['icon'] as int : Icons.link.codePoint,
-          fontFamily: 'MaterialIcons',
-        ),
+        icon: _iconForProvider(provider),
         iconColor: Color(map['iconColor'] is int ? map['iconColor'] as int : 0xFF94A3B8),
         scopes: map['scopes']?.toString() ?? '',
         features: map['features']?.toString() ?? '',
@@ -1522,6 +1519,19 @@ class _IntegrationItem {
         sessions: map['sessions']?.toString(),
       );
     }).toList();
+  }
+
+  static IconData _iconForProvider(IntegrationProvider provider) {
+    switch (provider) {
+      case IntegrationProvider.figma:
+        return Icons.design_services;
+      case IntegrationProvider.drawio:
+        return Icons.account_tree;
+      case IntegrationProvider.miro:
+        return Icons.dashboard;
+      case IntegrationProvider.whiteboard:
+        return Icons.sticky_note_2;
+    }
   }
 }
 

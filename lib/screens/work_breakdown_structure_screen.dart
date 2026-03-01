@@ -929,7 +929,7 @@ class _WorkBreakdownStructureBodyState
 
   Widget _buildFrameworkDropdown(WorkItem item, int goalIndex) {
     return DropdownButtonFormField<String>(
-      value: item.framework.isEmpty ? null : item.framework,
+      initialValue: item.framework.isEmpty ? null : item.framework,
       isDense: true,
       decoration: InputDecoration(
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

@@ -162,7 +162,7 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
 
     try {
       await ProjectDataHelper.updateAndSave(
-        context: this.context,
+        context: context,
         checkpoint: 'project_framework',
         dataUpdater: (data) => data.copyWith(
           projectName: _projectNameController.text.trim(),
@@ -565,12 +565,12 @@ class _Goal {
     String? name,
     this.framework,
     String? description,
-    this.titleHeight = 54,
-    this.descriptionHeight = 110,
   })  : controller = TextEditingController(text: description),
         nameController = TextEditingController(text: name),
         nameFocus = FocusNode(),
-        descFocus = FocusNode();
+        descFocus = FocusNode(),
+        titleHeight = 0,
+        descriptionHeight = 0;
 
   final int id;
   final TextEditingController nameController;

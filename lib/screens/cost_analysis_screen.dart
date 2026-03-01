@@ -2085,7 +2085,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
               borderRadius: BorderRadius.circular(6),
               border: Border.all(color: const Color(0xFFFFD700)),
             ),
-            child: Text(step!,
+            child: Text(step,
                 style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,

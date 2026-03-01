@@ -183,9 +183,9 @@ class DesignReadinessCard extends StatelessWidget {
 
   Widget _buildScoreItem(String label, double score) {
     Color barColor = Colors.grey;
-    if (score >= 0.8)
+    if (score >= 0.8) {
       barColor = Colors.green;
-    else if (score >= 0.5) barColor = Colors.orange;
+    } else if (score >= 0.5) barColor = Colors.orange;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

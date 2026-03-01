@@ -12,16 +12,12 @@ import 'package:ndu_project/providers/app_content_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ndu_project/routing/app_router.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:webview_flutter_platform_interface/webview_flutter_platform_interface.dart';
-import 'package:webview_flutter_web/webview_flutter_web.dart';
+import 'package:ndu_project/platform/webview_platform_setup.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  if (kIsWeb) {
-    WebViewPlatform.instance = WebWebViewPlatform();
-  }
+  configureWebWebViewPlatform();
 
   // Suppress specific framework warnings and inspector errors
   final previousHandler = FlutterError.onError;

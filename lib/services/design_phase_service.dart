@@ -327,15 +327,17 @@ class DesignPhaseService {
 
     int completed = 0;
     for (var item in constraints) {
-      if (item['status'] == 'Aligned' || item['status'] == 'Validated')
+      if (item['status'] == 'Aligned' || item['status'] == 'Validated') {
         completed++;
+      }
     }
     for (var item in mappings) {
       if (item['status'] == 'Aligned') completed++;
     }
     for (var item in dependencies) {
-      if (item['status'] == 'Resolved' || item['status'] == 'Aligned')
+      if (item['status'] == 'Resolved' || item['status'] == 'Aligned') {
         completed++;
+      }
     }
     return completed / totalItems;
   }

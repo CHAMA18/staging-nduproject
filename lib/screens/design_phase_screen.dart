@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:html' as html show window;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -24,6 +23,7 @@ import 'package:ndu_project/services/design_phase_service.dart';
 import 'package:ndu_project/models/design_phase_models.dart';
 import 'package:ndu_project/widgets/design_readiness_card.dart';
 import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/utils/web_utils.dart';
 
 class DesignPhaseScreen extends StatefulWidget {
   const DesignPhaseScreen(
@@ -679,7 +679,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
     // For web platform, open in new tab since WebView is not supported
     if (kIsWeb) {
       // Open in new tab
-      html.window.open(url, '_blank');
+      openUrlInNewWindow(url);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Opening $title in new tab'),
@@ -773,7 +773,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
 
     final projectData = provider.projectData;
     final DesignManagementData managementData =
-        (projectData.designManagementData as DesignManagementData?) ??
+        projectData.designManagementData ??
             DesignManagementData();
     final methodology = managementData.methodology;
     final strategy = managementData.executionStrategy;
@@ -818,7 +818,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                             TextStyle(fontSize: 12, color: Colors.grey[600])),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<ProjectMethodology>(
-                      value: methodology,
+                      initialValue: methodology,
                       decoration: InputDecoration(
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(
@@ -855,7 +855,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                             TextStyle(fontSize: 12, color: Colors.grey[600])),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<ProjectIndustry>(
-                      value: industry,
+                      initialValue: industry,
                       decoration: InputDecoration(
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(
@@ -889,7 +889,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                             TextStyle(fontSize: 12, color: Colors.grey[600])),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<ExecutionStrategy>(
-                      value: strategy,
+                      initialValue: strategy,
                       decoration: InputDecoration(
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(

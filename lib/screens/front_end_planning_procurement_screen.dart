@@ -2432,7 +2432,7 @@ class _FrontEndPlanningProcurementScreenState
         dataUpdater: (data) => data.copyWith(
           frontEndPlanning: ProjectDataHelper.updateFEPField(
             current: data.frontEndPlanning,
-            procurement: _notes.text.trim(),
+            procurement: _currentProcurementNotes(data),
           ),
         ),
         showSnackbar: false,

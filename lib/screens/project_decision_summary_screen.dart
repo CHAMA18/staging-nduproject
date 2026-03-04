@@ -782,7 +782,7 @@ class _ProjectDecisionSummaryScreenState
             DraggableSidebar(
               openWidth: AppBreakpoints.sidebarWidth(context),
               child: const InitiationLikeSidebar(
-                activeItemLabel: 'Preferred Solutions',
+                activeItemLabel: 'Preferred Solution',
               ),
             ),
             Expanded(

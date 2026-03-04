@@ -8,6 +8,8 @@ class PlanningDashboardCard extends StatelessWidget {
   final VoidCallback? onAdd;
   final Function(PlanningDashboardItem)? onEdit;
   final Function(PlanningDashboardItem)? onDelete;
+  final VoidCallback? onUndo;
+  final bool canUndo;
   final VoidCallback? onGenerateAI;
   final bool isGenerating;
   final String emptyStateText;
@@ -20,6 +22,8 @@ class PlanningDashboardCard extends StatelessWidget {
     this.onAdd,
     this.onEdit,
     this.onDelete,
+    this.onUndo,
+    this.canUndo = false,
     this.onGenerateAI,
     this.isGenerating = false,
     this.emptyStateText = 'No items yet. Add manually or generate with AI.',
@@ -76,18 +80,33 @@ class PlanningDashboardCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (onGenerateAI != null)
-                IconButton(
-                  onPressed: isGenerating ? null : onGenerateAI,
-                  tooltip: 'Generate with AI',
-                  icon: isGenerating
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.auto_awesome,
-                          color: Color(0xFF7C3AED)), // Purple accent
+              if (onUndo != null || onGenerateAI != null)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (onUndo != null)
+                      IconButton(
+                        onPressed: canUndo ? onUndo : null,
+                        tooltip: canUndo ? 'Undo last delete' : 'Nothing to undo',
+                        icon: const Icon(
+                          Icons.undo_rounded,
+                          color: Color(0xFF0F766E),
+                        ),
+                      ),
+                    if (onGenerateAI != null)
+                      IconButton(
+                        onPressed: isGenerating ? null : onGenerateAI,
+                        tooltip: 'Generate with AI',
+                        icon: isGenerating
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.auto_awesome,
+                                color: Color(0xFF7C3AED)), // Purple accent
+                      ),
+                  ],
                 ),
             ],
           ),

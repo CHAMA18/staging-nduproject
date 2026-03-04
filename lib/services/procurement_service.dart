@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:ndu_project/models/procurement/procurement_models.dart';
 
 class ProcurementService {
@@ -40,7 +41,6 @@ class ProcurementService {
     int limit = _defaultQueryLimit,
   }) {
     return _itemsCol(projectId)
-        .orderBy('createdAt', descending: true)
         .limit(_sanitizeLimit(limit))
         .withConverter<ProcurementItemModel>(
           fromFirestore: (snapshot, _) =>
@@ -54,7 +54,6 @@ class ProcurementService {
     int limit = _defaultQueryLimit,
   }) {
     return _strategiesCol(projectId)
-        .orderBy('createdAt', descending: true)
         .limit(_sanitizeLimit(limit))
         .withConverter<ProcurementStrategyModel>(
           fromFirestore: (snapshot, _) =>
@@ -68,7 +67,6 @@ class ProcurementService {
     int limit = _defaultQueryLimit,
   }) {
     return _rfqsCol(projectId)
-        .orderBy('createdAt', descending: true)
         .limit(_sanitizeLimit(limit))
         .withConverter<RfqModel>(
           fromFirestore: (snapshot, _) => RfqModel.fromDoc(snapshot),
@@ -81,7 +79,6 @@ class ProcurementService {
     int limit = _defaultQueryLimit,
   }) {
     return _posCol(projectId)
-        .orderBy('createdAt', descending: true)
         .limit(_sanitizeLimit(limit))
         .withConverter<PurchaseOrderModel>(
           fromFirestore: (snapshot, _) => PurchaseOrderModel.fromDoc(snapshot),
@@ -94,7 +91,6 @@ class ProcurementService {
     int limit = _defaultQueryLimit,
   }) {
     return _contractsCol(projectId)
-        .orderBy('createdAt', descending: true)
         .limit(_sanitizeLimit(limit))
         .withConverter<ContractModel>(
           fromFirestore: (snapshot, _) => ContractModel.fromDoc(snapshot),
@@ -109,12 +105,28 @@ class ProcurementService {
     int limit = _defaultQueryLimit,
   }) {
     return _itemsQuery(projectId, limit: limit).snapshots().map(
-          (snap) => snap.docs.map((doc) => doc.data()).toList(),
-        );
+      (snap) {
+        final items = <ProcurementItemModel>[];
+        for (final doc in snap.docs) {
+          try {
+            items.add(doc.data());
+          } catch (e) {
+            debugPrint('Skipping malformed procurement item ${doc.id}: $e');
+          }
+        }
+        items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        return items;
+      },
+    );
   }
 
   static Future<bool> hasAnyItems(String projectId) async {
     final snap = await _itemsCol(projectId).limit(1).get();
+    return snap.docs.isNotEmpty;
+  }
+
+  static Future<bool> hasAnyStrategies(String projectId) async {
+    final snap = await _strategiesCol(projectId).limit(1).get();
     return snap.docs.isNotEmpty;
   }
 
@@ -148,8 +160,19 @@ class ProcurementService {
     int limit = _defaultQueryLimit,
   }) {
     return _strategiesQuery(projectId, limit: limit).snapshots().map(
-          (snap) => snap.docs.map((doc) => doc.data()).toList(),
-        );
+      (snap) {
+        final strategies = <ProcurementStrategyModel>[];
+        for (final doc in snap.docs) {
+          try {
+            strategies.add(doc.data());
+          } catch (e) {
+            debugPrint('Skipping malformed procurement strategy ${doc.id}: $e');
+          }
+        }
+        strategies.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        return strategies;
+      },
+    );
   }
 
   static Future<void> createStrategy(ProcurementStrategyModel strategy) async {
@@ -173,12 +196,28 @@ class ProcurementService {
     int limit = _defaultQueryLimit,
   }) {
     return _rfqsQuery(projectId, limit: limit).snapshots().map(
-          (snap) => snap.docs.map((doc) => doc.data()).toList(),
-        );
+      (snap) {
+        final rfqs = <RfqModel>[];
+        for (final doc in snap.docs) {
+          try {
+            rfqs.add(doc.data());
+          } catch (e) {
+            debugPrint('Skipping malformed RFQ ${doc.id}: $e');
+          }
+        }
+        rfqs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        return rfqs;
+      },
+    );
   }
 
   static Future<void> createRfq(RfqModel rfq) async {
     await _rfqsCol(rfq.projectId).add(rfq.toMap());
+  }
+
+  static Future<bool> hasAnyRfqs(String projectId) async {
+    final snap = await _rfqsCol(projectId).limit(1).get();
+    return snap.docs.isNotEmpty;
   }
 
   static Future<void> updateRfq(
@@ -197,12 +236,28 @@ class ProcurementService {
     int limit = _defaultQueryLimit,
   }) {
     return _posQuery(projectId, limit: limit).snapshots().map(
-          (snap) => snap.docs.map((doc) => doc.data()).toList(),
-        );
+      (snap) {
+        final orders = <PurchaseOrderModel>[];
+        for (final doc in snap.docs) {
+          try {
+            orders.add(doc.data());
+          } catch (e) {
+            debugPrint('Skipping malformed purchase order doc ${doc.id}: $e');
+          }
+        }
+        orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        return orders;
+      },
+    );
   }
 
   static Future<void> createPo(PurchaseOrderModel po) async {
     await _posCol(po.projectId).add(po.toMap());
+  }
+
+  static Future<bool> hasAnyPos(String projectId) async {
+    final snap = await _posCol(projectId).limit(1).get();
+    return snap.docs.isNotEmpty;
   }
 
   static Future<void> updatePo(
@@ -221,8 +276,19 @@ class ProcurementService {
     int limit = _defaultQueryLimit,
   }) {
     return _contractsQuery(projectId, limit: limit).snapshots().map(
-          (snap) => snap.docs.map((doc) => doc.data()).toList(),
-        );
+      (snap) {
+        final contracts = <ContractModel>[];
+        for (final doc in snap.docs) {
+          try {
+            contracts.add(doc.data());
+          } catch (e) {
+            debugPrint('Skipping malformed contract ${doc.id}: $e');
+          }
+        }
+        contracts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        return contracts;
+      },
+    );
   }
 
   static Future<bool> hasAnyContracts(String projectId) async {

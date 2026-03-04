@@ -515,25 +515,94 @@ class PurchaseOrderModel {
   static PurchaseOrderModel fromDoc(
       DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
+
+    String parseString(dynamic value, {String fallback = ''}) {
+      if (value == null) return fallback;
+      final text = value.toString().trim();
+      return text.isEmpty ? fallback : text;
+    }
+
+    double parseDouble(dynamic value, {double fallback = 0.0}) {
+      if (value is num) return value.toDouble();
+      if (value is String) {
+        final cleaned = value.replaceAll(RegExp(r'[^0-9.\-]'), '');
+        return double.tryParse(cleaned) ?? fallback;
+      }
+      return fallback;
+    }
+
+    DateTime parseDate(dynamic value) {
+      if (value is Timestamp) return value.toDate();
+      if (value is DateTime) return value;
+      if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+      if (value is int) {
+        final isSeconds = value > 0 && value < 1000000000000;
+        return DateTime.fromMillisecondsSinceEpoch(
+            isSeconds ? value * 1000 : value);
+      }
+      if (value is double) {
+        final intValue = value.toInt();
+        final isSeconds = intValue > 0 && intValue < 1000000000000;
+        return DateTime.fromMillisecondsSinceEpoch(
+            isSeconds ? intValue * 1000 : intValue);
+      }
+      return DateTime.now();
+    }
+
+    double parseProgress(dynamic value) {
+      final raw = parseDouble(value, fallback: 0.0);
+      if (raw.isNaN || !raw.isFinite) {
+        return 0.0;
+      }
+      if (raw > 1.0 && raw <= 100.0) {
+        return raw / 100.0;
+      }
+      if (raw < 0) return 0.0;
+      if (raw > 1.0) return 1.0;
+      return raw;
+    }
+
+    PurchaseOrderStatus parseStatus(dynamic value) {
+      final normalized = parseString(value, fallback: 'draft')
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^a-z]'), '');
+      switch (normalized) {
+        case 'awaitingapproval':
+          return PurchaseOrderStatus.awaitingApproval;
+        case 'issued':
+          return PurchaseOrderStatus.issued;
+        case 'intransit':
+          return PurchaseOrderStatus.inTransit;
+        case 'received':
+          return PurchaseOrderStatus.received;
+        case 'cancelled':
+          return PurchaseOrderStatus.cancelled;
+        case 'draft':
+        default:
+          return PurchaseOrderStatus.draft;
+      }
+    }
+
     return PurchaseOrderModel(
       id: doc.id,
-      poNumber: data['poNumber'] ??
-          (doc.id.length > 6 ? doc.id.substring(0, 6).toUpperCase() : doc.id),
-      projectId: data['projectId'] ?? '',
-      vendorName: data['vendorName'] ?? '',
-      vendorId: data['vendorId'],
-      category: data['category'] ?? '',
-      owner: data['owner'] ?? '',
-      orderedDate:
-          (data['orderedDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      expectedDate:
-          (data['expectedDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      amount: (data['amount'] as num?)?.toDouble() ?? 0.0,
-      progress: (data['progress'] as num?)?.toDouble() ?? 0.0,
-      status: PurchaseOrderStatus.values.firstWhere(
-          (e) => e.name == (data['status'] ?? 'draft'),
-          orElse: () => PurchaseOrderStatus.draft),
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      poNumber: parseString(data['poNumber']) != ''
+          ? parseString(data['poNumber'])
+          : (parseString(data['id']) != ''
+              ? parseString(data['id'])
+              : (doc.id.length > 6
+                  ? doc.id.substring(0, 6).toUpperCase()
+                  : doc.id)),
+      projectId: parseString(data['projectId']),
+      vendorName: parseString(data['vendorName']),
+      vendorId: parseString(data['vendorId']),
+      category: parseString(data['category']),
+      owner: parseString(data['owner']),
+      orderedDate: parseDate(data['orderedDate']),
+      expectedDate: parseDate(data['expectedDate']),
+      amount: parseDouble(data['amount']),
+      progress: parseProgress(data['progress']),
+      status: parseStatus(data['status']),
+      createdAt: parseDate(data['createdAt']),
     );
   }
 }

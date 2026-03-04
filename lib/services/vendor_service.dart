@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
 class VendorModel {
   final String id;
@@ -246,11 +247,23 @@ class VendorService {
   /// Stream all vendors for a project
   static Stream<List<VendorModel>> streamVendors(String projectId,
       {int limit = 50}) {
-    return _vendorsCol(projectId)
-        .orderBy('createdAt', descending: true)
-        .limit(limit)
-        .snapshots()
-        .map((snap) => snap.docs.map(VendorModel.fromDoc).toList());
+    return _vendorsCol(projectId).limit(limit).snapshots().map((snap) {
+      final vendors = <VendorModel>[];
+      for (final doc in snap.docs) {
+        try {
+          vendors.add(VendorModel.fromDoc(doc));
+        } catch (e) {
+          debugPrint('Skipping malformed vendor ${doc.id}: $e');
+        }
+      }
+      vendors.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return vendors;
+    });
+  }
+
+  static Future<bool> hasAnyVendors(String projectId) async {
+    final snap = await _vendorsCol(projectId).limit(1).get();
+    return snap.docs.isNotEmpty;
   }
 
   /// Get a single vendor

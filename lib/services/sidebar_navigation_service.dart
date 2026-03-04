@@ -268,6 +268,44 @@ class SidebarNavigationService {
     return null;
   }
 
+  /// Find a sidebar item by checkpoint key.
+  SidebarItem? findItemByCheckpoint(String checkpoint) {
+    final normalized = checkpoint.trim().toLowerCase();
+    for (final item in _sidebarOrder) {
+      if (item.checkpoint.trim().toLowerCase() == normalized) {
+        return item;
+      }
+    }
+    return null;
+  }
+
+  /// Return ordered checkpoints that are still pending between the current
+  /// checkpoint and the destination (inclusive of destination).
+  List<SidebarItem> getPendingItemsToDestination({
+    required String? currentCheckpoint,
+    required String destinationCheckpoint,
+  }) {
+    final destinationIndex = _sidebarOrder
+        .indexWhere((item) => item.checkpoint == destinationCheckpoint);
+    if (destinationIndex == -1) return const <SidebarItem>[];
+
+    var startIndex = 0;
+    final current = (currentCheckpoint ?? '').trim();
+    if (current.isNotEmpty) {
+      final currentIndex =
+          _sidebarOrder.indexWhere((item) => item.checkpoint == current);
+      if (currentIndex != -1) {
+        startIndex = currentIndex + 1;
+      }
+    }
+
+    if (startIndex > destinationIndex) {
+      return const <SidebarItem>[];
+    }
+
+    return _sidebarOrder.sublist(startIndex, destinationIndex + 1);
+  }
+
   /// Get the previous item in the sidebar order before the current checkpoint
   SidebarItem? getPreviousItem(String? currentCheckpoint) {
     if (currentCheckpoint == null || currentCheckpoint.isEmpty) {

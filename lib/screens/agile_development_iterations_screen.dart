@@ -10,6 +10,7 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/execution_phase_service.dart';
 import 'package:ndu_project/models/agile_task.dart';
+import 'package:ndu_project/utils/form_validation_engine.dart';
 import 'package:ndu_project/widgets/agile_iteration_table_widget.dart';
 import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
 
@@ -415,141 +416,221 @@ class _AgileDevelopmentIterationsScreenState
     final taskDescriptionController = TextEditingController();
     final acceptanceCriteriaController = AutoBulletTextController();
     final iterationNotesController = TextEditingController();
+    final userStoryFieldKey = GlobalKey();
+    final assignedRoleFieldKey = GlobalKey();
     String selectedRole = '';
     int selectedStoryPoints = 1;
     String selectedPriority = 'Medium';
     String selectedStatus = 'To-Do';
+    Map<String, String> validationErrors = const {};
+
+    OutlineInputBorder fieldBorder(bool hasError) {
+      return OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(
+          color: hasError ? const Color(0xFFEF4444) : const Color(0xFFCBD5E1),
+        ),
+      );
+    }
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add New Task'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextField(
-                controller: userStoryController,
-                decoration:
-                    const InputDecoration(labelText: 'User Story/Task *'),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          return AlertDialog(
+            title: const Text('Add New Task'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    key: userStoryFieldKey,
+                    controller: userStoryController,
+                    onChanged: (_) {
+                      if (!validationErrors.containsKey('user_story')) return;
+                      setDialogState(() {
+                        validationErrors =
+                            Map<String, String>.from(validationErrors)
+                              ..remove('user_story');
+                      });
+                    },
+                    decoration: InputDecoration(
+                      labelText: 'User Story/Task *',
+                      errorText: validationErrors['user_story'],
+                      border:
+                          fieldBorder(validationErrors['user_story'] != null),
+                      enabledBorder:
+                          fieldBorder(validationErrors['user_story'] != null),
+                      focusedBorder:
+                          fieldBorder(validationErrors['user_story'] != null),
+                      errorBorder: fieldBorder(true),
+                      focusedErrorBorder: fieldBorder(true),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    key: assignedRoleFieldKey,
+                    initialValue: _availableRoles.isEmpty
+                        ? null
+                        : (_availableRoles.contains(selectedRole)
+                            ? selectedRole
+                            : null),
+                    decoration: InputDecoration(
+                      labelText: 'Assigned Role *',
+                      errorText: validationErrors['assigned_role'],
+                      border: fieldBorder(
+                          validationErrors['assigned_role'] != null),
+                      enabledBorder: fieldBorder(
+                          validationErrors['assigned_role'] != null),
+                      focusedBorder: fieldBorder(
+                          validationErrors['assigned_role'] != null),
+                      errorBorder: fieldBorder(true),
+                      focusedErrorBorder: fieldBorder(true),
+                    ),
+                    items: _availableRoles.map((role) {
+                      return DropdownMenuItem<String>(
+                          value: role, child: Text(role));
+                    }).toList(),
+                    onChanged: (value) {
+                      setDialogState(() {
+                        selectedRole = value ?? '';
+                        if (selectedRole.isNotEmpty) {
+                          validationErrors =
+                              Map<String, String>.from(validationErrors)
+                                ..remove('assigned_role');
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<int>(
+                    initialValue: selectedStoryPoints,
+                    decoration:
+                        const InputDecoration(labelText: 'Story Points *'),
+                    items: const [1, 2, 3, 5, 8].map((points) {
+                      return DropdownMenuItem<int>(
+                          value: points, child: Text('$points'));
+                    }).toList(),
+                    onChanged: (value) => selectedStoryPoints = value ?? 1,
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedPriority,
+                    decoration: const InputDecoration(labelText: 'Priority *'),
+                    items: const ['Critical', 'High', 'Medium', 'Low'].map((p) {
+                      return DropdownMenuItem<String>(value: p, child: Text(p));
+                    }).toList(),
+                    onChanged: (value) => selectedPriority = value ?? 'Medium',
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedStatus,
+                    decoration: const InputDecoration(labelText: 'Status *'),
+                    items: const ['To-Do', 'In-Progress', 'Testing', 'Done']
+                        .map((s) {
+                      return DropdownMenuItem<String>(value: s, child: Text(s));
+                    }).toList(),
+                    onChanged: (value) => selectedStatus = value ?? 'To-Do',
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: taskDescriptionController,
+                    decoration:
+                        const InputDecoration(labelText: 'Task Description'),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: acceptanceCriteriaController,
+                    decoration: const InputDecoration(
+                        labelText: 'Acceptance Criteria (use "." bullets)'),
+                    maxLines: 4,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: iterationNotesController,
+                    decoration: const InputDecoration(
+                        labelText: 'Iteration Notes (manual input only)'),
+                    maxLines: 2,
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: _availableRoles.isEmpty
-                    ? null
-                    : (_availableRoles.contains(selectedRole)
-                        ? selectedRole
-                        : null),
-                decoration: const InputDecoration(labelText: 'Assigned Role *'),
-                items: _availableRoles.map((role) {
-                  return DropdownMenuItem<String>(
-                      value: role, child: Text(role));
-                }).toList(),
-                onChanged: (value) => selectedRole = value ?? '',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
               ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<int>(
-                initialValue: selectedStoryPoints,
-                decoration: const InputDecoration(labelText: 'Story Points *'),
-                items: const [1, 2, 3, 5, 8].map((points) {
-                  return DropdownMenuItem<int>(
-                      value: points, child: Text('$points'));
-                }).toList(),
-                onChanged: (value) => selectedStoryPoints = value ?? 1,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: selectedPriority,
-                decoration: const InputDecoration(labelText: 'Priority *'),
-                items: const ['Critical', 'High', 'Medium', 'Low'].map((p) {
-                  return DropdownMenuItem<String>(value: p, child: Text(p));
-                }).toList(),
-                onChanged: (value) => selectedPriority = value ?? 'Medium',
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: selectedStatus,
-                decoration: const InputDecoration(labelText: 'Status *'),
-                items:
-                    const ['To-Do', 'In-Progress', 'Testing', 'Done'].map((s) {
-                  return DropdownMenuItem<String>(value: s, child: Text(s));
-                }).toList(),
-                onChanged: (value) => selectedStatus = value ?? 'To-Do',
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: taskDescriptionController,
-                decoration:
-                    const InputDecoration(labelText: 'Task Description'),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: acceptanceCriteriaController,
-                decoration: const InputDecoration(
-                    labelText: 'Acceptance Criteria (use "." bullets)'),
-                maxLines: 4,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: iterationNotesController,
-                decoration: const InputDecoration(
-                    labelText: 'Iteration Notes (manual input only)'),
-                maxLines: 2,
+              ElevatedButton(
+                onPressed: () async {
+                  final validation = FormValidationEngine.validateForm([
+                    ValidationFieldRule(
+                      id: 'user_story',
+                      label: 'User Story/Task',
+                      section: 'Task Details',
+                      type: ValidationFieldType.text,
+                      value: userStoryController.text,
+                      fieldKey: userStoryFieldKey,
+                    ),
+                    ValidationFieldRule(
+                      id: 'assigned_role',
+                      label: 'Assigned Role',
+                      section: 'Task Details',
+                      type: ValidationFieldType.dropdown,
+                      value: selectedRole,
+                      fieldKey: assignedRoleFieldKey,
+                    ),
+                  ]);
+
+                  if (!validation.isValid) {
+                    setDialogState(() {
+                      validationErrors = validation.errorByFieldId;
+                    });
+                    FormValidationEngine.showValidationSnackBar(
+                      this.context,
+                      validation,
+                    );
+                    await FormValidationEngine.scrollToFirstIssue(validation);
+                    return;
+                  }
+
+                  final newTask = AgileTask(
+                    userStory: userStoryController.text,
+                    assignedRole: selectedRole,
+                    storyPoints: selectedStoryPoints,
+                    priority: selectedPriority,
+                    status: selectedStatus,
+                    taskDescription: taskDescriptionController.text,
+                    acceptanceCriteria: acceptanceCriteriaController.text,
+                    iterationNotes: iterationNotesController.text,
+                  );
+
+                  setState(() {
+                    _tasks.add(newTask);
+                  });
+
+                  final projectId = _projectId;
+                  if (projectId != null) {
+                    try {
+                      await ExecutionPhaseService.saveAgileTasks(
+                        projectId: projectId,
+                        tasks: _tasks,
+                      );
+                    } catch (e) {
+                      debugPrint('Error saving task: $e');
+                    }
+                  }
+
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext);
+                  }
+                },
+                child: const Text('Add'),
               ),
             ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (userStoryController.text.isEmpty || selectedRole.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Please fill in required fields')),
-                );
-                return;
-              }
-
-              final newTask = AgileTask(
-                userStory: userStoryController.text,
-                assignedRole: selectedRole,
-                storyPoints: selectedStoryPoints,
-                priority: selectedPriority,
-                status: selectedStatus,
-                taskDescription: taskDescriptionController.text,
-                acceptanceCriteria: acceptanceCriteriaController.text,
-                iterationNotes: iterationNotesController.text,
-              );
-
-              setState(() {
-                _tasks.add(newTask);
-              });
-
-              final projectId = _projectId;
-              if (projectId != null) {
-                try {
-                  await ExecutionPhaseService.saveAgileTasks(
-                    projectId: projectId,
-                    tasks: _tasks,
-                  );
-                } catch (e) {
-                  debugPrint('Error saving task: $e');
-                }
-              }
-
-              if (context.mounted) {
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

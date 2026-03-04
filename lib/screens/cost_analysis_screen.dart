@@ -337,15 +337,35 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
 
   Future<void> _autoPopulateForNewProject(
       {required bool hasExistingData}) async {
-    if (hasExistingData || widget.solutions.isEmpty) {
+    if (widget.solutions.isEmpty) {
       return;
     }
 
-    await _generateProjectValue();
+    final needsProjectValue = _needsProjectValueGeneration();
+    final needsCostBreakdown = !_hasMeaningfulCostRows();
+    final needsSavings =
+        _savingsSuggestions.isEmpty && _hasMeaningfulBenefitLineItems();
+    if (hasExistingData &&
+        !needsProjectValue &&
+        !needsCostBreakdown &&
+        !needsSavings) {
+      return;
+    }
+
+    if (needsProjectValue) {
+      await _generateProjectValue();
+    }
     if (_benefitLineItems.isEmpty) {
       _seedDefaultProjectBenefits();
     }
-    await _generateCostBreakdown();
+    if (needsCostBreakdown) {
+      await _generateCostBreakdown();
+    }
+    if (_benefitLineItems.isNotEmpty &&
+        (needsSavings || _savingsSuggestions.isEmpty) &&
+        !_isSavingsGenerating) {
+      await _generateSavingsSuggestions();
+    }
     await _saveCostAnalysisData();
   }
 
@@ -402,6 +422,168 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     });
   }
 
+  bool _hasMeaningfulProjectValueBenefits() {
+    return _projectValueBenefitControllers.values
+        .any((controller) => controller.text.trim().isNotEmpty);
+  }
+
+  bool _hasMeaningfulBenefitLineItems() {
+    return _benefitLineItems.any((entry) {
+      final hasTitle = entry.titleController.text.trim().isNotEmpty;
+      final hasValue = entry.totalValue > 0;
+      final hasNotes = entry.notesController.text.trim().isNotEmpty;
+      return hasTitle || hasValue || hasNotes;
+    });
+  }
+
+  bool _hasMeaningfulCostRows() {
+    return _rowsPerSolution.any((rows) {
+      return rows.any((row) {
+        final name = row.itemController.text.trim();
+        final description = row.descriptionController.text.trim().toLowerCase();
+        final assumptions = row.assumptionsController.text.trim();
+        final hasName = name.isNotEmpty && name.toLowerCase() != 'name';
+        final hasDescription =
+            description.isNotEmpty && !description.startsWith('lorem ipsum');
+        final hasAssumptions = assumptions.isNotEmpty;
+        final hasCost = row.currentCost() > 0;
+        return hasName || hasDescription || hasAssumptions || hasCost;
+      });
+    });
+  }
+
+  bool _needsProjectValueGeneration() {
+    final hasBaselineValue =
+        _parseCurrencyInput(_projectValueAmountController.text.trim()) > 0;
+    if (!hasBaselineValue) return true;
+    if (!_hasMeaningfulProjectValueBenefits()) return true;
+    if (!_hasMeaningfulBenefitLineItems()) return true;
+    return false;
+  }
+
+  String _truncateAiContext(String text, {int maxChars = 18000}) {
+    if (text.length <= maxChars) return text;
+    return '${text.substring(0, maxChars)}\n\n[Context truncated for length]';
+  }
+
+  String _buildUnifiedAiContext({
+    String sectionLabel = 'Cost Benefit Analysis',
+    int? forSolution,
+  }) {
+    final provider = ProjectDataInherited.maybeOf(context);
+    final projectData = provider?.projectData;
+    final sections = <String>[];
+
+    if (projectData != null) {
+      final contextScan = ProjectDataHelper.buildProjectContextScan(
+        projectData,
+        sectionLabel: sectionLabel,
+      ).trim();
+      if (contextScan.isNotEmpty) {
+        sections.add('Project context scan:\n$contextScan');
+      }
+
+      final structured = ProjectDataHelper.buildFepContext(
+        projectData,
+        sectionLabel: sectionLabel,
+      ).trim();
+      if (structured.isNotEmpty) {
+        sections.add('Structured project context:\n$structured');
+      }
+    }
+
+    final costContext = _buildCostContextNotes(forSolution: forSolution).trim();
+    if (costContext.isNotEmpty) {
+      sections.add('Cost analysis context:\n$costContext');
+    }
+
+    return _truncateAiContext(sections.join('\n\n'));
+  }
+
+  String _normalizeBenefitCategoryKey(String rawCategory) {
+    final normalized = rawCategory
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[_-]+'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ');
+    if (normalized.isEmpty) return _projectValueFields.first.key;
+
+    final directKey = normalized.replaceAll(' ', '_');
+    for (final field in _projectValueFields) {
+      if (field.key == directKey) return field.key;
+      if (field.value.toLowerCase() == normalized) return field.key;
+    }
+
+    if (normalized.contains('revenue') ||
+        normalized.contains('financial gain') ||
+        normalized == 'financial') {
+      return 'revenue';
+    }
+    if (normalized.contains('cost saving') ||
+        normalized.contains('cost reduction') ||
+        normalized.contains('cost avoid')) {
+      return 'cost_saving';
+    }
+    if (normalized.contains('operational') ||
+        normalized.contains('ops efficiency') ||
+        normalized.contains('efficiency')) {
+      return 'ops_efficiency';
+    }
+    if (normalized.contains('productivity') ||
+        normalized.contains('throughput') ||
+        normalized.contains('cycle time')) {
+      return 'productivity';
+    }
+    if (normalized.contains('regulatory') ||
+        normalized.contains('compliance') ||
+        normalized.contains('risk reduction')) {
+      return 'regulatory_compliance';
+    }
+    if (normalized.contains('process') || normalized.contains('workflow')) {
+      return 'process_improvement';
+    }
+    if (normalized.contains('brand') ||
+        normalized.contains('reputation') ||
+        normalized.contains('perception')) {
+      return 'brand_image';
+    }
+    if (normalized.contains('stakeholder') ||
+        normalized.contains('shareholder') ||
+        normalized.contains('investor')) {
+      return 'stakeholder_commitment';
+    }
+    if (normalized == 'other' || normalized.contains('misc')) {
+      return 'other';
+    }
+    return 'other';
+  }
+
+  Map<String, String> _normalizeProjectValueBenefitEntries(Map rawEntries) {
+    final normalized = <String, String>{};
+    for (final entry in rawEntries.entries) {
+      final value = (entry.value ?? '').toString().trim();
+      if (value.isEmpty) continue;
+      final key = _normalizeBenefitCategoryKey((entry.key ?? '').toString());
+      final existing = normalized[key];
+      if (existing == null || value.length > existing.length) {
+        normalized[key] = value;
+      }
+    }
+    return normalized;
+  }
+
+  void _applyProjectValueBenefitInsights(Map<String, String> rawBenefits) {
+    final normalized = _normalizeProjectValueBenefitEntries(rawBenefits);
+    for (final field in _projectValueFields) {
+      final controller = _projectValueBenefitControllers[field.key];
+      if (controller == null) continue;
+      final text = (normalized[field.key] ?? '').trim();
+      if (text.isNotEmpty) {
+        controller.text = text;
+      }
+    }
+  }
+
   bool _loadExistingData() {
     try {
       final provider = ProjectDataInherited.of(context);
@@ -447,7 +629,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           if (match == null) continue;
 
           _projectValueAmountBySolution[i] = match.projectValueAmount;
-          _projectValueBenefitsBySolution[i] = Map<String, String>.from(
+          _projectValueBenefitsBySolution[i] =
+              _normalizeProjectValueBenefitEntries(
             match.projectValueBenefits,
           );
         }
@@ -457,7 +640,9 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           _projectValueAmountBySolution[0] =
               costAnalysisData.projectValueAmount;
           _projectValueBenefitsBySolution[0] =
-              Map<String, String>.from(costAnalysisData.projectValueBenefits);
+              _normalizeProjectValueBenefitEntries(
+            costAnalysisData.projectValueBenefits,
+          );
         }
       }
 
@@ -466,9 +651,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       for (final item in costAnalysisData.benefitLineItems) {
         final entry = _BenefitLineItemEntry(
           id: item.id,
-          categoryKey: item.categoryKey.isEmpty
-              ? _projectValueFields.first.key
-              : item.categoryKey,
+          categoryKey: _normalizeBenefitCategoryKey(item.categoryKey),
           title: item.title,
           unitValue: double.tryParse(item.unitValue) ?? 0,
           units: double.tryParse(item.units) ?? 0,
@@ -1643,7 +1826,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Switch between steps freely—your financial inputs stay in place until you export or confirm exit.',
+              'Switch tabs as needed',
               style: TextStyle(fontSize: 13, color: Colors.blueGrey[700]),
             ),
           ),
@@ -2191,7 +2374,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                 ]),
                 SizedBox(height: 4),
                 Text(
-                  'Estimated Project Value (USD)',
+                  'AI-assisted estimation to showcase project benefits',
                   style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ],
@@ -2541,7 +2724,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Category Details',
+          'Estimated Benefits',
           style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
@@ -2827,7 +3010,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
   _BenefitLineItemEntry _createBenefitEntry({String? categoryKey}) {
     final entry = _BenefitLineItemEntry(
       id: 'benefit-${DateTime.now().microsecondsSinceEpoch}',
-      categoryKey: categoryKey ?? _projectValueFields.first.key,
+      categoryKey:
+          _normalizeBenefitCategoryKey(categoryKey ?? _projectValueFields.first.key),
     );
     entry.bind(_onBenefitEntryEdited);
     return entry;
@@ -2895,9 +3079,9 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
 
   Widget _buildFinancialBenefitsTrackerSection() {
     final tabs = const [
-      'Project Benefits',
-      'Category Details',
-      'Distribution Summary'
+      'Line Items',
+      'Estimated Benefits',
+      'Project Benefits Review'
     ];
     final activeTabIndex = math.min(_benefitTabIndex, tabs.length - 1);
     final summaries = _benefitSummaries();
@@ -3165,7 +3349,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                               width: _benefitTotalValueColumnWidth,
                               alignment: Alignment.center),
                           const SizedBox(width: _benefitColumnGap),
-                          _benefitHeaderCell('Notes',
+                          _benefitHeaderCell('Basis',
                               width: _benefitNotesColumnWidth,
                               alignment: Alignment.center),
                           const SizedBox(width: _benefitColumnGap),
@@ -3531,9 +3715,9 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 12),
             minLines: 1,
-            maxLines: 2,
+            maxLines: 1,
             decoration: InputDecoration(
-              hintText: 'Realisation plan or assumptions',
+              hintText: 'Basis (e.g., Monthly, Annual)',
               hintStyle:
                   const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
               isDense: true,
@@ -3697,7 +3881,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
         const SizedBox(height: 6),
         Text(
-          'Add project benefits in the "Project Benefits" tab to see a comprehensive review across all categories.',
+          'Add project benefits in the "Line Items" tab to see a comprehensive review across all categories.',
           style: TextStyle(fontSize: 12, color: Colors.grey[600]),
         ),
       ] else ...[
@@ -4347,7 +4531,10 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         description: row.descriptionController.text,
         assumptions: row.assumptionsController.text,
         currency: _currency,
-        contextNotes: _buildCostContextNotes(forSolution: _activeTab),
+        contextNotes: _buildUnifiedAiContext(
+          sectionLabel: 'Cost Benefit Analysis - Initial Cost Estimate',
+          forSolution: _activeTab,
+        ),
       );
       if (!mounted) return;
       setState(() {
@@ -4372,7 +4559,10 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         description: 'High-level category estimate for $_currency',
         assumptions: entry.notesController.text,
         currency: _currency,
-        contextNotes: _buildCostContextNotes(forSolution: solutionIndex),
+        contextNotes: _buildUnifiedAiContext(
+          sectionLabel: 'Cost Benefit Analysis - Initial Cost Estimate',
+          forSolution: solutionIndex,
+        ),
       );
       if (!mounted) return;
       setState(() {
@@ -4644,7 +4834,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(
                 _benefitLineItems.isEmpty
-                    ? 'Add project benefits in the "Project Benefits" tab to enable AI savings analysis.'
+                    ? 'Add project benefits in the "Line Items" tab to enable AI savings analysis.'
                     : 'Click "Generate savings scenarios" to identify cost reduction opportunities for this solution.',
                 style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),
@@ -5520,8 +5710,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         valueSetupSnapshot?.hasBenefitSignals ?? false;
     final helper = usesValueSetup
         ? (hasValueSetupBenefits
-            ? 'Derived from Project Value baseline and monetised benefit entries. Adjust the "Project Benefits" tab to update this snapshot.'
-            : 'Project Value baseline anchors this snapshot. Add monetised benefits in the "Project Benefits" tab to unlock ROI and NPV context.')
+            ? 'Derived from Project Value baseline and monetised benefit entries. Adjust the "Line Items" tab to update this snapshot.'
+            : 'Project Value baseline anchors this snapshot. Add monetised benefits in the "Line Items" tab to unlock ROI and NPV context.')
         : totalCost > 0
             ? 'AI generated total based on the current cost items. Adjust any project benefit to update this summary.'
             : 'Use AI or add cost items below to build this investment profile.';
@@ -5537,8 +5727,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         : 0;
     final summaryLine = usesValueSetup
         ? (hasValueSetupBenefits
-            ? '$summaryCount project benefits captured | Update the "Project Benefits" tab to recalc ROI/NPV automatically.'
-            : 'Project Value baseline captured | Add monetised benefits in the "Project Benefits" tab to enrich ROI/NPV context.')
+            ? '$summaryCount project benefits captured | Update the "Line Items" tab to recalc ROI/NPV automatically.'
+            : 'Project Value baseline captured | Add monetised benefits in the "Line Items" tab to enrich ROI/NPV context.')
         : '$summaryCount/$totalRows cost items tracked | ROI/NPV adjust automatically as you edit project benefits.';
 
     return Container(
@@ -6680,7 +6870,9 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     try {
       final map = await _openAi.generateCostBreakdownForSolutions(
         widget.solutions,
-        contextNotes: _buildCostContextNotes(),
+        contextNotes: _buildUnifiedAiContext(
+          sectionLabel: 'Cost Benefit Analysis - Initial Cost Estimate',
+        ),
         currency: _currency,
       );
       if (!mounted) return;
@@ -7174,11 +7366,18 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
 
     try {
       final payload = eligible.map((entry) => entry.toPayload()).toList();
+      final contextNotes = _buildUnifiedAiContext(
+        sectionLabel: 'Cost Benefit Analysis - Savings Calculator',
+        forSolution: _activeSolutionIndex(),
+      );
+      final userSavingsNotes = _savingsNotesController.text.trim();
       final suggestions = await _openAi.generateBenefitSavingsSuggestions(
         payload,
         currency: _currency,
         savingsTargetPercent: targetPercent,
-        contextNotes: _savingsNotesController.text.trim(),
+        contextNotes: userSavingsNotes.isEmpty
+            ? contextNotes
+            : '$contextNotes\n\nSavings focus notes: $userSavingsNotes',
       );
       if (!mounted) return;
       setState(() {
@@ -7206,6 +7405,11 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     });
     try {
       final provider = ProjectDataHelper.getProvider(context);
+      final activeIndex = _activeSolutionIndex();
+      final contextNotes = _buildUnifiedAiContext(
+        sectionLabel: 'Cost Benefit Analysis - Project Benefit Calculation',
+        forSolution: activeIndex,
+      );
 
       // Add current values to history before regenerating
       provider.addFieldToHistory(
@@ -7222,7 +7426,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
 
       final insights = await _openAi.generateProjectValueInsights(
         widget.solutions,
-        contextNotes: _notesController.text.trim(),
+        contextNotes: contextNotes,
       );
       if (!mounted) return;
 
@@ -7233,7 +7437,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           benefitLineItems = await _openAi.generateBenefitLineItems(
             solutions: widget.solutions,
             estimatedProjectValue: insights.estimatedProjectValue,
-            contextNotes: _notesController.text.trim(),
+            contextNotes: contextNotes,
             currency: _currency,
           );
         } catch (e) {
@@ -7249,14 +7453,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           _projectValueAmountController.text =
               insights.estimatedProjectValue.toStringAsFixed(0);
         }
-        for (final field in _projectValueFields) {
-          final value = insights.benefits[field.key] ??
-              insights.benefits[field.key.replaceAll('_', ' ')] ??
-              '';
-          if (value.trim().isNotEmpty) {
-            _projectValueBenefitControllers[field.key]!.text = value.trim();
-          }
-        }
+        _applyProjectValueBenefitInsights(insights.benefits);
 
         // Clear existing project benefits and add generated ones
         for (final entry in _benefitLineItems) {
@@ -7271,7 +7468,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           final item = benefitLineItems[i];
           final entry = _BenefitLineItemEntry(
             id: 'benefit-$baseTimestamp-$i',
-            categoryKey: item.category,
+            categoryKey: _normalizeBenefitCategoryKey(item.category),
             title: item.title,
             unitValue: item.unitValue,
             units: item.units,
@@ -7358,7 +7555,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             'Average unit value of other benefit rows ($_currency): ${peerAverage <= 0 ? "Not available" : peerAverage.toStringAsFixed(2)}')
         ..writeln('Project context: $projectContext')
         ..writeln(
-            'Cost context: ${_buildCostContextNotes(forSolution: activeIndex)}')
+            'Cost context: ${_buildUnifiedAiContext(sectionLabel: "Cost Benefit Analysis - Unit Value Suggestion", forSolution: activeIndex)}')
         ..writeln(
             'Unit value mode: Return unit value only, not aggregate total.');
       if (benefitNotes.isNotEmpty) {
@@ -7454,7 +7651,10 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     try {
       final map = await _openAi.generateCostBreakdownForSolutions(
         [solution],
-        contextNotes: _buildCostContextNotes(forSolution: index),
+        contextNotes: _buildUnifiedAiContext(
+          sectionLabel: 'Cost Benefit Analysis - Initial Cost Estimate',
+          forSolution: index,
+        ),
         currency: _currency,
       );
       if (!mounted) return;
@@ -7484,7 +7684,9 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     try {
       final map = await _openAi.generateCostBreakdownForSolutions(
         widget.solutions,
-        contextNotes: _buildCostContextNotes(),
+        contextNotes: _buildUnifiedAiContext(
+          sectionLabel: 'Cost Benefit Analysis - Initial Cost Estimate',
+        ),
         currency: _currency,
       );
       for (int i = 0;
@@ -7506,8 +7708,13 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
   }
 
   Future<void> _regenerateAllCostAnalysis() async {
-    // Regenerate project value and project benefits
+    // Regenerate all AI-derived sections to keep the page synchronized.
     await _generateProjectValue();
+    await _generateCostBreakdown();
+    if (_benefitLineItems.isNotEmpty) {
+      await _generateSavingsSuggestions();
+    }
+    await _saveCostAnalysisData();
   }
 }
 

@@ -48,10 +48,13 @@ class _FrontEndPlanningOpportunitiesScreenState
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _notes = TextEditingController();
   bool _isSyncReady = false;
+  bool _hasAttemptedInitialAutofill = false;
 
   // Backing rows for the table; built from incoming requirements (if any).
   late List<OpportunityItem> _rows;
   bool _isGeneratingOpportunities = false;
+  final Map<String, OpportunityItem> _redoSnapshotsByRowId =
+      <String, OpportunityItem>{};
 
   @override
   void initState() {
@@ -60,11 +63,7 @@ class _FrontEndPlanningOpportunitiesScreenState
     _rows = [];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final projectData = ProjectDataHelper.getData(context);
-      _notes.text =
-          'Placeholder notes...'; // _notes is typically not used for main data storage here, preserving existing logic if any
-      // Actually, looking at previous code, _notes was sync'd to opportunities string.
-      // But opportunities string is now legacy/secondary.
-      // We will try to sync it if needed, but primarily use list.
+      _notes.text = projectData.frontEndPlanning.opportunities.trim();
 
       _isSyncReady = true;
 
@@ -79,13 +78,25 @@ class _FrontEndPlanningOpportunitiesScreenState
       // Load saved opportunities
       _loadSavedOpportunities(projectData);
       _syncOpportunitiesToProvider();
+      if (_shouldAutofillInitialOpportunities()) {
+        _hasAttemptedInitialAutofill = true;
+        _generateOpportunitiesFromContext(autoTriggered: true);
+      }
       if (mounted) setState(() {});
     });
   }
 
+  bool _shouldAutofillInitialOpportunities() {
+    if (_hasAttemptedInitialAutofill) return false;
+    if (_isGeneratingOpportunities) return false;
+    return _rows.where((r) => r.opportunity.trim().isNotEmpty).isEmpty;
+  }
+
   void _loadSavedOpportunities(ProjectDataModel data) {
     if (data.frontEndPlanning.opportunityItems.isNotEmpty) {
-      _rows = List.from(data.frontEndPlanning.opportunityItems);
+      _rows = data.frontEndPlanning.opportunityItems
+          .map(_normalizeOpportunityItem)
+          .toList();
     } else {
       // Migration: Try to parse legacy string format "opportunity: discipline"
       final savedOpportunitiesText = data.frontEndPlanning.opportunities.trim();
@@ -97,19 +108,25 @@ class _FrontEndPlanningOpportunitiesScreenState
             .toList();
 
         if (lines.isNotEmpty) {
-          _rows = lines.map((line) {
+          _rows = lines.asMap().entries.map((entry) {
+            final line = entry.value;
             final parts = line.split(':');
             final opportunity = parts.isNotEmpty ? parts[0].trim() : '';
             final discipline = parts.length > 1 ? parts[1].trim() : '';
 
-            return OpportunityItem(
-              id: DateTime.now().microsecondsSinceEpoch.toString(),
+            return _normalizeOpportunityItem(OpportunityItem(
+              id: '${DateTime.now().microsecondsSinceEpoch}_${entry.key + 1}',
               opportunity: opportunity,
               discipline: discipline,
               stakeholder: '',
+              responsibleRole: '',
               potentialCostSavings: '',
               potentialScheduleSavings: '',
-            );
+              implementationStrategy: '',
+              applicablePhase: '',
+              owner: '',
+              status: 'Identified',
+            ));
           }).toList();
           // Initial sync to persist migration
           _syncOpportunitiesToProvider();
@@ -124,56 +141,166 @@ class _FrontEndPlanningOpportunitiesScreenState
       {
         'opportunity': 'Automate manual data entry processes',
         'discipline': 'IT',
-        'stakeholder': 'IT Operations Manager',
+        'responsibleRole': 'IT Operations Manager',
+        'owner': 'IT Systems Lead',
         'potentialCostSavings': '50,000',
-        'potentialScheduleSavings': '4 weeks',
+        'potentialScheduleSavings': '4 weeks faster',
+        'implementationStrategy':
+            'Deploy workflow automation in high-volume tasks first, then expand.',
+        'applicablePhase': 'Planning',
+        'status': 'Identified',
       },
       {
         'opportunity': 'Consolidate vendor contracts for better pricing',
         'discipline': 'Procurement',
-        'stakeholder': 'Procurement Director',
+        'responsibleRole': 'Procurement Director',
+        'owner': 'Strategic Sourcing Lead',
         'potentialCostSavings': '75,000',
-        'potentialScheduleSavings': '6 weeks',
+        'potentialScheduleSavings': '6 weeks faster',
+        'implementationStrategy':
+            'Bundle overlapping contracts into framework agreements with fixed rates.',
+        'applicablePhase': 'Planning',
+        'status': 'Identified',
       },
       {
-        'opportunity': 'Implement early risk detection mechanisms',
+        'opportunity': 'Implement early quality and risk detection mechanisms',
         'discipline': 'Project Management',
-        'stakeholder': 'Program Manager',
+        'responsibleRole': 'Program Manager',
+        'owner': 'PMO Coordinator',
         'potentialCostSavings': '30,000',
-        'potentialScheduleSavings': '2 weeks',
+        'potentialScheduleSavings': '2 weeks faster',
+        'implementationStrategy':
+            'Run weekly control gates with issue trend dashboards.',
+        'applicablePhase': 'Execution',
+        'status': 'Identified',
       },
       {
         'opportunity': 'Streamline approval workflows',
         'discipline': 'Operations',
-        'stakeholder': 'Operations Lead',
+        'responsibleRole': 'Operations Lead',
+        'owner': 'Process Improvement Analyst',
         'potentialCostSavings': '40,000',
-        'potentialScheduleSavings': '3 weeks',
+        'potentialScheduleSavings': '3 weeks faster',
+        'implementationStrategy':
+            'Introduce delegated approval thresholds and parallel review steps.',
+        'applicablePhase': 'Design',
+        'status': 'Identified',
       },
       {
         'opportunity': 'Leverage existing infrastructure investments',
         'discipline': 'IT',
-        'stakeholder': 'IT Infrastructure Manager',
+        'responsibleRole': 'IT Infrastructure Manager',
+        'owner': 'Infrastructure Architect',
         'potentialCostSavings': '100,000',
-        'potentialScheduleSavings': '8 weeks',
+        'potentialScheduleSavings': '8 weeks faster',
+        'implementationStrategy':
+            'Reuse approved environments and templates instead of greenfield provisioning.',
+        'applicablePhase': 'Execution',
+        'status': 'Identified',
       },
     ];
 
     setState(() {
       _rows = fallbackList
-          .map((e) => OpportunityItem(
-                id: DateTime.now().microsecondsSinceEpoch.toString(),
-                opportunity: (e['opportunity'] ?? '').toString(),
-                discipline: (e['discipline'] ?? '').toString(),
-                stakeholder: (e['stakeholder'] ?? '').toString(),
+          .asMap()
+          .entries
+          .map((entry) => _normalizeOpportunityItem(OpportunityItem(
+                id: '${DateTime.now().microsecondsSinceEpoch}_${entry.key + 1}',
+                opportunity: (entry.value['opportunity'] ?? '').toString(),
+                discipline: (entry.value['discipline'] ?? '').toString(),
+                stakeholder: (entry.value['responsibleRole'] ?? '').toString(),
+                responsibleRole:
+                    (entry.value['responsibleRole'] ?? '').toString(),
                 potentialCostSavings:
-                    (e['potentialCostSavings'] ?? '').toString(),
+                    (entry.value['potentialCostSavings'] ?? '').toString(),
                 potentialScheduleSavings:
-                    (e['potentialScheduleSavings'] ?? '').toString(),
-                impact: (e['impact'] ?? 'Medium').toString(),
-              ))
+                    (entry.value['potentialScheduleSavings'] ?? '').toString(),
+                implementationStrategy:
+                    (entry.value['implementationStrategy'] ?? '').toString(),
+                applicablePhase:
+                    (entry.value['applicablePhase'] ?? '').toString(),
+                owner: (entry.value['owner'] ?? '').toString(),
+                status: (entry.value['status'] ?? 'Identified').toString(),
+                assignedTo: (entry.value['owner'] ?? '').toString(),
+                impact: (entry.value['impact'] ?? 'Medium').toString(),
+              )))
           .toList();
     });
     _syncOpportunitiesToProvider();
+  }
+
+  OpportunityItem _normalizeOpportunityItem(OpportunityItem item,
+      {int index = 0}) {
+    final id = item.id.trim().isNotEmpty
+        ? item.id.trim()
+        : '${DateTime.now().microsecondsSinceEpoch}_${index + 1}';
+    final role = item.responsibleRole.trim().isNotEmpty
+        ? item.responsibleRole.trim()
+        : item.stakeholder.trim();
+    final owner = item.owner.trim().isNotEmpty
+        ? item.owner.trim()
+        : item.assignedTo.trim();
+    final phase = item.applicablePhase.trim().isNotEmpty
+        ? item.applicablePhase.trim()
+        : _phaseFromTags(item.appliesTo);
+    final status =
+        item.status.trim().isNotEmpty ? item.status.trim() : 'Identified';
+    final opportunity = item.opportunity.trim().isNotEmpty
+        ? item.opportunity.trim()
+        : 'Opportunity ${index + 1}';
+    final implementationStrategy = item.implementationStrategy.trim().isNotEmpty
+        ? item.implementationStrategy.trim()
+        : 'Define implementation steps, owner handoffs, and validation checkpoints.';
+
+    return OpportunityItem(
+      id: id,
+      opportunity: opportunity,
+      discipline: item.discipline.trim(),
+      stakeholder: role,
+      responsibleRole: role,
+      potentialCostSavings: item.potentialCostSavings.trim(),
+      potentialScheduleSavings: item.potentialScheduleSavings.trim(),
+      implementationStrategy: implementationStrategy,
+      applicablePhase: phase,
+      owner: owner,
+      status: status,
+      appliesTo: item.appliesTo.isNotEmpty
+          ? List<String>.from(item.appliesTo)
+          : _tagsFromPhase(phase),
+      assignedTo: owner,
+      impact: item.impact.trim().isNotEmpty ? item.impact.trim() : 'Medium',
+    );
+  }
+
+  String _phaseFromTags(List<String> tags) {
+    if (tags.isEmpty) return '';
+    final normalized = tags.map((e) => e.trim().toLowerCase()).toSet();
+    if (normalized.contains('project wide')) return 'All';
+    if (normalized.contains('schedule') && normalized.contains('estimate')) {
+      return 'Planning';
+    }
+    if (normalized.contains('training')) return 'Execution';
+    return '';
+  }
+
+  List<String> _tagsFromPhase(String phase) {
+    final normalized = phase.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      return const <String>[];
+    }
+    if (normalized == 'all') {
+      return const <String>['Project Wide', 'Estimate', 'Schedule', 'Training'];
+    }
+    if (normalized == 'planning') {
+      return const <String>['Estimate', 'Schedule'];
+    }
+    if (normalized == 'execution') {
+      return const <String>['Schedule', 'Training'];
+    }
+    if (normalized == 'launch') {
+      return const <String>['Training'];
+    }
+    return const <String>[];
   }
 
   @override
@@ -188,7 +315,18 @@ class _FrontEndPlanningOpportunitiesScreenState
 
     // Legacy string format
     final oppText = _rows
-        .map((r) => '${r.opportunity}: ${r.discipline}')
+        .map((r) {
+          final parts = <String>[
+            r.opportunity.trim(),
+            if (r.discipline.trim().isNotEmpty)
+              'Discipline: ${r.discipline.trim()}',
+            if (r.responsibleRole.trim().isNotEmpty)
+              'Role: ${r.responsibleRole.trim()}',
+            if (r.owner.trim().isNotEmpty) 'Owner: ${r.owner.trim()}',
+            if (r.status.trim().isNotEmpty) 'Status: ${r.status.trim()}',
+          ];
+          return parts.where((p) => p.isNotEmpty).join(' | ');
+        })
         .where((s) => s.trim().isNotEmpty)
         .join('\n');
 
@@ -207,11 +345,42 @@ class _FrontEndPlanningOpportunitiesScreenState
     );
   }
 
+  String _resolvePreferredSolutionTitle(ProjectDataModel data) {
+    final preferred = data.preferredSolutionAnalysis;
+    final directTitle = preferred?.selectedSolutionTitle?.trim() ?? '';
+    if (directTitle.isNotEmpty) return directTitle;
+
+    final preferredIndex = preferred?.selectedSolutionIndex;
+    if (preferredIndex != null &&
+        preferredIndex >= 0 &&
+        preferredIndex < data.potentialSolutions.length) {
+      final indexedTitle = data.potentialSolutions[preferredIndex].title.trim();
+      if (indexedTitle.isNotEmpty) return indexedTitle;
+    }
+
+    final preferredId = preferred?.selectedSolutionId?.trim() ?? '';
+    if (preferredId.isNotEmpty) {
+      for (final solution in data.potentialSolutions) {
+        if (solution.id.trim() == preferredId &&
+            solution.title.trim().isNotEmpty) {
+          return solution.title.trim();
+        }
+      }
+    }
+
+    if (data.preferredSolution?.title.trim().isNotEmpty == true) {
+      return data.preferredSolution!.title.trim();
+    }
+    if (data.solutionTitle.trim().isNotEmpty) return data.solutionTitle.trim();
+    return data.potentialSolution.trim();
+  }
+
   Future<void> _regenerateAllOpportunities() async {
     await _generateOpportunitiesFromContext();
   }
 
-  Future<void> _generateOpportunitiesFromContext() async {
+  Future<void> _generateOpportunitiesFromContext(
+      {bool autoTriggered = false}) async {
     if (_isGeneratingOpportunities) return; // Prevent duplicate calls
     setState(() {
       _isGeneratingOpportunities = true;
@@ -226,7 +395,7 @@ class _FrontEndPlanningOpportunitiesScreenState
         final row = _rows[i];
         if (row.opportunity.trim().isNotEmpty) {
           provider.addFieldToHistory(
-            'fep_opportunity_${i}_opportunity',
+            'fep_opportunity_${row.id}_opportunity',
             row.opportunity,
             isAiGenerated: true,
           );
@@ -234,82 +403,38 @@ class _FrontEndPlanningOpportunitiesScreenState
       }
 
       // Verify selectedSolutionTitle exists - if not, log warning
-      final selectedSolution =
-          data.preferredSolutionAnalysis?.selectedSolutionTitle;
-      if (selectedSolution == null || selectedSolution.trim().isEmpty) {
+      final selectedSolution = _resolvePreferredSolutionTitle(data);
+      if (selectedSolution.trim().isEmpty) {
         debugPrint(
             'Warning: selectedSolutionTitle is blank. Opportunities generation may be incomplete.');
         // Still proceed with generation, but context will be missing selected solution
       }
 
-      final ctx = ProjectDataHelper.buildFepContext(data,
+      final baseContext = ProjectDataHelper.buildFepContext(data,
           sectionLabel: 'Project Opportunities');
+      final focusedContext = '''
+$baseContext
+
+Selected Preferred Solution:
+${selectedSolution.trim().isEmpty ? 'Not specified' : selectedSolution.trim()}
+
+Opportunity generation constraints:
+- Match the exact project scope and business case details.
+- Match region/location, industry type, and practical delivery constraints.
+- Generate opportunities that are directly transferable into the project activities log with clear discipline, role, owner, phase, and status.
+''';
       final ai = OpenAiServiceSecure();
-      final list = await ai.generateOpportunitiesFromContext(ctx);
+      final list = await ai.generateOpportunitiesFromContext(focusedContext);
 
       if (!mounted) return;
       if (list.isNotEmpty) {
         setState(() {
-          // If we have existing rows with empty fields, merge generated data into them
-          // Otherwise, replace with new generated opportunities
-          if (_rows.isNotEmpty &&
-              _rows.any((r) =>
-                  r.opportunity.isEmpty ||
-                  r.stakeholder.isEmpty ||
-                  r.potentialCostSavings.isEmpty ||
-                  r.potentialScheduleSavings.isEmpty)) {
-            // Merge: fill empty fields with generated ones
-            final generatedList = list.toList();
-            // We'll create a new list to avoid mutating state inside map if possible,
-            // but here we just replace _rows fully.
-            List<OpportunityItem> merged = [];
-
-            for (int i = 0; i < _rows.length; i++) {
-              final existing = _rows[i];
-              // If index matches generated list, merge
-              if (i < generatedList.length) {
-                final generated = generatedList[i];
-                merged.add(OpportunityItem(
-                  id: existing.id,
-                  opportunity: existing.opportunity.isNotEmpty
-                      ? existing.opportunity
-                      : generated.opportunity,
-                  discipline: existing.discipline.isNotEmpty
-                      ? existing.discipline
-                      : generated.discipline,
-                  stakeholder: existing.stakeholder.isNotEmpty
-                      ? existing.stakeholder
-                      : generated.stakeholder,
-                  potentialCostSavings: existing.potentialCostSavings.isNotEmpty
-                      ? existing.potentialCostSavings
-                      : generated.potentialCostSavings,
-                  potentialScheduleSavings:
-                      existing.potentialScheduleSavings.isNotEmpty
-                          ? existing.potentialScheduleSavings
-                          : generated.potentialScheduleSavings,
-                  appliesTo: existing.appliesTo,
-                  assignedTo: existing.assignedTo,
-                  impact: existing.impact.isNotEmpty
-                      ? existing.impact
-                      : generated.impact,
-                ));
-              } else {
-                // Keep existing as is
-                merged.add(existing);
-              }
-            }
-
-            // Append remaining generated items
-            if (generatedList.length > _rows.length) {
-              merged.addAll(generatedList.skip(_rows.length));
-            }
-            _rows = merged;
-          } else {
-            // Replace with new generated opportunities
-            // Track new items history? Only if we overwrite existing populated data.
-            // Simplest is to just use the new list.
-            _rows = list;
-          }
+          _rows = list
+              .asMap()
+              .entries
+              .map((entry) =>
+                  _normalizeOpportunityItem(entry.value, index: entry.key))
+              .toList();
         });
         _syncOpportunitiesToProvider();
         await ProjectDataHelper.getProvider(context)
@@ -323,6 +448,14 @@ class _FrontEndPlanningOpportunitiesScreenState
       debugPrint('AI opportunities suggestion failed: $e');
       // On error, use fallback opportunities
       _useFallbackOpportunities();
+      if (!autoTriggered && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Opportunity generation failed. Using fallback suggestions.'),
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -368,96 +501,160 @@ class _FrontEndPlanningOpportunitiesScreenState
                             children: [
                               _roundedField(
                                   controller: _notes,
-                                  hint: 'Input your notes here…',
+                                  hint: 'Input your notes here...',
                                   minLines: 3),
                               const SizedBox(height: 22),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: Column(
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final isCompact = constraints.maxWidth < 1120;
+                                  final titleSection = const Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      EditableContentText(
+                                        contentKey: 'fep_opportunities_title',
+                                        fallback: 'Project Opportunities',
+                                        category: 'front_end_planning',
+                                        style: TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF111827),
+                                        ),
+                                      ),
+                                      SizedBox(height: 6),
+                                      EditableContentText(
+                                        contentKey:
+                                            'fep_opportunities_subtitle',
+                                        fallback:
+                                            '(List out opportunities that would benefit the project here)',
+                                        category: 'front_end_planning',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Color(0xFF6B7280),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+
+                                  final actions = Wrap(
+                                    spacing: 12,
+                                    runSpacing: 8,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
+                                    children: [
+                                      PageRegenerateAllButton(
+                                        onRegenerateAll: () async {
+                                          final confirmed =
+                                              await showRegenerateAllConfirmation(
+                                                  context);
+                                          if (confirmed && mounted) {
+                                            await _regenerateAllOpportunities();
+                                          }
+                                        },
+                                        isLoading: _isGeneratingOpportunities,
+                                        tooltip: 'Regenerate all opportunities',
+                                      ),
+                                      SizedBox(
+                                        height: 40,
+                                        child: OutlinedButton.icon(
+                                          onPressed: () =>
+                                              _showAddOpportunityDialog(),
+                                          icon: const Icon(Icons.add, size: 18),
+                                          label: const Text(
+                                            'Add Opportunity',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.w600),
+                                          ),
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor:
+                                                const Color(0xFF111827),
+                                            side: const BorderSide(
+                                                color: Color(0xFFD1D5DB)),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 14, vertical: 10),
+                                            shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8)),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+
+                                  if (isCompact) {
+                                    return Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
-                                      children: const [
-                                        EditableContentText(
-                                          contentKey: 'fep_opportunities_title',
-                                          fallback: 'Project Opportunities',
-                                          category: 'front_end_planning',
-                                          style: TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w700,
-                                            color: Color(0xFF111827),
-                                          ),
-                                        ),
-                                        SizedBox(height: 6),
-                                        EditableContentText(
-                                          contentKey:
-                                              'fep_opportunities_subtitle',
-                                          fallback:
-                                              '(List out opportunities that would benefit the project here)',
-                                          category: 'front_end_planning',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Color(0xFF6B7280),
-                                          ),
-                                        ),
+                                      children: [
+                                        titleSection,
+                                        const SizedBox(height: 12),
+                                        actions,
                                       ],
-                                    ),
-                                  ),
-                                  PageRegenerateAllButton(
-                                    onRegenerateAll: () async {
-                                      final confirmed =
-                                          await showRegenerateAllConfirmation(
-                                              context);
-                                      if (confirmed && mounted) {
-                                        await _regenerateAllOpportunities();
-                                      }
-                                    },
-                                    isLoading: _isGeneratingOpportunities,
-                                    tooltip: 'Regenerate all opportunities',
-                                  ),
-                                  const SizedBox(width: 12),
-                                  SizedBox(
-                                    height: 40,
-                                    child: OutlinedButton.icon(
-                                      onPressed: () =>
-                                          _showAddOpportunityDialog(),
-                                      icon: const Icon(Icons.add, size: 18),
-                                      label: const Text('Add Opportunity',
-                                          style: TextStyle(
-                                              fontWeight: FontWeight.w600)),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor:
-                                            const Color(0xFF111827),
-                                        side: const BorderSide(
-                                            color: Color(0xFFD1D5DB)),
-                                        shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(8)),
+                                    );
+                                  }
+
+                                  return Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(child: titleSection),
+                                      const SizedBox(width: 12),
+                                      actions,
+                                    ],
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 24),
+                              const Row(
+                                children: [
+                                  Icon(Icons.info_outline,
+                                      size: 16, color: Color(0xFF6B7280)),
+                                  SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'Use Edit or double-click a row cell to update. Use Undo in each row to roll back the latest edit.',
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        color: Color(0xFF6B7280),
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 24),
-                              _OpportunityTable(
-                                rows: _rows,
-                                onUpdate: (index, item) {
-                                  setState(() {
-                                    _rows[index] = item;
-                                    _syncOpportunitiesToProvider();
-                                  });
-                                },
-                                onEdit: (item) {
-                                  _showAddOpportunityDialog(existingItem: item);
-                                },
-                                onDelete: (id) {
-                                  setState(() {
-                                    _rows.removeWhere((r) => r.id == id);
-                                    _syncOpportunitiesToProvider();
-                                  });
-                                },
-                              ),
+                              const SizedBox(height: 10),
+                              if (_isGeneratingOpportunities)
+                                const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(24.0),
+                                    child: Column(
+                                      children: [
+                                        CircularProgressIndicator(),
+                                        SizedBox(height: 12),
+                                        Text(
+                                            'Generating project opportunities from project context...'),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              else
+                                _OpportunityTable(
+                                  rows: _rows,
+                                  onEdit: (item) {
+                                    _showAddOpportunityDialog(
+                                        existingItem: item);
+                                  },
+                                  onDelete: (id) {
+                                    setState(() {
+                                      _rows.removeWhere((r) => r.id == id);
+                                      _redoSnapshotsByRowId.remove(id);
+                                      _syncOpportunitiesToProvider();
+                                    });
+                                  },
+                                  onUndo: _undoOpportunityRow,
+                                  canUndoRow: _canUndoOpportunityRow,
+                                  onRedo: _redoOpportunityRow,
+                                  canRedoRow: _canRedoOpportunityRow,
+                                ),
                               const SizedBox(height: 80),
                             ],
                           ),
@@ -475,9 +672,154 @@ class _FrontEndPlanningOpportunitiesScreenState
     );
   }
 
+  void _updateOpportunityRow(int index, OpportunityItem next,
+      {bool trackHistory = true}) {
+    if (index < 0 || index >= _rows.length) return;
+    final normalized = _normalizeOpportunityItem(next, index: index);
+    final rowId = _rows[index].id;
+    if (trackHistory) {
+      _recordOpportunityFieldHistory(
+          index: index, previous: _rows[index], next: normalized);
+    }
+    setState(() {
+      _rows[index] = normalized;
+      _redoSnapshotsByRowId.remove(rowId);
+    });
+    _syncOpportunitiesToProvider();
+  }
+
+  void _recordOpportunityFieldHistory({
+    required int index,
+    required OpportunityItem previous,
+    required OpportunityItem next,
+  }) {
+    final provider = ProjectDataHelper.getProvider(context);
+    final prev = {
+      'opportunity': previous.opportunity,
+      'potential_cost_savings': previous.potentialCostSavings,
+      'schedule_impact': previous.potentialScheduleSavings,
+      'implementation_strategy': previous.implementationStrategy,
+      'discipline': previous.discipline,
+      'responsible_role': previous.responsibleRole,
+      'owner': previous.owner,
+      'applicable_phase': previous.applicablePhase,
+      'status': previous.status,
+    };
+    final cur = {
+      'opportunity': next.opportunity,
+      'potential_cost_savings': next.potentialCostSavings,
+      'schedule_impact': next.potentialScheduleSavings,
+      'implementation_strategy': next.implementationStrategy,
+      'discipline': next.discipline,
+      'responsible_role': next.responsibleRole,
+      'owner': next.owner,
+      'applicable_phase': next.applicablePhase,
+      'status': next.status,
+    };
+    for (final entry in prev.entries) {
+      final oldValue = entry.value.trim();
+      final newValue = (cur[entry.key] ?? '').trim();
+      if (oldValue == newValue) continue;
+      provider.addFieldToHistory(
+        'fep_opportunity_${previous.id}_${entry.key}',
+        entry.value,
+        isAiGenerated: false,
+      );
+    }
+  }
+
+  bool _canUndoOpportunityRow(int index) {
+    if (index < 0 || index >= _rows.length) return false;
+    final data = ProjectDataHelper.getData(context);
+    final id = _rows[index].id;
+    final keys = [
+      'fep_opportunity_${id}_opportunity',
+      'fep_opportunity_${id}_potential_cost_savings',
+      'fep_opportunity_${id}_schedule_impact',
+      'fep_opportunity_${id}_implementation_strategy',
+      'fep_opportunity_${id}_discipline',
+      'fep_opportunity_${id}_responsible_role',
+      'fep_opportunity_${id}_owner',
+      'fep_opportunity_${id}_applicable_phase',
+      'fep_opportunity_${id}_status',
+    ];
+    return keys.any(data.canUndoField);
+  }
+
+  bool _canRedoOpportunityRow(int index) {
+    if (index < 0 || index >= _rows.length) return false;
+    final id = _rows[index].id;
+    return _redoSnapshotsByRowId.containsKey(id);
+  }
+
+  void _undoOpportunityRow(int index) {
+    if (index < 0 || index >= _rows.length) return;
+    final row = _rows[index];
+    final data = ProjectDataHelper.getData(context);
+    String undoOrCurrent(String suffix, String current) {
+      final key = 'fep_opportunity_${row.id}_$suffix';
+      return data.undoField(key) ?? current;
+    }
+
+    final reverted = _normalizeOpportunityItem(
+      OpportunityItem(
+        id: row.id,
+        opportunity: undoOrCurrent('opportunity', row.opportunity),
+        potentialCostSavings:
+            undoOrCurrent('potential_cost_savings', row.potentialCostSavings),
+        potentialScheduleSavings:
+            undoOrCurrent('schedule_impact', row.potentialScheduleSavings),
+        implementationStrategy: undoOrCurrent(
+            'implementation_strategy', row.implementationStrategy),
+        discipline: undoOrCurrent('discipline', row.discipline),
+        responsibleRole: undoOrCurrent('responsible_role', row.responsibleRole),
+        stakeholder: undoOrCurrent('responsible_role', row.stakeholder),
+        owner: undoOrCurrent('owner', row.owner),
+        assignedTo: undoOrCurrent('owner', row.assignedTo),
+        applicablePhase: undoOrCurrent('applicable_phase', row.applicablePhase),
+        status: undoOrCurrent('status', row.status),
+        appliesTo: List<String>.from(row.appliesTo),
+        impact: row.impact,
+      ),
+      index: index,
+    );
+
+    setState(() {
+      _redoSnapshotsByRowId[row.id] = row;
+      _rows[index] = reverted;
+    });
+    _syncOpportunitiesToProvider();
+  }
+
+  void _redoOpportunityRow(int index) {
+    if (index < 0 || index >= _rows.length) return;
+    final row = _rows[index];
+    final snapshot = _redoSnapshotsByRowId[row.id];
+    if (snapshot == null) return;
+
+    setState(() {
+      _rows[index] = snapshot;
+      _redoSnapshotsByRowId.remove(row.id);
+    });
+    _syncOpportunitiesToProvider();
+  }
+
   Future<void> _submitOpportunities() async {
     final oppText = _rows
-        .map((r) => '${r.opportunity}: ${r.discipline}')
+        .map((r) {
+          final parts = <String>[
+            r.opportunity.trim(),
+            if (r.discipline.trim().isNotEmpty)
+              'Discipline: ${r.discipline.trim()}',
+            if (r.responsibleRole.trim().isNotEmpty)
+              'Role: ${r.responsibleRole.trim()}',
+            if (r.owner.trim().isNotEmpty) 'Owner: ${r.owner.trim()}',
+            if (r.applicablePhase.trim().isNotEmpty)
+              'Phase: ${r.applicablePhase.trim()}',
+            if (r.status.trim().isNotEmpty) 'Status: ${r.status.trim()}',
+          ];
+          return parts.where((p) => p.isNotEmpty).join(' | ');
+        })
         .where((s) => s.trim().isNotEmpty)
         .join('\n');
 
@@ -814,9 +1156,9 @@ class _FrontEndPlanningOpportunitiesScreenState
                 ),
                 Expanded(
                   child: Text(
-                    item.stakeholder.trim().isEmpty
-                        ? 'Stakeholder TBD'
-                        : item.stakeholder,
+                    item.responsibleRole.trim().isEmpty
+                        ? 'Role TBD'
+                        : item.responsibleRole,
                     textAlign: TextAlign.right,
                     style: const TextStyle(
                         fontSize: 11.5,
@@ -826,6 +1168,15 @@ class _FrontEndPlanningOpportunitiesScreenState
                 ),
               ],
             ),
+            if (item.owner.trim().isNotEmpty ||
+                item.status.trim().isNotEmpty ||
+                item.applicablePhase.trim().isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Owner: ${item.owner.trim().isEmpty ? 'Not set' : item.owner.trim()} | Phase: ${item.applicablePhase.trim().isEmpty ? 'Not set' : item.applicablePhase.trim()} | Status: ${item.status.trim().isEmpty ? 'Identified' : item.status.trim()}',
+                style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+              ),
+            ],
             const SizedBox(height: 8),
             Row(
               children: [
@@ -892,17 +1243,17 @@ class _FrontEndPlanningOpportunitiesScreenState
       builder: (context) => _OpportunityDialog(item: existingItem),
     ).then((val) {
       if (val != null && val is OpportunityItem) {
-        setState(() {
-          if (existingItem != null) {
-            final index = _rows.indexWhere((r) => r.id == existingItem.id);
-            if (index != -1) {
-              _rows[index] = val;
-            }
-          } else {
-            _rows.add(val);
+        if (existingItem != null) {
+          final index = _rows.indexWhere((r) => r.id == existingItem.id);
+          if (index != -1) {
+            _updateOpportunityRow(index, val);
           }
+        } else {
+          setState(() {
+            _rows.add(_normalizeOpportunityItem(val, index: _rows.length));
+          });
           _syncOpportunitiesToProvider();
-        });
+        }
       }
     });
   }
@@ -918,27 +1269,59 @@ class _OpportunityDialog extends StatefulWidget {
 
 class _OpportunityDialogState extends State<_OpportunityDialog> {
   final _oppCtrl = TextEditingController();
+  final _costSavingsCtrl = TextEditingController();
+  final _scheduleImpactCtrl = TextEditingController();
+  final _implementationCtrl = TextEditingController();
   final _disciplineCtrl = TextEditingController();
-  final _stakeholderCtrl = TextEditingController();
-  final _cost1Ctrl = TextEditingController();
-  final _cost2Ctrl = TextEditingController();
-  final _assignedToCtrl = TextEditingController();
-  String _selectedImpact = 'Medium';
+  final _roleCtrl = TextEditingController();
+  final _ownerCtrl = TextEditingController();
+  String _selectedApplicablePhase = 'Planning';
+  String _selectedStatus = 'Identified';
   List<String> _selectedAppliesTo = [];
 
   final List<String> _applyOptions = ['Estimate', 'Schedule', 'Training'];
+  final List<String> _phaseOptions = [
+    'Initiation',
+    'Planning',
+    'Design',
+    'Execution',
+    'Launch',
+    'All',
+  ];
+  final List<String> _statusOptions = [
+    'Identified',
+    'Proposed',
+    'Approved',
+    'In Progress',
+    'Closed',
+  ];
 
   @override
   void initState() {
     super.initState();
     if (widget.item != null) {
       _oppCtrl.text = widget.item!.opportunity;
+      _costSavingsCtrl.text = widget.item!.potentialCostSavings;
+      _scheduleImpactCtrl.text = widget.item!.potentialScheduleSavings;
+      _implementationCtrl.text = widget.item!.implementationStrategy;
       _disciplineCtrl.text = widget.item!.discipline;
-      _stakeholderCtrl.text = widget.item!.stakeholder;
-      _cost1Ctrl.text = widget.item!.potentialCostSavings;
-      _cost2Ctrl.text = widget.item!.potentialScheduleSavings;
-      _assignedToCtrl.text = widget.item!.assignedTo;
-      _selectedImpact = widget.item!.impact;
+      _roleCtrl.text = widget.item!.responsibleRole.isNotEmpty
+          ? widget.item!.responsibleRole
+          : widget.item!.stakeholder;
+      _ownerCtrl.text = widget.item!.owner.isNotEmpty
+          ? widget.item!.owner
+          : widget.item!.assignedTo;
+      _selectedApplicablePhase = widget.item!.applicablePhase.isNotEmpty
+          ? widget.item!.applicablePhase
+          : 'Planning';
+      _selectedStatus =
+          widget.item!.status.isNotEmpty ? widget.item!.status : 'Identified';
+      if (!_phaseOptions.contains(_selectedApplicablePhase)) {
+        _selectedApplicablePhase = 'Planning';
+      }
+      if (!_statusOptions.contains(_selectedStatus)) {
+        _selectedStatus = 'Identified';
+      }
       _selectedAppliesTo = List.from(widget.item!.appliesTo);
     }
   }
@@ -946,11 +1329,12 @@ class _OpportunityDialogState extends State<_OpportunityDialog> {
   @override
   void dispose() {
     _oppCtrl.dispose();
+    _costSavingsCtrl.dispose();
+    _scheduleImpactCtrl.dispose();
+    _implementationCtrl.dispose();
     _disciplineCtrl.dispose();
-    _stakeholderCtrl.dispose();
-    _cost1Ctrl.dispose();
-    _cost2Ctrl.dispose();
-    _assignedToCtrl.dispose();
+    _roleCtrl.dispose();
+    _ownerCtrl.dispose();
     super.dispose();
   }
 
@@ -987,94 +1371,92 @@ class _OpportunityDialogState extends State<_OpportunityDialog> {
                       label: 'Potential Opportunity',
                       controller: _oppCtrl,
                       autofocus: widget.item == null,
-                      hintText: 'Describe the opportunity'),
-                  const SizedBox(height: 12),
-                  Row(children: [
-                    Expanded(
-                        child: _LabeledField(
-                            label: 'Discipline',
-                            controller: _disciplineCtrl,
-                            hintText: 'e.g. Finance/IT/Operations')),
-                    const SizedBox(width: 12),
-                    Expanded(
-                        child: _LabeledField(
-                            label: 'Stakeholder',
-                            controller: _stakeholderCtrl,
-                            hintText: 'e.g. VP of IT')),
-                  ]),
+                      hintText: 'Describe the opportunity',
+                      minLines: 2,
+                      maxLines: 3),
                   const SizedBox(height: 12),
                   Row(children: [
                     Expanded(
                         child: _LabeledField(
                             label: 'Potential Cost Savings',
-                            controller: _cost1Ctrl,
+                            controller: _costSavingsCtrl,
                             hintText: 'e.g. 75,000')),
                     const SizedBox(width: 12),
                     Expanded(
                         child: _LabeledField(
-                            label: 'Potential Cost Schedule Savings',
-                            controller: _cost2Ctrl,
-                            hintText: 'e.g. 30,000')),
+                            label: 'Potential Schedule Savings',
+                            controller: _scheduleImpactCtrl,
+                            hintText: 'e.g. 2 weeks faster')),
                   ]),
+                  const SizedBox(height: 12),
+                  _LabeledField(
+                    label: 'Implementation Strategy',
+                    controller: _implementationCtrl,
+                    hintText:
+                        'Describe execution approach, checkpoints, and controls',
+                    minLines: 2,
+                    maxLines: 3,
+                  ),
                   const SizedBox(height: 12),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Impact',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF6B7280))),
-                            const SizedBox(height: 6),
-                            Container(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border:
-                                    Border.all(color: const Color(0xFFE5E7EB)),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: _selectedImpact,
-                                  isExpanded: true,
-                                  items: ['High', 'Medium', 'Low']
-                                      .map((e) => DropdownMenuItem(
-                                            value: e,
-                                            child: Text(e,
-                                                style: const TextStyle(
-                                                    fontSize: 14)),
-                                          ))
-                                      .toList(),
-                                  onChanged: (val) {
-                                    if (val != null) {
-                                      setState(() => _selectedImpact = val);
-                                    }
-                                  },
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                          child: _LabeledField(
+                              label: 'Discipline',
+                              controller: _disciplineCtrl,
+                              hintText: 'e.g. IT, Operations')),
                       const SizedBox(width: 12),
                       Expanded(
                           child: _LabeledField(
-                              label: 'Assigned To',
-                              controller: _assignedToCtrl,
-                              hintText: 'e.g. John Doe')),
+                              label: 'Responsible Role',
+                              controller: _roleCtrl,
+                              hintText: 'e.g. Program Manager')),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                          child: _LabeledField(
+                              label: 'Owner',
+                              controller: _ownerCtrl,
+                              hintText: 'e.g. Jane Doe')),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _LabeledDropdown(
+                          label: 'Applicable Phase',
+                          value: _selectedApplicablePhase,
+                          items: _phaseOptions,
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() {
+                                _selectedApplicablePhase = value;
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _LabeledDropdown(
+                    label: 'Status',
+                    value: _selectedStatus,
+                    items: _statusOptions,
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          _selectedStatus = value;
+                        });
+                      }
+                    },
                   ),
                   const SizedBox(height: 12),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Apply To',
+                      const Text('Auto Feed Targets',
                           style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -1146,19 +1528,42 @@ class _OpportunityDialogState extends State<_OpportunityDialog> {
                                         'Please enter a Potential Opportunity')));
                             return;
                           }
+                          final tags = <String>{..._selectedAppliesTo};
+                          final phase = _selectedApplicablePhase.trim();
+                          if (phase.toLowerCase() == 'all') {
+                            tags.addAll(const [
+                              'Project Wide',
+                              'Estimate',
+                              'Schedule',
+                              'Training'
+                            ]);
+                          } else if (phase.toLowerCase() == 'planning') {
+                            tags.addAll(const ['Estimate', 'Schedule']);
+                          } else if (phase.toLowerCase() == 'execution') {
+                            tags.addAll(const ['Schedule', 'Training']);
+                          } else if (phase.toLowerCase() == 'launch') {
+                            tags.add('Training');
+                          }
                           Navigator.of(context).pop(OpportunityItem(
                             id: widget.item?.id ??
                                 DateTime.now()
                                     .microsecondsSinceEpoch
                                     .toString(),
                             opportunity: opp,
+                            potentialCostSavings: _costSavingsCtrl.text.trim(),
+                            potentialScheduleSavings:
+                                _scheduleImpactCtrl.text.trim(),
+                            implementationStrategy:
+                                _implementationCtrl.text.trim(),
                             discipline: _disciplineCtrl.text.trim(),
-                            stakeholder: _stakeholderCtrl.text.trim(),
-                            potentialCostSavings: _cost1Ctrl.text.trim(),
-                            potentialScheduleSavings: _cost2Ctrl.text.trim(),
-                            impact: _selectedImpact,
-                            appliesTo: _selectedAppliesTo,
-                            assignedTo: _assignedToCtrl.text.trim(),
+                            stakeholder: _roleCtrl.text.trim(),
+                            responsibleRole: _roleCtrl.text.trim(),
+                            owner: _ownerCtrl.text.trim(),
+                            applicablePhase: _selectedApplicablePhase,
+                            status: _selectedStatus,
+                            impact: 'Medium',
+                            appliesTo: tags.toList(),
+                            assignedTo: _ownerCtrl.text.trim(),
                           ));
                         },
                       ),
@@ -1174,16 +1579,37 @@ class _OpportunityDialogState extends State<_OpportunityDialog> {
   }
 }
 
-class _OpportunityTable extends StatelessWidget {
-  const _OpportunityTable(
-      {required this.rows,
-      required this.onUpdate,
-      required this.onEdit,
-      required this.onDelete});
+class _OpportunityTable extends StatefulWidget {
+  const _OpportunityTable({
+    required this.rows,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onUndo,
+    required this.canUndoRow,
+    required this.onRedo,
+    required this.canRedoRow,
+  });
+
   final List<OpportunityItem> rows;
-  final Function(int, OpportunityItem) onUpdate;
   final Function(OpportunityItem) onEdit;
   final Function(String) onDelete;
+  final ValueChanged<int> onUndo;
+  final bool Function(int) canUndoRow;
+  final ValueChanged<int> onRedo;
+  final bool Function(int) canRedoRow;
+
+  @override
+  State<_OpportunityTable> createState() => _OpportunityTableState();
+}
+
+class _OpportunityTableState extends State<_OpportunityTable> {
+  final ScrollController _horizontalController = ScrollController();
+
+  @override
+  void dispose() {
+    _horizontalController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1192,9 +1618,18 @@ class _OpportunityTable extends StatelessWidget {
         fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF4B5563));
     final cellStyle = const TextStyle(fontSize: 14, color: Color(0xFF111827));
 
-    Widget td(Widget child) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: child);
+    Widget td(Widget child, {VoidCallback? onDoubleTap}) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: onDoubleTap == null
+              ? child
+              : GestureDetector(
+                  onDoubleTap: onDoubleTap,
+                  behavior: HitTestBehavior.translucent,
+                  child: child,
+                ),
+        );
+
+    final rows = widget.rows;
 
     return Container(
       decoration: BoxDecoration(
@@ -1205,26 +1640,32 @@ class _OpportunityTable extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final minTableWidth =
-              constraints.maxWidth > 1520 ? constraints.maxWidth : 1520.0;
+              constraints.maxWidth > 2220 ? constraints.maxWidth : 2220.0;
 
           return Scrollbar(
+            controller: _horizontalController,
             thumbVisibility: true,
+            trackVisibility: true,
+            scrollbarOrientation: ScrollbarOrientation.bottom,
             child: SingleChildScrollView(
+              controller: _horizontalController,
               scrollDirection: Axis.horizontal,
               child: ConstrainedBox(
                 constraints: BoxConstraints(minWidth: minTableWidth),
                 child: Table(
                   columnWidths: const {
                     0: FixedColumnWidth(52),
-                    1: FlexColumnWidth(2.0),
-                    2: FlexColumnWidth(1.4),
-                    3: FlexColumnWidth(1.4),
-                    4: FlexColumnWidth(1.1),
-                    5: FlexColumnWidth(1.1),
-                    6: FixedColumnWidth(80), // Impact
-                    7: FlexColumnWidth(
-                        1.8), // Implementation (Applies To + Assignee)
-                    8: FixedColumnWidth(50), // Actions
+                    1: FixedColumnWidth(92),
+                    2: FixedColumnWidth(260),
+                    3: FixedColumnWidth(150),
+                    4: FixedColumnWidth(150),
+                    5: FixedColumnWidth(320),
+                    6: FixedColumnWidth(160),
+                    7: FixedColumnWidth(180),
+                    8: FixedColumnWidth(170),
+                    9: FixedColumnWidth(160),
+                    10: FixedColumnWidth(130),
+                    11: FixedColumnWidth(60),
                   },
                   border: TableBorder(
                     horizontalInside: border,
@@ -1240,292 +1681,179 @@ class _OpportunityTable extends StatelessWidget {
                       decoration: const BoxDecoration(color: Color(0xFFF9FAFB)),
                       children: [
                         _th('No', headerStyle),
+                        _th('Edit', headerStyle),
                         _th('Potential Opportunity', headerStyle),
-                        _th('Discipline', headerStyle),
-                        _th('Stakeholder', headerStyle),
                         _th('Potential Cost Savings', headerStyle),
-                        _th('Potential Cost Schedule Savings', headerStyle),
-                        _th('Impact', headerStyle),
-                        _th('Implementation', headerStyle),
-                        _th('Actions', headerStyle),
+                        _th('Potential Schedule Savings', headerStyle),
+                        _th('Implementation Strategy', headerStyle),
+                        _th('Discipline', headerStyle),
+                        _th('Responsible Role', headerStyle),
+                        _th('Owner', headerStyle),
+                        _th('Applicable Phase', headerStyle),
+                        _th('Status', headerStyle),
+                        _th('Del', headerStyle),
                       ],
                     ),
                     ...List<TableRow>.generate(rows.length, (i) {
                       final r = rows[i];
+                      final role = r.responsibleRole.trim().isNotEmpty
+                          ? r.responsibleRole
+                          : r.stakeholder;
+                      final owner =
+                          r.owner.trim().isNotEmpty ? r.owner : r.assignedTo;
+                      final phase = r.applicablePhase.trim().isNotEmpty
+                          ? r.applicablePhase
+                          : (r.appliesTo.isEmpty
+                              ? '-'
+                              : r.appliesTo.join(', '));
+                      final status =
+                          r.status.trim().isNotEmpty ? r.status : 'Identified';
+                      final canUndo = widget.canUndoRow(i);
+                      final canRedo = widget.canRedoRow(i);
+
                       return TableRow(children: [
-                        td(Text('${i + 1}', style: cellStyle)),
-                        td(Text(r.opportunity, style: cellStyle)),
-                        td(Text(r.discipline, style: cellStyle)),
-                        td(Text(r.stakeholder, style: cellStyle)),
-                        td(Text(r.potentialCostSavings, style: cellStyle)),
-                        td(Text(r.potentialScheduleSavings, style: cellStyle)),
-                        td(_ImpactBadge(impact: r.impact)),
+                        td(Text('${i + 1}', style: cellStyle),
+                            onDoubleTap: () => widget.onEdit(r)),
                         td(
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (r.assignedTo.isNotEmpty) ...[
-                                Row(
-                                  children: [
-                                    const Icon(Icons.person_outline,
-                                        size: 14, color: Color(0xFF6B7280)),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(
-                                        r.assignedTo,
-                                        style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: Color(0xFF374151)),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
+                          Center(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                InkWell(
+                                  onTap: () => widget.onEdit(r),
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF3F4F6),
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
-                                  ],
+                                    child: const Icon(Icons.edit_outlined,
+                                        size: 16, color: Color(0xFF4B5563)),
+                                  ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(width: 6),
+                                InkWell(
+                                  onTap:
+                                      canUndo ? () => widget.onUndo(i) : null,
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: canUndo
+                                          ? const Color(0xFFEFF6FF)
+                                          : const Color(0xFFF3F4F6),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(Icons.undo_rounded,
+                                        size: 16,
+                                        color: canUndo
+                                            ? const Color(0xFF2563EB)
+                                            : const Color(0xFF9CA3AF)),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                InkWell(
+                                  onTap:
+                                      canRedo ? () => widget.onRedo(i) : null,
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: canRedo
+                                          ? const Color(0xFFF0FDF4)
+                                          : const Color(0xFFF3F4F6),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(Icons.redo_rounded,
+                                        size: 16,
+                                        color: canRedo
+                                            ? const Color(0xFF15803D)
+                                            : const Color(0xFF9CA3AF)),
+                                  ),
+                                ),
                               ],
-                              Wrap(
-                                spacing: 4,
-                                runSpacing: 4,
-                                children: r.appliesTo
-                                    .map((tag) => Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFEFF6FF),
-                                            borderRadius:
-                                                BorderRadius.circular(4),
-                                            border: Border.all(
-                                                color: const Color(0xFFBFDBFE)),
-                                          ),
-                                          child: Text(
-                                            tag,
-                                            style: const TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w500,
-                                                color: Color(0xFF1E40AF)),
-                                          ),
-                                        ))
-                                    .toList(),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                         td(
-                          PopupMenuButton<String>(
-                            icon: const Icon(Icons.more_horiz,
-                                color: Color(0xFF9CA3AF)),
-                            tooltip: 'Actions',
-                            onSelected: (value) async {
-                              if (value == 'edit') {
-                                onEdit(r);
-                              } else if (value == 'delete') {
-                                onDelete(r.id);
-                              } else if (value == 'assign') {
-                                final controller =
-                                    TextEditingController(text: r.assignedTo);
-                                final assigned = await showDialog<String>(
-                                  context: context,
-                                  builder: (ctx) => AlertDialog(
-                                    title: const Text('Assign Opportunity'),
-                                    content: TextField(
-                                      controller: controller,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Assign To (Role or Name)',
-                                        border: OutlineInputBorder(),
-                                      ),
-                                      autofocus: true,
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(ctx),
-                                        child: const Text('Cancel'),
-                                      ),
-                                      ElevatedButton(
-                                        onPressed: () => Navigator.pop(
-                                            ctx, controller.text.trim()),
-                                        child: const Text('Assign'),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                                if (assigned != null) {
-                                  onUpdate(
-                                    i,
-                                    OpportunityItem(
-                                      id: r.id,
-                                      opportunity: r.opportunity,
-                                      discipline: r.discipline,
-                                      stakeholder: r.stakeholder,
-                                      potentialCostSavings:
-                                          r.potentialCostSavings,
-                                      potentialScheduleSavings:
-                                          r.potentialScheduleSavings,
-                                      impact: r.impact,
-                                      appliesTo: r.appliesTo,
-                                      assignedTo: assigned,
-                                    ),
-                                  );
-                                }
-                              } else if (value == 'toggle_estimate') {
-                                final list = List<String>.from(r.appliesTo);
-                                if (list.contains('Estimate')) {
-                                  list.remove('Estimate');
-                                } else {
-                                  list.add('Estimate');
-                                }
-                                onUpdate(
-                                  i,
-                                  OpportunityItem(
-                                    id: r.id,
-                                    opportunity: r.opportunity,
-                                    discipline: r.discipline,
-                                    stakeholder: r.stakeholder,
-                                    potentialCostSavings:
-                                        r.potentialCostSavings,
-                                    potentialScheduleSavings:
-                                        r.potentialScheduleSavings,
-                                    impact: r.impact,
-                                    appliesTo: list,
-                                    assignedTo: r.assignedTo,
-                                  ),
-                                );
-                              } else if (value == 'toggle_schedule') {
-                                final list = List<String>.from(r.appliesTo);
-                                if (list.contains('Schedule')) {
-                                  list.remove('Schedule');
-                                } else {
-                                  list.add('Schedule');
-                                }
-                                onUpdate(
-                                  i,
-                                  OpportunityItem(
-                                    id: r.id,
-                                    opportunity: r.opportunity,
-                                    discipline: r.discipline,
-                                    stakeholder: r.stakeholder,
-                                    potentialCostSavings:
-                                        r.potentialCostSavings,
-                                    potentialScheduleSavings:
-                                        r.potentialScheduleSavings,
-                                    impact: r.impact,
-                                    appliesTo: list,
-                                    assignedTo: r.assignedTo,
-                                  ),
-                                );
-                              } else if (value == 'toggle_training') {
-                                final list = List<String>.from(r.appliesTo);
-                                if (list.contains('Training')) {
-                                  list.remove('Training');
-                                } else {
-                                  list.add('Training');
-                                }
-                                onUpdate(
-                                  i,
-                                  OpportunityItem(
-                                    id: r.id,
-                                    opportunity: r.opportunity,
-                                    discipline: r.discipline,
-                                    stakeholder: r.stakeholder,
-                                    potentialCostSavings:
-                                        r.potentialCostSavings,
-                                    potentialScheduleSavings:
-                                        r.potentialScheduleSavings,
-                                    impact: r.impact,
-                                    appliesTo: list,
-                                    assignedTo: r.assignedTo,
-                                  ),
-                                );
-                              }
-                            },
-                            itemBuilder: (context) => [
-                              PopupMenuItem(
-                                value: 'toggle_estimate',
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      r.appliesTo.contains('Estimate')
-                                          ? Icons.check_box
-                                          : Icons.check_box_outline_blank,
-                                      size: 18,
-                                      color: Colors.blue,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Text('Apply to Estimate'),
-                                  ],
-                                ),
+                          _ExpandableCellText(
+                            text: r.opportunity,
+                            style: cellStyle,
+                            collapsedLines: 2,
+                          ),
+                          onDoubleTap: () => widget.onEdit(r),
+                        ),
+                        td(
+                          _ExpandableCellText(
+                            text: r.potentialCostSavings,
+                            style: cellStyle,
+                            collapsedLines: 2,
+                          ),
+                          onDoubleTap: () => widget.onEdit(r),
+                        ),
+                        td(
+                          _ExpandableCellText(
+                            text: r.potentialScheduleSavings,
+                            style: cellStyle,
+                            collapsedLines: 2,
+                          ),
+                          onDoubleTap: () => widget.onEdit(r),
+                        ),
+                        td(
+                          _ExpandableCellText(
+                            text: r.implementationStrategy,
+                            style: cellStyle,
+                            collapsedLines: 2,
+                          ),
+                          onDoubleTap: () => widget.onEdit(r),
+                        ),
+                        td(
+                          _ExpandableCellText(
+                            text: r.discipline,
+                            style: cellStyle,
+                            collapsedLines: 2,
+                          ),
+                          onDoubleTap: () => widget.onEdit(r),
+                        ),
+                        td(
+                          _ExpandableCellText(
+                            text: role,
+                            style: cellStyle,
+                            collapsedLines: 2,
+                          ),
+                          onDoubleTap: () => widget.onEdit(r),
+                        ),
+                        td(
+                          _ExpandableCellText(
+                            text: owner,
+                            style: cellStyle,
+                            collapsedLines: 2,
+                          ),
+                          onDoubleTap: () => widget.onEdit(r),
+                        ),
+                        td(
+                          _ExpandableCellText(
+                            text: phase,
+                            style: cellStyle,
+                            collapsedLines: 2,
+                          ),
+                          onDoubleTap: () => widget.onEdit(r),
+                        ),
+                        td(status.isEmpty
+                            ? const SizedBox.shrink()
+                            : _statusPill(status)),
+                        td(
+                          Center(
+                            child: InkWell(
+                              onTap: () => widget.onDelete(r.id),
+                              borderRadius: BorderRadius.circular(8),
+                              child: const Padding(
+                                padding: EdgeInsets.all(4.0),
+                                child: Icon(Icons.delete_outline,
+                                    size: 18, color: Color(0xFF6B7280)),
                               ),
-                              PopupMenuItem(
-                                value: 'toggle_schedule',
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      r.appliesTo.contains('Schedule')
-                                          ? Icons.check_box
-                                          : Icons.check_box_outline_blank,
-                                      size: 18,
-                                      color: Colors.blue,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Text('Apply to Schedule'),
-                                  ],
-                                ),
-                              ),
-                              PopupMenuItem(
-                                value: 'toggle_training',
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      r.appliesTo.contains('Training')
-                                          ? Icons.check_box
-                                          : Icons.check_box_outline_blank,
-                                      size: 18,
-                                      color: Colors.blue,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Text('Apply to Training'),
-                                  ],
-                                ),
-                              ),
-                              const PopupMenuDivider(),
-                              PopupMenuItem(
-                                value: 'assign',
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.person_add_alt_1,
-                                        size: 18, color: Colors.orange),
-                                    const SizedBox(width: 8),
-                                    Text(r.assignedTo.isNotEmpty
-                                        ? 'Reassign'
-                                        : 'Assign to Role'),
-                                  ],
-                                ),
-                              ),
-                              const PopupMenuDivider(),
-                              const PopupMenuItem(
-                                value: 'edit',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.edit,
-                                        size: 18, color: Colors.grey),
-                                    SizedBox(width: 8),
-                                    Text('Edit'),
-                                  ],
-                                ),
-                              ),
-                              const PopupMenuItem(
-                                value: 'delete',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.delete,
-                                        size: 18, color: Colors.red),
-                                    SizedBox(width: 8),
-                                    Text('Delete',
-                                        style: TextStyle(color: Colors.red)),
-                                  ],
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                       ]);
@@ -1548,6 +1876,41 @@ class _OpportunityTable extends StatelessWidget {
         fallback: text,
         category: 'front_end_planning',
         style: style,
+      ),
+    );
+  }
+
+  Widget _statusPill(String status) {
+    final normalized = status.trim().toLowerCase();
+    Color bg;
+    Color fg;
+    if (normalized.contains('approved') || normalized.contains('closed')) {
+      bg = const Color(0xFFDCFCE7);
+      fg = const Color(0xFF15803D);
+    } else if (normalized.contains('progress')) {
+      bg = const Color(0xFFEFF6FF);
+      fg = const Color(0xFF1D4ED8);
+    } else {
+      bg = const Color(0xFFFFF7ED);
+      fg = const Color(0xFFC2410C);
+    }
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Text(
+          status,
+          style: TextStyle(
+            color: fg,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
     );
   }
@@ -1615,13 +1978,14 @@ class _BottomOverlays extends StatelessWidget {
       ),
       child: Row(
         children: const [
-          Icon(Icons.auto_awesome, color: Color(0xFF2563EB)),
+          Icon(Icons.lightbulb_outline, color: Color(0xFF2563EB)),
           SizedBox(width: 8),
-          Text('AI',
+          Text('Hint',
               style: TextStyle(
                   fontWeight: FontWeight.w800, color: Color(0xFF2563EB))),
           SizedBox(width: 10),
-          Text('Focus on major risks associated with each potential solution.',
+          Text(
+              'Keep opportunities tied to scope, discipline, role, owner, and phase.',
               style: TextStyle(color: Color(0xFF1F2937))),
         ],
       ),
@@ -1634,11 +1998,15 @@ class _LabeledField extends StatelessWidget {
   final TextEditingController controller;
   final String? hintText;
   final bool autofocus;
+  final int minLines;
+  final int maxLines;
   const _LabeledField({
     required this.label,
     required this.controller,
     this.hintText,
     this.autofocus = false,
+    this.minLines = 1,
+    this.maxLines = 1,
   });
 
   @override
@@ -1662,6 +2030,8 @@ class _LabeledField extends StatelessWidget {
           child: TextField(
             controller: controller,
             autofocus: autofocus,
+            minLines: minLines,
+            maxLines: maxLines,
             decoration: InputDecoration(
               hintText: hintText,
               border: InputBorder.none,
@@ -1669,6 +2039,130 @@ class _LabeledField extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _LabeledDropdown extends StatelessWidget {
+  final String label;
+  final String value;
+  final List<String> items;
+  final ValueChanged<String?> onChanged;
+
+  const _LabeledDropdown({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF6B7280))),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: value,
+              isExpanded: true,
+              items: items
+                  .map(
+                    (e) => DropdownMenuItem<String>(
+                      value: e,
+                      child: Text(e, style: const TextStyle(fontSize: 14)),
+                    ),
+                  )
+                  .toList(),
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ExpandableCellText extends StatefulWidget {
+  final String text;
+  final TextStyle style;
+  final int collapsedLines;
+
+  const _ExpandableCellText({
+    required this.text,
+    required this.style,
+    this.collapsedLines = 2,
+  });
+
+  @override
+  State<_ExpandableCellText> createState() => _ExpandableCellTextState();
+}
+
+class _ExpandableCellTextState extends State<_ExpandableCellText> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final trimmed = widget.text.trim();
+    if (trimmed.isEmpty) {
+      return Text('-',
+          style: widget.style.copyWith(color: const Color(0xFF9CA3AF)));
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final painter = TextPainter(
+          text: TextSpan(text: trimmed, style: widget.style),
+          textDirection: Directionality.of(context),
+          maxLines: widget.collapsedLines,
+        )..layout(maxWidth: constraints.maxWidth);
+
+        if (!painter.didExceedMaxLines) {
+          return Text(trimmed, style: widget.style, softWrap: true);
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              trimmed,
+              style: widget.style,
+              maxLines: _isExpanded ? null : widget.collapsedLines,
+              overflow:
+                  _isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+              softWrap: true,
+            ),
+            const SizedBox(height: 4),
+            InkWell(
+              onTap: () => setState(() => _isExpanded = !_isExpanded),
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 1),
+                child: Text(
+                  _isExpanded ? 'View less' : 'View more',
+                  style: widget.style.copyWith(
+                    color: const Color(0xFF2563EB),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -1698,43 +2192,4 @@ Widget _roundedField(
       style: const TextStyle(fontSize: 14, color: Color(0xFF374151)),
     ),
   );
-}
-
-class _ImpactBadge extends StatelessWidget {
-  final String impact;
-  const _ImpactBadge({required this.impact});
-
-  @override
-  Widget build(BuildContext context) {
-    Color bg;
-    Color fg;
-    switch (impact.toLowerCase()) {
-      case 'high':
-        bg = const Color(0xFFFEF2F2);
-        fg = const Color(0xFFDC2626);
-        break;
-      case 'low':
-        bg = const Color(0xFFECFDF5);
-        fg = const Color(0xFF059669);
-        break;
-      case 'medium':
-      default:
-        bg = const Color(0xFFFFFBEB);
-        fg = const Color(0xFFD97706);
-        break;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        impact,
-        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: fg),
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
 }

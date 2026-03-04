@@ -5,6 +5,7 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/screens/front_end_planning_allowance.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/utils/form_validation_engine.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
@@ -31,11 +32,14 @@ class FrontEndPlanningSecurityScreen extends StatefulWidget {
 
 class _FrontEndPlanningSecurityScreenState
     extends State<FrontEndPlanningSecurityScreen> {
+  final GlobalKey _securityFieldKey = GlobalKey();
   final TextEditingController _notes = TextEditingController();
   final TextEditingController _securityNotes = TextEditingController();
   bool _isSyncReady = false;
   bool _isGenerating = false;
+  bool _autoGenerationTriggered = false;
   late final OpenAiServiceSecure _openAi;
+  Map<String, String> _validationErrors = const {};
 
   @override
   void initState() {
@@ -48,9 +52,19 @@ class _FrontEndPlanningSecurityScreenState
       _securityNotes.addListener(_syncSecurityToProvider);
       _isSyncReady = true;
       _syncSecurityToProvider();
+      if (data.frontEndPlanning.security.trim().isEmpty) {
+        _triggerAutoSecurityGenerationIfMissing();
+      }
 
       if (mounted) setState(() {});
     });
+  }
+
+  Future<void> _triggerAutoSecurityGenerationIfMissing() async {
+    if (_autoGenerationTriggered || _isGenerating || !mounted) return;
+    if (_securityNotes.text.trim().isNotEmpty) return;
+    _autoGenerationTriggered = true;
+    await _generateSecurityContent();
   }
 
   Future<void> _regenerateAllSecurity() async {
@@ -181,9 +195,57 @@ Security Training:
 
   void _syncSecurityToProvider() {
     if (!mounted || !_isSyncReady) return;
+    if (_validationErrors.containsKey('security_requirements') &&
+        _securityNotes.text.trim().isNotEmpty) {
+      setState(() {
+        _validationErrors = Map<String, String>.from(_validationErrors)
+          ..remove('security_requirements');
+      });
+    }
     final provider = ProjectDataHelper.getProvider(context);
     provider.updateField(
       (data) => data.copyWith(
+        frontEndPlanning: ProjectDataHelper.updateFEPField(
+          current: data.frontEndPlanning,
+          security: _securityNotes.text.trim(),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleNextPressed() async {
+    final validation = FormValidationEngine.validateForm([
+      ValidationFieldRule(
+        id: 'security_requirements',
+        label: 'Security Measures',
+        section: 'Security Details',
+        type: ValidationFieldType.text,
+        value: _securityNotes.text,
+        fieldKey: _securityFieldKey,
+      ),
+    ]);
+
+    if (!validation.isValid) {
+      if (mounted) {
+        setState(() {
+          _validationErrors = validation.errorByFieldId;
+        });
+      }
+      FormValidationEngine.showValidationSnackBar(context, validation);
+      await FormValidationEngine.scrollToFirstIssue(validation);
+      return;
+    }
+
+    if (_validationErrors.isNotEmpty && mounted) {
+      setState(() => _validationErrors = const {});
+    }
+
+    await ProjectDataHelper.saveAndNavigate(
+      context: context,
+      checkpoint: 'fep_security',
+      saveInBackground: true,
+      nextScreenBuilder: () => const FrontEndPlanningAllowanceScreen(),
+      dataUpdater: (data) => data.copyWith(
         frontEndPlanning: ProjectDataHelper.updateFEPField(
           current: data.frontEndPlanning,
           security: _securityNotes.text.trim(),
@@ -265,7 +327,12 @@ Security Training:
                                 ],
                               ),
                               const SizedBox(height: 18),
-                              _SecurityPanel(controller: _securityNotes),
+                              _SecurityPanel(
+                                fieldKey: _securityFieldKey,
+                                controller: _securityNotes,
+                                errorText:
+                                    _validationErrors['security_requirements'],
+                              ),
                               const SizedBox(height: 140),
                             ],
                           ),
@@ -273,7 +340,7 @@ Security Training:
                       ),
                     ],
                   ),
-                  _BottomOverlay(securityController: _securityNotes),
+                  _BottomOverlay(onNext: _handleNextPressed),
                   const KazAiChatBubble(),
                 ],
               ),
@@ -286,38 +353,65 @@ Security Training:
 }
 
 class _SecurityPanel extends StatelessWidget {
-  const _SecurityPanel({required this.controller});
+  const _SecurityPanel({
+    required this.controller,
+    this.errorText,
+    this.fieldKey,
+  });
 
   final TextEditingController controller;
+  final String? errorText;
+  final Key? fieldKey;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE4E7EC)),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: TextField(
-        controller: controller,
-        minLines: 12,
-        maxLines: null,
-        decoration: const InputDecoration(
-          border: InputBorder.none,
-          hintText: '',
+    final hasError = (errorText ?? '').trim().isNotEmpty;
+    return Column(
+      key: fieldKey,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color:
+                  hasError ? const Color(0xFFEF4444) : const Color(0xFFE4E7EC),
+            ),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: TextField(
+            controller: controller,
+            minLines: 12,
+            maxLines: null,
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              hintText: '',
+            ),
+            style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
+          ),
         ),
-        style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
-      ),
+        if (hasError) ...[
+          const SizedBox(height: 6),
+          Text(
+            errorText!,
+            style: const TextStyle(
+              color: Color(0xFFDC2626),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
 
 class _BottomOverlay extends StatelessWidget {
-  const _BottomOverlay({required this.securityController});
+  const _BottomOverlay({required this.onNext});
 
-  final TextEditingController securityController;
+  final VoidCallback onNext;
 
   @override
   Widget build(BuildContext context) {
@@ -369,21 +463,7 @@ class _BottomOverlay extends StatelessWidget {
                   ),
                   const SizedBox(width: 16),
                   ElevatedButton(
-                    onPressed: () async {
-                      await ProjectDataHelper.saveAndNavigate(
-                        context: context,
-                        checkpoint: 'fep_security',
-                        saveInBackground: true,
-                        nextScreenBuilder: () =>
-                            const FrontEndPlanningAllowanceScreen(),
-                        dataUpdater: (data) => data.copyWith(
-                          frontEndPlanning: ProjectDataHelper.updateFEPField(
-                            current: data.frontEndPlanning,
-                            security: securityController.text.trim(),
-                          ),
-                        ),
-                      );
-                    },
+                    onPressed: onNext,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFFC812),
                       foregroundColor: const Color(0xFF111827),

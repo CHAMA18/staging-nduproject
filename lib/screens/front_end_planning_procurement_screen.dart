@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/utils/form_validation_engine.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/front_end_planning_header.dart';
@@ -53,17 +55,55 @@ class _FrontEndPlanningProcurementScreenState
     extends State<FrontEndPlanningProcurementScreen> {
   static const int _initialStreamLimit = 60;
   static const int _streamLimitStep = 40;
+  static const String _procurementNotesKey = 'planning_procurement_notes';
   static const String _procurementPlanNoteKey = 'planning_procurement_plan';
   static const String _procurementSeededKey =
       'planning_procurement_seeded_from_initiation';
+  static const String _workflowCollectionName = 'procurement_workflows';
+  static const String _workflowGlobalDocId = 'global';
+  static const List<_ProcurementWorkflowStep>
+      _defaultProcurementWorkflowTemplate = [
+    _ProcurementWorkflowStep(
+      id: 'request_for_quote',
+      name: 'Request for Quote (RFQ)',
+      duration: 2,
+      unit: 'week',
+    ),
+    _ProcurementWorkflowStep(
+      id: 'quote_evaluation',
+      name: 'Quote Evaluation',
+      duration: 2,
+      unit: 'week',
+    ),
+    _ProcurementWorkflowStep(
+      id: 'request_for_information',
+      name: 'Request for Information',
+      duration: 1,
+      unit: 'week',
+    ),
+    _ProcurementWorkflowStep(
+      id: 'purchase_order',
+      name: 'Purchase Order',
+      duration: 1,
+      unit: 'week',
+    ),
+  ];
 
-  final TextEditingController _notes = TextEditingController();
+  final GlobalKey _notesFieldKey = GlobalKey();
+  final GlobalKey _itemsSectionKey = GlobalKey();
+  final GlobalKey _vendorSectionKey = GlobalKey();
+  Map<String, String> _validationErrors = const {};
+  final Set<_ProcurementTab> _tabsWithErrors = <_ProcurementTab>{};
+  bool _showPendingSecurityPrompt = false;
+  List<ValidationIssue> _pendingSecurityIssues = const <ValidationIssue>[];
 
   bool _approvedOnly = false;
   bool _preferredOnly = false;
   bool _listView = true;
+  bool _purchaseOrdersEarlyStartEnabled = false;
+  bool _customizeWorkflowByScope = false;
   String _categoryFilter = 'All Categories';
-  final Set<int> _expandedStrategies = {};
+  String? _selectedWorkflowScopeId;
 
   _ProcurementTab _selectedTab = _ProcurementTab.procurementDashboard;
   int _selectedTrackableIndex = 0;
@@ -88,6 +128,11 @@ class _FrontEndPlanningProcurementScreenState
   List<RfqModel> _rfqs = [];
 
   final List<_RfqCriterion> _rfqCriteria = [];
+  List<_ProcurementWorkflowStep> _globalWorkflowSteps =
+      List<_ProcurementWorkflowStep>.from(_defaultProcurementWorkflowTemplate);
+  List<_ProcurementWorkflowStep> _workflowDraftSteps =
+      List<_ProcurementWorkflowStep>.from(_defaultProcurementWorkflowTemplate);
+  Map<String, List<_ProcurementWorkflowStep>> _scopeWorkflowOverrides = {};
 
   List<PurchaseOrderModel> _purchaseOrders = [];
 
@@ -108,8 +153,11 @@ class _FrontEndPlanningProcurementScreenState
   late final OpenAiServiceSecure _openAi;
   bool _isGeneratingData = false;
   bool _isSeedingFromInitiation = false;
+  bool _workflowLoading = false;
+  bool _workflowSaving = false;
   String? _streamError;
   String? _activeProjectId;
+  String? _autoGenerationRequestedProjectId;
 
   int _itemsLimit = _initialStreamLimit;
   int _strategiesLimit = _initialStreamLimit;
@@ -123,6 +171,548 @@ class _FrontEndPlanningProcurementScreenState
   StreamSubscription<List<RfqModel>>? _rfqsSub;
   StreamSubscription<List<PurchaseOrderModel>>? _purchaseOrdersSub;
 
+  bool get _canCommenceContractingActivities => AdminEditToggle.isAdmin();
+
+  bool get _hasCommencedContractingActivities {
+    final startedItems = _items.any(
+      (item) => item.status != ProcurementItemStatus.planning,
+    );
+    return startedItems || _rfqs.isNotEmpty || _purchaseOrders.isNotEmpty;
+  }
+
+  bool get _isPurchaseOrdersSectionEnabled =>
+      _hasCommencedContractingActivities || _purchaseOrdersEarlyStartEnabled;
+
+  bool _isVitalLleItem(ProcurementItemModel item) {
+    final category = item.category.toLowerCase();
+    final hasLongLeadCategory = category.contains('equipment') ||
+        category.contains('material') ||
+        category.contains('logistics') ||
+        category.contains('infrastructure') ||
+        category.contains('construction');
+    final priorityCritical = item.priority == ProcurementPriority.critical ||
+        item.priority == ProcurementPriority.high;
+    return hasLongLeadCategory || priorityCritical;
+  }
+
+  List<ProcurementItemModel> get _vitalLleItems {
+    final prioritized = _items.where(_isVitalLleItem).toList();
+    prioritized.sort((a, b) {
+      int priorityRank(ProcurementPriority value) {
+        switch (value) {
+          case ProcurementPriority.critical:
+            return 4;
+          case ProcurementPriority.high:
+            return 3;
+          case ProcurementPriority.medium:
+            return 2;
+          case ProcurementPriority.low:
+            return 1;
+        }
+      }
+
+      final priorityCompare =
+          priorityRank(b.priority).compareTo(priorityRank(a.priority));
+      if (priorityCompare != 0) return priorityCompare;
+      final aDate =
+          a.estimatedDelivery ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bDate =
+          b.estimatedDelivery ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return aDate.compareTo(bDate);
+    });
+    return prioritized;
+  }
+
+  List<_ProcurementWorkflowStep> _cloneWorkflowSteps(
+      List<_ProcurementWorkflowStep> steps) {
+    return steps.map((step) => step.copyWith()).toList(growable: true);
+  }
+
+  CollectionReference<Map<String, dynamic>> _workflowCollection(
+      String projectId) {
+    return FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId)
+        .collection(_workflowCollectionName);
+  }
+
+  List<_ProcurementWorkflowStep> _parseWorkflowSteps(dynamic raw) {
+    if (raw is! List) return const <_ProcurementWorkflowStep>[];
+    final steps = <_ProcurementWorkflowStep>[];
+    for (final entry in raw) {
+      if (entry is Map<String, dynamic>) {
+        steps.add(_ProcurementWorkflowStep.fromMap(entry));
+      } else if (entry is Map) {
+        steps.add(
+          _ProcurementWorkflowStep.fromMap(Map<String, dynamic>.from(entry)),
+        );
+      }
+    }
+    return steps;
+  }
+
+  String _scopeDocId(String scopeId) => 'scope_${scopeId.trim()}';
+
+  Future<void> _loadProcurementWorkflowData(String projectId) async {
+    if (projectId.trim().isEmpty) return;
+    if (mounted) {
+      setState(() => _workflowLoading = true);
+    }
+
+    try {
+      final snapshot = await _workflowCollection(projectId).get();
+      var global = _cloneWorkflowSteps(_defaultProcurementWorkflowTemplate);
+      final overrides = <String, List<_ProcurementWorkflowStep>>{};
+
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final scopeIdFromDoc = (data['scopeId'] ?? '').toString().trim();
+        final normalizedScope = scopeIdFromDoc.isNotEmpty
+            ? scopeIdFromDoc
+            : (doc.id == _workflowGlobalDocId
+                ? 'all'
+                : doc.id.replaceFirst('scope_', '').trim());
+        final steps = _parseWorkflowSteps(data['steps']);
+
+        if (normalizedScope == 'all') {
+          if (steps.isNotEmpty) {
+            global = steps;
+          }
+          continue;
+        }
+
+        if (normalizedScope.isNotEmpty) {
+          overrides[normalizedScope] = steps;
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _globalWorkflowSteps = _cloneWorkflowSteps(global);
+        _scopeWorkflowOverrides = overrides;
+        if (_customizeWorkflowByScope) {
+          _selectedWorkflowScopeId = _resolveWorkflowScopeId();
+          _hydrateWorkflowDraftForSelection();
+        } else {
+          _selectedWorkflowScopeId = null;
+          _workflowDraftSteps = _cloneWorkflowSteps(global);
+        }
+        _syncWorkflowStateWithScopes();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to load procurement workflow: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _workflowLoading = false);
+      }
+    }
+  }
+
+  Future<void> _persistProcurementWorkflowData({
+    required String successMessage,
+  }) async {
+    final projectId = _resolveProjectId();
+    if (projectId.isEmpty) return;
+    if (mounted) {
+      setState(() => _workflowSaving = true);
+    }
+
+    try {
+      final collection = _workflowCollection(projectId);
+      final existingSnapshot = await collection.get();
+      final existingDocIds = existingSnapshot.docs.map((doc) => doc.id).toSet();
+      final batch = FirebaseFirestore.instance.batch();
+
+      final desiredPayloads = <String, Map<String, dynamic>>{
+        _workflowGlobalDocId: {
+          'scopeId': 'all',
+          'steps': _globalWorkflowSteps.map((step) => step.toMap()).toList(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+      };
+
+      for (final entry in _scopeWorkflowOverrides.entries) {
+        final scopeId = entry.key.trim();
+        if (scopeId.isEmpty) continue;
+        desiredPayloads[_scopeDocId(scopeId)] = {
+          'scopeId': scopeId,
+          'steps': entry.value.map((step) => step.toMap()).toList(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        };
+      }
+
+      for (final entry in desiredPayloads.entries) {
+        batch.set(
+          collection.doc(entry.key),
+          entry.value,
+          SetOptions(merge: true),
+        );
+      }
+
+      for (final docId in existingDocIds) {
+        if (!desiredPayloads.containsKey(docId)) {
+          batch.delete(collection.doc(docId));
+        }
+      }
+
+      await batch.commit();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(successMessage)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to save procurement workflow: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _workflowSaving = false);
+      }
+    }
+  }
+
+  bool _scopeRequiresProcurementWorkflow(ProcurementItemModel item) {
+    final value = item.responsibleMember.trim().toLowerCase();
+    if ((item.vendorId ?? '').trim().isNotEmpty) return false;
+    if (value == 'no' || value.startsWith('no ')) return false;
+    if (value == 'not required' || value == 'none') return false;
+    final potentialVendors = item.notes
+        .replaceAll('\n', ',')
+        .replaceAll(';', ',')
+        .split(',')
+        .map((entry) => entry.trim())
+        .where((entry) => entry.isNotEmpty)
+        .toList();
+    if (potentialVendors.length == 1) {
+      return false;
+    }
+    if (value.isEmpty) return true;
+    return true;
+  }
+
+  ProcurementItemModel? _findWorkflowScopeById(String? scopeId) {
+    if (scopeId == null || scopeId.isEmpty) return null;
+    for (final item in _items) {
+      if (item.id == scopeId) return item;
+    }
+    return null;
+  }
+
+  String? _resolveWorkflowScopeId() {
+    if (_items.isEmpty) return null;
+    if (_selectedWorkflowScopeId != null &&
+        _items.any((item) => item.id == _selectedWorkflowScopeId)) {
+      return _selectedWorkflowScopeId;
+    }
+    return _items.first.id;
+  }
+
+  int _totalWorkflowDurationInWeeks(List<_ProcurementWorkflowStep> steps) {
+    var total = 0;
+    for (final step in steps) {
+      final duration = step.duration <= 0 ? 1 : step.duration;
+      total += step.unit == 'month' ? duration * 4 : duration;
+    }
+    return total;
+  }
+
+  void _hydrateWorkflowDraftForSelection() {
+    if (!_customizeWorkflowByScope) {
+      _workflowDraftSteps = _cloneWorkflowSteps(_globalWorkflowSteps);
+      return;
+    }
+
+    final scopeId = _resolveWorkflowScopeId();
+    if (scopeId == null) {
+      _selectedWorkflowScopeId = null;
+      _workflowDraftSteps = <_ProcurementWorkflowStep>[];
+      return;
+    }
+
+    _selectedWorkflowScopeId = scopeId;
+    final scoped = _scopeWorkflowOverrides[scopeId];
+    if (scoped != null) {
+      _workflowDraftSteps = _cloneWorkflowSteps(scoped);
+    } else {
+      _workflowDraftSteps = _cloneWorkflowSteps(_globalWorkflowSteps);
+    }
+  }
+
+  void _syncWorkflowStateWithScopes() {
+    final validScopeIds = _items
+        .map((item) => item.id.trim())
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    _scopeWorkflowOverrides
+        .removeWhere((scopeId, _) => !validScopeIds.contains(scopeId));
+
+    var shouldHydrate = false;
+    if (_customizeWorkflowByScope) {
+      final resolved = _resolveWorkflowScopeId();
+      if (_selectedWorkflowScopeId != resolved) {
+        _selectedWorkflowScopeId = resolved;
+        shouldHydrate = true;
+      }
+    } else if (_workflowDraftSteps.isEmpty) {
+      shouldHydrate = true;
+    }
+
+    if (shouldHydrate) {
+      _hydrateWorkflowDraftForSelection();
+    }
+  }
+
+  void _setCustomizeWorkflowByScope(bool value) {
+    setState(() {
+      _customizeWorkflowByScope = value;
+      if (!value) {
+        _selectedWorkflowScopeId = null;
+      }
+      _hydrateWorkflowDraftForSelection();
+    });
+  }
+
+  void _selectWorkflowScope(String scopeId) {
+    setState(() {
+      _selectedWorkflowScopeId = scopeId;
+      _hydrateWorkflowDraftForSelection();
+    });
+  }
+
+  void _resetWorkflowDraftToPreset() {
+    setState(() {
+      _workflowDraftSteps =
+          _cloneWorkflowSteps(_defaultProcurementWorkflowTemplate);
+    });
+  }
+
+  Future<_ProcurementWorkflowStep?> _showWorkflowStepDialog({
+    _ProcurementWorkflowStep? initialStep,
+  }) async {
+    final nameController =
+        TextEditingController(text: initialStep?.name ?? '');
+    final durationController = TextEditingController(
+      text: (initialStep?.duration ?? 1).toString(),
+    );
+    var unit = initialStep?.unit == 'month' ? 'month' : 'week';
+
+    final result = await showDialog<_ProcurementWorkflowStep>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(initialStep == null ? 'Add Workflow Step' : 'Edit Step'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Step name',
+                    hintText: 'e.g. Quote Evaluation',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: durationController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Duration'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: unit,
+                        decoration: const InputDecoration(labelText: 'Unit'),
+                        items: const [
+                          DropdownMenuItem(value: 'week', child: Text('Week')),
+                          DropdownMenuItem(
+                              value: 'month', child: Text('Month')),
+                        ],
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setDialogState(() => unit = value);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final name = nameController.text.trim();
+                final duration = int.tryParse(durationController.text.trim()) ??
+                    initialStep?.duration ??
+                    1;
+                if (name.isEmpty || duration <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Provide a step name and valid duration.'),
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.of(dialogContext).pop(
+                  _ProcurementWorkflowStep(
+                    id: initialStep?.id ??
+                        'wf_${DateTime.now().microsecondsSinceEpoch}',
+                    name: name,
+                    duration: duration,
+                    unit: unit,
+                  ),
+                );
+              },
+              child: Text(initialStep == null ? 'Add Step' : 'Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    nameController.dispose();
+    durationController.dispose();
+    return result;
+  }
+
+  Future<void> _addWorkflowStepToDraft() async {
+    final result = await _showWorkflowStepDialog();
+    if (result == null) return;
+    setState(() => _workflowDraftSteps = [..._workflowDraftSteps, result]);
+  }
+
+  Future<void> _editWorkflowStep(_ProcurementWorkflowStep step) async {
+    final result = await _showWorkflowStepDialog(initialStep: step);
+    if (result == null) return;
+
+    setState(() {
+      final next = List<_ProcurementWorkflowStep>.from(_workflowDraftSteps);
+      final index = next.indexWhere((entry) => entry.id == step.id);
+      if (index == -1) return;
+      next[index] = result.copyWith(id: step.id);
+      _workflowDraftSteps = next;
+    });
+  }
+
+  void _deleteWorkflowStepFromDraft(String stepId) {
+    setState(() {
+      _workflowDraftSteps =
+          _workflowDraftSteps.where((step) => step.id != stepId).toList();
+    });
+  }
+
+  void _moveWorkflowStepInDraft(int index, int direction) {
+    final target = index + direction;
+    if (index < 0 ||
+        index >= _workflowDraftSteps.length ||
+        target < 0 ||
+        target >= _workflowDraftSteps.length) {
+      return;
+    }
+
+    setState(() {
+      final next = List<_ProcurementWorkflowStep>.from(_workflowDraftSteps);
+      final step = next.removeAt(index);
+      next.insert(target, step);
+      _workflowDraftSteps = next;
+    });
+  }
+
+  void _saveWorkflowForSelection() {
+    if (_workflowSaving) return;
+    if (_customizeWorkflowByScope) {
+      final scopeId = _resolveWorkflowScopeId();
+      if (scopeId == null) return;
+      setState(() {
+        _scopeWorkflowOverrides[scopeId] =
+            _cloneWorkflowSteps(_workflowDraftSteps);
+      });
+    } else {
+      setState(() {
+        _globalWorkflowSteps = _cloneWorkflowSteps(_workflowDraftSteps);
+        _scopeWorkflowOverrides = {};
+      });
+    }
+    unawaited(
+      _persistProcurementWorkflowData(
+        successMessage: _customizeWorkflowByScope
+            ? 'Saved workflow for selected scope.'
+            : 'Saved global procurement workflow.',
+      ),
+    );
+  }
+
+  void _applyWorkflowDraftToAllScopes() {
+    if (_workflowSaving) return;
+    final normalized = _cloneWorkflowSteps(_workflowDraftSteps);
+    setState(() {
+      _globalWorkflowSteps = _cloneWorkflowSteps(normalized);
+      final next = <String, List<_ProcurementWorkflowStep>>{};
+      for (final item in _items) {
+        if (!_scopeRequiresProcurementWorkflow(item)) {
+          continue;
+        }
+        next[item.id] = _cloneWorkflowSteps(normalized);
+      }
+      _scopeWorkflowOverrides = next;
+      _customizeWorkflowByScope = false;
+      _selectedWorkflowScopeId = null;
+      _hydrateWorkflowDraftForSelection();
+    });
+    unawaited(
+      _persistProcurementWorkflowData(
+        successMessage: 'Applied workflow to all scopes requiring bidding.',
+      ),
+    );
+  }
+
+  Map<String, String> get _itemNumberById {
+    final mapping = <String, String>{};
+    for (var i = 0; i < _items.length; i++) {
+      final itemId = _items[i].id.trim();
+      if (itemId.isEmpty) continue;
+      mapping[itemId] = 'ITM-${(i + 1).toString().padLeft(3, '0')}';
+    }
+    return mapping;
+  }
+
+  bool _isTabAccessible(_ProcurementTab tab) {
+    if (tab == _ProcurementTab.reports) {
+      return _hasCommencedContractingActivities;
+    }
+    return true;
+  }
+
+  String _tabAccessMessage(_ProcurementTab tab) {
+    if (tab == _ProcurementTab.reports) {
+      return 'Reports unlock after a scope process is started.';
+    }
+    return 'This section is not accessible at this stage.';
+  }
+
+  Set<_ProcurementTab> get _tabsWithRestrictedAccess {
+    final restricted = <_ProcurementTab>{};
+    if (!_hasCommencedContractingActivities) {
+      restricted.add(_ProcurementTab.reports);
+    }
+    return restricted;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -130,11 +720,12 @@ class _FrontEndPlanningProcurementScreenState
     ApiKeyManager.initializeApiKey();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final data = ProjectDataHelper.getData(context);
-      _notes.text = data.frontEndPlanning.procurement;
       final projectId = data.projectId ?? '';
 
       if (projectId.isNotEmpty) {
         _subscribeToStreams(projectId);
+        _loadProcurementWorkflowData(projectId);
+        _triggerAutoGenerationForProject(projectId);
       }
       if (_isPlanningMode && projectId.isNotEmpty) {
         await _seedFromInitiationIfNeeded(projectId, data);
@@ -148,6 +739,8 @@ class _FrontEndPlanningProcurementScreenState
     final projectId = ProjectDataHelper.getData(context).projectId ?? '';
     if (projectId.isNotEmpty && projectId != _activeProjectId) {
       _subscribeToStreams(projectId);
+      _loadProcurementWorkflowData(projectId);
+      _triggerAutoGenerationForProject(projectId);
     }
   }
 
@@ -170,7 +763,10 @@ class _FrontEndPlanningProcurementScreenState
         setState(() {
           _items = data;
           _streamError = null;
+          _recomputeDerivedProcurementData();
+          _syncWorkflowStateWithScopes();
         });
+        _clearResolvedValidationErrors();
       },
       onError: (error) {
         if (!mounted) return;
@@ -188,7 +784,9 @@ class _FrontEndPlanningProcurementScreenState
         setState(() {
           _strategies = data;
           _streamError = null;
+          _recomputeDerivedProcurementData();
         });
+        _clearResolvedValidationErrors();
       },
       onError: (error) {
         if (!mounted) return;
@@ -206,7 +804,9 @@ class _FrontEndPlanningProcurementScreenState
         setState(() {
           _vendors = data;
           _streamError = null;
+          _recomputeDerivedProcurementData();
         });
+        _clearResolvedValidationErrors();
       },
       onError: (error) {
         if (!mounted) return;
@@ -224,7 +824,9 @@ class _FrontEndPlanningProcurementScreenState
         setState(() {
           _rfqs = data;
           _streamError = null;
+          _recomputeDerivedProcurementData();
         });
+        _clearResolvedValidationErrors();
       },
       onError: (error) {
         if (!mounted) return;
@@ -242,7 +844,9 @@ class _FrontEndPlanningProcurementScreenState
         setState(() {
           _purchaseOrders = data;
           _streamError = null;
+          _recomputeDerivedProcurementData();
         });
+        _clearResolvedValidationErrors();
       },
       onError: (error) {
         if (!mounted) return;
@@ -258,6 +862,318 @@ class _FrontEndPlanningProcurementScreenState
     _subscribeToStreams(projectId);
   }
 
+  String _resolveProjectId() {
+    final dataProjectId = ProjectDataHelper.getData(context).projectId ?? '';
+    final projectId = (_activeProjectId ?? dataProjectId).trim();
+    return projectId;
+  }
+
+  void _recomputeDerivedProcurementData() {
+    _trackableItems
+      ..clear()
+      ..addAll(_items);
+
+    if (_trackableItems.isEmpty) {
+      _selectedTrackableIndex = 0;
+    } else if (_selectedTrackableIndex >= _trackableItems.length) {
+      _selectedTrackableIndex = _trackableItems.length - 1;
+    }
+
+    final now = DateTime.now();
+    final dateLabel = DateFormat('MMM d, yyyy');
+
+    _trackingAlerts.clear();
+    final activeItems = _items
+        .where((item) =>
+            item.estimatedDelivery != null &&
+            item.status != ProcurementItemStatus.delivered &&
+            item.status != ProcurementItemStatus.cancelled)
+        .toList()
+      ..sort((a, b) =>
+          (a.estimatedDelivery ?? now).compareTo(b.estimatedDelivery ?? now));
+
+    for (final item in activeItems.take(6)) {
+      final due = item.estimatedDelivery ?? now;
+      final daysRemaining = due.difference(now).inDays;
+      final severity = daysRemaining < 0
+          ? _AlertSeverity.high
+          : (daysRemaining <= 7 ? _AlertSeverity.medium : _AlertSeverity.low);
+      final title = daysRemaining < 0
+          ? '${item.name} is overdue'
+          : '${item.name} delivery due soon';
+      final description = daysRemaining < 0
+          ? 'Expected ${dateLabel.format(due)} and still not delivered.'
+          : 'Expected ${dateLabel.format(due)} ($daysRemaining day${daysRemaining == 1 ? '' : 's'} remaining).';
+      _trackingAlerts.add(
+        _TrackingAlert(
+          title: title,
+          description: description,
+          severity: severity,
+          date: now.toIso8601String(),
+        ),
+      );
+    }
+
+    _carrierPerformance.clear();
+    if (_purchaseOrders.isNotEmpty) {
+      final byVendor = <String, List<PurchaseOrderModel>>{};
+      for (final order in _purchaseOrders) {
+        final key = order.vendorName.trim().isEmpty
+            ? 'Unassigned Vendor'
+            : order.vendorName.trim();
+        byVendor.putIfAbsent(key, () => <PurchaseOrderModel>[]).add(order);
+      }
+
+      final vendorGroups = byVendor.entries.toList()
+        ..sort((a, b) => b.value.length.compareTo(a.value.length));
+      for (final group in vendorGroups.take(4)) {
+        final orders = group.value;
+        final total = orders.length;
+        final delivered = orders
+            .where((order) => order.status == PurchaseOrderStatus.received)
+            .length;
+        final onTimeRate = total == 0 ? 0 : ((delivered / total) * 100).round();
+        final totalDays = orders.fold<int>(
+          0,
+          (total, order) {
+            final days =
+                order.expectedDate.difference(order.orderedDate).inDays;
+            return total + (days < 1 ? 1 : days);
+          },
+        );
+        final averageDays = total == 0 ? 0 : (totalDays / total).round();
+
+        _carrierPerformance.add(
+          _CarrierPerformance(
+            carrier: group.key,
+            onTimeRate: onTimeRate.clamp(0, 100),
+            avgDays: averageDays,
+          ),
+        );
+      }
+    }
+
+    final totalBudget =
+        _items.fold<double>(0, (total, item) => total + item.budget);
+    final totalSpend =
+        _purchaseOrders.fold<double>(0, (total, order) => total + order.amount);
+    final openOrders = _purchaseOrders
+        .where((order) =>
+            order.status != PurchaseOrderStatus.received &&
+            order.status != PurchaseOrderStatus.cancelled)
+        .length;
+    final awaitingApprovals = _purchaseOrders
+        .where((order) => order.status == PurchaseOrderStatus.awaitingApproval)
+        .length;
+    final budgetUtilization =
+        totalBudget <= 0 ? 0.0 : (totalSpend / totalBudget).clamp(0.0, 5.0);
+
+    final deliveredItems =
+        _items.where((item) => item.status == ProcurementItemStatus.delivered);
+    final deliveredCount = deliveredItems.length;
+    final onTimeDeliveries = deliveredItems.where((item) {
+      if (item.estimatedDelivery == null || item.actualDelivery == null) {
+        return false;
+      }
+      return !item.actualDelivery!.isAfter(item.estimatedDelivery!);
+    }).length;
+    final onTimeRate =
+        deliveredCount == 0 ? 0.0 : (onTimeDeliveries / deliveredCount);
+
+    final leadDaySamples =
+        _items.where((item) => item.estimatedDelivery != null).map((item) {
+      final days = item.estimatedDelivery!.difference(item.createdAt).inDays;
+      return days < 1 ? 1 : days;
+    }).toList();
+    final averageLeadDays = leadDaySamples.isEmpty
+        ? 0
+        : (leadDaySamples.reduce((a, b) => a + b) / leadDaySamples.length)
+            .round();
+
+    _reportKpis
+      ..clear()
+      ..addAll([
+        _ReportKpi(
+          label: 'Total Spend',
+          value: _currencyFormat.format(totalSpend),
+          delta: 'Budget utilization ${(budgetUtilization * 100).round()}%',
+          positive: budgetUtilization <= 1.0,
+        ),
+        _ReportKpi(
+          label: 'Open Orders',
+          value: '$openOrders',
+          delta: '$awaitingApprovals awaiting approval',
+          positive: awaitingApprovals <= (openOrders == 0 ? 1 : openOrders),
+        ),
+        _ReportKpi(
+          label: 'Avg Lead Time',
+          value: averageLeadDays == 0 ? 'N/A' : '$averageLeadDays days',
+          delta:
+              '${_items.length} tracked item${_items.length == 1 ? '' : 's'}',
+          positive: averageLeadDays <= 45 || averageLeadDays == 0,
+        ),
+        _ReportKpi(
+          label: 'On-time Delivery',
+          value: '${(onTimeRate * 100).round()}%',
+          delta:
+              '$deliveredCount delivered item${deliveredCount == 1 ? '' : 's'}',
+          positive: onTimeRate >= 0.8 || deliveredCount == 0,
+        ),
+      ]);
+
+    _spendBreakdown.clear();
+    final categoryTotals = <String, double>{};
+    if (_purchaseOrders.isNotEmpty) {
+      for (final order in _purchaseOrders) {
+        final key =
+            order.category.trim().isEmpty ? 'Uncategorized' : order.category;
+        categoryTotals[key] = (categoryTotals[key] ?? 0) + order.amount;
+      }
+    } else {
+      for (final item in _items) {
+        final key =
+            item.category.trim().isEmpty ? 'Uncategorized' : item.category;
+        categoryTotals[key] = (categoryTotals[key] ?? 0) + item.budget;
+      }
+    }
+
+    final palette = <Color>[
+      const Color(0xFF2563EB),
+      const Color(0xFF10B981),
+      const Color(0xFFF59E0B),
+      const Color(0xFF6D28D9),
+      const Color(0xFFEF4444),
+    ];
+    final categoryEntries = categoryTotals.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final totalCategories =
+        categoryEntries.fold<double>(0, (total, entry) => total + entry.value);
+    for (var i = 0; i < categoryEntries.length && i < palette.length; i++) {
+      final entry = categoryEntries[i];
+      _spendBreakdown.add(
+        _SpendBreakdown(
+          label: entry.key,
+          amount: entry.value.round(),
+          percent: totalCategories == 0
+              ? 0
+              : (entry.value / totalCategories).clamp(0.0, 1.0),
+          color: palette[i],
+        ),
+      );
+    }
+
+    _leadTimeMetrics.clear();
+    final categories = _items.map((item) => item.category.trim()).toSet()
+      ..removeWhere((value) => value.isEmpty);
+    for (final category in categories.take(4)) {
+      final categoryItems =
+          _items.where((item) => item.category.trim() == category).toList();
+      if (categoryItems.isEmpty) continue;
+      final deliveredCategory = categoryItems
+          .where((item) => item.status == ProcurementItemStatus.delivered)
+          .length;
+      final onTime = categoryItems
+          .where((item) =>
+              item.status == ProcurementItemStatus.delivered &&
+              item.actualDelivery != null &&
+              item.estimatedDelivery != null &&
+              !item.actualDelivery!.isAfter(item.estimatedDelivery!))
+          .length;
+      final rate = deliveredCategory == 0
+          ? 0.0
+          : (onTime / deliveredCategory).clamp(0.0, 1.0);
+      _leadTimeMetrics.add(_LeadTimeMetric(label: category, onTimeRate: rate));
+    }
+
+    _savingsOpportunities.clear();
+    final totalRfqBudget =
+        _rfqs.fold<double>(0, (total, rfq) => total + rfq.budget);
+    if (totalRfqBudget > 0) {
+      _savingsOpportunities.add(
+        _SavingsOpportunity(
+          title: 'Competitive RFQ consolidation',
+          value: _currencyFormat.format(totalRfqBudget * 0.08),
+          owner: 'Sourcing Lead',
+        ),
+      );
+    }
+    if (_vendors.length > 2) {
+      _savingsOpportunities.add(
+        _SavingsOpportunity(
+          title: 'Preferred vendor renegotiation',
+          value: _currencyFormat.format(totalSpend * 0.04),
+          owner: 'Procurement Manager',
+        ),
+      );
+    }
+    if (_savingsOpportunities.isEmpty && totalSpend > 0) {
+      _savingsOpportunities.add(
+        _SavingsOpportunity(
+          title: 'Spend optimization review',
+          value: _currencyFormat.format(totalSpend * 0.03),
+          owner: 'Finance Partner',
+        ),
+      );
+    }
+
+    _complianceMetrics
+      ..clear()
+      ..addAll([
+        _ComplianceMetric(
+          label: 'PO ownership',
+          value: _purchaseOrders.isEmpty
+              ? 0
+              : (_purchaseOrders
+                          .where((order) => order.owner.trim().isNotEmpty)
+                          .length /
+                      _purchaseOrders.length)
+                  .clamp(0.0, 1.0),
+        ),
+        _ComplianceMetric(
+          label: 'Items with delivery date',
+          value: _items.isEmpty
+              ? 0
+              : (_items.where((item) => item.estimatedDelivery != null).length /
+                      _items.length)
+                  .clamp(0.0, 1.0),
+        ),
+        _ComplianceMetric(
+          label: 'Items with vendor assigned',
+          value: _items.isEmpty
+              ? 0
+              : (_items
+                          .where(
+                              (item) => (item.vendorId ?? '').trim().isNotEmpty)
+                          .length /
+                      _items.length)
+                  .clamp(0.0, 1.0),
+        ),
+        _ComplianceMetric(
+          label: 'Active vendor coverage',
+          value: _vendors.isEmpty
+              ? 0
+              : (_vendors.where((vendor) => vendor.isApproved).length /
+                      _vendors.length)
+                  .clamp(0.0, 1.0),
+        ),
+      ]);
+
+    if (!_isTabAccessible(_selectedTab)) {
+      _selectedTab = _ProcurementTab.procurementDashboard;
+    }
+  }
+
+  void _triggerAutoGenerationForProject(String projectId) {
+    if (projectId.isEmpty) return;
+    if (_autoGenerationRequestedProjectId == projectId) return;
+
+    _autoGenerationRequestedProjectId = projectId;
+    Future<void>.delayed(const Duration(milliseconds: 350), () async {
+      if (!mounted) return;
+      await _generateProcurementDataIfNeeded(silent: true);
+    });
+  }
+
   void _loadMoreForTab(_ProcurementTab tab) {
     setState(() {
       switch (tab) {
@@ -265,8 +1181,9 @@ class _FrontEndPlanningProcurementScreenState
           _strategiesLimit += _streamLimitStep;
           break;
         case _ProcurementTab.itemsList:
-        case _ProcurementTab.itemTracking:
           _itemsLimit += _streamLimitStep;
+          break;
+        case _ProcurementTab.itemTracking:
           break;
         case _ProcurementTab.vendorManagement:
           _vendorsLimit += _streamLimitStep;
@@ -278,7 +1195,9 @@ class _FrontEndPlanningProcurementScreenState
           _purchaseOrdersLimit += _streamLimitStep;
           break;
         case _ProcurementTab.reports:
-          _itemsLimit += _streamLimitStep;
+          if (_hasCommencedContractingActivities) {
+            _itemsLimit += _streamLimitStep;
+          }
           break;
       }
     });
@@ -290,14 +1209,15 @@ class _FrontEndPlanningProcurementScreenState
   }
 
   Future<void> _seedProcurementDataIfNeeded(
-      String projectId, ProjectDataModel data) async {
+    String projectId,
+    ProjectDataModel data, {
+    required bool seedItems,
+    required bool seedStrategies,
+    required bool seedVendors,
+    required bool seedRfqs,
+    required bool seedPurchaseOrders,
+  }) async {
     if (_isGeneratingData) return;
-
-    final hasItems = await ProcurementService.hasAnyItems(projectId).timeout(
-      const Duration(seconds: 6),
-      onTimeout: () => true,
-    );
-    if (hasItems) return;
 
     setState(() => _isGeneratingData = true);
 
@@ -307,13 +1227,24 @@ class _FrontEndPlanningProcurementScreenState
       final solutionTitle = data.solutionTitle.trim().isEmpty
           ? 'Solution'
           : data.solutionTitle.trim();
-      final notes = data.frontEndPlanning.procurement.trim();
+      final aiContext = _buildProcurementAiContext(data);
 
-      await _seedItems(projectId, projectName, solutionTitle, notes);
-      await _seedStrategies(projectId);
-      await _seedVendors(projectId, projectName, solutionTitle, notes);
-      await _seedRfqs(projectId, projectName, solutionTitle, notes);
-      await _seedPurchaseOrders(projectId, projectName, solutionTitle, notes);
+      if (seedItems) {
+        await _seedItems(projectId, projectName, solutionTitle, data);
+      }
+      if (seedStrategies) {
+        await _seedStrategies(projectId);
+      }
+      if (seedVendors) {
+        await _seedVendors(projectId, projectName, solutionTitle, data);
+      }
+      if (seedRfqs) {
+        await _seedRfqs(projectId, projectName, solutionTitle, aiContext);
+      }
+      if (seedPurchaseOrders) {
+        await _seedPurchaseOrders(
+            projectId, projectName, solutionTitle, aiContext);
+      }
       // Trackable items are just items with status. No need to seed separately if items cover it.
     } catch (e) {
       debugPrint('Error seeding procurement data: $e');
@@ -325,15 +1256,9 @@ class _FrontEndPlanningProcurementScreenState
   }
 
   Future<void> _seedItems(String projectId, String projectName,
-      String solutionTitle, String notes) async {
+      String solutionTitle, ProjectDataModel data) async {
     final now = DateTime.now();
-    final categories = [
-      'IT Equipment',
-      'Construction Services',
-      'Furniture',
-      'Security',
-      'Services'
-    ];
+    final categories = _seedCategoriesFor(data);
 
     try {
       // Try AI generation first
@@ -341,14 +1266,17 @@ class _FrontEndPlanningProcurementScreenState
       try {
         for (int i = 0; i < categories.length; i++) {
           final category = categories[i];
+          final contextNotes =
+              _buildProcurementAiContext(data, focusCategory: category);
           final result = await _openAi.generateProcurementItemSuggestion(
             projectName: projectName,
             solutionTitle: solutionTitle,
             category: category,
-            contextNotes: notes,
+            contextNotes: contextNotes,
           );
 
-          final deliveryDays = (result['estimatedDeliveryDays'] as int?) ?? 90;
+          final deliveryDays = (result['estimatedDeliveryDays'] as int?) ??
+              _defaultLeadTimeDaysForCategory(category);
           final deliveryDate = DateTime.now().add(Duration(days: deliveryDays));
 
           ProcurementPriority priority;
@@ -438,7 +1366,9 @@ class _FrontEndPlanningProcurementScreenState
             status: ProcurementItemStatus.planning,
             priority: ProcurementPriority.medium,
             budget: (50000 + (i * 10000)).toDouble(),
-            estimatedDelivery: now.add(const Duration(days: 90)),
+            estimatedDelivery: now.add(
+              Duration(days: _defaultLeadTimeDaysForCategory(categories[i])),
+            ),
             progress: 0.0,
             createdAt: now,
             updatedAt: now,
@@ -496,13 +1426,15 @@ class _FrontEndPlanningProcurementScreenState
   }
 
   Future<void> _seedVendors(String projectId, String projectName,
-      String solutionTitle, String notes) async {
+      String solutionTitle, ProjectDataModel data) async {
     try {
+      final categories = _seedCategoriesFor(data);
       final vendors = await _openAi.generateProcurementVendors(
         projectName: projectName,
         solutionTitle: solutionTitle,
-        contextNotes: notes,
-        count: 5,
+        contextNotes: _buildProcurementAiContext(data),
+        count: categories.length.clamp(5, 8),
+        preferredCategories: categories,
       );
 
       final list = <VendorModel>[];
@@ -618,9 +1550,8 @@ class _FrontEndPlanningProcurementScreenState
 
   Future<void> _seedPurchaseOrders(String projectId, String projectName,
       String solutionTitle, String notes) async {
-    // Implementation similar to seedRfqs but for POs. Skipping strictly for length, assuming empty for now or implementing if needed logic.
-    // To save tokens, I'll implement a basic seed.
     try {
+      final now = DateTime.now();
       final pos = [
         PurchaseOrderModel(
             id: '',
@@ -628,11 +1559,39 @@ class _FrontEndPlanningProcurementScreenState
             projectId: projectId,
             vendorName: 'TechCorp',
             category: 'IT',
-            orderedDate: DateTime.now(),
-            expectedDate: DateTime.now().add(const Duration(days: 10)),
+            owner: 'Procurement Lead',
+            orderedDate: now,
+            expectedDate: now.add(const Duration(days: 10)),
             amount: 50000,
-            createdAt: DateTime.now(),
-            status: PurchaseOrderStatus.issued)
+            progress: 0.65,
+            createdAt: now,
+            status: PurchaseOrderStatus.issued),
+        PurchaseOrderModel(
+            id: '',
+            poNumber: 'PO-1002',
+            projectId: projectId,
+            vendorName: 'BuildRight Services',
+            category: 'Construction Services',
+            owner: 'Delivery Manager',
+            orderedDate: now.subtract(const Duration(days: 5)),
+            expectedDate: now.add(const Duration(days: 14)),
+            amount: 82000,
+            progress: 0.25,
+            createdAt: now,
+            status: PurchaseOrderStatus.awaitingApproval),
+        PurchaseOrderModel(
+            id: '',
+            poNumber: 'PO-1003',
+            projectId: projectId,
+            vendorName: 'Office Source',
+            category: 'Furniture',
+            owner: 'Operations',
+            orderedDate: now.subtract(const Duration(days: 16)),
+            expectedDate: now.subtract(const Duration(days: 2)),
+            amount: 24000,
+            progress: 1.0,
+            createdAt: now,
+            status: PurchaseOrderStatus.received),
       ];
       for (final po in pos) {
         await ProcurementService.createPo(po);
@@ -647,7 +1606,6 @@ class _FrontEndPlanningProcurementScreenState
   @override
   void dispose() {
     _cancelSubscriptions();
-    _notes.dispose();
     super.dispose();
   }
 
@@ -677,6 +1635,7 @@ class _FrontEndPlanningProcurementScreenState
         _selectedVendorIds.remove(vendorId);
       }
     });
+    _clearResolvedValidationErrors();
   }
 
   Future<void> _openEditVendorDialog(VendorModel vendor) async {
@@ -688,6 +1647,7 @@ class _FrontEndPlanningProcurementScreenState
       'Logistics',
       'Services',
       'Materials',
+      'Other',
     ];
 
     final result = await showDialog<VendorModel>(
@@ -699,28 +1659,107 @@ class _FrontEndPlanningProcurementScreenState
           contextChips: _buildDialogContextChips(),
           categoryOptions: categoryOptions,
           initialVendor: vendor,
+          showAiGenerateButton: false,
+          partnerLabel: 'Vendor',
+          partnerPluralLabel: 'Vendors',
+          existingPartners: _vendors,
+          allowExistingAutofill: true,
         );
       },
     );
 
     if (result != null) {
-      setState(() {
-        final index = _vendors.indexWhere((v) => v.id == vendor.id);
-        if (index != -1) {
-          _vendors[index] = result;
+      try {
+        final projectId = _resolveProjectId();
+        if (projectId.isEmpty) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content:
+                    Text('Project not initialized. Unable to edit vendor.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
         }
-      });
+
+        await VendorService.updateVendor(
+          projectId: projectId,
+          vendorId: vendor.id,
+          name: result.name,
+          category: result.category,
+          criticality: result.criticality,
+          sla: result.sla,
+          slaPerformance: result.slaPerformance,
+          leadTime: result.leadTime,
+          requiredDeliverables: result.requiredDeliverables,
+          rating: result.rating,
+          status: result.status,
+          nextReview: result.nextReview,
+          onTimeDelivery: result.onTimeDelivery,
+          incidentResponse: result.incidentResponse,
+          qualityScore: result.qualityScore,
+          costAdherence: result.costAdherence,
+          notes: result.notes,
+        );
+        _refreshSubscriptionsForActiveProject();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Unable to update vendor: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 
-  void _removeVendor(String vendorId) {
-    setState(() {
-      _vendors.removeWhere((vendor) => vendor.id == vendorId);
-      _selectedVendorIds.remove(vendorId);
-    });
+  void _removeVendor(String vendorId) async {
+    try {
+      final projectId = _resolveProjectId();
+      if (projectId.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text('Project not initialized. Unable to remove vendor.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      await VendorService.deleteVendor(
+          projectId: projectId, vendorId: vendorId);
+      if (mounted) {
+        setState(() {
+          _vendors.removeWhere((vendor) => vendor.id == vendorId);
+          _selectedVendorIds.remove(vendorId);
+          _recomputeDerivedProcurementData();
+        });
+      }
+      _refreshSubscriptionsForActiveProject();
+      _clearResolvedValidationErrors();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Unable to remove vendor: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _handleNotesChanged(String value) {
+    if (_validationErrors.containsKey('procurement_notes')) {
+      _clearResolvedValidationErrors();
+    }
     final provider = ProjectDataHelper.getProvider(context);
     provider.updateField(
       (data) => data.copyWith(
@@ -887,11 +1926,11 @@ class _FrontEndPlanningProcurementScreenState
   }
 
   Future<void> _generateProcurementDataIfNeeded(
-      {bool showIfAlreadySeeded = false}) async {
+      {bool showIfAlreadySeeded = false, bool silent = false}) async {
     final data = ProjectDataHelper.getData(context);
     final projectId = data.projectId ?? '';
     if (projectId.isEmpty) {
-      if (mounted) {
+      if (!silent && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Project not initialized. Unable to generate data.'),
@@ -901,13 +1940,54 @@ class _FrontEndPlanningProcurementScreenState
       return;
     }
 
-    final hasItems = await ProcurementService.hasAnyItems(projectId).timeout(
-      const Duration(seconds: 6),
-      onTimeout: () => true,
-    );
+    final checks = await Future.wait<bool>([
+      ProcurementService.hasAnyItems(projectId).timeout(
+        const Duration(seconds: 6),
+        onTimeout: () => true,
+      ),
+      ProcurementService.hasAnyStrategies(projectId).timeout(
+        const Duration(seconds: 6),
+        onTimeout: () => true,
+      ),
+      VendorService.hasAnyVendors(projectId).timeout(
+        const Duration(seconds: 6),
+        onTimeout: () => true,
+      ),
+      ProcurementService.hasAnyRfqs(projectId).timeout(
+        const Duration(seconds: 6),
+        onTimeout: () => true,
+      ),
+      ProcurementService.hasAnyPos(projectId).timeout(
+        const Duration(seconds: 6),
+        onTimeout: () => true,
+      ),
+    ]);
 
-    if (hasItems) {
-      if (showIfAlreadySeeded && mounted) {
+    final hasItems = checks[0];
+    final hasStrategies = checks[1];
+    final hasVendors = checks[2];
+    final hasRfqs = checks[3];
+    final hasPos = checks[4];
+
+    final needsItems = !hasItems || (showIfAlreadySeeded && _items.isEmpty);
+    final needsStrategies =
+        !hasStrategies || (showIfAlreadySeeded && _strategies.isEmpty);
+    final needsVendors =
+        !hasVendors || (showIfAlreadySeeded && _vendors.isEmpty);
+    final needsRfqs = !hasRfqs || (showIfAlreadySeeded && _rfqs.isEmpty);
+    final needsPos =
+        !hasPos || (showIfAlreadySeeded && _purchaseOrders.isEmpty);
+
+    final missingSections = <String>[
+      if (needsItems) 'Items',
+      if (needsStrategies) 'Strategies',
+      if (needsVendors) 'Vendors',
+      if (needsRfqs) 'RFQs',
+      if (needsPos) 'Purchase Orders',
+    ];
+
+    if (missingSections.isEmpty) {
+      if (showIfAlreadySeeded && !silent && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -918,17 +1998,27 @@ class _FrontEndPlanningProcurementScreenState
       return;
     }
 
-    await _seedProcurementDataIfNeeded(projectId, data);
-  }
+    await _seedProcurementDataIfNeeded(
+      projectId,
+      data,
+      seedItems: needsItems,
+      seedStrategies: needsStrategies,
+      seedVendors: needsVendors,
+      seedRfqs: needsRfqs,
+      seedPurchaseOrders: needsPos,
+    );
+    _refreshSubscriptionsForActiveProject();
 
-  void _toggleStrategy(int index) {
-    setState(() {
-      if (_expandedStrategies.contains(index)) {
-        _expandedStrategies.remove(index);
-      } else {
-        _expandedStrategies.add(index);
-      }
-    });
+    if (!silent && mounted) {
+      final message = 'Generated missing procurement data: '
+          '${missingSections.join(', ')}.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: const Color(0xFF16A34A),
+        ),
+      );
+    }
   }
 
   void _handleItemListTap() {
@@ -937,6 +2027,14 @@ class _FrontEndPlanningProcurementScreenState
 
   void _handleTabSelected(_ProcurementTab tab) {
     if (_selectedTab == tab) return;
+    if (!_isTabAccessible(tab)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_tabAccessMessage(tab))),
+        );
+      }
+      return;
+    }
     setState(() => _selectedTab = tab);
   }
 
@@ -945,11 +2043,330 @@ class _FrontEndPlanningProcurementScreenState
     setState(() => _selectedTrackableIndex = index);
   }
 
+  String _currentProcurementNotes([ProjectDataModel? data]) {
+    final source = data ?? ProjectDataHelper.getData(context);
+    final aiNotes = source.planningNotes[_procurementNotesKey] ?? '';
+    if (aiNotes.trim().isNotEmpty) {
+      return aiNotes.trim();
+    }
+    return source.frontEndPlanning.procurement.trim();
+  }
+
+  String _projectTypeContext(ProjectDataModel data) {
+    if (data.overallFramework?.trim().isNotEmpty == true) {
+      return data.overallFramework!.trim();
+    }
+    if (data.solutionTitle.trim().isNotEmpty) {
+      return data.solutionTitle.trim();
+    }
+    if (data.solutionDescription.trim().isNotEmpty) {
+      return data.solutionDescription.trim();
+    }
+    return 'General project';
+  }
+
+  String _regionContext(ProjectDataModel data) {
+    final regionBits = <String>[
+      data.charterOrganizationalUnit.trim(),
+      data.frontEndPlanning.infrastructure.trim(),
+      data.notes.trim(),
+    ].where((entry) => entry.isNotEmpty).toList();
+    if (regionBits.isEmpty) return 'Region not explicitly specified';
+    final merged = regionBits.join(' | ');
+    return merged.length > 420 ? '${merged.substring(0, 417)}...' : merged;
+  }
+
+  String _scopeSignalContext(ProjectDataModel data) {
+    final withinScope = data.withinScopeItems
+        .map((item) => item.description.trim())
+        .where((entry) => entry.isNotEmpty)
+        .take(5)
+        .toList();
+    final milestones = data.keyMilestones
+        .map((item) => item.name.trim())
+        .where((entry) => entry.isNotEmpty)
+        .take(4)
+        .toList();
+    final constraints = data.constraintItems
+        .map((item) => item.description.trim())
+        .where((entry) => entry.isNotEmpty)
+        .take(4)
+        .toList();
+
+    return [
+      if (withinScope.isNotEmpty) 'Within scope: ${withinScope.join('; ')}',
+      if (milestones.isNotEmpty) 'Milestones: ${milestones.join('; ')}',
+      if (constraints.isNotEmpty) 'Constraints: ${constraints.join('; ')}',
+    ].join('\n');
+  }
+
+  String _buildProcurementAiContext(
+    ProjectDataModel data, {
+    String focusCategory = '',
+  }) {
+    final notes = _currentProcurementNotes(data);
+    final scopeSignals = _scopeSignalContext(data);
+    final focus = focusCategory.trim();
+
+    return [
+      if (focus.isNotEmpty) 'Focus category: $focus',
+      'Project type: ${_projectTypeContext(data)}',
+      'Region and local context: ${_regionContext(data)}',
+      if (notes.isNotEmpty) 'Procurement notes: $notes',
+      if (scopeSignals.isNotEmpty) scopeSignals,
+      'Guidance: prioritize long-lead and schedule-critical items first.',
+      'Guidance: tailor recommendations to local market constraints, practical availability, and project type.',
+      'Guidance: suggest realistic procurement packages similar to successful projects of this type.',
+      'Guidance: avoid generic or unrelated items.',
+    ].join('\n');
+  }
+
+  List<String> _seedCategoriesFor(ProjectDataModel data) {
+    final text = [
+      _projectTypeContext(data).toLowerCase(),
+      _currentProcurementNotes(data).toLowerCase(),
+      data.solutionDescription.toLowerCase(),
+    ].join(' ');
+
+    final categories = <String>[
+      // Prioritize long-lead categories by default.
+      'Equipment',
+      'Materials',
+      'IT Equipment',
+      'Construction Services',
+      'Security',
+      'Logistics',
+      'Services',
+      'Furniture',
+    ];
+
+    if (text.contains('software') ||
+        text.contains('digital') ||
+        text.contains('platform')) {
+      categories.insert(0, 'IT Equipment');
+      categories.insert(1, 'Security');
+      categories.insert(2, 'Services');
+    }
+
+    if (text.contains('construction') ||
+        text.contains('facility') ||
+        text.contains('infrastructure')) {
+      categories.insert(0, 'Construction Services');
+      categories.insert(1, 'Materials');
+      categories.insert(2, 'Logistics');
+    }
+
+    final unique = <String>[];
+    for (final category in categories) {
+      if (!unique.contains(category)) unique.add(category);
+      if (unique.length >= 6) break;
+    }
+    return unique;
+  }
+
+  int _defaultLeadTimeDaysForCategory(String category) {
+    final lower = category.trim().toLowerCase();
+    if (lower.contains('equipment')) return 140;
+    if (lower.contains('material')) return 120;
+    if (lower.contains('construction')) return 110;
+    if (lower.contains('logistics')) return 95;
+    if (lower.contains('security')) return 90;
+    if (lower.contains('furniture')) return 85;
+    if (lower.contains('service')) return 75;
+    return 90;
+  }
+
   _ProcurementTab? _nextTab() {
     final tabs = _ProcurementTab.values;
     final index = tabs.indexOf(_selectedTab);
     if (index == -1 || index >= tabs.length - 1) return null;
-    return tabs[index + 1];
+    for (var i = index + 1; i < tabs.length; i++) {
+      if (_isTabAccessible(tabs[i])) {
+        return tabs[i];
+      }
+    }
+    return null;
+  }
+
+  bool get _hasVendorSelection {
+    if (_selectedVendorIds.isNotEmpty) return true;
+    return _items.any((item) => (item.vendorId ?? '').trim().isNotEmpty);
+  }
+
+  _ProcurementTab? _tabForFieldId(String fieldId) {
+    switch (fieldId) {
+      case 'procurement_notes':
+        return _ProcurementTab.procurementDashboard;
+      case 'item_list':
+      case 'project_budget':
+      case 'expected_delivery_date':
+        return _ProcurementTab.itemsList;
+      case 'vendor_selection':
+        return _ProcurementTab.vendorManagement;
+      default:
+        return null;
+    }
+  }
+
+  List<String> _pendingIssueSummaries([Iterable<ValidationIssue>? issues]) {
+    final source = issues ?? _pendingSecurityIssues;
+    final summaries = <String>[];
+    final seen = <String>{};
+    for (final issue in source) {
+      final tabLabel = _tabForFieldId(issue.id)?.label;
+      final summary =
+          tabLabel == null ? issue.label : '${issue.label} ($tabLabel)';
+      if (seen.add(summary)) {
+        summaries.add(summary);
+      }
+    }
+    return summaries;
+  }
+
+  void _dismissPendingSecurityPrompt() {
+    if (!_showPendingSecurityPrompt) return;
+    setState(() {
+      _showPendingSecurityPrompt = false;
+      _pendingSecurityIssues = const <ValidationIssue>[];
+    });
+  }
+
+  FormValidationResult _validateProcurementForNavigation() {
+    return FormValidationEngine.validateForm([
+      ValidationFieldRule(
+        id: 'procurement_notes',
+        label: 'Procurement Notes',
+        section: 'Procurement Details',
+        type: ValidationFieldType.text,
+        value: _currentProcurementNotes(),
+        fieldKey: _notesFieldKey,
+      ),
+      ValidationFieldRule(
+        id: 'item_list',
+        label: 'Scope Details',
+        section: 'Procurement Details',
+        type: ValidationFieldType.custom,
+        value: _items,
+        fieldKey: _itemsSectionKey,
+        errorText: 'Add at least one procurement item',
+        isMissing: (_) => _items.isEmpty,
+      ),
+      ValidationFieldRule(
+        id: 'project_budget',
+        label: 'Project Budget',
+        section: 'Procurement Details',
+        type: ValidationFieldType.custom,
+        value: _items,
+        fieldKey: _itemsSectionKey,
+        isMissing: (_) => !_items.any((item) => item.budget > 0),
+      ),
+      ValidationFieldRule(
+        id: 'expected_delivery_date',
+        label: 'Expected Delivery Date',
+        section: 'Procurement Details',
+        type: ValidationFieldType.custom,
+        value: _items,
+        fieldKey: _itemsSectionKey,
+        isMissing: (_) => !_items.any((item) => item.estimatedDelivery != null),
+      ),
+      ValidationFieldRule(
+        id: 'vendor_selection',
+        label: 'Vendor Selection',
+        section: 'Procurement Details',
+        type: ValidationFieldType.custom,
+        value: _selectedVendorIds,
+        fieldKey: _vendorSectionKey,
+        isMissing: (_) => !_hasVendorSelection,
+      ),
+    ]);
+  }
+
+  String? _itemsSectionErrorText() {
+    final missing = <String>[];
+    if (_validationErrors.containsKey('item_list')) {
+      missing.add('Scope Details');
+    }
+    if (_validationErrors.containsKey('project_budget')) {
+      missing.add('Project Budget');
+    }
+    if (_validationErrors.containsKey('expected_delivery_date')) {
+      missing.add('Expected Delivery Date');
+    }
+    if (missing.isEmpty) return null;
+    return 'Complete required fields: ${missing.join(', ')}';
+  }
+
+  String? _vendorSectionErrorText() {
+    if (!_validationErrors.containsKey('vendor_selection')) {
+      return null;
+    }
+    return 'Select at least one vendor before continuing.';
+  }
+
+  void _setValidationState(FormValidationResult validation) {
+    final tabErrors = validation.issues
+        .map((issue) => _tabForFieldId(issue.id))
+        .whereType<_ProcurementTab>()
+        .toSet();
+
+    setState(() {
+      _validationErrors = validation.errorByFieldId;
+      _tabsWithErrors
+        ..clear()
+        ..addAll(tabErrors);
+    });
+  }
+
+  void _clearResolvedValidationErrors() {
+    if (_validationErrors.isEmpty && _tabsWithErrors.isEmpty) return;
+
+    final next = Map<String, String>.from(_validationErrors);
+    if (_currentProcurementNotes().isNotEmpty) {
+      next.remove('procurement_notes');
+    }
+    if (_items.isNotEmpty) {
+      next.remove('item_list');
+    }
+    if (_items.any((item) => item.budget > 0)) {
+      next.remove('project_budget');
+    }
+    if (_items.any((item) => item.estimatedDelivery != null)) {
+      next.remove('expected_delivery_date');
+    }
+    if (_hasVendorSelection) {
+      next.remove('vendor_selection');
+    }
+
+    final tabErrors =
+        next.keys.map(_tabForFieldId).whereType<_ProcurementTab>().toSet();
+
+    final promptValidation =
+        _showPendingSecurityPrompt ? _validateProcurementForNavigation() : null;
+
+    setState(() {
+      _validationErrors = next;
+      _tabsWithErrors
+        ..clear()
+        ..addAll(tabErrors);
+      if (promptValidation != null) {
+        _pendingSecurityIssues = promptValidation.issues;
+        _showPendingSecurityPrompt = promptValidation.hasIssues;
+      }
+    });
+  }
+
+  Future<void> _focusFirstProcurementIssue(
+      FormValidationResult validation) async {
+    final issue = validation.firstIssue;
+    if (issue == null) return;
+
+    final targetTab = _tabForFieldId(issue.id);
+    if (targetTab != null && targetTab != _selectedTab) {
+      setState(() => _selectedTab = targetTab);
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+    }
+
+    await FormValidationEngine.scrollToFirstIssue(validation);
   }
 
   Future<void> _goToNextSection() async {
@@ -957,6 +2374,34 @@ class _FrontEndPlanningProcurementScreenState
     if (nextTab != null) {
       setState(() => _selectedTab = nextTab);
       return;
+    }
+
+    final validation = _validateProcurementForNavigation();
+    if (validation.hasIssues) {
+      _setValidationState(validation);
+      setState(() {
+        _showPendingSecurityPrompt = true;
+        _pendingSecurityIssues = validation.issues;
+      });
+      FormValidationEngine.showValidationSnackBar(
+        context,
+        validation,
+        intro: 'Please complete the following before accessing Security:',
+      );
+      await _focusFirstProcurementIssue(validation);
+      return;
+    }
+
+    if (_validationErrors.isNotEmpty ||
+        _tabsWithErrors.isNotEmpty ||
+        _showPendingSecurityPrompt ||
+        _pendingSecurityIssues.isNotEmpty) {
+      setState(() {
+        _validationErrors = const {};
+        _tabsWithErrors.clear();
+        _showPendingSecurityPrompt = false;
+        _pendingSecurityIssues = const <ValidationIssue>[];
+      });
     }
 
     // Save all data before navigation to prevent data loss
@@ -999,7 +2444,10 @@ class _FrontEndPlanningProcurementScreenState
 
     // Check if destination is locked (FEP flow)
     if (ProjectDataHelper.isDestinationLocked(context, 'fep_security')) {
-      ProjectDataHelper.showLockedDestinationMessage(context, 'Security');
+      ProjectDataHelper.showLockedDestinationMessage(
+        context,
+        'Security',
+      );
       return;
     }
 
@@ -1013,7 +2461,7 @@ class _FrontEndPlanningProcurementScreenState
       dataUpdater: (data) => data.copyWith(
         frontEndPlanning: ProjectDataHelper.updateFEPField(
           current: data.frontEndPlanning,
-          procurement: _notes.text.trim(),
+          procurement: _currentProcurementNotes(data),
         ),
       ),
     );
@@ -1024,67 +2472,126 @@ class _FrontEndPlanningProcurementScreenState
       case _ProcurementTab.procurementDashboard:
         return _buildDashboardSection();
       case _ProcurementTab.itemsList:
-        return _ItemsListView(
-          key: const ValueKey('procurement_items_list'),
-          items: _items,
-          trackableItems: _trackableItems,
-          selectedIndex: _selectedTrackableIndex,
-          onSelectTrackable: _handleTrackableSelected,
-          currencyFormat: _currencyFormat,
-          onAddItem: _openAddItemDialog,
+        return _withSectionValidation(
+          sectionKey: _itemsSectionKey,
+          errorText: _itemsSectionErrorText(),
+          child: _ItemsListView(
+            key: const ValueKey('procurement_items_list'),
+            items: _items,
+            trackableItems: _trackableItems,
+            selectedIndex: _selectedTrackableIndex,
+            onSelectTrackable: _handleTrackableSelected,
+            currencyFormat: _currencyFormat,
+            onAddItem: _openAddItemDialog,
+            onEditItem: _openEditItemDialog,
+            onDeleteItem: _removeItem,
+          ),
         );
       case _ProcurementTab.vendorManagement:
-        return _VendorManagementView(
-          key: const ValueKey('procurement_vendor_management'),
-          vendors: _filteredVendors,
-          allVendors: _vendors,
-          selectedVendorIds: _selectedVendorIds,
-          approvedOnly: _approvedOnly,
-          preferredOnly: _preferredOnly,
-          listView: _listView,
-          categoryFilter: _categoryFilter,
-          categoryOptions: _categoryOptions,
-          healthMetrics: _vendorHealthMetrics,
-          onboardingTasks: _vendorOnboardingTasks,
-          riskItems: _vendorRiskItems,
-          onAddVendor: _openAddVendorDialog,
-          onApprovedChanged: (value) => setState(() => _approvedOnly = value),
-          onPreferredChanged: (value) => setState(() => _preferredOnly = value),
-          onCategoryChanged: (value) => setState(() => _categoryFilter = value),
-          onViewModeChanged: (value) => setState(() => _listView = value),
-          onToggleVendorSelected: _toggleVendorSelection,
-          onEditVendor: _openEditVendorDialog,
-          onDeleteVendor: _removeVendor,
+        return _withSectionValidation(
+          sectionKey: _vendorSectionKey,
+          errorText: _vendorSectionErrorText(),
+          child: _VendorManagementView(
+            key: const ValueKey('procurement_vendor_management'),
+            vendors: _filteredVendors,
+            allVendors: _vendors,
+            selectedVendorIds: _selectedVendorIds,
+            approvedOnly: _approvedOnly,
+            preferredOnly: _preferredOnly,
+            listView: _listView,
+            categoryFilter: _categoryFilter,
+            categoryOptions: _categoryOptions,
+            healthMetrics: _vendorHealthMetrics,
+            onboardingTasks: _vendorOnboardingTasks,
+            riskItems: _vendorRiskItems,
+            onAddVendor: _openAddVendorDialog,
+            onApprovedChanged: (value) => setState(() => _approvedOnly = value),
+            onPreferredChanged: (value) =>
+                setState(() => _preferredOnly = value),
+            onCategoryChanged: (value) =>
+                setState(() => _categoryFilter = value),
+            onViewModeChanged: (value) => setState(() => _listView = value),
+            onToggleVendorSelected: _toggleVendorSelection,
+            onEditVendor: _openEditVendorDialog,
+            onDeleteVendor: _removeVendor,
+            onOpenApprovedVendorList: _openApprovedVendorList,
+          ),
         );
       case _ProcurementTab.rfqWorkflow:
+        final workflowScopeId = _resolveWorkflowScopeId();
+        final workflowScope = _findWorkflowScopeById(workflowScopeId);
+        final workflowDisabledForSelection = _customizeWorkflowByScope &&
+            workflowScope != null &&
+            !_scopeRequiresProcurementWorkflow(workflowScope);
+        final workflowSteps = workflowDisabledForSelection
+            ? const <_ProcurementWorkflowStep>[]
+            : _workflowDraftSteps;
         return _RfqWorkflowView(
           key: const ValueKey('procurement_rfq_workflow'),
+          scopeItems: _items,
           rfqs: _rfqs,
           criteria: _rfqCriteria,
           currencyFormat: _currencyFormat,
+          customizeWorkflowByScope: _customizeWorkflowByScope,
+          selectedScopeId: workflowScopeId,
+          workflowDisabledForSelection: workflowDisabledForSelection,
+          workflowTotalWeeks: _totalWorkflowDurationInWeeks(workflowSteps),
+          workflowSteps: workflowSteps,
+          workflowLoading: _workflowLoading,
+          workflowSaving: _workflowSaving,
+          onCustomizeByScopeChanged: _setCustomizeWorkflowByScope,
+          onWorkflowScopeSelected: _selectWorkflowScope,
+          onAddWorkflowStep: _addWorkflowStepToDraft,
+          onEditWorkflowStep: _editWorkflowStep,
+          onDeleteWorkflowStep: _deleteWorkflowStepFromDraft,
+          onMoveWorkflowStep: _moveWorkflowStepInDraft,
+          onResetWorkflow: _resetWorkflowDraftToPreset,
+          onSaveWorkflow: _saveWorkflowForSelection,
+          onApplyWorkflowToAllScopes: _applyWorkflowDraftToAllScopes,
           onCreateRfq: _openCreateRfqDialog,
+          onEditRfq: _openEditRfqDialog,
+          onDeleteRfq: _deleteRfq,
+          onOpenTemplates: () =>
+              _handleTabSelected(_ProcurementTab.itemTracking),
         );
       case _ProcurementTab.purchaseOrders:
         return _PurchaseOrdersView(
           key: const ValueKey('procurement_purchase_orders'),
           orders: _purchaseOrders,
           currencyFormat: _currencyFormat,
-          onCreatePo: _openCreatePoDialog,
-        );
-      case _ProcurementTab.itemTracking:
-        return _ItemTrackingView(
-          key: const ValueKey('procurement_item_tracking'),
+          processStarted: _hasCommencedContractingActivities,
+          earlyStartEnabled: _purchaseOrdersEarlyStartEnabled,
+          canEnableEarlyStart: _canCommenceContractingActivities,
+          onEnableEarlyStart: _enablePurchaseOrdersEarlyStart,
+          vitalLleItems: _vitalLleItems,
+          itemNumberById: _itemNumberById,
           trackableItems: _trackableItems,
-          selectedIndex: _selectedTrackableIndex,
+          selectedTrackableIndex: _selectedTrackableIndex,
           onSelectTrackable: _handleTrackableSelected,
-          selectedItem: (_selectedTrackableIndex >= 0 &&
+          selectedTrackableItem: (_selectedTrackableIndex >= 0 &&
                   _selectedTrackableIndex < _trackableItems.length)
               ? _trackableItems[_selectedTrackableIndex]
               : null,
-          alerts: _trackingAlerts,
-          carriers: _carrierPerformance,
+          trackingAlerts: _trackingAlerts,
+          carrierPerformance: _carrierPerformance,
+          onUpdateTrackingStatus: _updateSelectedTrackingStatus,
+          onCreatePo: _openCreatePoDialog,
+          onEditPo: _openEditPoDialog,
+          onDeletePo: _deletePo,
+        );
+      case _ProcurementTab.itemTracking:
+        return _ProcurementTemplatesView(
+          key: const ValueKey('procurement_templates'),
+          processStarted: _hasCommencedContractingActivities,
         );
       case _ProcurementTab.reports:
+        if (!_hasCommencedContractingActivities) {
+          return const _StageLockedView(
+            title: 'Reports Locked',
+            message:
+                'No access at this stage. Start at least one contract scope process to unlock procurement reports.',
+          );
+        }
         return _ReportsView(
           key: const ValueKey('procurement_reports'),
           kpis: _reportKpis,
@@ -1093,8 +2600,35 @@ class _FrontEndPlanningProcurementScreenState
           savingsOpportunities: _savingsOpportunities,
           complianceMetrics: _complianceMetrics,
           currencyFormat: _currencyFormat,
+          onGenerateReports: _generateReportData,
         );
     }
+  }
+
+  Widget _withSectionValidation({
+    required Widget child,
+    required Key sectionKey,
+    String? errorText,
+  }) {
+    final hasError = (errorText ?? '').trim().isNotEmpty;
+    return Column(
+      key: sectionKey,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        child,
+        if (hasError) ...[
+          const SizedBox(height: 8),
+          Text(
+            errorText!,
+            style: const TextStyle(
+              color: Color(0xFFDC2626),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ],
+    );
   }
 
   Widget _buildStreamWindowControls() {
@@ -1127,13 +2661,23 @@ class _FrontEndPlanningProcurementScreenState
           ],
         );
       case _ProcurementTab.itemsList:
-      case _ProcurementTab.itemTracking:
-      case _ProcurementTab.reports:
         if (_items.length < _itemsLimit) return const SizedBox.shrink();
         return OutlinedButton.icon(
           onPressed: () => _loadMoreForTab(_ProcurementTab.itemsList),
           icon: const Icon(Icons.unfold_more_rounded, size: 16),
           label: Text('Load ${_streamLimitStep.toString()} more items'),
+        );
+      case _ProcurementTab.itemTracking:
+        return const SizedBox.shrink();
+      case _ProcurementTab.reports:
+        if (!_hasCommencedContractingActivities ||
+            _items.length < _itemsLimit) {
+          return const SizedBox.shrink();
+        }
+        return OutlinedButton.icon(
+          onPressed: () => _loadMoreForTab(_ProcurementTab.reports),
+          icon: const Icon(Icons.unfold_more_rounded, size: 16),
+          label: Text('Load ${_streamLimitStep.toString()} more records'),
         );
       case _ProcurementTab.vendorManagement:
         if (_vendors.length < _vendorsLimit) return const SizedBox.shrink();
@@ -1150,6 +2694,9 @@ class _FrontEndPlanningProcurementScreenState
           label: Text('Load ${_streamLimitStep.toString()} more RFQs'),
         );
       case _ProcurementTab.purchaseOrders:
+        if (!_isPurchaseOrdersSectionEnabled) {
+          return const SizedBox.shrink();
+        }
         if (_purchaseOrders.length < _purchaseOrdersLimit) {
           return const SizedBox.shrink();
         }
@@ -1214,6 +2761,25 @@ class _FrontEndPlanningProcurementScreenState
     );
   }
 
+  Widget? _buildPendingSecurityPromptBar() {
+    if (!_showPendingSecurityPrompt || _pendingSecurityIssues.isEmpty) {
+      return null;
+    }
+    final summaries = _pendingIssueSummaries();
+    final visible = summaries.take(4).toList(growable: false);
+    final hiddenCount = summaries.length - visible.length;
+    final pendingText = hiddenCount > 0
+        ? '${visible.join(', ')}, +$hiddenCount more'
+        : visible.join(', ');
+
+    return _PendingSecurityPromptBar(
+      message:
+          'Please complete the current requirements before accessing Security.',
+      pendingText: pendingText,
+      onAcknowledge: _dismissPendingSecurityPrompt,
+    );
+  }
+
   Widget _buildDashboardSection({Key? key}) {
     return Column(
       key: key ?? const ValueKey('procurement_dashboard'),
@@ -1237,15 +2803,24 @@ class _FrontEndPlanningProcurementScreenState
         ),
         const SizedBox(height: 10),
         const Text(
-          'AI generation is manual-only on this page to prevent load-time spikes.',
+          'Missing procurement records auto-generate on load, and you can regenerate manually anytime.',
           style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+        ),
+        const SizedBox(height: 16),
+        _ContractScopeManagementSection(
+          scopes: _items,
+          canStartProcess: _canCommenceContractingActivities,
+          startedScopeCount: _items
+              .where((item) => item.status != ProcurementItemStatus.planning)
+              .length,
+          onStartProcessForScope: _startProcessForScope,
         ),
         const SizedBox(height: 16),
         const SizedBox(height: 8),
         _StrategiesSection(
-          strategies: _strategies,
-          expandedStrategies: _expandedStrategies,
-          onToggle: _toggleStrategy,
+          items: _items,
+          currencyFormat: _currencyFormat,
+          onAddScope: _openAddItemDialog,
         ),
         const SizedBox(height: 32),
         _VendorsSection(
@@ -1265,6 +2840,7 @@ class _FrontEndPlanningProcurementScreenState
           onToggleVendorSelected: _toggleVendorSelection,
           onEditVendor: _openEditVendorDialog,
           onDeleteVendor: _removeVendor,
+          onOpenApprovedVendorList: _openApprovedVendorList,
         ),
       ],
     );
@@ -1296,6 +2872,7 @@ class _FrontEndPlanningProcurementScreenState
       'Furniture',
       'Security',
       'Logistics',
+      'Other',
     ];
 
     final result = await showDialog<ProcurementItemModel>(
@@ -1306,20 +2883,169 @@ class _FrontEndPlanningProcurementScreenState
         return AddItemDialog(
           contextChips: _buildDialogContextChips(),
           categoryOptions: categoryOptions,
+          showAiGenerateButton: false,
+          itemDomainLabel: 'Procurement',
         );
       },
     );
 
     if (result != null) {
       try {
-        await ProcurementService.createItem(result);
-        if (mounted) {
-          setState(() {
-            _items.add(result);
-          });
+        final projectId = _resolveProjectId();
+        if (projectId.isEmpty) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                    'Project not initialized. Unable to add procurement item.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
         }
+        final normalized = result.copyWith(projectId: projectId);
+        await ProcurementService.createItem(normalized);
+        _refreshSubscriptionsForActiveProject();
       } catch (e) {
-        debugPrint('Error creating item: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error creating procurement item: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _openEditItemDialog(ProcurementItemModel item) async {
+    final categoryOptions = const [
+      'Materials',
+      'Equipment',
+      'Services',
+      'IT Equipment',
+      'Construction Services',
+      'Furniture',
+      'Security',
+      'Logistics',
+      'Other',
+    ];
+
+    final result = await showDialog<ProcurementItemModel>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (dialogContext) {
+        return AddItemDialog(
+          contextChips: _buildDialogContextChips(),
+          categoryOptions: categoryOptions,
+          initialItem: item,
+          showAiGenerateButton: false,
+          itemDomainLabel: 'Procurement',
+        );
+      },
+    );
+
+    if (result == null) return;
+    try {
+      final projectId = _resolveProjectId();
+      if (projectId.isEmpty || item.id.trim().isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Unable to edit item.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+      await ProcurementService.updateItem(projectId, item.id, {
+        'name': result.name.trim(),
+        'description': result.description.trim(),
+        'category': result.category.trim(),
+        'status': result.status.name,
+        'priority': result.priority.name,
+        'budget': result.budget,
+        'spent': result.spent,
+        'estimatedDelivery': result.estimatedDelivery,
+        'actualDelivery': result.actualDelivery,
+        'progress': result.progress.clamp(0.0, 1.0),
+        'vendorId': result.vendorId,
+        'contractId': result.contractId,
+        'events': result.events.map((event) => event.toJson()).toList(),
+        'notes': result.notes,
+        'projectPhase': result.projectPhase,
+        'responsibleMember': result.responsibleMember,
+        'comments': result.comments,
+      });
+      _refreshSubscriptionsForActiveProject();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Unable to edit item: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _removeItem(ProcurementItemModel item) async {
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) {
+            return AlertDialog(
+              title: const Text('Remove Procurement Item'),
+              content: Text(
+                'Delete "${item.name}"? This action cannot be undone.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFDC2626),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Delete'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+    if (!confirmed) return;
+
+    try {
+      final projectId = _resolveProjectId();
+      if (projectId.isEmpty || item.id.trim().isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Unable to delete item.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+      await ProcurementService.deleteItem(projectId, item.id);
+      _refreshSubscriptionsForActiveProject();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Unable to delete item: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -1333,6 +3059,7 @@ class _FrontEndPlanningProcurementScreenState
       'Logistics',
       'Services',
       'Materials',
+      'Other',
     ];
 
     final result = await showDialog<VendorModel>(
@@ -1343,13 +3070,47 @@ class _FrontEndPlanningProcurementScreenState
         return AddVendorDialog(
           contextChips: _buildDialogContextChips(),
           categoryOptions: categoryOptions,
+          showAiGenerateButton: false,
+          partnerLabel: 'Vendor',
+          partnerPluralLabel: 'Vendors',
+          existingPartners: _vendors,
+          allowExistingAutofill: true,
         );
       },
     );
 
     if (result != null) {
-      await VendorService.createVendor(
-          projectId: result.projectId,
+      try {
+        final projectId = _resolveProjectId();
+        if (projectId.isEmpty) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Project not initialized. Unable to add vendor.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+        final normalizedName = result.name.trim().toLowerCase();
+        final alreadyExists = _vendors.any(
+          (vendor) => vendor.name.trim().toLowerCase() == normalizedName,
+        );
+        if (alreadyExists) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Vendor already exists. Existing details were reused.',
+                ),
+              ),
+            );
+          }
+          return;
+        }
+        await VendorService.createVendor(
+          projectId: projectId,
           name: result.name,
           category: result.category,
           criticality: result.criticality,
@@ -1366,11 +3127,23 @@ class _FrontEndPlanningProcurementScreenState
           costAdherence: result.costAdherence,
           createdById: 'user',
           createdByEmail: 'user@email',
-          createdByName: 'User');
-      if (mounted) {
-        setState(() {
-          _vendors.add(result);
-        });
+          createdByName: 'User',
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Vendor added.')),
+          );
+        }
+        _refreshSubscriptionsForActiveProject();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Unable to add vendor: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -1382,7 +3155,8 @@ class _FrontEndPlanningProcurementScreenState
       'Furniture',
       'Security',
       'Services',
-      'Materials'
+      'Materials',
+      'Other',
     ];
 
     final result = await showDialog<RfqModel>(
@@ -1398,16 +3172,335 @@ class _FrontEndPlanningProcurementScreenState
     );
 
     if (result != null) {
-      await ProcurementService.createRfq(result);
-      if (mounted) {
-        setState(() {
-          _rfqs.add(result);
-        });
+      try {
+        final projectId = _resolveProjectId();
+        if (projectId.isEmpty) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Project not initialized. Unable to create RFQ.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+        final normalized = RfqModel(
+          id: result.id,
+          projectId: projectId,
+          title: result.title,
+          category: result.category,
+          owner: result.owner,
+          dueDate: result.dueDate,
+          invitedCount: result.invitedCount,
+          responseCount: result.responseCount,
+          budget: result.budget,
+          status: result.status,
+          priority: result.priority,
+          createdAt: result.createdAt,
+        );
+        await ProcurementService.createRfq(normalized);
+        _refreshSubscriptionsForActiveProject();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Unable to create RFQ: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
 
+  Future<void> _openEditRfqDialog(RfqModel rfq) async {
+    final categoryOptions = const [
+      'IT Equipment',
+      'Construction Services',
+      'Furniture',
+      'Security',
+      'Services',
+      'Materials',
+      'Other',
+    ];
+
+    final result = await showDialog<RfqModel>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (dialogContext) {
+        return CreateRfqDialog(
+          contextChips: _buildDialogContextChips(),
+          categoryOptions: categoryOptions,
+          initialRfq: rfq,
+        );
+      },
+    );
+
+    if (result == null) return;
+
+    try {
+      final projectId = _resolveProjectId();
+      if (projectId.isEmpty || rfq.id.trim().isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Project not initialized. Unable to edit RFQ.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      final invitedCount = result.invitedCount < 0 ? 0 : result.invitedCount;
+      final responseCount = result.responseCount.clamp(0, invitedCount).toInt();
+
+      await ProcurementService.updateRfq(projectId, rfq.id, {
+        'projectId': projectId,
+        'title': result.title.trim(),
+        'category': result.category.trim(),
+        'owner': result.owner.trim(),
+        'dueDate': result.dueDate,
+        'invitedCount': invitedCount,
+        'responseCount': responseCount,
+        'budget': result.budget,
+        'status': result.status.name,
+        'priority': result.priority.name,
+      });
+      _refreshSubscriptionsForActiveProject();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Unable to edit RFQ: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteRfq(RfqModel rfq) async {
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) {
+            return AlertDialog(
+              title: const Text('Delete RFQ'),
+              content: Text(
+                'Delete ${rfq.title.trim().isEmpty ? 'this RFQ' : '"${rfq.title}"'}? This action cannot be undone.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFDC2626),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Delete'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (!confirmed) return;
+
+    try {
+      final projectId = _resolveProjectId();
+      if (projectId.isEmpty || rfq.id.trim().isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Unable to delete RFQ.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      await ProcurementService.deleteRfq(projectId, rfq.id);
+      _refreshSubscriptionsForActiveProject();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Unable to delete RFQ: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _openApprovedVendorList() async {
+    final approvedVendors = _vendors
+        .where((vendor) => vendor.isApproved)
+        .toList()
+      ..sort(
+        (a, b) =>
+            a.name.trim().toLowerCase().compareTo(b.name.trim().toLowerCase()),
+      );
+
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.fact_check_outlined, color: Color(0xFF2563EB)),
+            SizedBox(width: 10),
+            Text('Approved Vendor List'),
+          ],
+        ),
+        content: SizedBox(
+          width: 560,
+          child: approvedVendors.isEmpty
+              ? const Text(
+                  'No approved vendors found yet. Set vendor status to Active or Approved to populate this list.',
+                  style: TextStyle(height: 1.45),
+                )
+              : ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 360),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: approvedVendors.length,
+                    separatorBuilder: (_, __) =>
+                        const Divider(height: 12, thickness: 0.5),
+                    itemBuilder: (_, index) {
+                      final vendor = approvedVendors[index];
+                      final name = vendor.name.trim();
+                      return ListTile(
+                        dense: true,
+                        contentPadding:
+                            const EdgeInsets.symmetric(horizontal: 0),
+                        leading: CircleAvatar(
+                          radius: 14,
+                          backgroundColor: const Color(0xFFEFF6FF),
+                          child: Text(
+                            name.isEmpty ? '?' : name[0].toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF2563EB),
+                            ),
+                          ),
+                        ),
+                        title: Text(
+                          name.isEmpty ? 'Unnamed vendor' : name,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          vendor.category.trim().isEmpty
+                              ? 'Category not set'
+                              : vendor.category.trim(),
+                        ),
+                        trailing: _RatingStars(rating: vendor.ratingScore),
+                      );
+                    },
+                  ),
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _openCreatePoDialog() async {
+    if (!_isPurchaseOrdersSectionEnabled) {
+      _enablePurchaseOrdersEarlyStart();
+      if (!_isPurchaseOrdersSectionEnabled) return;
+    }
+
+    final categoryOptions = const [
+      'IT Equipment',
+      'Construction Services',
+      'Furniture',
+      'Security',
+      'Logistics',
+      'Services'
+    ];
+    final sourceItems = (!_hasCommencedContractingActivities &&
+            _purchaseOrdersEarlyStartEnabled &&
+            _vitalLleItems.isNotEmpty)
+        ? _vitalLleItems
+        : _items;
+
+    final result = await showDialog<PurchaseOrderModel>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (dialogContext) {
+        return CreatePoDialog(
+          contextChips: _buildDialogContextChips(),
+          categoryOptions: categoryOptions,
+          sourceItems: sourceItems,
+          sourceItemNumberById: _itemNumberById,
+          prioritizeLongLeadSelection: !_hasCommencedContractingActivities &&
+              _purchaseOrdersEarlyStartEnabled,
+        );
+      },
+    );
+
+    if (result != null) {
+      try {
+        final projectId = _resolveProjectId();
+        if (projectId.isEmpty) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                    'Project not initialized. Unable to create purchase order.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+        final normalized = PurchaseOrderModel(
+          id: result.id,
+          poNumber: result.poNumber,
+          projectId: projectId,
+          vendorName: result.vendorName,
+          vendorId: result.vendorId,
+          category: result.category,
+          owner: result.owner,
+          orderedDate: result.orderedDate,
+          expectedDate: result.expectedDate,
+          amount: result.amount,
+          progress: result.progress,
+          status: result.status,
+          createdAt: result.createdAt,
+        );
+        await ProcurementService.createPo(normalized);
+        _refreshSubscriptionsForActiveProject();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Unable to create purchase order: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _openEditPoDialog(PurchaseOrderModel order) async {
     final categoryOptions = const [
       'IT Equipment',
       'Construction Services',
@@ -1425,18 +3518,355 @@ class _FrontEndPlanningProcurementScreenState
         return CreatePoDialog(
           contextChips: _buildDialogContextChips(),
           categoryOptions: categoryOptions,
+          initialPo: order,
+          sourceItems: _items,
+          sourceItemNumberById: _itemNumberById,
         );
       },
     );
 
-    if (result != null) {
-      await ProcurementService.createPo(result);
+    if (result == null) return;
+
+    try {
+      final projectId = _resolveProjectId();
+      if (projectId.isEmpty || order.id.trim().isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Project not initialized. Unable to edit purchase order.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      await ProcurementService.updatePo(projectId, order.id, {
+        'poNumber': result.poNumber.trim(),
+        'projectId': projectId,
+        'vendorName': result.vendorName.trim(),
+        'vendorId': result.vendorId,
+        'category': result.category.trim(),
+        'owner': result.owner.trim(),
+        'orderedDate': result.orderedDate,
+        'expectedDate': result.expectedDate,
+        'amount': result.amount,
+        'progress': result.progress.clamp(0.0, 1.0),
+        'status': result.status.name,
+      });
+      _refreshSubscriptionsForActiveProject();
+    } catch (e) {
       if (mounted) {
-        setState(() {
-          _purchaseOrders.add(result);
-        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Unable to edit purchase order: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
+  }
+
+  Future<void> _deletePo(PurchaseOrderModel order) async {
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) {
+            return AlertDialog(
+              title: const Text('Remove Purchase Order'),
+              content: Text(
+                'Delete ${order.poNumber.isNotEmpty ? order.poNumber : order.id}? This action cannot be undone.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFDC2626),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Delete'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+    if (!confirmed) return;
+
+    try {
+      final projectId = _resolveProjectId();
+      if (projectId.isEmpty || order.id.trim().isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Unable to remove purchase order.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      await ProcurementService.deletePo(projectId, order.id);
+      _refreshSubscriptionsForActiveProject();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Unable to remove purchase order: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _startProcessForScope(ProcurementItemModel item) async {
+    if (!_canCommenceContractingActivities) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Only authorized procurement roles can start process for a scope.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    if (item.id.trim().isEmpty) return;
+    if (item.status != ProcurementItemStatus.planning) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('"${item.name}" has already started.')),
+        );
+      }
+      return;
+    }
+
+    try {
+      final projectId = _resolveProjectId();
+      if (projectId.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Project not initialized. Unable to start scope process.',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      final nextDelivery = item.estimatedDelivery ??
+          DateTime.now().add(
+            Duration(days: _defaultLeadTimeDaysForCategory(item.category)),
+          );
+
+      await ProcurementService.updateItem(
+        projectId,
+        item.id,
+        {
+          'status': ProcurementItemStatus.rfqReview.name,
+          'progress': item.progress < 0.2 ? 0.2 : item.progress.clamp(0.0, 1.0),
+          if (item.estimatedDelivery == null) 'estimatedDelivery': nextDelivery,
+        },
+      );
+      _refreshSubscriptionsForActiveProject();
+      if (!mounted) return;
+      setState(() => _selectedTab = _ProcurementTab.purchaseOrders);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Started process for "${item.name}". Purchase Orders and Reports are now available.',
+          ),
+          backgroundColor: const Color(0xFF16A34A),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Unable to start scope process: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _enablePurchaseOrdersEarlyStart() {
+    if (!_canCommenceContractingActivities) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Only authorized roles can enable early Purchase Orders in initiation.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    if (_purchaseOrdersEarlyStartEnabled) return;
+    setState(() {
+      _purchaseOrdersEarlyStartEnabled = true;
+      _selectedTab = _ProcurementTab.purchaseOrders;
+    });
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Purchase Orders enabled early for vital long-lead items.',
+          ),
+          backgroundColor: Color(0xFF16A34A),
+        ),
+      );
+    }
+  }
+
+  double _statusProgressTarget(ProcurementItemStatus status) {
+    switch (status) {
+      case ProcurementItemStatus.planning:
+        return 0.1;
+      case ProcurementItemStatus.rfqReview:
+        return 0.3;
+      case ProcurementItemStatus.vendorSelection:
+        return 0.5;
+      case ProcurementItemStatus.ordered:
+        return 0.8;
+      case ProcurementItemStatus.delivered:
+        return 1.0;
+      case ProcurementItemStatus.cancelled:
+        return 0.0;
+    }
+  }
+
+  Future<void> _updateSelectedTrackingStatus() async {
+    if (_trackableItems.isEmpty ||
+        _selectedTrackableIndex < 0 ||
+        _selectedTrackableIndex >= _trackableItems.length) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No trackable item selected.')),
+        );
+      }
+      return;
+    }
+
+    final item = _trackableItems[_selectedTrackableIndex];
+    if (item.id.trim().isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Select a saved item to update status.')),
+        );
+      }
+      return;
+    }
+
+    final nextStatus = await showModalBottomSheet<ProcurementItemStatus>(
+      context: context,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              const ListTile(
+                title: Text(
+                  'Update Item Status',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: Text('Choose the next status for this tracked item.'),
+              ),
+              for (final status in ProcurementItemStatus.values)
+                ListTile(
+                  title: Text(status.label),
+                  trailing: status == item.status
+                      ? const Icon(Icons.check_circle, color: Color(0xFF2563EB))
+                      : null,
+                  onTap: () => Navigator.of(sheetContext).pop(status),
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (nextStatus == null || nextStatus == item.status) {
+      return;
+    }
+
+    try {
+      final projectId = _resolveProjectId();
+      if (projectId.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text('Project not initialized. Unable to update status.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      final nextProgress = item.progress > _statusProgressTarget(nextStatus)
+          ? item.progress
+          : _statusProgressTarget(nextStatus);
+
+      await ProcurementService.updateItem(
+        projectId,
+        item.id,
+        {
+          'status': nextStatus.name,
+          'progress': nextProgress.clamp(0.0, 1.0),
+          if (nextStatus == ProcurementItemStatus.delivered)
+            'actualDelivery': DateTime.now(),
+        },
+      );
+      _refreshSubscriptionsForActiveProject();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Updated "${item.name}" to ${nextStatus.label}.'),
+            backgroundColor: const Color(0xFF16A34A),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Unable to update item status: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _generateReportData() async {
+    if (_items.isEmpty && _purchaseOrders.isEmpty && _rfqs.isEmpty) {
+      await _generateProcurementDataIfNeeded(silent: false);
+    }
+    if (!mounted) return;
+    setState(_recomputeDerivedProcurementData);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Procurement reports refreshed from current data.'),
+        backgroundColor: Color(0xFF16A34A),
+      ),
+    );
   }
 
   @override
@@ -1444,6 +3874,7 @@ class _FrontEndPlanningProcurementScreenState
     final projectData = ProjectDataHelper.getData(context);
     return Scaffold(
       backgroundColor: Colors.white,
+      bottomNavigationBar: _buildPendingSecurityPromptBar(),
       body: SafeArea(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1485,15 +3916,42 @@ class _FrontEndPlanningProcurementScreenState
                                 PlanningAiNotesCard(
                                   title: 'Notes',
                                   sectionLabel: 'Procurement',
-                                  noteKey: 'planning_procurement_notes',
+                                  noteKey: _procurementNotesKey,
                                   checkpoint: _checkpointId,
+                                  fieldKey: _notesFieldKey,
+                                  errorText:
+                                      _validationErrors['procurement_notes'],
+                                  onChanged: _handleNotesChanged,
+                                  fallbackText:
+                                      ProjectDataHelper.getData(context)
+                                          .frontEndPlanning
+                                          .procurement,
                                   description:
                                       'Capture procurement priorities, vendors, and approval constraints.',
                                 ),
                                 const SizedBox(height: 16),
-                                _NotesCard(
-                                  controller: _notes,
-                                  onChanged: _handleNotesChanged,
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: OutlinedButton.icon(
+                                    onPressed: _openApprovedVendorList,
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: const Color(0xFF1E3A8A),
+                                      side: const BorderSide(
+                                          color: Color(0xFFBFDBFE)),
+                                      backgroundColor: const Color(0xFFEFF6FF),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12)),
+                                    ),
+                                    icon: const Icon(
+                                      Icons.verified_user_outlined,
+                                      size: 18,
+                                    ),
+                                    label: const Text(
+                                        'Approved Vendor List (Always Available)'),
+                                  ),
                                 ),
                                 if (_isPlanningMode) ...[
                                   const SizedBox(height: 20),
@@ -1507,6 +3965,8 @@ class _FrontEndPlanningProcurementScreenState
                                 _ProcurementTabBar(
                                   selectedTab: _selectedTab,
                                   onSelected: _handleTabSelected,
+                                  tabsWithErrors: _tabsWithErrors,
+                                  disabledTabs: _tabsWithRestrictedAccess,
                                 ),
                                 const SizedBox(height: 24),
                                 AnimatedSwitcher(
@@ -1588,6 +4048,86 @@ class _ProcurementTopBar extends StatelessWidget {
           border: Border.all(color: const Color(0xFFE5E7EB)),
         ),
         child: Icon(icon, size: 16, color: const Color(0xFF6B7280)),
+      ),
+    );
+  }
+}
+
+class _PendingSecurityPromptBar extends StatelessWidget {
+  const _PendingSecurityPromptBar({
+    required this.message,
+    required this.pendingText,
+    required this.onAcknowledge,
+  });
+
+  final String message;
+  final String pendingText;
+  final VoidCallback onAcknowledge;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFF59E0B),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Icon(
+                  Icons.warning_amber_rounded,
+                  color: Color(0xFF7C2D12),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: RichText(
+                  text: TextSpan(
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF7C2D12),
+                      fontWeight: FontWeight.w600,
+                      height: 1.3,
+                    ),
+                    children: [
+                      TextSpan(text: '$message '),
+                      const TextSpan(
+                        text: 'Pending: ',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      TextSpan(
+                        text: pendingText,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              TextButton(
+                onPressed: onAcknowledge,
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFFFFFFF),
+                  backgroundColor: const Color(0xFFEA580C),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  minimumSize: const Size(0, 36),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text(
+                  'OK',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1768,13 +4308,17 @@ class _ProcurementPlanCard extends StatelessWidget {
     );
   }
 }
-
 class _ProcurementTabBar extends StatelessWidget {
   const _ProcurementTabBar(
-      {required this.selectedTab, required this.onSelected});
+      {required this.selectedTab,
+      required this.onSelected,
+      required this.tabsWithErrors,
+      required this.disabledTabs});
 
   final _ProcurementTab selectedTab;
   final ValueChanged<_ProcurementTab> onSelected;
+  final Set<_ProcurementTab> tabsWithErrors;
+  final Set<_ProcurementTab> disabledTabs;
 
   @override
   Widget build(BuildContext context) {
@@ -1802,6 +4346,8 @@ class _ProcurementTabBar extends StatelessWidget {
                         child: _TabButton(
                           label: tab.label,
                           selected: tab == selectedTab,
+                          hasError: tabsWithErrors.contains(tab),
+                          disabled: disabledTabs.contains(tab),
                           onTap: () => onSelected(tab),
                         ),
                       ),
@@ -1821,6 +4367,8 @@ class _ProcurementTabBar extends StatelessWidget {
                   child: _TabButton(
                     label: tab.label,
                     selected: tab == selectedTab,
+                    hasError: tabsWithErrors.contains(tab),
+                    disabled: disabledTabs.contains(tab),
                     onTap: () => onSelected(tab),
                   ),
                 ),
@@ -1836,11 +4384,17 @@ class _ProcurementTabBar extends StatelessWidget {
 
 class _TabButton extends StatelessWidget {
   const _TabButton(
-      {required this.label, required this.selected, required this.onTap});
+      {required this.label,
+      required this.selected,
+      required this.onTap,
+      this.hasError = false,
+      this.disabled = false});
 
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final bool hasError;
+  final bool disabled;
 
   @override
   Widget build(BuildContext context) {
@@ -1848,12 +4402,20 @@ class _TabButton extends StatelessWidget {
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOut,
       decoration: BoxDecoration(
-        color: selected ? Colors.white : Colors.transparent,
+        color: disabled
+            ? const Color(0xFFF8FAFC)
+            : (selected ? Colors.white : Colors.transparent),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-            color: selected ? const Color(0xFF2563EB) : Colors.transparent,
+            color: disabled
+                ? const Color(0xFFE2E8F0)
+                : (selected
+                    ? const Color(0xFF2563EB)
+                    : (hasError
+                        ? const Color(0xFFEF4444)
+                        : Colors.transparent)),
             width: 1.2),
-        boxShadow: selected
+        boxShadow: selected && !disabled
             ? const [
                 BoxShadow(
                   color: Color(0x0C1D4ED8),
@@ -1869,17 +4431,320 @@ class _TabButton extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 14),
           child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: selected
-                    ? const Color(0xFF1D4ED8)
-                    : const Color(0xFF475569),
-              ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (disabled) ...[
+                  const Icon(
+                    Icons.lock_outline_rounded,
+                    size: 14,
+                    color: Color(0xFF94A3B8),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: disabled
+                        ? const Color(0xFF94A3B8)
+                        : (selected
+                            ? const Color(0xFF1D4ED8)
+                            : (hasError
+                                ? const Color(0xFFB91C1C)
+                                : const Color(0xFF475569))),
+                  ),
+                ),
+              ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ContractScopeManagementSection extends StatelessWidget {
+  const _ContractScopeManagementSection({
+    required this.scopes,
+    required this.canStartProcess,
+    required this.startedScopeCount,
+    required this.onStartProcessForScope,
+  });
+
+  final List<ProcurementItemModel> scopes;
+  final bool canStartProcess;
+  final int startedScopeCount;
+  final ValueChanged<ProcurementItemModel> onStartProcessForScope;
+
+  @override
+  Widget build(BuildContext context) {
+    final roleLabel = canStartProcess
+        ? 'Authorized to commence contracting'
+        : 'View only at this stage';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Contract Scope Management',
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0F172A)),
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: canStartProcess
+                      ? const Color(0xFFE8FFF4)
+                      : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: canStartProcess
+                        ? const Color(0xFF34D399)
+                        : const Color(0xFFE2E8F0),
+                  ),
+                ),
+                child: Text(
+                  roleLabel,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: canStartProcess
+                        ? const Color(0xFF047857)
+                        : const Color(0xFF64748B),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Start process for each scope only when this initiation-stage procurement should commence.',
+            style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '$startedScopeCount of ${scopes.length} scopes started',
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF1D4ED8),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (scopes.isEmpty)
+            const _EmptyStateCard(
+              icon: Icons.inventory_2_outlined,
+              title: 'No scopes available yet',
+              message:
+                  'Add procurement items to create scope-level start controls.',
+              compact: true,
+            )
+          else
+            Column(
+              children: [
+                for (var i = 0; i < scopes.length; i++) ...[
+                  _ContractScopeRow(
+                    scope: scopes[i],
+                    canStartProcess: canStartProcess,
+                    onStartProcessForScope: () => onStartProcessForScope(
+                      scopes[i],
+                    ),
+                  ),
+                  if (i != scopes.length - 1)
+                    const Divider(height: 1, color: Color(0xFFE5E7EB)),
+                ],
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ContractScopeRow extends StatelessWidget {
+  const _ContractScopeRow({
+    required this.scope,
+    required this.canStartProcess,
+    required this.onStartProcessForScope,
+  });
+
+  final ProcurementItemModel scope;
+  final bool canStartProcess;
+  final VoidCallback onStartProcessForScope;
+
+  @override
+  Widget build(BuildContext context) {
+    final started = scope.status != ProcurementItemStatus.planning;
+    final canStart = canStartProcess && !started;
+    final isMobile = AppBreakpoints.isMobile(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: isMobile
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  scope.name.trim().isEmpty ? 'Untitled Scope' : scope.name,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  scope.description.trim().isEmpty
+                      ? 'No scope details yet.'
+                      : scope.description,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Category: ${scope.category.trim().isEmpty ? 'Uncategorized' : scope.category}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF475569),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Status: ${scope.status.label}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: started
+                        ? const Color(0xFF16A34A)
+                        : const Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _scopeActionWidget(started, canStart),
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        scope.name.trim().isEmpty
+                            ? 'Untitled Scope'
+                            : scope.name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        scope.description.trim().isEmpty
+                            ? 'No scope details yet.'
+                            : scope.description,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  flex: 1,
+                  child: Text(
+                    scope.category.trim().isEmpty
+                        ? 'Uncategorized'
+                        : scope.category,
+                    style:
+                        const TextStyle(fontSize: 12, color: Color(0xFF475569)),
+                  ),
+                ),
+                Expanded(
+                  flex: 1,
+                  child: Text(
+                    scope.status.label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: started
+                          ? const Color(0xFF16A34A)
+                          : const Color(0xFF64748B),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: _scopeActionWidget(started, canStart),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _scopeActionWidget(bool started, bool canStart) {
+    if (started) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE8FFF4),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: const Color(0xFFBBF7D0)),
+        ),
+        child: const Text(
+          'Started',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF15803D),
+          ),
+        ),
+      );
+    }
+    return ElevatedButton(
+      onPressed: canStart ? onStartProcessForScope : null,
+      style: ElevatedButton.styleFrom(
+        backgroundColor:
+            canStart ? const Color(0xFFF6C437) : const Color(0xFFE2E8F0),
+        foregroundColor:
+            canStart ? const Color(0xFF111827) : const Color(0xFF64748B),
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+      child: const Text(
+        'Start Process for this Scope',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
@@ -1925,7 +4790,7 @@ class _PlanHeader extends StatelessWidget {
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          child: const Text('Item List'),
+          child: const Text('Scope Details'),
         ),
       ],
     );
@@ -1941,6 +4806,8 @@ class _ItemsListView extends StatelessWidget {
     required this.onSelectTrackable,
     required this.currencyFormat,
     required this.onAddItem,
+    required this.onEditItem,
+    required this.onDeleteItem,
   });
 
   final List<ProcurementItemModel> items;
@@ -1949,6 +4816,8 @@ class _ItemsListView extends StatelessWidget {
   final ValueChanged<int> onSelectTrackable;
   final NumberFormat currencyFormat;
   final VoidCallback onAddItem;
+  final ValueChanged<ProcurementItemModel> onEditItem;
+  final ValueChanged<ProcurementItemModel> onDeleteItem;
 
   @override
   Widget build(BuildContext context) {
@@ -1981,7 +4850,12 @@ class _ItemsListView extends StatelessWidget {
         _ItemsToolbar(onAddItem: onAddItem),
         const SizedBox(height: 20),
         _ItemsGrid(
-            items: items, currencyFormat: currencyFormat, onAddItem: onAddItem),
+          items: items,
+          currencyFormat: currencyFormat,
+          onAddItem: onAddItem,
+          onEditItem: onEditItem,
+          onDeleteItem: onDeleteItem,
+        ),
         const SizedBox(height: 28),
         _TrackableAndTimeline(
           trackableItems: trackableItems,
@@ -2266,11 +5140,15 @@ class _ItemsGrid extends StatelessWidget {
   const _ItemsGrid(
       {required this.items,
       required this.currencyFormat,
-      required this.onAddItem});
+      required this.onAddItem,
+      required this.onEditItem,
+      required this.onDeleteItem});
 
   final List<ProcurementItemModel> items;
   final NumberFormat currencyFormat;
   final VoidCallback onAddItem;
+  final ValueChanged<ProcurementItemModel> onEditItem;
+  final ValueChanged<ProcurementItemModel> onDeleteItem;
 
   @override
   Widget build(BuildContext context) {
@@ -2299,26 +5177,38 @@ class _ItemsGrid extends StatelessWidget {
       return Wrap(
         spacing: 24,
         runSpacing: 24,
-        children: items.map((item) {
+        children: List<Widget>.generate(items.length, (index) {
+          final item = items[index];
           return SizedBox(
             width: cardWidth,
             child: _ProcurementItemCard(
               item: item,
+              itemNumberLabel: 'ITM-${(index + 1).toString().padLeft(3, '0')}',
               currencyFormat: currencyFormat,
+              onEdit: () => onEditItem(item),
+              onDelete: () => onDeleteItem(item),
             ),
           );
-        }).toList(),
+        }),
       );
     });
   }
 }
 
 class _ProcurementItemCard extends StatelessWidget {
-  const _ProcurementItemCard(
-      {required this.item, required this.currencyFormat});
+  const _ProcurementItemCard({
+    required this.item,
+    required this.itemNumberLabel,
+    required this.currencyFormat,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   final ProcurementItemModel item;
+  final String itemNumberLabel;
   final NumberFormat currencyFormat;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -2359,6 +5249,15 @@ class _ProcurementItemCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Text(
+                      itemNumberLabel,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1D4ED8),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
                     Text(
                       item.name,
                       style: const TextStyle(
@@ -2444,10 +5343,24 @@ class _ProcurementItemCard extends StatelessWidget {
                 foreground: item.priority.textColor,
               ),
               Row(
-                children: const [
-                  _ActionIcon(icon: Icons.edit_outlined),
-                  SizedBox(width: 8),
-                  _ActionIcon(icon: Icons.more_horiz_rounded),
+                children: [
+                  _ActionIcon(icon: Icons.edit_outlined, onTap: onEdit),
+                  const SizedBox(width: 8),
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        onEdit();
+                      } else if (value == 'delete') {
+                        onDelete();
+                      }
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'edit', child: Text('Edit item')),
+                      PopupMenuItem(
+                          value: 'delete', child: Text('Remove item')),
+                    ],
+                    child: const _ActionIcon(icon: Icons.more_horiz_rounded),
+                  ),
                 ],
               ),
             ],
@@ -2514,14 +5427,15 @@ class _BadgePill extends StatelessWidget {
 }
 
 class _ActionIcon extends StatelessWidget {
-  const _ActionIcon({required this.icon});
+  const _ActionIcon({required this.icon, this.onTap});
 
   final IconData icon;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () {},
+      onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.all(8),
@@ -2753,7 +5667,15 @@ class _UpdateButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
-      onPressed: () {},
+      onPressed: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Tracking updates are applied from the status and progress controls above.',
+            ),
+          ),
+        );
+      },
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFFF1F5F9),
         foregroundColor: const Color(0xFF1F2937),
@@ -2887,14 +5809,77 @@ class _TimelineEntry extends StatelessWidget {
 }
 
 class _StrategiesSection extends StatelessWidget {
-  const _StrategiesSection(
-      {required this.strategies,
-      required this.expandedStrategies,
-      required this.onToggle});
+  const _StrategiesSection({
+    required this.items,
+    required this.currencyFormat,
+    required this.onAddScope,
+  });
 
-  final List<ProcurementStrategyModel> strategies;
-  final Set<int> expandedStrategies;
-  final ValueChanged<int> onToggle;
+  final List<ProcurementItemModel> items;
+  final NumberFormat currencyFormat;
+  final VoidCallback onAddScope;
+
+  bool _isLongLead(ProcurementItemModel item) {
+    return item.priority == ProcurementPriority.critical ||
+        item.priority == ProcurementPriority.high ||
+        item.category.toLowerCase().contains('logistics') ||
+        item.category.toLowerCase().contains('material') ||
+        item.category.toLowerCase().contains('equipment');
+  }
+
+  String _durationLabel(ProcurementItemModel item) {
+    if (item.comments.trim().isNotEmpty) {
+      return item.comments.trim();
+    }
+    if (item.estimatedDelivery == null) {
+      return 'TBD';
+    }
+    final days = item.estimatedDelivery!.difference(DateTime.now()).inDays;
+    if (days <= 0) return 'Due now';
+    final weeks = (days / 7).ceil();
+    return '$weeks week${weeks == 1 ? '' : 's'}';
+  }
+
+  String _contractTypeLabel(ProcurementItemModel item) {
+    final normalized = item.projectPhase.trim().toLowerCase();
+    if (normalized.contains('lump')) return 'Lump Sum';
+    if (normalized.contains('reimb')) return 'Reimbursable';
+    if (normalized.contains('unsure') || normalized.contains('unknown')) {
+      return 'Unsure';
+    }
+
+    final category = item.category.trim().toLowerCase();
+    if (category.contains('material') ||
+        category.contains('equipment') ||
+        category.contains('furniture') ||
+        category.contains('logistics')) {
+      return 'Lump Sum';
+    }
+    if (category.contains('service') ||
+        category.contains('consult') ||
+        category.contains('security')) {
+      return 'Reimbursable';
+    }
+    return 'Unsure';
+  }
+
+  String _potentialVendors(ProcurementItemModel item) {
+    if (item.notes.trim().isNotEmpty) {
+      return item.notes.trim();
+    }
+    if ((item.vendorId ?? '').trim().isNotEmpty) {
+      return 'Linked vendor';
+    }
+    return 'To be identified';
+  }
+
+  String _biddingRequired(ProcurementItemModel item) {
+    final normalized = item.responsibleMember.trim().toLowerCase();
+    if (normalized == 'yes') return 'Yes';
+    if (normalized == 'no') return 'No';
+    if (normalized == 'not sure' || normalized == 'unsure') return 'Not Sure';
+    return _isLongLead(item) ? 'Yes' : 'Not Sure';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2905,161 +5890,146 @@ class _StrategiesSection extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              'Procurement Strategies',
+              'Procurement Scope',
               style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF0F172A)),
             ),
             Text(
-              '${strategies.length} ${strategies.length == 1 ? 'strategy' : 'strategies'}',
+              '${items.length} ${items.length == 1 ? 'scope' : 'scopes'}',
               style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
             ),
           ],
         ),
+        const SizedBox(height: 6),
+        const Text(
+          'Auto-generated from project context. Update rows for contract type, estimated duration, value, and bidding requirements.',
+          style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+        ),
         const SizedBox(height: 16),
-        if (strategies.isEmpty)
+        if (items.isEmpty)
           const _EmptyStateCard(
             icon: Icons.insights_outlined,
-            title: 'No strategies yet',
+            title: 'No procurement scope rows yet',
             message:
-                'Capture your procurement approach or add a strategy to organize sourcing.',
+                'Add procurement scope items to define potential vendors, contract type, estimated duration, value, and bidding requirements.',
           )
         else
-          Column(
-            children: [
-              for (var i = 0; i < strategies.length; i++)
-                Padding(
-                  padding: EdgeInsets.only(
-                      bottom: i == strategies.length - 1 ? 0 : 12),
-                  child: _StrategyCard(
-                    strategy: strategies[i],
-                    expanded: expandedStrategies.contains(i),
-                    onTap: () => onToggle(i),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 1160),
+                child: Table(
+                  border: const TableBorder(
+                    horizontalInside: BorderSide(color: Color(0xFFE5E7EB)),
+                    verticalInside: BorderSide(color: Color(0xFFE5E7EB)),
                   ),
+                  columnWidths: const {
+                    0: FixedColumnWidth(50),
+                    1: FixedColumnWidth(230),
+                    2: FixedColumnWidth(290),
+                    3: FixedColumnWidth(200),
+                    4: FixedColumnWidth(140),
+                    5: FixedColumnWidth(150),
+                    6: FixedColumnWidth(150),
+                    7: FixedColumnWidth(140),
+                  },
+                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                  children: [
+                    const TableRow(
+                      decoration: BoxDecoration(color: Color(0xFFF8FAFC)),
+                      children: [
+                        _ScopeHeaderCell('No'),
+                        _ScopeHeaderCell('Procurement Item'),
+                        _ScopeHeaderCell('Description'),
+                        _ScopeHeaderCell('Potential Vendors'),
+                        _ScopeHeaderCell('Contract Type'),
+                        _ScopeHeaderCell('Estimated Duration'),
+                        _ScopeHeaderCell('Estimated Value'),
+                        _ScopeHeaderCell('Bidding Required'),
+                      ],
+                    ),
+                    ...List<TableRow>.generate(items.length, (index) {
+                      final item = items[index];
+                      return TableRow(
+                        children: [
+                          _ScopeValueCell('${index + 1}'),
+                          _ScopeValueCell(item.name.trim().isEmpty
+                              ? 'Untitled scope'
+                              : item.name.trim()),
+                          _ScopeValueCell(item.description.trim().isEmpty
+                              ? '-'
+                              : item.description.trim()),
+                          _ScopeValueCell(_potentialVendors(item)),
+                          _ScopeValueCell(_contractTypeLabel(item)),
+                          _ScopeValueCell(_durationLabel(item)),
+                          _ScopeValueCell(currencyFormat.format(item.budget)),
+                          _ScopeValueCell(_biddingRequired(item)),
+                        ],
+                      );
+                    }),
+                  ],
                 ),
-            ],
+              ),
+            ),
           ),
+        const SizedBox(height: 12),
+        Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: onAddScope,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF0F172A),
+                side: const BorderSide(color: Color(0xFFCBD5E1)),
+              ),
+              icon: const Icon(Icons.add_rounded, size: 16),
+              label: const Text('Add Scope Row'),
+            )),
       ],
     );
   }
 }
 
-class _StrategyCard extends StatelessWidget {
-  const _StrategyCard(
-      {required this.strategy, required this.expanded, required this.onTap});
-
-  final ProcurementStrategyModel strategy;
-  final bool expanded;
-  final VoidCallback onTap;
+class _ScopeHeaderCell extends StatelessWidget {
+  const _ScopeHeaderCell(this.text);
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: expanded
-            ? [
-                BoxShadow(
-                  color: const Color(0x19000000),
-                  blurRadius: 12,
-                  offset: const Offset(0, 6),
-                ),
-              ]
-            : null,
-      ),
-      child: Column(
-        children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-              child: Row(
-                children: [
-                  Container(
-                    height: 40,
-                    width: 40,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEFF6FF),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.inventory_2_outlined,
-                        color: Color(0xFF2563EB)),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          strategy.title,
-                          style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF0F172A)),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${strategy.itemCount} items',
-                          style: const TextStyle(
-                              fontSize: 13, color: Color(0xFF6B7280)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  _StatusPill(status: strategy.status),
-                  const SizedBox(width: 16),
-                  Icon(
-                      expanded
-                          ? Icons.expand_less_rounded
-                          : Icons.expand_more_rounded,
-                      color: const Color(0xFF6B7280)),
-                ],
-              ),
-            ),
-          ),
-          if (expanded) const Divider(height: 1, color: Color(0xFFE5E7EB)),
-          if (expanded)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-              child: Text(
-                strategy.description,
-                style: const TextStyle(fontSize: 14, color: Color(0xFF4B5563)),
-              ),
-            ),
-        ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF334155),
+        ),
       ),
     );
   }
 }
 
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.status});
-
-  final StrategyStatus status;
+class _ScopeValueCell extends StatelessWidget {
+  const _ScopeValueCell(this.text);
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    final bool isActive = status == StrategyStatus.active;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: isActive ? const Color(0xFFE8FFF4) : const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-            color:
-                isActive ? const Color(0xFF34D399) : const Color(0xFFD1D5DB)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       child: Text(
-        isActive ? 'active' : 'draft',
-        style: TextStyle(
+        text.isEmpty ? '-' : text,
+        style: const TextStyle(
           fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: isActive ? const Color(0xFF047857) : const Color(0xFF64748B),
+          color: Color(0xFF0F172A),
         ),
       ),
     );
@@ -3083,6 +6053,7 @@ class _VendorsSection extends StatelessWidget {
     required this.onToggleVendorSelected,
     required this.onEditVendor,
     required this.onDeleteVendor,
+    required this.onOpenApprovedVendorList,
     this.onAddVendor,
   });
 
@@ -3101,6 +6072,7 @@ class _VendorsSection extends StatelessWidget {
   final void Function(String vendorId, bool selected) onToggleVendorSelected;
   final ValueChanged<VendorModel> onEditVendor;
   final ValueChanged<String> onDeleteVendor;
+  final VoidCallback onOpenApprovedVendorList;
   final VoidCallback? onAddVendor;
 
   @override
@@ -3131,7 +6103,15 @@ class _VendorsSection extends StatelessWidget {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             OutlinedButton.icon(
-              onPressed: () {},
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Use the Approved, Preferred, and Category filters to refine vendors.',
+                    ),
+                  ),
+                );
+              },
               icon: const Icon(Icons.filter_alt_outlined, size: 18),
               label: const Text('Filters'),
               style: OutlinedButton.styleFrom(
@@ -3203,7 +6183,7 @@ class _VendorsSection extends StatelessWidget {
               ],
             ),
             OutlinedButton.icon(
-              onPressed: () {},
+              onPressed: onOpenApprovedVendorList,
               icon: const Icon(Icons.visibility_outlined, size: 18),
               label: const Text('View Company Approved Vendor List'),
               style: OutlinedButton.styleFrom(
@@ -3243,6 +6223,118 @@ class _VendorsSection extends StatelessWidget {
             onToggleSelected: onToggleVendorSelected,
             onEditVendor: onEditVendor,
             onDeleteVendor: onDeleteVendor,
+          ),
+      ],
+    );
+  }
+}
+
+class _ApprovedVendorsSection extends StatelessWidget {
+  const _ApprovedVendorsSection({required this.approvedVendors});
+
+  final List<VendorModel> approvedVendors;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Approved Vendors',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A)),
+              ),
+            ),
+            Text(
+              '${approvedVendors.length}',
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF6B7280),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (approvedVendors.isEmpty)
+          const _EmptyStateCard(
+            icon: Icons.verified_user_outlined,
+            title: 'No approved vendors yet',
+            message:
+                'Approved vendors appear here once vendor status is set to Active or Approved.',
+            compact: true,
+          )
+        else
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            child: Column(
+              children: [
+                for (var i = 0; i < approvedVendors.length; i++) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: Text(
+                            approvedVendors[i].name,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            approvedVendors[i].category,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: _RatingStars(
+                            rating: approvedVendors[i].ratingScore,
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            approvedVendors[i].nextReview.trim().isEmpty
+                                ? 'Review date N/A'
+                                : approvedVendors[i].nextReview,
+                            textAlign: TextAlign.end,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF475569),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (i != approvedVendors.length - 1)
+                    const Divider(height: 1, color: Color(0xFFE5E7EB)),
+                ],
+              ],
+            ),
           ),
       ],
     );
@@ -3596,6 +6688,7 @@ class _VendorManagementView extends StatelessWidget {
     required this.onToggleVendorSelected,
     required this.onEditVendor,
     required this.onDeleteVendor,
+    required this.onOpenApprovedVendorList,
   });
 
   final List<VendorModel> vendors;
@@ -3617,6 +6710,7 @@ class _VendorManagementView extends StatelessWidget {
   final void Function(String vendorId, bool selected) onToggleVendorSelected;
   final ValueChanged<VendorModel> onEditVendor;
   final ValueChanged<String> onDeleteVendor;
+  final VoidCallback onOpenApprovedVendorList;
 
   @override
   Widget build(BuildContext context) {
@@ -3626,7 +6720,7 @@ class _VendorManagementView extends StatelessWidget {
         allVendors.where((vendor) => vendor.isPreferred).length;
     final avgRating = totalVendors == 0
         ? 0
-        : allVendors.fold<int>(0, (sum, vendor) => sum + vendor.ratingScore) /
+        : allVendors.fold<int>(0, (total, vendor) => total + vendor.ratingScore) /
             totalVendors;
     final preferredRate =
         totalVendors == 0 ? 0 : (preferredCount / totalVendors * 100).round();
@@ -3679,7 +6773,7 @@ class _VendorManagementView extends StatelessWidget {
               runSpacing: 8,
               children: [
                 OutlinedButton.icon(
-                  onPressed: () {},
+                  onPressed: onAddVendor,
                   icon: const Icon(Icons.send_outlined, size: 18),
                   label: const Text('Invite Vendor'),
                   style: OutlinedButton.styleFrom(
@@ -3771,6 +6865,12 @@ class _VendorManagementView extends StatelessWidget {
           onToggleVendorSelected: onToggleVendorSelected,
           onEditVendor: onEditVendor,
           onDeleteVendor: onDeleteVendor,
+          onOpenApprovedVendorList: onOpenApprovedVendorList,
+        ),
+        const SizedBox(height: 24),
+        _ApprovedVendorsSection(
+          approvedVendors:
+              allVendors.where((vendor) => vendor.isApproved).toList(),
         ),
       ],
     );
@@ -4060,53 +7160,80 @@ class _RiskSeverityPill extends StatelessWidget {
 class _RfqWorkflowView extends StatelessWidget {
   const _RfqWorkflowView({
     super.key,
+    required this.scopeItems,
     required this.rfqs,
     required this.criteria,
     required this.currencyFormat,
+    required this.customizeWorkflowByScope,
+    required this.selectedScopeId,
+    required this.workflowDisabledForSelection,
+    required this.workflowTotalWeeks,
+    required this.workflowSteps,
+    required this.workflowLoading,
+    required this.workflowSaving,
+    required this.onCustomizeByScopeChanged,
+    required this.onWorkflowScopeSelected,
+    required this.onAddWorkflowStep,
+    required this.onEditWorkflowStep,
+    required this.onDeleteWorkflowStep,
+    required this.onMoveWorkflowStep,
+    required this.onResetWorkflow,
+    required this.onSaveWorkflow,
+    required this.onApplyWorkflowToAllScopes,
     required this.onCreateRfq,
+    required this.onEditRfq,
+    required this.onDeleteRfq,
+    required this.onOpenTemplates,
   });
 
+  final List<ProcurementItemModel> scopeItems;
   final List<RfqModel> rfqs;
   final List<_RfqCriterion> criteria;
   final NumberFormat currencyFormat;
+  final bool customizeWorkflowByScope;
+  final String? selectedScopeId;
+  final bool workflowDisabledForSelection;
+  final int workflowTotalWeeks;
+  final List<_ProcurementWorkflowStep> workflowSteps;
+  final bool workflowLoading;
+  final bool workflowSaving;
+  final ValueChanged<bool> onCustomizeByScopeChanged;
+  final ValueChanged<String> onWorkflowScopeSelected;
+  final VoidCallback onAddWorkflowStep;
+  final ValueChanged<_ProcurementWorkflowStep> onEditWorkflowStep;
+  final ValueChanged<String> onDeleteWorkflowStep;
+  final void Function(int index, int direction) onMoveWorkflowStep;
+  final VoidCallback onResetWorkflow;
+  final VoidCallback onSaveWorkflow;
+  final VoidCallback onApplyWorkflowToAllScopes;
   final VoidCallback onCreateRfq;
+  final ValueChanged<RfqModel> onEditRfq;
+  final ValueChanged<RfqModel> onDeleteRfq;
+  final VoidCallback onOpenTemplates;
 
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
-    final stages = const [
-      _RfqStage(
-          title: 'Draft',
-          subtitle: 'Scope and requirements',
-          status: _WorkflowStageStatus.complete),
-      _RfqStage(
-          title: 'Review',
-          subtitle: 'Stakeholder alignment',
-          status: _WorkflowStageStatus.complete),
-      _RfqStage(
-          title: 'In Market',
-          subtitle: 'Vendor outreach',
-          status: _WorkflowStageStatus.active),
-      _RfqStage(
-          title: 'Evaluation',
-          subtitle: 'Score responses',
-          status: _WorkflowStageStatus.upcoming),
-      _RfqStage(
-          title: 'Award',
-          subtitle: 'Finalize supplier',
-          status: _WorkflowStageStatus.upcoming),
-    ];
+    ProcurementItemModel? selectedScope;
+    if (selectedScopeId != null) {
+      for (final item in scopeItems) {
+        if (item.id == selectedScopeId) {
+          selectedScope = item;
+          break;
+        }
+      }
+    }
 
     final totalInvited =
-        rfqs.fold<int>(0, (sum, rfq) => sum + rfq.invitedCount);
+        rfqs.fold<int>(0, (total, rfq) => total + rfq.invitedCount);
     final totalResponses =
-        rfqs.fold<int>(0, (sum, rfq) => sum + rfq.responseCount);
+        rfqs.fold<int>(0, (total, rfq) => total + rfq.responseCount);
     final responseRate =
         totalInvited == 0 ? 0 : (totalResponses / totalInvited * 100).round();
     final inEvaluation =
         rfqs.where((rfq) => rfq.status == RfqStatus.evaluation).length;
     final pipelineValue =
-        rfqs.fold<double>(0, (sum, rfq) => sum + rfq.budget).round();
+        rfqs.fold<double>(0, (total, rfq) => total + rfq.budget).round();
 
     final metrics = [
       _SummaryCard(
@@ -4144,7 +7271,7 @@ class _RfqWorkflowView extends StatelessWidget {
           children: [
             const Expanded(
               child: Text(
-                'RFQ Workflow',
+                'Procurement Workflow',
                 style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
@@ -4156,7 +7283,7 @@ class _RfqWorkflowView extends StatelessWidget {
               runSpacing: 8,
               children: [
                 OutlinedButton(
-                  onPressed: () {},
+                  onPressed: onOpenTemplates,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFF0F172A),
                     side: const BorderSide(color: Color(0xFFCBD5E1)),
@@ -4186,10 +7313,30 @@ class _RfqWorkflowView extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 16),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [for (final stage in stages) _RfqStageCard(stage: stage)],
+        const Text(
+          'Use the preset procurement cycle, adjust durations in weeks or months, add steps, or customize by scope.',
+          style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+        ),
+        const SizedBox(height: 10),
+        _ProcurementWorkflowPlannerCard(
+          scopeItems: scopeItems,
+          customizeWorkflowByScope: customizeWorkflowByScope,
+          selectedScopeId: selectedScopeId,
+          selectedScopeName: selectedScope?.name ?? '',
+          workflowDisabledForSelection: workflowDisabledForSelection,
+          workflowTotalWeeks: workflowTotalWeeks,
+          workflowSteps: workflowSteps,
+          workflowLoading: workflowLoading,
+          workflowSaving: workflowSaving,
+          onCustomizeByScopeChanged: onCustomizeByScopeChanged,
+          onWorkflowScopeSelected: onWorkflowScopeSelected,
+          onAddWorkflowStep: onAddWorkflowStep,
+          onEditWorkflowStep: onEditWorkflowStep,
+          onDeleteWorkflowStep: onDeleteWorkflowStep,
+          onMoveWorkflowStep: onMoveWorkflowStep,
+          onResetWorkflow: onResetWorkflow,
+          onSaveWorkflow: onSaveWorkflow,
+          onApplyWorkflowToAllScopes: onApplyWorkflowToAllScopes,
         ),
         const SizedBox(height: 20),
         if (isMobile)
@@ -4218,9 +7365,12 @@ class _RfqWorkflowView extends StatelessWidget {
           Column(
             children: [
               _RfqListCard(
-                  rfqs: rfqs,
-                  currencyFormat: currencyFormat,
-                  onCreateRfq: onCreateRfq),
+                rfqs: rfqs,
+                currencyFormat: currencyFormat,
+                onCreateRfq: onCreateRfq,
+                onEditRfq: onEditRfq,
+                onDeleteRfq: onDeleteRfq,
+              ),
               const SizedBox(height: 16),
               _RfqSidebarCard(rfqs: rfqs, criteria: criteria),
             ],
@@ -4230,10 +7380,14 @@ class _RfqWorkflowView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                  child: _RfqListCard(
-                      rfqs: rfqs,
-                      currencyFormat: currencyFormat,
-                      onCreateRfq: onCreateRfq)),
+                child: _RfqListCard(
+                  rfqs: rfqs,
+                  currencyFormat: currencyFormat,
+                  onCreateRfq: onCreateRfq,
+                  onEditRfq: onEditRfq,
+                  onDeleteRfq: onDeleteRfq,
+                ),
+              ),
               const SizedBox(width: 24),
               SizedBox(
                   width: 320,
@@ -4245,44 +7399,337 @@ class _RfqWorkflowView extends StatelessWidget {
   }
 }
 
-class _RfqStageCard extends StatelessWidget {
-  const _RfqStageCard({required this.stage});
+class _ProcurementWorkflowPlannerCard extends StatelessWidget {
+  const _ProcurementWorkflowPlannerCard({
+    required this.scopeItems,
+    required this.customizeWorkflowByScope,
+    required this.selectedScopeId,
+    required this.selectedScopeName,
+    required this.workflowDisabledForSelection,
+    required this.workflowTotalWeeks,
+    required this.workflowSteps,
+    required this.workflowLoading,
+    required this.workflowSaving,
+    required this.onCustomizeByScopeChanged,
+    required this.onWorkflowScopeSelected,
+    required this.onAddWorkflowStep,
+    required this.onEditWorkflowStep,
+    required this.onDeleteWorkflowStep,
+    required this.onMoveWorkflowStep,
+    required this.onResetWorkflow,
+    required this.onSaveWorkflow,
+    required this.onApplyWorkflowToAllScopes,
+  });
 
-  final _RfqStage stage;
+  final List<ProcurementItemModel> scopeItems;
+  final bool customizeWorkflowByScope;
+  final String? selectedScopeId;
+  final String selectedScopeName;
+  final bool workflowDisabledForSelection;
+  final int workflowTotalWeeks;
+  final List<_ProcurementWorkflowStep> workflowSteps;
+  final bool workflowLoading;
+  final bool workflowSaving;
+  final ValueChanged<bool> onCustomizeByScopeChanged;
+  final ValueChanged<String> onWorkflowScopeSelected;
+  final VoidCallback onAddWorkflowStep;
+  final ValueChanged<_ProcurementWorkflowStep> onEditWorkflowStep;
+  final ValueChanged<String> onDeleteWorkflowStep;
+  final void Function(int index, int direction) onMoveWorkflowStep;
+  final VoidCallback onResetWorkflow;
+  final VoidCallback onSaveWorkflow;
+  final VoidCallback onApplyWorkflowToAllScopes;
 
   @override
   Widget build(BuildContext context) {
+    final hasScopes = scopeItems.isNotEmpty;
+    final disableActions = workflowDisabledForSelection || workflowSaving;
     return Container(
-      width: 210,
-      decoration: BoxDecoration(
-        color: stage.status.backgroundColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: stage.status.borderColor),
-      ),
+      width: double.infinity,
       padding: const EdgeInsets.all(14),
-      child: Row(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(stage.status.icon, size: 20, color: stage.status.iconColor),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              ChoiceChip(
+                label: const Text('Apply to All Scopes'),
+                selected: !customizeWorkflowByScope,
+                onSelected:
+                    workflowSaving ? null : (_) => onCustomizeByScopeChanged(false),
+              ),
+              ChoiceChip(
+                label: const Text('Customize by Scope'),
+                selected: customizeWorkflowByScope,
+                onSelected: hasScopes && !workflowSaving
+                    ? (_) => onCustomizeByScopeChanged(true)
+                    : null,
+              ),
+              if (customizeWorkflowByScope)
+                SizedBox(
+                  width: 320,
+                  child: DropdownButtonFormField<String>(
+                    initialValue: selectedScopeId,
+                    decoration: const InputDecoration(
+                      labelText: 'Procurement Scope',
+                      isDense: true,
+                    ),
+                    items: scopeItems
+                        .map(
+                          (item) => DropdownMenuItem<String>(
+                            value: item.id,
+                            child: Text(
+                              item.name.trim().isEmpty
+                                  ? 'Untitled Scope'
+                                  : item.name.trim(),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: workflowSaving
+                        ? null
+                        : (value) {
+                            if (value == null) return;
+                            onWorkflowScopeSelected(value);
+                          },
+                  ),
+                ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: workflowDisabledForSelection
+                      ? const Color(0xFFF3F4F6)
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: const Color(0xFFD1D5DB)),
+                ),
+                child: Text(
+                  'Total Cycle: $workflowTotalWeeks week${workflowTotalWeeks == 1 ? '' : 's'}',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: workflowDisabledForSelection
+                        ? const Color(0xFF9CA3AF)
+                        : const Color(0xFF1F2937),
+                  ),
+                ),
+              ),
+              if (workflowLoading || workflowSaving)
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (customizeWorkflowByScope && !hasScopes)
+            const Text(
+              'No procurement scopes found. Add scope rows first.',
+              style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+            )
+          else if (workflowDisabledForSelection)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFD1D5DB)),
+              ),
+              child: Text(
+                'Bidding is not required for "${selectedScopeName.trim().isEmpty ? 'this scope' : selectedScopeName.trim()}". The procurement workflow is greyed out for this selection.',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF4B5563),
+                  height: 1.35,
+                ),
+              ),
+            )
+          else if (workflowSteps.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: const Text(
+                'No workflow steps yet. Add your first step to build the procurement cycle.',
+                style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+              ),
+            )
+          else
+            Column(
+              children: [
+                for (var i = 0; i < workflowSteps.length; i++) ...[
+                  _ProcurementWorkflowStepRow(
+                    step: workflowSteps[i],
+                    index: i,
+                    onEdit: () => onEditWorkflowStep(workflowSteps[i]),
+                    onDelete: () => onDeleteWorkflowStep(workflowSteps[i].id),
+                    onMoveUp:
+                        i == 0 ? null : () => onMoveWorkflowStep(i, -1),
+                    onMoveDown: i == workflowSteps.length - 1
+                        ? null
+                        : () => onMoveWorkflowStep(i, 1),
+                  ),
+                  if (i != workflowSteps.length - 1)
+                    const SizedBox(height: 8),
+                ],
+              ],
+            ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              TextButton.icon(
+                onPressed: disableActions ? null : onAddWorkflowStep,
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Add Step'),
+              ),
+              OutlinedButton.icon(
+                onPressed: disableActions ? null : onResetWorkflow,
+                icon: const Icon(Icons.restart_alt_rounded, size: 16),
+                label: const Text('Reset Preset'),
+              ),
+              ElevatedButton.icon(
+                onPressed: disableActions ? null : onSaveWorkflow,
+                icon: workflowSaving
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.save_outlined, size: 16),
+                label: Text(
+                  customizeWorkflowByScope
+                      ? 'Save Scope Workflow'
+                      : 'Save Workflow',
+                ),
+              ),
+              TextButton.icon(
+                onPressed: disableActions ? null : onApplyWorkflowToAllScopes,
+                icon: const Icon(Icons.publish_rounded, size: 16),
+                label: const Text('Apply to All Scopes'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProcurementWorkflowStepRow extends StatelessWidget {
+  const _ProcurementWorkflowStepRow({
+    required this.step,
+    required this.index,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onMoveUp,
+    required this.onMoveDown,
+  });
+
+  final _ProcurementWorkflowStep step;
+  final int index;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final VoidCallback? onMoveUp;
+  final VoidCallback? onMoveDown;
+
+  @override
+  Widget build(BuildContext context) {
+    final unitLabel = step.duration == 1
+        ? step.unit
+        : '${step.unit}s';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              '${index + 1}',
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1D4ED8),
+              ),
+            ),
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  stage.title,
+                  step.name.trim().isEmpty ? 'Untitled Step' : step.name.trim(),
                   style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF0F172A)),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF111827),
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  stage.subtitle,
-                  style:
-                      const TextStyle(fontSize: 12, color: Color(0xFF475569)),
+                  '${step.duration} $unitLabel',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF4B5563),
+                  ),
                 ),
               ],
             ),
+          ),
+          IconButton(
+            tooltip: 'Edit',
+            visualDensity: VisualDensity.compact,
+            onPressed: onEdit,
+            icon: const Icon(Icons.edit_outlined, size: 18),
+          ),
+          IconButton(
+            tooltip: 'Delete',
+            visualDensity: VisualDensity.compact,
+            onPressed: onDelete,
+            icon: const Icon(Icons.delete_outline, size: 18),
+          ),
+          IconButton(
+            tooltip: 'Move up',
+            visualDensity: VisualDensity.compact,
+            onPressed: onMoveUp,
+            icon: const Icon(Icons.arrow_upward_rounded, size: 18),
+          ),
+          IconButton(
+            tooltip: 'Move down',
+            visualDensity: VisualDensity.compact,
+            onPressed: onMoveDown,
+            icon: const Icon(Icons.arrow_downward_rounded, size: 18),
           ),
         ],
       ),
@@ -4291,14 +7738,19 @@ class _RfqStageCard extends StatelessWidget {
 }
 
 class _RfqListCard extends StatelessWidget {
-  const _RfqListCard(
-      {required this.rfqs,
-      required this.currencyFormat,
-      required this.onCreateRfq});
+  const _RfqListCard({
+    required this.rfqs,
+    required this.currencyFormat,
+    required this.onCreateRfq,
+    required this.onEditRfq,
+    required this.onDeleteRfq,
+  });
 
   final List<RfqModel> rfqs;
   final NumberFormat currencyFormat;
   final VoidCallback onCreateRfq;
+  final ValueChanged<RfqModel> onEditRfq;
+  final ValueChanged<RfqModel> onDeleteRfq;
 
   @override
   Widget build(BuildContext context) {
@@ -4340,7 +7792,12 @@ class _RfqListCard extends StatelessWidget {
             )
           else
             for (var i = 0; i < rfqs.length; i++) ...[
-              _RfqItemCard(rfq: rfqs[i], currencyFormat: currencyFormat),
+              _RfqItemCard(
+                rfq: rfqs[i],
+                currencyFormat: currencyFormat,
+                onEdit: onEditRfq,
+                onDelete: onDeleteRfq,
+              ),
               if (i != rfqs.length - 1) const SizedBox(height: 12),
             ],
         ],
@@ -4350,10 +7807,17 @@ class _RfqListCard extends StatelessWidget {
 }
 
 class _RfqItemCard extends StatelessWidget {
-  const _RfqItemCard({required this.rfq, required this.currencyFormat});
+  const _RfqItemCard({
+    required this.rfq,
+    required this.currencyFormat,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   final RfqModel rfq;
   final NumberFormat currencyFormat;
+  final ValueChanged<RfqModel> onEdit;
+  final ValueChanged<RfqModel> onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -4403,6 +7867,21 @@ class _RfqItemCard extends StatelessWidget {
                 background: rfq.priority.backgroundColor,
                 border: rfq.priority.borderColor,
                 foreground: rfq.priority.textColor,
+              ),
+              const SizedBox(width: 4),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_horiz_rounded, size: 20),
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    onEdit(rfq);
+                  } else if (value == 'delete') {
+                    onDelete(rfq);
+                  }
+                },
+                itemBuilder: (context) => const [
+                  PopupMenuItem(value: 'edit', child: Text('Edit RFQ')),
+                  PopupMenuItem(value: 'delete', child: Text('Delete RFQ')),
+                ],
               ),
             ],
           ),
@@ -4647,15 +8126,66 @@ class _PurchaseOrdersView extends StatelessWidget {
     super.key,
     required this.orders,
     required this.currencyFormat,
+    required this.processStarted,
+    required this.earlyStartEnabled,
+    required this.canEnableEarlyStart,
+    required this.onEnableEarlyStart,
+    required this.vitalLleItems,
+    required this.itemNumberById,
+    required this.trackableItems,
+    required this.selectedTrackableIndex,
+    required this.onSelectTrackable,
+    required this.selectedTrackableItem,
+    required this.trackingAlerts,
+    required this.carrierPerformance,
+    required this.onUpdateTrackingStatus,
     required this.onCreatePo,
+    required this.onEditPo,
+    required this.onDeletePo,
   });
 
   final List<PurchaseOrderModel> orders;
   final NumberFormat currencyFormat;
+  final bool processStarted;
+  final bool earlyStartEnabled;
+  final bool canEnableEarlyStart;
+  final VoidCallback onEnableEarlyStart;
+  final List<ProcurementItemModel> vitalLleItems;
+  final Map<String, String> itemNumberById;
+  final List<ProcurementItemModel> trackableItems;
+  final int selectedTrackableIndex;
+  final ValueChanged<int> onSelectTrackable;
+  final ProcurementItemModel? selectedTrackableItem;
+  final List<_TrackingAlert> trackingAlerts;
+  final List<_CarrierPerformance> carrierPerformance;
+  final VoidCallback onUpdateTrackingStatus;
   final VoidCallback onCreatePo;
+  final ValueChanged<PurchaseOrderModel> onEditPo;
+  final ValueChanged<PurchaseOrderModel> onDeletePo;
 
   @override
   Widget build(BuildContext context) {
+    final enabled = processStarted || earlyStartEnabled;
+    if (!enabled) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _PurchaseOrdersInitiationLockedView(
+            canEnableEarlyStart: canEnableEarlyStart,
+            onEnableEarlyStart: onEnableEarlyStart,
+            vitalLleItems: vitalLleItems,
+            itemNumberById: itemNumberById,
+          ),
+          const SizedBox(height: 16),
+          const _StageLockedView(
+            title: 'Purchase Orders Locked in Initiation',
+            message:
+                'This section remains greyed out during initiation unless you turn it on early.',
+          ),
+        ],
+      );
+    }
+
     final isMobile = AppBreakpoints.isMobile(context);
     final awaitingApproval = orders
         .where((order) => order.status == PurchaseOrderStatus.awaitingApproval)
@@ -4667,7 +8197,7 @@ class _PurchaseOrdersView extends StatelessWidget {
         .where((order) => order.status != PurchaseOrderStatus.received)
         .length;
     final totalSpend =
-        orders.fold<double>(0, (sum, order) => sum + order.amount);
+        orders.fold<double>(0, (total, order) => total + order.amount);
 
     final metrics = [
       _SummaryCard(
@@ -4705,7 +8235,7 @@ class _PurchaseOrdersView extends StatelessWidget {
           children: [
             const Expanded(
               child: Text(
-                'Purchase Orders',
+                'Purchase Orders & Item Tracking',
                 style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
@@ -4770,16 +8300,23 @@ class _PurchaseOrdersView extends StatelessWidget {
             children: [
               for (var i = 0; i < orders.length; i++) ...[
                 _PurchaseOrderCard(
-                    order: orders[i], currencyFormat: currencyFormat),
+                  order: orders[i],
+                  currencyFormat: currencyFormat,
+                  onEdit: () => onEditPo(orders[i]),
+                  onDelete: () => onDeletePo(orders[i]),
+                ),
                 if (i != orders.length - 1) const SizedBox(height: 12),
               ],
             ],
           )
         else
           _PurchaseOrderTable(
-              orders: orders,
-              currencyFormat: currencyFormat,
-              onCreatePo: onCreatePo),
+            orders: orders,
+            currencyFormat: currencyFormat,
+            onCreatePo: onCreatePo,
+            onEditPo: onEditPo,
+            onDeletePo: onDeletePo,
+          ),
         const SizedBox(height: 24),
         if (isMobile)
           Column(
@@ -4797,6 +8334,17 @@ class _PurchaseOrdersView extends StatelessWidget {
               Expanded(child: _InvoiceMatchCard(orders: orders)),
             ],
           ),
+        const SizedBox(height: 32),
+        _ItemTrackingView(
+          trackableItems: trackableItems,
+          selectedIndex: selectedTrackableIndex,
+          onSelectTrackable: onSelectTrackable,
+          selectedItem: selectedTrackableItem,
+          alerts: trackingAlerts,
+          carriers: carrierPerformance,
+          onUpdateStatus: onUpdateTrackingStatus,
+          title: 'Item Tracking (Combined with Purchase Orders)',
+        ),
       ],
     );
   }
@@ -4806,11 +8354,15 @@ class _PurchaseOrderTable extends StatelessWidget {
   const _PurchaseOrderTable(
       {required this.orders,
       required this.currencyFormat,
-      required this.onCreatePo});
+      required this.onCreatePo,
+      required this.onEditPo,
+      required this.onDeletePo});
 
   final List<PurchaseOrderModel> orders;
   final NumberFormat currencyFormat;
   final VoidCallback onCreatePo;
+  final ValueChanged<PurchaseOrderModel> onEditPo;
+  final ValueChanged<PurchaseOrderModel> onDeletePo;
 
   @override
   Widget build(BuildContext context) {
@@ -4845,7 +8397,11 @@ class _PurchaseOrderTable extends StatelessWidget {
                   const Divider(height: 1, color: Color(0xFFE2E8F0)),
                   for (var i = 0; i < orders.length; i++) ...[
                     _PurchaseOrderRow(
-                        order: orders[i], currencyFormat: currencyFormat),
+                      order: orders[i],
+                      currencyFormat: currencyFormat,
+                      onEdit: () => onEditPo(orders[i]),
+                      onDelete: () => onDeletePo(orders[i]),
+                    ),
                     if (i != orders.length - 1)
                       const Divider(height: 1, color: Color(0xFFE2E8F0)),
                   ],
@@ -4908,15 +8464,31 @@ class _HeaderCell extends StatelessWidget {
 }
 
 class _PurchaseOrderRow extends StatelessWidget {
-  const _PurchaseOrderRow({required this.order, required this.currencyFormat});
+  const _PurchaseOrderRow({
+    required this.order,
+    required this.currencyFormat,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   final PurchaseOrderModel order;
   final NumberFormat currencyFormat;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  double _normalizeProgress(double raw) {
+    if (raw.isNaN || !raw.isFinite) return 0.0;
+    if (raw > 1.0 && raw <= 100.0) return raw / 100.0;
+    if (raw < 0.0) return 0.0;
+    if (raw > 1.0) return 1.0;
+    return raw;
+  }
 
   @override
   Widget build(BuildContext context) {
     final expectedLabel = DateFormat('M/d/yyyy').format(order.expectedDate);
-    final progressLabel = '${(order.progress * 100).round()}%';
+    final progressValue = _normalizeProgress(order.progress);
+    final progressLabel = '${(progressValue * 100).round()}%';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
@@ -4986,7 +8558,7 @@ class _PurchaseOrderRow extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(999),
                   child: LinearProgressIndicator(
-                    value: order.progress,
+                    value: progressValue,
                     minHeight: 6,
                     backgroundColor: const Color(0xFFE2E8F0),
                     valueColor:
@@ -4998,13 +8570,38 @@ class _PurchaseOrderRow extends StatelessWidget {
           ),
           Expanded(
             flex: 2,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: const [
-                _ActionIcon(icon: Icons.visibility_outlined),
-                SizedBox(width: 8),
-                _ActionIcon(icon: Icons.more_horiz_rounded),
-              ],
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    onEdit();
+                  } else if (value == 'delete') {
+                    onDelete();
+                  }
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: 'edit',
+                    child: Text('Edit purchase order'),
+                  ),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Text('Remove purchase order'),
+                  ),
+                ],
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: const Icon(Icons.more_horiz_rounded,
+                      size: 18, color: Color(0xFF475569)),
+                ),
+              ),
             ),
           ),
         ],
@@ -5014,15 +8611,31 @@ class _PurchaseOrderRow extends StatelessWidget {
 }
 
 class _PurchaseOrderCard extends StatelessWidget {
-  const _PurchaseOrderCard({required this.order, required this.currencyFormat});
+  const _PurchaseOrderCard({
+    required this.order,
+    required this.currencyFormat,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   final PurchaseOrderModel order;
   final NumberFormat currencyFormat;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  double _normalizeProgress(double raw) {
+    if (raw.isNaN || !raw.isFinite) return 0.0;
+    if (raw > 1.0 && raw <= 100.0) return raw / 100.0;
+    if (raw < 0.0) return 0.0;
+    if (raw > 1.0) return 1.0;
+    return raw;
+  }
 
   @override
   Widget build(BuildContext context) {
     final expectedLabel = DateFormat('M/d/yyyy').format(order.expectedDate);
-    final progressLabel = '${(order.progress * 100).round()}%';
+    final progressValue = _normalizeProgress(order.progress);
+    final progressLabel = '${(progressValue * 100).round()}%';
 
     return Container(
       decoration: BoxDecoration(
@@ -5071,19 +8684,45 @@ class _PurchaseOrderCard extends StatelessWidget {
             children: [
               Expanded(
                   child: _RfqMeta(label: 'Progress', value: progressLabel)),
-              Expanded(child: _RfqMeta(label: 'Owner', value: 'User')),
+              Expanded(
+                child: _RfqMeta(
+                  label: 'Owner',
+                  value:
+                      order.owner.trim().isEmpty ? 'Unassigned' : order.owner,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
             child: LinearProgressIndicator(
-              value: order.progress,
+              value: progressValue,
               minHeight: 6,
               backgroundColor: const Color(0xFFE2E8F0),
               valueColor:
                   const AlwaysStoppedAnimation<Color>(Color(0xFF1D4ED8)),
             ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton.icon(
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit_outlined, size: 16),
+                label: const Text('Edit'),
+              ),
+              const SizedBox(width: 8),
+              TextButton.icon(
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline, size: 16),
+                label: const Text('Remove'),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFDC2626),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -5217,7 +8856,15 @@ class _InvoiceMatchCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           OutlinedButton(
-            onPressed: () {},
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Invoice matching is available in Purchase Orders and Item Tracking details.',
+                  ),
+                ),
+              );
+            },
             style: OutlinedButton.styleFrom(
               foregroundColor: const Color(0xFF0F172A),
               side: const BorderSide(color: Color(0xFFCBD5E1)),
@@ -5235,13 +8882,14 @@ class _InvoiceMatchCard extends StatelessWidget {
 
 class _ItemTrackingView extends StatelessWidget {
   const _ItemTrackingView({
-    super.key,
     required this.trackableItems,
     required this.selectedIndex,
     required this.onSelectTrackable,
     required this.selectedItem,
     required this.alerts,
     required this.carriers,
+    required this.onUpdateStatus,
+    this.title = 'Item Tracking',
   });
 
   final List<ProcurementItemModel> trackableItems;
@@ -5250,6 +8898,8 @@ class _ItemTrackingView extends StatelessWidget {
   final ProcurementItemModel? selectedItem;
   final List<_TrackingAlert> alerts;
   final List<_CarrierPerformance> carriers;
+  final VoidCallback onUpdateStatus;
+  final String title;
 
   @override
   Widget build(BuildContext context) {
@@ -5264,7 +8914,7 @@ class _ItemTrackingView extends StatelessWidget {
         alerts.where((alert) => alert.severity == _AlertSeverity.high).length;
     final onTimeRate = carriers.isEmpty
         ? 0
-        : (carriers.fold<int>(0, (sum, carrier) => sum + carrier.onTimeRate) /
+        : (carriers.fold<int>(0, (total, carrier) => total + carrier.onTimeRate) /
                 carriers.length)
             .round();
 
@@ -5302,17 +8952,18 @@ class _ItemTrackingView extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
-                'Item Tracking',
+                title,
                 style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF0F172A)),
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0F172A),
+                ),
               ),
             ),
             ElevatedButton.icon(
-              onPressed: () {},
+              onPressed: onUpdateStatus,
               icon: const Icon(Icons.sync_rounded, size: 18),
               label: const Text('Update Status'),
               style: ElevatedButton.styleFrom(
@@ -5576,6 +9227,256 @@ class _CarrierPerformanceCard extends StatelessWidget {
   }
 }
 
+class _ProcurementTemplatesView extends StatelessWidget {
+  const _ProcurementTemplatesView({
+    super.key,
+    required this.processStarted,
+  });
+
+  final bool processStarted;
+
+  @override
+  Widget build(BuildContext context) {
+    final templates = const <Map<String, String>>[
+      {
+        'title': 'RFQ Template',
+        'description':
+            'Standard request-for-quotation structure for supplier bidding.',
+      },
+      {
+        'title': 'Purchase Order Template',
+        'description':
+            'PO format aligned with approval controls and tracking fields.',
+      },
+      {
+        'title': 'Vendor Onboarding Template',
+        'description':
+            'Checklist for compliance documentation and kickoff activities.',
+      },
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Procurement Templates',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+            ),
+            if (!processStarted)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFBEB),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: const Color(0xFFFDE68A)),
+                ),
+                child: const Text(
+                  'Process not started',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF92400E),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'Templates are available at initiation stage. Item Tracking details are now combined under Purchase Orders.',
+          style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+        ),
+        const SizedBox(height: 20),
+        for (var i = 0; i < templates.length; i++) ...[
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  templates[i]['title'] ?? '',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  templates[i]['description'] ?? '',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (i != templates.length - 1) const SizedBox(height: 10),
+        ],
+      ],
+    );
+  }
+}
+
+class _StageLockedView extends StatelessWidget {
+  const _StageLockedView({
+    required this.title,
+    required this.message,
+  });
+
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return _EmptyStateCard(
+      icon: Icons.lock_outline_rounded,
+      title: title,
+      message: message,
+      compact: true,
+    );
+  }
+}
+
+class _PurchaseOrdersInitiationLockedView extends StatelessWidget {
+  const _PurchaseOrdersInitiationLockedView({
+    required this.canEnableEarlyStart,
+    required this.onEnableEarlyStart,
+    required this.vitalLleItems,
+    required this.itemNumberById,
+  });
+
+  final bool canEnableEarlyStart;
+  final VoidCallback onEnableEarlyStart;
+  final List<ProcurementItemModel> vitalLleItems;
+  final Map<String, String> itemNumberById;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F4F6),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFD1D5DB)),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Purchase Orders (Initiation)',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF374151),
+                  ),
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E7EB),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const Text(
+                  'Greyed Out',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF4B5563),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Enable early only when needed. Vital long-lead items (LLEs) should be prioritized first.',
+            style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+          ),
+          const SizedBox(height: 12),
+          if (vitalLleItems.isNotEmpty) ...[
+            const Text(
+              'Vital LLE candidates',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF374151),
+              ),
+            ),
+            const SizedBox(height: 8),
+            for (var i = 0; i < vitalLleItems.length && i < 5; i++) ...[
+              Row(
+                children: [
+                  Text(
+                    itemNumberById[vitalLleItems[i].id] ?? 'ITM-${i + 1}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1D4ED8),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      vitalLleItems[i].name,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF4B5563),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (i < 4 && i != vitalLleItems.length - 1)
+                const SizedBox(height: 6),
+            ],
+            const SizedBox(height: 14),
+          ],
+          ElevatedButton.icon(
+            onPressed: canEnableEarlyStart ? onEnableEarlyStart : null,
+            icon: const Icon(Icons.play_arrow_rounded, size: 16),
+            label: const Text('Turn On Early for LLEs'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: canEnableEarlyStart
+                  ? const Color(0xFFF6C437)
+                  : const Color(0xFFD1D5DB),
+              foregroundColor: canEnableEarlyStart
+                  ? const Color(0xFF111827)
+                  : const Color(0xFF6B7280),
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ReportsView extends StatelessWidget {
   const _ReportsView({
     super.key,
@@ -5585,6 +9486,7 @@ class _ReportsView extends StatelessWidget {
     required this.savingsOpportunities,
     required this.complianceMetrics,
     required this.currencyFormat,
+    required this.onGenerateReports,
   });
 
   final List<_ReportKpi> kpis;
@@ -5593,9 +9495,30 @@ class _ReportsView extends StatelessWidget {
   final List<_SavingsOpportunity> savingsOpportunities;
   final List<_ComplianceMetric> complianceMetrics;
   final NumberFormat currencyFormat;
+  final VoidCallback onGenerateReports;
 
   @override
   Widget build(BuildContext context) {
+    void showShareFeedback() {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Report sharing has been queued. Export PDF first to distribute a static file.',
+          ),
+        ),
+      );
+    }
+
+    void showExportFeedback() {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'PDF export started. Refresh in a few seconds if the file is not ready yet.',
+          ),
+        ),
+      );
+    }
+
     final isMobile = AppBreakpoints.isMobile(context);
     final hasData = kpis.isNotEmpty ||
         spendBreakdown.isNotEmpty ||
@@ -5622,8 +9545,22 @@ class _ReportsView extends StatelessWidget {
                 spacing: 12,
                 runSpacing: 8,
                 children: [
+                  ElevatedButton.icon(
+                    onPressed: onGenerateReports,
+                    icon: const Icon(Icons.auto_awesome, size: 18),
+                    label: const Text('Generate Data'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0EA5E9),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                  ),
                   OutlinedButton(
-                    onPressed: () {},
+                    onPressed: showShareFeedback,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF0F172A),
                       side: const BorderSide(color: Color(0xFFCBD5E1)),
@@ -5635,7 +9572,7 @@ class _ReportsView extends StatelessWidget {
                     child: const Text('Share'),
                   ),
                   ElevatedButton.icon(
-                    onPressed: () {},
+                    onPressed: showExportFeedback,
                     icon: const Icon(Icons.file_download_outlined, size: 18),
                     label: const Text('Export PDF'),
                     style: ElevatedButton.styleFrom(
@@ -5681,8 +9618,22 @@ class _ReportsView extends StatelessWidget {
               spacing: 12,
               runSpacing: 8,
               children: [
+                ElevatedButton.icon(
+                  onPressed: onGenerateReports,
+                  icon: const Icon(Icons.auto_awesome, size: 18),
+                  label: const Text('Generate Data'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0EA5E9),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                ),
                 OutlinedButton(
-                  onPressed: () {},
+                  onPressed: showShareFeedback,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFF0F172A),
                     side: const BorderSide(color: Color(0xFFCBD5E1)),
@@ -5694,7 +9645,7 @@ class _ReportsView extends StatelessWidget {
                   child: const Text('Share'),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: showExportFeedback,
                   icon: const Icon(Icons.file_download_outlined, size: 18),
                   label: const Text('Export PDF'),
                   style: ElevatedButton.styleFrom(
@@ -6250,11 +10201,68 @@ class _EmptyStateCard extends StatelessWidget {
   }
 }
 
+class _ProcurementWorkflowStep {
+  const _ProcurementWorkflowStep({
+    required this.id,
+    required this.name,
+    required this.duration,
+    required this.unit,
+  });
+
+  final String id;
+  final String name;
+  final int duration;
+  final String unit;
+
+  _ProcurementWorkflowStep copyWith({
+    String? id,
+    String? name,
+    int? duration,
+    String? unit,
+  }) {
+    return _ProcurementWorkflowStep(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      duration: duration ?? this.duration,
+      unit: unit ?? this.unit,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'name': name,
+        'duration': duration,
+        'unit': unit,
+      };
+
+  factory _ProcurementWorkflowStep.fromMap(Map<String, dynamic> map) {
+    final rawId = (map['id'] ?? '').toString().trim();
+    final rawName = (map['name'] ?? map['stage'] ?? '').toString().trim();
+    final rawDuration = map['duration'];
+    var parsedDuration = 1;
+    if (rawDuration is num) {
+      parsedDuration = rawDuration.toInt();
+    } else {
+      parsedDuration = int.tryParse(rawDuration?.toString() ?? '') ?? 1;
+    }
+    if (parsedDuration < 1) parsedDuration = 1;
+    final rawUnit = (map['unit'] ?? '').toString().trim().toLowerCase();
+    final parsedUnit = rawUnit == 'month' ? 'month' : 'week';
+
+    return _ProcurementWorkflowStep(
+      id: rawId.isEmpty ? 'wf_${DateTime.now().microsecondsSinceEpoch}' : rawId,
+      name: rawName.isEmpty ? 'Untitled Step' : rawName,
+      duration: parsedDuration,
+      unit: parsedUnit,
+    );
+  }
+}
+
 enum _ProcurementTab {
   procurementDashboard,
   itemsList,
-  vendorManagement,
   rfqWorkflow,
+  vendorManagement,
   purchaseOrders,
   itemTracking,
   reports
@@ -6264,17 +10272,17 @@ extension _ProcurementTabExtension on _ProcurementTab {
   String get label {
     switch (this) {
       case _ProcurementTab.procurementDashboard:
-        return 'Procurement Dashboard';
+        return 'Procurement';
       case _ProcurementTab.itemsList:
-        return 'Items List';
+        return 'Scope Details';
+      case _ProcurementTab.rfqWorkflow:
+        return 'Procurement Workflow';
       case _ProcurementTab.vendorManagement:
         return 'Vendor Management';
-      case _ProcurementTab.rfqWorkflow:
-        return 'RFQ Workflow';
       case _ProcurementTab.purchaseOrders:
         return 'Purchase Orders';
       case _ProcurementTab.itemTracking:
-        return 'Item Tracking';
+        return 'Procurement Templates';
       case _ProcurementTab.reports:
         return 'Reports';
     }
@@ -6414,63 +10422,6 @@ extension _RiskSeverityExtension on _RiskSeverity {
   }
 }
 
-class _RfqStage {
-  const _RfqStage(
-      {required this.title, required this.subtitle, required this.status});
-
-  final String title;
-  final String subtitle;
-  final _WorkflowStageStatus status;
-}
-
-enum _WorkflowStageStatus { complete, active, upcoming }
-
-extension _WorkflowStageStatusExtension on _WorkflowStageStatus {
-  Color get backgroundColor {
-    switch (this) {
-      case _WorkflowStageStatus.complete:
-        return const Color(0xFFE8FFF4);
-      case _WorkflowStageStatus.active:
-        return const Color(0xFFEFF6FF);
-      case _WorkflowStageStatus.upcoming:
-        return const Color(0xFFF8FAFC);
-    }
-  }
-
-  Color get borderColor {
-    switch (this) {
-      case _WorkflowStageStatus.complete:
-        return const Color(0xFFBBF7D0);
-      case _WorkflowStageStatus.active:
-        return const Color(0xFFBFDBFE);
-      case _WorkflowStageStatus.upcoming:
-        return const Color(0xFFE2E8F0);
-    }
-  }
-
-  Color get iconColor {
-    switch (this) {
-      case _WorkflowStageStatus.complete:
-        return const Color(0xFF047857);
-      case _WorkflowStageStatus.active:
-        return const Color(0xFF2563EB);
-      case _WorkflowStageStatus.upcoming:
-        return const Color(0xFF64748B);
-    }
-  }
-
-  IconData get icon {
-    switch (this) {
-      case _WorkflowStageStatus.complete:
-        return Icons.check_circle_rounded;
-      case _WorkflowStageStatus.active:
-        return Icons.radio_button_checked_rounded;
-      case _WorkflowStageStatus.upcoming:
-        return Icons.radio_button_unchecked_rounded;
-    }
-  }
-}
-
 class _RfqCriterion {
   const _RfqCriterion({required this.label, required this.weight});
 
@@ -6598,3 +10549,4 @@ class _ComplianceMetric {
   final String label;
   final double value;
 }
+

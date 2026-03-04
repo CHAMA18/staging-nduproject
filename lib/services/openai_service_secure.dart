@@ -267,6 +267,7 @@ class BenefitLineItemInput {
 
   Map<String, dynamic> toJson() => {
         'category': category,
+        'category_key': category,
         'title': title,
         'unit_value': unitValue,
         'units': units,
@@ -1209,7 +1210,7 @@ Rules:
       final rawItems = parsed['items'] as List?;
       if (rawItems == null) return [];
 
-      return rawItems.map((item) {
+      final generated = rawItems.map((item) {
         final map = item as Map<String, dynamic>;
         return PlanningDashboardItem(
           title: _stripAsterisks((map['title'] ?? '').toString()),
@@ -1217,9 +1218,14 @@ Rules:
           isAiGenerated: true,
         );
       }).toList();
+
+      return _normalizePlanningItems(generated, section: section);
     } catch (e) {
       debugPrint('Error generating planning items: $e');
-      return _planningItemsFallback(section, trimmedContext);
+      return _normalizePlanningItems(
+        _planningItemsFallback(section, trimmedContext),
+        section: section,
+      );
     }
   }
 
@@ -1391,69 +1397,276 @@ $trimmedContext
     }
   }
 
+  String _normalizePlanningText(String value) =>
+      value.trim().replaceAll(RegExp(r'\s+'), ' ');
+
+  String _defaultPlanningTitle(String section, String description) {
+    final lower = description.toLowerCase();
+
+    if (section.contains('Within Scope')) return 'Scope Deliverable';
+    if (section.contains('Out of Scope')) return 'Scope Exclusion';
+    if (section.contains('Assumptions')) return 'Planning Assumption';
+    if (section.contains('Project Objectives')) return 'Project Objective';
+    if (section.contains('Success Criteria')) return 'Success Criterion';
+    if (section.contains('Constraints')) {
+      if (lower.contains('budget')) return 'Budget Constraint';
+      if (lower.contains('timeline') || lower.contains('schedule')) {
+        return 'Schedule Constraint';
+      }
+      if (lower.contains('resource')) return 'Resource Constraint';
+      if (lower.contains('compliance') || lower.contains('regulator')) {
+        return 'Compliance Constraint';
+      }
+      return 'Project Constraint';
+    }
+
+    final words = _normalizePlanningText(description)
+        .split(' ')
+        .where((word) => word.isNotEmpty)
+        .take(4)
+        .toList();
+    return words.isEmpty ? section : words.join(' ');
+  }
+
+  List<PlanningDashboardItem> _normalizePlanningItems(
+    List<PlanningDashboardItem> items, {
+    required String section,
+  }) {
+    final seen = <String>{};
+    final normalized = <PlanningDashboardItem>[];
+
+    for (final item in items) {
+      final description = _normalizePlanningText(item.description);
+      if (description.isEmpty) continue;
+      final title = _normalizePlanningText(item.title);
+      final resolvedTitle =
+          title.isEmpty ? _defaultPlanningTitle(section, description) : title;
+
+      final signature = description.toLowerCase();
+      if (!seen.add(signature)) continue;
+
+      normalized.add(
+        PlanningDashboardItem(
+          id: item.id,
+          title: resolvedTitle,
+          description: description,
+          createdAt: item.createdAt,
+          isAiGenerated: item.isAiGenerated,
+        ),
+      );
+    }
+
+    return normalized;
+  }
+
+  bool _containsAnyKeyword(String context, List<RegExp> patterns) {
+    for (final pattern in patterns) {
+      if (pattern.hasMatch(context)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   List<PlanningDashboardItem> _planningItemsFallback(
       String section, String context) {
-    // Basic heuristics for fallback
-    final isBakery = context.toLowerCase().contains('bakery') ||
-        context.toLowerCase().contains('food');
-    final isTech = context.toLowerCase().contains('app') ||
-        context.toLowerCase().contains('software');
+    final lowerContext = context.toLowerCase();
+    final isBakery = _containsAnyKeyword(lowerContext, [
+      RegExp(r'\bbakery\b'),
+      RegExp(r'\bfood\b'),
+      RegExp(r'\brestaurant\b'),
+      RegExp(r'\bcafe\b'),
+      RegExp(r'\bkitchen\b'),
+    ]);
+    final isTech = _containsAnyKeyword(lowerContext, [
+      RegExp(r'\bsoftware\b'),
+      RegExp(r'\bapplication\b'),
+      RegExp(r'\bmobile app\b'),
+      RegExp(r'\bweb app\b'),
+      RegExp(r'\bplatform\b'),
+      RegExp(r'\bapi\b'),
+      RegExp(r'\bdatabase\b'),
+    ]);
 
-    List<String> suggestions = [];
+    var suggestions = <Map<String, String>>[];
 
     if (section.contains('Within Scope')) {
       if (isBakery) {
         suggestions = [
-          'Kitchen equipment procurement and installation',
-          'Interior design and seating area setup',
-          'Menu development and tasting',
-          'Staff hiring and training program',
-          'Health and safety inspection compliance'
+          {
+            'title': 'Kitchen Setup',
+            'description': 'Kitchen equipment procurement and installation'
+          },
+          {
+            'title': 'Interior Setup',
+            'description': 'Interior design and seating area setup'
+          },
+          {
+            'title': 'Menu Development',
+            'description': 'Menu development, recipe trials, and tasting'
+          },
+          {
+            'title': 'Staff Readiness',
+            'description': 'Staff hiring, onboarding, and training program'
+          },
+          {
+            'title': 'Safety Compliance',
+            'description': 'Health and safety inspection compliance'
+          },
         ];
       } else if (isTech) {
         suggestions = [
-          'User authentication and profile management',
-          'Core feature implementation (MVP)',
-          'Database schema design and setup',
-          'API integration with third-party services',
-          'Unit and integration testing'
+          {
+            'title': 'User Management',
+            'description': 'User authentication and profile management'
+          },
+          {
+            'title': 'MVP Features',
+            'description': 'Core feature implementation for MVP launch'
+          },
+          {
+            'title': 'Data Layer',
+            'description': 'Database schema design and setup'
+          },
+          {
+            'title': 'Integrations',
+            'description': 'API integration with third-party services'
+          },
+          {
+            'title': 'Quality Assurance',
+            'description': 'Unit and integration testing'
+          },
         ];
       } else {
         suggestions = [
-          'Project initiation and planning phase',
-          'Requirement gathering and analysis',
-          'Design and prototyping',
-          'Implementation and development',
-          'Final delivery and handover'
+          {
+            'title': 'Planning Phase',
+            'description': 'Project initiation and planning activities'
+          },
+          {
+            'title': 'Requirements',
+            'description': 'Requirement gathering and analysis'
+          },
+          {
+            'title': 'Design',
+            'description': 'Design and prototyping deliverables'
+          },
+          {
+            'title': 'Implementation',
+            'description': 'Implementation and development work'
+          },
+          {
+            'title': 'Handover',
+            'description': 'Final delivery and operational handover'
+          },
         ];
       }
     } else if (section.contains('Out of Scope')) {
       suggestions = [
-        'Post-launch marketing campaigns',
-        'Long-term maintenance support (separate contract)',
-        'Features not explicitly listed in the requirements',
-        'Hardware procurement (client responsibility)'
+        {
+          'title': 'Marketing Activities',
+          'description': 'Post-launch marketing campaigns'
+        },
+        {
+          'title': 'Long-Term Support',
+          'description': 'Long-term maintenance support under separate contract'
+        },
+        {
+          'title': 'Unapproved Features',
+          'description': 'Features not explicitly listed in the requirements'
+        },
+        {
+          'title': 'Client Procurement',
+          'description': 'Hardware procurement handled by client'
+        },
       ];
     } else if (section.contains('Assumptions')) {
       suggestions = [
-        'Client provides all necessary content and branding assets',
-        'Regulatory approvals are obtained within standard timelines',
-        'Key stakeholders are available for weekly reviews',
-        'Budget approval is secured before Phase 2'
+        {
+          'title': 'Client Inputs',
+          'description': 'Client provides content and branding assets on time'
+        },
+        {
+          'title': 'Approvals',
+          'description':
+              'Regulatory approvals are obtained within standard timelines'
+        },
+        {
+          'title': 'Stakeholder Access',
+          'description': 'Key stakeholders are available for weekly reviews'
+        },
+        {
+          'title': 'Funding',
+          'description': 'Budget approval is secured before phase two'
+        },
       ];
     } else if (section.contains('Constraints')) {
       suggestions = [
-        'Budget is fixed at the initial estimate',
-        'Timeline must meet the Q4 launch window',
-        'Availability of specialized resources',
-        'Compliance with local zoning laws'
+        {
+          'title': 'Budget Constraint',
+          'description': 'Budget is fixed at the initial estimate'
+        },
+        {
+          'title': 'Schedule Constraint',
+          'description': 'Timeline must meet the target launch window'
+        },
+        {
+          'title': 'Resource Constraint',
+          'description': 'Availability of specialized resources is limited'
+        },
+        {
+          'title': 'Compliance Constraint',
+          'description':
+              'Execution must comply with local regulatory requirements'
+        },
+      ];
+    } else if (section.contains('Project Objectives')) {
+      suggestions = [
+        {
+          'title': 'Delivery Objective',
+          'description':
+              'Deliver the defined scope within approved timeline and budget'
+        },
+        {
+          'title': 'Quality Objective',
+          'description':
+              'Meet acceptance criteria with minimal rework at handover'
+        },
+        {
+          'title': 'Adoption Objective',
+          'description':
+              'Enable stakeholder readiness through training and transition support'
+        },
+      ];
+    } else if (section.contains('Success Criteria')) {
+      suggestions = [
+        {
+          'title': 'Schedule Performance',
+          'description': 'Key milestones are completed by planned target dates'
+        },
+        {
+          'title': 'Budget Performance',
+          'description': 'Total spend remains within approved budget baseline'
+        },
+        {
+          'title': 'Quality Performance',
+          'description':
+              'Final deliverables pass acceptance checks without critical defects'
+        },
       ];
     }
 
-    return suggestions
-        .map((s) => PlanningDashboardItem(
-            description: s, isAiGenerated: true, title: ''))
+    final fallbackItems = suggestions
+        .map(
+          (entry) => PlanningDashboardItem(
+            title: entry['title'] ?? '',
+            description: entry['description'] ?? '',
+            isAiGenerated: true,
+          ),
+        )
         .toList();
+
+    return _normalizePlanningItems(fallbackItems, section: section);
   }
 
   Future<DesignDeliverablesData> generateDesignDeliverables({
@@ -1930,22 +2143,42 @@ Return JSON with:
         final opp = _stripAsterisks(
             (map['opportunity'] ?? map['title'] ?? '').toString().trim());
         if (opp.isEmpty) continue;
+        final responsibleRole =
+            (map['responsibleRole'] ?? map['stakeholder'] ?? map['role'] ?? '')
+                .toString()
+                .trim();
+        final owner =
+            (map['owner'] ?? map['assignedTo'] ?? '').toString().trim();
+        final applicablePhase =
+            (map['applicablePhase'] ?? map['phase'] ?? '').toString().trim();
+        final status = (map['status'] ?? '').toString().trim();
+        final implementationStrategy =
+            (map['implementationStrategy'] ?? map['implementation'] ?? '')
+                .toString()
+                .trim();
         result.add(OpportunityItem(
           id: DateTime.now().microsecondsSinceEpoch.toString(),
           opportunity: opp,
           discipline: (map['discipline'] ?? '').toString().trim(),
-          stakeholder:
-              (map['stakeholder'] ?? map['owner'] ?? '').toString().trim(),
+          stakeholder: responsibleRole,
+          responsibleRole: responsibleRole,
           potentialCostSavings: (map['potentialCostSavings'] ??
                   map['potential_cost_savings'] ??
                   '')
               .toString()
               .trim(),
           potentialScheduleSavings: (map['potentialScheduleSavings'] ??
+                  map['scheduleImpact'] ??
                   map['potential_cost_schedule_savings'] ??
                   '')
               .toString()
               .trim(),
+          implementationStrategy: implementationStrategy,
+          applicablePhase: applicablePhase,
+          owner: owner,
+          status: status.isNotEmpty ? status : 'Identified',
+          assignedTo: owner,
+          appliesTo: _phaseToOpportunityTags(applicablePhase),
           impact: (map['impact'] ?? 'Medium').toString().trim(),
         ));
       }
@@ -1959,16 +2192,23 @@ Return JSON with:
   String _opportunitiesPrompt(String context) {
     final c = _escape(context);
     return '''
-From the project context below, list concrete project opportunities that would benefit the initiative (efficiency, cost, schedule, risk reduction, quality, compliance, etc.).
+From the project context below, list concrete project opportunities that would benefit the initiative.
+Each opportunity must match the exact project scope, preferred solution direction, geographic region, sector, and delivery constraints already defined in the context.
+Use realistic patterns and benchmarks typically seen in similar projects for this project type and region.
 
 Return ONLY valid JSON with this exact structure:
 {
   "opportunities": [
     {
       "opportunity": "Concise opportunity statement",
-      "discipline": "Owning discipline (e.g., IT, Finance, Operations)",
-      "stakeholder": "Primary stakeholder / owner",
       "potentialCostSavings": "Numeric or short label (e.g., 25,000)",
+      "scheduleImpact": "Short time effect (e.g., 2 weeks faster)",
+      "implementationStrategy": "How this opportunity would be implemented",
+      "discipline": "Owning discipline (e.g., IT, Finance, Operations)",
+      "responsibleRole": "Role accountable for delivery",
+      "owner": "Specific owner or team member",
+      "applicablePhase": "Initiation | Planning | Design | Execution | Launch | All",
+      "status": "Identified | Proposed | Approved | In Progress | Closed",
       "potentialScheduleSavings": "Numeric/short label (e.g., 2 weeks)",
       "impact": "High / Medium / Low"
     }
@@ -1977,15 +2217,35 @@ Return ONLY valid JSON with this exact structure:
 
 Guidelines:
 - Be specific and actionable (no placeholders).
-- Use concise text; do not add extra fields.
-- Assign impact based on strategic value and cost/schedule savings.
-- 5–12 items is ideal.
+- Do not output generic ideas unrelated to the provided scope.
+- Ensure each row can transfer directly into an execution log with clear role and ownership.
+- 5-12 items is ideal.
 
 Project context:
 """
 $c
 """
 ''';
+  }
+
+  List<String> _phaseToOpportunityTags(String phase) {
+    final normalized = phase.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      return const <String>[];
+    }
+    if (normalized == 'all' || normalized == 'project wide') {
+      return const <String>['Project Wide', 'Estimate', 'Schedule', 'Training'];
+    }
+    if (normalized == 'planning') {
+      return const <String>['Estimate', 'Schedule'];
+    }
+    if (normalized == 'execution') {
+      return const <String>['Schedule', 'Training'];
+    }
+    if (normalized == 'launch') {
+      return const <String>['Training'];
+    }
+    return const <String>[];
   }
 
   String _fepSectionPrompt({required String section, required String context}) {
@@ -2175,6 +2435,93 @@ $c
   }
 
 // Removed small deterministic fallback helpers — API failures must surface to the UI.
+
+  String _normalizeBenefitCategoryKey(String rawCategory) {
+    final normalized = rawCategory
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[_-]+'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ');
+    if (normalized.isEmpty) return 'other';
+
+    final direct = normalized.replaceAll(' ', '_');
+    const knownKeys = <String>{
+      'revenue',
+      'cost_saving',
+      'ops_efficiency',
+      'productivity',
+      'regulatory_compliance',
+      'process_improvement',
+      'brand_image',
+      'stakeholder_commitment',
+      'other',
+    };
+    if (knownKeys.contains(direct)) return direct;
+
+    if (normalized.contains('revenue') ||
+        normalized.contains('financial gain') ||
+        normalized == 'financial') {
+      return 'revenue';
+    }
+    if (normalized.contains('cost saving') ||
+        normalized.contains('cost reduction') ||
+        normalized.contains('cost avoid')) {
+      return 'cost_saving';
+    }
+    if (normalized.contains('operational') ||
+        normalized.contains('ops efficiency') ||
+        normalized.contains('efficiency')) {
+      return 'ops_efficiency';
+    }
+    if (normalized.contains('productivity') ||
+        normalized.contains('throughput') ||
+        normalized.contains('cycle time')) {
+      return 'productivity';
+    }
+    if (normalized.contains('regulatory') ||
+        normalized.contains('compliance') ||
+        normalized.contains('risk reduction')) {
+      return 'regulatory_compliance';
+    }
+    if (normalized.contains('process') || normalized.contains('workflow')) {
+      return 'process_improvement';
+    }
+    if (normalized.contains('brand') ||
+        normalized.contains('reputation') ||
+        normalized.contains('perception') ||
+        normalized.contains('customer experience')) {
+      return 'brand_image';
+    }
+    if (normalized.contains('stakeholder') ||
+        normalized.contains('shareholder') ||
+        normalized.contains('investor')) {
+      return 'stakeholder_commitment';
+    }
+    return 'other';
+  }
+
+  String _benefitCategoryDisplayLabel(String key) {
+    switch (key) {
+      case 'revenue':
+        return 'Revenue';
+      case 'cost_saving':
+        return 'Cost Saving';
+      case 'ops_efficiency':
+        return 'Operational Efficiency';
+      case 'productivity':
+        return 'Productivity';
+      case 'regulatory_compliance':
+        return 'Regulatory & Compliance';
+      case 'process_improvement':
+        return 'Process Improvement';
+      case 'brand_image':
+        return 'Brand Image';
+      case 'stakeholder_commitment':
+        return 'Stakeholder Commitment';
+      default:
+        return 'Other';
+    }
+  }
 
   String _singleItemEstimatePrompt({
     required String itemName,
@@ -2703,7 +3050,7 @@ $c
         {
           'role': 'system',
           'content':
-              'You are a business analyst expert. Generate project requirements from business cases. Each requirement should be clear, specific, and categorized by type. Always return strict JSON that matches the required schema.'
+              'You are a business analyst expert. Generate project requirements from business cases. Each requirement should be clear, specific, assigned, and categorized by type and implementation phase. Always return strict JSON that matches the required schema.'
         },
         {'role': 'user', 'content': _requirementsPrompt(businessCase)},
       ],
@@ -2731,14 +3078,39 @@ $c
     final items = (parsed['requirements'] as List? ?? [])
         .map((e) {
           final item = e as Map<String, dynamic>;
+          final requirement =
+              _stripAsterisks((item['requirement'] ?? '').toString().trim());
+          final requirementType = _stripAsterisks((item['requirementType'] ??
+                  item['requirement_type'] ??
+                  'Functional')
+              .toString()
+              .trim());
+          final discipline =
+              _stripAsterisks((item['discipline'] ?? '').toString().trim());
+          final role = _stripAsterisks(
+              (item['role'] ?? item['ownerRole'] ?? '').toString().trim());
+          final person = _stripAsterisks(
+              (item['person'] ?? item['ownerPerson'] ?? item['assignee'] ?? '')
+                  .toString()
+                  .trim());
+          final requirementSource = _stripAsterisks(
+              (item['requirementSource'] ??
+                      item['requirement_source'] ??
+                      item['source'] ??
+                      '')
+                  .toString()
+                  .trim());
           return {
-            'requirement':
-                _stripAsterisks((item['requirement'] ?? '').toString().trim()),
-            'requirementType': _stripAsterisks((item['requirementType'] ??
-                    item['requirement_type'] ??
-                    'Functional')
-                .toString()
-                .trim()),
+            'requirement': requirement,
+            'requirementType':
+                requirementType.isEmpty ? 'Functional' : requirementType,
+            'discipline': discipline,
+            'role': role,
+            'person': person,
+            'phase': _normalizeRequirementPhase(item['phase'] ??
+                item['implementationPhase'] ??
+                item['implementation_phase']),
+            'requirementSource': requirementSource,
           };
         })
         .where((e) => e['requirement']!.isNotEmpty)
@@ -3644,16 +4016,24 @@ Context notes (optional): $safeNotes
     return AiProjectValueInsights(
       estimatedProjectValue: 185000,
       benefits: {
-        'financial_gains':
-            'Projected incremental revenue of 8-12% within the first year of launch.',
-        'operational_efficiencies':
-            'Automates manual reconciliation and reduces processing time by an estimated 35%.',
+        'revenue':
+            'Projected incremental revenue uplift tied to $firstSolution adoption and improved service coverage.',
+        'cost_saving':
+            'Direct cost avoidance from reduced rework, tighter procurement cycles, and fewer manual interventions.',
+        'ops_efficiency':
+            'Operational cycle-time improvements reduce overhead and improve throughput across execution teams.',
+        'productivity':
+            'Productivity gains from fewer manual hours and clearer role accountability during delivery.',
         'regulatory_compliance':
-            'Strengthens audit trails and positions the initiative for upcoming regulatory milestones.',
-        'process_improvements':
-            'Streamlines cross-team workflows tied to $firstSolution delivery.',
+            'Strengthens audit readiness and reduces potential non-compliance penalties or delays.',
+        'process_improvement':
+            'Streamlines cross-team workflows tied to $firstSolution delivery milestones.',
         'brand_image':
             'Signals innovation leadership and improves partner confidence in programme execution.',
+        'stakeholder_commitment':
+            'Improves confidence for sponsors and stakeholders through clearer financial and delivery outcomes.',
+        'other':
+            'Additional value can be captured from site-specific constraints and local execution opportunities.',
       },
     );
   }
@@ -3664,31 +4044,35 @@ Context notes (optional): $safeNotes
             '{"title": "${_escape(s.title)}", "description": "${_escape(s.description)}"}')
         .join(',');
     return '''
-Based on the following project cost-benefit analysis data, answer this critical question: "What direct financial value does this project bring to the company?"
+Based on the following project cost-benefit analysis data, estimate direct financial value and provide category-specific benefit narratives.
 
-Primary Focus - Direct Financial Value:
-1. ROI (Return on Investment): Calculate and quantify the return percentage
-2. Cost Savings: Identify and quantify direct cost reductions (operational expenses, labor costs, material costs)
-3. Revenue Potential: Estimate direct revenue increases, new revenue streams, or revenue protection
-4. Quantifiable Monetary Benefits: Provide specific dollar amounts, percentages, and financial metrics
+Primary focus:
+1. Direct revenue impact
+2. Cost reduction/avoidance
+3. Operational efficiency and productivity effects
+4. Compliance/risk-cost implications
+5. Stakeholder/business reputation impact where financially relevant
 
-Secondary Considerations (include but prioritize financial metrics):
-- Strategic Value: Market position, competitive advantage (quantify financial impact where possible)
-- Operational Value: Efficiency improvements (translate to cost savings or revenue gains)
-- Long-term Impact: Sustainability and scalability (project future financial returns)
-
-Focus on direct financial metrics and measurable monetary outcomes. Quantify all benefits in financial terms where possible.
+Rules:
+- Ground outputs in provided context and scope. Avoid generic statements.
+- Keep each benefit text concise (1-2 sentences) but specific.
+- Include quantifiable language when possible.
+- Return ONLY valid JSON with the exact key schema below.
 
 Return ONLY valid JSON with this exact structure:
 {
   "project_value": {
     "estimated_value": 123456,
     "benefits": {
-      "financial_gains": "...",
-      "operational_efficiencies": "...",
+      "revenue": "...",
+      "cost_saving": "...",
+      "ops_efficiency": "...",
+      "productivity": "...",
       "regulatory_compliance": "...",
-      "process_improvements": "...",
-      "brand_image": "..."
+      "process_improvement": "...",
+      "brand_image": "...",
+      "stakeholder_commitment": "...",
+      "other": "..."
     }
   }
 }
@@ -3757,7 +4141,11 @@ Return plain text only.'''
   }) async {
     if (solutions.isEmpty || estimatedProjectValue <= 0) return [];
     if (!OpenAiConfig.isConfigured) {
-      return _fallbackBenefitLineItems(estimatedProjectValue, currency);
+      return _fallbackBenefitLineItems(
+        estimatedProjectValue,
+        currency,
+        count: count,
+      );
     }
 
     final uri = OpenAiConfig.chatUri();
@@ -3778,7 +4166,7 @@ Return plain text only.'''
         {
           'role': 'system',
           'content':
-              'You are a finance analyst. Return strict JSON for benefit line items.'
+              'You are a finance analyst. Return strict JSON for benefit line items. Use only these category keys: revenue, cost_saving, ops_efficiency, productivity, regulatory_compliance, process_improvement, brand_image, stakeholder_commitment, other.'
         },
         {
           'role': 'user',
@@ -3798,7 +4186,11 @@ Return plain text only.'''
           .post(uri, headers: headers, body: body)
           .timeout(const Duration(seconds: 16));
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        return _fallbackBenefitLineItems(estimatedProjectValue, currency);
+        return _fallbackBenefitLineItems(
+          estimatedProjectValue,
+          currency,
+          count: count,
+        );
       }
       final data =
           jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
@@ -3808,8 +4200,10 @@ Return plain text only.'''
       final items = (parsed['items'] as List? ?? [])
           .map((e) => Map<String, dynamic>.from(e as Map))
           .map((item) {
+            final rawCategory =
+                (item['category_key'] ?? item['category'] ?? '').toString();
             return BenefitLineItemInput(
-              category: (item['category'] ?? '').toString(),
+              category: _normalizeBenefitCategoryKey(rawCategory),
               title: (item['title'] ?? '').toString(),
               unitValue: _toDouble(item['unit_value'] ?? item['unitValue']),
               units: _toDouble(item['units'] ?? 1),
@@ -3819,11 +4213,19 @@ Return plain text only.'''
           .where((item) => item.title.isNotEmpty)
           .toList();
       return items.isEmpty
-          ? _fallbackBenefitLineItems(estimatedProjectValue, currency)
+          ? _fallbackBenefitLineItems(
+              estimatedProjectValue,
+              currency,
+              count: count,
+            )
           : items;
     } catch (e) {
       debugPrint('generateBenefitLineItems failed: $e');
-      return _fallbackBenefitLineItems(estimatedProjectValue, currency);
+      return _fallbackBenefitLineItems(
+        estimatedProjectValue,
+        currency,
+        count: count,
+      );
     }
   }
 
@@ -3840,13 +4242,14 @@ Return plain text only.'''
     return '''
 We are preparing benefit line items for a project portfolio.
 Target total value: $currency ${estimatedProjectValue.toStringAsFixed(0)}.
-Provide $count items across categories like Financial gains, Operational efficiencies, Risk reduction, Compliance, Customer experience.
+Provide $count items across these exact category keys:
+["revenue","cost_saving","ops_efficiency","productivity","regulatory_compliance","process_improvement","brand_image","stakeholder_commitment","other"].
 
 Return strict JSON:
 {
   "items": [
     {
-      "category": "Financial gains",
+      "category_key": "revenue",
       "title": "Reduce churn via onboarding improvements",
       "unit_value": 5000,
       "units": 12,
@@ -3862,22 +4265,29 @@ Return ONLY JSON.
   }
 
   List<BenefitLineItemInput> _fallbackBenefitLineItems(
-    double estimatedProjectValue,
-    String currency,
-  ) {
+      double estimatedProjectValue, String currency,
+      {int count = 6}) {
     final total = estimatedProjectValue > 0 ? estimatedProjectValue : 150000;
-    final allocations = {
-      'Financial gains': 0.3,
-      'Operational efficiencies': 0.2,
-      'Risk reduction': 0.2,
-      'Compliance': 0.15,
-      'Customer experience': 0.15,
-    };
-    return allocations.entries.map((entry) {
+    final allocations = <MapEntry<String, double>>[
+      const MapEntry('revenue', 0.24),
+      const MapEntry('cost_saving', 0.20),
+      const MapEntry('ops_efficiency', 0.14),
+      const MapEntry('productivity', 0.12),
+      const MapEntry('regulatory_compliance', 0.10),
+      const MapEntry('process_improvement', 0.08),
+      const MapEntry('brand_image', 0.06),
+      const MapEntry('stakeholder_commitment', 0.04),
+      const MapEntry('other', 0.02),
+    ];
+    final cappedCount = count < 1
+        ? 1
+        : (count > allocations.length ? allocations.length : count);
+    return allocations.take(cappedCount).map((entry) {
       final value = total * entry.value;
+      final categoryLabel = _benefitCategoryDisplayLabel(entry.key);
       return BenefitLineItemInput(
         category: entry.key,
-        title: '${entry.key} impact',
+        title: '$categoryLabel impact',
         unitValue: value,
         units: 1,
         notes: 'Estimated annualized value in $currency',
@@ -4483,20 +4893,50 @@ Project Context:
 $businessCase
 ''';
 
+  String _normalizeRequirementPhase(dynamic rawValue) {
+    final raw = _stripAsterisks((rawValue ?? '').toString().trim());
+    if (raw.isEmpty) return 'Planning';
+
+    final value = raw.toLowerCase();
+    if (value == 'all' || value == 'all phases' || value == 'all phase') {
+      return 'ALL';
+    }
+    if (value.startsWith('init')) return 'Initiation';
+    if (value.startsWith('plan')) return 'Planning';
+    if (value.startsWith('des')) return 'Design';
+    if (value.startsWith('exec') || value.contains('implement')) {
+      return 'Execution';
+    }
+    if (value.startsWith('launch') ||
+        value.contains('go live') ||
+        value.contains('golive')) {
+      return 'Launch';
+    }
+    return 'Planning';
+  }
+
   String _requirementsPrompt(String businessCase) => '''
 Based on this project context, generate 10-20 specific project requirements that must be met for the project to be considered successful.
 
 Each requirement should be:
 - Clear and specific
 - Measurable or verifiable
-- Properly categorized by type (Functional, Non-Functional, Technical, Business, or Regulatory)
+- Properly categorized by type
+- Assigned to a relevant discipline, role, and/or person
+- Tagged to one implementation phase (Initiation, Planning, Design, Execution, Launch, or ALL)
+- Include a short requirement source note or source link
 
 Return ONLY valid JSON in this exact structure:
 {
   "requirements": [
     {
       "requirement": "Specific requirement statement",
-      "requirementType": "Functional|Non-Functional|Technical|Business|Regulatory"
+      "requirementType": "Technical|Regulatory|Functional|Operational|Non-Functional|Safety|Sustainability|Business|Stakeholder|Solutions|Transitional|Other",
+      "discipline": "Owning discipline",
+      "role": "Primary role responsible",
+      "person": "Specific person (optional if role is provided)",
+      "phase": "Initiation|Planning|Design|Execution|Launch|ALL",
+      "requirementSource": "Source note or URL"
     }
   ]
 }
@@ -6364,7 +6804,7 @@ Context notes (optional): $notes
         {
           'role': 'system',
           'content':
-              'You are a risk analyst. Generate project risks with Title, Category, Probability (Low/Medium/High), and Impact (Low/Medium/High). Return strict JSON only.'
+              'You are a risk analyst. Generate realistic project risks based on the preferred solution and project context. Use project-type and location cues from context (e.g., regulatory, permitting, weather, labor, utilities, site constraints) and avoid generic filler. For each risk, provide Title, Category, Probability (Low/Medium/High), Impact (Low/Medium/High), Mitigation Strategy, Discipline, and Project Role. Return strict JSON only.'
         },
         {
           'role': 'user',
@@ -6378,9 +6818,13 @@ Return JSON in this format:
   "risks": [
     {
       "title": "Risk title",
+      "description": "One-sentence risk description",
       "category": "Technical/Financial/Operational/Schedule/Resource",
       "probability": "Low/Medium/High",
-      "impact": "Low/Medium/High"
+      "impact": "Low/Medium/High",
+      "mitigationStrategy": "Concise mitigation action",
+      "discipline": "Owning discipline",
+      "projectRole": "Responsible project role"
     }
   ]
 }'''
@@ -6406,10 +6850,23 @@ Return JSON in this format:
             final item = e as Map<String, dynamic>;
             return {
               'title': (item['title'] ?? '').toString().trim(),
+              'description': (item['description'] ?? '').toString().trim(),
               'category': (item['category'] ?? 'Technical').toString().trim(),
               'probability':
                   (item['probability'] ?? 'Medium').toString().trim(),
               'impact': (item['impact'] ?? 'Medium').toString().trim(),
+              'mitigationStrategy':
+                  (item['mitigationStrategy'] ?? item['mitigation'] ?? '')
+                      .toString()
+                      .trim(),
+              'discipline':
+                  (item['discipline'] ?? 'Risk Management').toString().trim(),
+              'projectRole': (item['projectRole'] ??
+                      item['role'] ??
+                      item['ownerRole'] ??
+                      'Risk Owner')
+                  .toString()
+                  .trim(),
             };
           })
           .where((r) => r['title']!.isNotEmpty)
@@ -6743,7 +7200,7 @@ Return ONLY valid JSON.
         {
           'role': 'system',
           'content':
-              'You are a procurement specialist. Generate realistic procurement item suggestions. Return JSON with: name (item name), description (brief description), category (matching requested), budget (estimated cost as integer), priority (one of: critical, high, medium, low), estimatedDeliveryDays (days from now as integer, typically 30-180).'
+              'You are a procurement specialist. Generate realistic procurement item suggestions tailored to project type, region, and scope context. Prioritize long-lead and schedule-critical items when relevant. Return JSON with: name (item name), description (brief description), category (matching requested), budget (estimated cost as integer), priority (one of: critical, high, medium, low), estimatedDeliveryDays (days from now as integer, typically 30-180).'
         },
         {
           'role': 'user',
@@ -6867,6 +7324,8 @@ Category: $category
 Context: $notes
 
 Provide a realistic procurement item that would be needed for a project involving "$solutionTitle" in the "$category" category.
+Prefer long-lead or schedule-critical recommendations when context indicates that risk.
+Tailor the recommendation to local/region constraints and what similar projects typically procure.
 
 Return a JSON object with:
 - name: Item name (e.g., "Network core switches" or "Office furniture set")
@@ -6880,14 +7339,472 @@ Return ONLY valid JSON.
 ''';
   }
 
+  // CONTRACTING SCOPE
+  Future<Map<String, dynamic>> generateContractingScopeSuggestions({
+    required String projectName,
+    required String solutionTitle,
+    required String projectType,
+    required String contextNotes,
+    String regionContext = '',
+    int contractCount = 8,
+    int scopeItemCount = 10,
+  }) async {
+    final safeContractCount = contractCount.clamp(3, 15).toInt();
+    final safeScopeCount = scopeItemCount.clamp(4, 18).toInt();
+
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackContractingScopeSuggestions(
+        projectName: projectName,
+        solutionTitle: solutionTitle,
+        projectType: projectType,
+        regionContext: regionContext,
+        contractCount: safeContractCount,
+        scopeItemCount: safeScopeCount,
+      );
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': 0.45,
+      'max_tokens': 2200,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a senior contracts strategist. Build contract scope packages tailored to the exact project type and location context. Use patterns from similar projects globally, but localize for regional regulations, labor availability, logistics, permitting, and market conditions. Return strict JSON only.'
+        },
+        {
+          'role': 'user',
+          'content': _contractingScopePrompt(
+            projectName: projectName,
+            solutionTitle: solutionTitle,
+            projectType: projectType,
+            contextNotes: contextNotes,
+            regionContext: regionContext,
+            contractCount: safeContractCount,
+            scopeItemCount: safeScopeCount,
+          ),
+        },
+      ],
+    });
+
+    String clean(dynamic value) =>
+        _stripAsterisks(value?.toString() ?? '').trim();
+
+    double parseAmount(dynamic value, double fallback) {
+      if (value is num) return value.toDouble();
+      final normalized =
+          (value?.toString() ?? '').replaceAll(RegExp(r'[^0-9\.-]'), '');
+      return double.tryParse(normalized) ?? fallback;
+    }
+
+    String normalizeContractType(dynamic raw) {
+      final value = clean(raw).toLowerCase();
+      if (value.contains('lump')) return 'Lump Sum';
+      if (value.contains('reimb') ||
+          value.contains('time and material') ||
+          value.contains('t&m')) {
+        return 'Reimbursable';
+      }
+      return 'Unsure';
+    }
+
+    String normalizeBiddingRequired(dynamic raw) {
+      final value = clean(raw).toLowerCase();
+      if (value == 'no' ||
+          value.contains('not required') ||
+          value.contains('direct award')) {
+        return 'No';
+      }
+      if (value == 'yes' ||
+          value.contains('required') ||
+          value.contains('competitive')) {
+        return 'Yes';
+      }
+      return 'Not Sure';
+    }
+
+    List<Map<String, dynamic>> normalizeContracts(dynamic rawContracts) {
+      final list = rawContracts is List ? rawContracts : const <dynamic>[];
+      final seen = <String>{};
+      final normalized = <Map<String, dynamic>>[];
+
+      for (final raw in list) {
+        if (raw is! Map) continue;
+        final map = Map<String, dynamic>.from(raw);
+        final title = clean(map['title']);
+        if (title.isEmpty) continue;
+        final contractor = clean(map['contractor']);
+        final signature = '${title.toLowerCase()}|${contractor.toLowerCase()}';
+        if (!seen.add(signature)) continue;
+
+        normalized.add({
+          'title': title,
+          'description': clean(map['description']),
+          'contractor': contractor.isEmpty ? 'To be determined' : contractor,
+          'cost': parseAmount(map['cost'], 0),
+          'duration': clean(map['duration']).isEmpty
+              ? '3-6 months'
+              : clean(map['duration']),
+          'owner':
+              clean(map['owner']).isEmpty ? 'Unassigned' : clean(map['owner']),
+          'status':
+              clean(map['status']).isEmpty ? 'draft' : clean(map['status']),
+        });
+        if (normalized.length >= safeContractCount) break;
+      }
+
+      return normalized;
+    }
+
+    List<Map<String, dynamic>> normalizeScopeItems(dynamic rawItems) {
+      final list = rawItems is List ? rawItems : const <dynamic>[];
+      final seen = <String>{};
+      final normalized = <Map<String, dynamic>>[];
+
+      for (final raw in list) {
+        if (raw is! Map) continue;
+        final map = Map<String, dynamic>.from(raw);
+        final name = clean(map['name']).isNotEmpty
+            ? clean(map['name'])
+            : clean(map['contract_scope']);
+        if (name.isEmpty) continue;
+        final contractType = normalizeContractType(
+          clean(map['contract_type']).isNotEmpty
+              ? map['contract_type']
+              : map['category'],
+        );
+        final signature = '${name.toLowerCase()}|${contractType.toLowerCase()}';
+        if (!seen.add(signature)) continue;
+
+        final estimatedValue =
+            parseAmount(map['estimated_value'] ?? map['budget'], 0);
+        final potentialContractors = clean(map['potential_contractors']).isEmpty
+            ? clean(map['potential_vendors'])
+            : clean(map['potential_contractors']);
+        final estimatedDuration = clean(map['estimated_duration']).isEmpty
+            ? (clean(map['comments']).isEmpty
+                ? clean(map['duration'])
+                : clean(map['comments']))
+            : clean(map['estimated_duration']);
+        final biddingRequired = normalizeBiddingRequired(
+          clean(map['bidding_required']).isNotEmpty
+              ? map['bidding_required']
+              : map['responsible_member'],
+        );
+
+        normalized.add({
+          'name': name,
+          'description': clean(map['description']),
+          'contract_type': contractType,
+          'estimated_value': estimatedValue,
+          'estimated_duration':
+              estimatedDuration.isEmpty ? 'TBD' : estimatedDuration,
+          'potential_contractors': potentialContractors,
+          'bidding_required': biddingRequired,
+          'project_phase': clean(map['project_phase']).isEmpty
+              ? 'Contracting'
+              : clean(map['project_phase']),
+          'status':
+              clean(map['status']).isEmpty ? 'planning' : clean(map['status']),
+          'priority': _normalizePriority(
+              clean(map['priority']).isEmpty ? 'high' : clean(map['priority'])),
+          // Backward-compatible aliases
+          'category': contractType,
+          'budget': estimatedValue,
+          'potential_vendors': potentialContractors,
+          'responsible_member': biddingRequired,
+          'comments': estimatedDuration.isEmpty ? 'TBD' : estimatedDuration,
+        });
+        if (normalized.length >= safeScopeCount) break;
+      }
+
+      return normalized;
+    }
+
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 16));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+            'OpenAI error ${response.statusCode}: ${response.body}');
+      }
+
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final content =
+          (data['choices'] as List).first['message']['content'] as String;
+      final parsed = jsonDecode(content) as Map<String, dynamic>;
+
+      final contracts = normalizeContracts(parsed['contracts']);
+      final items = normalizeScopeItems(
+        parsed['contract_scope_items'] ?? parsed['procurement_items'],
+      );
+      if (contracts.isEmpty && items.isEmpty) {
+        return _fallbackContractingScopeSuggestions(
+          projectName: projectName,
+          solutionTitle: solutionTitle,
+          projectType: projectType,
+          regionContext: regionContext,
+          contractCount: safeContractCount,
+          scopeItemCount: safeScopeCount,
+        );
+      }
+      return {
+        'contracts': contracts,
+        'contract_scope_items': items,
+        'procurement_items': items,
+      };
+    } catch (e) {
+      debugPrint('generateContractingScopeSuggestions failed: $e');
+      return _fallbackContractingScopeSuggestions(
+        projectName: projectName,
+        solutionTitle: solutionTitle,
+        projectType: projectType,
+        regionContext: regionContext,
+        contractCount: safeContractCount,
+        scopeItemCount: safeScopeCount,
+      );
+    }
+  }
+
+  String _contractingScopePrompt({
+    required String projectName,
+    required String solutionTitle,
+    required String projectType,
+    required String contextNotes,
+    required String regionContext,
+    required int contractCount,
+    required int scopeItemCount,
+  }) {
+    final notes = contextNotes.trim().isEmpty
+        ? 'No additional context provided.'
+        : contextNotes.trim();
+    final region = regionContext.trim().isEmpty
+        ? 'Region not explicitly provided; infer cautiously from context.'
+        : regionContext.trim();
+
+    return '''
+Generate contracting scope and contract-detail recommendations.
+
+Project: $projectName
+Preferred Solution: $solutionTitle
+Project Type: $projectType
+Regional Context: $region
+Project Context Notes:
+$notes
+
+Requirements:
+- Propose $contractCount contracts and $scopeItemCount contracting scope items.
+- Use realistic practices seen in similar projects globally, but localize to the regional context above.
+- Keep recommendations aligned to already-defined scope, milestones, and delivery constraints.
+- Avoid generic software-only outputs unless context is clearly software-focused.
+- Include contract packages that support schedule protection (long-lead, permitting, specialist scopes).
+- Contract type must be one of: Lump Sum, Reimbursable, Unsure.
+- Bidding required must be one of: Yes, No, Not Sure.
+
+Return ONLY valid JSON in this exact structure:
+{
+  "contracts": [
+    {
+      "title": "Contract package title",
+      "description": "Scope and deliverables",
+      "contractor": "Suggested contractor type or profile",
+      "cost": 120000,
+      "duration": "4 months",
+      "owner": "Responsible role",
+      "status": "draft"
+    }
+  ],
+  "contract_scope_items": [
+    {
+      "name": "Contracting scope item",
+      "description": "What is covered in this contract scope",
+      "potential_contractors": "List of contractor candidates or contractor profile examples",
+      "contract_type": "Lump Sum|Reimbursable|Unsure",
+      "estimated_value": 50000,
+      "estimated_duration": "4 months",
+      "bidding_required": "Yes|No|Not Sure",
+      "project_phase": "Planning|Execution|Launch",
+      "status": "planning|rfq_review|vendor_selection|ordered|delivered",
+      "priority": "critical|high|medium|low"
+    }
+  ]
+}
+''';
+  }
+
+  Map<String, dynamic> _fallbackContractingScopeSuggestions({
+    required String projectName,
+    required String solutionTitle,
+    required String projectType,
+    required String regionContext,
+    required int contractCount,
+    required int scopeItemCount,
+  }) {
+    final region = regionContext.trim().isEmpty
+        ? 'local jurisdiction'
+        : regionContext.trim();
+
+    final contractTemplates = <Map<String, dynamic>>[
+      {
+        'title': 'Primary Delivery Contract',
+        'description':
+            'Core delivery package for $projectType execution with milestone-linked outputs.',
+        'contractor': 'Prime contractor with relevant delivery track record',
+        'cost': 250000.0,
+        'duration': '6 months',
+        'owner': 'Project Manager',
+        'status': 'draft',
+      },
+      {
+        'title': 'Specialist Compliance Contract',
+        'description':
+            'Specialist support for permits, inspections, and compliance in $region.',
+        'contractor': 'Regional compliance specialist',
+        'cost': 90000.0,
+        'duration': '4 months',
+        'owner': 'Compliance Lead',
+        'status': 'draft',
+      },
+      {
+        'title': 'Long-Lead Supply Contract',
+        'description':
+            'Early procurement agreement for long-lead components to protect schedule.',
+        'contractor': 'Tier-1 supplier with proven lead-time performance',
+        'cost': 160000.0,
+        'duration': '5 months',
+        'owner': 'Procurement Lead',
+        'status': 'draft',
+      },
+      {
+        'title': 'Commissioning & Handover Contract',
+        'description':
+            'Testing, commissioning, and transition support for operational readiness.',
+        'contractor': 'Commissioning and operations partner',
+        'cost': 110000.0,
+        'duration': '3 months',
+        'owner': 'Delivery Manager',
+        'status': 'draft',
+      },
+    ];
+
+    final scopeTemplates = <Map<String, dynamic>>[
+      {
+        'name': 'Contract packaging and sequencing plan',
+        'description':
+            'Define package boundaries, dependencies, and award sequence against schedule-critical milestones.',
+        'contract_type': 'Lump Sum',
+        'estimated_value': 35000.0,
+        'estimated_duration': '6 weeks',
+        'potential_contractors': 'Regional contract management consultants',
+        'bidding_required': 'Yes',
+        'project_phase': 'Planning',
+        'status': 'planning',
+        'priority': 'high',
+        'category': 'Lump Sum',
+        'budget': 35000.0,
+        'potential_vendors': 'Regional contract management consultants',
+        'responsible_member': 'Yes',
+        'comments': '6 weeks',
+      },
+      {
+        'name': 'Permitting and approval support',
+        'description':
+            'Secure permitting scope aligned with local authority requirements in $region.',
+        'contract_type': 'Reimbursable',
+        'estimated_value': 45000.0,
+        'estimated_duration': '10 weeks',
+        'potential_contractors': 'Local permitting advisors and legal support',
+        'bidding_required': 'No',
+        'project_phase': 'Planning',
+        'status': 'rfq_review',
+        'priority': 'critical',
+        'category': 'Reimbursable',
+        'budget': 45000.0,
+        'potential_vendors': 'Local permitting advisors and legal support',
+        'responsible_member': 'No',
+        'comments': '10 weeks',
+      },
+      {
+        'name': 'Specialist execution services',
+        'description':
+            'Specialist execution package aligned to $solutionTitle implementation complexity.',
+        'contract_type': 'Lump Sum',
+        'estimated_value': 125000.0,
+        'estimated_duration': '4 months',
+        'potential_contractors': 'Certified specialist firms',
+        'bidding_required': 'Yes',
+        'project_phase': 'Execution',
+        'status': 'vendor_selection',
+        'priority': 'high',
+        'category': 'Lump Sum',
+        'budget': 125000.0,
+        'potential_vendors': 'Certified specialist firms',
+        'responsible_member': 'Yes',
+        'comments': '4 months',
+      },
+      {
+        'name': 'Critical equipment or systems supply',
+        'description':
+            'Long-lead supply package for schedule-critical systems and integration points.',
+        'contract_type': 'Lump Sum',
+        'estimated_value': 175000.0,
+        'estimated_duration': '5 months',
+        'potential_contractors': 'Tier-1 original equipment manufacturers',
+        'bidding_required': 'Yes',
+        'project_phase': 'Execution',
+        'status': 'ordered',
+        'priority': 'critical',
+        'category': 'Lump Sum',
+        'budget': 175000.0,
+        'potential_vendors': 'Tier-1 original equipment manufacturers',
+        'responsible_member': 'Yes',
+        'comments': '5 months',
+      },
+      {
+        'name': 'Testing and commissioning readiness',
+        'description':
+            'Commissioning package with acceptance criteria, test plans, and handover documentation.',
+        'contract_type': 'Unsure',
+        'estimated_value': 80000.0,
+        'estimated_duration': '9 weeks',
+        'potential_contractors': 'Commissioning engineers and QA specialists',
+        'bidding_required': 'Not Sure',
+        'project_phase': 'Launch',
+        'status': 'planning',
+        'priority': 'medium',
+        'category': 'Unsure',
+        'budget': 80000.0,
+        'potential_vendors': 'Commissioning engineers and QA specialists',
+        'responsible_member': 'Not Sure',
+        'comments': '9 weeks',
+      },
+    ];
+
+    return {
+      'contracts': contractTemplates.take(contractCount).toList(),
+      'contract_scope_items': scopeTemplates.take(scopeItemCount).toList(),
+      'procurement_items': scopeTemplates.take(scopeItemCount).toList(),
+    };
+  }
+
   // PROCUREMENT - LIST HELPERS
   Future<List<Map<String, dynamic>>> generateProcurementVendors({
     required String projectName,
     required String solutionTitle,
     String contextNotes = '',
     int count = 5,
+    List<String> preferredCategories = const [],
   }) async {
-    final categories = [
+    final defaultCategories = [
       'IT Equipment',
       'Construction Services',
       'Furniture',
@@ -6896,6 +7813,15 @@ Return ONLY valid JSON.
       'Services',
       'Materials',
     ];
+    final categories = <String>[];
+    for (final category in [...preferredCategories, ...defaultCategories]) {
+      final normalized = category.trim();
+      if (normalized.isEmpty || categories.contains(normalized)) continue;
+      categories.add(normalized);
+    }
+    if (categories.isEmpty) {
+      categories.addAll(defaultCategories);
+    }
     final results = <Map<String, dynamic>>[];
     for (var i = 0; i < count; i++) {
       final category = categories[i % categories.length];

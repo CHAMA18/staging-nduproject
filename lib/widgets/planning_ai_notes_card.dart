@@ -14,6 +14,10 @@ class PlanningAiNotesCard extends StatefulWidget {
     required this.noteKey,
     required this.checkpoint,
     this.description,
+    this.fieldKey,
+    this.errorText,
+    this.onChanged,
+    this.fallbackText,
     this.hintText = 'Capture the key decisions and details for this section...',
     this.autoGenerateMaxTokens = 900,
     this.autoGenerateTemperature = 0.5,
@@ -24,6 +28,10 @@ class PlanningAiNotesCard extends StatefulWidget {
   final String noteKey;
   final String checkpoint;
   final String? description;
+  final Key? fieldKey;
+  final String? errorText;
+  final ValueChanged<String>? onChanged;
+  final String? fallbackText;
   final String hintText;
   final int autoGenerateMaxTokens;
   final double autoGenerateTemperature;
@@ -48,7 +56,9 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
     if (_didInit) return;
     ApiKeyManager.initializeApiKey();
     final data = ProjectDataHelper.getData(context);
-    _currentText = data.planningNotes[widget.noteKey] ?? '';
+    final stored = data.planningNotes[widget.noteKey] ?? '';
+    final fallback = widget.fallbackText ?? '';
+    _currentText = stored.trim().isNotEmpty ? stored.trim() : fallback.trim();
     _controller = TextEditingController(text: _currentText);
     _didInit = true;
   }
@@ -71,6 +81,7 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
         },
       ),
     );
+    widget.onChanged?.call(trimmed);
     // Keep controller in sync
     if (_controller.text != value) _controller.text = value;
     _scheduleSave();
@@ -157,12 +168,16 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
   @override
   Widget build(BuildContext context) {
     final savedAt = _lastSavedAt;
+    final hasError = (widget.errorText ?? '').trim().isNotEmpty;
+    final borderColor =
+        hasError ? const Color(0xFFEF4444) : const Color(0xFFE5E7EB);
     return Container(
+      key: widget.fieldKey,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: borderColor),
         boxShadow: const [
           BoxShadow(
               color: Color(0x0F000000), blurRadius: 18, offset: Offset(0, 12)),
@@ -186,7 +201,7 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Notes',
+                  widget.title,
                   style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -238,15 +253,38 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
             decoration: InputDecoration(
               hintText: widget.hintText,
               border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: borderColor),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: borderColor),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: hasError
+                      ? const Color(0xFFEF4444)
+                      : const Color(0xFF2563EB),
+                ),
+              ),
               filled: true,
               fillColor: const Color(0xFFF8FAFC),
               contentPadding: const EdgeInsets.all(12),
             ),
             style: const TextStyle(fontSize: 14),
           ),
+          if (hasError) ...[
+            const SizedBox(height: 6),
+            Text(
+              widget.errorText!,
+              style: const TextStyle(
+                color: Color(0xFFDC2626),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ],
       ),
     );

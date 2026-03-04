@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:ndu_project/routing/app_router.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/app_logo.dart';
 
@@ -25,8 +27,7 @@ class ProgramWorkspaceSidebar extends StatelessWidget {
         label: 'Technology',
         isActive: false,
         onTap: () {
-          // Centralized navigation without creating circular imports
-          Navigator.of(context).pushNamed('/fep/technology');
+          context.go('/${AppRoutes.fepTechnology}');
         },
       ),
       _SidebarItem(icon: Icons.group_outlined, label: 'Team Management', isActive: false, onTap: () {}),

@@ -90,12 +90,31 @@ class ProjectIntelligenceService {
             .add('Potential cost savings: ${item.potentialCostSavings.trim()}');
       }
       if (item.potentialScheduleSavings.trim().isNotEmpty) {
+        details.add('Schedule impact: ${item.potentialScheduleSavings.trim()}');
+      }
+      if (item.implementationStrategy.trim().isNotEmpty) {
         details.add(
-            'Potential schedule savings: ${item.potentialScheduleSavings.trim()}');
+            'Implementation strategy: ${item.implementationStrategy.trim()}');
+      }
+      if (item.applicablePhase.trim().isNotEmpty) {
+        details.add('Applicable phase: ${item.applicablePhase.trim()}');
+      }
+      if (item.status.trim().isNotEmpty) {
+        details.add('Status: ${item.status.trim()}');
       }
       final description = details.isEmpty
           ? 'Opportunity identified in Front End Planning.'
           : details.join(' | ');
+
+      final role = item.responsibleRole.trim().isNotEmpty
+          ? item.responsibleRole.trim()
+          : item.stakeholder.trim();
+      final owner = item.owner.trim().isNotEmpty
+          ? item.owner.trim()
+          : item.assignedTo.trim();
+      final phase = item.applicablePhase.trim().isNotEmpty
+          ? item.applicablePhase.trim()
+          : _phaseForSection('fep_opportunities');
 
       upsert(
         ProjectActivity(
@@ -103,10 +122,10 @@ class ProjectIntelligenceService {
           title: title,
           description: description,
           sourceSection: 'fep_opportunities',
-          phase: _phaseForSection('fep_opportunities'),
+          phase: phase,
           discipline: _fallback(item.discipline, 'Planning'),
-          role: _fallback(item.stakeholder, 'Project Manager'),
-          assignedTo: _nullable(item.assignedTo),
+          role: _fallback(role, 'Project Manager'),
+          assignedTo: _nullable(owner),
           applicableSections:
               _resolveApplicableSections(item.appliesTo, 'fep_opportunities'),
           dueDate: '',
@@ -160,16 +179,27 @@ class ProjectIntelligenceService {
       final title = item.description.trim();
       if (title.isEmpty) continue;
 
+      final detailParts = <String>[
+        if (item.comments.trim().isNotEmpty) item.comments.trim(),
+        if (item.requirementSource.trim().isNotEmpty)
+          'Source: ${item.requirementSource.trim()}',
+        if (item.requirementType.trim().isNotEmpty)
+          'Type: ${item.requirementType.trim()}',
+      ];
+
       upsert(
         ProjectActivity(
           id: 'activity_req_$i',
           title: title,
-          description: _fallback(item.comments, 'Requirement identified.'),
+          description: detailParts.isEmpty
+              ? 'Requirement identified.'
+              : detailParts.join(' | '),
           sourceSection: 'fep_requirements',
-          phase: _phaseForSection('fep_requirements'),
-          discipline: _fallback(item.requirementType, 'Engineering'),
-          role: 'Requirements Owner',
-          assignedTo: null,
+          phase: _fallback(item.phase, _phaseForSection('fep_requirements')),
+          discipline: _fallback(
+              item.discipline, _fallback(item.requirementType, 'Engineering')),
+          role: _fallback(item.role, 'Requirements Owner'),
+          assignedTo: _nullable(item.person),
           applicableSections: const <String>[
             'project_charter',
             'project_framework',
@@ -190,6 +220,9 @@ class ProjectIntelligenceService {
       if (title.isEmpty) continue;
 
       final details = <String>[
+        if (item.category.trim().isNotEmpty) 'Category: ${item.category}',
+        if (item.requirement.trim().isNotEmpty)
+          'Requirement: ${item.requirement}',
         if (item.impactLevel.trim().isNotEmpty) 'Impact: ${item.impactLevel}',
         if (item.likelihood.trim().isNotEmpty) 'Likelihood: ${item.likelihood}',
         if (item.mitigationStrategy.trim().isNotEmpty)
@@ -200,12 +233,15 @@ class ProjectIntelligenceService {
         ProjectActivity(
           id: 'activity_risk_$i',
           title: title,
-          description: details.join(' | '),
+          description: details.isEmpty
+              ? _fallback(
+                  item.description, 'Risk identified in Front End Planning.')
+              : details.join(' | '),
           sourceSection: 'fep_risks',
           phase: _phaseForSection('fep_risks'),
-          discipline: 'Risk Management',
-          role: 'Risk Owner',
-          assignedTo: null,
+          discipline: _fallback(item.discipline, 'Risk Management'),
+          role: _fallback(item.projectRole, 'Risk Owner'),
+          assignedTo: _nullable(item.owner),
           applicableSections: const <String>[
             'project_charter',
             'risk_assessment',

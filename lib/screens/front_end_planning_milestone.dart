@@ -4,6 +4,7 @@ import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/utils/form_validation_engine.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/models/project_data_model.dart';
@@ -30,21 +31,31 @@ class FrontEndPlanningMilestoneScreen extends StatefulWidget {
 
 class _FrontEndPlanningMilestoneScreenState
     extends State<FrontEndPlanningMilestoneScreen> {
+  final GlobalKey _timelineSectionKey = GlobalKey();
+  final GlobalKey _startDateFieldKey = GlobalKey();
+  final GlobalKey _endDateFieldKey = GlobalKey();
+  final GlobalKey _milestonesSectionKey = GlobalKey();
+  final Map<int, GlobalKey> _milestoneNameFieldKeys = <int, GlobalKey>{};
+  final Map<int, GlobalKey> _milestoneDateFieldKeys = <int, GlobalKey>{};
   String _startDateStr = '';
   String _endDateStr = '';
   List<Milestone> _milestones = [];
   bool _isSyncReady = false;
   bool _isGenerating = false;
+  bool _autoGenerationTriggered = false;
   final DateFormat _dateFormat = DateFormat('MMM dd, yyyy');
+  final ScrollController _milestonesHorizontalScroll = ScrollController();
   late final OpenAiServiceSecure _openAi;
+  Map<String, String> _validationErrors = const {};
 
   @override
   void initState() {
     super.initState();
     _openAi = OpenAiServiceSecure();
     ApiKeyManager.initializeApiKey();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       _loadMilestoneData();
+      await _triggerAutoMilestoneGenerationIfMissing();
     });
   }
 
@@ -62,6 +73,22 @@ class _FrontEndPlanningMilestoneScreenState
     if (mounted) setState(() {});
   }
 
+  Future<void> _triggerAutoMilestoneGenerationIfMissing() async {
+    if (_autoGenerationTriggered || _isGenerating || !mounted) return;
+    final datesMissing =
+        _startDateStr.trim().isEmpty || _endDateStr.trim().isEmpty;
+    final milestonesMissing = _milestones.isEmpty;
+    if (!datesMissing && !milestonesMissing) return;
+
+    _autoGenerationTriggered = true;
+    if (datesMissing) {
+      await _generateDatesWithAI(silent: true);
+    }
+    if (milestonesMissing) {
+      await _generateMilestonesWithAI(silent: true);
+    }
+  }
+
   void _syncToProvider() {
     if (!_isSyncReady || !mounted) return;
     final provider = ProjectDataHelper.getProvider(context);
@@ -75,6 +102,89 @@ class _FrontEndPlanningMilestoneScreenState
         keyMilestones: List.from(_milestones),
       ),
     );
+  }
+
+  GlobalKey _milestoneNameKey(int index) {
+    return _milestoneNameFieldKeys.putIfAbsent(index, GlobalKey.new);
+  }
+
+  GlobalKey _milestoneDateKey(int index) {
+    return _milestoneDateFieldKeys.putIfAbsent(index, GlobalKey.new);
+  }
+
+  FormValidationResult _validateMilestoneSection() {
+    final rules = <ValidationFieldRule>[
+      ValidationFieldRule(
+        id: 'project_start_date',
+        label: 'Project Start Date',
+        section: 'Milestones',
+        type: ValidationFieldType.date,
+        value: _startDateStr,
+        fieldKey: _startDateFieldKey,
+      ),
+      ValidationFieldRule(
+        id: 'project_end_date',
+        label: 'Project End Date',
+        section: 'Milestones',
+        type: ValidationFieldType.date,
+        value: _endDateStr,
+        fieldKey: _endDateFieldKey,
+      ),
+      ValidationFieldRule(
+        id: 'key_milestones',
+        label: 'Key Milestones',
+        section: 'Milestones',
+        type: ValidationFieldType.multiSelect,
+        value: _milestones,
+        fieldKey: _milestonesSectionKey,
+      ),
+    ];
+
+    for (var index = 0; index < _milestones.length; index++) {
+      final milestone = _milestones[index];
+      rules.add(
+        ValidationFieldRule(
+          id: 'milestone_name_$index',
+          label: 'Milestone ${index + 1} Name',
+          section: 'Milestones',
+          type: ValidationFieldType.text,
+          value: milestone.name,
+          fieldKey: _milestoneNameKey(index),
+        ),
+      );
+      rules.add(
+        ValidationFieldRule(
+          id: 'milestone_date_$index',
+          label: 'Milestone ${index + 1} Target Date',
+          section: 'Milestones',
+          type: ValidationFieldType.date,
+          value: milestone.dueDate,
+          fieldKey: _milestoneDateKey(index),
+        ),
+      );
+    }
+
+    return FormValidationEngine.validateForm(rules);
+  }
+
+  Future<void> _handleSaveAndContinue() async {
+    final validation = _validateMilestoneSection();
+    if (!validation.isValid) {
+      setState(() {
+        _validationErrors = validation.errorByFieldId;
+      });
+      FormValidationEngine.showValidationSnackBar(context, validation);
+      await FormValidationEngine.scrollToFirstIssue(validation);
+      return;
+    }
+
+    if (_validationErrors.isNotEmpty) {
+      setState(() => _validationErrors = const {});
+    }
+
+    await ProjectDataHelper.getProvider(context)
+        .saveToFirebase(checkpoint: 'fep_milestone');
+    if (mounted) Navigator.of(context).pop();
   }
 
   DateTime? _parseDate(String dateStr) {
@@ -103,6 +213,12 @@ class _FrontEndPlanningMilestoneScreenState
         if (endDate != null && endDate.isBefore(picked)) {
           _endDateStr = '';
         }
+        final nextErrors = Map<String, String>.from(_validationErrors);
+        nextErrors.remove('project_start_date');
+        if (_endDateStr.isNotEmpty) {
+          nextErrors.remove('project_end_date');
+        }
+        _validationErrors = nextErrors;
       });
       _syncToProvider();
     }
@@ -130,7 +246,12 @@ class _FrontEndPlanningMilestoneScreenState
         );
         return;
       }
-      setState(() => _endDateStr = _dateFormat.format(picked));
+      setState(() {
+        _endDateStr = _dateFormat.format(picked);
+        final nextErrors = Map<String, String>.from(_validationErrors);
+        nextErrors.remove('project_end_date');
+        _validationErrors = nextErrors;
+      });
       _syncToProvider();
     }
   }
@@ -151,6 +272,9 @@ class _FrontEndPlanningMilestoneScreenState
     if (picked != null) {
       setState(() {
         _milestones[index].dueDate = _dateFormat.format(picked);
+        final nextErrors = Map<String, String>.from(_validationErrors);
+        nextErrors.remove('milestone_date_$index');
+        _validationErrors = nextErrors;
       });
       _syncToProvider();
     }
@@ -165,6 +289,8 @@ class _FrontEndPlanningMilestoneScreenState
         references: '',
         comments: '',
       ));
+      _validationErrors = Map<String, String>.from(_validationErrors)
+        ..remove('key_milestones');
     });
     _syncToProvider();
   }
@@ -172,15 +298,24 @@ class _FrontEndPlanningMilestoneScreenState
   void _removeMilestone(int index) {
     setState(() {
       _milestones.removeAt(index);
+      _milestoneNameFieldKeys.clear();
+      _milestoneDateFieldKeys.clear();
+      final nextErrors = Map<String, String>.from(_validationErrors)
+        ..removeWhere((key, _) =>
+            key.startsWith('milestone_name_') ||
+            key.startsWith('milestone_date_'));
+      _validationErrors = nextErrors;
     });
     _syncToProvider();
   }
 
   void _updateMilestoneField(int index, String field, String value) {
     setState(() {
+      final nextErrors = Map<String, String>.from(_validationErrors);
       switch (field) {
         case 'name':
           _milestones[index].name = value;
+          nextErrors.remove('milestone_name_$index');
           break;
         case 'discipline':
           _milestones[index].discipline = value;
@@ -189,11 +324,12 @@ class _FrontEndPlanningMilestoneScreenState
           _milestones[index].comments = value;
           break;
       }
+      _validationErrors = nextErrors;
     });
     _syncToProvider();
   }
 
-  Future<void> _generateMilestonesWithAI() async {
+  Future<void> _generateMilestonesWithAI({bool silent = false}) async {
     if (_isGenerating) return;
 
     setState(() => _isGenerating = true);
@@ -239,25 +375,27 @@ Generate milestones that cover the typical project lifecycle phases.''';
           });
           _syncToProvider();
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                  'Generated ${generatedMilestones.length} milestones successfully'),
-              backgroundColor: const Color(0xFF10B981),
-            ),
-          );
+          if (!silent) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                    'Generated ${generatedMilestones.length} milestones successfully'),
+                backgroundColor: const Color(0xFF10B981),
+              ),
+            );
+          }
         } else {
           // Fallback to defaults if parsing failed
-          _useDefaultMilestones();
+          _useDefaultMilestones(silent: silent);
         }
       } else {
         // Fallback if response is empty
-        _useDefaultMilestones();
+        _useDefaultMilestones(silent: silent);
       }
     } catch (e) {
       // CRITICAL: Defensive error handling - fallback to defaults, never show error to user
       debugPrint('AI milestone generation failed: $e');
-      _useDefaultMilestones();
+      _useDefaultMilestones(silent: silent);
     } finally {
       if (mounted) {
         setState(() => _isGenerating = false);
@@ -266,20 +404,23 @@ Generate milestones that cover the typical project lifecycle phases.''';
   }
 
   /// Fallback to default milestones when AI generation fails
-  void _useDefaultMilestones() {
+  void _useDefaultMilestones({bool silent = false}) {
     if (!mounted) return;
     setState(() {
       _milestones = getDefaultMilestones();
     });
     _syncToProvider();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Using default milestones - you can edit them as needed'),
-        backgroundColor: Color(0xFF3B82F6),
-        duration: Duration(seconds: 3),
-      ),
-    );
+    if (!silent) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content:
+              Text('Using default milestones - you can edit them as needed'),
+          backgroundColor: Color(0xFF3B82F6),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   List<Milestone> _parseMilestonesFromResponse(String response) {
@@ -343,7 +484,7 @@ Generate milestones that cover the typical project lifecycle phases.''';
     return milestones.take(7).toList();
   }
 
-  Future<void> _generateDatesWithAI() async {
+  Future<void> _generateDatesWithAI({bool silent = false}) async {
     if (_isGenerating) return;
 
     setState(() => _isGenerating = true);
@@ -396,12 +537,14 @@ Consider typical project timelines and ensure end date is after start date.''';
 
         if (foundStart || foundEnd) {
           _syncToProvider();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Project dates generated'),
-              backgroundColor: Color(0xFF10B981),
-            ),
-          );
+          if (!silent) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Project dates generated'),
+                backgroundColor: Color(0xFF10B981),
+              ),
+            );
+          }
         }
       }
     } catch (e) {
@@ -412,6 +555,12 @@ Consider typical project timelines and ensure end date is after start date.''';
         setState(() => _isGenerating = false);
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _milestonesHorizontalScroll.dispose();
+    super.dispose();
   }
 
   @override
@@ -483,6 +632,7 @@ Consider typical project timelines and ensure end date is after start date.''';
 
           // Project Dates Section
           Container(
+            key: _timelineSectionKey,
             width: double.infinity,
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
@@ -533,11 +683,13 @@ Consider typical project timelines and ensure end date is after start date.''';
                     // Start Date
                     Expanded(
                       child: _buildDateCard(
+                        fieldKey: _startDateFieldKey,
                         title: 'Start Date',
                         icon: Icons.play_circle_outline,
                         dateStr: _startDateStr,
                         onTap: _selectStartDate,
                         iconColor: const Color(0xFF10B981),
+                        errorText: _validationErrors['project_start_date'],
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -570,11 +722,13 @@ Consider typical project timelines and ensure end date is after start date.''';
                     // End Date
                     Expanded(
                       child: _buildDateCard(
+                        fieldKey: _endDateFieldKey,
                         title: 'End Date',
                         icon: Icons.stop_circle_outlined,
                         dateStr: _endDateStr,
                         onTap: _selectEndDate,
                         iconColor: const Color(0xFFEF4444),
+                        errorText: _validationErrors['project_end_date'],
                       ),
                     ),
                   ],
@@ -586,12 +740,17 @@ Consider typical project timelines and ensure end date is after start date.''';
 
           // Key Milestones Section
           Container(
+            key: _milestonesSectionKey,
             width: double.infinity,
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
+              border: Border.all(
+                color: _validationErrors.containsKey('key_milestones')
+                    ? const Color(0xFFEF4444)
+                    : const Color(0xFFE5E7EB),
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.04),
@@ -690,6 +849,17 @@ Consider typical project timelines and ensure end date is after start date.''';
                   )
                 else
                   _buildMilestonesTable(),
+                if (_validationErrors.containsKey('key_milestones')) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _validationErrors['key_milestones']!,
+                    style: const TextStyle(
+                      color: Color(0xFFDC2626),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -712,11 +882,7 @@ Consider typical project timelines and ensure end date is after start date.''';
                 ),
               ),
               ElevatedButton.icon(
-                onPressed: () async {
-                  await ProjectDataHelper.getProvider(context)
-                      .saveToFirebase(checkpoint: 'fep_milestone');
-                  if (mounted) Navigator.of(context).pop();
-                },
+                onPressed: _handleSaveAndContinue,
                 icon: const Icon(Icons.arrow_forward),
                 label: const Text('Save & Continue'),
                 style: ElevatedButton.styleFrom(
@@ -738,66 +904,99 @@ Consider typical project timelines and ensure end date is after start date.''';
   }
 
   Widget _buildDateCard({
+    Key? fieldKey,
     required String title,
     required IconData icon,
     required String dateStr,
     required VoidCallback onTap,
     required Color iconColor,
+    String? errorText,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF9FAFB),
+    final hasError = (errorText ?? '').trim().isNotEmpty;
+    return Column(
+      key: fieldKey,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, size: 22, color: iconColor),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    dateStr.isNotEmpty ? dateStr : 'Select date',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: dateStr.isNotEmpty
-                          ? const Color(0xFF111827)
-                          : Colors.grey[400],
-                    ),
-                  ),
-                ],
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF9FAFB),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: hasError
+                    ? const Color(0xFFEF4444)
+                    : const Color(0xFFE5E7EB),
               ),
             ),
-            Icon(
-              Icons.calendar_today_outlined,
-              size: 18,
-              color: Colors.grey[400],
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, size: 22, color: iconColor),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        dateStr.isNotEmpty ? dateStr : 'Select date',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: dateStr.isNotEmpty
+                              ? const Color(0xFF111827)
+                              : Colors.grey[400],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.calendar_today_outlined,
+                  size: 18,
+                  color: Colors.grey[400],
+                ),
+              ],
             ),
-          ],
+          ),
         ),
+        if (hasError) ...[
+          const SizedBox(height: 6),
+          Text(
+            errorText!,
+            style: const TextStyle(
+              color: Color(0xFFDC2626),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  OutlineInputBorder _milestoneFieldBorder(bool hasError) {
+    return OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: BorderSide(
+        color: hasError ? const Color(0xFFEF4444) : const Color(0xFFE5E7EB),
       ),
     );
   }
@@ -814,8 +1013,10 @@ Consider typical project timelines and ensure end date is after start date.''';
               constraints.maxWidth > 1380 ? constraints.maxWidth : 1380.0;
 
           return Scrollbar(
+            controller: _milestonesHorizontalScroll,
             thumbVisibility: true,
             child: SingleChildScrollView(
+              controller: _milestonesHorizontalScroll,
               scrollDirection: Axis.horizontal,
               child: ConstrainedBox(
                 constraints: BoxConstraints(minWidth: minTableWidth),
@@ -882,6 +1083,10 @@ Consider typical project timelines and ensure end date is after start date.''';
                     // Rows
                     ...List.generate(_milestones.length, (index) {
                       final milestone = _milestones[index];
+                      final nameError =
+                          _validationErrors['milestone_name_$index'];
+                      final dateError =
+                          _validationErrors['milestone_date_$index'];
                       return Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 12),
@@ -907,23 +1112,24 @@ Consider typical project timelines and ensure end date is after start date.''';
                             Expanded(
                               flex: 3,
                               child: TextFormField(
+                                key: _milestoneNameKey(index),
                                 initialValue: milestone.name,
                                 onChanged: (value) =>
                                     _updateMilestoneField(index, 'name', value),
                                 decoration: InputDecoration(
                                   hintText: 'Enter milestone name',
+                                  errorText: nameError,
                                   hintStyle: TextStyle(
                                       color: Colors.grey[400], fontSize: 13),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: const BorderSide(
-                                        color: Color(0xFFE5E7EB)),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: const BorderSide(
-                                        color: Color(0xFFE5E7EB)),
-                                  ),
+                                  border:
+                                      _milestoneFieldBorder(nameError != null),
+                                  enabledBorder:
+                                      _milestoneFieldBorder(nameError != null),
+                                  focusedBorder:
+                                      _milestoneFieldBorder(nameError != null),
+                                  errorBorder: _milestoneFieldBorder(true),
+                                  focusedErrorBorder:
+                                      _milestoneFieldBorder(true),
                                   contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 12, vertical: 10),
                                   isDense: true,
@@ -934,38 +1140,60 @@ Consider typical project timelines and ensure end date is after start date.''';
                             const SizedBox(width: 12),
                             Expanded(
                               flex: 2,
-                              child: InkWell(
-                                onTap: () => _selectMilestoneDate(index),
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 10),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                        color: const Color(0xFFE5E7EB)),
+                              child: Column(
+                                key: _milestoneDateKey(index),
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  InkWell(
+                                    onTap: () => _selectMilestoneDate(index),
                                     borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.calendar_today_outlined,
-                                          size: 14, color: Colors.grey[400]),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          milestone.dueDate.isNotEmpty
-                                              ? milestone.dueDate
-                                              : 'Select date',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: milestone.dueDate.isNotEmpty
-                                                ? const Color(0xFF111827)
-                                                : Colors.grey[400],
-                                          ),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: dateError != null
+                                              ? const Color(0xFFEF4444)
+                                              : const Color(0xFFE5E7EB),
                                         ),
+                                        borderRadius: BorderRadius.circular(8),
                                       ),
-                                    ],
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.calendar_today_outlined,
+                                              size: 14,
+                                              color: Colors.grey[400]),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              milestone.dueDate.isNotEmpty
+                                                  ? milestone.dueDate
+                                                  : 'Select date',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: milestone
+                                                        .dueDate.isNotEmpty
+                                                    ? const Color(0xFF111827)
+                                                    : Colors.grey[400],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                  if (dateError != null) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      dateError,
+                                      style: const TextStyle(
+                                        color: Color(0xFFDC2626),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -979,16 +1207,8 @@ Consider typical project timelines and ensure end date is after start date.''';
                                   hintText: 'Discipline',
                                   hintStyle: TextStyle(
                                       color: Colors.grey[400], fontSize: 13),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: const BorderSide(
-                                        color: Color(0xFFE5E7EB)),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: const BorderSide(
-                                        color: Color(0xFFE5E7EB)),
-                                  ),
+                                  border: _milestoneFieldBorder(false),
+                                  enabledBorder: _milestoneFieldBorder(false),
                                   contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 12, vertical: 10),
                                   isDense: true,
@@ -1007,16 +1227,8 @@ Consider typical project timelines and ensure end date is after start date.''';
                                   hintText: 'Add notes (optional)',
                                   hintStyle: TextStyle(
                                       color: Colors.grey[400], fontSize: 13),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: const BorderSide(
-                                        color: Color(0xFFE5E7EB)),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: const BorderSide(
-                                        color: Color(0xFFE5E7EB)),
-                                  ),
+                                  border: _milestoneFieldBorder(false),
+                                  enabledBorder: _milestoneFieldBorder(false),
                                   contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 12, vertical: 10),
                                   isDense: true,

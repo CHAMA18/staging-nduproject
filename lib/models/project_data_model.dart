@@ -412,6 +412,20 @@ class ProjectDataModel {
     List<PlanningDashboardItem>? constraintItems,
     List<InterfaceEntry>? interfaceEntries,
   }) {
+    List<PlanningDashboardItem> resolveDashboardItems({
+      required List<PlanningDashboardItem>? explicitItems,
+      required List<String>? legacyItems,
+      required List<PlanningDashboardItem> currentItems,
+    }) {
+      if (explicitItems != null) return explicitItems;
+      if (legacyItems != null) {
+        return legacyItems
+            .map((entry) => PlanningDashboardItem(description: entry))
+            .toList();
+      }
+      return currentItems;
+    }
+
     return ProjectDataModel(
       projectName: projectName ?? this.projectName,
       solutionTitle: solutionTitle ?? this.solutionTitle,
@@ -507,10 +521,26 @@ class ProjectDataModel {
           qualityManagementData ?? this.qualityManagementData,
 
       // New Fields copy
-      withinScopeItems: withinScopeItems ?? this.withinScopeItems,
-      outOfScopeItems: outOfScopeItems ?? this.outOfScopeItems,
-      assumptionItems: assumptionItems ?? this.assumptionItems,
-      constraintItems: constraintItems ?? this.constraintItems,
+      withinScopeItems: resolveDashboardItems(
+        explicitItems: withinScopeItems,
+        legacyItems: withinScope,
+        currentItems: this.withinScopeItems,
+      ),
+      outOfScopeItems: resolveDashboardItems(
+        explicitItems: outOfScopeItems,
+        legacyItems: outOfScope,
+        currentItems: this.outOfScopeItems,
+      ),
+      assumptionItems: resolveDashboardItems(
+        explicitItems: assumptionItems,
+        legacyItems: assumptions,
+        currentItems: this.assumptionItems,
+      ),
+      constraintItems: resolveDashboardItems(
+        explicitItems: constraintItems,
+        legacyItems: constraints,
+        currentItems: this.constraintItems,
+      ),
     );
   }
 
@@ -563,7 +593,8 @@ class ProjectDataModel {
       'keyMilestones': keyMilestones.map((m) => m.toJson()).toList(),
       'planningNotes': planningNotes,
       'riskMitigationPlans': riskMitigationPlans,
-      'interfaceEntries': interfaceEntries.map((entry) => entry.toJson()).toList(),
+      'interfaceEntries':
+          interfaceEntries.map((entry) => entry.toJson()).toList(),
       'wbsCriteriaA': wbsCriteriaA,
       'wbsCriteriaB': wbsCriteriaB,
       'goalWorkItems': flattenedWorkItems,
@@ -1314,25 +1345,56 @@ class IssueLogItem {
 class RequirementItem {
   String description;
   String requirementType;
+  String discipline;
+  String role;
+  String person;
+  String phase;
+  String requirementSource;
   String comments;
 
   RequirementItem({
     this.description = '',
     this.requirementType = '',
+    this.discipline = '',
+    this.role = '',
+    this.person = '',
+    this.phase = '',
+    this.requirementSource = '',
     this.comments = '',
   });
 
   Map<String, dynamic> toJson() => {
         'description': description,
         'requirementType': requirementType,
+        'discipline': discipline,
+        'role': role,
+        'person': person,
+        'phase': phase,
+        'requirementSource': requirementSource,
         'comments': comments,
       };
 
   factory RequirementItem.fromJson(Map<String, dynamic> json) {
     return RequirementItem(
-      description: json['description'] ?? '',
-      requirementType: json['requirementType'] ?? '',
-      comments: json['comments'] ?? '',
+      description: json['description']?.toString() ?? '',
+      requirementType: json['requirementType']?.toString() ??
+          json['requirement_type']?.toString() ??
+          '',
+      discipline: json['discipline']?.toString() ?? '',
+      role: json['role']?.toString() ?? json['ownerRole']?.toString() ?? '',
+      person: json['person']?.toString() ??
+          json['ownerPerson']?.toString() ??
+          json['assignee']?.toString() ??
+          '',
+      phase: json['phase']?.toString() ??
+          json['implementationPhase']?.toString() ??
+          json['implementation_phase']?.toString() ??
+          '',
+      requirementSource: json['requirementSource']?.toString() ??
+          json['requirement_source']?.toString() ??
+          json['source']?.toString() ??
+          '',
+      comments: json['comments']?.toString() ?? '',
     );
   }
 }
@@ -1669,8 +1731,13 @@ class OpportunityItem {
   String opportunity;
   String discipline;
   String stakeholder;
+  String responsibleRole;
   String potentialCostSavings;
   String potentialScheduleSavings;
+  String implementationStrategy;
+  String applicablePhase;
+  String owner;
+  String status;
   List<String> appliesTo;
   String assignedTo;
   String impact;
@@ -1680,8 +1747,13 @@ class OpportunityItem {
     this.opportunity = '',
     this.discipline = '',
     this.stakeholder = '',
+    this.responsibleRole = '',
     this.potentialCostSavings = '',
     this.potentialScheduleSavings = '',
+    this.implementationStrategy = '',
+    this.applicablePhase = '',
+    this.owner = '',
+    this.status = 'Identified',
     this.appliesTo = const [],
     this.assignedTo = '',
     this.impact = 'Medium',
@@ -1692,8 +1764,13 @@ class OpportunityItem {
         'opportunity': opportunity,
         'discipline': discipline,
         'stakeholder': stakeholder,
+        'responsibleRole': responsibleRole,
         'potentialCostSavings': potentialCostSavings,
         'potentialScheduleSavings': potentialScheduleSavings,
+        'implementationStrategy': implementationStrategy,
+        'applicablePhase': applicablePhase,
+        'owner': owner,
+        'status': status,
         'appliesTo': appliesTo,
         'assignedTo': assignedTo,
         'impact': impact,
@@ -1713,9 +1790,17 @@ class OpportunityItem {
       opportunity: json['opportunity']?.toString() ?? '',
       discipline: json['discipline']?.toString() ?? '',
       stakeholder: json['stakeholder']?.toString() ?? '',
+      responsibleRole: json['responsibleRole']?.toString() ??
+          json['stakeholder']?.toString() ??
+          '',
       potentialCostSavings: json['potentialCostSavings']?.toString() ?? '',
       potentialScheduleSavings:
           json['potentialScheduleSavings']?.toString() ?? '',
+      implementationStrategy: json['implementationStrategy']?.toString() ?? '',
+      applicablePhase: json['applicablePhase']?.toString() ??
+          ((appliesTo.isNotEmpty) ? appliesTo.join(', ') : ''),
+      owner: json['owner']?.toString() ?? json['assignedTo']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'Identified',
       appliesTo: appliesTo,
       assignedTo: json['assignedTo']?.toString() ?? '',
       impact: json['impact']?.toString() ?? 'Medium',
@@ -1725,30 +1810,70 @@ class OpportunityItem {
 
 class RiskRegisterItem {
   String riskName;
+  String description;
+  String category;
+  String requirement;
+  String requirementType;
   String impactLevel;
   String likelihood;
   String mitigationStrategy;
+  String discipline;
+  String projectRole;
+  String owner;
+  String status;
 
   RiskRegisterItem({
     this.riskName = '',
+    this.description = '',
+    this.category = '',
+    this.requirement = '',
+    this.requirementType = '',
     this.impactLevel = '',
     this.likelihood = '',
     this.mitigationStrategy = '',
+    this.discipline = '',
+    this.projectRole = '',
+    this.owner = '',
+    this.status = '',
   });
 
   Map<String, dynamic> toJson() => {
         'riskName': riskName,
+        'description': description,
+        'category': category,
+        'requirement': requirement,
+        'requirementType': requirementType,
         'impactLevel': impactLevel,
         'likelihood': likelihood,
         'mitigationStrategy': mitigationStrategy,
+        'discipline': discipline,
+        'projectRole': projectRole,
+        'owner': owner,
+        'status': status,
       };
 
   factory RiskRegisterItem.fromJson(Map<String, dynamic> json) {
     return RiskRegisterItem(
-      riskName: json['riskName'] ?? '',
-      impactLevel: json['impactLevel'] ?? '',
-      likelihood: json['likelihood'] ?? '',
-      mitigationStrategy: json['mitigationStrategy'] ?? '',
+      riskName: json['riskName']?.toString() ?? json['risk']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      category: json['category']?.toString() ?? '',
+      requirement: json['requirement']?.toString() ?? '',
+      requirementType: json['requirementType']?.toString() ??
+          json['requirement_type']?.toString() ??
+          '',
+      impactLevel:
+          json['impactLevel']?.toString() ?? json['impact']?.toString() ?? '',
+      likelihood: json['likelihood']?.toString() ??
+          json['probability']?.toString() ??
+          '',
+      mitigationStrategy: json['mitigationStrategy']?.toString() ??
+          json['mitigation']?.toString() ??
+          '',
+      discipline: json['discipline']?.toString() ?? '',
+      projectRole:
+          json['projectRole']?.toString() ?? json['role']?.toString() ?? '',
+      owner: json['owner']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
     );
   }
 }
@@ -5325,6 +5450,13 @@ class Vendor {
 }
 
 class PlanningDashboardItem {
+  static int _idCounter = 0;
+
+  static String _nextId() {
+    _idCounter += 1;
+    return '${DateTime.now().microsecondsSinceEpoch}_$_idCounter';
+  }
+
   String id;
   String title;
   String description;
@@ -5337,7 +5469,7 @@ class PlanningDashboardItem {
     required this.description,
     DateTime? createdAt,
     this.isAiGenerated = false,
-  })  : id = id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+  })  : id = (id == null || id.trim().isEmpty) ? _nextId() : id,
         createdAt = createdAt ?? DateTime.now();
 
   Map<String, dynamic> toJson() {

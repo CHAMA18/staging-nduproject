@@ -74,7 +74,7 @@ class _ContractsTableState extends State<ContractsTable> {
                                 fontSize: 12,
                                 color: Color(0xFF64748B)))),
                     DataColumn(
-                        label: Text('VENDOR',
+                        label: Text('CONTRACTOR',
                             style: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.5,

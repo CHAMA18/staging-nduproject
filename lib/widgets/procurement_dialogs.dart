@@ -246,11 +246,15 @@ class AddItemDialog extends StatefulWidget {
     required this.contextChips,
     required this.categoryOptions,
     this.initialItem,
+    this.showAiGenerateButton = false,
+    this.itemDomainLabel = 'Procurement',
   });
 
   final List<Widget> contextChips;
   final List<String> categoryOptions;
   final ProcurementItemModel? initialItem;
+  final bool showAiGenerateButton;
+  final String itemDomainLabel;
 
   @override
   State<AddItemDialog> createState() => _AddItemDialogState();
@@ -273,6 +277,28 @@ class _AddItemDialogState extends State<AddItemDialog> {
   late final OpenAiServiceSecure _openAi;
   bool get _isEditing => widget.initialItem != null;
 
+  List<String> get _categoryOptionsWithOther {
+    final normalized = <String>[];
+    var hasOther = false;
+    for (final rawOption in widget.categoryOptions) {
+      final option = rawOption.trim();
+      if (option.isEmpty) continue;
+      if (!normalized.contains(option)) {
+        normalized.add(option);
+      }
+      if (option.toLowerCase() == 'other') {
+        hasOther = true;
+      }
+    }
+    if (!hasOther) {
+      normalized.add('Other');
+    }
+    if (normalized.isEmpty) {
+      normalized.add('Other');
+    }
+    return normalized;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -282,7 +308,9 @@ class _AddItemDialogState extends State<AddItemDialog> {
     _budgetCtrl = TextEditingController(
       text: existing != null ? existing.budget.toStringAsFixed(0) : '',
     );
-    _category = existing?.category ?? widget.categoryOptions.first;
+    final categoryOptions = _categoryOptionsWithOther;
+    _category = existing?.category ??
+        (categoryOptions.isNotEmpty ? categoryOptions.first : 'Other');
     _status = existing?.status ?? ProcurementItemStatus.planning;
     _priority = existing?.priority ?? ProcurementPriority.medium;
     _deliveryDate = existing?.estimatedDelivery;
@@ -312,6 +340,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
       DateFormat('MMM d, yyyy').format(date);
 
   Future<void> _generateWithAI() async {
+    if (!widget.showAiGenerateButton) return;
     if (_isGenerating) return;
 
     setState(() => _isGenerating = true);
@@ -406,12 +435,14 @@ class _AddItemDialogState extends State<AddItemDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final categoryOptions = widget.categoryOptions.contains(_category)
-        ? widget.categoryOptions
-        : [_category, ...widget.categoryOptions];
+    final categoryOptions = _categoryOptionsWithOther.contains(_category)
+        ? _categoryOptionsWithOther
+        : [_category, ..._categoryOptionsWithOther];
 
     return ProcurementDialogShell(
-      title: _isEditing ? 'Edit Procurement Item' : 'Add Procurement Item',
+      title: _isEditing
+          ? 'Edit ${widget.itemDomainLabel} Item'
+          : 'Add ${widget.itemDomainLabel} Item',
       subtitle: _isEditing
           ? 'Update scope, budget, and delivery timing.'
           : 'Capture scope, budget, and delivery timing.',
@@ -471,24 +502,36 @@ class _AddItemDialogState extends State<AddItemDialog> {
                     subtitle: 'What are you sourcing for this project?',
                   ),
                 ),
-                const SizedBox(width: 12),
-                OutlinedButton.icon(
-                  onPressed: _isGenerating ? null : _generateWithAI,
-                  icon: _isGenerating
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.auto_awesome, size: 16),
-                  label: const Text('Generate with AI'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
+                if (widget.showAiGenerateButton) ...[
+                  const SizedBox(width: 12),
+                  OutlinedButton.icon(
+                    onPressed: _isGenerating ? null : _generateWithAI,
+                    icon: _isGenerating
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.auto_awesome, size: 16),
+                    label: const Text('Generate with AI'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
+            if (!widget.showAiGenerateButton) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Manual entry mode. No AI auto-generation or auto-complete is used when adding a new item.',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: Color(0xFF6B7280),
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             TextFormField(
               controller: _nameCtrl,
@@ -634,11 +677,21 @@ class AddVendorDialog extends StatefulWidget {
     required this.contextChips,
     required this.categoryOptions,
     this.initialVendor,
+    this.showAiGenerateButton = false,
+    this.partnerLabel = 'Vendor',
+    this.partnerPluralLabel = 'Vendors',
+    this.existingPartners = const <VendorModel>[],
+    this.allowExistingAutofill = true,
   });
 
   final List<Widget> contextChips;
   final List<String> categoryOptions;
   final VendorModel? initialVendor;
+  final bool showAiGenerateButton;
+  final String partnerLabel;
+  final String partnerPluralLabel;
+  final List<VendorModel> existingPartners;
+  final bool allowExistingAutofill;
 
   @override
   State<AddVendorDialog> createState() => _AddVendorDialogState();
@@ -647,11 +700,16 @@ class AddVendorDialog extends StatefulWidget {
 class _AddVendorDialogState extends State<AddVendorDialog> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameCtrl;
+  late TextEditingController _otherCategoryCtrl;
   late String _category;
   double _rating = 4;
   bool _approved = true;
   bool _preferred = false;
   bool _isGenerating = false;
+  bool _usingOtherCategory = false;
+  bool _showOtherCategoryError = false;
+  VendorModel? _matchedExistingPartner;
+  List<VendorModel> _matchingPartners = const <VendorModel>[];
 
   final FocusNode _nameFocus = FocusNode();
   late final OpenAiServiceSecure _openAi;
@@ -661,7 +719,19 @@ class _AddVendorDialogState extends State<AddVendorDialog> {
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.initialVendor?.name ?? '');
-    _category = widget.initialVendor?.category ?? widget.categoryOptions.first;
+    final normalizedCategoryOptions = _categoryOptionsWithOther;
+    final initialCategory = (widget.initialVendor?.category ?? '').trim();
+    if (initialCategory.isNotEmpty &&
+        !normalizedCategoryOptions.contains(initialCategory)) {
+      _usingOtherCategory = true;
+      _category = 'Other';
+      _otherCategoryCtrl = TextEditingController(text: initialCategory);
+    } else {
+      _category = initialCategory.isNotEmpty
+          ? initialCategory
+          : normalizedCategoryOptions.first;
+      _otherCategoryCtrl = TextEditingController();
+    }
     _rating = _ratingFromLetter(widget.initialVendor?.rating ?? 'B');
     final status = widget.initialVendor?.status.toLowerCase() ?? 'active';
     _approved = status == 'active' || status == 'approved';
@@ -670,6 +740,10 @@ class _AddVendorDialogState extends State<AddVendorDialog> {
     _preferred = criticality == 'high';
     _openAi = OpenAiServiceSecure();
     ApiKeyManager.initializeApiKey();
+    _nameCtrl.addListener(_onNameChanged);
+    if (!_isEditing && widget.allowExistingAutofill) {
+      _onNameChanged();
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -680,7 +754,9 @@ class _AddVendorDialogState extends State<AddVendorDialog> {
 
   @override
   void dispose() {
+    _nameCtrl.removeListener(_onNameChanged);
     _nameCtrl.dispose();
+    _otherCategoryCtrl.dispose();
     _nameFocus.dispose();
     super.dispose();
   }
@@ -734,7 +810,103 @@ class _AddVendorDialogState extends State<AddVendorDialog> {
     }
   }
 
+  List<String> get _categoryOptionsWithOther {
+    final options = <String>[];
+    var hasOther = false;
+    for (final rawOption in widget.categoryOptions) {
+      final option = rawOption.trim();
+      if (option.isEmpty) continue;
+      if (!options.contains(option)) {
+        options.add(option);
+      }
+      if (option.toLowerCase() == 'other') {
+        hasOther = true;
+      }
+    }
+    if (!hasOther) {
+      options.add('Other');
+    }
+    if (options.isEmpty) {
+      options.add('Other');
+    }
+    return options;
+  }
+
+  String _effectiveCategory() {
+    if (_usingOtherCategory || _category == 'Other') {
+      return _otherCategoryCtrl.text.trim();
+    }
+    return _category.trim();
+  }
+
+  void _applyExistingPartner(VendorModel partner, {bool updateName = false}) {
+    if (!mounted) return;
+    setState(() {
+      if (updateName) {
+        _nameCtrl.text = partner.name.trim();
+        _nameCtrl.selection = TextSelection.collapsed(
+          offset: _nameCtrl.text.length,
+        );
+      }
+      final nextCategory = partner.category.trim();
+      if (nextCategory.isNotEmpty &&
+          !_categoryOptionsWithOther.contains(nextCategory)) {
+        _category = 'Other';
+        _usingOtherCategory = true;
+        _otherCategoryCtrl.text = nextCategory;
+      } else {
+        _category = nextCategory.isEmpty ? _category : nextCategory;
+        _usingOtherCategory = _category == 'Other';
+        if (!_usingOtherCategory) {
+          _otherCategoryCtrl.clear();
+        }
+      }
+      _rating = _ratingFromLetter(partner.rating);
+      final status = partner.status.trim().toLowerCase();
+      _approved = status == 'active' || status == 'approved';
+      _preferred = partner.criticality.trim().toLowerCase() == 'high';
+      _matchedExistingPartner = partner;
+      _showOtherCategoryError = false;
+    });
+  }
+
+  void _onNameChanged() {
+    if (!widget.allowExistingAutofill) return;
+    if (_isEditing) return;
+    final query = _nameCtrl.text.trim().toLowerCase();
+    if (query.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _matchingPartners = const <VendorModel>[];
+        _matchedExistingPartner = null;
+      });
+      return;
+    }
+
+    final exact = widget.existingPartners.where((partner) {
+      return partner.name.trim().toLowerCase() == query;
+    }).toList();
+    if (exact.isNotEmpty) {
+      _applyExistingPartner(exact.first);
+      setState(() => _matchingPartners = exact.take(1).toList());
+      return;
+    }
+
+    final matching = widget.existingPartners.where((partner) {
+      final name = partner.name.trim().toLowerCase();
+      return name.contains(query);
+    }).toList()
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
+    if (!mounted) return;
+    setState(() {
+      _matchingPartners = matching.take(5).toList();
+      _matchedExistingPartner = null;
+    });
+  }
+
   Future<void> _generateWithAI() async {
+    if (!widget.showAiGenerateButton) return;
     if (_isGenerating) return;
 
     setState(() => _isGenerating = true);
@@ -752,14 +924,27 @@ class _AddVendorDialogState extends State<AddVendorDialog> {
       final result = await _openAi.generateVendorSuggestion(
         projectName: projectName,
         solutionTitle: solutionTitle,
-        category: _category,
+        category:
+            _effectiveCategory().isEmpty ? _category : _effectiveCategory(),
         contextNotes: notes,
       );
 
       if (mounted) {
         setState(() {
           _nameCtrl.text = result['name'] ?? '';
-          _category = result['category'] ?? _category;
+          final aiCategory = (result['category'] ?? '').toString().trim();
+          if (aiCategory.isNotEmpty &&
+              !_categoryOptionsWithOther.contains(aiCategory)) {
+            _category = 'Other';
+            _usingOtherCategory = true;
+            _otherCategoryCtrl.text = aiCategory;
+          } else if (aiCategory.isNotEmpty) {
+            _category = aiCategory;
+            _usingOtherCategory = _category == 'Other';
+            if (!_usingOtherCategory) {
+              _otherCategoryCtrl.clear();
+            }
+          }
           _rating = (result['rating'] as int? ?? 4).toDouble();
           _approved = result['approved'] as bool? ?? true;
           _preferred = result['preferred'] as bool? ?? false;
@@ -770,7 +955,11 @@ class _AddVendorDialogState extends State<AddVendorDialog> {
       if (mounted) {
         setState(() => _isGenerating = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to generate vendor: ${e.toString()}')),
+          SnackBar(
+            content: Text(
+              'Failed to generate ${widget.partnerLabel.toLowerCase()}: ${e.toString()}',
+            ),
+          ),
         );
       }
     }
@@ -808,22 +997,29 @@ class _AddVendorDialogState extends State<AddVendorDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final categoryOptions = widget.categoryOptions.contains(_category)
-        ? widget.categoryOptions
-        : [_category, ...widget.categoryOptions];
+    final categoryOptions = _categoryOptionsWithOther.contains(_category)
+        ? _categoryOptionsWithOther
+        : [_category, ..._categoryOptionsWithOther];
     return ProcurementDialogShell(
-      title: _isEditing ? 'Edit Vendor' : 'Add Vendor Partner',
+      title: _isEditing
+          ? 'Edit ${widget.partnerLabel}'
+          : 'Add ${widget.partnerLabel}',
       subtitle: _isEditing
-          ? 'Update vendor details and qualification.'
-          : 'Build your trusted supplier network.',
+          ? 'Update ${widget.partnerLabel.toLowerCase()} details and qualification.'
+          : 'Build your trusted ${widget.partnerPluralLabel.toLowerCase()} network.',
       icon: Icons.storefront_outlined,
       contextChips: widget.contextChips,
-      primaryLabel: _isEditing ? 'Save Changes' : 'Add Vendor',
+      primaryLabel: _isEditing ? 'Save Changes' : 'Add ${widget.partnerLabel}',
       secondaryLabel: 'Cancel',
       onSecondary: () => Navigator.of(context).pop(),
       onPrimary: () {
         final valid = _formKey.currentState?.validate() ?? false;
         if (!valid) return;
+        final effectiveCategory = _effectiveCategory();
+        if (effectiveCategory.isEmpty) {
+          setState(() => _showOtherCategoryError = true);
+          return;
+        }
         final name = _nameCtrl.text.trim();
         final projectId =
             ProjectDataHelper.getData(context).projectId ?? 'project-1';
@@ -838,7 +1034,7 @@ class _AddVendorDialogState extends State<AddVendorDialog> {
           id: vendorId,
           projectId: projectId,
           name: name,
-          category: _category,
+          category: effectiveCategory,
           criticality: criticality,
           sla: widget.initialVendor?.sla ?? '98%',
           slaPerformance: widget.initialVendor?.slaPerformance ??
@@ -871,40 +1067,90 @@ class _AddVendorDialogState extends State<AddVendorDialog> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Expanded(
+                Expanded(
                   child: DialogSectionTitle(
-                    title: 'Vendor identity',
+                    title: '${widget.partnerLabel} identity',
                     subtitle: 'Capture the partner name and sourcing category.',
                   ),
                 ),
-                const SizedBox(width: 12),
-                OutlinedButton.icon(
-                  onPressed: _isGenerating ? null : _generateWithAI,
-                  icon: _isGenerating
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.auto_awesome, size: 16),
-                  label: const Text('Generate with AI'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
+                if (widget.showAiGenerateButton) ...[
+                  const SizedBox(width: 12),
+                  OutlinedButton.icon(
+                    onPressed: _isGenerating ? null : _generateWithAI,
+                    icon: _isGenerating
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.auto_awesome, size: 16),
+                    label: const Text('Generate with AI'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
+            if (!widget.showAiGenerateButton) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Manual entry enabled. Saved or approved ${widget.partnerPluralLabel.toLowerCase()} auto-fill when the name matches.',
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  color: Color(0xFF6B7280),
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             TextFormField(
               controller: _nameCtrl,
               focusNode: _nameFocus,
               decoration: _dialogDecoration(
-                  label: 'Vendor name', hint: 'e.g. Atlas Tech Supply'),
+                label: '${widget.partnerLabel} name',
+                hint: 'e.g. Atlas Tech Supply',
+              ),
               validator: (value) => (value == null || value.trim().isEmpty)
-                  ? 'Vendor name is required.'
+                  ? '${widget.partnerLabel} name is required.'
                   : null,
             ),
+            if (_matchingPartners.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: _matchingPartners
+                    .map(
+                      (partner) => ActionChip(
+                        label: Text(
+                          partner.name.trim(),
+                          style: const TextStyle(fontSize: 11.5),
+                        ),
+                        avatar: const Icon(
+                          Icons.person_outline_rounded,
+                          size: 14,
+                        ),
+                        onPressed: () => _applyExistingPartner(
+                          partner,
+                          updateName: true,
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
+            if (_matchedExistingPartner != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Matched existing ${widget.partnerLabel.toLowerCase()}. Details auto-filled.',
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  color: Color(0xFF2563EB),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _category,
@@ -915,9 +1161,34 @@ class _AddVendorDialogState extends State<AddVendorDialog> {
                   .toList(),
               onChanged: (value) {
                 if (value == null) return;
-                setState(() => _category = value);
+                setState(() {
+                  _category = value;
+                  _usingOtherCategory = value == 'Other';
+                  if (!_usingOtherCategory) {
+                    _otherCategoryCtrl.clear();
+                    _showOtherCategoryError = false;
+                  }
+                });
               },
             ),
+            if (_usingOtherCategory || _category == 'Other') ...[
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _otherCategoryCtrl,
+                decoration: _dialogDecoration(
+                  label: 'Other Category',
+                  hint: 'Enter custom category',
+                  errorText: _showOtherCategoryError
+                      ? 'Category is required when "Other" is selected.'
+                      : null,
+                ),
+                onChanged: (_) {
+                  if (_showOtherCategoryError) {
+                    setState(() => _showOtherCategoryError = false);
+                  }
+                },
+              ),
+            ],
             const SizedBox(height: 18),
             const DialogSectionTitle(
               title: 'Qualification',
@@ -988,10 +1259,12 @@ class CreateRfqDialog extends StatefulWidget {
     super.key,
     required this.contextChips,
     required this.categoryOptions,
+    this.initialRfq,
   });
 
   final List<Widget> contextChips;
   final List<String> categoryOptions;
+  final RfqModel? initialRfq;
 
   @override
   State<CreateRfqDialog> createState() => _CreateRfqDialogState();
@@ -1012,16 +1285,41 @@ class _CreateRfqDialogState extends State<CreateRfqDialog> {
   bool _showDateError = false;
 
   final FocusNode _titleFocus = FocusNode();
+  bool get _isEditing => widget.initialRfq != null;
 
   @override
   void initState() {
     super.initState();
-    _titleCtrl = TextEditingController();
-    _ownerCtrl = TextEditingController();
-    _budgetCtrl = TextEditingController();
-    _invitedCtrl = TextEditingController(text: '0');
-    _responsesCtrl = TextEditingController(text: '0');
-    _category = widget.categoryOptions.first;
+    final initial = widget.initialRfq;
+    final initialBudget = initial?.budget ?? 0;
+    String budgetText = '';
+    if (initialBudget > 0) {
+      budgetText = initialBudget == initialBudget.truncateToDouble()
+          ? initialBudget.toStringAsFixed(0)
+          : initialBudget.toStringAsFixed(2);
+    }
+
+    _titleCtrl = TextEditingController(text: initial?.title ?? '');
+    _ownerCtrl = TextEditingController(text: initial?.owner ?? '');
+    _budgetCtrl = TextEditingController(text: budgetText);
+    _invitedCtrl = TextEditingController(
+      text: '${initial?.invitedCount ?? 0}',
+    );
+    _responsesCtrl = TextEditingController(
+      text: '${initial?.responseCount ?? 0}',
+    );
+
+    final defaultCategory = widget.categoryOptions.isEmpty
+        ? 'General'
+        : widget.categoryOptions.first;
+    _category = initial?.category ?? defaultCategory;
+    if (!_isEditing || !widget.categoryOptions.contains(_category)) {
+      _category = defaultCategory;
+    }
+
+    _status = initial?.status ?? RfqStatus.draft;
+    _priority = initial?.priority ?? ProcurementPriority.medium;
+    _dueDate = initial?.dueDate;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _titleFocus.requestFocus();
@@ -1077,12 +1375,18 @@ class _CreateRfqDialogState extends State<CreateRfqDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final categoryOptions = widget.categoryOptions.isEmpty
+        ? <String>[_category]
+        : widget.categoryOptions;
+
     return ProcurementDialogShell(
-      title: 'Create RFQ',
-      subtitle: 'Kick off a request for quote with clear scope and timing.',
+      title: _isEditing ? 'Edit RFQ' : 'Create RFQ',
+      subtitle: _isEditing
+          ? 'Update request for quote details and timing.'
+          : 'Kick off a request for quote with clear scope and timing.',
       icon: Icons.request_quote_outlined,
       contextChips: widget.contextChips,
-      primaryLabel: 'Create RFQ',
+      primaryLabel: _isEditing ? 'Save Changes' : 'Create RFQ',
       secondaryLabel: 'Cancel',
       onSecondary: () => Navigator.of(context).pop(),
       onPrimary: () {
@@ -1093,12 +1397,16 @@ class _CreateRfqDialogState extends State<CreateRfqDialog> {
           return;
         }
         final budget = _parseCurrency(_budgetCtrl.text);
-        final invited = int.tryParse(_invitedCtrl.text.trim()) ?? 0;
-        final responses = int.tryParse(_responsesCtrl.text.trim()) ?? 0;
-        final projectId =
-            ProjectDataHelper.getData(context).projectId ?? 'project-1';
+        final invitedRaw = int.tryParse(_invitedCtrl.text.trim()) ?? 0;
+        final responsesRaw = int.tryParse(_responsesCtrl.text.trim()) ?? 0;
+        final invited = invitedRaw < 0 ? 0 : invitedRaw;
+        final responses = responsesRaw.clamp(0, invited).toInt();
+        final projectId = widget.initialRfq?.projectId ??
+            ProjectDataHelper.getData(context).projectId ??
+            'project-1';
         final rfq = RfqModel(
-          id: 'RFQ-${DateTime.now().millisecondsSinceEpoch % 10000}',
+          id: widget.initialRfq?.id ??
+              'RFQ-${DateTime.now().millisecondsSinceEpoch % 10000}',
           title: _titleCtrl.text.trim(),
           projectId: projectId,
           category: _category,
@@ -1108,10 +1416,10 @@ class _CreateRfqDialogState extends State<CreateRfqDialog> {
           budget: budget.toDouble(),
           dueDate: _dueDate!,
           invitedCount: invited,
-          responseCount: responses.clamp(0, invited).toInt(),
+          responseCount: responses,
           status: _status,
           priority: _priority,
-          createdAt: DateTime.now(),
+          createdAt: widget.initialRfq?.createdAt ?? DateTime.now(),
         );
         Navigator.of(context).pop(rfq);
       },
@@ -1141,7 +1449,7 @@ class _CreateRfqDialogState extends State<CreateRfqDialog> {
                   child: DropdownButtonFormField<String>(
                     initialValue: _category,
                     decoration: _dialogDecoration(label: 'Category'),
-                    items: widget.categoryOptions
+                    items: categoryOptions
                         .map((option) => DropdownMenuItem(
                             value: option, child: Text(option)))
                         .toList(),
@@ -1295,10 +1603,18 @@ class CreatePoDialog extends StatefulWidget {
     super.key,
     required this.contextChips,
     required this.categoryOptions,
+    this.sourceItems = const <ProcurementItemModel>[],
+    this.sourceItemNumberById = const <String, String>{},
+    this.prioritizeLongLeadSelection = false,
+    this.initialPo,
   });
 
   final List<Widget> contextChips;
   final List<String> categoryOptions;
+  final List<ProcurementItemModel> sourceItems;
+  final Map<String, String> sourceItemNumberById;
+  final bool prioritizeLongLeadSelection;
+  final PurchaseOrderModel? initialPo;
 
   @override
   State<CreatePoDialog> createState() => _CreatePoDialogState();
@@ -1316,17 +1632,107 @@ class _CreatePoDialogState extends State<CreatePoDialog> {
   DateTime _orderedDate = DateTime.now();
   DateTime _expectedDate = DateTime.now().add(const Duration(days: 21));
   double _progress = 0.0;
+  String? _selectedSourceItemId;
 
   final FocusNode _idFocus = FocusNode();
+  bool get _isEditing => widget.initialPo != null;
+
+  List<ProcurementItemModel> get _availableSourceItems => widget.sourceItems
+      .where((item) => item.id.trim().isNotEmpty)
+      .toList(growable: false);
+
+  Map<String, String> get _resolvedItemNumbers {
+    final mapping = <String, String>{...widget.sourceItemNumberById};
+    for (var i = 0; i < _availableSourceItems.length; i++) {
+      final item = _availableSourceItems[i];
+      mapping.putIfAbsent(
+        item.id,
+        () => 'ITM-${(i + 1).toString().padLeft(3, '0')}',
+      );
+    }
+    return mapping;
+  }
+
+  ProcurementItemModel? get _selectedSourceItem {
+    final selectedId = _selectedSourceItemId;
+    if (selectedId == null || selectedId.isEmpty) return null;
+    for (final item in _availableSourceItems) {
+      if (item.id == selectedId) return item;
+    }
+    return null;
+  }
+
+  String _itemNumberFor(ProcurementItemModel item, int index) {
+    return _resolvedItemNumbers[item.id] ??
+        'ITM-${(index + 1).toString().padLeft(3, '0')}';
+  }
+
+  void _applySelectedSourceItem(ProcurementItemModel item) {
+    final sourceNumber = _resolvedItemNumbers[item.id];
+    setState(() {
+      _selectedSourceItemId = item.id;
+      if (sourceNumber != null) {
+        _idCtrl.text = sourceNumber;
+      }
+      if (item.category.trim().isNotEmpty &&
+          widget.categoryOptions.contains(item.category.trim())) {
+        _category = item.category.trim();
+      }
+      if (_ownerCtrl.text.trim().isEmpty &&
+          item.responsibleMember.trim().isNotEmpty) {
+        _ownerCtrl.text = item.responsibleMember.trim();
+      }
+      final parsedAmount = _parseCurrency(_amountCtrl.text);
+      if (parsedAmount <= 0 && item.budget > 0) {
+        _amountCtrl.text = item.budget.round().toString();
+      }
+      if (item.estimatedDelivery != null) {
+        _expectedDate = item.estimatedDelivery!;
+      }
+      _status = PurchaseOrderStatus.awaitingApproval;
+    });
+  }
 
   @override
   void initState() {
     super.initState();
-    _idCtrl = TextEditingController();
-    _vendorCtrl = TextEditingController();
-    _ownerCtrl = TextEditingController();
-    _amountCtrl = TextEditingController();
-    _category = widget.categoryOptions.first;
+    final initial = widget.initialPo;
+    _idCtrl = TextEditingController(text: initial?.poNumber ?? '');
+    _vendorCtrl = TextEditingController(text: initial?.vendorName ?? '');
+    _ownerCtrl = TextEditingController(text: initial?.owner ?? '');
+    _amountCtrl = TextEditingController(
+      text: initial != null && initial.amount > 0
+          ? initial.amount.round().toString()
+          : '',
+    );
+    _category =
+        initial != null && widget.categoryOptions.contains(initial.category)
+            ? initial.category
+            : widget.categoryOptions.first;
+    _status = initial?.status ?? PurchaseOrderStatus.awaitingApproval;
+    _orderedDate = initial?.orderedDate ?? DateTime.now();
+    _expectedDate =
+        initial?.expectedDate ?? DateTime.now().add(const Duration(days: 21));
+    _progress = initial?.progress ?? 0.0;
+
+    if (!_isEditing && _availableSourceItems.isNotEmpty) {
+      final defaultItem = _availableSourceItems.first;
+      _selectedSourceItemId = defaultItem.id;
+      final sourceNumber = _resolvedItemNumbers[defaultItem.id];
+      if (sourceNumber != null) {
+        _idCtrl.text = sourceNumber;
+      }
+      if (defaultItem.category.trim().isNotEmpty &&
+          widget.categoryOptions.contains(defaultItem.category.trim())) {
+        _category = defaultItem.category.trim();
+      }
+      if (defaultItem.budget > 0 && _parseCurrency(_amountCtrl.text) <= 0) {
+        _amountCtrl.text = defaultItem.budget.round().toString();
+      }
+      if (defaultItem.estimatedDelivery != null) {
+        _expectedDate = defaultItem.estimatedDelivery!;
+      }
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _idFocus.requestFocus();
@@ -1381,28 +1787,61 @@ class _CreatePoDialogState extends State<CreatePoDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = _isEditing;
+    final categoryOptions = widget.categoryOptions.contains(_category)
+        ? widget.categoryOptions
+        : [_category, ...widget.categoryOptions];
+    final sourceItems = _availableSourceItems;
+
     return ProcurementDialogShell(
-      title: 'Create Purchase Order',
-      subtitle: 'Issue a PO with clear ownership and delivery timing.',
+      title: isEditing ? 'Edit Purchase Order' : 'Create Purchase Order',
+      subtitle: isEditing
+          ? 'Update ownership, financials, and delivery timing.'
+          : 'Select an identified item first, then issue a PO with clear ownership and delivery timing.',
       icon: Icons.receipt_long_outlined,
       contextChips: widget.contextChips,
-      primaryLabel: 'Create PO',
+      primaryLabel: isEditing ? 'Save Changes' : 'Create PO',
       secondaryLabel: 'Cancel',
       onSecondary: () => Navigator.of(context).pop(),
       onPrimary: () {
         final valid = _formKey.currentState?.validate() ?? false;
         if (!valid) return;
+        final selectedItem = _selectedSourceItem;
+        if (!isEditing && sourceItems.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Add procurement items first, then create a PO from a selected item.',
+              ),
+            ),
+          );
+          return;
+        }
+        if (!isEditing && sourceItems.isNotEmpty && selectedItem == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Select an item from the procurement list first.'),
+            ),
+          );
+          return;
+        }
         final amount = _parseCurrency(_amountCtrl.text);
-        final poId = _idCtrl.text.trim().isEmpty
-            ? 'PO-${DateTime.now().millisecondsSinceEpoch % 10000}'
-            : _idCtrl.text.trim();
-        final projectId =
-            ProjectDataHelper.getData(context).projectId ?? 'project-1';
+        final selectedItemNumber =
+            selectedItem == null ? null : _resolvedItemNumbers[selectedItem.id];
+        final poId = (!isEditing && selectedItemNumber != null)
+            ? selectedItemNumber
+            : (_idCtrl.text.trim().isEmpty
+                ? 'PO-${DateTime.now().millisecondsSinceEpoch % 10000}'
+                : _idCtrl.text.trim());
+        final projectId = widget.initialPo?.projectId ??
+            ProjectDataHelper.getData(context).projectId ??
+            'project-1';
         final po = PurchaseOrderModel(
-          id: poId,
+          id: widget.initialPo?.id ?? poId,
           poNumber: poId,
           projectId: projectId,
           vendorName: _vendorCtrl.text.trim(),
+          vendorId: selectedItem?.vendorId,
           category: _category,
           owner: _ownerCtrl.text.trim().isEmpty
               ? 'Unassigned'
@@ -1421,6 +1860,73 @@ class _CreatePoDialogState extends State<CreatePoDialog> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (!isEditing) ...[
+              DialogSectionTitle(
+                title: 'Source item',
+                subtitle: sourceItems.isEmpty
+                    ? 'No procurement items available yet. Add items first in Scope Details.'
+                    : 'Pick one identified item. Its item number becomes the PO number.',
+              ),
+              const SizedBox(height: 8),
+              if (sourceItems.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: const Text(
+                    'No source items available.',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                  ),
+                )
+              else
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedSourceItemId,
+                  decoration:
+                      _dialogDecoration(label: 'Item from procurement list'),
+                  items: List<DropdownMenuItem<String>>.generate(
+                    sourceItems.length,
+                    (index) {
+                      final item = sourceItems[index];
+                      return DropdownMenuItem<String>(
+                        value: item.id,
+                        child: Text(
+                          '${_itemNumberFor(item, index)} · ${item.name}',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    },
+                  ),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    for (final item in sourceItems) {
+                      if (item.id == value) {
+                        _applySelectedSourceItem(item);
+                        break;
+                      }
+                    }
+                  },
+                  validator: (value) {
+                    if (sourceItems.isEmpty) return null;
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Select a source item.';
+                    }
+                    return null;
+                  },
+                ),
+              if (widget.prioritizeLongLeadSelection && sourceItems.isNotEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Early start mode: prioritize vital long-lead items (LLEs).',
+                    style: TextStyle(fontSize: 11.5, color: Color(0xFF6B7280)),
+                  ),
+                ),
+              const SizedBox(height: 16),
+            ],
             const DialogSectionTitle(
               title: 'PO details',
               subtitle: 'Define vendor, owner, and category.',
@@ -1429,7 +1935,12 @@ class _CreatePoDialogState extends State<CreatePoDialog> {
               controller: _idCtrl,
               focusNode: _idFocus,
               decoration: _dialogDecoration(
-                  label: 'PO number', hint: 'Auto-generated if left blank'),
+                label: 'PO number',
+                hint: isEditing
+                    ? 'PO identifier'
+                    : 'Auto-linked to selected item number',
+              ),
+              readOnly: !isEditing && _selectedSourceItem != null,
             ),
             const SizedBox(height: 12),
             TextFormField(
@@ -1447,7 +1958,7 @@ class _CreatePoDialogState extends State<CreatePoDialog> {
                   child: DropdownButtonFormField<String>(
                     initialValue: _category,
                     decoration: _dialogDecoration(label: 'Category'),
-                    items: widget.categoryOptions
+                    items: categoryOptions
                         .map((option) => DropdownMenuItem(
                             value: option, child: Text(option)))
                         .toList(),

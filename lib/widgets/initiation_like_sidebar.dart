@@ -1175,7 +1175,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
         ),
       );
     } catch (e) {
-      debugPrint('Navigation error (Preferred Solutions): $e');
+      debugPrint('Navigation error (Preferred Solution): $e');
     }
   }
 
@@ -1663,9 +1663,9 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
                 onTap: _openPreferredSolutionAnalysis,
                 isActive:
                     widget.activeItemLabel == 'Preferred Solution Analysis'),
-            _buildSubSubMenuItem('Preferred Solutions',
+            _buildSubSubMenuItem('Preferred Solution',
                 onTap: _openPreferredSolutionsComparison,
-                isActive: widget.activeItemLabel == 'Preferred Solutions'),
+                isActive: widget.activeItemLabel == 'Preferred Solution'),
           ],
         ],
         _buildSubExpandableHeader(
@@ -2360,12 +2360,13 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
           onTap: _openPreferredSolutionAnalysis,
           isActive: widget.activeItemLabel == 'Preferred Solution Analysis'));
     }
-    if ('preferred solutions'.contains(query) ||
+    if ('preferred solution'.contains(query) ||
+        'preferred solutions'.contains(query) ||
         'preferred comparison'.contains(query)) {
       results.add(_buildMenuItem(
-          Icons.fact_check_outlined, 'Preferred Solutions',
+          Icons.fact_check_outlined, 'Preferred Solution',
           onTap: _openPreferredSolutionsComparison,
-          isActive: widget.activeItemLabel == 'Preferred Solutions'));
+          isActive: widget.activeItemLabel == 'Preferred Solution'));
     }
     if ('work breakdown structure'.contains(query) ||
         'wbs'.contains(query) ||

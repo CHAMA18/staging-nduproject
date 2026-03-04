@@ -1,5 +1,5 @@
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 
 /// Platform detection service for routing decisions.
 ///
@@ -13,10 +13,12 @@ class PlatformRouter {
   static bool get isWebPlatform => kIsWeb;
 
   /// Returns true if running as an installed iOS app
-  static bool get isIOSApp => !kIsWeb && Platform.isIOS;
+  static bool get isIOSApp =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
   /// Returns true if running as an installed Android app
-  static bool get isAndroidApp => !kIsWeb && Platform.isAndroid;
+  static bool get isAndroidApp =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   /// Determines the initial route based on platform
   ///

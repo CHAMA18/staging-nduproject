@@ -7,7 +7,7 @@ import '../widgets/kaz_ai_chat_bubble.dart';
 import '../widgets/responsive.dart';
 import '../widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
-import 'front_end_planning_personnel_screen.dart';
+import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
 const Color _kBackground = Color(0xFFF7F8FC);
 const Color _kAccent = Color(0xFFFFC812);
@@ -37,7 +37,8 @@ class DeliverablesRoadmapScreen extends StatelessWidget {
               children: [
                 DraggableSidebar(
                   openWidth: AppBreakpoints.sidebarWidth(context),
-                  child: const InitiationLikeSidebar(activeItemLabel: 'Deliverable Roadmap'),
+                  child: const InitiationLikeSidebar(
+                      activeItemLabel: 'Deliverable Roadmap'),
                 ),
                 const Expanded(child: _DeliverablesRoadmapBody()),
               ],
@@ -54,7 +55,8 @@ class _DeliverablesRoadmapBody extends StatefulWidget {
   const _DeliverablesRoadmapBody();
 
   @override
-  State<_DeliverablesRoadmapBody> createState() => _DeliverablesRoadmapBodyState();
+  State<_DeliverablesRoadmapBody> createState() =>
+      _DeliverablesRoadmapBodyState();
 }
 
 enum _DeliverableStatus { completed, inProgress, planned, notStarted }
@@ -119,7 +121,11 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
     }
   }
 
-  Widget _buildArrowButton({required IconData icon, required Color background, required Color borderColor, Color? iconColor}) {
+  Widget _buildArrowButton(
+      {required IconData icon,
+      required Color background,
+      required Color borderColor,
+      Color? iconColor}) {
     return Container(
       width: 44,
       height: 44,
@@ -166,7 +172,8 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
           child: Center(
             child: Text(
               'Deliverables Roadmap',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: _kHeadline),
+              style: TextStyle(
+                  fontSize: 24, fontWeight: FontWeight.w800, color: _kHeadline),
             ),
           ),
         ),
@@ -183,16 +190,26 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
               CircleAvatar(
                 radius: 16,
                 backgroundColor: _kAccent,
-                child: Text(initials, style: const TextStyle(fontWeight: FontWeight.w800, color: _kHeadline)),
+                child: Text(initials,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, color: _kHeadline)),
               ),
               const SizedBox(width: 12),
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(displayName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kHeadline)),
+                  Text(displayName,
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: _kHeadline)),
                   const SizedBox(height: 2),
-                  Text(subtitle, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _kMuted)),
+                  Text(subtitle,
+                      style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: _kMuted)),
                 ],
               ),
               const SizedBox(width: 12),
@@ -235,7 +252,8 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
   }
 
   Widget _buildDeliverableCard(_DeliverableItem item) {
-    final assignedLabel = item.assignedTo.isNotEmpty ? 'Tasked: ${item.assignedTo}' : 'Tasked: -';
+    final assignedLabel =
+        item.assignedTo.isNotEmpty ? 'Tasked: ${item.assignedTo}' : 'Tasked: -';
     final dueLabel = item.dueDate.isNotEmpty ? item.dueDate : 'No due date';
 
     return LayoutBuilder(
@@ -267,7 +285,8 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
                       width: 10,
                       decoration: BoxDecoration(
                         color: _statusColor(item.status),
-                        borderRadius: const BorderRadius.horizontal(left: Radius.circular(24)),
+                        borderRadius: const BorderRadius.horizontal(
+                            left: Radius.circular(24)),
                       ),
                     ),
                   ),
@@ -284,7 +303,10 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
                         children: [
                           Text(
                             item.title,
-                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _kHeadline),
+                            style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                color: _kHeadline),
                             maxLines: 3,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -299,7 +321,10 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
                           Expanded(
                             child: Text(
                               item.title,
-                              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _kHeadline),
+                              style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w800,
+                                  color: _kHeadline),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -311,7 +336,10 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
                     const SizedBox(height: 10),
                     Text(
                       item.description,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _kMuted),
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: _kMuted),
                     ),
                     const SizedBox(height: 20),
                     if (isCompact)
@@ -320,14 +348,20 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
                         children: [
                           Text(
                             assignedLabel,
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kMuted),
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: _kMuted),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 6),
                           Text(
                             dueLabel,
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kMuted),
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: _kMuted),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -339,7 +373,10 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
                           Expanded(
                             child: Text(
                               assignedLabel,
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kMuted),
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: _kMuted),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -347,7 +384,10 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
                           const SizedBox(width: 12),
                           Text(
                             dueLabel,
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _kMuted),
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: _kMuted),
                           ),
                         ],
                       ),
@@ -390,13 +430,15 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
   Widget _buildHeading(String heading) {
     return RichText(
       text: TextSpan(
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _kHeadline),
+        style: const TextStyle(
+            fontSize: 16, fontWeight: FontWeight.w800, color: _kHeadline),
         children: [
           TextSpan(text: heading.split('(').first),
           if (heading.contains('('))
             TextSpan(
               text: heading.substring(heading.indexOf('(')),
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _kMuted),
+              style: const TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.w600, color: _kMuted),
             ),
         ],
       ),
@@ -495,7 +537,8 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
     });
   }
 
-  Future<_DeliverableItem?> _openAddDeliverableDialog(BuildContext context) async {
+  Future<_DeliverableItem?> _openAddDeliverableDialog(
+      BuildContext context) async {
     final titleController = TextEditingController();
     final descriptionController = TextEditingController();
     final assignedController = TextEditingController();
@@ -510,7 +553,8 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
       barrierDismissible: false,
       builder: (dialogContext) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
           title: const Text(
             'Create Deliverable',
             style: TextStyle(fontWeight: FontWeight.w800, color: _kHeadline),
@@ -526,7 +570,8 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
                     children: [
                       TextFormField(
                         controller: titleController,
-                        decoration: const InputDecoration(labelText: 'Deliverable Title'),
+                        decoration: const InputDecoration(
+                            labelText: 'Deliverable Title'),
                         textCapitalization: TextCapitalization.sentences,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
@@ -538,7 +583,8 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: descriptionController,
-                        decoration: const InputDecoration(labelText: 'Description'),
+                        decoration:
+                            const InputDecoration(labelText: 'Description'),
                         minLines: 2,
                         maxLines: 4,
                         validator: (value) {
@@ -551,7 +597,8 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: assignedController,
-                        decoration: const InputDecoration(labelText: 'Assigned To'),
+                        decoration:
+                            const InputDecoration(labelText: 'Assigned To'),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'Please specify who is assigned';
@@ -562,7 +609,8 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: dueDateController,
-                        decoration: const InputDecoration(labelText: 'Due Date'),
+                        decoration:
+                            const InputDecoration(labelText: 'Due Date'),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'Please set a due date';
@@ -597,7 +645,8 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
               );
             },
           ),
-          actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          actionsPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           actions: [
             TextButton(
               onPressed: () {
@@ -622,7 +671,8 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: _kAccent,
                 foregroundColor: _kHeadline,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
               ),
               child: const Text('Create'),
             ),
@@ -649,7 +699,8 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
             sectionLabel: 'Deliverable Roadmap',
             noteKey: 'planning_deliverable_roadmap_notes',
             checkpoint: 'deliverable_roadmap',
-            description: 'Summarize roadmap milestones, delivery pacing, and risk flags.',
+            description:
+                'Summarize roadmap milestones, delivery pacing, and risk flags.',
           ),
           const SizedBox(height: 32),
           Expanded(
@@ -659,7 +710,8 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
                   child: _sprints.isEmpty
                       ? const _EmptyStateCard(
                           title: 'No sprint roadmap yet',
-                          message: 'Add roadmap deliverables to visualize sprint pacing.',
+                          message:
+                              'Add roadmap deliverables to visualize sprint pacing.',
                           icon: Icons.view_week_outlined,
                         )
                       : _buildColumns(constraints.maxWidth),
@@ -669,10 +721,12 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
           ),
           const SizedBox(height: 28),
           LaunchPhaseNavigation(
-            backLabel: 'Back: Start-Up Planning',
-            nextLabel: 'Next: Personnel',
-            onBack: () => Navigator.of(context).maybePop(),
-            onNext: () => FrontEndPlanningPersonnelScreen.open(context),
+            backLabel: PlanningPhaseNavigation.backLabel('deliverable_roadmap'),
+            nextLabel: PlanningPhaseNavigation.nextLabel('deliverable_roadmap'),
+            onBack: () => PlanningPhaseNavigation.goToPrevious(
+                context, 'deliverable_roadmap'),
+            onNext: () => PlanningPhaseNavigation.goToNext(
+                context, 'deliverable_roadmap'),
           ),
         ],
       ),
@@ -681,7 +735,8 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
 }
 
 class _EmptyStateCard extends StatelessWidget {
-  const _EmptyStateCard({required this.title, required this.message, required this.icon});
+  const _EmptyStateCard(
+      {required this.title, required this.message, required this.icon});
 
   final String title;
   final String message;
@@ -713,9 +768,14 @@ class _EmptyStateCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _kHeadline)),
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: _kHeadline)),
                 const SizedBox(height: 6),
-                Text(message, style: const TextStyle(fontSize: 12, color: _kMuted)),
+                Text(message,
+                    style: const TextStyle(fontSize: 12, color: _kMuted)),
               ],
             ),
           ),

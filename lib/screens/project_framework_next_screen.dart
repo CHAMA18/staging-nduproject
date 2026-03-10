@@ -15,6 +15,35 @@ const Color _kPrimaryText = Color(0xFF1F2933);
 const Color _kSecondaryText = Color(0xFF6B7280);
 const Color _kBorderColor = Color(0xFFE5E7EB);
 const Color _kCardShadow = Color(0x14000000);
+const List<String> _kPriorityOptions = [
+  'High Priority',
+  'Medium Priority',
+  'Low Priority'
+];
+
+Color _priorityColor(String priority) {
+  switch (priority) {
+    case 'High Priority':
+      return const Color(0xFFDC2626);
+    case 'Low Priority':
+      return const Color(0xFF059669);
+    case 'Medium Priority':
+    default:
+      return const Color(0xFFD97706);
+  }
+}
+
+Color _priorityBackground(String priority) {
+  switch (priority) {
+    case 'High Priority':
+      return const Color(0xFFFEE2E2);
+    case 'Low Priority':
+      return const Color(0xFFD1FAE5);
+    case 'Medium Priority':
+    default:
+      return const Color(0xFFFEF3C7);
+  }
+}
 
 class ProjectFrameworkNextScreen extends StatefulWidget {
   const ProjectFrameworkNextScreen({super.key});
@@ -40,7 +69,8 @@ class _ProjectFrameworkNextScreenState
       List.generate(3, (_) => TextEditingController());
   final List<List<_Milestone>> _goalMilestones =
       List.generate(3, (_) => [_Milestone()]);
-  final List<bool> _isHighPriority = [false, false, false];
+  final List<String> _goalPriorities =
+      List.generate(3, (_) => 'Medium Priority');
 
   // FocusNodes for auto-save on blur
   final List<FocusNode> _titleFocusNodes = List.generate(3, (_) => FocusNode());
@@ -70,7 +100,7 @@ class _ProjectFrameworkNextScreenState
         title: _goalTitleControllers[i].text.trim(),
         description: _goalDescControllers[i].text.trim(),
         targetYear: _goalYearControllers[i].text.trim(),
-        isHighPriority: _isHighPriority[i],
+        priority: _goalPriorities[i],
         milestones: milestones,
       ));
     }
@@ -86,8 +116,26 @@ class _ProjectFrameworkNextScreenState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final projectData = ProjectDataHelper.getProvider(context).projectData;
 
-      // Populate from project goals
-      if (projectData.projectGoals.isNotEmpty) {
+      // Populate from planning goals (preferred)
+      if (projectData.planningGoals.isNotEmpty) {
+        for (int i = 0; i < projectData.planningGoals.length && i < 3; i++) {
+          final goal = projectData.planningGoals[i];
+          _goalTitleControllers[i].text = goal.title;
+          _goalDescControllers[i].text = goal.description;
+          _goalYearControllers[i].text = goal.targetYear;
+          _goalPriorities[i] =
+              goal.priority.isNotEmpty ? goal.priority : 'Medium Priority';
+          _goalMilestones[i] = goal.milestones.isNotEmpty
+              ? goal.milestones
+                  .map((m) => _Milestone()
+                    ..titleController.text = m.title
+                    ..deadlineController.text = m.deadline
+                    ..status = m.status)
+                  .toList()
+              : [_Milestone()];
+        }
+      } else if (projectData.projectGoals.isNotEmpty) {
+        // Fallback to project goals
         for (int i = 0; i < projectData.projectGoals.length && i < 3; i++) {
           final goal = projectData.projectGoals[i];
           _goalTitleControllers[i].text = goal.name;
@@ -176,13 +224,13 @@ class _ProjectFrameworkNextScreenState
       _goalDescControllers[index].clear();
       _goalYearControllers[index].clear();
       _goalMilestones[index] = [_Milestone()];
-      _isHighPriority[index] = false;
+      _goalPriorities[index] = 'Medium Priority';
     });
   }
 
-  void _togglePriority(int index) {
+  void _setPriority(int index, String priority) {
     setState(() {
-      _isHighPriority[index] = !_isHighPriority[index];
+      _goalPriorities[index] = priority;
     });
   }
 
@@ -236,7 +284,7 @@ class _ProjectFrameworkNextScreenState
         title: _goalTitleControllers[i].text.trim(),
         description: _goalDescControllers[i].text.trim(),
         targetYear: _goalYearControllers[i].text.trim(),
-        isHighPriority: _isHighPriority[i],
+        priority: _goalPriorities[i],
         milestones: _goalMilestones[i]
             .map((m) => PlanningMilestone(
                   title: m.titleController.text.trim(),
@@ -304,14 +352,16 @@ class _ProjectFrameworkNextScreenState
                             'Project Objective  (Detailed aim of the project.)',
                         value: _projectObjective.isNotEmpty
                             ? _projectObjective
-                            : 'Pending input'),
+                            : 'Pending input',
+                        maxLines: 5,
+                        scrollable: true),
                     const SizedBox(height: 40),
                     _GoalsSection(
                       titleControllers: _goalTitleControllers,
                       descControllers: _goalDescControllers,
                       yearControllers: _goalYearControllers,
                       goalMilestones: _goalMilestones,
-                      isHighPriority: _isHighPriority,
+                      priorities: _goalPriorities,
                       currentFilter: _currentFilter,
                       onAddMilestone: (goalIndex) {
                         setState(() {
@@ -319,7 +369,7 @@ class _ProjectFrameworkNextScreenState
                         });
                       },
                       onClear: _clearGoal,
-                      onTogglePriority: _togglePriority,
+                      onPriorityChanged: _setPriority,
                       onDeleteMilestone: (goalIndex, milestoneIndex) {
                         setState(() {
                           _goalMilestones[goalIndex].removeAt(milestoneIndex);
@@ -470,13 +520,22 @@ class _HeaderRow extends StatelessWidget {
 }
 
 class _LabeledField extends StatelessWidget {
-  const _LabeledField({required this.label, required this.value});
+  const _LabeledField({
+    required this.label,
+    required this.value,
+    this.maxLines = 1,
+    this.scrollable = false,
+  });
 
   final String label;
   final String value;
+  final int maxLines;
+  final bool scrollable;
 
   @override
   Widget build(BuildContext context) {
+    final isMultiline = scrollable && maxLines > 1;
+    final maxHeight = 56.0 + (maxLines - 1) * 20.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -487,22 +546,95 @@ class _LabeledField extends StatelessWidget {
                 color: _kPrimaryText)),
         const SizedBox(height: 12),
         Container(
-          height: 56,
+          height: isMultiline ? null : 56,
+          constraints: isMultiline
+              ? BoxConstraints(minHeight: 56, maxHeight: maxHeight)
+              : null,
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: EdgeInsets.symmetric(
+              horizontal: 20, vertical: isMultiline ? 12 : 0),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: _kBorderColor),
           ),
-          alignment: Alignment.centerLeft,
-          child: Text(value,
-              style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: _kPrimaryText)),
+          alignment: isMultiline ? Alignment.topLeft : Alignment.centerLeft,
+          child: isMultiline
+              ? Scrollbar(
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
+                    child: Text(
+                      value,
+                      style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: _kPrimaryText,
+                          height: 1.35),
+                    ),
+                  ),
+                )
+              : Text(value,
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: _kPrimaryText)),
         ),
       ],
+    );
+  }
+}
+
+class _PriorityDropdown extends StatelessWidget {
+  const _PriorityDropdown({
+    required this.priority,
+    required this.onChanged,
+    this.compact = false,
+  });
+
+  final String priority;
+  final ValueChanged<String> onChanged;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _priorityColor(priority);
+    return Container(
+      height: compact ? 28 : 34,
+      padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 12),
+      decoration: BoxDecoration(
+        color: _priorityBackground(priority),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: PopupMenuButton<String>(
+        initialValue: priority,
+        onSelected: onChanged,
+        offset: const Offset(0, 32),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+            ),
+            SizedBox(width: compact ? 6 : 8),
+            Text(
+              priority,
+              style: TextStyle(
+                fontSize: compact ? 11 : 12,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(Icons.keyboard_arrow_down_rounded,
+                size: 16, color: _kSecondaryText),
+          ],
+        ),
+        itemBuilder: (context) => _kPriorityOptions
+            .map((option) => PopupMenuItem(value: option, child: Text(option)))
+            .toList(),
+      ),
     );
   }
 }
@@ -513,11 +645,11 @@ class _GoalsSection extends StatelessWidget {
     required this.descControllers,
     required this.yearControllers,
     required this.goalMilestones,
-    required this.isHighPriority,
+    required this.priorities,
     required this.currentFilter,
     required this.onAddMilestone,
     required this.onClear,
-    required this.onTogglePriority,
+    required this.onPriorityChanged,
     required this.onDeleteMilestone,
     required this.titleFocusNodes,
     required this.descFocusNodes,
@@ -528,11 +660,11 @@ class _GoalsSection extends StatelessWidget {
   final List<TextEditingController> descControllers;
   final List<TextEditingController> yearControllers;
   final List<List<_Milestone>> goalMilestones;
-  final List<bool> isHighPriority;
+  final List<String> priorities;
   final String currentFilter;
   final void Function(int goalIndex) onAddMilestone;
   final void Function(int index) onClear;
-  final void Function(int index) onTogglePriority;
+  final void Function(int index, String priority) onPriorityChanged;
   final void Function(int goalIndex, int milestoneIndex) onDeleteMilestone;
   final List<FocusNode> titleFocusNodes;
   final List<FocusNode> descFocusNodes;
@@ -580,10 +712,11 @@ class _GoalsSection extends StatelessWidget {
                         descController: descControllers[i],
                         yearController: yearControllers[i],
                         milestones: goalMilestones[i],
-                        isHighPriority: isHighPriority[i],
+                        priority: priorities[i],
                         onAddMilestone: () => onAddMilestone(i),
                         onClear: () => onClear(i),
-                        onTogglePriority: () => onTogglePriority(i),
+                        onPriorityChanged: (priority) =>
+                            onPriorityChanged(i, priority),
                         onDeleteMilestone: (mIndex) =>
                             onDeleteMilestone(i, mIndex),
                       ),
@@ -593,10 +726,11 @@ class _GoalsSection extends StatelessWidget {
                         descController: descControllers[i],
                         yearController: yearControllers[i],
                         milestones: goalMilestones[i],
-                        isHighPriority: isHighPriority[i],
+                        priority: priorities[i],
                         onAddMilestone: () => onAddMilestone(i),
                         onClear: () => onClear(i),
-                        onTogglePriority: () => onTogglePriority(i),
+                        onPriorityChanged: (priority) =>
+                            onPriorityChanged(i, priority),
                         onDeleteMilestone: (mIndex) =>
                             onDeleteMilestone(i, mIndex),
                         titleFocusNode: titleFocusNodes[i],
@@ -623,10 +757,10 @@ class _GoalsSection extends StatelessWidget {
     required TextEditingController descController,
     required TextEditingController yearController,
     required List<_Milestone> milestones,
-    required bool isHighPriority,
+    required String priority,
     required VoidCallback onAddMilestone,
     required VoidCallback onClear,
-    required VoidCallback onTogglePriority,
+    required ValueChanged<String> onPriorityChanged,
     required void Function(int) onDeleteMilestone,
   }) {
     showDialog(
@@ -638,10 +772,10 @@ class _GoalsSection extends StatelessWidget {
         descController: descController,
         yearController: yearController,
         milestones: milestones,
-        isHighPriority: isHighPriority,
+        priority: priority,
         onAddMilestone: onAddMilestone,
         onClear: onClear,
-        onTogglePriority: onTogglePriority,
+        onPriorityChanged: onPriorityChanged,
         onDeleteMilestone: onDeleteMilestone,
       ),
     );
@@ -670,10 +804,10 @@ class _GoalCard extends StatefulWidget {
     required this.descController,
     required this.yearController,
     required this.milestones,
-    required this.isHighPriority,
+    required this.priority,
     required this.onAddMilestone,
     required this.onClear,
-    required this.onTogglePriority,
+    required this.onPriorityChanged,
     required this.onDeleteMilestone,
     this.titleFocusNode,
     this.descFocusNode,
@@ -685,10 +819,10 @@ class _GoalCard extends StatefulWidget {
   final TextEditingController descController;
   final TextEditingController yearController;
   final List<_Milestone> milestones;
-  final bool isHighPriority;
+  final String priority;
   final VoidCallback onAddMilestone;
   final VoidCallback onClear;
-  final VoidCallback onTogglePriority;
+  final ValueChanged<String> onPriorityChanged;
   final void Function(int) onDeleteMilestone;
   final FocusNode? titleFocusNode;
   final FocusNode? descFocusNode;
@@ -836,24 +970,10 @@ class _GoalCardState extends State<_GoalCard> {
                       color: _kPrimaryText),
                 ),
               ),
-              GestureDetector(
-                onTap: widget.onTogglePriority,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                      color: widget.isHighPriority
-                          ? const Color(0xFFFEE2E2)
-                          : Colors.grey[100],
-                      borderRadius: BorderRadius.circular(999)),
-                  child: Text('High priority',
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: widget.isHighPriority
-                              ? const Color(0xFFDC2626)
-                              : Colors.grey[500])),
-                ),
+              _PriorityDropdown(
+                priority: widget.priority,
+                onChanged: widget.onPriorityChanged,
+                compact: true,
               ),
               const SizedBox(width: 12),
               GestureDetector(
@@ -1132,10 +1252,10 @@ class _GoalCardExpandedDialog extends StatefulWidget {
     required this.descController,
     required this.yearController,
     required this.milestones,
-    required this.isHighPriority,
+    required this.priority,
     required this.onAddMilestone,
     required this.onClear,
-    required this.onTogglePriority,
+    required this.onPriorityChanged,
     required this.onDeleteMilestone,
   });
 
@@ -1144,10 +1264,10 @@ class _GoalCardExpandedDialog extends StatefulWidget {
   final TextEditingController descController;
   final TextEditingController yearController;
   final List<_Milestone> milestones;
-  final bool isHighPriority;
+  final String priority;
   final VoidCallback onAddMilestone;
   final VoidCallback onClear;
-  final VoidCallback onTogglePriority;
+  final ValueChanged<String> onPriorityChanged;
   final void Function(int) onDeleteMilestone;
 
   @override
@@ -1292,28 +1412,10 @@ class _GoalCardExpandedDialogState extends State<_GoalCardExpandedDialog> {
                           color: _kPrimaryText),
                     ),
                   ),
-                  GestureDetector(
-                    onTap: widget.onTogglePriority,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: widget.isHighPriority
-                            ? const Color(0xFFFEE2E2)
-                            : Colors.grey[100],
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        'High priority',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: widget.isHighPriority
-                              ? const Color(0xFFDC2626)
-                              : Colors.grey[500],
-                        ),
-                      ),
-                    ),
+                  _PriorityDropdown(
+                    priority: widget.priority,
+                    onChanged: widget.onPriorityChanged,
+                    compact: false,
                   ),
                   const SizedBox(width: 16),
                   IconButton(
@@ -1625,7 +1727,8 @@ class _GoalCardExpandedDialogState extends State<_GoalCardExpandedDialog> {
                 borderRadius:
                     const BorderRadius.vertical(bottom: Radius.circular(28)),
                 border: Border(
-                    top: BorderSide(color: _kBorderColor.withValues(alpha: 0.5))),
+                    top: BorderSide(
+                        color: _kBorderColor.withValues(alpha: 0.5))),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -1771,8 +1874,8 @@ class _MilestonesSection extends StatelessWidget {
                   decoration: BoxDecoration(
                     border: Border(
                       bottom: BorderSide(
-                          color: _kBorderColor
-                              .withValues(alpha: index == rows.length - 1 ? 0.0 : 0.6)),
+                          color: _kBorderColor.withValues(
+                              alpha: index == rows.length - 1 ? 0.0 : 0.6)),
                     ),
                   ),
                   padding:
@@ -1906,8 +2009,9 @@ class _GoalFilterChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: isSelected ? data.color : data.color.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(22),
-        border:
-            isSelected ? null : Border.all(color: data.color.withValues(alpha: 0.3)),
+        border: isSelected
+            ? null
+            : Border.all(color: data.color.withValues(alpha: 0.3)),
       ),
       child: Text(data.label,
           style: TextStyle(

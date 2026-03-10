@@ -7,6 +7,8 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/user_service.dart';
+import 'package:ndu_project/widgets/launch_phase_navigation.dart';
+import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
 class ProjectPlanLevel1ScheduleScreen extends StatelessWidget {
   const ProjectPlanLevel1ScheduleScreen({super.key});
@@ -105,8 +107,13 @@ class _ProjectPlanSectionScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _TopHeader(
-                                title: config.title,
-                                onBack: () => Navigator.maybePop(context)),
+                              title: config.title,
+                              onBack: () =>
+                                  PlanningPhaseNavigation.goToPrevious(
+                                      context, config.checkpoint),
+                              onForward: () => PlanningPhaseNavigation.goToNext(
+                                  context, config.checkpoint),
+                            ),
                             const SizedBox(height: 12),
                             Text(
                               config.subtitle,
@@ -142,6 +149,18 @@ class _ProjectPlanSectionScreen extends StatelessWidget {
                                     'Add schedule insights to populate this view.',
                                 icon: Icons.calendar_today_outlined,
                               ),
+                            const SizedBox(height: 24),
+                            LaunchPhaseNavigation(
+                              backLabel: PlanningPhaseNavigation.backLabel(
+                                  config.checkpoint),
+                              nextLabel: PlanningPhaseNavigation.nextLabel(
+                                  config.checkpoint),
+                              onBack: () =>
+                                  PlanningPhaseNavigation.goToPrevious(
+                                      context, config.checkpoint),
+                              onNext: () => PlanningPhaseNavigation.goToNext(
+                                  context, config.checkpoint),
+                            ),
                             const SizedBox(height: 40),
                           ],
                         );
@@ -183,10 +202,15 @@ class _ProjectPlanSectionConfig {
 }
 
 class _TopHeader extends StatelessWidget {
-  const _TopHeader({required this.title, required this.onBack});
+  const _TopHeader({
+    required this.title,
+    required this.onBack,
+    required this.onForward,
+  });
 
   final String title;
   final VoidCallback onBack;
+  final VoidCallback onForward;
 
   @override
   Widget build(BuildContext context) {
@@ -195,7 +219,8 @@ class _TopHeader extends StatelessWidget {
         _CircleIconButton(
             icon: Icons.arrow_back_ios_new_rounded, onTap: onBack),
         const SizedBox(width: 12),
-        const _CircleIconButton(icon: Icons.arrow_forward_ios_rounded),
+        _CircleIconButton(
+            icon: Icons.arrow_forward_ios_rounded, onTap: onForward),
         const SizedBox(width: 16),
         Text(
           title,

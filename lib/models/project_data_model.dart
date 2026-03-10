@@ -94,6 +94,12 @@ class ProjectDataModel {
   Map<String, String> planningNotes;
   Map<String, String> riskMitigationPlans;
   List<InterfaceEntry> interfaceEntries;
+  List<ScheduleActivity> scheduleActivities;
+  List<ScheduleActivity> scheduleBaselineActivities;
+  String scheduleBaselineDate;
+  // Planning Requirements Data
+  List<PlanningRequirementItem> planningRequirementItems;
+  String planningRequirementsNotes;
 
   // Work Breakdown Structure Data
   String? wbsCriteriaA;
@@ -216,6 +222,11 @@ class ProjectDataModel {
     Map<String, String>? planningNotes,
     Map<String, String>? riskMitigationPlans,
     List<InterfaceEntry>? interfaceEntries,
+    List<ScheduleActivity>? scheduleActivities,
+    List<ScheduleActivity>? scheduleBaselineActivities,
+    String? scheduleBaselineDate,
+    List<PlanningRequirementItem>? planningRequirementItems,
+    this.planningRequirementsNotes = '',
     this.wbsCriteriaA,
     this.wbsCriteriaB,
     List<String>? assumptions,
@@ -278,6 +289,10 @@ class ProjectDataModel {
         planningNotes = planningNotes ?? {},
         riskMitigationPlans = riskMitigationPlans ?? {},
         interfaceEntries = interfaceEntries ?? [],
+        scheduleActivities = scheduleActivities ?? [],
+        scheduleBaselineActivities = scheduleBaselineActivities ?? [],
+        scheduleBaselineDate = scheduleBaselineDate ?? '',
+        planningRequirementItems = planningRequirementItems ?? [],
         goalWorkItems = goalWorkItems ?? List.generate(3, (_) => []),
         wbsTree = wbsTree ?? [],
         projectActivities = projectActivities ?? [],
@@ -362,6 +377,8 @@ class ProjectDataModel {
     List<Milestone>? keyMilestones,
     Map<String, String>? planningNotes,
     Map<String, String>? riskMitigationPlans,
+    List<PlanningRequirementItem>? planningRequirementItems,
+    String? planningRequirementsNotes,
     String? wbsCriteriaA,
     String? wbsCriteriaB,
     List<List<WorkItem>>? goalWorkItems,
@@ -411,6 +428,9 @@ class ProjectDataModel {
     List<PlanningDashboardItem>? assumptionItems,
     List<PlanningDashboardItem>? constraintItems,
     List<InterfaceEntry>? interfaceEntries,
+    List<ScheduleActivity>? scheduleActivities,
+    List<ScheduleActivity>? scheduleBaselineActivities,
+    String? scheduleBaselineDate,
   }) {
     List<PlanningDashboardItem> resolveDashboardItems({
       required List<PlanningDashboardItem>? explicitItems,
@@ -468,9 +488,16 @@ class ProjectDataModel {
       planningGoals: planningGoals ?? this.planningGoals,
       keyMilestones: keyMilestones ?? this.keyMilestones,
       planningNotes: planningNotes ?? this.planningNotes,
-      riskMitigationPlans:
-          riskMitigationPlans ?? this.riskMitigationPlans,
+      riskMitigationPlans: riskMitigationPlans ?? this.riskMitigationPlans,
       interfaceEntries: interfaceEntries ?? this.interfaceEntries,
+      scheduleActivities: scheduleActivities ?? this.scheduleActivities,
+      scheduleBaselineActivities:
+          scheduleBaselineActivities ?? this.scheduleBaselineActivities,
+      scheduleBaselineDate: scheduleBaselineDate ?? this.scheduleBaselineDate,
+      planningRequirementItems:
+          planningRequirementItems ?? this.planningRequirementItems,
+      planningRequirementsNotes:
+          planningRequirementsNotes ?? this.planningRequirementsNotes,
       wbsCriteriaA: wbsCriteriaA ?? this.wbsCriteriaA,
       wbsCriteriaB: wbsCriteriaB ?? this.wbsCriteriaB,
       goalWorkItems: goalWorkItems ?? this.goalWorkItems,
@@ -595,6 +622,15 @@ class ProjectDataModel {
       'riskMitigationPlans': riskMitigationPlans,
       'interfaceEntries':
           interfaceEntries.map((entry) => entry.toJson()).toList(),
+      'scheduleActivities':
+          scheduleActivities.map((activity) => activity.toJson()).toList(),
+      'scheduleBaselineActivities': scheduleBaselineActivities
+          .map((activity) => activity.toJson())
+          .toList(),
+      'scheduleBaselineDate': scheduleBaselineDate,
+      'planningRequirementItems':
+          planningRequirementItems.map((e) => e.toJson()).toList(),
+      'planningRequirementsNotes': planningRequirementsNotes,
       'wbsCriteriaA': wbsCriteriaA,
       'wbsCriteriaB': wbsCriteriaB,
       'goalWorkItems': flattenedWorkItems,
@@ -812,16 +848,24 @@ class ProjectDataModel {
                   (key, value) => MapEntry(key.toString(), value.toString())),
             )
           : {},
-      riskMitigationPlans:
-          (json['riskMitigationPlans'] is Map)
-              ? Map<String, String>.from(
-                  (json['riskMitigationPlans'] as Map).map((key, value) {
-                    return MapEntry(key.toString(), value.toString());
-                  }),
-                )
-              : {},
+      riskMitigationPlans: (json['riskMitigationPlans'] is Map)
+          ? Map<String, String>.from(
+              (json['riskMitigationPlans'] as Map).map((key, value) {
+                return MapEntry(key.toString(), value.toString());
+              }),
+            )
+          : {},
       interfaceEntries:
           safeParseList('interfaceEntries', InterfaceEntry.fromJson),
+      scheduleActivities:
+          safeParseList('scheduleActivities', ScheduleActivity.fromJson),
+      scheduleBaselineActivities: safeParseList(
+          'scheduleBaselineActivities', ScheduleActivity.fromJson),
+      scheduleBaselineDate: json['scheduleBaselineDate']?.toString() ?? '',
+      planningRequirementItems: safeParseList(
+          'planningRequirementItems', PlanningRequirementItem.fromJson),
+      planningRequirementsNotes:
+          json['planningRequirementsNotes']?.toString() ?? '',
       wbsCriteriaA: json['wbsCriteriaA']?.toString(),
       wbsCriteriaB: json['wbsCriteriaB']?.toString(),
       goalWorkItems: reconstructedGoalWorkItems,
@@ -1053,7 +1097,7 @@ class PlanningGoal {
   String title;
   String description;
   String targetYear;
-  bool isHighPriority;
+  String priority;
   List<PlanningMilestone> milestones;
 
   PlanningGoal({
@@ -1061,7 +1105,7 @@ class PlanningGoal {
     this.title = '',
     this.description = '',
     this.targetYear = '',
-    this.isHighPriority = false,
+    this.priority = 'Medium Priority',
     List<PlanningMilestone>? milestones,
   }) : milestones = milestones ?? [PlanningMilestone()];
 
@@ -1070,17 +1114,22 @@ class PlanningGoal {
         'title': title,
         'description': description,
         'targetYear': targetYear,
-        'isHighPriority': isHighPriority,
+        'priority': priority,
+        'isHighPriority': priority == 'High Priority',
         'milestones': milestones.map((m) => m.toJson()).toList(),
       };
 
   factory PlanningGoal.fromJson(Map<String, dynamic> json) {
+    final rawPriority = json['priority']?.toString() ?? '';
+    final legacyHigh = json['isHighPriority'] == true;
     return PlanningGoal(
       goalNumber: json['goalNumber'] ?? 1,
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       targetYear: json['targetYear'] ?? '',
-      isHighPriority: json['isHighPriority'] == true,
+      priority: rawPriority.isNotEmpty
+          ? rawPriority
+          : (legacyHigh ? 'High Priority' : 'Medium Priority'),
       milestones: (json['milestones'] as List?)
               ?.map((m) => PlanningMilestone.fromJson(m))
               .toList() ??
@@ -1302,6 +1351,50 @@ class WorkItem {
   }
 }
 
+class ScheduleActivity {
+  String id;
+  String wbsId;
+  String title;
+  int durationDays;
+  List<String> predecessorIds;
+  bool isMilestone;
+
+  ScheduleActivity({
+    String? id,
+    this.wbsId = '',
+    this.title = '',
+    this.durationDays = 5,
+    List<String>? predecessorIds,
+    this.isMilestone = false,
+  })  : id = id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        predecessorIds = predecessorIds ?? [];
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'wbsId': wbsId,
+        'title': title,
+        'durationDays': durationDays,
+        'predecessorIds': predecessorIds,
+        'isMilestone': isMilestone,
+      };
+
+  factory ScheduleActivity.fromJson(Map<String, dynamic> json) {
+    return ScheduleActivity(
+      id: json['id']?.toString(),
+      wbsId: json['wbsId']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      durationDays: json['durationDays'] is num
+          ? (json['durationDays'] as num).round()
+          : int.tryParse(json['durationDays']?.toString() ?? '') ?? 5,
+      predecessorIds: (json['predecessorIds'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      isMilestone: json['isMilestone'] == true,
+    );
+  }
+}
+
 class IssueLogItem {
   String id;
   String title;
@@ -1353,6 +1446,7 @@ class IssueLogItem {
 }
 
 class RequirementItem {
+  String id;
   String description;
   String requirementType;
   String discipline;
@@ -1363,6 +1457,7 @@ class RequirementItem {
   String comments;
 
   RequirementItem({
+    this.id = '',
     this.description = '',
     this.requirementType = '',
     this.discipline = '',
@@ -1374,6 +1469,7 @@ class RequirementItem {
   });
 
   Map<String, dynamic> toJson() => {
+        'id': id,
         'description': description,
         'requirementType': requirementType,
         'discipline': discipline,
@@ -1386,6 +1482,7 @@ class RequirementItem {
 
   factory RequirementItem.fromJson(Map<String, dynamic> json) {
     return RequirementItem(
+      id: json['id']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
       requirementType: json['requirementType']?.toString() ??
           json['requirement_type']?.toString() ??
@@ -1409,8 +1506,70 @@ class RequirementItem {
   }
 }
 
+class PlanningRequirementItem {
+  String id;
+  List<String> sourceRequirementIds;
+  String plannedText;
+  String priority;
+  String owner;
+  String acceptanceCriteria;
+  String verificationMethod;
+  String status;
+  String wbsRef;
+  String notes;
+  String lastSourceHash;
+
+  PlanningRequirementItem({
+    this.id = '',
+    List<String>? sourceRequirementIds,
+    this.plannedText = '',
+    this.priority = '',
+    this.owner = '',
+    this.acceptanceCriteria = '',
+    this.verificationMethod = '',
+    this.status = 'Draft',
+    this.wbsRef = '',
+    this.notes = '',
+    this.lastSourceHash = '',
+  }) : sourceRequirementIds = sourceRequirementIds ?? [];
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'sourceRequirementIds': sourceRequirementIds,
+        'plannedText': plannedText,
+        'priority': priority,
+        'owner': owner,
+        'acceptanceCriteria': acceptanceCriteria,
+        'verificationMethod': verificationMethod,
+        'status': status,
+        'wbsRef': wbsRef,
+        'notes': notes,
+        'lastSourceHash': lastSourceHash,
+      };
+
+  factory PlanningRequirementItem.fromJson(Map<String, dynamic> json) {
+    return PlanningRequirementItem(
+      id: json['id']?.toString() ?? '',
+      sourceRequirementIds: (json['sourceRequirementIds'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      plannedText: json['plannedText']?.toString() ?? '',
+      priority: json['priority']?.toString() ?? '',
+      owner: json['owner']?.toString() ?? '',
+      acceptanceCriteria: json['acceptanceCriteria']?.toString() ?? '',
+      verificationMethod: json['verificationMethod']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'Draft',
+      wbsRef: json['wbsRef']?.toString() ?? '',
+      notes: json['notes']?.toString() ?? '',
+      lastSourceHash: json['lastSourceHash']?.toString() ?? '',
+    );
+  }
+}
+
 class FrontEndPlanningData {
   String requirements;
+  String requirementsPlan;
   String requirementsNotes;
   String risks;
   String
@@ -1450,6 +1609,7 @@ class FrontEndPlanningData {
 
   FrontEndPlanningData({
     this.requirements = '',
+    this.requirementsPlan = '',
     this.requirementsNotes = '',
     this.risks = '',
     this.opportunities = '',
@@ -1495,6 +1655,7 @@ class FrontEndPlanningData {
 
   FrontEndPlanningData copyWith({
     String? requirements,
+    String? requirementsPlan,
     String? requirementsNotes,
     String? risks,
     String? opportunities,
@@ -1526,6 +1687,7 @@ class FrontEndPlanningData {
   }) {
     return FrontEndPlanningData(
       requirements: requirements ?? this.requirements,
+      requirementsPlan: requirementsPlan ?? this.requirementsPlan,
       requirementsNotes: requirementsNotes ?? this.requirementsNotes,
       risks: risks ?? this.risks,
       opportunities: opportunities ?? this.opportunities,
@@ -1560,6 +1722,7 @@ class FrontEndPlanningData {
 
   Map<String, dynamic> toJson() => {
         'requirements': requirements,
+        'requirementsPlan': requirementsPlan,
         'requirementsNotes': requirementsNotes,
         'risks': risks,
         'opportunities': opportunities,
@@ -1604,6 +1767,7 @@ class FrontEndPlanningData {
   factory FrontEndPlanningData.fromJson(Map<String, dynamic> json) {
     return FrontEndPlanningData(
       requirements: json['requirements'] ?? '',
+      requirementsPlan: json['requirementsPlan'] ?? '',
       requirementsNotes: json['requirementsNotes'] ?? '',
       risks: json['risks'] ?? '',
       opportunities: json['opportunities'] ?? '',
@@ -2453,6 +2617,8 @@ class CostEstimateItem {
   String notes;
   double amount;
   String costType;
+  String source;
+  bool isBaseline;
 
   CostEstimateItem({
     String? id,
@@ -2460,6 +2626,8 @@ class CostEstimateItem {
     this.notes = '',
     this.amount = 0.0,
     this.costType = 'direct',
+    this.source = 'manual',
+    this.isBaseline = false,
   }) : id = id ?? _generateId();
 
   Map<String, dynamic> toJson() => {
@@ -2468,6 +2636,8 @@ class CostEstimateItem {
         'notes': notes,
         'amount': amount,
         'costType': costType,
+        'source': source,
+        'isBaseline': isBaseline,
       };
 
   factory CostEstimateItem.fromJson(Map<String, dynamic> json) {
@@ -2478,6 +2648,8 @@ class CostEstimateItem {
       amount:
           (json['amount'] is num) ? (json['amount'] as num).toDouble() : 0.0,
       costType: json['costType']?.toString() ?? 'direct',
+      source: json['source']?.toString() ?? 'manual',
+      isBaseline: json['isBaseline'] == true,
     );
   }
 

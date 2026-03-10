@@ -28,7 +28,6 @@ class LessonsLearnedScreen extends StatefulWidget {
 }
 
 class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
-
   final TextEditingController _searchController = TextEditingController();
   @override
   void initState() {
@@ -77,7 +76,8 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
     );
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lesson added to Project Tasks.')));
+    ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lesson added to Project Tasks.')));
   }
 
   List<_LessonEntry> get _filteredEntries {
@@ -86,24 +86,28 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
     final data = ProjectDataHelper.getData(context);
     final lessons = data.lessonsLearned;
 
-    final mapped = lessons.map((l) => _LessonEntry(
-          id: l.id,
-          lesson: l.lesson,
-          type: l.type,
-          category: l.category,
-          phase: l.phase,
-          impact: '',
-          status: l.status,
-          submittedBy: l.submittedBy,
-          date: l.dateSubmitted != null ? '${l.dateSubmitted!.year.toString().padLeft(4,'0')}-${l.dateSubmitted!.month.toString().padLeft(2,'0')}-${l.dateSubmitted!.day.toString().padLeft(2,'0')}' : '',
-          highlight: false,
-        ))
+    final mapped = lessons
+        .map((l) => _LessonEntry(
+              id: l.id,
+              lesson: l.lesson,
+              type: l.type,
+              category: l.category,
+              phase: l.phase,
+              impact: '',
+              status: l.status,
+              submittedBy: l.submittedBy,
+              date: l.dateSubmitted != null
+                  ? '${l.dateSubmitted!.year.toString().padLeft(4, '0')}-${l.dateSubmitted!.month.toString().padLeft(2, '0')}-${l.dateSubmitted!.day.toString().padLeft(2, '0')}'
+                  : '',
+              highlight: false,
+            ))
         .toList();
 
     if (query.isEmpty) return mapped;
 
     return mapped
-        .where((entry) => entry.id.toLowerCase().contains(query) ||
+        .where((entry) =>
+            entry.id.toLowerCase().contains(query) ||
             entry.lesson.toLowerCase().contains(query) ||
             entry.type.toLowerCase().contains(query) ||
             entry.category.toLowerCase().contains(query) ||
@@ -126,7 +130,8 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
               children: [
                 DraggableSidebar(
                   openWidth: sidebarWidth,
-                  child: const InitiationLikeSidebar(activeItemLabel: 'Lessons Learned'),
+                  child: const InitiationLikeSidebar(
+                      activeItemLabel: 'Lessons Learned'),
                 ),
                 Expanded(child: _buildMainContent(context)),
               ],
@@ -152,7 +157,8 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
             sectionLabel: 'Lessons Learned',
             noteKey: 'planning_lessons_learned_notes',
             checkpoint: 'lessons_learned',
-            description: 'Summarize key lessons, adoption steps, and follow-up actions.',
+            description:
+                'Summarize key lessons, adoption steps, and follow-up actions.',
           ),
           const SizedBox(height: 24),
           _buildSummaryCard(isMobile),
@@ -165,7 +171,8 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 ElevatedButton.icon(
-                  onPressed: () => Navigator.maybePop(context),
+                  onPressed: () => PlanningPhaseNavigation.goToPrevious(
+                      context, 'lessons_learned'),
                   icon: const Icon(Icons.arrow_back, size: 16),
                   label: const Text('Back'),
                   style: ElevatedButton.styleFrom(
@@ -173,26 +180,25 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
                     foregroundColor: const Color(0xFF374151),
                     elevation: 0,
                     side: const BorderSide(color: Color(0xFFD1D5DB)),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                   ),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () {
-                       final navIndex = PlanningPhaseNavigation.getPageIndex('lessons_learned');
-                       if (navIndex != -1 && navIndex < PlanningPhaseNavigation.pages.length - 1) {
-                         final nextPage = PlanningPhaseNavigation.pages[navIndex + 1];
-                         Navigator.push(context, MaterialPageRoute(builder: nextPage.builder));
-                       }
-                  },
+                  onPressed: () => PlanningPhaseNavigation.goToNext(
+                      context, 'lessons_learned'),
                   icon: const Icon(Icons.arrow_forward, size: 16),
                   label: const Text('Next'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFFC044),
                     foregroundColor: const Color(0xFF111827),
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                   ),
                 ),
               ],
@@ -209,15 +215,13 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
       children: [
         Row(
           children: [
-            _circularIconButton(Icons.arrow_back_ios_new_outlined, onTap: () => Navigator.maybePop(context)),
+            _circularIconButton(Icons.arrow_back_ios_new_outlined,
+                onTap: () => PlanningPhaseNavigation.goToPrevious(
+                    context, 'lessons_learned')),
             const SizedBox(width: 12),
-            _circularIconButton(Icons.arrow_forward_ios, onTap: () {
-                 final navIndex = PlanningPhaseNavigation.getPageIndex('lessons_learned');
-                 if (navIndex != -1 && navIndex < PlanningPhaseNavigation.pages.length - 1) {
-                   final nextPage = PlanningPhaseNavigation.pages[navIndex + 1];
-                   Navigator.push(context, MaterialPageRoute(builder: nextPage.builder));
-                 }
-            }),
+            _circularIconButton(Icons.arrow_forward_ios,
+                onTap: () => PlanningPhaseNavigation.goToNext(
+                    context, 'lessons_learned')),
             const SizedBox(width: 16),
             const Expanded(
               child: Center(
@@ -330,11 +334,14 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
           style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.5),
         ),
         const SizedBox(height: 20),
-        _bulletRow(Icons.emoji_events_outlined, 'Successes', 'Positive outcomes and practices to continue'),
+        _bulletRow(Icons.emoji_events_outlined, 'Successes',
+            'Positive outcomes and practices to continue'),
         const SizedBox(height: 12),
-        _bulletRow(Icons.report_problem_outlined, 'Challenges', 'Issues encountered and how they were addressed'),
+        _bulletRow(Icons.report_problem_outlined, 'Challenges',
+            'Issues encountered and how they were addressed'),
         const SizedBox(height: 12),
-        _bulletRow(Icons.lightbulb_outline, 'Insights', 'New knowledge or observations that can benefit future projects'),
+        _bulletRow(Icons.lightbulb_outline, 'Insights',
+            'New knowledge or observations that can benefit future projects'),
       ],
     );
   }
@@ -360,11 +367,14 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
         const SizedBox(height: 24),
         Row(
           children: const [
-            _SummaryStat(label: 'Successes', value: '4', color: Color(0xFF36C275)),
+            _SummaryStat(
+                label: 'Successes', value: '4', color: Color(0xFF36C275)),
             SizedBox(width: 16),
-            _SummaryStat(label: 'Challenges', value: '4', color: Color(0xFFFFB74D)),
+            _SummaryStat(
+                label: 'Challenges', value: '4', color: Color(0xFFFFB74D)),
             SizedBox(width: 16),
-            _SummaryStat(label: 'Insights', value: '4', color: Color(0xFF5C6BC0)),
+            _SummaryStat(
+                label: 'Insights', value: '4', color: Color(0xFF5C6BC0)),
           ],
         ),
       ],
@@ -391,12 +401,14 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
             children: [
               Text(
                 title,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 4),
               Text(
                 description,
-                style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.4),
+                style: TextStyle(
+                    fontSize: 14, color: Colors.grey[700], height: 1.4),
               ),
             ],
           ),
@@ -414,7 +426,8 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
         Expanded(
           child: Text(
             text,
-            style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.4),
+            style:
+                TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.4),
           ),
         ),
       ],
@@ -460,7 +473,8 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
                           hintText: 'Search...',
                           filled: true,
                           fillColor: Colors.grey.withValues(alpha: 0.1),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
@@ -472,15 +486,18 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
                     OutlinedButton.icon(
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Filter options coming soon.')),
+                          const SnackBar(
+                              content: Text('Filter options coming soon.')),
                         );
                       },
                       icon: const Icon(Icons.filter_alt_outlined, size: 18),
                       label: const Text('Filter'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.grey[800],
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -492,8 +509,10 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
                         backgroundColor: const Color(0xFFFFD700),
                         foregroundColor: Colors.black,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                   ],
@@ -512,7 +531,8 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
                       hintText: 'Search...',
                       filled: true,
                       fillColor: Colors.grey.withValues(alpha: 0.1),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -526,15 +546,18 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
                         child: OutlinedButton.icon(
                           onPressed: () {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Filter options coming soon.')),
+                              const SnackBar(
+                                  content: Text('Filter options coming soon.')),
                             );
                           },
                           icon: const Icon(Icons.filter_alt_outlined, size: 18),
                           label: const Text('Filter'),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.grey[800],
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
                       ),
@@ -548,8 +571,10 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
                             backgroundColor: const Color(0xFFFFD700),
                             foregroundColor: Colors.black,
                             elevation: 0,
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 14),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
                       ),
@@ -586,7 +611,8 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
   }
 
   Widget _buildTasksTable(List<_LessonEntry> entries) {
-    const headerStyle = TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87);
+    const headerStyle = TextStyle(
+        fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87);
     const cellStyle = TextStyle(fontSize: 13, color: Colors.black87);
 
     return LayoutBuilder(
@@ -599,11 +625,13 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: tableWidth, maxWidth: tableWidth),
+            constraints:
+                BoxConstraints(minWidth: tableWidth, maxWidth: tableWidth),
             child: Column(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                   decoration: BoxDecoration(
                     color: Colors.grey.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
@@ -612,15 +640,28 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
                     children: const [
                       Expanded(flex: 8, child: Text('#', style: headerStyle)),
                       Expanded(flex: 10, child: Text('ID', style: headerStyle)),
-                      Expanded(flex: 30, child: Text('Lesson', style: headerStyle)),
-                      Expanded(flex: 16, child: Text('Type', style: headerStyle)),
-                      Expanded(flex: 16, child: Text('Category', style: headerStyle)),
-                      Expanded(flex: 18, child: Text('Phase', style: headerStyle)),
-                      Expanded(flex: 14, child: Text('Impact', style: headerStyle)),
-                      Expanded(flex: 18, child: Text('Status', style: headerStyle)),
-                      Expanded(flex: 24, child: Text('Submitted By', style: headerStyle)),
-                      Expanded(flex: 16, child: Text('Date', style: headerStyle)),
-                      Expanded(flex: 10, child: Text('Actions', style: headerStyle, textAlign: TextAlign.center)),
+                      Expanded(
+                          flex: 30, child: Text('Lesson', style: headerStyle)),
+                      Expanded(
+                          flex: 16, child: Text('Type', style: headerStyle)),
+                      Expanded(
+                          flex: 16,
+                          child: Text('Category', style: headerStyle)),
+                      Expanded(
+                          flex: 18, child: Text('Phase', style: headerStyle)),
+                      Expanded(
+                          flex: 14, child: Text('Impact', style: headerStyle)),
+                      Expanded(
+                          flex: 18, child: Text('Status', style: headerStyle)),
+                      Expanded(
+                          flex: 24,
+                          child: Text('Submitted By', style: headerStyle)),
+                      Expanded(
+                          flex: 16, child: Text('Date', style: headerStyle)),
+                      Expanded(
+                          flex: 10,
+                          child: Text('Actions',
+                              style: headerStyle, textAlign: TextAlign.center)),
                     ],
                   ),
                 ),
@@ -629,7 +670,8 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
+                    border:
+                        Border.all(color: Colors.grey.withValues(alpha: 0.12)),
                   ),
                   child: Column(
                     children: [
@@ -638,81 +680,118 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
                           decoration: BoxDecoration(
                             color: entries[i].highlight
                                 ? Colors.white
-                                : Colors.grey.withValues(alpha: 0.05 * ((i % 2) + 1)),
+                                : Colors.grey
+                                    .withValues(alpha: 0.05 * ((i % 2) + 1)),
                             borderRadius: i == 0
-                                ? const BorderRadius.vertical(top: Radius.circular(16))
+                                ? const BorderRadius.vertical(
+                                    top: Radius.circular(16))
                                 : i == entries.length - 1
-                                    ? const BorderRadius.vertical(bottom: Radius.circular(16))
+                                    ? const BorderRadius.vertical(
+                                        bottom: Radius.circular(16))
                                     : BorderRadius.zero,
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 18),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(flex: 8, child: Text('${i + 1}', style: cellStyle)),
-                              Expanded(flex: 10, child: Text(entries[i].id, style: cellStyle)),
+                              Expanded(
+                                  flex: 8,
+                                  child: Text('${i + 1}', style: cellStyle)),
+                              Expanded(
+                                  flex: 10,
+                                  child: Text(entries[i].id, style: cellStyle)),
                               Expanded(
                                 flex: 30,
                                 child: Text(
                                   entries[i].lesson,
-                                  style: cellStyle.copyWith(fontWeight: FontWeight.w600),
+                                  style: cellStyle.copyWith(
+                                      fontWeight: FontWeight.w600),
                                 ),
                               ),
-                              Expanded(flex: 16, child: _statusPill(entries[i].type)),
-                              Expanded(flex: 16, child: Text(entries[i].category, style: cellStyle)),
-                              Expanded(flex: 18, child: Text(entries[i].phase, style: cellStyle)),
+                              Expanded(
+                                  flex: 16,
+                                  child: _statusPill(entries[i].type)),
+                              Expanded(
+                                  flex: 16,
+                                  child: Text(entries[i].category,
+                                      style: cellStyle)),
+                              Expanded(
+                                  flex: 18,
+                                  child:
+                                      Text(entries[i].phase, style: cellStyle)),
                               Expanded(
                                 flex: 14,
                                 child: Text(
                                   entries[i].impact,
                                   style: entries[i].impact == 'High'
-                                      ? cellStyle.copyWith(color: Colors.redAccent)
+                                      ? cellStyle.copyWith(
+                                          color: Colors.redAccent)
                                       : cellStyle,
                                 ),
                               ),
-                              Expanded(flex: 18, child: Text(entries[i].status, style: cellStyle)),
+                              Expanded(
+                                  flex: 18,
+                                  child: Text(entries[i].status,
+                                      style: cellStyle)),
                               Expanded(
                                 flex: 24,
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(entries[i].submittedBy, style: cellStyle),
+                                    Text(entries[i].submittedBy,
+                                        style: cellStyle),
                                   ],
                                 ),
                               ),
-                              Expanded(flex: 16, child: Text(entries[i].date, style: cellStyle)),
+                              Expanded(
+                                  flex: 16,
+                                  child:
+                                      Text(entries[i].date, style: cellStyle)),
                               Expanded(
                                 flex: 10,
                                 child: Align(
                                   alignment: Alignment.centerRight,
-                                      child: Row(
+                                  child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       IconButton(
                                         onPressed: () {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text('Edit ${entries[i].id} coming soon.')),
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                                content: Text(
+                                                    'Edit ${entries[i].id} coming soon.')),
                                           );
                                         },
-                                        icon: const Icon(Icons.edit_outlined, size: 20, color: Colors.grey),
+                                        icon: const Icon(Icons.edit_outlined,
+                                            size: 20, color: Colors.grey),
                                         tooltip: 'Edit lesson',
                                       ),
                                       IconButton(
                                         onPressed: () async {
                                           // Delete the lesson from persisted store
-                                          final messenger = ScaffoldMessenger.of(context);
+                                          final messenger =
+                                              ScaffoldMessenger.of(context);
                                           final id = entries[i].id;
                                           await ProjectDataHelper.updateAndSave(
                                             context: context,
                                             checkpoint: 'lessons_learned',
-                                            dataUpdater: (current) => current.copyWith(
-                                              lessonsLearned: current.lessonsLearned.where((l) => l.id != id).toList(),
+                                            dataUpdater: (current) =>
+                                                current.copyWith(
+                                              lessonsLearned: current
+                                                  .lessonsLearned
+                                                  .where((l) => l.id != id)
+                                                  .toList(),
                                             ),
                                           );
                                           if (!mounted) return;
-                                          messenger.showSnackBar(const SnackBar(content: Text('Lesson deleted.')));
+                                          messenger.showSnackBar(const SnackBar(
+                                              content:
+                                                  Text('Lesson deleted.')));
                                         },
-                                        icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                                        icon: const Icon(Icons.delete_outline,
+                                            size: 20, color: Colors.redAccent),
                                         tooltip: 'Delete lesson',
                                       ),
                                     ],
@@ -776,17 +855,23 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: icon == Icons.arrow_forward_ios ? const Color(0xFFFFD700) : Colors.white,
+          color: icon == Icons.arrow_forward_ios
+              ? const Color(0xFFFFD700)
+              : Colors.white,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 6, offset: const Offset(0, 2)),
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 6,
+                offset: const Offset(0, 2)),
           ],
         ),
         child: Icon(
           icon,
           size: 18,
-          color: icon == Icons.arrow_forward_ios ? Colors.black : Colors.grey[800],
+          color:
+              icon == Icons.arrow_forward_ios ? Colors.black : Colors.grey[800],
         ),
       ),
     );
@@ -800,16 +885,22 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
         borderRadius: BorderRadius.circular(30),
         border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 6, offset: const Offset(0, 2)),
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 6,
+              offset: const Offset(0, 2)),
         ],
       ),
       child: StreamBuilder<bool>(
         stream: UserService.watchAdminStatus(),
         builder: (context, snapshot) {
           final user = FirebaseAuth.instance.currentUser;
-          final displayName = FirebaseAuthService.displayNameOrEmail(fallback: 'User');
+          final displayName =
+              FirebaseAuthService.displayNameOrEmail(fallback: 'User');
           final email = user?.email ?? '';
-          final name = displayName.isNotEmpty ? displayName : (email.isNotEmpty ? email : 'User');
+          final name = displayName.isNotEmpty
+              ? displayName
+              : (email.isNotEmpty ? email : 'User');
           final photoUrl = user?.photoURL ?? '';
           final isAdmin = snapshot.data ?? UserService.isAdminEmail(email);
           final role = isAdmin ? 'Admin' : 'Member';
@@ -820,7 +911,8 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
               CircleAvatar(
                 radius: 18,
                 backgroundColor: Colors.grey.withValues(alpha: 0.2),
-                backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                backgroundImage:
+                    photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
                 child: photoUrl.isEmpty
                     ? Text(
                         name.isNotEmpty ? name[0].toUpperCase() : 'U',
@@ -837,7 +929,8 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
                 children: [
                   Text(
                     name,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                   Text(
                     role,
@@ -846,7 +939,8 @@ class _LessonsLearnedScreenState extends State<LessonsLearnedScreen> {
                 ],
               ),
               const SizedBox(width: 6),
-              Icon(Icons.keyboard_arrow_down, color: Colors.grey[700], size: 18),
+              Icon(Icons.keyboard_arrow_down,
+                  color: Colors.grey[700], size: 18),
             ],
           );
         },
@@ -910,7 +1004,8 @@ class _AddLessonDialogState extends State<_AddLessonDialog> {
                       const Expanded(
                         child: Text(
                           'Add Lesson',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.w700),
                         ),
                       ),
                       IconButton(
@@ -930,7 +1025,10 @@ class _AddLessonDialogState extends State<_AddLessonDialog> {
                     controller: _idController,
                     decoration: _inputDecoration('ID', hintText: 'e.g. T-004'),
                     textInputAction: TextInputAction.next,
-                    validator: (value) => (value == null || value.trim().isEmpty) ? 'Please provide an ID.' : null,
+                    validator: (value) =>
+                        (value == null || value.trim().isEmpty)
+                            ? 'Please provide an ID.'
+                            : null,
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
@@ -939,7 +1037,10 @@ class _AddLessonDialogState extends State<_AddLessonDialog> {
                     textInputAction: TextInputAction.newline,
                     maxLines: 4,
                     minLines: 3,
-                    validator: (value) => (value == null || value.trim().isEmpty) ? 'Please describe the lesson.' : null,
+                    validator: (value) =>
+                        (value == null || value.trim().isEmpty)
+                            ? 'Please describe the lesson.'
+                            : null,
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -949,9 +1050,12 @@ class _AddLessonDialogState extends State<_AddLessonDialog> {
                           initialValue: _selectedType,
                           decoration: _inputDecoration('Type'),
                           items: const [
-                            DropdownMenuItem(value: 'Success', child: Text('Success')),
-                            DropdownMenuItem(value: 'Challenge', child: Text('Challenge')),
-                            DropdownMenuItem(value: 'Insight', child: Text('Insight')),
+                            DropdownMenuItem(
+                                value: 'Success', child: Text('Success')),
+                            DropdownMenuItem(
+                                value: 'Challenge', child: Text('Challenge')),
+                            DropdownMenuItem(
+                                value: 'Insight', child: Text('Insight')),
                           ],
                           onChanged: (value) {
                             if (value != null) {
@@ -966,8 +1070,10 @@ class _AddLessonDialogState extends State<_AddLessonDialog> {
                           initialValue: _selectedImpact,
                           decoration: _inputDecoration('Impact'),
                           items: const [
-                            DropdownMenuItem(value: 'High', child: Text('High')),
-                            DropdownMenuItem(value: 'Medium', child: Text('Medium')),
+                            DropdownMenuItem(
+                                value: 'High', child: Text('High')),
+                            DropdownMenuItem(
+                                value: 'Medium', child: Text('Medium')),
                             DropdownMenuItem(value: 'Low', child: Text('Low')),
                           ],
                           onChanged: (value) {
@@ -985,19 +1091,26 @@ class _AddLessonDialogState extends State<_AddLessonDialog> {
                       Expanded(
                         child: TextFormField(
                           controller: _categoryController,
-                          decoration: _inputDecoration('Category', hintText: 'e.g. Process'),
+                          decoration: _inputDecoration('Category',
+                              hintText: 'e.g. Process'),
                           textInputAction: TextInputAction.next,
                           validator: (value) =>
-                              (value == null || value.trim().isEmpty) ? 'Please add a category.' : null,
+                              (value == null || value.trim().isEmpty)
+                                  ? 'Please add a category.'
+                                  : null,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: TextFormField(
                           controller: _phaseController,
-                          decoration: _inputDecoration('Phase', hintText: 'e.g. Planning'),
+                          decoration: _inputDecoration('Phase',
+                              hintText: 'e.g. Planning'),
                           textInputAction: TextInputAction.next,
-                          validator: (value) => (value == null || value.trim().isEmpty) ? 'Please add a phase.' : null,
+                          validator: (value) =>
+                              (value == null || value.trim().isEmpty)
+                                  ? 'Please add a phase.'
+                                  : null,
                         ),
                       ),
                     ],
@@ -1008,20 +1121,26 @@ class _AddLessonDialogState extends State<_AddLessonDialog> {
                       Expanded(
                         child: TextFormField(
                           controller: _statusController,
-                          decoration: _inputDecoration('Status', hintText: 'e.g. In Review'),
+                          decoration: _inputDecoration('Status',
+                              hintText: 'e.g. In Review'),
                           textInputAction: TextInputAction.next,
                           validator: (value) =>
-                              (value == null || value.trim().isEmpty) ? 'Please provide a status.' : null,
+                              (value == null || value.trim().isEmpty)
+                                  ? 'Please provide a status.'
+                                  : null,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: TextFormField(
                           controller: _submittedByController,
-                          decoration: _inputDecoration('Submitted By', hintText: 'e.g. Emily Johnson'),
+                          decoration: _inputDecoration('Submitted By',
+                              hintText: 'e.g. Emily Johnson'),
                           textInputAction: TextInputAction.next,
                           validator: (value) =>
-                              (value == null || value.trim().isEmpty) ? 'Please add a name.' : null,
+                              (value == null || value.trim().isEmpty)
+                                  ? 'Please add a name.'
+                                  : null,
                         ),
                       ),
                     ],
@@ -1029,7 +1148,8 @@ class _AddLessonDialogState extends State<_AddLessonDialog> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _dateController,
-                    decoration: _inputDecoration('Date', hintText: 'YYYY-MM-DD').copyWith(
+                    decoration: _inputDecoration('Date', hintText: 'YYYY-MM-DD')
+                        .copyWith(
                       suffixIcon: IconButton(
                         onPressed: _pickDate,
                         icon: const Icon(Icons.calendar_today_outlined),
@@ -1037,7 +1157,10 @@ class _AddLessonDialogState extends State<_AddLessonDialog> {
                     ),
                     readOnly: true,
                     onTap: _pickDate,
-                    validator: (value) => (value == null || value.trim().isEmpty) ? 'Select a date.' : null,
+                    validator: (value) =>
+                        (value == null || value.trim().isEmpty)
+                            ? 'Select a date.'
+                            : null,
                   ),
                   const SizedBox(height: 12),
                   SwitchListTile.adaptive(
@@ -1055,7 +1178,8 @@ class _AddLessonDialogState extends State<_AddLessonDialog> {
                           onPressed: () => Navigator.of(context).pop(),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                           child: const Text('Cancel'),
                         ),
@@ -1069,7 +1193,8 @@ class _AddLessonDialogState extends State<_AddLessonDialog> {
                             foregroundColor: Colors.black,
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                           child: const Text('Add Lesson'),
                         ),
@@ -1177,7 +1302,8 @@ class _SummaryStat extends StatelessWidget {
   final String value;
   final Color color;
 
-  const _SummaryStat({required this.label, required this.value, required this.color});
+  const _SummaryStat(
+      {required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {

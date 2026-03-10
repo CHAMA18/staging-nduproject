@@ -364,7 +364,11 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _TopUtilityBar(
-                            onBack: () => Navigator.maybePop(context)),
+                          onBack: () => PlanningPhaseNavigation.goToPrevious(
+                              context, 'risk_assessment'),
+                          onForward: () => PlanningPhaseNavigation.goToNext(
+                              context, 'risk_assessment'),
+                        ),
                         const SizedBox(height: 24),
                         const _PageHeading(),
                         const SizedBox(height: 20),
@@ -636,9 +640,10 @@ class _RiskAssessmentScreenState extends State<RiskAssessmentScreen> {
 }
 
 class _TopUtilityBar extends StatelessWidget {
-  const _TopUtilityBar({required this.onBack});
+  const _TopUtilityBar({required this.onBack, required this.onForward});
 
   final VoidCallback onBack;
+  final VoidCallback onForward;
 
   @override
   Widget build(BuildContext context) {
@@ -660,17 +665,7 @@ class _TopUtilityBar extends StatelessWidget {
           _circleButton(icon: Icons.arrow_back_ios_new_rounded, onTap: onBack),
           const SizedBox(width: 12),
           _circleButton(
-              icon: Icons.arrow_forward_ios_rounded,
-              onTap: () {
-                final navIndex =
-                    PlanningPhaseNavigation.getPageIndex('risk_management');
-                if (navIndex != -1 &&
-                    navIndex < PlanningPhaseNavigation.pages.length - 1) {
-                  final nextPage = PlanningPhaseNavigation.pages[navIndex + 1];
-                  Navigator.push(
-                      context, MaterialPageRoute(builder: nextPage.builder));
-                }
-              }),
+              icon: Icons.arrow_forward_ios_rounded, onTap: onForward),
           const SizedBox(width: 20),
           const Text(
             'Risk Mitigation',

@@ -7,6 +7,7 @@ import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
+import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:ndu_project/screens/work_breakdown_structure_screen.dart';
 import 'project_framework_next_screen.dart';
 import 'package:ndu_project/screens/project_charter_screen.dart';
@@ -14,6 +15,7 @@ import 'package:ndu_project/screens/ssher_stacked_screen.dart';
 import 'package:ndu_project/services/sidebar_navigation_service.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/utils/phase_transition_helper.dart';
+import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
 
@@ -231,8 +233,10 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
 
   String _clampToMaxSentences(String text, int maxSentences) {
     if (text.isEmpty) return text;
-    final sentences =
-        text.split(RegExp(r'(?<=[.!?])\s+')).where((s) => s.isNotEmpty).toList();
+    final sentences = text
+        .split(RegExp(r'(?<=[.!?])\s+'))
+        .where((s) => s.isNotEmpty)
+        .toList();
     if (sentences.length <= maxSentences) return text;
     return sentences.take(maxSentences).join(' ').trim();
   }
@@ -499,6 +503,7 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
                                 projectObjectiveFocus: _projectObjectiveFocus,
                                 selectedOverallFramework:
                                     _selectedOverallFramework,
+                                onBeforeUndo: _saveData,
                                 onOverallFrameworkChanged: (value) {
                                   setState(() {
                                     _selectedOverallFramework = value;
@@ -535,11 +540,15 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
                               ),
                               const SizedBox(height: 24),
                               LaunchPhaseNavigation(
-                                backLabel: 'Back: Project Charter',
-                                nextLabel: 'Next',
+                                backLabel: PlanningPhaseNavigation.backLabel(
+                                    'project_framework'),
+                                nextLabel: PlanningPhaseNavigation.nextLabel(
+                                    'project_framework'),
                                 onBack: () =>
-                                    ProjectCharterScreen.open(context),
-                                onNext: _handleNextPressed,
+                                    PlanningPhaseNavigation.goToPrevious(
+                                        context, 'project_framework'),
+                                onNext: () => PlanningPhaseNavigation.goToNext(
+                                    context, 'project_framework'),
                               ),
                               const SizedBox(height: 40),
                             ],
@@ -597,6 +606,7 @@ class _MainContentCard extends StatelessWidget {
     required this.projectObjectiveFocus,
     required this.selectedOverallFramework,
     required this.onOverallFrameworkChanged,
+    required this.onBeforeUndo,
     required this.goals,
     required this.onAddGoal,
     required this.onDeleteGoal,
@@ -610,6 +620,7 @@ class _MainContentCard extends StatelessWidget {
   final FocusNode projectObjectiveFocus;
   final String? selectedOverallFramework;
   final ValueChanged<String?> onOverallFrameworkChanged;
+  final VoidCallback onBeforeUndo;
   final List<_Goal> goals;
   final VoidCallback onAddGoal;
   final void Function(int goalId) onDeleteGoal;
@@ -662,6 +673,11 @@ class _MainContentCard extends StatelessWidget {
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF374151))),
+          const SizedBox(height: 8),
+          TextFormattingToolbar(
+            controller: projectObjectiveController,
+            onBeforeUndo: onBeforeUndo,
+          ),
           const SizedBox(height: 8),
           _roundedField(
               controller: projectObjectiveController,
@@ -826,8 +842,7 @@ class _FrameworkOptionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final borderColor =
         isSelected ? const Color(0xFF111827) : const Color(0xFFD1D5DB);
-    final backgroundColor =
-        isSelected ? const Color(0xFFFFF3BF) : Colors.white;
+    final backgroundColor = isSelected ? const Color(0xFFFFF3BF) : Colors.white;
 
     return Material(
       color: backgroundColor,
@@ -938,8 +953,7 @@ class _GoalsSection extends StatelessWidget {
               index: index,
               goal: goal,
               onDelete: () => onDeleteGoal(goal.id),
-              onTitleResize: (height) =>
-                  onGoalTitleResize(goal.id, height),
+              onTitleResize: (height) => onGoalTitleResize(goal.id, height),
               onDescriptionResize: (height) =>
                   onGoalDescriptionResize(goal.id, height),
             ),

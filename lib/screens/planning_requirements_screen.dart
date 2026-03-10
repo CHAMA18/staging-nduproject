@@ -26,10 +26,16 @@ class PlanningRequirementsScreen extends StatefulWidget {
 class _PlanningRequirementsScreenState
     extends State<PlanningRequirementsScreen> {
   final TextEditingController _notesController = TextEditingController();
+  final TextEditingController _requirementsPlanController =
+      TextEditingController();
   bool _isGeneratingRequirements = false;
+  bool _isGeneratingRequirementsPlan = false;
+  bool _planEditedManually = false;
+  bool _settingPlanFromAi = false;
   bool _isRegeneratingRow = false;
   int? _regeneratingRowIndex;
   Timer? _autoSaveTimer;
+  Timer? _planTimer;
   DateTime? _lastAutoSaveSnackAt;
 
   final List<_RequirementRow> _rows = [];
@@ -44,7 +50,11 @@ class _PlanningRequirementsScreenState
       }
       final projectData = ProjectDataHelper.getData(context);
       _notesController.text = projectData.frontEndPlanning.requirementsNotes;
+      _requirementsPlanController.text =
+          projectData.frontEndPlanning.requirementsPlan;
+      _planEditedManually = _requirementsPlanController.text.trim().isNotEmpty;
       _notesController.addListener(_handleNotesChanged);
+      _requirementsPlanController.addListener(_handlePlanChanged);
       _loadSavedRequirements(projectData);
 
       if (_rows.isEmpty ||
@@ -52,12 +62,14 @@ class _PlanningRequirementsScreenState
               _rows.first.descriptionController.text.trim().isEmpty)) {
         _generateRequirementsFromContext();
       }
+      _maybeAutoGenerateRequirementsPlan();
       if (mounted) setState(() {});
     });
   }
 
   _RequirementRow _createRow(int number) {
-    return _RequirementRow(number: number, onChanged: _scheduleAutoSave);
+    return _RequirementRow(
+        number: number, onChanged: _handleRequirementChanged);
   }
 
   void _loadSavedRequirements(ProjectDataModel data) {
@@ -101,6 +113,7 @@ class _PlanningRequirementsScreenState
           _isGeneratingRequirements = false;
         });
         _commitAutoSave(showSnack: false);
+        _schedulePlanRegenerate();
         return;
       }
     } catch (e) {
@@ -108,6 +121,103 @@ class _PlanningRequirementsScreenState
     }
     if (mounted) {
       setState(() => _isGeneratingRequirements = false);
+    }
+  }
+
+  void _maybeAutoGenerateRequirementsPlan() {
+    if (_planEditedManually &&
+        _requirementsPlanController.text.trim().isNotEmpty) {
+      return;
+    }
+    if (_requirementsPlanController.text.trim().isNotEmpty) return;
+    if (_rows.every((row) => row.descriptionController.text.trim().isEmpty))
+      return;
+    _schedulePlanRegenerate();
+  }
+
+  void _handleRequirementChanged() {
+    _scheduleAutoSave();
+    _schedulePlanRegenerate();
+  }
+
+  void _handlePlanChanged() {
+    if (!_settingPlanFromAi) {
+      _planEditedManually = _requirementsPlanController.text.trim().isNotEmpty;
+    }
+    _scheduleAutoSave();
+  }
+
+  void _schedulePlanRegenerate() {
+    if (_isGeneratingRequirementsPlan) return;
+    if (_planEditedManually &&
+        _requirementsPlanController.text.trim().isNotEmpty) {
+      return;
+    }
+    _planTimer?.cancel();
+    _planTimer = Timer(const Duration(milliseconds: 800), () {
+      _generateRequirementsPlan();
+    });
+  }
+
+  String _requirementsPlanContext() {
+    final data = ProjectDataHelper.getData(context);
+    final base =
+        ProjectDataHelper.buildFepContext(data, sectionLabel: 'Requirements');
+    final lines = _rows
+        .map((row) => row.descriptionController.text.trim())
+        .where((t) => t.isNotEmpty)
+        .toList();
+    final requirementsList = lines.isEmpty
+        ? 'No requirements entered yet.'
+        : lines.map((t) => '- $t').join('\n');
+    return '''
+$base
+
+Requirements:
+$requirementsList
+''';
+  }
+
+  Future<void> _generateRequirementsPlan({bool force = false}) async {
+    if (_isGeneratingRequirementsPlan) return;
+    if (!force &&
+        _planEditedManually &&
+        _requirementsPlanController.text.trim().isNotEmpty) {
+      return;
+    }
+    final hasAnyRequirement =
+        _rows.any((row) => row.descriptionController.text.trim().isNotEmpty);
+    if (!hasAnyRequirement) return;
+    setState(() => _isGeneratingRequirementsPlan = true);
+    try {
+      final ctx = _requirementsPlanContext();
+      if (ctx.trim().isEmpty) return;
+      final ai = OpenAiServiceSecure();
+      final text = await ai.generateFepSectionText(
+        section: 'Requirements Plan',
+        context: ctx,
+        maxTokens: 700,
+        temperature: 0.5,
+      );
+      if (!mounted) return;
+      if (text.trim().isNotEmpty) {
+        _settingPlanFromAi = true;
+        _requirementsPlanController.text = text.trim();
+        _settingPlanFromAi = false;
+        _planEditedManually = false;
+        _commitAutoSave(showSnack: false);
+      }
+    } catch (e) {
+      debugPrint('AI requirements plan generation failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to generate plan: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isGeneratingRequirementsPlan = false);
+      }
     }
   }
 
@@ -175,8 +285,11 @@ class _PlanningRequirementsScreenState
   @override
   void dispose() {
     _autoSaveTimer?.cancel();
+    _planTimer?.cancel();
     _notesController.removeListener(_handleNotesChanged);
+    _requirementsPlanController.removeListener(_handlePlanChanged);
     _notesController.dispose();
+    _requirementsPlanController.dispose();
     for (final r in _rows) {
       r.dispose();
     }
@@ -216,6 +329,59 @@ class _PlanningRequirementsScreenState
                                 minLines: 3,
                               ),
                               const SizedBox(height: 20),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: const [
+                                        Text(
+                                          'Requirements Plan',
+                                          style: TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF111827)),
+                                        ),
+                                        SizedBox(height: 6),
+                                        Text(
+                                          'AI-suggested plan for implementing the requirements. You can edit it.',
+                                          style: TextStyle(
+                                              fontSize: 13,
+                                              color: Color(0xFF6B7280),
+                                              height: 1.2),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: _isGeneratingRequirementsPlan
+                                        ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Color(0xFF2563EB)),
+                                          )
+                                        : const Icon(Icons.auto_fix_high,
+                                            size: 20, color: Color(0xFF2563EB)),
+                                    onPressed: _isGeneratingRequirementsPlan
+                                        ? null
+                                        : () => _generateRequirementsPlan(
+                                            force: true),
+                                    tooltip: 'Regenerate requirements plan',
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              _roundedField(
+                                controller: _requirementsPlanController,
+                                hint:
+                                    'AI will generate a requirements plan based on your entries…',
+                                minLines: 4,
+                              ),
+                              const SizedBox(height: 24),
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -448,7 +614,7 @@ class _PlanningRequirementsScreenState
   Widget _th(String text, TextStyle style) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Text(text, style: style),
+      child: Text(text, style: style, textAlign: TextAlign.center),
     );
   }
 
@@ -482,6 +648,7 @@ class _PlanningRequirementsScreenState
         .where((t) => t.isNotEmpty)
         .join('\n');
     final requirementsNotes = _notesController.text.trim();
+    final requirementsPlan = _requirementsPlanController.text.trim();
 
     await ProjectDataHelper.saveAndNavigate(
       context: context,
@@ -495,6 +662,7 @@ class _PlanningRequirementsScreenState
         frontEndPlanning: ProjectDataHelper.updateFEPField(
           current: data.frontEndPlanning,
           requirements: requirementsText,
+          requirementsPlan: requirementsPlan,
           requirementsNotes: requirementsNotes,
           requirementItems: requirementItems,
         ),
@@ -535,12 +703,14 @@ class _PlanningRequirementsScreenState
         .where((t) => t.isNotEmpty)
         .join('\n');
     final requirementsNotes = _notesController.text.trim();
+    final requirementsPlan = _requirementsPlanController.text.trim();
     final provider = ProjectDataHelper.getProvider(context);
     provider.updateField(
       (data) => data.copyWith(
         frontEndPlanning: ProjectDataHelper.updateFEPField(
           current: data.frontEndPlanning,
           requirements: requirementsText,
+          requirementsPlan: requirementsPlan,
           requirementsNotes: requirementsNotes,
           requirementItems: items,
         ),

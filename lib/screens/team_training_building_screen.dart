@@ -140,22 +140,12 @@ class _TeamTrainingAndBuildingScreenState
             Row(
               children: [
                 _circleIconButton(Icons.arrow_back_ios,
-                    onTap: () => Navigator.maybePop(context)),
+                    onTap: () => PlanningPhaseNavigation.goToPrevious(
+                        context, 'team_training')),
                 const SizedBox(width: 12),
-                _circleIconButton(Icons.arrow_forward_ios, onTap: () async {
-                  final navIndex =
-                      PlanningPhaseNavigation.getPageIndex('team_training');
-                  if (navIndex != -1 &&
-                      navIndex < PlanningPhaseNavigation.pages.length - 1) {
-                    final nextPage =
-                        PlanningPhaseNavigation.pages[navIndex + 1];
-                    Navigator.pushReplacement(
-                        context, MaterialPageRoute(builder: nextPage.builder));
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('No next screen available')));
-                  }
-                }),
+                _circleIconButton(Icons.arrow_forward_ios,
+                    onTap: () => PlanningPhaseNavigation.goToNext(
+                        context, 'team_training')),
                 const SizedBox(width: 16),
                 const Expanded(
                   child: Center(

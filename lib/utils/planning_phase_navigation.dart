@@ -22,9 +22,12 @@ import 'package:ndu_project/screens/change_management_screen.dart';
 import 'package:ndu_project/screens/issue_management_screen.dart';
 import 'package:ndu_project/screens/lessons_learned_screen.dart';
 import 'package:ndu_project/screens/startup_planning_screen.dart';
+import 'package:ndu_project/screens/startup_planning_subsections_screen.dart';
 import 'package:ndu_project/screens/deliverables_roadmap_screen.dart';
 import 'package:ndu_project/screens/deliverable_roadmap_subsections_screen.dart';
+import 'package:ndu_project/screens/agile_project_baseline_screen.dart';
 import 'package:ndu_project/screens/project_plan_screen.dart';
+import 'package:ndu_project/screens/project_plan_subsections_screen.dart';
 import 'package:ndu_project/screens/project_baseline_screen.dart';
 
 class PlanningPhaseNavigation {
@@ -49,7 +52,6 @@ class PlanningPhaseNavigation {
       title: 'Requirements',
       builder: (_) => const PlanningRequirementsScreen(),
     ),
-    // Organization Plan Group
     PlanningPage(
       id: 'organization_roles_responsibilities',
       title: 'Roles and Responsibilities',
@@ -70,8 +72,6 @@ class PlanningPhaseNavigation {
       title: 'Stakeholder Management',
       builder: (_) => const StakeholderManagementScreen(),
     ),
-    // End Organization Plan Group
-
     PlanningPage(
       id: 'ssher',
       title: 'SSHER',
@@ -83,13 +83,23 @@ class PlanningPhaseNavigation {
       builder: (_) => const QualityManagementScreen(),
     ),
     PlanningPage(
-      id: 'execution_plan',
-      title: 'Execution Plan',
-      builder: (_) => const ExecutionPlanScreen(),
+      id: 'execution_plan_construction_plan',
+      title: 'Construction Plan',
+      builder: (_) => const ExecutionPlanConstructionPlanScreen(),
     ),
     PlanningPage(
-      id: 'design_planning',
-      title: 'Design Planning',
+      id: 'execution_plan_infrastructure_plan',
+      title: 'Infrastructure Plan',
+      builder: (_) => const ExecutionPlanInfrastructurePlanScreen(),
+    ),
+    PlanningPage(
+      id: 'execution_plan_agile_delivery_plan',
+      title: 'Agile Delivery Plan',
+      builder: (_) => const ExecutionPlanAgileDeliveryPlanScreen(),
+    ),
+    PlanningPage(
+      id: 'design',
+      title: 'Design',
       builder: (_) => const DesignPlanningScreen(),
     ),
     PlanningPage(
@@ -103,13 +113,13 @@ class PlanningPhaseNavigation {
       builder: (_) => const InterfaceManagementScreen(),
     ),
     PlanningPage(
-      id: 'risk_management',
-      title: 'Risk Planning',
+      id: 'risk_assessment',
+      title: 'Risk Assessment',
       builder: (_) => const RiskAssessmentScreen(),
     ),
     PlanningPage(
-      id: 'contract_management',
-      title: 'Contract Management',
+      id: 'contracts',
+      title: 'Contract',
       builder: (_) => const FrontEndPlanningContractsScreen(),
     ),
     PlanningPage(
@@ -128,10 +138,9 @@ class PlanningPhaseNavigation {
       builder: (_) => const CostEstimateScreen(),
     ),
     PlanningPage(
-      id: 'project_services',
-      title: 'Project Services',
-      builder: (_) =>
-          const ScopeTrackingPlanScreen(), // Represents Project Services -> Scope Tracking as per sidebar
+      id: 'scope_tracking_plan',
+      title: 'Scope Tracking Plan',
+      builder: (_) => const ScopeTrackingPlanScreen(),
     ),
     PlanningPage(
       id: 'change_management',
@@ -154,19 +163,59 @@ class PlanningPhaseNavigation {
       builder: (_) => const StartUpPlanningScreen(),
     ),
     PlanningPage(
+      id: 'startup_planning_operations',
+      title: 'Operations Plan and Manual',
+      builder: (_) => const StartUpPlanningOperationsScreen(),
+    ),
+    PlanningPage(
+      id: 'startup_planning_hypercare',
+      title: 'Hypercare Plan',
+      builder: (_) => const StartUpPlanningHypercareScreen(),
+    ),
+    PlanningPage(
+      id: 'startup_planning_devops',
+      title: 'DevOps',
+      builder: (_) => const StartUpPlanningDevOpsScreen(),
+    ),
+    PlanningPage(
+      id: 'startup_planning_closeout',
+      title: 'Close Out Plan',
+      builder: (_) => const StartUpPlanningCloseOutPlanScreen(),
+    ),
+    PlanningPage(
       id: 'deliverables_roadmap',
       title: 'Deliverables Roadmap',
       builder: (_) => const DeliverablesRoadmapScreen(),
     ),
     PlanningPage(
-      id: 'agile_project_wireframe',
-      title: 'Agile Project Wireframe',
+      id: 'deliverable_roadmap_agile_map_out',
+      title: 'Agile Map Out',
       builder: (_) => const DeliverableRoadmapAgileMapOutScreen(),
+    ),
+    PlanningPage(
+      id: 'agile_project_baseline',
+      title: 'Agile Project Baseline',
+      builder: (_) => const AgileProjectBaselineScreen(),
     ),
     PlanningPage(
       id: 'project_plan',
       title: 'Project Plan',
       builder: (_) => const ProjectPlanScreen(),
+    ),
+    PlanningPage(
+      id: 'project_plan_level1_schedule',
+      title: 'Level 1 - Project Schedule',
+      builder: (_) => const ProjectPlanLevel1ScheduleScreen(),
+    ),
+    PlanningPage(
+      id: 'project_plan_detailed_schedule',
+      title: 'Detailed Project Schedule',
+      builder: (_) => const ProjectPlanDetailedScheduleScreen(),
+    ),
+    PlanningPage(
+      id: 'project_plan_condensed_summary',
+      title: 'Condensed Project Summary',
+      builder: (_) => const ProjectPlanCondensedSummaryScreen(),
     ),
     PlanningPage(
       id: 'project_baseline',
@@ -177,6 +226,50 @@ class PlanningPhaseNavigation {
 
   static int getPageIndex(String id) {
     return pages.indexWhere((p) => p.id == id);
+  }
+
+  static PlanningPage? previousPage(String currentId) {
+    final index = getPageIndex(currentId);
+    if (index > 0) return pages[index - 1];
+    return null;
+  }
+
+  static PlanningPage? nextPage(String currentId) {
+    final index = getPageIndex(currentId);
+    if (index != -1 && index < pages.length - 1) {
+      return pages[index + 1];
+    }
+    return null;
+  }
+
+  static String backLabel(String currentId) {
+    final prev = previousPage(currentId);
+    return prev == null ? 'Back' : 'Back: ${prev.title}';
+  }
+
+  static String nextLabel(String currentId) {
+    final next = nextPage(currentId);
+    return next == null ? 'Next' : 'Next: ${next.title}';
+  }
+
+  static void goToPrevious(BuildContext context, String currentId) {
+    final prev = previousPage(currentId);
+    if (prev != null) {
+      Navigator.of(context).push(MaterialPageRoute(builder: prev.builder));
+    } else {
+      Navigator.of(context).maybePop();
+    }
+  }
+
+  static void goToNext(BuildContext context, String currentId) {
+    final next = nextPage(currentId);
+    if (next != null) {
+      Navigator.of(context).push(MaterialPageRoute(builder: next.builder));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('End of Planning Phase navigation path.')),
+      );
+    }
   }
 
   static void navigateToNext(BuildContext context, String currentId) {

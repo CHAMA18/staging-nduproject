@@ -7,6 +7,8 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
+import 'package:ndu_project/widgets/launch_phase_navigation.dart';
+import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 
@@ -23,7 +25,8 @@ class ProjectPlanScreen extends StatefulWidget {
   State<ProjectPlanScreen> createState() => _ProjectPlanScreenState();
 }
 
-class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTickerProviderStateMixin {
+class _ProjectPlanScreenState extends State<ProjectPlanScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String? _selectedProject;
 
@@ -31,12 +34,23 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
   static const List<_Deliverable> _deliverables = [];
   // ignore: unused_field
   static const List<_CommunicationPlan> _communications = [];
-  static const List<String> _currencyOptions = ['USD', 'EUR', 'GBP', 'ZAR', 'NGN', 'KES', 'GHS'];
+  static const List<String> _currencyOptions = [
+    'USD',
+    'EUR',
+    'GBP',
+    'ZAR',
+    'NGN',
+    'KES',
+    'GHS'
+  ];
 
-  final TextEditingController _overviewSummaryController = TextEditingController();
+  final TextEditingController _overviewSummaryController =
+      TextEditingController();
   final TextEditingController _budgetTotalController = TextEditingController();
-  final TextEditingController _budgetContingencyController = TextEditingController();
-  final TextEditingController _budgetApprovedByController = TextEditingController();
+  final TextEditingController _budgetContingencyController =
+      TextEditingController();
+  final TextEditingController _budgetApprovedByController =
+      TextEditingController();
 
   String _budgetCurrency = 'USD';
 
@@ -134,13 +148,15 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
           children: [
             DraggableSidebar(
               openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(activeItemLabel: 'Project Plan'),
+              child:
+                  const InitiationLikeSidebar(activeItemLabel: 'Project Plan'),
             ),
             Expanded(
               child: Stack(
                 children: [
                   SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 24),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding, vertical: 24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -151,7 +167,8 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
                           sectionLabel: 'Project Plan',
                           noteKey: 'planning_project_plan_notes',
                           checkpoint: 'project_plan',
-                          description: 'Summarize the project plan, key deliverables, and alignment checkpoints.',
+                          description:
+                              'Summarize the project plan, key deliverables, and alignment checkpoints.',
                         ),
                         const SizedBox(height: 24),
                         _ProjectPlanOverviewCard(isMobile: isMobile),
@@ -159,6 +176,17 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
                         _buildTabBar(),
                         const SizedBox(height: 24),
                         _buildTabContent(isMobile),
+                        const SizedBox(height: 24),
+                        LaunchPhaseNavigation(
+                          backLabel:
+                              PlanningPhaseNavigation.backLabel('project_plan'),
+                          nextLabel:
+                              PlanningPhaseNavigation.nextLabel('project_plan'),
+                          onBack: () => PlanningPhaseNavigation.goToPrevious(
+                              context, 'project_plan'),
+                          onNext: () => PlanningPhaseNavigation.goToNext(
+                              context, 'project_plan'),
+                        ),
                         const SizedBox(height: 80),
                       ],
                     ),
@@ -175,7 +203,8 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
 
   Widget _buildHeader(bool isMobile) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24, vertical: 16),
+      padding:
+          EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24, vertical: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -189,7 +218,10 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
                   children: [
                     const Text(
                       'Project Plan',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                      style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF111827)),
                     ),
                     const Spacer(),
                     _buildEditPlanButton(),
@@ -205,7 +237,10 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
               children: [
                 const Text(
                   'Project Plan',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                  style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF111827)),
                 ),
                 const SizedBox(width: 32),
                 _buildProjectDropdown(),
@@ -220,7 +255,8 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
 
   Widget _buildProjectDropdown() {
     if ((_selectedProject ?? '').isEmpty) {
-      return const _EmptyStateChip(label: 'Select project', icon: Icons.folder_open_outlined);
+      return const _EmptyStateChip(
+          label: 'Select project', icon: Icons.folder_open_outlined);
     }
     final options = [_selectedProject!];
     return Container(
@@ -234,10 +270,15 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
         child: DropdownButton<String>(
           value: _selectedProject ?? options.first,
           isDense: true,
-          icon: const Icon(Icons.keyboard_arrow_down, size: 20, color: Color(0xFF6B7280)),
-          style: const TextStyle(fontSize: 14, color: Color(0xFF111827), fontWeight: FontWeight.w500),
+          icon: const Icon(Icons.keyboard_arrow_down,
+              size: 20, color: Color(0xFF6B7280)),
+          style: const TextStyle(
+              fontSize: 14,
+              color: Color(0xFF111827),
+              fontWeight: FontWeight.w500),
           items: options
-              .map((project) => DropdownMenuItem<String>(value: project, child: Text(project)))
+              .map((project) => DropdownMenuItem<String>(
+                  value: project, child: Text(project)))
               .toList(),
           onChanged: (value) {
             if (value != null) setState(() => _selectedProject = value);
@@ -257,14 +298,20 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
             color: const Color(0xFFE5E7EB),
             borderRadius: BorderRadius.circular(999),
           ),
-          child: const Text('Status: —', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
+          child: const Text('Status: —',
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF374151))),
         ),
         const SizedBox(width: 12),
         Row(
           children: [
-            const Icon(Icons.calendar_today_outlined, size: 14, color: Color(0xFF6B7280)),
+            const Icon(Icons.calendar_today_outlined,
+                size: 14, color: Color(0xFF6B7280)),
             const SizedBox(width: 6),
-            const Text('Start —', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+            const Text('Start —',
+                style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
           ],
         ),
         const SizedBox(width: 12),
@@ -272,7 +319,8 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
           children: [
             const Icon(Icons.flag_outlined, size: 14, color: Color(0xFF6B7280)),
             const SizedBox(width: 6),
-            const Text('End —', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+            const Text('End —',
+                style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
           ],
         ),
       ],
@@ -305,7 +353,8 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
         labelColor: const Color(0xFF2563EB),
         unselectedLabelColor: const Color(0xFF6B7280),
         labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        unselectedLabelStyle:
+            const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         indicatorColor: const Color(0xFF2563EB),
         indicatorWeight: 2,
         tabAlignment: TabAlignment.start,
@@ -340,7 +389,8 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
   Widget _buildOverviewTab(bool isMobile) {
     return _TabSectionCard(
       title: 'Overview',
-      subtitle: 'Capture the intent, scope, and success criteria for this plan.',
+      subtitle:
+          'Capture the intent, scope, and success criteria for this plan.',
       isLoading: _loadingOverview,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -348,7 +398,8 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
           _LabeledTextField(
             label: 'Executive summary',
             controller: _overviewSummaryController,
-            hintText: 'Outline the plan purpose, key outcomes, and strategic alignment.',
+            hintText:
+                'Outline the plan purpose, key outcomes, and strategic alignment.',
             maxLines: 4,
           ),
           const SizedBox(height: 20),
@@ -430,7 +481,8 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
   Widget _buildResourcesTab() {
     return _TabSectionCard(
       title: 'Resources',
-      subtitle: 'Plan staffing, vendors, and tooling required to deliver the plan.',
+      subtitle:
+          'Plan staffing, vendors, and tooling required to deliver the plan.',
       isLoading: _loadingResources,
       child: Column(
         children: [
@@ -859,7 +911,8 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
   }
 
   void _updateOverviewObjective(_ListEntry updated) {
-    final index = _overviewObjectives.indexWhere((item) => item.id == updated.id);
+    final index =
+        _overviewObjectives.indexWhere((item) => item.id == updated.id);
     if (index == -1) return;
     setState(() => _overviewObjectives[index] = updated);
     _scheduleOverviewSave();
@@ -893,7 +946,8 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
   }
 
   void _updateOverviewAssumption(_ListEntry updated) {
-    final index = _overviewAssumptions.indexWhere((item) => item.id == updated.id);
+    final index =
+        _overviewAssumptions.indexWhere((item) => item.id == updated.id);
     if (index == -1) return;
     setState(() => _overviewAssumptions[index] = updated);
     _scheduleOverviewSave();
@@ -910,7 +964,8 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
   }
 
   void _updateMilestone(_MilestoneEntry updated) {
-    final index = _overviewMilestones.indexWhere((item) => item.id == updated.id);
+    final index =
+        _overviewMilestones.indexWhere((item) => item.id == updated.id);
     if (index == -1) return;
     setState(() => _overviewMilestones[index] = updated);
     _scheduleOverviewSave();
@@ -1052,31 +1107,41 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
                 value: entry.title,
                 fieldKey: '${entry.id}_title',
                 hintText: 'Milestone name',
-                onChanged: (value) => _updateMilestone(entry.copyWith(title: value)),
+                onChanged: (value) =>
+                    _updateMilestone(entry.copyWith(title: value)),
               ),
               _TextCell(
                 value: entry.targetDate,
                 fieldKey: '${entry.id}_target',
                 hintText: 'YYYY-MM-DD',
-                onChanged: (value) => _updateMilestone(entry.copyWith(targetDate: value)),
+                onChanged: (value) =>
+                    _updateMilestone(entry.copyWith(targetDate: value)),
               ),
               _TextCell(
                 value: entry.owner,
                 fieldKey: '${entry.id}_owner',
                 hintText: 'Owner',
-                onChanged: (value) => _updateMilestone(entry.copyWith(owner: value)),
+                onChanged: (value) =>
+                    _updateMilestone(entry.copyWith(owner: value)),
               ),
               _DropdownCell(
                 value: entry.status,
                 fieldKey: '${entry.id}_status',
-                options: const ['Planned', 'In progress', 'At risk', 'Complete'],
-                onChanged: (value) => _updateMilestone(entry.copyWith(status: value)),
+                options: const [
+                  'Planned',
+                  'In progress',
+                  'At risk',
+                  'Complete'
+                ],
+                onChanged: (value) =>
+                    _updateMilestone(entry.copyWith(status: value)),
               ),
               _TextCell(
                 value: entry.notes,
                 fieldKey: '${entry.id}_notes',
                 hintText: 'Notes',
-                onChanged: (value) => _updateMilestone(entry.copyWith(notes: value)),
+                onChanged: (value) =>
+                    _updateMilestone(entry.copyWith(notes: value)),
               ),
               _DeleteCell(onPressed: () => _deleteMilestone(entry.id)),
             ],
@@ -1115,37 +1180,43 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
                 value: entry.role,
                 fieldKey: '${entry.id}_role',
                 hintText: 'Role or skill',
-                onChanged: (value) => _updateResource(entry.copyWith(role: value)),
+                onChanged: (value) =>
+                    _updateResource(entry.copyWith(role: value)),
               ),
               _TextCell(
                 value: entry.allocation,
                 fieldKey: '${entry.id}_allocation',
                 hintText: 'e.g., 0.5 FTE',
-                onChanged: (value) => _updateResource(entry.copyWith(allocation: value)),
+                onChanged: (value) =>
+                    _updateResource(entry.copyWith(allocation: value)),
               ),
               _TextCell(
                 value: entry.startDate,
                 fieldKey: '${entry.id}_start',
                 hintText: 'YYYY-MM-DD',
-                onChanged: (value) => _updateResource(entry.copyWith(startDate: value)),
+                onChanged: (value) =>
+                    _updateResource(entry.copyWith(startDate: value)),
               ),
               _TextCell(
                 value: entry.endDate,
                 fieldKey: '${entry.id}_end',
                 hintText: 'YYYY-MM-DD',
-                onChanged: (value) => _updateResource(entry.copyWith(endDate: value)),
+                onChanged: (value) =>
+                    _updateResource(entry.copyWith(endDate: value)),
               ),
               _TextCell(
                 value: entry.owner,
                 fieldKey: '${entry.id}_owner',
                 hintText: 'Owner',
-                onChanged: (value) => _updateResource(entry.copyWith(owner: value)),
+                onChanged: (value) =>
+                    _updateResource(entry.copyWith(owner: value)),
               ),
               _TextCell(
                 value: entry.notes,
                 fieldKey: '${entry.id}_notes',
                 hintText: 'Notes',
-                onChanged: (value) => _updateResource(entry.copyWith(notes: value)),
+                onChanged: (value) =>
+                    _updateResource(entry.copyWith(notes: value)),
               ),
               _DeleteCell(onPressed: () => _deleteResource(entry.id)),
             ],
@@ -1183,31 +1254,36 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
                 value: entry.name,
                 fieldKey: '${entry.id}_name',
                 hintText: 'Vendor name',
-                onChanged: (value) => _updateVendor(entry.copyWith(name: value)),
+                onChanged: (value) =>
+                    _updateVendor(entry.copyWith(name: value)),
               ),
               _TextCell(
                 value: entry.service,
                 fieldKey: '${entry.id}_service',
                 hintText: 'Service',
-                onChanged: (value) => _updateVendor(entry.copyWith(service: value)),
+                onChanged: (value) =>
+                    _updateVendor(entry.copyWith(service: value)),
               ),
               _TextCell(
                 value: entry.contact,
                 fieldKey: '${entry.id}_contact',
                 hintText: 'Contact',
-                onChanged: (value) => _updateVendor(entry.copyWith(contact: value)),
+                onChanged: (value) =>
+                    _updateVendor(entry.copyWith(contact: value)),
               ),
               _DropdownCell(
                 value: entry.status,
                 fieldKey: '${entry.id}_status',
                 options: const ['Planned', 'Contracted', 'Active', 'Complete'],
-                onChanged: (value) => _updateVendor(entry.copyWith(status: value)),
+                onChanged: (value) =>
+                    _updateVendor(entry.copyWith(status: value)),
               ),
               _TextCell(
                 value: entry.notes,
                 fieldKey: '${entry.id}_notes',
                 hintText: 'Notes',
-                onChanged: (value) => _updateVendor(entry.copyWith(notes: value)),
+                onChanged: (value) =>
+                    _updateVendor(entry.copyWith(notes: value)),
               ),
               _DeleteCell(onPressed: () => _deleteVendor(entry.id)),
             ],
@@ -1251,7 +1327,8 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
                 value: entry.purpose,
                 fieldKey: '${entry.id}_purpose',
                 hintText: 'Purpose',
-                onChanged: (value) => _updateTool(entry.copyWith(purpose: value)),
+                onChanged: (value) =>
+                    _updateTool(entry.copyWith(purpose: value)),
               ),
               _TextCell(
                 value: entry.owner,
@@ -1263,7 +1340,8 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
                 value: entry.status,
                 fieldKey: '${entry.id}_status',
                 options: const ['Planned', 'In setup', 'Ready', 'Retired'],
-                onChanged: (value) => _updateTool(entry.copyWith(status: value)),
+                onChanged: (value) =>
+                    _updateTool(entry.copyWith(status: value)),
               ),
               _TextCell(
                 value: entry.notes,
@@ -1321,25 +1399,34 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
                 value: entry.startDate,
                 fieldKey: '${entry.id}_start',
                 hintText: 'YYYY-MM-DD',
-                onChanged: (value) => _updateTask(entry.copyWith(startDate: value)),
+                onChanged: (value) =>
+                    _updateTask(entry.copyWith(startDate: value)),
               ),
               _TextCell(
                 value: entry.dueDate,
                 fieldKey: '${entry.id}_due',
                 hintText: 'YYYY-MM-DD',
-                onChanged: (value) => _updateTask(entry.copyWith(dueDate: value)),
+                onChanged: (value) =>
+                    _updateTask(entry.copyWith(dueDate: value)),
               ),
               _DropdownCell(
                 value: entry.status,
                 fieldKey: '${entry.id}_status',
-                options: const ['Not started', 'In progress', 'Blocked', 'Complete'],
-                onChanged: (value) => _updateTask(entry.copyWith(status: value)),
+                options: const [
+                  'Not started',
+                  'In progress',
+                  'Blocked',
+                  'Complete'
+                ],
+                onChanged: (value) =>
+                    _updateTask(entry.copyWith(status: value)),
               ),
               _TextCell(
                 value: entry.dependency,
                 fieldKey: '${entry.id}_dependency',
                 hintText: 'Dependency',
-                onChanged: (value) => _updateTask(entry.copyWith(dependency: value)),
+                onChanged: (value) =>
+                    _updateTask(entry.copyWith(dependency: value)),
               ),
               _TextCell(
                 value: entry.notes,
@@ -1383,31 +1470,36 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
                 value: entry.category,
                 fieldKey: '${entry.id}_category',
                 hintText: 'Category',
-                onChanged: (value) => _updateBudgetItem(entry.copyWith(category: value)),
+                onChanged: (value) =>
+                    _updateBudgetItem(entry.copyWith(category: value)),
               ),
               _TextCell(
                 value: entry.estimate,
                 fieldKey: '${entry.id}_estimate',
                 hintText: 'Estimate',
-                onChanged: (value) => _updateBudgetItem(entry.copyWith(estimate: value)),
+                onChanged: (value) =>
+                    _updateBudgetItem(entry.copyWith(estimate: value)),
               ),
               _TextCell(
                 value: entry.actual,
                 fieldKey: '${entry.id}_actual',
                 hintText: 'Actual',
-                onChanged: (value) => _updateBudgetItem(entry.copyWith(actual: value)),
+                onChanged: (value) =>
+                    _updateBudgetItem(entry.copyWith(actual: value)),
               ),
               _TextCell(
                 value: entry.variance,
                 fieldKey: '${entry.id}_variance',
                 hintText: 'Variance',
-                onChanged: (value) => _updateBudgetItem(entry.copyWith(variance: value)),
+                onChanged: (value) =>
+                    _updateBudgetItem(entry.copyWith(variance: value)),
               ),
               _TextCell(
                 value: entry.notes,
                 fieldKey: '${entry.id}_notes',
                 hintText: 'Notes',
-                onChanged: (value) => _updateBudgetItem(entry.copyWith(notes: value)),
+                onChanged: (value) =>
+                    _updateBudgetItem(entry.copyWith(notes: value)),
               ),
               _DeleteCell(onPressed: () => _deleteBudgetItem(entry.id)),
             ],
@@ -1453,19 +1545,22 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
                 value: entry.impact,
                 fieldKey: '${entry.id}_impact',
                 options: const ['Low', 'Medium', 'High'],
-                onChanged: (value) => _updateRisk(entry.copyWith(impact: value)),
+                onChanged: (value) =>
+                    _updateRisk(entry.copyWith(impact: value)),
               ),
               _DropdownCell(
                 value: entry.probability,
                 fieldKey: '${entry.id}_probability',
                 options: const ['Low', 'Medium', 'High'],
-                onChanged: (value) => _updateRisk(entry.copyWith(probability: value)),
+                onChanged: (value) =>
+                    _updateRisk(entry.copyWith(probability: value)),
               ),
               _TextCell(
                 value: entry.mitigation,
                 fieldKey: '${entry.id}_mitigation',
                 hintText: 'Mitigation plan',
-                onChanged: (value) => _updateRisk(entry.copyWith(mitigation: value)),
+                onChanged: (value) =>
+                    _updateRisk(entry.copyWith(mitigation: value)),
               ),
               _TextCell(
                 value: entry.owner,
@@ -1477,13 +1572,15 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen> with SingleTicker
                 value: entry.status,
                 fieldKey: '${entry.id}_status',
                 options: const ['Open', 'Mitigating', 'Watching', 'Closed'],
-                onChanged: (value) => _updateRisk(entry.copyWith(status: value)),
+                onChanged: (value) =>
+                    _updateRisk(entry.copyWith(status: value)),
               ),
               _TextCell(
                 value: entry.targetDate,
                 fieldKey: '${entry.id}_target',
                 hintText: 'YYYY-MM-DD',
-                onChanged: (value) => _updateRisk(entry.copyWith(targetDate: value)),
+                onChanged: (value) =>
+                    _updateRisk(entry.copyWith(targetDate: value)),
               ),
               _DeleteCell(onPressed: () => _deleteRisk(entry.id)),
             ],
@@ -1535,11 +1632,14 @@ class _ProjectPlanOverviewCard extends StatelessWidget {
     final data = ProjectDataHelper.getData(context);
     final objectives = _objectiveItems(data);
     final scopes = _scopeItems(data);
-    final hasOverview = data.projectName.trim().isNotEmpty || objectives.isNotEmpty || scopes.isNotEmpty;
+    final hasOverview = data.projectName.trim().isNotEmpty ||
+        objectives.isNotEmpty ||
+        scopes.isNotEmpty;
     if (!hasOverview) {
       return const _SectionEmptyState(
         title: 'No project overview yet',
-        message: 'Add goals, objectives, or scope details to populate the overview.',
+        message:
+            'Add goals, objectives, or scope details to populate the overview.',
         icon: Icons.assignment_outlined,
       );
     }
@@ -1555,7 +1655,10 @@ class _ProjectPlanOverviewCard extends StatelessWidget {
         children: [
           const Text(
             'Project Plan Overview',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+            style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827)),
           ),
           const SizedBox(height: 24),
           isMobile
@@ -1574,7 +1677,8 @@ class _ProjectPlanOverviewCard extends StatelessWidget {
                   children: [
                     Expanded(flex: 2, child: _buildProjectDetails(context)),
                     const SizedBox(width: 32),
-                    Expanded(flex: 2, child: _buildProjectObjectives(objectives)),
+                    Expanded(
+                        flex: 2, child: _buildProjectObjectives(objectives)),
                     const SizedBox(width: 32),
                     Expanded(flex: 2, child: _buildProjectScope(scopes)),
                   ],
@@ -1586,7 +1690,8 @@ class _ProjectPlanOverviewCard extends StatelessWidget {
 
   Widget _buildProjectDetails(BuildContext context) {
     final data = ProjectDataHelper.getData(context);
-    final projectName = data.projectName.trim().isEmpty ? '—' : data.projectName.trim();
+    final projectName =
+        data.projectName.trim().isEmpty ? '—' : data.projectName.trim();
     final manager = _firstTeamMemberName(data, keyword: 'manager') ?? '—';
     final sponsor = _firstTeamMemberName(data, keyword: 'sponsor') ?? '—';
     const methodology = '—';
@@ -1597,7 +1702,10 @@ class _ProjectPlanOverviewCard extends StatelessWidget {
       children: [
         const Text(
           'Project Details',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+          style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827)),
         ),
         const SizedBox(height: 16),
         _buildDetailRow('Project Name:', projectName),
@@ -1629,7 +1737,10 @@ class _ProjectPlanOverviewCard extends StatelessWidget {
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+            style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF111827)),
           ),
         ),
       ],
@@ -1642,7 +1753,10 @@ class _ProjectPlanOverviewCard extends StatelessWidget {
       children: [
         const Text(
           'Project Objectives',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+          style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827)),
         ),
         const SizedBox(height: 16),
         if (objectives.isEmpty)
@@ -1656,9 +1770,13 @@ class _ProjectPlanOverviewCard extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('• ', style: TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
+                    const Text('• ',
+                        style:
+                            TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
                     Expanded(
-                      child: Text(obj, style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
+                      child: Text(obj,
+                          style: const TextStyle(
+                              fontSize: 13, color: Color(0xFF6B7280))),
                     ),
                   ],
                 ),
@@ -1673,7 +1791,10 @@ class _ProjectPlanOverviewCard extends StatelessWidget {
       children: [
         const Text(
           'Project Scope',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+          style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827)),
         ),
         const SizedBox(height: 8),
         Text(
@@ -1687,9 +1808,13 @@ class _ProjectPlanOverviewCard extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('• ', style: TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
+                    const Text('• ',
+                        style:
+                            TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
                     Expanded(
-                      child: Text(scope, style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
+                      child: Text(scope,
+                          style: const TextStyle(
+                              fontSize: 13, color: Color(0xFF6B7280))),
                     ),
                   ],
                 ),
@@ -1723,20 +1848,24 @@ class _ProjectPlanOverviewCard extends StatelessWidget {
     return items;
   }
 
-  String? _firstTeamMemberName(ProjectDataModel data, {required String keyword}) {
+  String? _firstTeamMemberName(ProjectDataModel data,
+      {required String keyword}) {
     for (final member in data.teamMembers) {
       final role = member.role.toLowerCase();
       if (role.contains(keyword) && member.name.trim().isNotEmpty) {
         return member.name.trim();
       }
     }
-    return data.teamMembers.isNotEmpty ? data.teamMembers.first.name.trim() : null;
+    return data.teamMembers.isNotEmpty
+        ? data.teamMembers.first.name.trim()
+        : null;
   }
 }
 
 // ignore: unused_element
 class _KeyDeliverablesCard extends StatelessWidget {
-  const _KeyDeliverablesCard({required this.deliverables, required this.isMobile});
+  const _KeyDeliverablesCard(
+      {required this.deliverables, required this.isMobile});
 
   final List<_Deliverable> deliverables;
   final bool isMobile;
@@ -1763,44 +1892,58 @@ class _KeyDeliverablesCard extends StatelessWidget {
             padding: EdgeInsets.all(isMobile ? 20 : 28),
             child: const Text(
               'Key Deliverables',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827)),
             ),
           ),
           const Divider(height: 1, color: Color(0xFFE5E7EB)),
           LayoutBuilder(
             builder: (context, constraints) {
               final mediaWidth = MediaQuery.of(context).size.width;
-              final bool hasBoundedWidth = constraints.hasBoundedWidth && constraints.maxWidth.isFinite;
-              final double tableWidth = hasBoundedWidth ? constraints.maxWidth : mediaWidth;
+              final bool hasBoundedWidth =
+                  constraints.hasBoundedWidth && constraints.maxWidth.isFinite;
+              final double tableWidth =
+                  hasBoundedWidth ? constraints.maxWidth : mediaWidth;
 
               return SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: SizedBox(
                   width: tableWidth,
                   child: DataTable(
-                  headingRowColor: WidgetStateProperty.all(const Color(0xFFF9FAFB)),
-                  headingTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
-                  dataTextStyle: const TextStyle(fontSize: 13, color: Color(0xFF374151)),
-                  horizontalMargin: 28,
-                  columnSpacing: 48,
-                  columns: const [
-                    DataColumn(label: Text('ID')),
-                    DataColumn(label: Text('Deliverable')),
-                    DataColumn(label: Text('Phase')),
-                    DataColumn(label: Text('Due Date')),
-                    DataColumn(label: Text('Status')),
-                    DataColumn(label: Text('Owner')),
-                  ],
-                  rows: deliverables.map((d) => DataRow(
-                    cells: [
-                      DataCell(Text(d.id, style: const TextStyle(fontWeight: FontWeight.w500))),
-                      DataCell(Text(d.name)),
-                      DataCell(Text(d.phase)),
-                      DataCell(Text(d.dueDate)),
-                      DataCell(_StatusBadge(status: d.status)),
-                      DataCell(Text(d.owner)),
+                    headingRowColor:
+                        WidgetStateProperty.all(const Color(0xFFF9FAFB)),
+                    headingTextStyle: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF6B7280)),
+                    dataTextStyle:
+                        const TextStyle(fontSize: 13, color: Color(0xFF374151)),
+                    horizontalMargin: 28,
+                    columnSpacing: 48,
+                    columns: const [
+                      DataColumn(label: Text('ID')),
+                      DataColumn(label: Text('Deliverable')),
+                      DataColumn(label: Text('Phase')),
+                      DataColumn(label: Text('Due Date')),
+                      DataColumn(label: Text('Status')),
+                      DataColumn(label: Text('Owner')),
                     ],
-                  )).toList(),
+                    rows: deliverables
+                        .map((d) => DataRow(
+                              cells: [
+                                DataCell(Text(d.id,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w500))),
+                                DataCell(Text(d.name)),
+                                DataCell(Text(d.phase)),
+                                DataCell(Text(d.dueDate)),
+                                DataCell(_StatusBadge(status: d.status)),
+                                DataCell(Text(d.owner)),
+                              ],
+                            ))
+                        .toList(),
                   ),
                 ),
               );
@@ -1846,13 +1989,16 @@ class _StatusBadge extends StatelessWidget {
         color: bgColor,
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Text(status, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textColor)),
+      child: Text(status,
+          style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w600, color: textColor)),
     );
   }
 }
 
 class _SectionEmptyState extends StatelessWidget {
-  const _SectionEmptyState({required this.title, required this.message, required this.icon});
+  const _SectionEmptyState(
+      {required this.title, required this.message, required this.icon});
 
   final String title;
   final String message;
@@ -1884,9 +2030,15 @@ class _SectionEmptyState extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827))),
                 const SizedBox(height: 6),
-                Text(message, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                Text(message,
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF6B7280))),
               ],
             ),
           ),
@@ -1916,7 +2068,11 @@ class _EmptyStateChip extends StatelessWidget {
         children: [
           Icon(icon, size: 16, color: const Color(0xFF9CA3AF)),
           const SizedBox(width: 8),
-          Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF6B7280))),
+          Text(label,
+              style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF6B7280))),
         ],
       ),
     );
@@ -1925,7 +2081,8 @@ class _EmptyStateChip extends StatelessWidget {
 
 // ignore: unused_element
 class _CommunicationPlanCard extends StatelessWidget {
-  const _CommunicationPlanCard({required this.communications, required this.isMobile});
+  const _CommunicationPlanCard(
+      {required this.communications, required this.isMobile});
 
   final List<_CommunicationPlan> communications;
   final bool isMobile;
@@ -1945,40 +2102,56 @@ class _CommunicationPlanCard extends StatelessWidget {
             padding: EdgeInsets.all(isMobile ? 20 : 28),
             child: const Text(
               'Communication Plan',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827)),
             ),
           ),
           const Divider(height: 1, color: Color(0xFFE5E7EB)),
           LayoutBuilder(
             builder: (context, constraints) {
               final mediaWidth = MediaQuery.of(context).size.width;
-              final bool hasBoundedWidth = constraints.hasBoundedWidth && constraints.maxWidth.isFinite;
-              final double tableWidth = hasBoundedWidth ? constraints.maxWidth : mediaWidth;
+              final bool hasBoundedWidth =
+                  constraints.hasBoundedWidth && constraints.maxWidth.isFinite;
+              final double tableWidth =
+                  hasBoundedWidth ? constraints.maxWidth : mediaWidth;
 
               return SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: SizedBox(
                   width: tableWidth,
                   child: DataTable(
-                  headingRowColor: WidgetStateProperty.all(const Color(0xFFF9FAFB)),
-                  headingTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
-                  dataTextStyle: const TextStyle(fontSize: 13, color: Color(0xFF374151)),
-                  horizontalMargin: 28,
-                  columnSpacing: 48,
-                  columns: const [
-                    DataColumn(label: Text('Meeting Type')),
-                    DataColumn(label: Text('Frequency')),
-                    DataColumn(label: Text('Attendees')),
-                    DataColumn(label: Text('Purpose')),
-                  ],
-                  rows: communications.map((c) => DataRow(
-                    cells: [
-                      DataCell(Text(c.meetingType, style: const TextStyle(fontWeight: FontWeight.w600))),
-                      DataCell(Text(c.frequency)),
-                      DataCell(Text(c.attendees)),
-                      DataCell(SizedBox(width: 300, child: Text(c.purpose, softWrap: true))),
+                    headingRowColor:
+                        WidgetStateProperty.all(const Color(0xFFF9FAFB)),
+                    headingTextStyle: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF6B7280)),
+                    dataTextStyle:
+                        const TextStyle(fontSize: 13, color: Color(0xFF374151)),
+                    horizontalMargin: 28,
+                    columnSpacing: 48,
+                    columns: const [
+                      DataColumn(label: Text('Meeting Type')),
+                      DataColumn(label: Text('Frequency')),
+                      DataColumn(label: Text('Attendees')),
+                      DataColumn(label: Text('Purpose')),
                     ],
-                  )).toList(),
+                    rows: communications
+                        .map((c) => DataRow(
+                              cells: [
+                                DataCell(Text(c.meetingType,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w600))),
+                                DataCell(Text(c.frequency)),
+                                DataCell(Text(c.attendees)),
+                                DataCell(SizedBox(
+                                    width: 300,
+                                    child: Text(c.purpose, softWrap: true))),
+                              ],
+                            ))
+                        .toList(),
                   ),
                 ),
               );
@@ -2013,15 +2186,21 @@ class _TabSectionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: const [
-          BoxShadow(color: Color(0x08000000), blurRadius: 20, offset: Offset(0, 10)),
+          BoxShadow(
+              color: Color(0x08000000), blurRadius: 20, offset: Offset(0, 10)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827))),
           const SizedBox(height: 6),
-          Text(subtitle, style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
+          Text(subtitle,
+              style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
           const SizedBox(height: 16),
           if (isLoading) const LinearProgressIndicator(minHeight: 2),
           if (isLoading) const SizedBox(height: 16),
@@ -2064,9 +2243,15 @@ class _SectionCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                    Text(title,
+                        style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF111827))),
                     const SizedBox(height: 6),
-                    Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                    Text(subtitle,
+                        style: const TextStyle(
+                            fontSize: 12, color: Color(0xFF6B7280))),
                   ],
                 ),
               ),
@@ -2107,7 +2292,8 @@ class _SectionTableCard extends StatelessWidget {
           foregroundColor: const Color(0xFF1F2937),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           backgroundColor: const Color(0xFFFFF3C4),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       ),
       child: child,
@@ -2147,7 +2333,8 @@ class _ListEditor extends StatelessWidget {
           foregroundColor: const Color(0xFF1F2937),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           backgroundColor: const Color(0xFFFFF3C4),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       ),
       child: Column(
@@ -2171,18 +2358,23 @@ class _ListEditor extends StatelessWidget {
                         decoration: InputDecoration(
                           hintText: hintText,
                           isDense: true,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10)),
                           filled: true,
                           fillColor: Colors.white,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
                         ),
-                        style: const TextStyle(fontSize: 13, color: Color(0xFF111827)),
-                        onChanged: (value) => onChanged(item.copyWith(text: value)),
+                        style: const TextStyle(
+                            fontSize: 13, color: Color(0xFF111827)),
+                        onChanged: (value) =>
+                            onChanged(item.copyWith(text: value)),
                       ),
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
+                      icon: const Icon(Icons.delete_outline,
+                          color: Color(0xFFEF4444)),
                       onPressed: () => onDelete(item.id),
                     ),
                   ],
@@ -2218,16 +2410,23 @@ class _InlineEmptyState extends StatelessWidget {
               color: const Color(0xFFFFF7ED),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.info_outline, color: Color(0xFFF59E0B), size: 18),
+            child: const Icon(Icons.info_outline,
+                color: Color(0xFFF59E0B), size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827))),
                 const SizedBox(height: 4),
-                Text(message, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                Text(message,
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF6B7280))),
               ],
             ),
           ),
@@ -2259,7 +2458,11 @@ class _LabeledTextField extends StatelessWidget {
     final field = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
+        Text(label,
+            style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF374151))),
         const SizedBox(height: 6),
         TextField(
           controller: controller,
@@ -2274,7 +2477,8 @@ class _LabeledTextField extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           ),
           style: const TextStyle(fontSize: 13, color: Color(0xFF111827)),
         ),
@@ -2308,11 +2512,18 @@ class _LabeledDropdown extends StatelessWidget {
     final field = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF374151))),
+        Text(label,
+            style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF374151))),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
           initialValue: value,
-          items: options.map((option) => DropdownMenuItem(value: option, child: Text(option))).toList(),
+          items: options
+              .map((option) =>
+                  DropdownMenuItem(value: option, child: Text(option)))
+              .toList(),
           onChanged: (value) {
             if (value != null) onChanged(value);
           },
@@ -2324,7 +2535,8 @@ class _LabeledDropdown extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           ),
           style: const TextStyle(fontSize: 13, color: Color(0xFF111827)),
         ),
@@ -2358,7 +2570,11 @@ class _EditableTable extends StatelessWidget {
                   width: column.width,
                   child: Text(
                     column.label.toUpperCase(),
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.8, color: Color(0xFF6B7280)),
+                    style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                        color: Color(0xFF6B7280)),
                   ),
                 ))
             .toList(),
@@ -2368,14 +2584,17 @@ class _EditableTable extends StatelessWidget {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: ConstrainedBox(
-        constraints: BoxConstraints(minWidth: columns.fold<double>(0, (total, col) => total + col.width)),
+        constraints: BoxConstraints(
+            minWidth:
+                columns.fold<double>(0, (total, col) => total + col.width)),
         child: Column(
           children: [
             header,
             const SizedBox(height: 8),
             for (int i = 0; i < rows.length; i++)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
                   color: i.isEven ? Colors.white : const Color(0xFFF9FAFB),
                   borderRadius: BorderRadius.circular(12),
@@ -2439,7 +2658,8 @@ class _TextCell extends StatelessWidget {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       ),
       style: const TextStyle(fontSize: 12, color: Color(0xFF111827)),
       onChanged: onChanged,
@@ -2466,7 +2686,9 @@ class _DropdownCell extends StatelessWidget {
     return DropdownButtonFormField<String>(
       key: ValueKey(fieldKey),
       initialValue: resolvedValue,
-      items: options.map((option) => DropdownMenuItem(value: option, child: Text(option))).toList(),
+      items: options
+          .map((option) => DropdownMenuItem(value: option, child: Text(option)))
+          .toList(),
       onChanged: (value) {
         if (value != null) onChanged(value);
       },
@@ -2475,7 +2697,8 @@ class _DropdownCell extends StatelessWidget {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       ),
       style: const TextStyle(fontSize: 12, color: Color(0xFF111827)),
     );
@@ -2528,7 +2751,8 @@ class _ListEntry {
     return raw.whereType<Map>().map((item) {
       final data = Map<String, dynamic>.from(item);
       return _ListEntry(
-        id: data['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: data['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         text: data['text']?.toString() ?? '',
       );
     }).toList();
@@ -2596,7 +2820,8 @@ class _MilestoneEntry {
     return raw.whereType<Map>().map((item) {
       final data = Map<String, dynamic>.from(item);
       return _MilestoneEntry(
-        id: data['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: data['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         title: data['title']?.toString() ?? '',
         targetDate: data['targetDate']?.toString() ?? '',
         owner: data['owner']?.toString() ?? '',
@@ -2674,7 +2899,8 @@ class _ResourceEntry {
     return raw.whereType<Map>().map((item) {
       final data = Map<String, dynamic>.from(item);
       return _ResourceEntry(
-        id: data['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: data['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         role: data['role']?.toString() ?? '',
         allocation: data['allocation']?.toString() ?? '',
         startDate: data['startDate']?.toString() ?? '',
@@ -2747,7 +2973,8 @@ class _VendorEntry {
     return raw.whereType<Map>().map((item) {
       final data = Map<String, dynamic>.from(item);
       return _VendorEntry(
-        id: data['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: data['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         name: data['name']?.toString() ?? '',
         service: data['service']?.toString() ?? '',
         contact: data['contact']?.toString() ?? '',
@@ -2819,7 +3046,8 @@ class _ToolEntry {
     return raw.whereType<Map>().map((item) {
       final data = Map<String, dynamic>.from(item);
       return _ToolEntry(
-        id: data['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: data['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         name: data['name']?.toString() ?? '',
         purpose: data['purpose']?.toString() ?? '',
         owner: data['owner']?.toString() ?? '',
@@ -2903,7 +3131,8 @@ class _TaskEntry {
     return raw.whereType<Map>().map((item) {
       final data = Map<String, dynamic>.from(item);
       return _TaskEntry(
-        id: data['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: data['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         title: data['title']?.toString() ?? '',
         owner: data['owner']?.toString() ?? '',
         startDate: data['startDate']?.toString() ?? '',
@@ -2977,7 +3206,8 @@ class _BudgetEntry {
     return raw.whereType<Map>().map((item) {
       final data = Map<String, dynamic>.from(item);
       return _BudgetEntry(
-        id: data['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: data['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         category: data['category']?.toString() ?? '',
         estimate: data['estimate']?.toString() ?? '',
         actual: data['actual']?.toString() ?? '',
@@ -3061,7 +3291,8 @@ class _RiskEntry {
     return raw.whereType<Map>().map((item) {
       final data = Map<String, dynamic>.from(item);
       return _RiskEntry(
-        id: data['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: data['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         title: data['title']?.toString() ?? '',
         impact: data['impact']?.toString() ?? 'Medium',
         probability: data['probability']?.toString() ?? 'Medium',
@@ -3075,7 +3306,8 @@ class _RiskEntry {
 }
 
 class _Debouncer {
-  _Debouncer({Duration? delay}) : delay = delay ?? const Duration(milliseconds: 700);
+  _Debouncer({Duration? delay})
+      : delay = delay ?? const Duration(milliseconds: 700);
 
   final Duration delay;
   Timer? _timer;

@@ -9,11 +9,10 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
-import 'package:ndu_project/screens/issue_management_screen.dart';
-import 'package:ndu_project/screens/ssher_stacked_screen.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
 class ChangeManagementScreen extends StatefulWidget {
   const ChangeManagementScreen({super.key});
@@ -23,9 +22,6 @@ class ChangeManagementScreen extends StatefulWidget {
 }
 
 class _ChangeManagementScreenState extends State<ChangeManagementScreen> {
-  final GlobalKey<_ChangeRequestsTableState> _tableKey =
-      GlobalKey<_ChangeRequestsTableState>();
-
   @override
   Widget build(BuildContext context) {
     final String userName =
@@ -66,10 +62,16 @@ class _ChangeManagementScreenState extends State<ChangeManagementScreen> {
                             child: Row(
                               children: [
                                 _circleButton(
-                                    icon: Icons.arrow_back_ios_new_rounded),
+                                    icon: Icons.arrow_back_ios_new_rounded,
+                                    onTap: () =>
+                                        PlanningPhaseNavigation.goToPrevious(
+                                            context, 'change_management')),
                                 const SizedBox(width: 12),
                                 _circleButton(
-                                    icon: Icons.arrow_forward_ios_rounded),
+                                    icon: Icons.arrow_forward_ios_rounded,
+                                    onTap: () =>
+                                        PlanningPhaseNavigation.goToNext(
+                                            context, 'change_management')),
                                 const SizedBox(width: 20),
                                 const Text(
                                   'Change Management',
@@ -108,141 +110,27 @@ class _ChangeManagementScreenState extends State<ChangeManagementScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Process Card
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                  color: Colors.grey.withValues(alpha: 0.25)),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.withValues(alpha: 0.08),
-                                    borderRadius: const BorderRadius.vertical(
-                                        top: Radius.circular(12)),
-                                  ),
-                                  child: const Text('Change Management Process',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.w700)),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    children: [
-                                      Row(
-                                        children: const [
-                                          Expanded(
-                                              child: _StepTile(
-                                                  step: 1,
-                                                  title: 'Request',
-                                                  subtitle:
-                                                      'submit change request with details')),
-                                          SizedBox(width: 12),
-                                          Expanded(
-                                              child: _StepTile(
-                                                  step: 2,
-                                                  title: 'Evaluate',
-                                                  subtitle:
-                                                      'Analyze impacts and feasibility')),
-                                          SizedBox(width: 12),
-                                          Expanded(
-                                              child: _StepTile(
-                                                  step: 3,
-                                                  title: 'Approve',
-                                                  subtitle:
-                                                      'Core Stakeholders review and decide')),
-                                          SizedBox(width: 12),
-                                          Expanded(
-                                              child: _StepTile(
-                                                  step: 4,
-                                                  title: 'Implement',
-                                                  subtitle:
-                                                      'Execute and document the change')),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 16),
-
                           // Stats (live from Firestore)
-                          _StatsRow(projectId: ProjectDataHelper.getData(context).projectId),
+                          _StatsRow(
+                              projectId:
+                                  ProjectDataHelper.getData(context).projectId),
 
                           const SizedBox(height: 16),
 
-                          // Change requests table header
-                          Row(
-                            children: [
-                              const Expanded(
-                                child: Text('Change requests',
-                                    style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700)),
-                              ),
-                              _smallButton(
-                                context,
-                                icon: Icons.filter_list,
-                                label: 'Filter',
-                                onPressed: () => _tableKey.currentState
-                                    ?.openFilterDialog(context),
-                              ),
-                              const SizedBox(width: 8),
-                              ElevatedButton(
-                                onPressed: () async {
-                                  final result = await showDialog(
-                                    context: context,
-                                    builder: (ctx) => NewChangeRequestDialog(projectId: ProjectDataHelper.getData(context).projectId),
-                                  );
-                                  if (!context.mounted) return;
-                                  if (result != null) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                          content:
-                                              Text('Change request created')),
-                                    );
-                                  }
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFFFD700),
-                                  foregroundColor: Colors.black,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 12),
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10)),
-                                ),
-                                child: const Text('New Change request',
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.w600)),
-                              )
-                            ],
+                          _ChangeRegisterCard(
+                            projectId:
+                                ProjectDataHelper.getData(context).projectId,
                           ),
-
-                          const SizedBox(height: 10),
-
-                          _ChangeRequestsTable(key: _tableKey, projectId: ProjectDataHelper.getData(context).projectId),
                           const SizedBox(height: 24),
                           LaunchPhaseNavigation(
-                            backLabel: 'Back: SSHER',
-                            nextLabel: 'Next: Issue Management',
-                            onBack: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                    builder: (_) =>
-                                        const SsherStackedScreen())),
-                            onNext: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                    builder: (_) =>
-                                        const IssueManagementScreen())),
+                            backLabel: PlanningPhaseNavigation.backLabel(
+                                'change_management'),
+                            nextLabel: PlanningPhaseNavigation.nextLabel(
+                                'change_management'),
+                            onBack: () => PlanningPhaseNavigation.goToPrevious(
+                                context, 'change_management'),
+                            onNext: () => PlanningPhaseNavigation.goToNext(
+                                context, 'change_management'),
                           ),
                         ],
                       ),
@@ -254,23 +142,6 @@ class _ChangeManagementScreenState extends State<ChangeManagementScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _smallButton(BuildContext context,
-      {required IconData icon,
-      required String label,
-      VoidCallback? onPressed}) {
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 16, color: Colors.grey[800]),
-      label: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.black,
-        side: BorderSide(color: Colors.grey.withValues(alpha: 0.4)),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -390,7 +261,6 @@ class _UserChip extends StatelessWidget {
     );
   }
 }
-
 
 class _StepTile extends StatelessWidget {
   final int step;
@@ -652,7 +522,8 @@ class _ChangeRequestsTableState extends State<_ChangeRequestsTable> {
                     ),
                   ),
                   StreamBuilder(
-                    stream: ChangeRequestService.streamChangeRequests(projectId: widget.projectId),
+                    stream: ChangeRequestService.streamChangeRequests(
+                        projectId: widget.projectId),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Padding(
@@ -721,6 +592,275 @@ class _ChangeRequestsTableState extends State<_ChangeRequestsTable> {
   }
 }
 
+class _ChangeRegisterCard extends StatefulWidget {
+  const _ChangeRegisterCard({required this.projectId});
+
+  final String? projectId;
+
+  @override
+  State<_ChangeRegisterCard> createState() => _ChangeRegisterCardState();
+}
+
+class _ChangeRegisterCardState extends State<_ChangeRegisterCard> {
+  Future<void> _openChangeDialog({ChangeRequest? request}) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (_) => NewChangeRequestDialog(
+        changeRequest: request,
+        projectId: widget.projectId,
+      ),
+    );
+    if (!mounted) return;
+    if (result == true) {
+      final message =
+          request == null ? 'Change request created' : 'Change request updated';
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
+  Future<void> _deleteRequest(ChangeRequest request) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete change request'),
+        content: const Text('This action cannot be undone.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (confirmed != true) return;
+    try {
+      await ChangeRequestService.deleteChangeRequest(request.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Change request deleted')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Delete failed: $error')),
+      );
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'approved':
+        return const Color(0xFF2E7D32);
+      case 'rejected':
+        return const Color(0xFFC62828);
+      case 'in review':
+        return const Color(0xFFF59E0B);
+      case 'submitted':
+        return const Color(0xFF2563EB);
+      default:
+        return const Color(0xFF8D6E00);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x0F000000), blurRadius: 10, offset: Offset(0, 6)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Change Request Register',
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF111827)),
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => _openChangeDialog(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFD700),
+                  foregroundColor: Colors.black,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('New change request',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Track scope change requests, impact, and approval status.',
+            style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+          ),
+          const SizedBox(height: 16),
+          StreamBuilder<List<ChangeRequest>>(
+            stream: ChangeRequestService.streamChangeRequests(
+                projectId: widget.projectId),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 32),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (snapshot.hasError) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: Text(
+                      'Unable to load change requests: ${snapshot.error}',
+                      style: const TextStyle(color: Colors.red)),
+                );
+              }
+              final requests = snapshot.data ?? [];
+              if (requests.isEmpty) {
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  alignment: Alignment.center,
+                  child: const Text('No change requests have been created yet.',
+                      style: TextStyle(color: Color(0xFF6B7280))),
+                );
+              }
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: ConstrainedBox(
+                      constraints:
+                          BoxConstraints(minWidth: constraints.maxWidth),
+                      child: DataTable(
+                        headingRowHeight: 44,
+                        dataRowMinHeight: 52,
+                        dataRowMaxHeight: 52,
+                        headingRowColor:
+                            WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                        columnSpacing: 24,
+                        columns: const [
+                          DataColumn(
+                              label: Text('ID',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.w600))),
+                          DataColumn(
+                              label: Text('Request',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.w600))),
+                          DataColumn(
+                              label: Text('Impact',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.w600))),
+                          DataColumn(
+                              label: Text('Owner',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.w600))),
+                          DataColumn(
+                              label: Text('Status',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.w600))),
+                          DataColumn(
+                              label: Text('Actions',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.w600))),
+                        ],
+                        rows: requests.map((request) {
+                          return DataRow(cells: [
+                            DataCell(Text(request.displayId,
+                                style: const TextStyle(
+                                    fontSize: 12, color: Color(0xFF0EA5E9)))),
+                            DataCell(Text(request.title,
+                                style: const TextStyle(fontSize: 13))),
+                            DataCell(Text(request.impact,
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600))),
+                            DataCell(Text(request.requester,
+                                style: const TextStyle(
+                                    fontSize: 12, color: Color(0xFF64748B)))),
+                            DataCell(_StatusChip(
+                                label: request.status,
+                                color: _statusColor(request.status))),
+                            DataCell(
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  IconButton(
+                                    tooltip: 'Edit request',
+                                    icon: const Icon(Icons.edit_outlined,
+                                        size: 18, color: Color(0xFF111827)),
+                                    onPressed: () =>
+                                        _openChangeDialog(request: request),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Delete request',
+                                    icon: const Icon(Icons.delete_outline,
+                                        size: 18, color: Color(0xFFEF4444)),
+                                    onPressed: () => _deleteRequest(request),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ]);
+                        }).toList(),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style:
+            TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color),
+      ),
+    );
+  }
+}
+
 class _TableRow extends StatelessWidget {
   final List<String> cells;
   final bool isHeader;
@@ -745,7 +885,7 @@ class _TableRow extends StatelessWidget {
     return Row(
       children: [
         for (int i = 0; i < cells.length; i++)
-          if (i == cells.length - 1)  // Actions column at end
+          if (i == cells.length - 1) // Actions column at end
             _actionsCell(
               flex: flexes[i],
               context: context,
@@ -755,13 +895,13 @@ class _TableRow extends StatelessWidget {
               request: request,
               onEdit: onEdit,
             )
-          else if (i == 4)  // TYPE column
+          else if (i == 4) // TYPE column
             _typeCell(cells[i],
                 flex: flexes[i],
                 isHeader: isHeader,
                 headerStyle: headerStyle,
                 cellStyle: cellStyle)
-          else if (i == 6)  // STATUS column
+          else if (i == 6) // STATUS column
             _statusCell(cells[i],
                 flex: flexes[i],
                 isHeader: isHeader,
@@ -901,48 +1041,54 @@ class _TableRow extends StatelessWidget {
         padding: const EdgeInsets.only(right: 24),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          IconButton(
-            tooltip: 'View request',
-            onPressed: request == null ? null : () => onEdit?.call(request),
-            icon: Icon(Icons.visibility_outlined, size: 18, color: Colors.grey[700]),
-          ),
-          IconButton(
-            tooltip: 'Delete request',
-            icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
-            onPressed: request == null ? null : () async {
-              final confirmed = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Delete change request?'),
-                  content: const Text('This action cannot be undone.'),
-                  actions: [
-                    TextButton(
-                        onPressed: () => Navigator.of(ctx).pop(false),
-                        child: const Text('Cancel')),
-                    TextButton(
-                        onPressed: () => Navigator.of(ctx).pop(true),
-                        child: const Text('Delete',
-                            style: TextStyle(color: Colors.red))),
-                  ],
-                ),
-              );
-              if (confirmed != true) return;
-              try {
-                await ChangeRequestService.deleteChangeRequest(request.id);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Change request deleted')));
-                }
-              } catch (error) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Delete failed: $error')));
-                }
-              }
-            },
-          ),
-        ],
+          children: [
+            IconButton(
+              tooltip: 'View request',
+              onPressed: request == null ? null : () => onEdit?.call(request),
+              icon: Icon(Icons.visibility_outlined,
+                  size: 18, color: Colors.grey[700]),
+            ),
+            IconButton(
+              tooltip: 'Delete request',
+              icon:
+                  const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+              onPressed: request == null
+                  ? null
+                  : () async {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Delete change request?'),
+                          content: const Text('This action cannot be undone.'),
+                          actions: [
+                            TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(false),
+                                child: const Text('Cancel')),
+                            TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(true),
+                                child: const Text('Delete',
+                                    style: TextStyle(color: Colors.red))),
+                          ],
+                        ),
+                      );
+                      if (confirmed != true) return;
+                      try {
+                        await ChangeRequestService.deleteChangeRequest(
+                            request.id);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('Change request deleted')));
+                        }
+                      } catch (error) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Delete failed: $error')));
+                        }
+                      }
+                    },
+            ),
+          ],
         ),
       ),
     );

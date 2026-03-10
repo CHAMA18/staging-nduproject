@@ -193,17 +193,14 @@ class ProjectDataHelper {
           : 'Unnamed interface';
       final details = [
         if (entry.owner.trim().isNotEmpty) 'Owner: ${entry.owner.trim()}',
-        if (entry.cadence.trim().isNotEmpty)
-          'Cadence: ${entry.cadence.trim()}',
+        if (entry.cadence.trim().isNotEmpty) 'Cadence: ${entry.cadence.trim()}',
         if (entry.risk.trim().isNotEmpty) 'Risk: ${entry.risk.trim()}',
-        if (entry.status.trim().isNotEmpty)
-          'Status: ${entry.status.trim()}',
+        if (entry.status.trim().isNotEmpty) 'Status: ${entry.status.trim()}',
         if (entry.lastSync.trim().isNotEmpty)
           'Last sync: ${entry.lastSync.trim()}',
         if (entry.notes.trim().isNotEmpty) 'Notes: ${entry.notes.trim()}',
       ].join(' | ');
-      final entryText =
-          details.isNotEmpty ? '$boundary | $details' : boundary;
+      final entryText = details.isNotEmpty ? '$boundary | $details' : boundary;
       formatted.add(entryText);
     }
     return formatted;
@@ -325,7 +322,8 @@ class ProjectDataHelper {
     }
 
     void wList(String label, Iterable<String> items) {
-      final list = items.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      final list =
+          items.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
       if (list.isEmpty) return;
       buf.writeln('$label:');
       for (final item in list) {
@@ -801,6 +799,7 @@ class ProjectDataHelper {
   static FrontEndPlanningData updateFEPField({
     required FrontEndPlanningData current,
     String? requirements,
+    String? requirementsPlan,
     String? requirementsNotes,
     String? risks,
     String? opportunities,
@@ -833,6 +832,7 @@ class ProjectDataHelper {
   }) {
     return FrontEndPlanningData(
       requirements: requirements ?? current.requirements,
+      requirementsPlan: requirementsPlan ?? current.requirementsPlan,
       requirementsNotes: requirementsNotes ?? current.requirementsNotes,
       risks: risks ?? current.risks,
       opportunities: opportunities ?? current.opportunities,

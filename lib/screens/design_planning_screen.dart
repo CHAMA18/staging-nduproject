@@ -10,6 +10,7 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 
 const Color _kSurfaceBackground = Color(0xFFF7F8FC);
 const Color _kCardBorder = Color(0xFFE5E7EB);
@@ -44,8 +45,7 @@ class DesignPlanningScreen extends StatelessWidget {
               children: [
                 DraggableSidebar(
                   openWidth: AppBreakpoints.sidebarWidth(context),
-                  child:
-                      const InitiationLikeSidebar(activeItemLabel: 'Design'),
+                  child: const InitiationLikeSidebar(activeItemLabel: 'Design'),
                 ),
                 Expanded(
                   child: SingleChildScrollView(
@@ -57,11 +57,11 @@ class DesignPlanningScreen extends StatelessWidget {
                           title: 'Design Planning',
                           showImportButton: false,
                           showContentButton: false,
-                          onBack: () => Navigator.maybePop(context),
-                          onForward: () =>
-                              PlanningPhaseNavigation.navigateToNext(
+                          onBack: () => PlanningPhaseNavigation.goToPrevious(
+                              context, 'design'),
+                          onForward: () => PlanningPhaseNavigation.goToNext(
                             context,
-                            'design_planning',
+                            'design',
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -81,6 +81,17 @@ class DesignPlanningScreen extends StatelessWidget {
                             return const _DesignPlanAutoCard(
                                 key: ValueKey('design-plan-card'));
                           },
+                        ),
+                        const SizedBox(height: 24),
+                        LaunchPhaseNavigation(
+                          backLabel:
+                              PlanningPhaseNavigation.backLabel('design'),
+                          nextLabel:
+                              PlanningPhaseNavigation.nextLabel('design'),
+                          onBack: () => PlanningPhaseNavigation.goToPrevious(
+                              context, 'design'),
+                          onNext: () => PlanningPhaseNavigation.goToNext(
+                              context, 'design'),
                         ),
                       ],
                     ),
@@ -139,7 +150,7 @@ class _DesignPlanAutoCardState extends State<_DesignPlanAutoCard> {
       final trimmed = value.trim();
       final success = await ProjectDataHelper.updateAndSave(
         context: context,
-        checkpoint: 'design_planning',
+        checkpoint: 'design',
         dataUpdater: (data) => data.copyWith(
           planningNotes: {
             ...data.planningNotes,
@@ -184,7 +195,9 @@ class _DesignPlanAutoCardState extends State<_DesignPlanAutoCard> {
           const Text(
             'Design Plan',
             style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w800, color: _kPrimaryText),
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: _kPrimaryText),
           ),
           const SizedBox(height: 6),
           const Text(

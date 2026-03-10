@@ -5,10 +5,10 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
-import 'package:ndu_project/screens/deliverables_roadmap_screen.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/user_service.dart';
+import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
 class StartUpPlanningScreen extends StatelessWidget {
   const StartUpPlanningScreen({super.key});
@@ -99,11 +99,15 @@ class StartUpPlanningScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 28),
                             LaunchPhaseNavigation(
-                              backLabel: 'Back: Interface Management',
-                              nextLabel: 'Next: Deliverable Roadmap',
-                              onBack: () => Navigator.of(context).maybePop(),
-                              onNext: () =>
-                                  DeliverablesRoadmapScreen.open(context),
+                              backLabel: PlanningPhaseNavigation.backLabel(
+                                  'startup_planning'),
+                              nextLabel: PlanningPhaseNavigation.nextLabel(
+                                  'startup_planning'),
+                              onBack: () =>
+                                  PlanningPhaseNavigation.goToPrevious(
+                                      context, 'startup_planning'),
+                              onNext: () => PlanningPhaseNavigation.goToNext(
+                                  context, 'startup_planning'),
                             ),
                             const SizedBox(height: 40),
                           ],

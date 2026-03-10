@@ -6973,7 +6973,11 @@ Return JSON in this format:
     }
 
     final goalsText = goals != null && goals.isNotEmpty
-        ? "\nProject Goals (IMPORTANT: Use these as Level 1 items):\n${goals.map((g) {final framework = (g.framework ?? '').trim(); final fw = framework.isNotEmpty ? ' | Framework: $framework' : ''; return "- ${stripPrefix(g.name)}: ${g.description}$fw";}).join("\n")}"
+        ? "\nProject Goals (IMPORTANT: Use these as Level 1 items):\n${goals.map((g) {
+            final framework = (g.framework ?? '').trim();
+            final fw = framework.isNotEmpty ? ' | Framework: $framework' : '';
+            return "- ${stripPrefix(g.name)}: ${g.description}$fw";
+          }).join("\n")}"
         : "";
 
     final dimensionContext = dimensionDescription.isNotEmpty
@@ -7031,6 +7035,129 @@ Return strict JSON only in this format:
 
 Additional Context: $contextNotes
 ''';
+  }
+
+  Future<List<ScheduleActivity>> generateScheduleActivities({
+    required String context,
+    required List<Map<String, String>> wbsItems,
+    int maxTokens = 900,
+    double temperature = 0.4,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty || wbsItems.isEmpty) {
+      return _fallbackScheduleActivities(wbsItems);
+    }
+
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackScheduleActivities(wbsItems);
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a senior scheduler. Return only JSON and obey the required schema.'
+        },
+        {
+          'role': 'user',
+          'content': _scheduleActivitiesPrompt(trimmedContext, wbsItems),
+        },
+      ],
+    });
+
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 14));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+            'OpenAI error ${response.statusCode}: ${response.body}');
+      }
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final choices = data['choices'] as List<dynamic>? ?? [];
+      if (choices.isNotEmpty) {
+        final firstMessage =
+            choices.first['message'] as Map<String, dynamic>? ?? {};
+        final content = (firstMessage['content'] as String?)?.trim() ?? '';
+        final parsed = _decodeJsonSafely(content);
+        if (parsed != null) {
+          final list = parsed['activities'];
+          if (list is List) {
+            return list
+                .whereType<Map>()
+                .map((raw) => ScheduleActivity.fromJson(
+                    raw.map((k, v) => MapEntry(k.toString(), v))))
+                .toList();
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('generateScheduleActivities failed: $e');
+    }
+
+    return _fallbackScheduleActivities(wbsItems);
+  }
+
+  String _scheduleActivitiesPrompt(
+      String context, List<Map<String, String>> wbsItems) {
+    final escaped = _escape(context);
+    final itemsJson = jsonEncode(wbsItems);
+    return '''
+Using the project context and the WBS items, generate a realistic schedule activity list.
+
+Rules:
+- Use the provided WBS item "id" values when referencing dependencies.
+- Include all WBS items (one activity per item).
+- Duration is in working days (integer).
+- If something is a milestone, set durationDays to 0 and isMilestone true.
+- Provide logical predecessorIds for sequencing.
+
+Return ONLY valid JSON with this exact structure:
+{
+  "activities": [
+    {
+      "wbsId": "wbs-id",
+      "title": "Activity title",
+      "durationDays": 5,
+      "predecessorIds": ["wbs-id-1"],
+      "isMilestone": false
+    }
+  ]
+}
+
+WBS items (JSON):
+$itemsJson
+
+Project Context:
+"""
+$escaped
+"""
+''';
+  }
+
+  List<ScheduleActivity> _fallbackScheduleActivities(
+      List<Map<String, String>> wbsItems) {
+    return wbsItems
+        .map((item) => ScheduleActivity(
+              wbsId: item['id'] ?? '',
+              title: item['title'] ?? '',
+              durationDays: 5,
+              predecessorIds: const [],
+              isMilestone: false,
+            ))
+        .toList();
   }
 
   String _escape(String v) => v.replaceAll('"', '\\"').replaceAll('\n', ' ');
@@ -9008,6 +9135,110 @@ $escaped
 
   String _fallbackVerificationSteps(String scopeItem) {
     return '. Review design specifications against requirements\n. Execute functional testing\n. Conduct user acceptance testing\n. Validate integration points\n. Document test results and sign-off';
+  }
+
+  /// Generate acceptance criteria for a planning requirement
+  Future<String> generateAcceptanceCriteria({
+    required String context,
+    required String requirementText,
+    int maxTokens = 600,
+    double temperature = 0.6,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) {
+      return _fallbackAcceptanceCriteria(requirementText);
+    }
+
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackAcceptanceCriteria(requirementText);
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'You are a senior project manager helping to write measurable acceptance criteria for requirements. Always reply with JSON only and obey the required schema.'
+        },
+        {
+          'role': 'user',
+          'content': _acceptanceCriteriaPrompt(trimmedContext, requirementText),
+        },
+      ],
+    });
+
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 12));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+            'OpenAI error ${response.statusCode}: ${response.body}');
+      }
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final choices = data['choices'] as List<dynamic>? ?? [];
+      if (choices.isNotEmpty) {
+        final firstMessage =
+            choices.first['message'] as Map<String, dynamic>? ?? {};
+        final content = (firstMessage['content'] as String?)?.trim() ?? '';
+        final parsed = _decodeJsonSafely(content);
+        if (parsed != null) {
+          final result = parsed['acceptanceCriteria']?.toString().trim() ?? '';
+          if (result.isNotEmpty) {
+            return _stripAsterisks(result);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('generateAcceptanceCriteria failed: $e');
+    }
+
+    return _fallbackAcceptanceCriteria(requirementText);
+  }
+
+  String _acceptanceCriteriaPrompt(String context, String requirementText) {
+    final escaped = _escape(context);
+    final req = _escape(requirementText);
+    return '''
+Generate measurable acceptance criteria for the requirement below using the project context.
+
+Requirements:
+- Generate 3-5 specific acceptance criteria
+- Each criterion should be testable and measurable
+- Use "." bullet format (each line should start with ". ")
+- Avoid vague language like "appropriate" or "adequate"
+
+Return ONLY valid JSON with this exact structure:
+{
+  "acceptanceCriteria": ". Criterion 1\\n. Criterion 2\\n. Criterion 3\\n. Criterion 4\\n. Criterion 5"
+}
+
+Requirement: $req
+
+Project Context:
+"""
+$escaped
+"""
+''';
+  }
+
+  String _fallbackAcceptanceCriteria(String requirementText) {
+    final req = requirementText.trim();
+    if (req.isEmpty) {
+      return '. Acceptance criteria are defined and agreed by stakeholders\n. Evidence is recorded for verification and sign-off\n. All required deliverables are completed to specification';
+    }
+    return '. ${req} is delivered as specified and verified by testing\n. Stakeholders review and approve the outcome\n. Evidence is documented for sign-off';
   }
 
   /// Generate engagement strategy for a stakeholder based on their alignment status and key interest

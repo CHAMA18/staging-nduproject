@@ -10,6 +10,7 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 
 const Color _kSurfaceBackground = Color(0xFFF7F8FC);
 const Color _kCardBorder = Color(0xFFE5E7EB);
@@ -21,7 +22,8 @@ class FrontEndPlanningTechnologyScreen extends StatelessWidget {
 
   static void open(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const FrontEndPlanningTechnologyScreen()),
+      MaterialPageRoute(
+          builder: (_) => const FrontEndPlanningTechnologyScreen()),
     );
   }
 
@@ -44,7 +46,8 @@ class FrontEndPlanningTechnologyScreen extends StatelessWidget {
               children: [
                 DraggableSidebar(
                   openWidth: AppBreakpoints.sidebarWidth(context),
-                  child: const InitiationLikeSidebar(activeItemLabel: 'Technology'),
+                  child: const InitiationLikeSidebar(
+                      activeItemLabel: 'Technology'),
                 ),
                 Expanded(
                   child: SingleChildScrollView(
@@ -56,8 +59,9 @@ class FrontEndPlanningTechnologyScreen extends StatelessWidget {
                           title: 'Technology Planning',
                           showImportButton: false,
                           showContentButton: false,
-                          onBack: () => Navigator.maybePop(context),
-                          onForward: () => PlanningPhaseNavigation.navigateToNext(
+                          onBack: () => PlanningPhaseNavigation.goToPrevious(
+                              context, 'technology'),
+                          onForward: () => PlanningPhaseNavigation.goToNext(
                             context,
                             'technology',
                           ),
@@ -78,6 +82,17 @@ class FrontEndPlanningTechnologyScreen extends StatelessWidget {
                           builder: (context, constraints) {
                             return const TechnologyPlanCard();
                           },
+                        ),
+                        const SizedBox(height: 24),
+                        LaunchPhaseNavigation(
+                          backLabel:
+                              PlanningPhaseNavigation.backLabel('technology'),
+                          nextLabel:
+                              PlanningPhaseNavigation.nextLabel('technology'),
+                          onBack: () => PlanningPhaseNavigation.goToPrevious(
+                              context, 'technology'),
+                          onNext: () => PlanningPhaseNavigation.goToNext(
+                              context, 'technology'),
                         ),
                       ],
                     ),

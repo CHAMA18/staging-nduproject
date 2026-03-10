@@ -336,23 +336,13 @@ class _TopUtilityBar extends StatelessWidget {
         children: [
           _circleButton(
               icon: Icons.arrow_back_ios_new_rounded,
-              onTap: () => Navigator.maybePop(context)),
+              onTap: () => PlanningPhaseNavigation.goToPrevious(
+                  context, 'stakeholder_management')),
           const SizedBox(width: 12),
           _circleButton(
               icon: Icons.arrow_forward_ios_rounded,
-              onTap: () async {
-                final navIndex = PlanningPhaseNavigation.getPageIndex(
-                    'stakeholder_management');
-                if (navIndex != -1 &&
-                    navIndex < PlanningPhaseNavigation.pages.length - 1) {
-                  final nextPage = PlanningPhaseNavigation.pages[navIndex + 1];
-                  Navigator.pushReplacement(
-                      context, MaterialPageRoute(builder: nextPage.builder));
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('No next screen available')));
-                }
-              }),
+              onTap: () => PlanningPhaseNavigation.goToNext(
+                  context, 'stakeholder_management')),
           const Spacer(),
           const _UserChip(
             name: '',

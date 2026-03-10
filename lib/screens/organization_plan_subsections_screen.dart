@@ -10,6 +10,7 @@ import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/widgets/premium_edit_dialog.dart';
+import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 
 class OrganizationRolesResponsibilitiesScreen extends StatefulWidget {
   const OrganizationRolesResponsibilitiesScreen({super.key});
@@ -21,6 +22,25 @@ class OrganizationRolesResponsibilitiesScreen extends StatefulWidget {
 
 class _OrganizationRolesResponsibilitiesScreenState
     extends State<OrganizationRolesResponsibilitiesScreen> {
+  static const List<String> _roleTitleOptions = [
+    'Project Manager',
+    'Program Manager',
+    'Product Owner',
+    'Scrum Master',
+    'Business Analyst',
+    'PMO Lead',
+    'Delivery Manager',
+    'Operations Manager',
+    'Risk Manager',
+    'Quality Assurance Lead',
+    'Change Manager',
+    'Stakeholder Manager',
+    'Planning Engineer',
+    'Project Coordinator',
+    'Portfolio Manager',
+  ];
+  static const String _customRoleOption = 'Custom';
+
   @override
   Widget build(BuildContext context) {
     final projectData = ProjectDataHelper.getData(context);
@@ -60,22 +80,7 @@ class _OrganizationRolesResponsibilitiesScreenState
         metrics: metrics,
         sections: sections,
       ),
-      onAdd: () async {
-        final newRole = RoleDefinition(
-            title: 'New Role',
-            description: 'Role description',
-            workstream: 'Default');
-        await ProjectDataHelper.saveAndNavigate(
-          context: context,
-          checkpoint: 'organization_roles_responsibilities',
-          saveInBackground: true,
-          nextScreenBuilder: () =>
-              const OrganizationRolesResponsibilitiesScreen(),
-          dataUpdater: (d) =>
-              d.copyWith(projectRoles: [...d.projectRoles, newRole]),
-        );
-        setState(() {});
-      },
+      onAdd: () => _addRole(context),
       onAddPredefined: () => _showPredefinedRolesDialog(context),
     );
   }
@@ -184,51 +189,163 @@ class _OrganizationRolesResponsibilitiesScreenState
 
   void _editRole(BuildContext context, int index, RoleDefinition role) {
     final rootContext = context;
-    final titleController = TextEditingController(text: role.title);
+    String selectedTitle =
+        _roleTitleOptions.contains(role.title) ? role.title : _customRoleOption;
+    final customTitleController = TextEditingController(
+      text: selectedTitle == _customRoleOption ? role.title : '',
+    );
     final workstreamController = TextEditingController(text: role.workstream);
     final descController = TextEditingController(text: role.description);
 
     showDialog(
       context: rootContext,
-      builder: (dialogContext) => PremiumEditDialog(
-        title: 'Edit Role',
-        icon: Icons.badge_outlined,
-        onSave: () async {
-          final updatedRoles = List<RoleDefinition>.from(
-              ProjectDataHelper.getProvider(rootContext)
-                  .projectData
-                  .projectRoles);
-          updatedRoles[index] = RoleDefinition(
-            title: titleController.text.trim(),
-            workstream: workstreamController.text.trim(),
-            description: descController.text.trim(),
-          );
-          Navigator.pop(dialogContext);
-          await ProjectDataHelper.saveAndNavigate(
-            context: rootContext,
-            checkpoint: 'organization_roles_responsibilities',
-            saveInBackground: true,
-            nextScreenBuilder: () =>
-                const OrganizationRolesResponsibilitiesScreen(),
-            dataUpdater: (d) => d.copyWith(projectRoles: updatedRoles),
-          );
-          if (mounted) setState(() {});
-        },
-        children: [
-          PremiumEditDialog.fieldLabel('Title'),
-          PremiumEditDialog.textField(
-              controller: titleController, hint: 'e.g. Project Manager'),
-          const SizedBox(height: 16),
-          PremiumEditDialog.fieldLabel('Decipline'),
-          PremiumEditDialog.textField(
-              controller: workstreamController, hint: 'e.g. Management'),
-          const SizedBox(height: 16),
-          PremiumEditDialog.fieldLabel('Description'),
-          PremiumEditDialog.textField(
-              controller: descController,
-              hint: 'Role responsibilities...',
-              maxLines: 4),
-        ],
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => PremiumEditDialog(
+          title: 'Edit Role',
+          icon: Icons.badge_outlined,
+          onSave: () async {
+            final updatedRoles = List<RoleDefinition>.from(
+                ProjectDataHelper.getProvider(rootContext)
+                    .projectData
+                    .projectRoles);
+            final titleValue = selectedTitle == _customRoleOption
+                ? customTitleController.text.trim()
+                : selectedTitle;
+            updatedRoles[index] = RoleDefinition(
+              title: titleValue,
+              workstream: workstreamController.text.trim(),
+              description: descController.text.trim(),
+            );
+            Navigator.pop(dialogContext);
+            await ProjectDataHelper.saveAndNavigate(
+              context: rootContext,
+              checkpoint: 'organization_roles_responsibilities',
+              saveInBackground: true,
+              nextScreenBuilder: () =>
+                  const OrganizationRolesResponsibilitiesScreen(),
+              dataUpdater: (d) => d.copyWith(projectRoles: updatedRoles),
+            );
+            if (mounted) setState(() {});
+          },
+          children: [
+            PremiumEditDialog.fieldLabel('Title'),
+            DropdownButtonFormField<String>(
+              value: selectedTitle,
+              items: [
+                ..._roleTitleOptions,
+                _customRoleOption,
+              ]
+                  .map((title) =>
+                      DropdownMenuItem(value: title, child: Text(title)))
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setDialogState(() => selectedTitle = value);
+              },
+              decoration: const InputDecoration(
+                hintText: 'Select a role title',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (selectedTitle == _customRoleOption) ...[
+              const SizedBox(height: 12),
+              PremiumEditDialog.textField(
+                controller: customTitleController,
+                hint: 'Enter custom role title',
+              ),
+            ],
+            const SizedBox(height: 16),
+            PremiumEditDialog.fieldLabel('Decipline'),
+            PremiumEditDialog.textField(
+                controller: workstreamController, hint: 'e.g. Management'),
+            const SizedBox(height: 16),
+            PremiumEditDialog.fieldLabel('Description'),
+            PremiumEditDialog.textField(
+                controller: descController,
+                hint: 'Role responsibilities...',
+                maxLines: 4),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _addRole(BuildContext context) {
+    final rootContext = context;
+    String selectedTitle = _roleTitleOptions.first;
+    final customTitleController = TextEditingController();
+    final workstreamController = TextEditingController();
+    final descController = TextEditingController();
+
+    showDialog(
+      context: rootContext,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => PremiumEditDialog(
+          title: 'Add Role',
+          icon: Icons.badge_outlined,
+          onSave: () async {
+            final titleValue = selectedTitle == _customRoleOption
+                ? customTitleController.text.trim()
+                : selectedTitle;
+            final workstream = workstreamController.text.trim();
+            final description = descController.text.trim();
+            final newRole = RoleDefinition(
+              title: titleValue.isNotEmpty ? titleValue : 'New Role',
+              workstream: workstream.isNotEmpty ? workstream : 'Default',
+              description:
+                  description.isNotEmpty ? description : 'Role description',
+            );
+            Navigator.pop(dialogContext);
+            await ProjectDataHelper.saveAndNavigate(
+              context: rootContext,
+              checkpoint: 'organization_roles_responsibilities',
+              saveInBackground: true,
+              nextScreenBuilder: () =>
+                  const OrganizationRolesResponsibilitiesScreen(),
+              dataUpdater: (d) =>
+                  d.copyWith(projectRoles: [...d.projectRoles, newRole]),
+            );
+            if (mounted) setState(() {});
+          },
+          children: [
+            PremiumEditDialog.fieldLabel('Title'),
+            DropdownButtonFormField<String>(
+              value: selectedTitle,
+              items: [
+                ..._roleTitleOptions,
+                _customRoleOption,
+              ]
+                  .map((title) =>
+                      DropdownMenuItem(value: title, child: Text(title)))
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setDialogState(() => selectedTitle = value);
+              },
+              decoration: const InputDecoration(
+                hintText: 'Select a role title',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (selectedTitle == _customRoleOption) ...[
+              const SizedBox(height: 12),
+              PremiumEditDialog.textField(
+                controller: customTitleController,
+                hint: 'Enter custom role title',
+              ),
+            ],
+            const SizedBox(height: 16),
+            PremiumEditDialog.fieldLabel('Decipline'),
+            PremiumEditDialog.textField(
+                controller: workstreamController, hint: 'e.g. Management'),
+            const SizedBox(height: 16),
+            PremiumEditDialog.fieldLabel('Description'),
+            PremiumEditDialog.textField(
+                controller: descController,
+                hint: 'Role responsibilities...',
+                maxLines: 4),
+          ],
+        ),
       ),
     );
   }
@@ -290,8 +407,21 @@ class _OrganizationStaffingPlanScreenState
       final provider = ProjectDataHelper.getProvider(context);
       final roles = provider.projectData.projectRoles;
       final requirements = provider.projectData.staffingRequirements;
-      if (requirements.isEmpty && roles.isNotEmpty) {
+      if (roles.isNotEmpty) {
+        final roleTitles =
+            roles.map((r) => r.title.trim()).where((t) => t.isNotEmpty).toSet();
+
+        final filteredRequirements = requirements
+            .where((r) => roleTitles.contains(r.title.trim()))
+            .toList();
+
+        final existingTitles = filteredRequirements
+            .map((r) => r.title.trim())
+            .where((t) => t.isNotEmpty)
+            .toSet();
+
         final newStaff = roles
+            .where((role) => !existingTitles.contains(role.title.trim()))
             .map((role) => StaffingRequirement(
                   title: role.title,
                   startDate: 'TBD',
@@ -302,13 +432,16 @@ class _OrganizationStaffingPlanScreenState
                       : 'Employee',
                 ))
             .toList();
-        await ProjectDataHelper.updateAndSave(
-          context: context,
-          checkpoint: 'organization_staffing_plan',
-          dataUpdater: (d) => d.copyWith(
-              staffingRequirements: [...d.staffingRequirements, ...newStaff]),
-          showSnackbar: false,
-        );
+
+        final updated = [...filteredRequirements, ...newStaff];
+        if (updated.length != requirements.length || newStaff.isNotEmpty) {
+          await ProjectDataHelper.updateAndSave(
+            context: context,
+            checkpoint: 'organization_staffing_plan',
+            dataUpdater: (d) => d.copyWith(staffingRequirements: updated),
+            showSnackbar: false,
+          );
+        }
         if (mounted) {
           setState(() {
             _didAutoPopulate = true;
@@ -842,22 +975,11 @@ class _PlanningSubsectionScreen extends StatelessWidget {
                           children: [
                             _TopHeader(
                               title: config.title,
-                              onBack: () {
-                                final navIdx =
-                                    PlanningPhaseNavigation.getPageIndex(
-                                        config.checkpoint);
-                                if (navIdx > 0) {
-                                  final prevPage =
-                                      PlanningPhaseNavigation.pages[navIdx - 1];
-                                  Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: prevPage.builder));
-                                } else {
-                                  Navigator.maybePop(context);
-                                }
-                              },
-                              onNext: () => _handleNext(context),
+                              onBack: () =>
+                                  PlanningPhaseNavigation.goToPrevious(
+                                      context, config.checkpoint),
+                              onNext: () => PlanningPhaseNavigation.goToNext(
+                                  context, config.checkpoint),
                               onAdd: onAdd,
                               onAddPredefined: onAddPredefined,
                             ),
@@ -896,6 +1018,18 @@ class _PlanningSubsectionScreen extends StatelessWidget {
                                     'Add roles, responsibilities, and staffing notes to populate this view.',
                                 icon: Icons.group_outlined,
                               ),
+                            const SizedBox(height: 24),
+                            LaunchPhaseNavigation(
+                              backLabel: PlanningPhaseNavigation.backLabel(
+                                  config.checkpoint),
+                              nextLabel: PlanningPhaseNavigation.nextLabel(
+                                  config.checkpoint),
+                              onBack: () =>
+                                  PlanningPhaseNavigation.goToPrevious(
+                                      context, config.checkpoint),
+                              onNext: () => PlanningPhaseNavigation.goToNext(
+                                  context, config.checkpoint),
+                            ),
                             const SizedBox(height: 40),
                           ],
                         );
@@ -913,24 +1047,6 @@ class _PlanningSubsectionScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  void _handleNext(BuildContext context) async {
-    final navIndex = PlanningPhaseNavigation.getPageIndex(config.checkpoint);
-    if (navIndex != -1 && navIndex < PlanningPhaseNavigation.pages.length - 1) {
-      final nextPage = PlanningPhaseNavigation.pages[navIndex + 1];
-      await ProjectDataHelper.saveAndNavigate(
-        context: context,
-        checkpoint: config.checkpoint,
-        saveInBackground: true,
-        nextScreenBuilder: () => nextPage.builder(context),
-        dataUpdater: (d) => d,
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No next screen available')),
-      );
-    }
   }
 }
 

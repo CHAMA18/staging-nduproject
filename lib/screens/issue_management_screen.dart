@@ -11,8 +11,7 @@ import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
-import 'package:ndu_project/screens/change_management_screen.dart';
-import 'package:ndu_project/screens/cost_estimate_screen.dart';
+import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
 class IssueManagementScreen extends StatefulWidget {
   const IssueManagementScreen({super.key});
@@ -62,7 +61,9 @@ class _IssueManagementScreenState extends State<IssueManagementScreen> {
       context: context,
       checkpoint: 'issue_management',
       dataUpdater: (data) => data.copyWith(
-        issueLogItems: data.issueLogItems.map((i) => i.id == existing.id ? updated : i).toList(),
+        issueLogItems: data.issueLogItems
+            .map((i) => i.id == existing.id ? updated : i)
+            .toList(),
       ),
     );
   }
@@ -71,13 +72,18 @@ class _IssueManagementScreenState extends State<IssueManagementScreen> {
     return items.where((i) {
       // Filter by status
       if (_selectedFilter != 'All') {
-        if (_selectedFilter == 'Resolved' && i.status != 'Resolved' && i.status != 'Closed') return false;
-        if (_selectedFilter != 'Resolved' && i.status != _selectedFilter) return false;
+        if (_selectedFilter == 'Resolved' &&
+            i.status != 'Resolved' &&
+            i.status != 'Closed') return false;
+        if (_selectedFilter != 'Resolved' && i.status != _selectedFilter)
+          return false;
       }
       // Filter by type
-      if (_selectedTypeFilter != 'All' && i.type != _selectedTypeFilter) return false;
+      if (_selectedTypeFilter != 'All' && i.type != _selectedTypeFilter)
+        return false;
       // Filter by severity
-      if (_selectedSeverityFilter != 'All' && i.severity != _selectedSeverityFilter) return false;
+      if (_selectedSeverityFilter != 'All' &&
+          i.severity != _selectedSeverityFilter) return false;
       return true;
     }).toList();
   }
@@ -101,18 +107,37 @@ class _IssueManagementScreenState extends State<IssueManagementScreen> {
   Widget build(BuildContext context) {
     final bool isMobile = AppBreakpoints.isMobile(context);
     final double horizontalPadding = isMobile ? 20 : 36;
-    final issueItems = ProjectDataHelper.getData(context).issueLogItems;
+    final issueItems =
+        ProjectDataHelper.getDataListening(context).issueLogItems;
 
     // Build metrics from all issue items (not filtered)
     _metrics = [
-      _IssueMetric(label: 'Open', value: issueItems.where((i) => i.status == 'Open').length.toString(), icon: Icons.report_problem_outlined, color: Colors.orange),
-      _IssueMetric(label: 'In Progress', value: issueItems.where((i) => i.status == 'In Progress').length.toString(), icon: Icons.autorenew, color: Colors.blue),
-      _IssueMetric(label: 'Resolved', value: issueItems.where((i) => i.status == 'Resolved' || i.status == 'Closed').length.toString(), icon: Icons.check_circle_outline, color: Colors.green),
+      _IssueMetric(
+          label: 'Open',
+          value: issueItems.where((i) => i.status == 'Open').length.toString(),
+          icon: Icons.report_problem_outlined,
+          color: Colors.orange),
+      _IssueMetric(
+          label: 'In Progress',
+          value: issueItems
+              .where((i) => i.status == 'In Progress')
+              .length
+              .toString(),
+          icon: Icons.autorenew,
+          color: Colors.blue),
+      _IssueMetric(
+          label: 'Resolved',
+          value: issueItems
+              .where((i) => i.status == 'Resolved' || i.status == 'Closed')
+              .length
+              .toString(),
+          icon: Icons.check_circle_outline,
+          color: Colors.green),
     ];
 
     // Apply filters for milestone section
     final filteredIssues = _filterIssues(issueItems);
-    
+
     // Build milestones from filtered issues
     final byMilestone = <String, List<IssueLogItem>>{};
     for (final it in filteredIssues) {
@@ -124,8 +149,11 @@ class _IssueManagementScreenState extends State<IssueManagementScreen> {
             title: e.key,
             issuesCountLabel: '${e.value.length} issues',
             dueDate: '',
-            statusLabel: e.value.any((x) => x.status == 'Open') ? 'Open' : 'Resolved',
-            indicatorColor: e.value.any((x) => x.status == 'Open') ? Colors.orange : Colors.green))
+            statusLabel:
+                e.value.any((x) => x.status == 'Open') ? 'Open' : 'Resolved',
+            indicatorColor: e.value.any((x) => x.status == 'Open')
+                ? Colors.orange
+                : Colors.green))
         .toList();
 
     // Apply search for log section
@@ -139,18 +167,23 @@ class _IssueManagementScreenState extends State<IssueManagementScreen> {
           children: [
             DraggableSidebar(
               openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(activeItemLabel: 'Issue Management'),
+              child: const InitiationLikeSidebar(
+                  activeItemLabel: 'Issue Management'),
             ),
             Expanded(
               child: Stack(
                 children: [
                   SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 28),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding, vertical: 28),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _TopUtilityBar(
-                          onBack: () => Navigator.maybePop(context),
+                          onBack: () => PlanningPhaseNavigation.goToPrevious(
+                              context, 'issue_management'),
+                          onForward: () => PlanningPhaseNavigation.goToNext(
+                              context, 'issue_management'),
                           onAddIssue: _handleNewIssue,
                         ),
                         const SizedBox(height: 24),
@@ -159,7 +192,8 @@ class _IssueManagementScreenState extends State<IssueManagementScreen> {
                           sectionLabel: 'Issue Management',
                           noteKey: 'planning_issue_management_notes',
                           checkpoint: 'issue_management',
-                          description: 'Summarize key issues, escalation paths, and resolution priorities.',
+                          description:
+                              'Summarize key issues, escalation paths, and resolution priorities.',
                         ),
                         const SizedBox(height: 24),
                         const _PageTitle(),
@@ -171,23 +205,31 @@ class _IssueManagementScreenState extends State<IssueManagementScreen> {
                           selectedStatusFilter: _selectedFilter,
                           selectedTypeFilter: _selectedTypeFilter,
                           selectedSeverityFilter: _selectedSeverityFilter,
-                          onStatusFilterChanged: (value) => setState(() => _selectedFilter = value),
-                          onTypeFilterChanged: (value) => setState(() => _selectedTypeFilter = value),
-                          onSeverityFilterChanged: (value) => setState(() => _selectedSeverityFilter = value),
+                          onStatusFilterChanged: (value) =>
+                              setState(() => _selectedFilter = value),
+                          onTypeFilterChanged: (value) =>
+                              setState(() => _selectedTypeFilter = value),
+                          onSeverityFilterChanged: (value) =>
+                              setState(() => _selectedSeverityFilter = value),
                         ),
                         const SizedBox(height: 24),
                         _ProjectIssuesLogCard(
                           entries: searchedIssues,
                           searchQuery: _searchQuery,
-                          onSearchChanged: (value) => setState(() => _searchQuery = value),
+                          onSearchChanged: (value) =>
+                              setState(() => _searchQuery = value),
                           onEdit: _handleEditIssue,
                         ),
                         const SizedBox(height: 16),
                         LaunchPhaseNavigation(
-                          backLabel: 'Back: Change Management',
-                          nextLabel: 'Next: Cost Estimate',
-                          onBack: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ChangeManagementScreen())),
-                          onNext: () => CostEstimateScreen.open(context),
+                          backLabel: PlanningPhaseNavigation.backLabel(
+                              'issue_management'),
+                          nextLabel: PlanningPhaseNavigation.nextLabel(
+                              'issue_management'),
+                          onBack: () => PlanningPhaseNavigation.goToPrevious(
+                              context, 'issue_management'),
+                          onNext: () => PlanningPhaseNavigation.goToNext(
+                              context, 'issue_management'),
                         ),
                         const SizedBox(height: 80),
                       ],
@@ -205,9 +247,14 @@ class _IssueManagementScreenState extends State<IssueManagementScreen> {
 }
 
 class _TopUtilityBar extends StatelessWidget {
-  const _TopUtilityBar({required this.onBack, required this.onAddIssue});
+  const _TopUtilityBar({
+    required this.onBack,
+    required this.onForward,
+    required this.onAddIssue,
+  });
 
   final VoidCallback onBack;
+  final VoidCallback onForward;
   final VoidCallback onAddIssue;
 
   @override
@@ -223,11 +270,15 @@ class _TopUtilityBar extends StatelessWidget {
         children: [
           _circleButton(icon: Icons.arrow_back_ios_new_rounded, onTap: onBack),
           const SizedBox(width: 12),
-          _circleButton(icon: Icons.arrow_forward_ios_rounded),
+          _circleButton(
+              icon: Icons.arrow_forward_ios_rounded, onTap: onForward),
           const SizedBox(width: 20),
           const Text(
             'Issues Management',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+            style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF111827)),
           ),
           const Spacer(),
           const _UserChip(name: '', role: ''),
@@ -266,7 +317,10 @@ class _PageTitle extends StatelessWidget {
       children: const [
         Text(
           'Issues Management',
-          style: TextStyle(fontSize: 32, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+          style: TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF111827)),
         ),
         SizedBox(height: 8),
         Text(
@@ -298,7 +352,10 @@ class _IssuesOverviewCard extends StatelessWidget {
         children: [
           const Text(
             'Issues Overview',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+            style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF111827)),
           ),
           const SizedBox(height: 6),
           const Text(
@@ -309,7 +366,8 @@ class _IssuesOverviewCard extends StatelessWidget {
           if (metrics.isEmpty)
             const _InlineStatusCard(
               title: 'No issue metrics yet',
-              message: 'Capture issues to populate health, status, and resolution metrics.',
+              message:
+                  'Capture issues to populate health, status, and resolution metrics.',
               icon: Icons.insights_outlined,
             )
           else
@@ -321,7 +379,9 @@ class _IssuesOverviewCard extends StatelessWidget {
                   runSpacing: 16,
                   children: metrics
                       .map((metric) => SizedBox(
-                            width: isNarrow ? (constraints.maxWidth - 16) : (constraints.maxWidth - 16 * 2) / 3,
+                            width: isNarrow
+                                ? (constraints.maxWidth - 16)
+                                : (constraints.maxWidth - 16 * 2) / 3,
                             child: _MetricCard(metric: metric),
                           ))
                       .toList(),
@@ -348,7 +408,8 @@ class _MetricCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: const [
-          BoxShadow(color: Color(0x0D000000), blurRadius: 12, offset: Offset(0, 6)),
+          BoxShadow(
+              color: Color(0x0D000000), blurRadius: 12, offset: Offset(0, 6)),
         ],
       ),
       child: Row(
@@ -368,12 +429,18 @@ class _MetricCard extends StatelessWidget {
             children: [
               Text(
                 metric.value,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+                style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF111827)),
               ),
               const SizedBox(height: 4),
               Text(
                 metric.label,
-                style: TextStyle(fontSize: 13, color: metric.color.withValues(alpha: 0.8), fontWeight: FontWeight.w500),
+                style: TextStyle(
+                    fontSize: 13,
+                    color: metric.color.withValues(alpha: 0.8),
+                    fontWeight: FontWeight.w500),
               ),
             ],
           ),
@@ -402,9 +469,29 @@ class _IssuesByMilestoneCard extends StatelessWidget {
   final ValueChanged<String> onTypeFilterChanged;
   final ValueChanged<String> onSeverityFilterChanged;
 
-  static const List<String> _statusOptions = ['All', 'Open', 'In Progress', 'Resolved', 'Closed'];
-  static const List<String> _typeOptions = ['All', 'Scope', 'Schedule', 'Cost', 'Quality', 'Risk', 'Other'];
-  static const List<String> _severityOptions = ['All', 'Low', 'Medium', 'High', 'Critical'];
+  static const List<String> _statusOptions = [
+    'All',
+    'Open',
+    'In Progress',
+    'Resolved',
+    'Closed'
+  ];
+  static const List<String> _typeOptions = [
+    'All',
+    'Scope',
+    'Schedule',
+    'Cost',
+    'Quality',
+    'Risk',
+    'Other'
+  ];
+  static const List<String> _severityOptions = [
+    'All',
+    'Low',
+    'Medium',
+    'High',
+    'Critical'
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -426,19 +513,26 @@ class _IssuesByMilestoneCard extends StatelessWidget {
             children: [
               const Text(
                 'Issues by Milestone',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF111827)),
               ),
               const SizedBox(width: 12),
-              _filterDropdown('Status', selectedStatusFilter, _statusOptions, onStatusFilterChanged),
-              _filterDropdown('Type', selectedTypeFilter, _typeOptions, onTypeFilterChanged),
-              _filterDropdown('Severity', selectedSeverityFilter, _severityOptions, onSeverityFilterChanged),
+              _filterDropdown('Status', selectedStatusFilter, _statusOptions,
+                  onStatusFilterChanged),
+              _filterDropdown('Type', selectedTypeFilter, _typeOptions,
+                  onTypeFilterChanged),
+              _filterDropdown('Severity', selectedSeverityFilter,
+                  _severityOptions, onSeverityFilterChanged),
             ],
           ),
           const SizedBox(height: 22),
           if (milestones.isEmpty)
             const _InlineStatusCard(
               title: 'No milestone issues logged',
-              message: 'Add milestone issues to track escalation risk and delivery impact.',
+              message:
+                  'Add milestone issues to track escalation risk and delivery impact.',
               icon: Icons.flag_outlined,
             )
           else
@@ -448,7 +542,8 @@ class _IssuesByMilestoneCard extends StatelessWidget {
                     (milestone) => Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 18, vertical: 18),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF9FAFB),
                           borderRadius: BorderRadius.circular(18),
@@ -458,7 +553,9 @@ class _IssuesByMilestoneCard extends StatelessWidget {
                             Container(
                               width: 16,
                               height: 16,
-                              decoration: BoxDecoration(color: milestone.indicatorColor, shape: BoxShape.circle),
+                              decoration: BoxDecoration(
+                                  color: milestone.indicatorColor,
+                                  shape: BoxShape.circle),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
@@ -467,12 +564,16 @@ class _IssuesByMilestoneCard extends StatelessWidget {
                                 children: [
                                   Text(
                                     milestone.title,
-                                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+                                    style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF111827)),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     milestone.issuesCountLabel,
-                                    style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                                    style: const TextStyle(
+                                        fontSize: 13, color: Color(0xFF6B7280)),
                                   ),
                                 ],
                               ),
@@ -480,7 +581,8 @@ class _IssuesByMilestoneCard extends StatelessWidget {
                             const SizedBox(width: 12),
                             Text(
                               milestone.dueDate,
-                              style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                              style: const TextStyle(
+                                  fontSize: 13, color: Color(0xFF6B7280)),
                             ),
                             const SizedBox(width: 16),
                             _StatusPill(
@@ -500,7 +602,8 @@ class _IssuesByMilestoneCard extends StatelessWidget {
     );
   }
 
-  Widget _filterDropdown(String label, String value, List<String> options, ValueChanged<String> onChanged) {
+  Widget _filterDropdown(String label, String value, List<String> options,
+      ValueChanged<String> onChanged) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -511,9 +614,13 @@ class _IssuesByMilestoneCard extends StatelessWidget {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: Color(0xFF6B7280)),
+          icon: const Icon(Icons.keyboard_arrow_down_rounded,
+              size: 18, color: Color(0xFF6B7280)),
           style: const TextStyle(fontSize: 13, color: Color(0xFF374151)),
-          items: options.map((opt) => DropdownMenuItem(value: opt, child: Text('$label: $opt'))).toList(),
+          items: options
+              .map((opt) =>
+                  DropdownMenuItem(value: opt, child: Text('$label: $opt')))
+              .toList(),
           onChanged: (v) {
             if (v != null) onChanged(v);
           },
@@ -555,7 +662,10 @@ class _ProjectIssuesLogCard extends StatelessWidget {
             children: [
               const Text(
                 'Project Issues Log',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF111827)),
               ),
               const Spacer(),
               SizedBox(
@@ -601,7 +711,8 @@ class _ProjectIssuesLogCard extends StatelessWidget {
               child: Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 22, vertical: 16),
                     child: Row(
                       children: [
                         _tableHeaderCell('ID', flex: _columnFlex[0]),
@@ -612,11 +723,18 @@ class _ProjectIssuesLogCard extends StatelessWidget {
                         _tableHeaderCell('Assignee', flex: _columnFlex[5]),
                         _tableHeaderCell('Due Date', flex: _columnFlex[6]),
                         _tableHeaderCell('Milestone', flex: _columnFlex[7]),
-                        const SizedBox(width: 80, child: Text('Actions', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)))),
+                        const SizedBox(
+                            width: 80,
+                            child: Text('Actions',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF6B7280)))),
                       ],
                     ),
                   ),
-                  const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+                  const Divider(
+                      height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
                   ...entries.map((entry) => _IssueLogRow(
                         entry: entry,
                         columnFlex: _columnFlex,
@@ -626,10 +744,17 @@ class _ProjectIssuesLogCard extends StatelessWidget {
                               context: context,
                               builder: (_) => AlertDialog(
                                     title: const Text('Delete issue?'),
-                                    content: const Text('This will permanently remove the issue.'),
+                                    content: const Text(
+                                        'This will permanently remove the issue.'),
                                     actions: [
-                                      TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-                                      ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
+                                      TextButton(
+                                          onPressed: () =>
+                                              Navigator.of(context).pop(false),
+                                          child: const Text('Cancel')),
+                                      ElevatedButton(
+                                          onPressed: () =>
+                                              Navigator.of(context).pop(true),
+                                          child: const Text('Delete')),
                                     ],
                                   ));
                           if (!context.mounted) return;
@@ -637,7 +762,10 @@ class _ProjectIssuesLogCard extends StatelessWidget {
                             await ProjectDataHelper.updateAndSave(
                                 context: context,
                                 checkpoint: 'issue_management',
-                                dataUpdater: (data) => data.copyWith(issueLogItems: data.issueLogItems.where((i) => i.id != entry.id).toList()));
+                                dataUpdater: (data) => data.copyWith(
+                                    issueLogItems: data.issueLogItems
+                                        .where((i) => i.id != entry.id)
+                                        .toList()));
                           }
                         },
                       )),
@@ -654,14 +782,21 @@ class _ProjectIssuesLogCard extends StatelessWidget {
       flex: flex,
       child: Text(
         label,
-        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
+        style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF6B7280)),
       ),
     );
   }
 }
 
 class _IssueLogRow extends StatelessWidget {
-  const _IssueLogRow({required this.entry, required this.columnFlex, this.onEdit, this.onDelete});
+  const _IssueLogRow(
+      {required this.entry,
+      required this.columnFlex,
+      this.onEdit,
+      this.onDelete});
 
   final IssueLogItem entry;
   final List<int> columnFlex;
@@ -679,7 +814,10 @@ class _IssueLogRow extends StatelessWidget {
             flex: columnFlex[0],
             child: Text(
               entry.id,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+              style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF111827)),
             ),
           ),
           Expanded(
@@ -689,12 +827,16 @@ class _IssueLogRow extends StatelessWidget {
               children: [
                 Text(
                   entry.title,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF111827)),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   entry.description,
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
                 ),
               ],
             ),
@@ -760,13 +902,15 @@ class _IssueLogRow extends StatelessWidget {
               children: [
                 IconButton(
                   onPressed: onEdit,
-                  icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF6B7280)),
+                  icon: const Icon(Icons.edit_outlined,
+                      size: 18, color: Color(0xFF6B7280)),
                   splashRadius: 18,
                   tooltip: 'Edit',
                 ),
                 IconButton(
                   onPressed: onDelete,
-                  icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)),
+                  icon: const Icon(Icons.delete_outline,
+                      size: 18, color: Color(0xFFEF4444)),
                   splashRadius: 18,
                   tooltip: 'Delete',
                 ),
@@ -780,7 +924,8 @@ class _IssueLogRow extends StatelessWidget {
 }
 
 class _InlineStatusCard extends StatelessWidget {
-  const _InlineStatusCard({required this.title, required this.message, required this.icon});
+  const _InlineStatusCard(
+      {required this.title, required this.message, required this.icon});
 
   final String title;
   final String message;
@@ -812,9 +957,15 @@ class _InlineStatusCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827))),
                 const SizedBox(height: 6),
-                Text(message, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                Text(message,
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF6B7280))),
               ],
             ),
           ),
@@ -841,9 +992,21 @@ class _NewIssueDialogState extends State<_NewIssueDialog> {
   final TextEditingController _dueDateCtrl = TextEditingController();
   final TextEditingController _milestoneCtrl = TextEditingController();
 
-  final List<String> _types = const ['Scope', 'Schedule', 'Cost', 'Quality', 'Risk', 'Other'];
+  final List<String> _types = const [
+    'Scope',
+    'Schedule',
+    'Cost',
+    'Quality',
+    'Risk',
+    'Other'
+  ];
   final List<String> _severities = const ['Low', 'Medium', 'High', 'Critical'];
-  final List<String> _statuses = const ['Open', 'In Progress', 'Resolved', 'Closed'];
+  final List<String> _statuses = const [
+    'Open',
+    'In Progress',
+    'Resolved',
+    'Closed'
+  ];
 
   String _selectedType = 'Scope';
   String _selectedSeverity = 'Medium';
@@ -863,7 +1026,8 @@ class _NewIssueDialogState extends State<_NewIssueDialog> {
       _dueDateCtrl.text = existing.dueDate;
       _milestoneCtrl.text = existing.milestone;
       _selectedType = existing.type.isEmpty ? 'Scope' : existing.type;
-      _selectedSeverity = existing.severity.isEmpty ? 'Medium' : existing.severity;
+      _selectedSeverity =
+          existing.severity.isEmpty ? 'Medium' : existing.severity;
       _selectedStatus = existing.status.isEmpty ? 'Open' : existing.status;
     }
   }
@@ -920,16 +1084,23 @@ class _NewIssueDialogState extends State<_NewIssueDialog> {
     Navigator.of(context).pop(entry);
   }
 
-  InputDecoration _decoration(String label, {String? hint, Widget? suffixIcon}) {
+  InputDecoration _decoration(String label,
+      {String? hint, Widget? suffixIcon}) {
     return InputDecoration(
       labelText: label,
       hintText: hint,
       filled: true,
       fillColor: Colors.white,
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.35))),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.35))),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFFFD54F), width: 1.6)),
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.35))),
+      enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.35))),
+      focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFFFD54F), width: 1.6)),
       suffixIcon: suffixIcon,
     );
   }
@@ -948,28 +1119,42 @@ class _NewIssueDialogState extends State<_NewIssueDialog> {
               children: [
                 TextFormField(
                   controller: _titleCtrl,
-                  decoration: _decoration('Title', hint: 'e.g. Data migration delay'),
-                  validator: (value) => value == null || value.trim().isEmpty ? 'Required' : null,
+                  decoration:
+                      _decoration('Title', hint: 'e.g. Data migration delay'),
+                  validator: (value) =>
+                      value == null || value.trim().isEmpty ? 'Required' : null,
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: _selectedType,
-                  items: _types.map((type) => DropdownMenuItem(value: type, child: Text(type))).toList(),
-                  onChanged: (value) => setState(() => _selectedType = value ?? _selectedType),
+                  items: _types
+                      .map((type) =>
+                          DropdownMenuItem(value: type, child: Text(type)))
+                      .toList(),
+                  onChanged: (value) =>
+                      setState(() => _selectedType = value ?? _selectedType),
                   decoration: _decoration('Type'),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: _selectedSeverity,
-                  items: _severities.map((severity) => DropdownMenuItem(value: severity, child: Text(severity))).toList(),
-                  onChanged: (value) => setState(() => _selectedSeverity = value ?? _selectedSeverity),
+                  items: _severities
+                      .map((severity) => DropdownMenuItem(
+                          value: severity, child: Text(severity)))
+                      .toList(),
+                  onChanged: (value) => setState(
+                      () => _selectedSeverity = value ?? _selectedSeverity),
                   decoration: _decoration('Severity'),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: _selectedStatus,
-                  items: _statuses.map((status) => DropdownMenuItem(value: status, child: Text(status))).toList(),
-                  onChanged: (value) => setState(() => _selectedStatus = value ?? _selectedStatus),
+                  items: _statuses
+                      .map((status) =>
+                          DropdownMenuItem(value: status, child: Text(status)))
+                      .toList(),
+                  onChanged: (value) => setState(
+                      () => _selectedStatus = value ?? _selectedStatus),
                   decoration: _decoration('Status'),
                 ),
                 const SizedBox(height: 12),
@@ -982,19 +1167,24 @@ class _NewIssueDialogState extends State<_NewIssueDialog> {
                   controller: _dueDateCtrl,
                   readOnly: true,
                   onTap: _pickDate,
-                  decoration: _decoration('Due Date', hint: 'YYYY-MM-DD', suffixIcon: const Icon(Icons.calendar_today_outlined, size: 18)),
+                  decoration: _decoration('Due Date',
+                      hint: 'YYYY-MM-DD',
+                      suffixIcon:
+                          const Icon(Icons.calendar_today_outlined, size: 18)),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _milestoneCtrl,
-                  decoration: _decoration('Milestone', hint: 'Related milestone'),
+                  decoration:
+                      _decoration('Milestone', hint: 'Related milestone'),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _descriptionCtrl,
                   minLines: 3,
                   maxLines: 5,
-                  decoration: _decoration('Description', hint: 'Describe the issue'),
+                  decoration:
+                      _decoration('Description', hint: 'Describe the issue'),
                 ),
               ],
             ),
@@ -1002,7 +1192,9 @@ class _NewIssueDialogState extends State<_NewIssueDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel')),
         ElevatedButton(
           onPressed: _submit,
           style: ElevatedButton.styleFrom(
@@ -1025,9 +1217,12 @@ class _UserChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final displayName = FirebaseAuthService.displayNameOrEmail(fallback: name.isNotEmpty ? name : 'User');
+    final displayName = FirebaseAuthService.displayNameOrEmail(
+        fallback: name.isNotEmpty ? name : 'User');
     final email = user?.email ?? '';
-    final primary = displayName.isNotEmpty ? displayName : (email.isNotEmpty ? email : name);
+    final primary = displayName.isNotEmpty
+        ? displayName
+        : (email.isNotEmpty ? email : name);
     final photoUrl = user?.photoURL ?? '';
 
     return StreamBuilder<bool>(
@@ -1050,11 +1245,15 @@ class _UserChip extends StatelessWidget {
               CircleAvatar(
                 radius: 16,
                 backgroundColor: const Color(0xFFE5E7EB),
-                backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                backgroundImage:
+                    photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
                 child: photoUrl.isEmpty
                     ? Text(
                         primary.isNotEmpty ? primary[0].toUpperCase() : 'U',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151)),
                       )
                     : null,
               ),
@@ -1064,11 +1263,15 @@ class _UserChip extends StatelessWidget {
                 children: [
                   Text(
                     primary,
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF111827)),
                   ),
                   Text(
                     roleText,
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+                    style:
+                        const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
                   ),
                 ],
               ),
@@ -1104,7 +1307,10 @@ class _YellowButton extends StatelessWidget {
 }
 
 class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.label, required this.background, required this.foreground});
+  const _StatusPill(
+      {required this.label,
+      required this.background,
+      required this.foreground});
 
   final String label;
   final Color background;
@@ -1120,14 +1326,19 @@ class _StatusPill extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: foreground),
+        style: TextStyle(
+            fontSize: 12, fontWeight: FontWeight.w600, color: foreground),
       ),
     );
   }
 }
 
 class _IssueMetric {
-  const _IssueMetric({required this.label, required this.value, required this.icon, required this.color});
+  const _IssueMetric(
+      {required this.label,
+      required this.value,
+      required this.icon,
+      required this.color});
 
   final String label;
   final String value;
@@ -1136,7 +1347,12 @@ class _IssueMetric {
 }
 
 class _MilestoneIssues {
-  const _MilestoneIssues({required this.title, required this.issuesCountLabel, required this.dueDate, required this.statusLabel, required this.indicatorColor});
+  const _MilestoneIssues(
+      {required this.title,
+      required this.issuesCountLabel,
+      required this.dueDate,
+      required this.statusLabel,
+      required this.indicatorColor});
 
   final String title;
   final String issuesCountLabel;

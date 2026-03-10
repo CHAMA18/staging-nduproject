@@ -9,6 +9,10 @@ import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/utils/planning_phase_navigation.dart';
+import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/services/api_key_manager.dart';
 
 /// Schedule screen recreated to match the provided mockup with
 class ScheduleScreen extends StatefulWidget {
@@ -26,41 +30,324 @@ class ScheduleScreen extends StatefulWidget {
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
   final TextEditingController _notesController = TextEditingController();
+  final List<_ScheduleRow> _activityRows = [];
   String _selectedMethodology = 'Waterfall';
-  int _timelineTabIndex = 0;
+  DateTime? _scheduleStartDate;
+  DateTime? _baselineDate;
   Timer? _saveDebounce;
   DateTime? _lastSavedAt;
+  bool _isGeneratingSchedule = false;
+  bool _autoImportAttempted = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      ApiKeyManager.initializeApiKey();
       final data = ProjectDataHelper.getData(context);
       _notesController.text =
           data.planningNotes['planning_schedule_notes'] ?? '';
+      _selectedMethodology =
+          data.planningNotes['planning_schedule_methodology'] ??
+              _selectedMethodology;
+      final storedStart =
+          data.planningNotes['planning_schedule_start_date'] ?? '';
+      _scheduleStartDate = DateTime.tryParse(storedStart) ?? DateTime.now();
+      final baseline = data.scheduleBaselineDate.trim().isEmpty
+          ? null
+          : DateTime.tryParse(data.scheduleBaselineDate.trim());
+      _baselineDate = baseline;
+      _loadScheduleActivities(data);
       _notesController.addListener(_handleNotesChanged);
     });
   }
 
   void _handleNotesChanged() {
-    final value = _notesController.text.trim();
     _saveDebounce?.cancel();
     _saveDebounce = Timer(const Duration(milliseconds: 700), () async {
-      final success = await ProjectDataHelper.updateAndSave(
-        context: context,
-        checkpoint: 'planning_schedule',
-        dataUpdater: (data) => data.copyWith(
-          planningNotes: {
-            ...data.planningNotes,
-            'planning_schedule_notes': value,
-          },
-        ),
-        showSnackbar: false,
-      );
-      if (mounted && success) {
-        setState(() => _lastSavedAt = DateTime.now());
-      }
+      await _persistSchedule();
     });
+  }
+
+  void _handleActivityChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+    _saveDebounce?.cancel();
+    _saveDebounce = Timer(const Duration(milliseconds: 700), () async {
+      await _persistSchedule();
+    });
+  }
+
+  Future<void> _persistSchedule() async {
+    final value = _notesController.text.trim();
+    final activities = _buildScheduleActivities();
+    final success = await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'planning_schedule',
+      dataUpdater: (data) => data.copyWith(
+        planningNotes: {
+          ...data.planningNotes,
+          'planning_schedule_notes': value,
+          'planning_schedule_methodology': _selectedMethodology,
+          'planning_schedule_start_date':
+              _scheduleStartDate?.toIso8601String() ?? '',
+        },
+        scheduleActivities: activities,
+      ),
+      showSnackbar: false,
+    );
+    if (mounted && success) {
+      setState(() => _lastSavedAt = DateTime.now());
+    }
+  }
+
+  Future<void> _setBaseline() async {
+    if (_activityRows.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Add schedule activities first.')),
+        );
+      }
+      return;
+    }
+    final activities = _buildScheduleActivities();
+    final baselineDate = DateTime.now().toIso8601String();
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'planning_schedule',
+      dataUpdater: (data) => data.copyWith(
+        scheduleBaselineActivities: activities,
+        scheduleBaselineDate: baselineDate,
+      ),
+      showSnackbar: false,
+    );
+    if (mounted) {
+      setState(() => _baselineDate = DateTime.parse(baselineDate));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Schedule baseline saved')),
+      );
+    }
+  }
+
+  Future<void> _pickStartDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _scheduleStartDate ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      setState(() => _scheduleStartDate = picked);
+      _handleActivityChanged();
+    }
+  }
+
+  void _loadScheduleActivities(ProjectDataModel data) {
+    final usedIds = <String>{};
+    _activityRows
+      ..clear()
+      ..addAll(data.scheduleActivities.map((a) {
+        var id = a.wbsId.isNotEmpty ? a.wbsId : a.id;
+        if (id.trim().isEmpty || usedIds.contains(id)) {
+          id = DateTime.now().microsecondsSinceEpoch.toString();
+        }
+        usedIds.add(id);
+        return _ScheduleRow(
+          id: id,
+          wbsId: a.wbsId,
+          title: a.title,
+          durationDays: a.durationDays,
+          predecessorId:
+              a.predecessorIds.isEmpty ? null : a.predecessorIds.first,
+          isMilestone: a.isMilestone,
+          onChanged: _handleActivityChanged,
+        );
+      }));
+    if (_activityRows.isEmpty && data.wbsTree.isNotEmpty) {
+      _importFromWbs(showConfirm: false);
+    }
+  }
+
+  List<ScheduleActivity> _buildScheduleActivities() {
+    return _activityRows
+        .map((row) => ScheduleActivity(
+              id: row.id,
+              wbsId: row.wbsId,
+              title: row.titleController.text.trim(),
+              durationDays:
+                  int.tryParse(row.durationController.text.trim()) ?? 5,
+              predecessorIds:
+                  row.predecessorId == null ? [] : [row.predecessorId!],
+              isMilestone: row.isMilestone,
+            ))
+        .toList();
+  }
+
+  List<Map<String, String>> _flattenWbsItems(List<WorkItem> items) {
+    final result = <Map<String, String>>[];
+    void visit(List<WorkItem> nodes) {
+      for (final node in nodes) {
+        if (node.children.isEmpty) {
+          result.add({
+            'id': node.id,
+            'title': node.title,
+            'dependencies': node.dependencies.join(', '),
+          });
+        } else {
+          visit(node.children);
+        }
+      }
+    }
+
+    visit(items);
+    return result;
+  }
+
+  Future<void> _importFromWbs({bool showConfirm = true}) async {
+    final data = ProjectDataHelper.getData(context);
+    if (data.wbsTree.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No WBS items found.')),
+        );
+      }
+      return;
+    }
+
+    if (showConfirm && _activityRows.isNotEmpty) {
+      final shouldContinue = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Replace schedule activities?'),
+          content: const Text(
+              'Importing from WBS will replace your current schedule list.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Replace'),
+            ),
+          ],
+        ),
+      );
+      if (shouldContinue != true) return;
+    }
+
+    final flattened = _flattenWbsItems(data.wbsTree);
+    String ensureId(String? raw, Set<String> usedIds) {
+      final trimmed = raw?.trim() ?? '';
+      var candidate = trimmed.isNotEmpty
+          ? trimmed
+          : DateTime.now().microsecondsSinceEpoch.toString();
+      if (!usedIds.contains(candidate)) {
+        usedIds.add(candidate);
+        return candidate;
+      }
+      var suffix = 2;
+      while (usedIds.contains('$candidate-$suffix')) {
+        suffix++;
+      }
+      candidate = '$candidate-$suffix';
+      usedIds.add(candidate);
+      return candidate;
+    }
+
+    final usedIds = <String>{};
+    final titleToId = <String, String>{};
+    final rawIdToId = <String, String>{};
+    final normalized = <Map<String, String>>[];
+
+    for (final item in flattened) {
+      final rawId = (item['id'] ?? '').trim();
+      final title = (item['title'] ?? '').trim();
+      final uniqueId = ensureId(rawId, usedIds);
+      normalized.add({
+        'rawId': rawId,
+        'id': uniqueId,
+        'title': title,
+        'dependencies': (item['dependencies'] ?? '').trim(),
+      });
+      if (rawId.isNotEmpty && !rawIdToId.containsKey(rawId)) {
+        rawIdToId[rawId] = uniqueId;
+      }
+      if (title.isNotEmpty && !titleToId.containsKey(title)) {
+        titleToId[title] = uniqueId;
+      }
+    }
+
+    setState(() {
+      _activityRows
+        ..clear()
+        ..addAll(normalized.map((item) {
+          final deps = (item['dependencies'] ?? '')
+              .split(',')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList();
+          String? predecessorId;
+          if (deps.isNotEmpty) {
+            final dep = deps.first;
+            predecessorId = rawIdToId[dep] ?? titleToId[dep];
+          }
+          return _ScheduleRow(
+            id: item['id'] ?? '',
+            wbsId: item['rawId'] ?? '',
+            title: item['title'] ?? '',
+            durationDays: 5,
+            predecessorId: predecessorId,
+            isMilestone: false,
+            onChanged: _handleActivityChanged,
+          );
+        }));
+    });
+    _handleActivityChanged();
+  }
+
+  Future<void> _generateScheduleFromAi() async {
+    if (_isGeneratingSchedule) return;
+    final data = ProjectDataHelper.getData(context);
+    if (data.wbsTree.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add WBS items first.')),
+      );
+      return;
+    }
+    setState(() => _isGeneratingSchedule = true);
+    try {
+      final wbsItems = _flattenWbsItems(data.wbsTree);
+      final ctx = ProjectDataHelper.buildFepContext(
+        data,
+        sectionLabel: 'Schedule Plan',
+      );
+      final ai = OpenAiServiceSecure();
+      final activities = await ai.generateScheduleActivities(
+        context: ctx,
+        wbsItems: wbsItems,
+      );
+      if (!mounted) return;
+      setState(() {
+        _activityRows
+          ..clear()
+          ..addAll(activities.map((a) => _ScheduleRow.fromActivity(
+                a,
+                onChanged: _handleActivityChanged,
+              )));
+      });
+      _handleActivityChanged();
+    } catch (e) {
+      debugPrint('AI schedule generation failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to generate schedule: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isGeneratingSchedule = false);
+    }
   }
 
   @override
@@ -68,12 +355,24 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     _saveDebounce?.cancel();
     _notesController.removeListener(_handleNotesChanged);
     _notesController.dispose();
+    for (final row in _activityRows) {
+      row.dispose();
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final bool isMobile = AppBreakpoints.isMobile(context);
+    final data = ProjectDataHelper.getData(context);
+    if (!_autoImportAttempted &&
+        _activityRows.isEmpty &&
+        data.wbsTree.isNotEmpty) {
+      _autoImportAttempted = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _importFromWbs(showConfirm: false);
+      });
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FB),
@@ -93,14 +392,40 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       isMobile ? 20 : 32,
                       28,
                       isMobile ? 20 : 32,
-                      120,
+                      28,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         PlanningPhaseHeader(
                           title: 'Schedule',
-                          onBack: () => Navigator.maybePop(context),
+                          onBack: () {
+                            final idx = PlanningPhaseNavigation.getPageIndex(
+                                'schedule');
+                            if (idx > 0) {
+                              final prev =
+                                  PlanningPhaseNavigation.pages[idx - 1];
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: prev.builder),
+                              );
+                            } else {
+                              Navigator.maybePop(context);
+                            }
+                          },
+                          onForward: () {
+                            final idx = PlanningPhaseNavigation.getPageIndex(
+                                'schedule');
+                            if (idx <
+                                PlanningPhaseNavigation.pages.length - 1) {
+                              final next =
+                                  PlanningPhaseNavigation.pages[idx + 1];
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: next.builder),
+                              );
+                            }
+                          },
                           showImportButton: false,
                           showContentButton: false,
                         ),
@@ -110,34 +435,46 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           savedAt: _lastSavedAt,
                         ),
                         const SizedBox(height: 24),
-                        _ScheduleManagementCard(
-                          methodology: _selectedMethodology,
-                          onMethodologyChanged: (value) {
-                            if (value != null) {
-                              setState(() => _selectedMethodology = value);
-                            }
-                          },
+                        _ScheduleBuilderCard(
                           isMobile: isMobile,
+                          rows: _activityRows,
+                          isGenerating: _isGeneratingSchedule,
+                          onImportWbs: () => _importFromWbs(),
+                          onGenerateAi: _generateScheduleFromAi,
+                          onRowChanged: _handleActivityChanged,
+                          onAddRow: () {
+                            setState(() {
+                              _activityRows.add(_ScheduleRow(
+                                id: DateTime.now()
+                                    .microsecondsSinceEpoch
+                                    .toString(),
+                                onChanged: _handleActivityChanged,
+                              ));
+                            });
+                            _handleActivityChanged();
+                          },
+                          onDeleteRow: (id) {
+                            setState(() {
+                              _activityRows.removeWhere((row) => row.id == id);
+                            });
+                            _handleActivityChanged();
+                          },
+                          onSetBaseline: _setBaseline,
+                          scheduleStartDate: _scheduleStartDate,
+                          onPickStartDate: _pickStartDate,
+                          baselineDate: _baselineDate,
                         ),
                         const SizedBox(height: 24),
-                        _ProjectTimelineCard(
-                          selectedTab: _timelineTabIndex,
-                          onTabChanged: (index) =>
-                              setState(() => _timelineTabIndex = index),
+                        _ScheduleGanttSection(
+                          rows: _activityRows,
+                          startDate: _scheduleStartDate,
+                        ),
+                        const SizedBox(height: 24),
+                        _LookaheadSection(
+                          rows: _activityRows,
+                          startDate: _scheduleStartDate,
                         ),
                       ],
-                    ),
-                  ),
-                  // Navigation footer matching Launch Phase styling
-                  Positioned(
-                    left: isMobile ? 20 : 32,
-                    right: isMobile ? 20 : 32,
-                    bottom: 90,
-                    child: LaunchPhaseNavigation(
-                      backLabel: 'Back: Schedule overview',
-                      nextLabel: 'Next: Schedule timeline',
-                      onBack: () => Navigator.maybePop(context),
-                      onNext: () {},
                     ),
                   ),
                   const KazAiChatBubble(),
@@ -197,6 +534,691 @@ class _NotesInputField extends StatelessWidget {
       ],
     );
   }
+}
+
+class _ScheduleBuilderCard extends StatelessWidget {
+  const _ScheduleBuilderCard({
+    required this.isMobile,
+    required this.rows,
+    required this.isGenerating,
+    required this.onImportWbs,
+    required this.onGenerateAi,
+    required this.onRowChanged,
+    required this.onAddRow,
+    required this.onDeleteRow,
+    required this.onSetBaseline,
+    required this.scheduleStartDate,
+    required this.onPickStartDate,
+    required this.baselineDate,
+  });
+
+  final bool isMobile;
+  final List<_ScheduleRow> rows;
+  final bool isGenerating;
+  final VoidCallback onImportWbs;
+  final VoidCallback onGenerateAi;
+  final VoidCallback onRowChanged;
+  final VoidCallback onAddRow;
+  final void Function(String id) onDeleteRow;
+  final VoidCallback onSetBaseline;
+  final DateTime? scheduleStartDate;
+  final VoidCallback onPickStartDate;
+  final DateTime? baselineDate;
+
+  @override
+  Widget build(BuildContext context) {
+    final headerStyle = const TextStyle(
+        fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF4B5563));
+    final border = const BorderSide(color: Color(0xFFE5E7EB));
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x11000000), blurRadius: 14, offset: Offset(0, 8)),
+        ],
+      ),
+      padding: EdgeInsets.all(isMobile ? 16 : 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Schedule Builder',
+                  style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF111827)),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: onImportWbs,
+                icon: const Icon(Icons.playlist_add_check, size: 18),
+                label: const Text('Import from WBS'),
+              ),
+              const SizedBox(width: 8),
+              TextButton.icon(
+                onPressed: isGenerating ? null : onGenerateAi,
+                icon: isGenerating
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.auto_fix_high, size: 18),
+                label: const Text('AI Generate'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Build schedule activities from WBS, set durations, and sequence dependencies.',
+            style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+          ),
+          if (baselineDate != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Baseline set: ${_formatDate(baselineDate!)}',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+            ),
+          ],
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Text('Start date',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF374151))),
+              const SizedBox(width: 8),
+              TextButton(
+                onPressed: onPickStartDate,
+                child: Text(
+                  scheduleStartDate == null
+                      ? 'Select'
+                      : '${scheduleStartDate!.year}-${scheduleStartDate!.month.toString().padLeft(2, '0')}-${scheduleStartDate!.day.toString().padLeft(2, '0')}',
+                ),
+              ),
+              const Spacer(),
+              OutlinedButton.icon(
+                onPressed: onAddRow,
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Add activity'),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: onSetBaseline,
+                child: const Text('Set baseline'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (rows.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Text(
+                'No schedule activities yet. Import from WBS or add manually.',
+                style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+              ),
+            )
+          else
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: Table(
+                columnWidths: const {
+                  0: FlexColumnWidth(3),
+                  1: FixedColumnWidth(120),
+                  2: FlexColumnWidth(2),
+                  3: FixedColumnWidth(110),
+                  4: FixedColumnWidth(40),
+                },
+                border: TableBorder(
+                  horizontalInside: border,
+                  verticalInside: border,
+                  top: border,
+                  bottom: border,
+                  left: border,
+                  right: border,
+                ),
+                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                children: [
+                  TableRow(
+                    decoration: const BoxDecoration(color: Color(0xFFF9FAFB)),
+                    children: [
+                      _th('Activity', headerStyle),
+                      _th('Duration (days)', headerStyle),
+                      _th('Predecessor', headerStyle),
+                      _th('Milestone', headerStyle),
+                      _th('', headerStyle),
+                    ],
+                  ),
+                  ...rows.map((row) => _ScheduleRowWidget(
+                        row: row,
+                        allRows: rows,
+                        onChanged: onRowChanged,
+                        onDelete: () => onDeleteRow(row.id),
+                      ).buildRow(context)),
+                ],
+              ),
+            ),
+          const SizedBox(height: 8),
+          const Text(
+            'Tips: Set a predecessor to define sequencing. Check “Milestone” for 0‑day checkpoints (approvals, go‑live).',
+            style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _th(String text, TextStyle style) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Text(text, style: style, textAlign: TextAlign.center),
+    );
+  }
+}
+
+class _ScheduleRowWidget {
+  const _ScheduleRowWidget({
+    required this.row,
+    required this.allRows,
+    required this.onChanged,
+    required this.onDelete,
+  });
+
+  final _ScheduleRow row;
+  final List<_ScheduleRow> allRows;
+  final VoidCallback onChanged;
+  final VoidCallback onDelete;
+
+  TableRow buildRow(BuildContext context) {
+    final options = allRows.where((r) => r.id != row.id).toList();
+    if (options.isEmpty && allRows.length > 1) {
+      debugPrint('Schedule predecessor options empty for ${row.id}');
+      debugPrint('All rows: ${allRows.map((r) => r.id).toList()}');
+    }
+
+    return TableRow(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: TextField(
+            controller: row.titleController,
+            onChanged: (_) => onChanged(),
+            decoration: const InputDecoration(
+              hintText: 'Activity name',
+              border: InputBorder.none,
+              isDense: true,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: TextField(
+            controller: row.durationController,
+            keyboardType: TextInputType.number,
+            onChanged: (_) => onChanged(),
+            decoration: const InputDecoration(
+              hintText: 'e.g. 5',
+              border: InputBorder.none,
+              isDense: true,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Container(
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF9FAFB),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            child: DropdownButton<String>(
+              value: row.predecessorId ?? '',
+              isExpanded: true,
+              underline: const SizedBox.shrink(),
+              items: [
+                const DropdownMenuItem<String>(
+                  value: '',
+                  child: Text('None'),
+                ),
+                ...options.map((r) {
+                  final title = r.titleController.text.trim().isEmpty
+                      ? 'Untitled activity'
+                      : r.titleController.text.trim();
+                  return DropdownMenuItem<String>(
+                    value: r.id,
+                    child: Text(title, overflow: TextOverflow.ellipsis),
+                  );
+                }),
+              ],
+              onChanged: (value) {
+                row.predecessorId =
+                    (value == null || value.isEmpty) ? null : value;
+                onChanged();
+              },
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Checkbox(
+            value: row.isMilestone,
+            onChanged: (value) {
+              row.isMilestone = value ?? false;
+              if (row.isMilestone) {
+                row.durationController.text = '0';
+              }
+              onChanged();
+            },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: IconButton(
+            icon: const Icon(Icons.delete_outline, size: 18),
+            onPressed: onDelete,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ScheduleRow {
+  _ScheduleRow({
+    required this.id,
+    this.wbsId = '',
+    String title = '',
+    int durationDays = 5,
+    String? predecessorId,
+    bool isMilestone = false,
+    this.onChanged,
+  })  : titleController = TextEditingController(text: title),
+        durationController =
+            TextEditingController(text: durationDays.toString()),
+        predecessorId = predecessorId,
+        isMilestone = isMilestone {
+    if (onChanged != null) {
+      titleController.addListener(onChanged!);
+      durationController.addListener(onChanged!);
+    }
+  }
+
+  final String id;
+  final String wbsId;
+  final TextEditingController titleController;
+  final TextEditingController durationController;
+  String? predecessorId;
+  bool isMilestone;
+  final VoidCallback? onChanged;
+
+  factory _ScheduleRow.fromActivity(
+    ScheduleActivity activity, {
+    VoidCallback? onChanged,
+  }) {
+    return _ScheduleRow(
+      id: activity.wbsId.isNotEmpty ? activity.wbsId : activity.id,
+      wbsId: activity.wbsId,
+      title: activity.title,
+      durationDays: activity.durationDays,
+      predecessorId:
+          activity.predecessorIds.isEmpty ? null : activity.predecessorIds[0],
+      isMilestone: activity.isMilestone,
+      onChanged: onChanged,
+    );
+  }
+
+  void dispose() {
+    titleController.dispose();
+    durationController.dispose();
+  }
+}
+
+class _ScheduleGanttSection extends StatelessWidget {
+  const _ScheduleGanttSection({
+    required this.rows,
+    required this.startDate,
+  });
+
+  final List<_ScheduleRow> rows;
+  final DateTime? startDate;
+
+  @override
+  Widget build(BuildContext context) {
+    if (rows.isEmpty) {
+      return _SectionCard(
+        title: 'Gantt Preview',
+        subtitle: 'Add activities to visualize schedule timing.',
+        child: const Text(
+          'No activities available.',
+          style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+        ),
+      );
+    }
+
+    final computed = _computeSchedule(rows, startDate ?? DateTime.now());
+    return _SectionCard(
+      title: 'Gantt Preview',
+      subtitle:
+          'Critical path is highlighted. Dates are derived from predecessors.',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final maxWidth = constraints.maxWidth;
+          final totalDays = computed.totalDurationDays;
+          final pxPerDay = totalDays > 0 ? maxWidth / totalDays : 8.0;
+
+          return Column(
+            children: computed.items.map((item) {
+              final left = item.startOffsetDays * pxPerDay;
+              final width =
+                  (item.durationDays == 0 ? 1 : item.durationDays) * pxPerDay;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 220,
+                      child: Text(
+                        item.title,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 13, color: Color(0xFF111827)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Stack(
+                        children: [
+                          Container(
+                            height: 20,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF3F4F6),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                          Positioned(
+                            left: left,
+                            child: Container(
+                              height: 20,
+                              width: width,
+                              decoration: BoxDecoration(
+                                color: item.isCritical
+                                    ? const Color(0xFFEF4444)
+                                    : const Color(0xFF3B82F6),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    SizedBox(
+                      width: 140,
+                      child: Text(
+                        '${_formatDate(item.startDate)} → ${_formatDate(item.endDate)}',
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                            fontSize: 12, color: Color(0xFF6B7280)),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _LookaheadSection extends StatelessWidget {
+  const _LookaheadSection({
+    required this.rows,
+    required this.startDate,
+  });
+
+  final List<_ScheduleRow> rows;
+  final DateTime? startDate;
+
+  @override
+  Widget build(BuildContext context) {
+    if (rows.isEmpty) {
+      return _SectionCard(
+        title: 'Lookahead (Next 4 Weeks)',
+        subtitle: 'Upcoming activities once a schedule is defined.',
+        child: const Text(
+          'No activities available.',
+          style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+        ),
+      );
+    }
+
+    final computed = _computeSchedule(rows, startDate ?? DateTime.now());
+    final windowStart = startDate ?? DateTime.now();
+    final windowEnd = windowStart.add(const Duration(days: 28));
+    final upcoming = computed.items.where((item) {
+      return item.startDate.isBefore(windowEnd) &&
+          item.endDate.isAfter(windowStart);
+    }).toList();
+
+    return _SectionCard(
+      title: 'Lookahead (Next 4 Weeks)',
+      subtitle: 'Focus on near-term dependencies and readiness.',
+      child: upcoming.isEmpty
+          ? const Text(
+              'No activities in the next 4 weeks.',
+              style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+            )
+          : Column(
+              children: upcoming.map((item) {
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(item.title,
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w600)),
+                  subtitle: Text(
+                    '${_formatDate(item.startDate)} → ${_formatDate(item.endDate)}',
+                    style:
+                        const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                  ),
+                  trailing: item.isCritical
+                      ? const _CriticalTag()
+                      : const SizedBox.shrink(),
+                );
+              }).toList(),
+            ),
+    );
+  }
+}
+
+class _CriticalTag extends StatelessWidget {
+  const _CriticalTag();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEE2E2),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: const Text(
+        'Critical',
+        style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFFB91C1C)),
+      ),
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({
+    required this.title,
+    required this.subtitle,
+    required this.child,
+  });
+
+  final String title;
+  final String subtitle;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827)),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _ComputedSchedule {
+  const _ComputedSchedule(
+      {required this.items, required this.totalDurationDays});
+
+  final List<_ComputedItem> items;
+  final int totalDurationDays;
+}
+
+class _ComputedItem {
+  const _ComputedItem({
+    required this.id,
+    required this.title,
+    required this.startDate,
+    required this.endDate,
+    required this.durationDays,
+    required this.startOffsetDays,
+    required this.isCritical,
+  });
+
+  final String id;
+  final String title;
+  final DateTime startDate;
+  final DateTime endDate;
+  final int durationDays;
+  final int startOffsetDays;
+  final bool isCritical;
+}
+
+_ComputedSchedule _computeSchedule(List<_ScheduleRow> rows, DateTime start) {
+  final byId = {for (final r in rows) r.id: r};
+  final resolved = <String, _ComputedItem>{};
+  int maxEndOffset = 0;
+
+  int durationFor(_ScheduleRow row) {
+    if (row.isMilestone) return 0;
+    return int.tryParse(row.durationController.text.trim()) ?? 5;
+  }
+
+  _ComputedItem compute(String id, [Set<String>? visiting]) {
+    if (resolved.containsKey(id)) return resolved[id]!;
+    final row = byId[id]!;
+    visiting ??= <String>{};
+    if (visiting.contains(id)) {
+      // cycle fallback
+      return _ComputedItem(
+        id: id,
+        title: row.titleController.text.trim(),
+        startDate: start,
+        endDate: start,
+        durationDays: durationFor(row),
+        startOffsetDays: 0,
+        isCritical: false,
+      );
+    }
+    visiting.add(id);
+    int startOffset = 0;
+    if (row.predecessorId != null && byId.containsKey(row.predecessorId)) {
+      final pred = compute(row.predecessorId!, visiting);
+      startOffset = pred.startOffsetDays + pred.durationDays;
+    }
+    final duration = durationFor(row);
+    final startDate = start.add(Duration(days: startOffset));
+    final endDate =
+        startDate.add(Duration(days: duration == 0 ? 0 : duration - 1));
+    final item = _ComputedItem(
+      id: id,
+      title: row.titleController.text.trim().isEmpty
+          ? 'Untitled activity'
+          : row.titleController.text.trim(),
+      startDate: startDate,
+      endDate: endDate,
+      durationDays: duration,
+      startOffsetDays: startOffset,
+      isCritical: false,
+    );
+    resolved[id] = item;
+    if (startOffset + duration > maxEndOffset) {
+      maxEndOffset = startOffset + duration;
+    }
+    visiting.remove(id);
+    return item;
+  }
+
+  for (final row in rows) {
+    compute(row.id);
+  }
+
+  // crude critical path: mark items that are on the longest chain by end offset
+  final longestEnd = maxEndOffset;
+  final criticalIds = <String>{};
+  for (final item in resolved.values) {
+    if (item.startOffsetDays + item.durationDays == longestEnd) {
+      criticalIds.add(item.id);
+    }
+  }
+
+  final items = resolved.values
+      .map((item) => _ComputedItem(
+            id: item.id,
+            title: item.title,
+            startDate: item.startDate,
+            endDate: item.endDate,
+            durationDays: item.durationDays,
+            startOffsetDays: item.startOffsetDays,
+            isCritical: criticalIds.contains(item.id),
+          ))
+      .toList()
+    ..sort((a, b) => a.startOffsetDays.compareTo(b.startOffsetDays));
+
+  return _ComputedSchedule(items: items, totalDurationDays: longestEnd);
 }
 
 class _ScheduleManagementCard extends StatelessWidget {
@@ -744,8 +1766,7 @@ class _WbsTreeTile extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: badge.backgroundColor,
                               borderRadius: BorderRadius.circular(999),
-                              border: Border.all(
-                                  color: badge.borderColor),
+                              border: Border.all(color: badge.borderColor),
                             ),
                             child: Text(
                               badge.label,
@@ -1714,6 +2735,13 @@ List<_TimelineSegment> _generateWeekSegments(DateTime start, DateTime end) {
   }
 
   return segments;
+}
+
+String _formatDate(DateTime date) {
+  final y = date.year.toString().padLeft(4, '0');
+  final m = date.month.toString().padLeft(2, '0');
+  final d = date.day.toString().padLeft(2, '0');
+  return '$y-$m-$d';
 }
 
 String _formatMonth(DateTime date) {

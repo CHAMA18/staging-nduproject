@@ -5,9 +5,10 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
-import 'package:ndu_project/screens/project_baseline_screen.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/user_service.dart';
+import 'package:ndu_project/widgets/launch_phase_navigation.dart';
+import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
 class AgileProjectBaselineScreen extends StatelessWidget {
   const AgileProjectBaselineScreen({super.key});
@@ -50,7 +51,12 @@ class AgileProjectBaselineScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _TopHeader(
-                                onBack: () => Navigator.maybePop(context)),
+                              onBack: () =>
+                                  PlanningPhaseNavigation.goToPrevious(
+                                      context, 'agile_project_baseline'),
+                              onForward: () => PlanningPhaseNavigation.goToNext(
+                                  context, 'agile_project_baseline'),
+                            ),
                             const SizedBox(height: 12),
                             const Text(
                               'Manage roles and responsibilities',
@@ -99,27 +105,16 @@ class AgileProjectBaselineScreen extends StatelessWidget {
                             const SizedBox(height: 24),
                             _RiskSnapshotRow(isMobile: isMobile),
                             const SizedBox(height: 28),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: ElevatedButton(
-                                onPressed: () =>
-                                    ProjectBaselineScreen.open(context),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFFFD700),
-                                  foregroundColor: const Color(0xFF111827),
-                                  elevation: 0,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 36, vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20)),
-                                ),
-                                child: const Text(
-                                  'Next',
-                                  style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700),
-                                ),
-                              ),
+                            LaunchPhaseNavigation(
+                              backLabel: PlanningPhaseNavigation.backLabel(
+                                  'agile_project_baseline'),
+                              nextLabel: PlanningPhaseNavigation.nextLabel(
+                                  'agile_project_baseline'),
+                              onBack: () =>
+                                  PlanningPhaseNavigation.goToPrevious(
+                                      context, 'agile_project_baseline'),
+                              onNext: () => PlanningPhaseNavigation.goToNext(
+                                  context, 'agile_project_baseline'),
                             ),
                             const SizedBox(height: 40),
                           ],
@@ -142,9 +137,10 @@ class AgileProjectBaselineScreen extends StatelessWidget {
 }
 
 class _TopHeader extends StatelessWidget {
-  const _TopHeader({required this.onBack});
+  const _TopHeader({required this.onBack, required this.onForward});
 
   final VoidCallback onBack;
+  final VoidCallback onForward;
 
   @override
   Widget build(BuildContext context) {
@@ -153,7 +149,8 @@ class _TopHeader extends StatelessWidget {
         _CircleIconButton(
             icon: Icons.arrow_back_ios_new_rounded, onTap: onBack),
         const SizedBox(width: 12),
-        const _CircleIconButton(icon: Icons.arrow_forward_ios_rounded),
+        _CircleIconButton(
+            icon: Icons.arrow_forward_ios_rounded, onTap: onForward),
         const SizedBox(width: 16),
         const Text(
           'Agile Project Baseline',

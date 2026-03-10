@@ -6,6 +6,8 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/widgets/launch_phase_navigation.dart';
+import 'package:ndu_project/utils/planning_phase_navigation.dart';
 
 class ProjectBaselineScreen extends StatefulWidget {
   const ProjectBaselineScreen({super.key});
@@ -54,11 +56,13 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
               children: [
                 DraggableSidebar(
                   openWidth: AppBreakpoints.sidebarWidth(context),
-                  child: const InitiationLikeSidebar(activeItemLabel: 'Project Baseline'),
+                  child: const InitiationLikeSidebar(
+                      activeItemLabel: 'Project Baseline'),
                 ),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 28),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding, vertical: 28),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -69,7 +73,8 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
                           sectionLabel: 'Project Baseline',
                           noteKey: 'planning_project_baseline_notes',
                           checkpoint: 'project_baseline',
-                          description: 'Summarize baseline assumptions, schedule/cost variances, and approvals.',
+                          description:
+                              'Summarize baseline assumptions, schedule/cost variances, and approvals.',
                         ),
                         const SizedBox(height: 24),
                         _buildBaselineCards(context),
@@ -77,6 +82,17 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
                         _buildBaselineHistory(),
                         const SizedBox(height: 24),
                         _buildVarianceAnalysis(),
+                        const SizedBox(height: 24),
+                        LaunchPhaseNavigation(
+                          backLabel: PlanningPhaseNavigation.backLabel(
+                              'project_baseline'),
+                          nextLabel: PlanningPhaseNavigation.nextLabel(
+                              'project_baseline'),
+                          onBack: () => PlanningPhaseNavigation.goToPrevious(
+                              context, 'project_baseline'),
+                          onNext: () => PlanningPhaseNavigation.goToNext(
+                              context, 'project_baseline'),
+                        ),
                         const SizedBox(height: 48),
                       ],
                     ),
@@ -138,9 +154,11 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
                   label: const Text('Update Baseline'),
                   style: FilledButton.styleFrom(
                     backgroundColor: primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 22, vertical: 14),
                     textStyle: const TextStyle(fontWeight: FontWeight.w700),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
               ],
@@ -159,9 +177,16 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
               runSpacing: 12,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: const [
-                _StatusChip(label: 'Status: —', color: Color(0xFF1F2937), inverted: true),
-                _StatusChip(label: 'Start: —', color: Color(0xFF1F2937), inverted: true),
-                _StatusChip(label: 'End: —', color: Color(0xFF1F2937), inverted: true),
+                _StatusChip(
+                    label: 'Status: —',
+                    color: Color(0xFF1F2937),
+                    inverted: true),
+                _StatusChip(
+                    label: 'Start: —',
+                    color: Color(0xFF1F2937),
+                    inverted: true),
+                _StatusChip(
+                    label: 'End: —', color: Color(0xFF1F2937), inverted: true),
               ],
             ),
           ],
@@ -171,7 +196,8 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
   }
 
   Widget _buildProjectDropdown() {
-    final options = _selectedProject != null ? [_selectedProject!] : _projectOptions;
+    final options =
+        _selectedProject != null ? [_selectedProject!] : _projectOptions;
     if (options.isEmpty) {
       return _EmptyStateChip(
         label: 'Select project',
@@ -276,7 +302,8 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: const [
-          BoxShadow(color: Color(0x331D4ED8), blurRadius: 24, offset: Offset(0, 20)),
+          BoxShadow(
+              color: Color(0x331D4ED8), blurRadius: 24, offset: Offset(0, 20)),
         ],
       ),
       child: Column(
@@ -339,15 +366,24 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
             children: [
               Text(
                 'Start',
-                style: TextStyle(color: Color(0xCCEFF6FF), fontSize: 12, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                    color: Color(0xCCEFF6FF),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600),
               ),
               Text(
                 'Current Progress (68%)',
-                style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700),
               ),
               Text(
                 'End',
-                style: TextStyle(color: Color(0xCCEFF6FF), fontSize: 12, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                    color: Color(0xCCEFF6FF),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -372,11 +408,15 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
         children: [
           Row(
             children: const [
-              Icon(Icons.account_balance_wallet_outlined, color: Color(0xFF1F2937), size: 22),
+              Icon(Icons.account_balance_wallet_outlined,
+                  color: Color(0xFF1F2937), size: 22),
               SizedBox(width: 10),
               Text(
                 'Cost Baseline',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF111827)),
               ),
             ],
           ),
@@ -420,11 +460,13 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
               children: const [
                 Text(
                   'Budget Variance',
-                  style: TextStyle(color: Color(0xFF6B21A8), fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                      color: Color(0xFF6B21A8), fontWeight: FontWeight.w700),
                 ),
                 Text(
                   '—',
-                  style: TextStyle(color: Color(0xFF6B21A8), fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                      color: Color(0xFF6B21A8), fontWeight: FontWeight.w800),
                 ),
               ],
             ),
@@ -450,11 +492,15 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.dashboard_customize_outlined, color: Color(0xFF1F2937), size: 22),
+                        Icon(Icons.dashboard_customize_outlined,
+                            color: Color(0xFF1F2937), size: 22),
                         SizedBox(width: 10),
                         Text(
                           'Scope Baseline',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF111827)),
                         ),
                       ],
                     ),
@@ -471,15 +517,24 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
               const Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  _StatusChip(label: 'Status: —', color: Color(0xFF1F2937), inverted: true),
+                  _StatusChip(
+                      label: 'Status: —',
+                      color: Color(0xFF1F2937),
+                      inverted: true),
                   SizedBox(height: 12),
                   Text(
                     'Start: —',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF6B7280)),
                   ),
                   Text(
                     'End: —',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF6B7280)),
                   ),
                 ],
               ),
@@ -498,13 +553,19 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
                 SizedBox(width: 10),
                 Text(
                   'Scope Change:',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1D4ED8)),
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1D4ED8)),
                 ),
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Not set',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1D4ED8)),
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1D4ED8)),
                   ),
                 ),
               ],
@@ -531,7 +592,10 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
         children: [
           const Text(
             'Baseline History',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+            style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827)),
           ),
           const SizedBox(height: 16),
           Container(height: 1, color: const Color(0xFFE5E7EB)),
@@ -551,34 +615,49 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
           flex: 2,
           child: Text(
             'Baseline Version',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF6B7280)),
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF6B7280)),
           ),
         ),
         Expanded(
           child: Text(
             'Date',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF6B7280)),
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF6B7280)),
           ),
         ),
         Expanded(
           flex: 2,
           child: Text(
             'Approved By',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF6B7280)),
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF6B7280)),
           ),
         ),
         Expanded(
           flex: 3,
           child: Text(
             'Description',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF6B7280)),
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF6B7280)),
           ),
         ),
         SizedBox(
           width: 48,
           child: Text(
             'Actions',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF6B7280)),
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF6B7280)),
           ),
         ),
       ],
@@ -600,27 +679,39 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
             flex: 2,
             child: Text(
               entry.version,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+              style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827)),
             ),
           ),
           Expanded(
             child: Text(
               entry.date,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+              style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF374151)),
             ),
           ),
           Expanded(
             flex: 2,
             child: Text(
               entry.approvedBy,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+              style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF374151)),
             ),
           ),
           Expanded(
             flex: 3,
             child: Text(
               entry.description,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF4B5563)),
+              style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF4B5563)),
             ),
           ),
           SizedBox(
@@ -628,7 +719,8 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
             child: IconButton(
               tooltip: 'View baseline',
               onPressed: () {},
-              icon: const Icon(Icons.remove_red_eye_outlined, size: 20, color: Color(0xFF2563EB)),
+              icon: const Icon(Icons.remove_red_eye_outlined,
+                  size: 20, color: Color(0xFF2563EB)),
             ),
           ),
         ],
@@ -690,7 +782,10 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
       children: [
         const Text(
           'Schedule Variance Breakdown',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+          style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827)),
         ),
         const SizedBox(height: 18),
         ..._scheduleVariance.map(
@@ -704,7 +799,10 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
                   children: [
                     Text(
                       variance.label,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1F2937)),
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1F2937)),
                     ),
                     Text(
                       variance.varianceLabel,
@@ -747,7 +845,10 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
       children: [
         const Text(
           'Cost Variance Breakdown',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+          style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827)),
         ),
         const SizedBox(height: 18),
         ..._costVariance.map(
@@ -758,12 +859,18 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
               children: [
                 Text(
                   row.category,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1F2937)),
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1F2937)),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   '${row.actual} (planned: ${row.planned})',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF6B7280)),
                 ),
               ],
             ),
@@ -777,11 +884,17 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
           children: [
             Text(
               'Total Variance',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF1F2937)),
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1F2937)),
             ),
             Text(
               '+\$32,500 (5%)',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF2563EB)),
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF2563EB)),
             ),
           ],
         ),
@@ -854,13 +967,19 @@ Widget _buildScopeStatRow(String label, String value) {
         Flexible(
           child: Text(
             label,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF6B7280)),
+            style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF6B7280)),
           ),
         ),
         const SizedBox(width: 8),
         Text(
           value,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+          style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827)),
         ),
       ],
     ),
@@ -868,7 +987,8 @@ Widget _buildScopeStatRow(String label, String value) {
 }
 
 class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.label, required this.color, this.inverted = false});
+  const _StatusChip(
+      {required this.label, required this.color, this.inverted = false});
 
   final String label;
   final Color color;
@@ -876,7 +996,8 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color background = inverted ? const Color(0xFFF3F4F6) : color.withValues(alpha: 0.12);
+    final Color background =
+        inverted ? const Color(0xFFF3F4F6) : color.withValues(alpha: 0.12);
     final Color foreground = inverted ? color : color;
 
     return Container(
@@ -888,14 +1009,16 @@ class _StatusChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: foreground),
+        style: TextStyle(
+            fontSize: 12, fontWeight: FontWeight.w700, color: foreground),
       ),
     );
   }
 }
 
 class _EmptyStateCard extends StatelessWidget {
-  const _EmptyStateCard({required this.title, required this.message, required this.icon});
+  const _EmptyStateCard(
+      {required this.title, required this.message, required this.icon});
 
   final String title;
   final String message;
@@ -934,9 +1057,15 @@ class _EmptyStateCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827))),
                 const SizedBox(height: 6),
-                Text(message, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                Text(message,
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF6B7280))),
               ],
             ),
           ),
@@ -966,7 +1095,11 @@ class _EmptyStateChip extends StatelessWidget {
         children: [
           Icon(icon, size: 16, color: const Color(0xFF9CA3AF)),
           const SizedBox(width: 8),
-          Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF6B7280))),
+          Text(label,
+              style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF6B7280))),
         ],
       ),
     );
@@ -980,11 +1113,14 @@ class _VarianceTone {
   final Color barColor;
 
   // ignore: unused_field
-  static const _VarianceTone onTrack = _VarianceTone._(Color(0xFF047857), Color(0xFF10B981));
+  static const _VarianceTone onTrack =
+      _VarianceTone._(Color(0xFF047857), Color(0xFF10B981));
   // ignore: unused_field
-  static const _VarianceTone warning = _VarianceTone._(Color(0xFFB45309), Color(0xFFFBBF24));
+  static const _VarianceTone warning =
+      _VarianceTone._(Color(0xFFB45309), Color(0xFFFBBF24));
   // ignore: unused_field
-  static const _VarianceTone behind = _VarianceTone._(Color(0xFFB91C1C), Color(0xFFF87171));
+  static const _VarianceTone behind =
+      _VarianceTone._(Color(0xFFB91C1C), Color(0xFFF87171));
 }
 
 // ignore: unused_element

@@ -7,7 +7,7 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
-import 'package:ndu_project/screens/startup_planning_screen.dart';
+import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/user_service.dart';
@@ -37,20 +37,23 @@ class InterfaceManagementScreen extends StatelessWidget {
           children: [
             DraggableSidebar(
               openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(activeItemLabel: 'Interface Management'),
+              child: const InitiationLikeSidebar(
+                  activeItemLabel: 'Interface Management'),
             ),
             Expanded(
               child: Stack(
                 children: [
                   SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 24),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding, vertical: 24),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final width = constraints.maxWidth;
                         final gap = 24.0;
                         final twoCol = width >= 980;
                         final halfWidth = twoCol ? (width - gap) / 2 : width;
-                        final data = ProjectDataHelper.getDataListening(context);
+                        final data =
+                            ProjectDataHelper.getDataListening(context);
                         final entries = data.interfaceEntries;
                         final activeInterfaces = entries.length;
                         final criticalDependencies = entries
@@ -67,12 +70,18 @@ class InterfaceManagementScreen extends StatelessWidget {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _TopHeader(onBack: () => Navigator.maybePop(context)),
+                            _TopHeader(
+                              onBack: () =>
+                                  PlanningPhaseNavigation.goToPrevious(
+                                      context, 'interface_management'),
+                              onForward: () => PlanningPhaseNavigation.goToNext(
+                                  context, 'interface_management'),
+                            ),
                             const SizedBox(height: 12),
                             const Text(
                               'Coordinate system interfaces, dependencies, and handoffs.',
-                              style:
-                                  TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+                              style: TextStyle(
+                                  fontSize: 14, color: Color(0xFF6B7280)),
                             ),
                             const SizedBox(height: 20),
                             const PlanningAiNotesCard(
@@ -127,10 +136,15 @@ class InterfaceManagementScreen extends StatelessWidget {
                             const SizedBox(height: 28),
                             const SizedBox(height: 12),
                             LaunchPhaseNavigation(
-                              backLabel: 'Back: Technology',
-                              nextLabel: 'Next: Start-Up Planning',
-                              onBack: () => Navigator.of(context).maybePop(),
-                              onNext: () => StartUpPlanningScreen.open(context),
+                              backLabel: PlanningPhaseNavigation.backLabel(
+                                  'interface_management'),
+                              nextLabel: PlanningPhaseNavigation.nextLabel(
+                                  'interface_management'),
+                              onBack: () =>
+                                  PlanningPhaseNavigation.goToPrevious(
+                                      context, 'interface_management'),
+                              onNext: () => PlanningPhaseNavigation.goToNext(
+                                  context, 'interface_management'),
                             ),
                             const SizedBox(height: 40),
                           ],
@@ -138,7 +152,8 @@ class InterfaceManagementScreen extends StatelessWidget {
                       },
                     ),
                   ),
-                  const Positioned(right: 24, bottom: 24, child: KazAiChatBubble()),
+                  const Positioned(
+                      right: 24, bottom: 24, child: KazAiChatBubble()),
                 ],
               ),
             ),
@@ -150,21 +165,27 @@ class InterfaceManagementScreen extends StatelessWidget {
 }
 
 class _TopHeader extends StatelessWidget {
-  const _TopHeader({required this.onBack});
+  const _TopHeader({required this.onBack, required this.onForward});
 
   final VoidCallback onBack;
+  final VoidCallback onForward;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _CircleIconButton(icon: Icons.arrow_back_ios_new_rounded, onTap: onBack),
+        _CircleIconButton(
+            icon: Icons.arrow_back_ios_new_rounded, onTap: onBack),
         const SizedBox(width: 12),
-        const _CircleIconButton(icon: Icons.arrow_forward_ios_rounded),
+        _CircleIconButton(
+            icon: Icons.arrow_forward_ios_rounded, onTap: onForward),
         const SizedBox(width: 16),
         const Text(
           'Interface Management',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+          style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827)),
         ),
         const Spacer(),
         const _UserChip(),
@@ -286,7 +307,8 @@ class _UserChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final displayName = FirebaseAuthService.displayNameOrEmail(fallback: 'User');
+    final displayName =
+        FirebaseAuthService.displayNameOrEmail(fallback: 'User');
     final email = user?.email ?? '';
 
     return StreamBuilder<bool>(
@@ -308,11 +330,18 @@ class _UserChip extends StatelessWidget {
               CircleAvatar(
                 radius: 16,
                 backgroundColor: const Color(0xFFE5E7EB),
-                backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
+                backgroundImage: user?.photoURL != null
+                    ? NetworkImage(user!.photoURL!)
+                    : null,
                 child: user?.photoURL == null
                     ? Text(
-                        displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+                        displayName.isNotEmpty
+                            ? displayName[0].toUpperCase()
+                            : 'U',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151)),
                       )
                     : null,
               ),
@@ -321,12 +350,17 @@ class _UserChip extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(displayName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                  Text(role, style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280))),
+                  Text(displayName,
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600)),
+                  Text(role,
+                      style: const TextStyle(
+                          fontSize: 10, color: Color(0xFF6B7280))),
                 ],
               ),
               const SizedBox(width: 6),
-              const Icon(Icons.keyboard_arrow_down, size: 18, color: Color(0xFF9CA3AF)),
+              const Icon(Icons.keyboard_arrow_down,
+                  size: 18, color: Color(0xFF9CA3AF)),
             ],
           ),
         );
@@ -376,7 +410,8 @@ class _MetricsRow extends StatelessWidget {
 }
 
 class _MetricCard extends StatelessWidget {
-  const _MetricCard({required this.label, required this.value, required this.accent});
+  const _MetricCard(
+      {required this.label, required this.value, required this.accent});
 
   final String label;
   final String value;
@@ -395,11 +430,13 @@ class _MetricCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+          Text(label,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
           const SizedBox(height: 6),
           Text(
             value,
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: accent),
+            style: TextStyle(
+                fontSize: 20, fontWeight: FontWeight.w700, color: accent),
           ),
         ],
       ),
@@ -466,20 +503,18 @@ class _GovernanceCard extends StatelessWidget {
             entry.owner.trim().isNotEmpty ||
             entry.lastSync.trim().isNotEmpty)
         .map((entry) {
-          final identity = entry.boundary.trim().isNotEmpty
-              ? entry.boundary.trim()
-              : entry.owner.trim().isNotEmpty
-                  ? '${entry.owner.trim()} interface'
-                  : 'Interface';
-          final details = [
-            if (entry.cadence.trim().isNotEmpty)
-              'Cadence: ${entry.cadence.trim()}',
-            if (entry.lastSync.trim().isNotEmpty)
-              'Last sync: ${entry.lastSync.trim()}',
-          ].join(' | ');
-          return details.isNotEmpty ? '$identity | $details' : identity;
-        })
-        .toList();
+      final identity = entry.boundary.trim().isNotEmpty
+          ? entry.boundary.trim()
+          : entry.owner.trim().isNotEmpty
+              ? '${entry.owner.trim()} interface'
+              : 'Interface';
+      final details = [
+        if (entry.cadence.trim().isNotEmpty) 'Cadence: ${entry.cadence.trim()}',
+        if (entry.lastSync.trim().isNotEmpty)
+          'Last sync: ${entry.lastSync.trim()}',
+      ].join(' | ');
+      return details.isNotEmpty ? '$identity | $details' : identity;
+    }).toList();
 
     return _SectionCard(
       title: 'Governance & Cadence',
@@ -490,9 +525,7 @@ class _GovernanceCard extends StatelessWidget {
               style: TextStyle(color: Color(0xFF6B7280)),
             )
           : Column(
-              children: items
-                  .map((item) => _BulletRow(text: item))
-                  .toList(),
+              children: items.map((item) => _BulletRow(text: item)).toList(),
             ),
     );
   }
@@ -566,10 +599,12 @@ class _InterfaceRegisterCardState extends State<_InterfaceRegisterCard> {
 
   @override
   Widget build(BuildContext context) {
-    final entries = ProjectDataHelper.getDataListening(context).interfaceEntries;
+    final entries =
+        ProjectDataHelper.getDataListening(context).interfaceEntries;
     return _SectionCard(
       title: 'Interface Register',
-      subtitle: 'Track ownership, status, cadence, and risk for every interface.',
+      subtitle:
+          'Track ownership, status, cadence, and risk for every interface.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -618,22 +653,19 @@ class _RisksCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final riskItems = entries
-        .where((entry) => entry.risk.trim().isNotEmpty)
-        .map((entry) {
-          final label = entry.boundary.trim().isNotEmpty
-              ? entry.boundary.trim()
-              : entry.owner.trim().isNotEmpty
-                  ? '${entry.owner.trim()} interface'
-                  : 'Interface';
-          final details = [
-            entry.risk.trim(),
-            if (entry.status.trim().isNotEmpty)
-              'Status: ${entry.status.trim()}',
-          ].join(' | ');
-          return '$label | $details';
-        })
-        .toList();
+    final riskItems =
+        entries.where((entry) => entry.risk.trim().isNotEmpty).map((entry) {
+      final label = entry.boundary.trim().isNotEmpty
+          ? entry.boundary.trim()
+          : entry.owner.trim().isNotEmpty
+              ? '${entry.owner.trim()} interface'
+              : 'Interface';
+      final details = [
+        entry.risk.trim(),
+        if (entry.status.trim().isNotEmpty) 'Status: ${entry.status.trim()}',
+      ].join(' | ');
+      return '$label | $details';
+    }).toList();
 
     return _SectionCard(
       title: 'Dependency Risks',
@@ -658,20 +690,17 @@ class _DecisionLogCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final logItems = entries
-        .where((entry) => entry.notes.trim().isNotEmpty)
-        .map((entry) {
-          final identifier = entry.boundary.trim().isNotEmpty
-              ? entry.boundary.trim()
-              : entry.owner.trim().isNotEmpty
-                  ? '${entry.owner.trim()} interface'
-                  : 'Interface note';
-          final timestamp = entry.lastSync.trim().isNotEmpty
-              ? entry.lastSync.trim()
-              : 'Recent';
-          return '$identifier: ${entry.notes.trim()} (Sync: $timestamp)';
-        })
-        .toList();
+    final logItems =
+        entries.where((entry) => entry.notes.trim().isNotEmpty).map((entry) {
+      final identifier = entry.boundary.trim().isNotEmpty
+          ? entry.boundary.trim()
+          : entry.owner.trim().isNotEmpty
+              ? '${entry.owner.trim()} interface'
+              : 'Interface note';
+      final timestamp =
+          entry.lastSync.trim().isNotEmpty ? entry.lastSync.trim() : 'Recent';
+      return '$identifier: ${entry.notes.trim()} (Sync: $timestamp)';
+    }).toList();
 
     return _SectionCard(
       title: 'Decision Log',
@@ -682,16 +711,15 @@ class _DecisionLogCard extends StatelessWidget {
               style: TextStyle(color: Color(0xFF6B7280)),
             )
           : Column(
-              children: logItems
-                  .map((text) => _BulletRow(text: text))
-                  .toList(),
+              children: logItems.map((text) => _BulletRow(text: text)).toList(),
             ),
     );
   }
 }
 
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.title, required this.subtitle, required this.child});
+  const _SectionCard(
+      {required this.title, required this.subtitle, required this.child});
 
   final String title;
   final String subtitle;
@@ -706,15 +734,22 @@ class _SectionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: const [
-          BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 6)),
+          BoxShadow(
+              color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 6)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827))),
           const SizedBox(height: 6),
-          Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280), height: 1.4)),
+          Text(subtitle,
+              style: const TextStyle(
+                  fontSize: 12, color: Color(0xFF6B7280), height: 1.4)),
           const SizedBox(height: 16),
           child,
         ],
@@ -762,7 +797,8 @@ class _InterfaceEntryRow extends StatelessWidget {
                 onPressed: onEdit,
               ),
               IconButton(
-                icon: const Icon(Icons.delete, size: 18, color: Color(0xFFEF4444)),
+                icon: const Icon(Icons.delete,
+                    size: 18, color: Color(0xFFEF4444)),
                 tooltip: 'Delete entry',
                 onPressed: onDelete,
               ),
@@ -788,7 +824,8 @@ class _InterfaceEntryRow extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(entry.notes.trim(),
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF374151))),
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFF374151))),
             ),
         ],
       ),
@@ -862,7 +899,8 @@ class _InterfaceEntryDialogState extends State<_InterfaceEntryDialog> {
         decoration: InputDecoration(
           labelText: label,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         ),
       ),
     );
@@ -871,7 +909,9 @@ class _InterfaceEntryDialogState extends State<_InterfaceEntryDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.initial == null ? 'Add Interface Entry' : 'Edit Interface Entry'),
+      title: Text(widget.initial == null
+          ? 'Add Interface Entry'
+          : 'Edit Interface Entry'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -887,7 +927,9 @@ class _InterfaceEntryDialogState extends State<_InterfaceEntryDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel')),
         ElevatedButton(onPressed: _save, child: const Text('Save')),
       ],
     );
@@ -908,7 +950,10 @@ class _BulletRow extends StatelessWidget {
         children: [
           const Icon(Icons.circle, size: 8, color: Color(0xFF9CA3AF)),
           const SizedBox(width: 10),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 12, color: Color(0xFF374151), height: 1.4))),
+          Expanded(
+              child: Text(text,
+                  style: const TextStyle(
+                      fontSize: 12, color: Color(0xFF374151), height: 1.4))),
         ],
       ),
     );

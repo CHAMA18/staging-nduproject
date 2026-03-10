@@ -371,10 +371,11 @@ class _QualityManagementScreenState extends State<QualityManagementScreen> {
                               checkpoint: 'quality_management',
                               saveInBackground: true,
                               nextScreenBuilder: () =>
-                                  const ExecutionPlanScreen(),
+                                  const ExecutionPlanConstructionPlanScreen(),
                               dataUpdater: (data) => data,
-                              destinationCheckpoint: 'execution_plan',
-                              destinationName: 'Execution Plan',
+                              destinationCheckpoint:
+                                  'execution_plan_construction_plan',
+                              destinationName: 'Construction Plan',
                             );
                           },
                         ),
@@ -451,7 +452,7 @@ class _NavigationRow extends StatelessWidget {
         ElevatedButton.icon(
           onPressed: onNext,
           icon: const Icon(Icons.arrow_forward, size: 16),
-          label: const Text('Next: Execution Plan'),
+          label: const Text('Next: Construction Plan'),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFFFFC044),
             foregroundColor: const Color(0xFF111827),

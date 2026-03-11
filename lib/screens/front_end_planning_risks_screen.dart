@@ -1007,6 +1007,7 @@ class _FrontEndPlanningRisksScreenState
         ),
       ),
     );
+    provider.saveToFirebase(checkpoint: 'fep_risks');
   }
 
   String _buildRiskSummaryFromRows({int previewCount = 4}) {

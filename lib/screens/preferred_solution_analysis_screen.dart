@@ -2145,6 +2145,20 @@ class _PreferredSolutionAnalysisScreenState
       return legacyProjectValue;
     }
 
+    if (matchedSolutionBenefit.projectBenefits.isNotEmpty) {
+      double total = 0.0;
+      for (final item in matchedSolutionBenefit.projectBenefits) {
+        final unitValue = _parseNumericAmount(item.unitValue);
+        final units = _parseNumericAmount(item.units);
+        final value = unitValue * units;
+        if (value <= 0) continue;
+        total += cba.trackerBasisFrequency == 'Monthly' ? value * 12 : value;
+      }
+      if (total > 0) {
+        return total;
+      }
+    }
+
     return _benefitTotalFromLineItems(cba);
   }
 

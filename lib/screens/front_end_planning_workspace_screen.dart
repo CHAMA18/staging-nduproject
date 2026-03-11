@@ -811,7 +811,7 @@ class _ListEditorCard extends StatelessWidget {
     final preview =
         itemText.length > 120 ? '${itemText.substring(0, 120)}...' : itemText;
     final confirm = await showDeleteConfirmationDialog(
-      context: context,
+      context,
       title: 'Delete Item?',
       itemLabel: preview,
     );
@@ -821,16 +821,31 @@ class _ListEditorCard extends StatelessWidget {
   }
 
   void _showAddDialog(BuildContext context) {
-    String value = '';
+    final controller = RichTextEditingController();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Add to $title'),
-        content: TextField(
-          autofocus: true,
-          decoration:
-              const InputDecoration(hintText: 'Enter item description...'),
-          onChanged: (v) => value = v,
+        content: SizedBox(
+          width: 520,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextFormattingToolbar(controller: controller),
+              const SizedBox(height: 8),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                minLines: 3,
+                maxLines: 6,
+                decoration: const InputDecoration(
+                  hintText: 'Enter item description...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -838,28 +853,45 @@ class _ListEditorCard extends StatelessWidget {
               child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () {
-              if (value.trim().isNotEmpty) onItemAdded(value.trim());
+              final value = controller.text.trim();
+              if (value.isNotEmpty) {
+                onItemAdded(value);
+              }
               Navigator.pop(context);
             },
             child: const Text('Add'),
           )
         ],
       ),
-    );
+    ).whenComplete(controller.dispose);
   }
 
   void _showEditDialog(BuildContext context, int index, String current) {
-    String value = current;
+    final controller = RichTextEditingController(text: current);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Edit item in $title'),
-        content: TextField(
-          autofocus: true,
-          decoration:
-              const InputDecoration(hintText: 'Enter item description...'),
-          controller: TextEditingController(text: current),
-          onChanged: (v) => value = v,
+        content: SizedBox(
+          width: 520,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextFormattingToolbar(controller: controller),
+              const SizedBox(height: 8),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                minLines: 3,
+                maxLines: 6,
+                decoration: const InputDecoration(
+                  hintText: 'Enter item description...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -867,13 +899,16 @@ class _ListEditorCard extends StatelessWidget {
               child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () {
-              if (value.trim().isNotEmpty) onItemEdited(index, value.trim());
+              final value = controller.text.trim();
+              if (value.isNotEmpty) {
+                onItemEdited(index, value);
+              }
               Navigator.pop(context);
             },
             child: const Text('Save'),
           )
         ],
       ),
-    );
+    ).whenComplete(controller.dispose);
   }
 }

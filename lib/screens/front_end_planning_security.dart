@@ -213,6 +213,7 @@ Security Training:
         ),
       ),
     );
+    provider.saveToFirebase(checkpoint: 'fep_security');
   }
 
   FormValidationResult _validateSecuritySection() {

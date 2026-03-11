@@ -142,6 +142,7 @@ class _FrontEndPlanningSummaryScreenState
         ),
       ),
     );
+    provider.saveToFirebase(checkpoint: 'fep_summary');
   }
 
   void _syncNotesToProvider() {
@@ -155,6 +156,7 @@ class _FrontEndPlanningSummaryScreenState
         ),
       ),
     );
+    provider.saveToFirebase(checkpoint: 'fep_summary');
   }
 
   @override
@@ -1077,7 +1079,7 @@ class _PlanningCardsSectionState extends State<_PlanningCardsSection> {
       PlanningDashboardItem item,
       List<PlanningDashboardItem> currentList) async {
     final confirm = await showDeleteConfirmationDialog(
-      context: context,
+      context,
       title: 'Delete Item?',
       itemLabel: item.title,
     );
@@ -1227,7 +1229,7 @@ class _PlanningCardsSectionState extends State<_PlanningCardsSection> {
   Future<void> _handleDeleteGoal(BuildContext context, ProjectGoal item,
       List<ProjectGoal> currentList) async {
     final confirm = await showDeleteConfirmationDialog(
-      context: context,
+      context,
       title: 'Delete Goal?',
       itemLabel: item.name,
     );
@@ -1280,34 +1282,42 @@ class _PlanningCardsSectionState extends State<_PlanningCardsSection> {
       {required String title, PlanningDashboardItem? existingItem}) {
     final titleController = TextEditingController(text: existingItem?.title);
     final descController =
-        TextEditingController(text: existingItem?.description);
+        RichTextEditingController(text: existingItem?.description ?? '');
 
     return showDialog<PlanningDashboardItem>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(title),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(
-                labelText: 'Title (Optional)',
-                hintText: 'e.g., Kitchen Equipment',
+        content: SizedBox(
+          width: 560,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Title (Optional)',
+                  hintText: 'e.g., Kitchen Equipment',
+                ),
+                textCapitalization: TextCapitalization.sentences,
               ),
-              textCapitalization: TextCapitalization.sentences,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: descController,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                hintText: 'Enter detailed description...',
+              const SizedBox(height: 16),
+              TextFormattingToolbar(controller: descController),
+              const SizedBox(height: 8),
+              TextField(
+                controller: descController,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  hintText: 'Enter detailed description...',
+                  border: OutlineInputBorder(),
+                ),
+                minLines: 4,
+                maxLines: 8,
+                textCapitalization: TextCapitalization.sentences,
               ),
-              maxLines: 3,
-              textCapitalization: TextCapitalization.sentences,
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -1332,7 +1342,10 @@ class _PlanningCardsSectionState extends State<_PlanningCardsSection> {
           ),
         ],
       ),
-    );
+    ).whenComplete(() {
+      titleController.dispose();
+      descController.dispose();
+    });
   }
 }
 

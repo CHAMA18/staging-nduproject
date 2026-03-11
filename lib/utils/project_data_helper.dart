@@ -1149,6 +1149,7 @@ class ProjectDataHelper {
       basisFrequency: base.basisFrequency,
       trackerBasisFrequency: base.trackerBasisFrequency,
       npvDiscountRate: base.npvDiscountRate,
+      solutionSavingsSuggestions: base.solutionSavingsSuggestions,
     );
   }
 

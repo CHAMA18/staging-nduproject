@@ -3278,6 +3278,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
         ),
       ),
     );
+    provider.saveToFirebase(checkpoint: 'fep_contract_vendor_quotes');
   }
 
   void _handleContractingNotesChanged(String value) {
@@ -3296,6 +3297,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
         ),
       ),
     );
+    provider.saveToFirebase(checkpoint: 'fep_contract_vendor_quotes');
   }
 
   Future<void> _navigateToProcurement() async {

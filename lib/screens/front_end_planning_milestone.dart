@@ -48,6 +48,10 @@ class _FrontEndPlanningMilestoneScreenState
   bool _autoGenerationTriggered = false;
   final DateFormat _dateFormat = DateFormat('MMM dd, yyyy');
   final ScrollController _milestonesHorizontalScroll = ScrollController();
+  final List<TextEditingController> _milestoneNameControllers =
+      <TextEditingController>[];
+  final List<TextEditingController> _milestoneDisciplineControllers =
+      <TextEditingController>[];
   final List<TextEditingController> _milestoneCommentControllers =
       <TextEditingController>[];
   late final OpenAiServiceSecure _openAi;
@@ -80,9 +84,29 @@ class _FrontEndPlanningMilestoneScreenState
   }
 
   void _rebuildMilestoneCommentControllers() {
+    for (final controller in _milestoneNameControllers) {
+      controller.dispose();
+    }
+    for (final controller in _milestoneDisciplineControllers) {
+      controller.dispose();
+    }
     for (final controller in _milestoneCommentControllers) {
       controller.dispose();
     }
+    _milestoneNameControllers
+      ..clear()
+      ..addAll(
+        _milestones.map(
+          (milestone) => TextEditingController(text: milestone.name),
+        ),
+      );
+    _milestoneDisciplineControllers
+      ..clear()
+      ..addAll(
+        _milestones.map(
+          (milestone) => TextEditingController(text: milestone.discipline),
+        ),
+      );
     _milestoneCommentControllers
       ..clear()
       ..addAll(
@@ -121,6 +145,7 @@ class _FrontEndPlanningMilestoneScreenState
         keyMilestones: List.from(_milestones),
       ),
     );
+    provider.saveToFirebase(checkpoint: 'fep_milestone');
   }
 
   GlobalKey _milestoneNameKey(int index) {
@@ -670,6 +695,12 @@ Consider typical project timelines and ensure end date is after start date.''';
 
   @override
   void dispose() {
+    for (final controller in _milestoneNameControllers) {
+      controller.dispose();
+    }
+    for (final controller in _milestoneDisciplineControllers) {
+      controller.dispose();
+    }
     for (final controller in _milestoneCommentControllers) {
       controller.dispose();
     }
@@ -1116,6 +1147,13 @@ Consider typical project timelines and ensure end date is after start date.''';
   }
 
   Widget _buildMilestonesTable() {
+    const border = BorderSide(color: Color(0xFFE5E7EB));
+    const headerStyle = TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      color: Color(0xFF374151),
+    );
+
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
@@ -1123,8 +1161,8 @@ Consider typical project timelines and ensure end date is after start date.''';
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final minTableWidth =
-              constraints.maxWidth > 1380 ? constraints.maxWidth : 1380.0;
+          final tableWidth =
+              constraints.maxWidth > 1420 ? constraints.maxWidth : 1420.0;
 
           return Scrollbar(
             controller: _milestonesHorizontalScroll,
@@ -1132,267 +1170,230 @@ Consider typical project timelines and ensure end date is after start date.''';
             child: SingleChildScrollView(
               controller: _milestonesHorizontalScroll,
               scrollDirection: Axis.horizontal,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minWidth: minTableWidth),
-                child: Column(
+              child: SizedBox(
+                width: tableWidth,
+                child: Table(
+                  border: const TableBorder(
+                    horizontalInside: border,
+                    verticalInside: border,
+                  ),
+                  defaultVerticalAlignment: TableCellVerticalAlignment.top,
+                  columnWidths: const {
+                    0: FixedColumnWidth(60),
+                    1: FixedColumnWidth(300),
+                    2: FixedColumnWidth(220),
+                    3: FixedColumnWidth(220),
+                    4: FixedColumnWidth(540),
+                    5: FixedColumnWidth(80),
+                  },
                   children: [
-                    // Header
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(12),
-                          topRight: Radius.circular(12),
-                        ),
-                      ),
-                      child: const Row(
-                        children: [
-                          SizedBox(
-                              width: 40,
-                              child: Center(
-                                child: Text('#',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 12,
-                                        color: Color(0xFF374151))),
-                              )),
-                          Expanded(
-                              flex: 3,
-                              child: Center(
-                                child: Text('Milestone Name',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 12,
-                                        color: Color(0xFF374151))),
-                              )),
-                          Expanded(
-                              flex: 2,
-                              child: Center(
-                                child: Text('Target Date',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 12,
-                                        color: Color(0xFF374151))),
-                              )),
-                          Expanded(
-                              flex: 2,
-                              child: Center(
-                                child: Text('Discipline',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 12,
-                                        color: Color(0xFF374151))),
-                              )),
-                          Expanded(
-                              flex: 3,
-                              child: Center(
-                                child: Text('Notes',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 12,
-                                        color: Color(0xFF374151))),
-                              )),
-                          SizedBox(
-                              width: 50,
-                              child: Center(
-                                child: Text('Actions',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 12,
-                                        color: Color(0xFF374151))),
-                              )),
-                        ],
-                      ),
+                    TableRow(
+                      decoration: const BoxDecoration(color: Color(0xFFF8FAFC)),
+                      children: [
+                        _milestoneHeaderCell('#', headerStyle),
+                        _milestoneHeaderCell('Milestone Name', headerStyle),
+                        _milestoneHeaderCell('Target Date', headerStyle),
+                        _milestoneHeaderCell('Discipline', headerStyle),
+                        _milestoneHeaderCell('Notes', headerStyle),
+                        _milestoneHeaderCell('Actions', headerStyle),
+                      ],
                     ),
-                    // Rows
                     ...List.generate(_milestones.length, (index) {
                       final milestone = _milestones[index];
                       final nameError =
                           _validationErrors['milestone_name_$index'];
                       final dateError =
                           _validationErrors['milestone_date_$index'];
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
+                      return TableRow(
                         decoration: BoxDecoration(
-                          border: const Border(
-                              top: BorderSide(color: Color(0xFFE5E7EB))),
                           color: index.isEven
                               ? Colors.white
                               : const Color(0xFFFAFAFA),
                         ),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 40,
+                        children: [
+                          _milestoneDataCell(
+                            Center(
                               child: Text(
                                 '${index + 1}',
                                 style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: Color(0xFF6B7280)),
-                              ),
-                            ),
-                            Expanded(
-                              flex: 3,
-                              child: TextFormField(
-                                key: _milestoneNameKey(index),
-                                initialValue: milestone.name,
-                                onChanged: (value) =>
-                                    _updateMilestoneField(index, 'name', value),
-                                decoration: InputDecoration(
-                                  hintText: 'Enter milestone name',
-                                  errorText: nameError,
-                                  hintStyle: TextStyle(
-                                      color: Colors.grey[400], fontSize: 13),
-                                  border:
-                                      _milestoneFieldBorder(nameError != null),
-                                  enabledBorder:
-                                      _milestoneFieldBorder(nameError != null),
-                                  focusedBorder:
-                                      _milestoneFieldBorder(nameError != null),
-                                  errorBorder: _milestoneFieldBorder(true),
-                                  focusedErrorBorder:
-                                      _milestoneFieldBorder(true),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 10),
-                                  isDense: true,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF6B7280),
                                 ),
-                                style: const TextStyle(fontSize: 13),
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              flex: 2,
-                              child: Column(
-                                key: _milestoneDateKey(index),
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  InkWell(
-                                    onTap: () => _selectMilestoneDate(index),
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 12, vertical: 10),
-                                      decoration: BoxDecoration(
-                                        border: Border.all(
-                                          color: dateError != null
-                                              ? const Color(0xFFEF4444)
-                                              : const Color(0xFFE5E7EB),
-                                        ),
-                                        borderRadius: BorderRadius.circular(8),
+                          ),
+                          _milestoneDataCell(
+                            TextFormField(
+                              key: _milestoneNameKey(index),
+                              controller: _milestoneNameControllers[index],
+                              onChanged: (value) =>
+                                  _updateMilestoneField(index, 'name', value),
+                              decoration: InputDecoration(
+                                hintText: 'Enter milestone name',
+                                errorText: nameError,
+                                hintStyle: TextStyle(
+                                  color: Colors.grey[400],
+                                  fontSize: 13,
+                                ),
+                                border:
+                                    _milestoneFieldBorder(nameError != null),
+                                enabledBorder:
+                                    _milestoneFieldBorder(nameError != null),
+                                focusedBorder:
+                                    _milestoneFieldBorder(nameError != null),
+                                errorBorder: _milestoneFieldBorder(true),
+                                focusedErrorBorder: _milestoneFieldBorder(true),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                isDense: true,
+                              ),
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
+                          _milestoneDataCell(
+                            Column(
+                              key: _milestoneDateKey(index),
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                InkWell(
+                                  onTap: () => _selectMilestoneDate(index),
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: dateError != null
+                                            ? const Color(0xFFEF4444)
+                                            : const Color(0xFFE5E7EB),
                                       ),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.calendar_today_outlined,
-                                              size: 14,
-                                              color: Colors.grey[400]),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              milestone.dueDate.isNotEmpty
-                                                  ? milestone.dueDate
-                                                  : 'Select date',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                color: milestone
-                                                        .dueDate.isNotEmpty
-                                                    ? const Color(0xFF111827)
-                                                    : Colors.grey[400],
-                                              ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.calendar_today_outlined,
+                                          size: 14,
+                                          color: Colors.grey[400],
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            milestone.dueDate.isNotEmpty
+                                                ? milestone.dueDate
+                                                : 'Select date',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color:
+                                                  milestone.dueDate.isNotEmpty
+                                                      ? const Color(0xFF111827)
+                                                      : Colors.grey[400],
                                             ),
                                           ),
-                                        ],
-                                      ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  if (dateError != null) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      dateError,
-                                      style: const TextStyle(
-                                        color: Color(0xFFDC2626),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              flex: 2,
-                              child: TextFormField(
-                                initialValue: milestone.discipline,
-                                onChanged: (value) => _updateMilestoneField(
-                                    index, 'discipline', value),
-                                decoration: InputDecoration(
-                                  hintText: 'Discipline',
-                                  hintStyle: TextStyle(
-                                      color: Colors.grey[400], fontSize: 13),
-                                  border: _milestoneFieldBorder(false),
-                                  enabledBorder: _milestoneFieldBorder(false),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 10),
-                                  isDense: true,
                                 ),
-                                style: const TextStyle(fontSize: 13),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              flex: 3,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  TextFormattingToolbar(
-                                    controller:
-                                        _milestoneCommentControllers[index],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextFormField(
-                                    controller:
-                                        _milestoneCommentControllers[index],
-                                    onChanged: (value) => _updateMilestoneField(
-                                        index, 'comments', value),
-                                    decoration: InputDecoration(
-                                      hintText: 'Add notes (optional)',
-                                      hintStyle: TextStyle(
-                                          color: Colors.grey[400],
-                                          fontSize: 13),
-                                      border: _milestoneFieldBorder(false),
-                                      enabledBorder:
-                                          _milestoneFieldBorder(false),
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                              horizontal: 12, vertical: 10),
-                                      isDense: true,
+                                if (dateError != null) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    dateError,
+                                    style: const TextStyle(
+                                      color: Color(0xFFDC2626),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
                                     ),
-                                    style: const TextStyle(fontSize: 13),
-                                    minLines: 1,
-                                    maxLines: null,
                                   ),
                                 ],
-                              ),
+                              ],
                             ),
-                            const SizedBox(width: 12),
-                            SizedBox(
-                              width: 50,
+                          ),
+                          _milestoneDataCell(
+                            TextFormField(
+                              controller:
+                                  _milestoneDisciplineControllers[index],
+                              onChanged: (value) => _updateMilestoneField(
+                                  index, 'discipline', value),
+                              decoration: InputDecoration(
+                                hintText: 'Discipline',
+                                hintStyle: TextStyle(
+                                  color: Colors.grey[400],
+                                  fontSize: 13,
+                                ),
+                                border: _milestoneFieldBorder(false),
+                                enabledBorder: _milestoneFieldBorder(false),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                isDense: true,
+                              ),
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
+                          _milestoneDataCell(
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                TextFormattingToolbar(
+                                  controller:
+                                      _milestoneCommentControllers[index],
+                                ),
+                                const SizedBox(height: 8),
+                                TextFormField(
+                                  controller:
+                                      _milestoneCommentControllers[index],
+                                  onChanged: (value) => _updateMilestoneField(
+                                    index,
+                                    'comments',
+                                    value,
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText: 'Add notes (optional)',
+                                    hintStyle: TextStyle(
+                                      color: Colors.grey[400],
+                                      fontSize: 13,
+                                    ),
+                                    border: _milestoneFieldBorder(false),
+                                    enabledBorder: _milestoneFieldBorder(false),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 10,
+                                    ),
+                                    isDense: true,
+                                  ),
+                                  style: const TextStyle(fontSize: 13),
+                                  minLines: 1,
+                                  maxLines: null,
+                                ),
+                              ],
+                            ),
+                          ),
+                          _milestoneDataCell(
+                            Center(
                               child: IconButton(
                                 onPressed: () => _confirmDeleteMilestone(index),
-                                icon: const Icon(Icons.delete_outline,
-                                    size: 18, color: Color(0xFFEF4444)),
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  size: 18,
+                                  color: Color(0xFFEF4444),
+                                ),
                                 tooltip: 'Remove milestone',
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(
-                                    minWidth: 32, minHeight: 32),
+                                  minWidth: 32,
+                                  minHeight: 32,
+                                ),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       );
                     }),
                   ],
@@ -1402,6 +1403,21 @@ Consider typical project timelines and ensure end date is after start date.''';
           );
         },
       ),
+    );
+  }
+
+  Widget _milestoneHeaderCell(String label, TextStyle style) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      child:
+          Center(child: Text(label, style: style, textAlign: TextAlign.center)),
+    );
+  }
+
+  Widget _milestoneDataCell(Widget child) {
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: child,
     );
   }
 

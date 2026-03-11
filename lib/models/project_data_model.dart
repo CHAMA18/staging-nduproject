@@ -2675,6 +2675,7 @@ class CostAnalysisData {
   String? basisFrequency;
   String trackerBasisFrequency;
   double npvDiscountRate;
+  List<SolutionSavingsData> solutionSavingsSuggestions;
 
   CostAnalysisData({
     this.notes = '',
@@ -2690,12 +2691,14 @@ class CostAnalysisData {
     this.basisFrequency,
     this.trackerBasisFrequency = 'Annual',
     this.npvDiscountRate = 0.10,
+    List<SolutionSavingsData>? solutionSavingsSuggestions,
   })  : solutionCosts = solutionCosts ?? [],
         projectValueBenefits = projectValueBenefits ?? {},
         benefitLineItems = benefitLineItems ?? [],
         solutionProjectBenefits = solutionProjectBenefits ?? [],
         solutionCategoryCosts = solutionCategoryCosts ?? [],
-        solutionCostAssumptions = solutionCostAssumptions ?? [];
+        solutionCostAssumptions = solutionCostAssumptions ?? [],
+        solutionSavingsSuggestions = solutionSavingsSuggestions ?? [];
 
   Map<String, dynamic> toJson() => {
         'notes': notes,
@@ -2714,6 +2717,8 @@ class CostAnalysisData {
         'basisFrequency': basisFrequency,
         'trackerBasisFrequency': trackerBasisFrequency,
         'npvDiscountRate': npvDiscountRate,
+        'solutionSavingsSuggestions':
+            solutionSavingsSuggestions.map((s) => s.toJson()).toList(),
       };
 
   factory CostAnalysisData.fromJson(Map<String, dynamic> json) {
@@ -2771,6 +2776,10 @@ class CostAnalysisData {
           ? (json['npvDiscountRate'] as num).toDouble()
           : (double.tryParse(json['npvDiscountRate']?.toString() ?? '') ??
               0.10),
+      solutionSavingsSuggestions: (json['solutionSavingsSuggestions'] as List?)
+              ?.map((s) => SolutionSavingsData.fromJson(s))
+              .toList() ??
+          [],
     );
   }
 }
@@ -2778,15 +2787,18 @@ class CostAnalysisData {
 class SolutionCostData {
   String solutionTitle;
   List<CostRowData> costRows;
+  String contextHash;
 
   SolutionCostData({
     this.solutionTitle = '',
     List<CostRowData>? costRows,
+    this.contextHash = '',
   }) : costRows = costRows ?? [];
 
   Map<String, dynamic> toJson() => {
         'solutionTitle': solutionTitle,
         'costRows': costRows.map((r) => r.toJson()).toList(),
+        'contextHash': contextHash,
       };
 
   factory SolutionCostData.fromJson(Map<String, dynamic> json) {
@@ -2796,6 +2808,7 @@ class SolutionCostData {
               ?.map((r) => CostRowData.fromJson(r))
               .toList() ??
           [],
+      contextHash: json['contextHash']?.toString() ?? '',
     );
   }
 }
@@ -2805,12 +2818,14 @@ class SolutionProjectBenefitData {
   String projectValueAmount;
   Map<String, String> projectValueBenefits;
   List<BenefitLineItem> projectBenefits;
+  String contextHash;
 
   SolutionProjectBenefitData({
     this.solutionTitle = '',
     this.projectValueAmount = '',
     Map<String, String>? projectValueBenefits,
     List<BenefitLineItem>? projectBenefits,
+    this.contextHash = '',
   })  : projectValueBenefits = projectValueBenefits ?? {},
         projectBenefits = projectBenefits ?? [];
 
@@ -2819,6 +2834,7 @@ class SolutionProjectBenefitData {
         'projectValueAmount': projectValueAmount,
         'projectValueBenefits': projectValueBenefits,
         'projectBenefits': projectBenefits.map((b) => b.toJson()).toList(),
+        'contextHash': contextHash,
       };
 
   factory SolutionProjectBenefitData.fromJson(Map<String, dynamic> json) {
@@ -2831,6 +2847,79 @@ class SolutionProjectBenefitData {
               ?.map((b) => BenefitLineItem.fromJson(b))
               .toList() ??
           [],
+      contextHash: json['contextHash']?.toString() ?? '',
+    );
+  }
+}
+
+class SolutionSavingsData {
+  String solutionTitle;
+  String contextHash;
+  List<SavingsSuggestionData> suggestions;
+
+  SolutionSavingsData({
+    this.solutionTitle = '',
+    this.contextHash = '',
+    List<SavingsSuggestionData>? suggestions,
+  }) : suggestions = suggestions ?? [];
+
+  Map<String, dynamic> toJson() => {
+        'solutionTitle': solutionTitle,
+        'contextHash': contextHash,
+        'suggestions': suggestions.map((s) => s.toJson()).toList(),
+      };
+
+  factory SolutionSavingsData.fromJson(Map<String, dynamic> json) {
+    return SolutionSavingsData(
+      solutionTitle: json['solutionTitle']?.toString() ?? '',
+      contextHash: json['contextHash']?.toString() ?? '',
+      suggestions: (json['suggestions'] as List?)
+              ?.map((s) => SavingsSuggestionData.fromJson(s))
+              .toList() ??
+          [],
+    );
+  }
+}
+
+class SavingsSuggestionData {
+  String lever;
+  String recommendation;
+  double projectedSavings;
+  String timeframe;
+  String confidence;
+  String rationale;
+
+  SavingsSuggestionData({
+    this.lever = '',
+    this.recommendation = '',
+    this.projectedSavings = 0,
+    this.timeframe = '',
+    this.confidence = '',
+    this.rationale = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'lever': lever,
+        'recommendation': recommendation,
+        'projectedSavings': projectedSavings,
+        'timeframe': timeframe,
+        'confidence': confidence,
+        'rationale': rationale,
+      };
+
+  factory SavingsSuggestionData.fromJson(Map<String, dynamic> json) {
+    double parseDouble(dynamic value) {
+      if (value is num) return value.toDouble();
+      return double.tryParse(value?.toString() ?? '') ?? 0;
+    }
+
+    return SavingsSuggestionData(
+      lever: json['lever']?.toString() ?? '',
+      recommendation: json['recommendation']?.toString() ?? '',
+      projectedSavings: parseDouble(json['projectedSavings']),
+      timeframe: json['timeframe']?.toString() ?? '',
+      confidence: json['confidence']?.toString() ?? '',
+      rationale: json['rationale']?.toString() ?? '',
     );
   }
 }

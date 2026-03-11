@@ -249,6 +249,9 @@ class _FrontEndPlanningRequirementsScreenState
   void _loadSavedRequirements(ProjectDataModel data) {
     final savedItems = data.frontEndPlanning.requirementItems;
     if (savedItems.isNotEmpty) {
+      for (final row in _rows) {
+        row.dispose();
+      }
       _rows
         ..clear()
         ..addAll(savedItems.asMap().entries.map((entry) {
@@ -256,7 +259,9 @@ class _FrontEndPlanningRequirementsScreenState
           final row = _createRow(entry.key + 1);
           row.setDescriptionFromCode(item.description);
           row.commentsController.text = item.comments;
-          row.selectedType = item.requirementType;
+          row.selectedType = _normalizeRequirementTypeSelection(
+            item.requirementType,
+          );
           row.selectedDiscipline =
               _normalizeDisciplineSelection(item.discipline);
           row.roleController.text = item.role;
@@ -277,6 +282,9 @@ class _FrontEndPlanningRequirementsScreenState
           .where((line) => line.isNotEmpty)
           .toList();
       if (lines.isNotEmpty) {
+        for (final row in _rows) {
+          row.dispose();
+        }
         _rows
           ..clear()
           ..addAll(lines.asMap().entries.map((entry) {
@@ -336,6 +344,9 @@ class _FrontEndPlanningRequirementsScreenState
         }
 
         setState(() {
+          for (final row in _rows) {
+            row.dispose();
+          }
           _rows
             ..clear()
             ..addAll(reqs.asMap().entries.map((e) {
@@ -343,9 +354,9 @@ class _FrontEndPlanningRequirementsScreenState
               final requirementText = (e.value['requirement'] ?? '').toString();
               r.setDescriptionFromCode(requirementText);
               r.commentsController.text = '';
-              r.selectedType = (e.value['requirementType'] ?? 'Functional')
-                  .toString()
-                  .trim();
+              r.selectedType = _normalizeRequirementTypeSelection(
+                (e.value['requirementType'] ?? 'Functional').toString(),
+              );
               final aiDiscipline = (e.value['discipline'] ?? '').toString();
               final aiRole = (e.value['role'] ?? '').toString();
               final aiPerson = (e.value['person'] ?? '').toString();
@@ -466,7 +477,9 @@ class _FrontEndPlanningRequirementsScreenState
       final nextPhase = (picked?['phase'] ?? '').toString().trim();
       final nextSource = (picked?['requirementSource'] ?? '').toString().trim();
 
-      if (nextType.isNotEmpty) row.selectedType = nextType;
+      if (nextType.isNotEmpty) {
+        row.selectedType = _normalizeRequirementTypeSelection(nextType);
+      }
       if (nextDiscipline.isNotEmpty) {
         row.selectedDiscipline = _normalizeDisciplineSelection(nextDiscipline);
       }
@@ -1431,9 +1444,10 @@ class _FrontEndPlanningRequirementsScreenState
         TextEditingController(text: row.personController.text);
     final sourceController =
         TextEditingController(text: row.sourceController.text);
-    String? selectedType = row.selectedType;
-    String? selectedDiscipline = row.selectedDiscipline;
-    String? selectedPhase = row.selectedPhase;
+    String? selectedType = _normalizeRequirementTypeSelection(row.selectedType);
+    String? selectedDiscipline =
+        _normalizeDisciplineSelection(row.selectedDiscipline);
+    String? selectedPhase = _normalizePhaseSelection(row.selectedPhase);
 
     await showModalBottomSheet<void>(
       context: context,
@@ -1616,12 +1630,16 @@ class _FrontEndPlanningRequirementsScreenState
                                 roleHint: roleController.text,
                               );
                               row.sourceController.text = sourceController.text;
-                              row.selectedType = selectedType;
+                              row.selectedType =
+                                  _normalizeRequirementTypeSelection(
+                                selectedType,
+                              );
                               row.selectedDiscipline =
                                   _normalizeDisciplineSelection(
                                 selectedDiscipline,
                               );
-                              row.selectedPhase = selectedPhase;
+                              row.selectedPhase =
+                                  _normalizePhaseSelection(selectedPhase);
                             });
                             _scheduleAutoSave(showSnack: false);
                           }
@@ -1906,6 +1924,58 @@ class _FrontEndPlanningRequirementsScreenState
     return 'Planning';
   }
 
+  String? _normalizeRequirementTypeSelection(String? rawValue) {
+    final value = (rawValue ?? '').trim();
+    if (value.isEmpty) return null;
+
+    for (final option in _RequirementRow.requirementTypeOptions) {
+      if (option.toLowerCase() == value.toLowerCase()) {
+        return option;
+      }
+    }
+
+    final normalized = value.toLowerCase();
+    if (normalized.contains('functional') &&
+        !normalized.contains('non-functional')) {
+      return 'Functional';
+    }
+    if (normalized.contains('non') && normalized.contains('functional')) {
+      return 'Non-Functional';
+    }
+    if (normalized.contains('technical') || normalized == 'tech') {
+      return 'Technical';
+    }
+    if (normalized.contains('regulat') || normalized.contains('compliance')) {
+      return 'Regulatory';
+    }
+    if (normalized.contains('operat')) {
+      return 'Operational';
+    }
+    if (normalized.contains('safe')) {
+      return 'Safety';
+    }
+    if (normalized.contains('sustain')) {
+      return 'Sustainability';
+    }
+    if (normalized.contains('business')) {
+      return 'Business';
+    }
+    if (normalized.contains('stakeholder')) {
+      return 'Stakeholder';
+    }
+    if (normalized.contains('solution')) {
+      return 'Solutions';
+    }
+    if (normalized.contains('transition')) {
+      return 'Transitional';
+    }
+    if (normalized == 'other' || normalized == 'general') {
+      return 'Other';
+    }
+
+    return null;
+  }
+
   String? _normalizeDisciplineSelection(String? rawValue) {
     final value = (rawValue ?? '').trim();
     if (value.isEmpty) return null;
@@ -2156,6 +2226,7 @@ class _FrontEndPlanningRequirementsScreenState
         ),
       ),
     );
+    provider.saveToFirebase(checkpoint: 'fep_requirements');
 
     if (showSnack) {
       _showAutoSaveSnack();
@@ -2217,6 +2288,21 @@ class _AssignableMember {
 }
 
 class _RequirementRow {
+  static const List<String> requirementTypeOptions = [
+    'Technical',
+    'Regulatory',
+    'Functional',
+    'Operational',
+    'Non-Functional',
+    'Safety',
+    'Sustainability',
+    'Business',
+    'Stakeholder',
+    'Solutions',
+    'Transitional',
+    'Other',
+  ];
+
   static const List<String> disciplineOptions = [
     'Architecture',
     'Civil',
@@ -2516,27 +2602,20 @@ class _TypeDropdown extends StatefulWidget {
 }
 
 class _TypeDropdownState extends State<_TypeDropdown> {
-  late String? _value = widget.value;
-  final List<String> _options = const [
-    'Technical',
-    'Regulatory',
-    'Functional',
-    'Operational',
-    'Non-Functional',
-    'Safety',
-    'Sustainability',
-    'Business',
-    'Stakeholder',
-    'Solutions',
-    'Transitional',
-    'Other'
-  ];
+  late String? _value = _coerceValue(widget.value);
+
+  String? _coerceValue(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    return _RequirementRow.requirementTypeOptions.contains(value)
+        ? value
+        : null;
+  }
 
   @override
   void didUpdateWidget(covariant _TypeDropdown oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.value != widget.value) {
-      _value = widget.value;
+      _value = _coerceValue(widget.value);
     }
   }
 
@@ -2562,7 +2641,7 @@ class _TypeDropdownState extends State<_TypeDropdown> {
             setState(() => _value = v);
             widget.onChanged(v);
           },
-          items: _options
+          items: _RequirementRow.requirementTypeOptions
               .map((e) => DropdownMenuItem<String?>(
                     value: e,
                     child: Text(e,
@@ -2586,13 +2665,18 @@ class _DisciplineDropdown extends StatefulWidget {
 }
 
 class _DisciplineDropdownState extends State<_DisciplineDropdown> {
-  late String? _value = widget.value;
+  late String? _value = _coerceValue(widget.value);
+
+  String? _coerceValue(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    return _RequirementRow.disciplineOptions.contains(value) ? value : null;
+  }
 
   @override
   void didUpdateWidget(covariant _DisciplineDropdown oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.value != widget.value) {
-      _value = widget.value;
+      _value = _coerceValue(widget.value);
     }
   }
 
@@ -2642,13 +2726,18 @@ class _PhaseDropdown extends StatefulWidget {
 }
 
 class _PhaseDropdownState extends State<_PhaseDropdown> {
-  late String? _value = widget.value;
+  late String? _value = _coerceValue(widget.value);
+
+  String? _coerceValue(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    return _RequirementRow.phaseOptions.contains(value) ? value : null;
+  }
 
   @override
   void didUpdateWidget(covariant _PhaseDropdown oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.value != widget.value) {
-      _value = widget.value;
+      _value = _coerceValue(widget.value);
     }
   }
 

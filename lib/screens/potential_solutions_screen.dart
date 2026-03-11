@@ -1885,7 +1885,7 @@ ${_notesController.text.trim().isEmpty ? 'None' : _notesController.text.trim()}
 
     final solutionTitle = _solutions[index].titleController.text.trim();
     final confirmed = await showDeleteConfirmationDialog(
-      context: context,
+      context,
       title: 'Delete Solution?',
       itemLabel: solutionTitle.isEmpty
           ? 'Potential Solution ${index + 1}'

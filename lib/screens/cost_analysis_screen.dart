@@ -37,6 +37,7 @@ import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
 import 'package:ndu_project/services/sidebar_navigation_service.dart';
 
 import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
+import 'package:ndu_project/widgets/delete_confirmation_dialog.dart';
 
 class CostAnalysisScreen extends StatefulWidget {
   final String notes;
@@ -84,7 +85,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
   static const double _benefitTotalUnitsColumnWidth = 140;
   static const double _benefitTotalValueColumnWidth = 170;
   static const double _benefitNotesColumnWidth = 240;
-  static const double _benefitActionsColumnWidth = 52;
+  static const double _benefitActionsColumnWidth = 132;
+  static const double _initialCostActionsColumnWidth = 132;
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final ScrollController _mainScrollController = ScrollController();
@@ -103,6 +105,12 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
   late final TextEditingController _notesController;
   late final List<List<_CostRow>> _rowsPerSolution;
   late final List<_SolutionCostContext> _solutionContexts;
+  late final List<List<_BenefitLineItemEntry>> _benefitLineItemsBySolution;
+  late final List<String> _projectValueContextHashesBySolution;
+  late final List<String> _costBreakdownContextHashesBySolution;
+  late final List<List<AiBenefitSavingsSuggestion>>
+      _savingsSuggestionsBySolution;
+  late final List<String> _savingsContextHashesBySolution;
   // High-level category cost matrix per solution (for Initial Cost Estimate)
   late final List<Map<String, _CategoryCostEntry>> _categoryCostsPerSolution;
   // AI idea pool: per-solution, per-category suggested line items (with costs)
@@ -239,14 +247,12 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
   double _discountRate = 0.10; // Default 10% discount rate for NPV calculations
   static const List<double> _discountRateOptions = [0.08, 0.10, 0.12];
   final Set<int> _solutionLoading = <int>{};
-  final List<_BenefitLineItemEntry> _benefitLineItems = [];
   int _benefitTabIndex = 0;
   final TextEditingController _savingsNotesController = TextEditingController();
   final TextEditingController _savingsTargetController =
       TextEditingController(text: '10');
   bool _isSavingsGenerating = false;
   String? _savingsError;
-  List<AiBenefitSavingsSuggestion> _savingsSuggestions = [];
 
   @override
   void initState() {
@@ -289,6 +295,20 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       _rowsPerSolution.length,
       (_) => <String, String>{},
     );
+    _benefitLineItemsBySolution = List.generate(
+      _rowsPerSolution.length,
+      (_) => <_BenefitLineItemEntry>[],
+    );
+    _projectValueContextHashesBySolution =
+        List<String>.filled(_rowsPerSolution.length, '');
+    _costBreakdownContextHashesBySolution =
+        List<String>.filled(_rowsPerSolution.length, '');
+    _savingsSuggestionsBySolution = List.generate(
+      _rowsPerSolution.length,
+      (_) => <AiBenefitSavingsSuggestion>[],
+    );
+    _savingsContextHashesBySolution =
+        List<String>.filled(_rowsPerSolution.length, '');
     _solutionContexts =
         List.generate(_rowsPerSolution.length, (_) => _SolutionCostContext());
     _categoryCostsPerSolution = List.generate(_rowsPerSolution.length, (_) {
@@ -310,8 +330,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     for (final controller in _projectValueBenefitControllers.values) {
       controller.addListener(_onProjectValueFieldChanged);
     }
-    _savingsNotesController.addListener(_markDirty);
-    _savingsTargetController.addListener(_markDirty);
+    _savingsNotesController.addListener(_onSavingsContextChanged);
+    _savingsTargetController.addListener(_onSavingsContextChanged);
     for (final list in _rowsPerSolution) {
       for (final row in list) {
         _attachRowDirtyListeners(row);
@@ -335,36 +355,94 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     });
   }
 
+  List<_BenefitLineItemEntry> _benefitItemsForSolution(int index) {
+    if (index < 0 || index >= _benefitLineItemsBySolution.length) {
+      return const <_BenefitLineItemEntry>[];
+    }
+    return _benefitLineItemsBySolution[index];
+  }
+
+  List<_BenefitLineItemEntry> get _benefitLineItems =>
+      _benefitItemsForSolution(_activeSolutionIndex());
+
+  Iterable<_BenefitLineItemEntry> get _allBenefitLineItems sync* {
+    for (final items in _benefitLineItemsBySolution) {
+      yield* items;
+    }
+  }
+
+  List<AiBenefitSavingsSuggestion> _savingsSuggestionsForSolution(int index) {
+    if (index < 0 || index >= _savingsSuggestionsBySolution.length) {
+      return const <AiBenefitSavingsSuggestion>[];
+    }
+    return _savingsSuggestionsBySolution[index];
+  }
+
+  List<AiBenefitSavingsSuggestion> get _savingsSuggestions =>
+      _savingsSuggestionsForSolution(_activeSolutionIndex());
+
   Future<void> _autoPopulateForNewProject(
       {required bool hasExistingData}) async {
     if (widget.solutions.isEmpty) {
       return;
     }
 
-    final needsProjectValue = _needsProjectValueGeneration();
-    final needsCostBreakdown = !_hasMeaningfulCostRows();
+    final projectValueTargets = <int>[];
+    final costBreakdownTargets = <int>[];
+    for (int i = 0; i < _rowsPerSolution.length; i++) {
+      final projectValueHash = _projectValueContextHashForSolution(i);
+      final projectValueContextChanged =
+          _projectValueContextHashesBySolution[i].isNotEmpty &&
+              _projectValueContextHashesBySolution[i] != projectValueHash;
+      if (_needsProjectValueGeneration(solutionIndex: i) ||
+          projectValueContextChanged) {
+        projectValueTargets.add(i);
+      }
+      final costHash = _costBreakdownContextHashForSolution(i);
+      final costContextChanged =
+          _costBreakdownContextHashesBySolution[i].isNotEmpty &&
+              _costBreakdownContextHashesBySolution[i] != costHash;
+      if (!_hasMeaningfulCostRowsForSolution(i) || costContextChanged) {
+        costBreakdownTargets.add(i);
+      }
+    }
+    final activeIndex = _activeSolutionIndex();
+    final savingsContextChanged =
+        _savingsContextHashesBySolution[activeIndex].isNotEmpty &&
+            _savingsContextHashesBySolution[activeIndex] !=
+                _savingsContextHashForSolution(activeIndex);
     final needsSavings =
-        _savingsSuggestions.isEmpty && _hasMeaningfulBenefitLineItems();
+        _hasMeaningfulBenefitLineItems(solutionIndex: activeIndex) &&
+            (_savingsSuggestionsForSolution(activeIndex).isEmpty ||
+                savingsContextChanged);
     if (hasExistingData &&
-        !needsProjectValue &&
-        !needsCostBreakdown &&
+        projectValueTargets.isEmpty &&
+        costBreakdownTargets.isEmpty &&
         !needsSavings) {
       return;
     }
 
-    if (needsProjectValue) {
-      await _generateProjectValue();
+    for (final solutionIndex in projectValueTargets) {
+      await _generateProjectValue(
+        solutionIndex: solutionIndex,
+        showFeedback: false,
+        persist: false,
+      );
     }
-    if (_benefitLineItems.isEmpty) {
+    if (_benefitItemsForSolution(activeIndex).isEmpty) {
       _seedDefaultProjectBenefits();
     }
-    if (needsCostBreakdown) {
-      await _generateCostBreakdown();
+    for (final solutionIndex in costBreakdownTargets) {
+      await _generateCostBreakdownForSolution(
+        solutionIndex,
+        showFeedback: false,
+        persist: false,
+      );
     }
-    if (_benefitLineItems.isNotEmpty &&
-        (needsSavings || _savingsSuggestions.isEmpty) &&
+    if (_benefitItemsForSolution(activeIndex).isNotEmpty &&
+        needsSavings &&
         !_isSavingsGenerating) {
-      await _generateSavingsSuggestions();
+      await _generateSavingsSuggestions(showFeedback: false);
     }
     await _saveCostAnalysisData();
   }
@@ -422,13 +500,11 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     });
   }
 
-  bool _hasMeaningfulProjectValueBenefits() {
-    return _projectValueBenefitControllers.values
-        .any((controller) => controller.text.trim().isNotEmpty);
-  }
-
-  bool _hasMeaningfulBenefitLineItems() {
-    return _benefitLineItems.any((entry) {
+  bool _hasMeaningfulBenefitLineItems({int? solutionIndex}) {
+    final entries = solutionIndex == null
+        ? _benefitLineItems
+        : _benefitItemsForSolution(solutionIndex);
+    return entries.any((entry) {
       final hasTitle = entry.titleController.text.trim().isNotEmpty;
       final hasValue = entry.totalValue > 0;
       final hasNotes = entry.notesController.text.trim().isNotEmpty;
@@ -436,29 +512,94 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     });
   }
 
-  bool _hasMeaningfulCostRows() {
-    return _rowsPerSolution.any((rows) {
-      return rows.any((row) {
-        final name = row.itemController.text.trim();
-        final description = row.descriptionController.text.trim().toLowerCase();
-        final assumptions = row.assumptionsController.text.trim();
-        final hasName = name.isNotEmpty && name.toLowerCase() != 'name';
-        final hasDescription =
-            description.isNotEmpty && !description.startsWith('lorem ipsum');
-        final hasAssumptions = assumptions.isNotEmpty;
-        final hasCost = row.currentCost() > 0;
-        return hasName || hasDescription || hasAssumptions || hasCost;
-      });
+  bool _hasMeaningfulCostRowsForSolution(int index) {
+    if (index < 0 || index >= _rowsPerSolution.length) return false;
+    return _rowsPerSolution[index].any((row) {
+      final name = row.itemController.text.trim();
+      final description = row.descriptionController.text.trim().toLowerCase();
+      final assumptions = row.assumptionsController.text.trim();
+      final hasName = name.isNotEmpty && name.toLowerCase() != 'name';
+      final hasDescription =
+          description.isNotEmpty && !description.startsWith('lorem ipsum');
+      final hasAssumptions = assumptions.isNotEmpty;
+      final hasCost = row.currentCost() > 0;
+      return hasName || hasDescription || hasAssumptions || hasCost;
     });
   }
 
-  bool _needsProjectValueGeneration() {
+  bool _needsProjectValueGeneration({int? solutionIndex}) {
+    final index = solutionIndex ?? _activeSolutionIndex();
+    if (index < 0 || index >= _projectValueAmountBySolution.length) {
+      return true;
+    }
     final hasBaselineValue =
-        _parseCurrencyInput(_projectValueAmountController.text.trim()) > 0;
+        _parseCurrencyInput(_projectValueAmountBySolution[index].trim()) > 0;
     if (!hasBaselineValue) return true;
-    if (!_hasMeaningfulProjectValueBenefits()) return true;
-    if (!_hasMeaningfulBenefitLineItems()) return true;
+    if (_projectValueBenefitsBySolution[index].isEmpty) return true;
+    if (!_hasMeaningfulBenefitLineItems(solutionIndex: index)) return true;
     return false;
+  }
+
+  String _stableHash(String value) {
+    const int fnvPrime = 0x01000193;
+    int hash = 0x811C9DC5;
+    for (final codeUnit in value.codeUnits) {
+      hash ^= codeUnit;
+      hash = (hash * fnvPrime) & 0xFFFFFFFF;
+    }
+    return hash.toRadixString(16).padLeft(8, '0');
+  }
+
+  String _projectValueContextHashForSolution(int index) {
+    final solution = _solutionAt(index);
+    final buffer = StringBuffer()
+      ..writeln(_buildUnifiedAiContext(
+        sectionLabel: 'Cost Benefit Analysis - Project Benefit Calculation',
+        forSolution: index,
+      ))
+      ..writeln(solution?.title ?? '')
+      ..writeln(solution?.description ?? '')
+      ..writeln(_currency)
+      ..writeln(_basisFrequency ?? '');
+    return _stableHash(buffer.toString());
+  }
+
+  String _costBreakdownContextHashForSolution(int index) {
+    final solution = _solutionAt(index);
+    final contextData = _contextFor(index);
+    final buffer = StringBuffer()
+      ..writeln(_buildUnifiedAiContext(
+        sectionLabel: 'Cost Benefit Analysis - Initial Cost Estimate',
+        forSolution: index,
+      ))
+      ..writeln(solution?.title ?? '')
+      ..writeln(solution?.description ?? '')
+      ..writeln(_currency)
+      ..writeln(contextData.resourceIndex)
+      ..writeln(contextData.timelineIndex)
+      ..writeln(contextData.complexityIndex)
+      ..writeln(contextData.justificationController.text.trim());
+    return _stableHash(buffer.toString());
+  }
+
+  String _savingsContextHashForSolution(int index) {
+    final buffer = StringBuffer()
+      ..writeln(_buildUnifiedAiContext(
+        sectionLabel: 'Cost Benefit Analysis - Savings Calculator',
+        forSolution: index,
+      ))
+      ..writeln(_savingsTargetController.text.trim())
+      ..writeln(_savingsNotesController.text.trim())
+      ..writeln(_trackerBasisFrequency);
+    for (final entry in _benefitItemsForSolution(index)) {
+      buffer
+        ..writeln(entry.categoryKey)
+        ..writeln(entry.titleController.text.trim())
+        ..writeln(entry.unitValueController.text.trim())
+        ..writeln(entry.unitsController.text.trim())
+        ..writeln(entry.notesController.text.trim());
+    }
+    return _stableHash(buffer.toString());
   }
 
   String _truncateAiContext(String text, {int maxChars = 18000}) {
@@ -572,18 +713,6 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     return normalized;
   }
 
-  void _applyProjectValueBenefitInsights(Map<String, String> rawBenefits) {
-    final normalized = _normalizeProjectValueBenefitEntries(rawBenefits);
-    for (final field in _projectValueFields) {
-      final controller = _projectValueBenefitControllers[field.key];
-      if (controller == null) continue;
-      final text = (normalized[field.key] ?? '').trim();
-      if (text.isNotEmpty) {
-        controller.text = text;
-      }
-    }
-  }
-
   bool _loadExistingData() {
     try {
       final provider = ProjectDataInherited.of(context);
@@ -611,6 +740,15 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       for (int i = 0; i < _projectValueAmountBySolution.length; i++) {
         _projectValueAmountBySolution[i] = '';
         _projectValueBenefitsBySolution[i] = <String, String>{};
+        _projectValueContextHashesBySolution[i] = '';
+        _costBreakdownContextHashesBySolution[i] = '';
+        _savingsContextHashesBySolution[i] = '';
+        for (final entry in _benefitItemsForSolution(i)) {
+          entry.unbind();
+          entry.dispose();
+        }
+        _benefitItemsForSolution(i).clear();
+        _savingsSuggestionsBySolution[i].clear();
       }
 
       if (costAnalysisData.solutionProjectBenefits.isNotEmpty) {
@@ -633,6 +771,26 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
               _normalizeProjectValueBenefitEntries(
             match.projectValueBenefits,
           );
+          _projectValueContextHashesBySolution[i] = match.contextHash;
+          for (final item in match.projectBenefits) {
+            final entry = _BenefitLineItemEntry(
+              id: item.id,
+              categoryKey: _normalizeBenefitCategoryKey(item.categoryKey),
+              title: item.title,
+              unitValue: double.tryParse(item.unitValue) ?? 0,
+              units: double.tryParse(item.units) ?? 0,
+              notes: item.notes,
+            );
+            entry.bind(_onBenefitEntryEdited);
+            _benefitItemsForSolution(i).add(entry);
+          }
+          if (_projectValueContextHashesBySolution[i].isEmpty &&
+              (_parseCurrencyInput(_projectValueAmountBySolution[i]) > 0 ||
+                  _projectValueBenefitsBySolution[i].isNotEmpty ||
+                  _benefitItemsForSolution(i).isNotEmpty)) {
+            _projectValueContextHashesBySolution[i] =
+                _projectValueContextHashForSolution(i);
+          }
         }
       } else {
         // Backward compatibility with single-solution legacy payloads.
@@ -643,22 +801,25 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
               _normalizeProjectValueBenefitEntries(
             costAnalysisData.projectValueBenefits,
           );
+          for (final item in costAnalysisData.benefitLineItems) {
+            final entry = _BenefitLineItemEntry(
+              id: item.id,
+              categoryKey: _normalizeBenefitCategoryKey(item.categoryKey),
+              title: item.title,
+              unitValue: double.tryParse(item.unitValue) ?? 0,
+              units: double.tryParse(item.units) ?? 0,
+              notes: item.notes,
+            );
+            entry.bind(_onBenefitEntryEdited);
+            _benefitItemsForSolution(0).add(entry);
+          }
+          if (_parseCurrencyInput(_projectValueAmountBySolution[0]) > 0 ||
+              _projectValueBenefitsBySolution[0].isNotEmpty ||
+              _benefitItemsForSolution(0).isNotEmpty) {
+            _projectValueContextHashesBySolution[0] =
+                _projectValueContextHashForSolution(0);
+          }
         }
-      }
-
-      // Load legacy/global project benefit entries.
-      _benefitLineItems.clear();
-      for (final item in costAnalysisData.benefitLineItems) {
-        final entry = _BenefitLineItemEntry(
-          id: item.id,
-          categoryKey: _normalizeBenefitCategoryKey(item.categoryKey),
-          title: item.title,
-          unitValue: double.tryParse(item.unitValue) ?? 0,
-          units: double.tryParse(item.units) ?? 0,
-          notes: item.notes,
-        );
-        entry.bind(_onBenefitEntryEdited);
-        _benefitLineItems.add(entry);
       }
 
       // Load savings data
@@ -699,6 +860,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             ? costAnalysisData.solutionCosts[i]
             : null;
         if (solutionCost == null) continue;
+        _costBreakdownContextHashesBySolution[i] = solutionCost.contextHash;
 
         final rows = _rowsPerSolution[i];
 
@@ -719,6 +881,11 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           row.descriptionController.text = costRow.description;
           row.costController.text = costRow.cost;
           row.assumptionsController.text = costRow.assumptions;
+        }
+        if (_costBreakdownContextHashesBySolution[i].isEmpty &&
+            _hasMeaningfulCostRowsForSolution(i)) {
+          _costBreakdownContextHashesBySolution[i] =
+              _costBreakdownContextHashForSolution(i);
         }
       }
 
@@ -767,6 +934,39 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         context.timelineIndex = assumptionData.timelineIndex;
         context.complexityIndex = assumptionData.complexityIndex;
         context.justificationController.text = assumptionData.justification;
+      }
+
+      for (int i = 0; i < _rowsPerSolution.length; i++) {
+        final expectedTitle = _solutionTitle(i);
+        SolutionSavingsData? savingsData;
+        for (final item in costAnalysisData.solutionSavingsSuggestions) {
+          if (titlesMatch(item.solutionTitle, expectedTitle)) {
+            savingsData = item;
+            break;
+          }
+        }
+        savingsData ??= i < costAnalysisData.solutionSavingsSuggestions.length
+            ? costAnalysisData.solutionSavingsSuggestions[i]
+            : null;
+        if (savingsData == null) continue;
+        _savingsContextHashesBySolution[i] = savingsData.contextHash;
+        _savingsSuggestionsBySolution[i] = savingsData.suggestions
+            .map(
+              (item) => AiBenefitSavingsSuggestion(
+                lever: item.lever,
+                recommendation: item.recommendation,
+                projectedSavings: item.projectedSavings,
+                timeframe: item.timeframe,
+                confidence: item.confidence,
+                rationale: item.rationale,
+              ),
+            )
+            .toList();
+        if (_savingsContextHashesBySolution[i].isEmpty &&
+            _savingsSuggestionsBySolution[i].isNotEmpty) {
+          _savingsContextHashesBySolution[i] =
+              _savingsContextHashForSolution(i);
+        }
       }
 
       if (mounted) setState(() {});
@@ -854,6 +1054,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     if (nextIndex != currentIndex) {
       setState(() {
         _activeTab = nextIndex;
+        _savingsError = null;
       });
     }
     _loadProjectValueEditorsForSolution(nextIndex);
@@ -881,13 +1082,17 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     if (solutionSpecificValue > 0) {
       return solutionSpecificValue;
     }
+    final benefitTotal = _benefitTotalValueForSolution(index);
+    if (benefitTotal > 0) {
+      return benefitTotal;
+    }
     final hasAnySolutionSpecificValue = _projectValueAmountBySolution.any(
       (value) => _parseCurrencyInput(value) > 0,
     );
     if (hasAnySolutionSpecificValue || _rowsPerSolution.length > 1) {
       return 0;
     }
-    return _benefitTotalValue();
+    return benefitTotal;
   }
 
   double _initialCostForSolution(int index) {
@@ -1991,11 +2196,12 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         solutionCosts.add(SolutionCostData(
           solutionTitle: solutionTitle,
           costRows: costRows,
+          contextHash: _costBreakdownContextHashesBySolution[i],
         ));
       }
 
       // Collect global project benefits entries (legacy + display layer).
-      final benefitLineItems = _benefitLineItems.map((entry) {
+      final benefitLineItems = _allBenefitLineItems.map((entry) {
         return BenefitLineItem(
           id: entry.id,
           categoryKey: entry.categoryKey,
@@ -2009,24 +2215,26 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       // Persist Step 1 project value inputs per solution.
       final solutionProjectBenefits = <SolutionProjectBenefitData>[];
       for (int i = 0; i < _rowsPerSolution.length; i++) {
+        final solutionBenefits = _benefitItemsForSolution(i)
+            .map(
+              (entry) => BenefitLineItem(
+                id: entry.id,
+                categoryKey: entry.categoryKey,
+                title: entry.title,
+                unitValue: entry.unitValueController.text,
+                units: entry.unitsController.text,
+                notes: entry.notes,
+              ),
+            )
+            .toList(growable: false);
         solutionProjectBenefits.add(
           SolutionProjectBenefitData(
             solutionTitle: _solutionTitle(i),
             projectValueAmount: _projectValueAmountBySolution[i],
             projectValueBenefits:
                 Map<String, String>.from(_projectValueBenefitsBySolution[i]),
-            projectBenefits: benefitLineItems
-                .map(
-                  (entry) => BenefitLineItem(
-                    id: entry.id,
-                    categoryKey: entry.categoryKey,
-                    title: entry.title,
-                    unitValue: entry.unitValue,
-                    units: entry.units,
-                    notes: entry.notes,
-                  ),
-                )
-                .toList(growable: false),
+            projectBenefits: solutionBenefits,
+            contextHash: _projectValueContextHashesBySolution[i],
           ),
         );
       }
@@ -2073,6 +2281,28 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         );
       }
 
+      final solutionSavingsSuggestions = <SolutionSavingsData>[];
+      for (int i = 0; i < _rowsPerSolution.length; i++) {
+        solutionSavingsSuggestions.add(
+          SolutionSavingsData(
+            solutionTitle: _solutionTitle(i),
+            contextHash: _savingsContextHashesBySolution[i],
+            suggestions: _savingsSuggestionsForSolution(i)
+                .map(
+                  (suggestion) => SavingsSuggestionData(
+                    lever: suggestion.lever,
+                    recommendation: suggestion.recommendation,
+                    projectedSavings: suggestion.projectedSavings,
+                    timeframe: suggestion.timeframe,
+                    confidence: suggestion.confidence,
+                    rationale: suggestion.rationale,
+                  ),
+                )
+                .toList(growable: false),
+          ),
+        );
+      }
+
       final legacyIndex =
           _projectValueAmountBySolution.isNotEmpty ? 0 : activeSolutionIndex;
       final legacyProjectValueAmount =
@@ -2094,6 +2324,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         basisFrequency: _basisFrequency,
         trackerBasisFrequency: _trackerBasisFrequency,
         npvDiscountRate: _discountRate,
+        solutionSavingsSuggestions: solutionSavingsSuggestions,
       );
 
       provider.updateProjectData(
@@ -2220,6 +2451,17 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     if (mounted) setState(() {});
   }
 
+  void _onSavingsContextChanged() {
+    final solutionIndex = _activeSolutionIndex();
+    if (!_isSavingsGenerating && _savingsSuggestions.isNotEmpty) {
+      setState(() {
+        _clearSavingsSuggestionsForSolution(solutionIndex);
+        _savingsError = null;
+      });
+    }
+    _markDirty();
+  }
+
   double _parseCurrencyInput(String value) {
     final sanitized = value.replaceAll(RegExp(r'[^0-9\.-]'), '');
     return double.tryParse(sanitized) ?? 0;
@@ -2234,7 +2476,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     }
     final currentProjectValue = _currentProjectValueForSolution(index);
     final estimatedCost = _initialCostForSolution(index);
-    final activeBenefitCount = _benefitLineItems
+    final activeBenefitCount = _benefitItemsForSolution(index)
         .where((entry) => entry.totalValue > 0 || entry.title.isNotEmpty)
         .length;
     final averageRoi = _solutionRoiPercent(
@@ -2917,9 +3159,12 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           child: Row(children: [
             Expanded(
                 flex: 2,
-                child: Text('Time Horizon',
-                    style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w600))),
+                child: Align(
+                  alignment: Alignment.center,
+                  child: Text('Time Horizon',
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600)),
+                )),
             Expanded(
                 flex: 3,
                 child: Align(
@@ -3007,53 +3252,96 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     return match.value;
   }
 
-  _BenefitLineItemEntry _createBenefitEntry({String? categoryKey}) {
+  void _clearSavingsSuggestionsForSolution(int index) {
+    if (index < 0 || index >= _savingsSuggestionsBySolution.length) {
+      return;
+    }
+    _savingsSuggestionsBySolution[index] = <AiBenefitSavingsSuggestion>[];
+    _savingsContextHashesBySolution[index] = '';
+  }
+
+  _BenefitLineItemEntry _createBenefitEntry({
+    String? categoryKey,
+    String? title,
+    String? unitValue,
+    String? units,
+    String? notes,
+  }) {
     final entry = _BenefitLineItemEntry(
       id: 'benefit-${DateTime.now().microsecondsSinceEpoch}',
       categoryKey: _normalizeBenefitCategoryKey(
           categoryKey ?? _projectValueFields.first.key),
+      title: title ?? '',
+      unitValue: double.tryParse(unitValue ?? '') ?? 0,
+      units: double.tryParse(units ?? '') ?? 0,
+      notes: notes ?? '',
     );
     entry.bind(_onBenefitEntryEdited);
     return entry;
   }
 
-  void _addBenefitLineItem({String? categoryKey}) {
+  Future<void> _addBenefitLineItem({String? categoryKey}) async {
+    final draft = await _showBenefitLineItemDialog(
+      mode: _EditorDialogMode.create,
+      categoryKey: categoryKey,
+    );
+    if (draft == null) return;
+    final solutionIndex = _activeSolutionIndex();
+    final entry = _createBenefitEntry(
+      categoryKey: draft.categoryKey,
+      title: draft.title,
+      unitValue: draft.unitValue,
+      units: draft.units,
+      notes: draft.notes,
+    );
     setState(() {
-      _benefitLineItems.add(_createBenefitEntry(categoryKey: categoryKey));
-      _savingsSuggestions = [];
+      _benefitItemsForSolution(solutionIndex).add(entry);
+      _clearSavingsSuggestionsForSolution(solutionIndex);
       _savingsError = null;
     });
     _markDirty();
   }
 
+  Future<void> _editBenefitLineItem(_BenefitLineItemEntry entry) async {
+    final draft = await _showBenefitLineItemDialog(
+      mode: _EditorDialogMode.edit,
+      entry: entry,
+    );
+    if (draft == null) return;
+    final solutionIndex = _activeSolutionIndex();
+    setState(() {
+      entry.categoryKey = draft.categoryKey;
+      entry.titleController.text = draft.title;
+      entry.unitValueController.text = draft.unitValue;
+      entry.unitsController.text = draft.units;
+      entry.notesController.text = draft.notes;
+      _clearSavingsSuggestionsForSolution(solutionIndex);
+      _savingsError = null;
+    });
+    _markDirty();
+  }
+
+  Future<void> _viewBenefitLineItem(_BenefitLineItemEntry entry) async {
+    await _showBenefitLineItemDialog(
+      mode: _EditorDialogMode.view,
+      entry: entry,
+    );
+  }
+
   Future<void> _removeBenefitLineItem(_BenefitLineItemEntry entry) async {
-    final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Delete Project Value'),
-            content: const Text(
-              'Are you sure you want to delete this project value? This action cannot be undone.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                style: FilledButton.styleFrom(backgroundColor: Colors.red),
-                child: const Text('Delete'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
+    final confirmed = await showDeleteConfirmationDialog(
+      context,
+      title: 'Delete benefit item',
+      itemLabel: entry.title,
+      message: 'Delete this benefit item? This action cannot be undone.',
+    );
 
     if (!confirmed) return;
 
+    final solutionIndex = _activeSolutionIndex();
     setState(() {
-      _benefitLineItems.remove(entry);
-      _savingsSuggestions = [];
+      _benefitItemsForSolution(solutionIndex).remove(entry);
+      _clearSavingsSuggestionsForSolution(solutionIndex);
       _savingsError = null;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) => entry.dispose());
@@ -3062,13 +3350,213 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
 
   void _onBenefitEntryEdited() {
     if (!mounted) return;
+    final solutionIndex = _activeSolutionIndex();
     setState(() {
       _savingsError = null;
       if (!_isSavingsGenerating && _savingsSuggestions.isNotEmpty) {
-        _savingsSuggestions = [];
+        _clearSavingsSuggestionsForSolution(solutionIndex);
       }
     });
     _markDirty();
+  }
+
+  Future<_BenefitLineItemDraft?> _showBenefitLineItemDialog({
+    required _EditorDialogMode mode,
+    _BenefitLineItemEntry? entry,
+    String? categoryKey,
+  }) async {
+    final titleController =
+        TextEditingController(text: entry?.titleController.text ?? '');
+    final unitValueController =
+        TextEditingController(text: entry?.unitValueController.text ?? '');
+    final unitsController =
+        TextEditingController(text: entry?.unitsController.text ?? '');
+    final notesController =
+        TextEditingController(text: entry?.notesController.text ?? '');
+    String selectedCategory = _normalizeBenefitCategoryKey(
+      entry?.categoryKey ?? categoryKey ?? _projectValueFields.first.key,
+    );
+    bool isSuggesting = false;
+    final readOnly = mode == _EditorDialogMode.view;
+    final result = await showDialog<_BenefitLineItemDraft>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          final title = switch (mode) {
+            _EditorDialogMode.create => 'Add benefit item',
+            _EditorDialogMode.edit => 'Edit benefit item',
+            _EditorDialogMode.view => 'View benefit item',
+          };
+          return AlertDialog(
+            title: Text(title),
+            content: SizedBox(
+              width: 560,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedCategory,
+                      items: _projectValueFields
+                          .map(
+                            (field) => DropdownMenuItem<String>(
+                              value: field.key,
+                              child: Text(_benefitCategoryLabel(field.key)),
+                            ),
+                          )
+                          .toList(growable: false),
+                      onChanged: readOnly
+                          ? null
+                          : (value) {
+                              if (value == null) return;
+                              setDialogState(() {
+                                selectedCategory = value;
+                              });
+                            },
+                      decoration: const InputDecoration(
+                        labelText: 'Category',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: titleController,
+                      readOnly: readOnly,
+                      decoration: const InputDecoration(
+                        labelText: 'Benefit title',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: unitValueController,
+                            readOnly: readOnly,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: InputDecoration(
+                              labelText: 'Unit value ($_currency)',
+                              border: const OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: unitsController,
+                            readOnly: readOnly,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Units',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (!readOnly) ...[
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: OutlinedButton.icon(
+                          onPressed: isSuggesting
+                              ? null
+                              : () async {
+                                  setDialogState(() {
+                                    isSuggesting = true;
+                                  });
+                                  final suggestedValue =
+                                      await _estimateBenefitUnitValue(
+                                    title: titleController.text.trim(),
+                                    categoryKey: selectedCategory,
+                                    notes: notesController.text.trim(),
+                                    unitsText: unitsController.text.trim(),
+                                    baselineValue: _projectValueAmountController
+                                        .text
+                                        .trim(),
+                                    solutionIndex: _activeSolutionIndex(),
+                                    excludeEntryId: entry?.id,
+                                  );
+                                  if (!mounted || !dialogContext.mounted) {
+                                    return;
+                                  }
+                                  if (suggestedValue != null &&
+                                      suggestedValue > 0) {
+                                    unitValueController.text =
+                                        suggestedValue.toStringAsFixed(2);
+                                  }
+                                  setDialogState(() {
+                                    isSuggesting = false;
+                                  });
+                                },
+                          icon: isSuggesting
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.auto_fix_high_outlined,
+                                  size: 18,
+                                ),
+                          label: const Text('Suggest unit value with AI'),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: notesController,
+                      readOnly: readOnly,
+                      minLines: 3,
+                      maxLines: 5,
+                      decoration: const InputDecoration(
+                        labelText: 'Basis and notes',
+                        hintText: 'Capture assumptions, timing, and basis.',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text(readOnly ? 'Close' : 'Cancel'),
+              ),
+              if (!readOnly)
+                FilledButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop(
+                      _BenefitLineItemDraft(
+                        categoryKey: selectedCategory,
+                        title: titleController.text.trim(),
+                        unitValue: unitValueController.text.trim(),
+                        units: unitsController.text.trim(),
+                        notes: notesController.text.trim(),
+                      ),
+                    );
+                  },
+                  child: const Text('Save'),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+    titleController.dispose();
+    unitValueController.dispose();
+    unitsController.dispose();
+    notesController.dispose();
+    return result;
   }
 
   Map<String, _BenefitCategorySummary> _benefitSummaries() {
@@ -3088,13 +3576,24 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     return entry.totalValue;
   }
 
+  double _benefitTotalValueForSolution(int index) {
+    return _benefitItemsForSolution(index).fold<double>(
+      0,
+      (sum, entry) => sum + _effectiveBenefitValue(entry),
+    );
+  }
+
   double _benefitTotalValue() {
-    return _benefitLineItems.fold<double>(
-        0, (sum, entry) => sum + _effectiveBenefitValue(entry));
+    return _benefitTotalValueForSolution(_activeSolutionIndex());
+  }
+
+  double _benefitTotalUnitsForSolution(int index) {
+    return _benefitItemsForSolution(index)
+        .fold<double>(0, (sum, entry) => sum + entry.units);
   }
 
   double _benefitTotalUnits() {
-    return _benefitLineItems.fold<double>(0, (sum, entry) => sum + entry.units);
+    return _benefitTotalUnitsForSolution(_activeSolutionIndex());
   }
 
   double _calculateTotalBenefitsWithFrequency() {
@@ -3143,8 +3642,10 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                 _BasisFrequencyToggle(
                   value: _trackerBasisFrequency,
                   onChanged: (value) {
+                    final solutionIndex = _activeSolutionIndex();
                     setState(() {
                       _trackerBasisFrequency = value;
+                      _clearSavingsSuggestionsForSolution(solutionIndex);
                     });
                     _markDirty();
                   },
@@ -3264,7 +3765,15 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
 
   Widget _buildBenefitLineItemsTab() {
     final hasItems = _benefitLineItems.isNotEmpty;
+    final activeSolutionLabel = _solutionTitle(_activeSolutionIndex());
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      if (_rowsPerSolution.length > 1) ...[
+        Text(
+          'Showing benefit analysis for $activeSolutionLabel',
+          style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+        ),
+        const SizedBox(height: 10),
+      ],
       LayoutBuilder(
         builder: (context, constraints) {
           final isNarrow = constraints.maxWidth < 980;
@@ -3558,21 +4067,6 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
   }
 
   Widget _benefitLineItemRow(int index, _BenefitLineItemEntry entry) {
-    final compactLabels = _useCompactCategoryLabels(context);
-    final categoryItems = _projectValueFields
-        .map((e) => DropdownMenuItem<String>(
-              value: e.key,
-              child: Center(
-                child: Text(
-                  _benefitCategoryLabel(e.key, compact: compactLabels),
-                  style: const TextStyle(fontSize: 11),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ))
-        .toList();
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -3596,125 +4090,47 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         const SizedBox(width: _benefitColumnGap),
         SizedBox(
           width: _benefitCategoryColumnWidth,
-          child: DropdownButtonFormField<String>(
-            initialValue: entry.categoryKey,
-            items: categoryItems,
-            alignment: Alignment.center,
-            onChanged: (value) {
-              if (value == null) return;
-              setState(() {
-                entry.categoryKey = value;
-              });
-              _markDirty();
-            },
-            decoration: InputDecoration(
-              isDense: true,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-              enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-            ),
-            isExpanded: true,
+          child: Text(
+            _benefitCategoryLabel(entry.categoryKey),
+            textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 12, color: Color(0xFF111827)),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
         const SizedBox(width: _benefitColumnGap),
         SizedBox(
           width: _benefitTitleColumnWidth,
-          child: TextField(
-            controller: entry.titleController,
+          child: Text(
+            entry.titleController.text.trim().isEmpty
+                ? 'Benefit item'
+                : entry.titleController.text.trim(),
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 12),
-            decoration: InputDecoration(
-              hintText: 'Benefit title',
-              hintStyle:
-                  const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
-              isDense: true,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-              enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
         const SizedBox(width: _benefitColumnGap),
         SizedBox(
           width: _benefitUnitValueColumnWidth,
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: entry.unitValueController,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12),
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    hintText: '0.00',
-                    hintStyle:
-                        const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 12),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-                    enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
-              IconButton(
-                icon: const Icon(Icons.auto_fix_high_outlined,
-                    size: 16, color: Color(0xFFB45309)),
-                tooltip: 'Suggest unit value with AI',
-                onPressed: () => _suggestUnitValueWithAI(entry),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-              ),
-            ],
+          child: Text(
+            _formatCurrencyValue(
+              _parseCurrencyInput(entry.unitValueController.text),
+            ),
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12),
           ),
         ),
         const SizedBox(width: _benefitColumnGap),
         SizedBox(
           width: _benefitTotalUnitsColumnWidth,
-          child: TextField(
-            controller: entry.unitsController,
+          child: Text(
+            entry.unitsController.text.trim().isEmpty
+                ? '0'
+                : entry.unitsController.text.trim(),
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 12),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(
-              hintText: '0',
-              hintStyle:
-                  const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
-              isDense: true,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-              enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-            ),
           ),
         ),
         const SizedBox(width: _benefitColumnGap),
@@ -3734,40 +4150,45 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         const SizedBox(width: _benefitColumnGap),
         SizedBox(
           width: _benefitNotesColumnWidth,
-          child: TextField(
-            controller: entry.notesController,
+          child: Text(
+            entry.notesController.text.trim().isEmpty
+                ? 'No basis provided'
+                : entry.notesController.text.trim(),
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 12),
-            minLines: 1,
-            maxLines: 1,
-            decoration: InputDecoration(
-              hintText: 'Basis (e.g., Monthly, Annual)',
-              hintStyle:
-                  const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
-              isDense: true,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-              enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
         const SizedBox(width: _benefitColumnGap),
         SizedBox(
           width: _benefitActionsColumnWidth,
-          child: IconButton(
-            tooltip: 'Remove item',
-            onPressed: () => _removeBenefitLineItem(entry),
-            icon: const Icon(Icons.delete_outline,
-                size: 18, color: Colors.redAccent),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                tooltip: 'View item',
+                onPressed: () => _viewBenefitLineItem(entry),
+                icon: const Icon(Icons.visibility_outlined, size: 18),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              ),
+              IconButton(
+                tooltip: 'Edit item',
+                onPressed: () => _editBenefitLineItem(entry),
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              ),
+              IconButton(
+                tooltip: 'Remove item',
+                onPressed: () => _removeBenefitLineItem(entry),
+                icon: const Icon(Icons.delete_outline,
+                    size: 18, color: Colors.redAccent),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              ),
+            ],
           ),
         ),
       ]),
@@ -4453,65 +4874,65 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         SizedBox(
           width: 300,
-          child: ExpandingTextField(
-            controller: row.itemController,
-            minLines: 1,
-            decoration: const InputDecoration(
-              isDense: true,
-              border: OutlineInputBorder(),
-              hintText: 'Item name',
-              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            ),
+          child: Text(
+            row.itemController.text.trim().isEmpty ||
+                    row.itemController.text.trim().toLowerCase() == 'name'
+                ? 'Cost item'
+                : row.itemController.text.trim(),
             style: const TextStyle(fontSize: 12, color: Colors.black87),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
         const SizedBox(width: 12),
         SizedBox(
           width: 150,
           child: Align(
-            alignment: Alignment.topRight,
-            child: TextField(
-              controller: row.costController,
-              textAlign: TextAlign.right,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                hintText: '0.00',
-                isDense: true,
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                prefixIcon: _costFieldAiPrefix(
-                  loading: row.aiLoading,
-                  onSuggest: () => _suggestCostForRow(row),
-                ),
-                prefixIconConstraints:
-                    const BoxConstraints.tightFor(width: 28, height: 28),
-                suffix: _currencySuffix(_currency),
-              ),
+            alignment: Alignment.center,
+            child: Text(
+              _formatCurrencyValue(row.currentCost()),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              textAlign: TextAlign.center,
             ),
           ),
         ),
         const SizedBox(width: 12),
         SizedBox(
           width: 300,
-          child: ExpandingTextField(
-            controller: row.assumptionsController,
-            minLines: 1,
-            decoration: const InputDecoration(
-              hintText: 'Assumptions or notes for this item',
-              isDense: true,
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            ),
+          child: Text(
+            row.assumptionsController.text.trim().isEmpty
+                ? (row.descriptionController.text.trim().isEmpty
+                    ? 'No comments'
+                    : row.descriptionController.text.trim())
+                : row.assumptionsController.text.trim(),
+            style: const TextStyle(fontSize: 12),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
         const SizedBox(width: 8),
-        IconButton(
-          tooltip: 'Delete row',
-          onPressed: () => _removeInitialCostRow(row),
-          icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+        SizedBox(
+          width: _initialCostActionsColumnWidth,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                tooltip: 'View details',
+                onPressed: () => _viewInitialCostRow(row),
+                icon: const Icon(Icons.visibility_outlined, size: 18),
+              ),
+              IconButton(
+                tooltip: 'Edit row',
+                onPressed: () => _editInitialCostRow(row),
+                icon: const Icon(Icons.edit_outlined, size: 18),
+              ),
+              IconButton(
+                tooltip: 'Delete row',
+                onPressed: () => _removeInitialCostRow(row),
+                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+              ),
+            ],
+          ),
         ),
       ]),
     );
@@ -4546,30 +4967,30 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     );
   }
 
-  Future<void> _suggestCostForRow(_CostRow row) async {
-    if (row.aiLoading) return;
-    setState(() => row.aiLoading = true);
+  Future<double?> _estimateCostForInputs({
+    required String itemName,
+    required String description,
+    required String assumptions,
+    required int solutionIndex,
+  }) async {
     try {
-      final cost = await _openAi.estimateCostForItem(
-        itemName: row.itemController.text,
-        description: row.descriptionController.text,
-        assumptions: row.assumptionsController.text,
+      return await _openAi.estimateCostForItem(
+        itemName: itemName,
+        description: description,
+        assumptions: assumptions,
         currency: _currency,
         contextNotes: _buildUnifiedAiContext(
           sectionLabel: 'Cost Benefit Analysis - Initial Cost Estimate',
-          forSolution: _activeTab,
+          forSolution: solutionIndex,
         ),
       );
-      if (!mounted) return;
-      setState(() {
-        final v = cost.isFinite ? cost : 0;
-        row.costController.text =
-            v == 0 ? '' : v.toStringAsFixed(v % 1 == 0 ? 0 : 2);
-      });
     } catch (e) {
-      print('Error estimating cost: $e');
-    } finally {
-      if (mounted) setState(() => row.aiLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to estimate cost: $e')),
+        );
+      }
+      return null;
     }
   }
 
@@ -4595,7 +5016,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             v == 0 ? '' : v.toStringAsFixed(v % 1 == 0 ? 0 : 2);
       });
     } catch (e) {
-      print('Error estimating category cost: $e');
+      debugPrint('Error estimating category cost: $e');
     } finally {
       if (mounted) setState(() => entry.aiLoading = false);
     }
@@ -4998,7 +5419,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       children: [
         LayoutBuilder(
           builder: (context, constraints) {
-            const minTableWidth = 800.0;
+            const minTableWidth = 920.0;
             final tableWidth = constraints.maxWidth < minTableWidth
                 ? minTableWidth
                 : constraints.maxWidth;
@@ -5053,7 +5474,16 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const SizedBox(width: 36),
+                          SizedBox(
+                            width: _initialCostActionsColumnWidth,
+                            child: const Align(
+                              alignment: Alignment.center,
+                              child: Text('Actions',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600)),
+                            ),
+                          ),
                         ]),
                       ),
                       const SizedBox(height: 6),
@@ -5115,7 +5545,10 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                                 const SizedBox(width: 12),
                                 SizedBox(width: 300, child: const SizedBox()),
                                 const SizedBox(width: 8),
-                                const SizedBox(width: 36),
+                                SizedBox(
+                                  width: _initialCostActionsColumnWidth,
+                                  child: const SizedBox(),
+                                ),
                               ]),
                             ),
                           ],
@@ -5164,26 +5597,68 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     _markDirty();
   }
 
-  void _addInitialCostRow(int solutionIndex) {
+  Future<void> _addInitialCostRow(int solutionIndex) async {
     if (solutionIndex < 0 || solutionIndex >= _rowsPerSolution.length) return;
+    final draft = await _showInitialCostRowDialog(
+      mode: _EditorDialogMode.create,
+      solutionIndex: solutionIndex,
+    );
+    if (draft == null) return;
     final row = _CostRow(currencyProvider: () => _currency);
     _attachRowDirtyListeners(row);
     row.setHorizon(_npvHorizon);
+    row.itemController.text = draft.itemName;
+    row.descriptionController.text = draft.description;
+    row.costController.text = draft.cost;
+    row.assumptionsController.text = draft.assumptions;
     setState(() {
       _rowsPerSolution[solutionIndex].add(row);
     });
+    _refreshJustificationFor(solutionIndex, force: true);
     _markDirty();
+  }
+
+  int _findSolutionIndexForRow(_CostRow row) {
+    for (int i = 0; i < _rowsPerSolution.length; i++) {
+      if (_rowsPerSolution[i].contains(row)) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  Future<void> _editInitialCostRow(_CostRow row) async {
+    final solutionIndex = _findSolutionIndexForRow(row);
+    if (solutionIndex == -1) return;
+    final draft = await _showInitialCostRowDialog(
+      mode: _EditorDialogMode.edit,
+      solutionIndex: solutionIndex,
+      row: row,
+    );
+    if (draft == null) return;
+    setState(() {
+      row.itemController.text = draft.itemName;
+      row.descriptionController.text = draft.description;
+      row.costController.text = draft.cost;
+      row.assumptionsController.text = draft.assumptions;
+    });
+    _refreshJustificationFor(solutionIndex, force: true);
+    _markDirty();
+  }
+
+  Future<void> _viewInitialCostRow(_CostRow row) async {
+    final solutionIndex = _findSolutionIndexForRow(row);
+    if (solutionIndex == -1) return;
+    await _showInitialCostRowDialog(
+      mode: _EditorDialogMode.view,
+      solutionIndex: solutionIndex,
+      row: row,
+    );
   }
 
   Future<void> _removeInitialCostRow(_CostRow row) async {
     // Locate the solution index containing this row
-    int foundIndex = -1;
-    for (int i = 0; i < _rowsPerSolution.length; i++) {
-      if (_rowsPerSolution[i].contains(row)) {
-        foundIndex = i;
-        break;
-      }
-    }
+    final foundIndex = _findSolutionIndexForRow(row);
     if (foundIndex == -1) return;
 
     bool hasMeaningfulData() {
@@ -5200,23 +5675,13 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
 
     bool proceed = true;
     if (hasMeaningfulData()) {
-      proceed = await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Delete row?'),
-              content: const Text(
-                  'This will remove the selected cost row. This action cannot be undone.'),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    child: const Text('Cancel')),
-                TextButton(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    child: const Text('Delete')),
-              ],
-            ),
-          ) ??
-          false;
+      proceed = await showDeleteConfirmationDialog(
+        context,
+        title: 'Delete cost row',
+        itemLabel: row.itemController.text.trim(),
+        message:
+            'Delete this initial cost estimate row? This action cannot be undone.',
+      );
     }
     if (!proceed) return;
 
@@ -5227,6 +5692,163 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     row.dispose();
     _refreshJustificationFor(foundIndex, force: true);
     _markDirty();
+  }
+
+  Future<_InitialCostRowDraft?> _showInitialCostRowDialog({
+    required _EditorDialogMode mode,
+    required int solutionIndex,
+    _CostRow? row,
+  }) async {
+    final itemController =
+        TextEditingController(text: row?.itemController.text ?? '');
+    final descriptionController =
+        TextEditingController(text: row?.descriptionController.text ?? '');
+    final costController =
+        TextEditingController(text: row?.costController.text ?? '');
+    final assumptionsController =
+        TextEditingController(text: row?.assumptionsController.text ?? '');
+    bool isSuggesting = false;
+    final readOnly = mode == _EditorDialogMode.view;
+    final result = await showDialog<_InitialCostRowDraft>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          final title = switch (mode) {
+            _EditorDialogMode.create => 'Add cost row',
+            _EditorDialogMode.edit => 'Edit cost row',
+            _EditorDialogMode.view => 'View cost row',
+          };
+          return AlertDialog(
+            title: Text(title),
+            content: SizedBox(
+              width: 580,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: itemController,
+                      readOnly: readOnly,
+                      decoration: const InputDecoration(
+                        labelText: 'Item',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: descriptionController,
+                      readOnly: readOnly,
+                      minLines: 2,
+                      maxLines: 4,
+                      decoration: const InputDecoration(
+                        labelText: 'Description',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: costController,
+                      readOnly: readOnly,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: 'Estimated cost ($_currency)',
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    if (!readOnly) ...[
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: OutlinedButton.icon(
+                          onPressed: isSuggesting
+                              ? null
+                              : () async {
+                                  setDialogState(() {
+                                    isSuggesting = true;
+                                  });
+                                  final suggestedCost =
+                                      await _estimateCostForInputs(
+                                    itemName: itemController.text.trim(),
+                                    description:
+                                        descriptionController.text.trim(),
+                                    assumptions:
+                                        assumptionsController.text.trim(),
+                                    solutionIndex: solutionIndex,
+                                  );
+                                  if (!mounted || !dialogContext.mounted) {
+                                    return;
+                                  }
+                                  if (suggestedCost != null &&
+                                      suggestedCost > 0) {
+                                    costController.text =
+                                        suggestedCost.toStringAsFixed(
+                                      suggestedCost % 1 == 0 ? 0 : 2,
+                                    );
+                                  }
+                                  setDialogState(() {
+                                    isSuggesting = false;
+                                  });
+                                },
+                          icon: isSuggesting
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.auto_awesome, size: 18),
+                          label: const Text('Suggest with AI'),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: assumptionsController,
+                      readOnly: readOnly,
+                      minLines: 3,
+                      maxLines: 5,
+                      decoration: const InputDecoration(
+                        labelText: 'Comments / assumptions',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text(readOnly ? 'Close' : 'Cancel'),
+              ),
+              if (!readOnly)
+                FilledButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop(
+                      _InitialCostRowDraft(
+                        itemName: itemController.text.trim(),
+                        description: descriptionController.text.trim(),
+                        cost: costController.text.trim(),
+                        assumptions: assumptionsController.text.trim(),
+                      ),
+                    );
+                  },
+                  child: const Text('Save'),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+    itemController.dispose();
+    descriptionController.dispose();
+    costController.dispose();
+    assumptionsController.dispose();
+    return result;
   }
 
   Widget _buildCategoryIdeasSection(int solutionIndex) {
@@ -5340,9 +5962,10 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
           child: Row(children: [
             const Expanded(
                 flex: 4,
-                child: Text('Solution',
-                    style:
-                        TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+                child: Center(
+                    child: Text('Solution',
+                        style: TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w600)))),
             const Expanded(
                 flex: 2,
                 child: Center(
@@ -5714,8 +6337,10 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                     : computedColumns;
         final double tileWidth = singleColumn
             ? safeWidth
-            : ((safeWidth - (spacing * (columns - 1))) / columns)
-                .clamp(280.0, 400.0);
+            : math.max(
+                280.0,
+                (safeWidth - (spacing * (columns - 1))) / columns,
+              );
         return Align(
           alignment: Alignment.topLeft,
           child: Wrap(
@@ -5958,51 +6583,21 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         // Wrap buttons in Flexible/Expanded to prevent overflow
         LayoutBuilder(builder: (context, constraints) {
           final isNarrow = constraints.maxWidth < 300;
-          if (isNarrow) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: (!hasSolutions || isLoading)
-                      ? null
-                      : () => _handleRefreshSolutionSnapshot(index),
-                  icon: isLoading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.auto_fix_high_outlined, size: 18),
-                  label: const Text('Refresh with AI'),
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: () => _handleOpenBreakdownForSnapshot(index),
-                  child: const Text('Open breakdown'),
-                ),
-              ],
-            );
-          }
-          return Row(children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: (!hasSolutions || isLoading)
-                    ? null
-                    : () => _handleRefreshSolutionSnapshot(index),
-                icon: isLoading
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.auto_fix_high_outlined, size: 18),
-                label: const Text('Refresh with AI'),
-              ),
+          return SizedBox(
+            width: isNarrow ? double.infinity : null,
+            child: OutlinedButton.icon(
+              onPressed: (!hasSolutions || isLoading)
+                  ? null
+                  : () => _handleRefreshSolutionSnapshot(index),
+              icon: isLoading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.auto_fix_high_outlined, size: 18),
+              label: const Text('Refresh with AI'),
             ),
-            const SizedBox(width: 8),
-            TextButton(
-              onPressed: () => _handleOpenBreakdownForSnapshot(index),
-              child: const Text('Open breakdown'),
-            ),
-          ]);
+          );
         }),
       ]),
     );
@@ -6010,38 +6605,6 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
 
   Future<void> _handleRefreshSolutionSnapshot(int index) async {
     await _generateCostBreakdownForSolution(index);
-    if (!mounted) return;
-    await _saveCostAnalysisData();
-  }
-
-  void _handleOpenBreakdownForSnapshot(int index) {
-    if (_rowsPerSolution.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No breakdown data is available yet.')),
-      );
-      return;
-    }
-    _showBreakdownFor(index);
-  }
-
-  void _showBreakdownFor(int index) {
-    if (_rowsPerSolution.isEmpty) return;
-    final safeIndex = index < 0
-        ? 0
-        : index >= _rowsPerSolution.length
-            ? _rowsPerSolution.length - 1
-            : index;
-    _onActiveSolutionChanged(safeIndex);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final ctx = _tablesSectionKey.currentContext;
-      if (ctx != null) {
-        Scrollable.ensureVisible(
-          ctx,
-          duration: const Duration(milliseconds: 350),
-          curve: Curves.easeOut,
-        );
-      }
-    });
   }
 
   Widget _summaryMetric(
@@ -6346,7 +6909,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     }
     _loadProjectValueEditorsForSolution(_activeSolutionIndex());
     // Project benefits (unit values only)
-    for (final entry in _benefitLineItems) {
+    for (final entry in _allBenefitLineItems) {
       final uv =
           _BenefitLineItemEntry._readDouble(entry.unitValueController.text) *
               factor;
@@ -7391,18 +7954,19 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         entry.dispose();
       }
     }
-    for (final entry in _benefitLineItems) {
+    for (final entry in _allBenefitLineItems) {
       entry.dispose();
     }
-    _savingsNotesController.removeListener(_markDirty);
+    _savingsNotesController.removeListener(_onSavingsContextChanged);
     _savingsNotesController.dispose();
-    _savingsTargetController.removeListener(_markDirty);
+    _savingsTargetController.removeListener(_onSavingsContextChanged);
     _savingsTargetController.dispose();
     super.dispose();
   }
 
-  Future<void> _generateSavingsSuggestions() async {
+  Future<void> _generateSavingsSuggestions({bool showFeedback = true}) async {
     if (_isSavingsGenerating) return;
+    final activeIndex = _activeSolutionIndex();
     final eligible = _benefitLineItems
         .where((entry) => entry.totalValue > 0 && entry.title.isNotEmpty)
         .toList();
@@ -7410,7 +7974,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       setState(() {
         _savingsError =
             'Add at least one benefit with unit value and units before generating savings scenarios.';
-        _savingsSuggestions = [];
+        _clearSavingsSuggestionsForSolution(activeIndex);
       });
       return;
     }
@@ -7446,51 +8010,68 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       );
       if (!mounted) return;
       setState(() {
-        _savingsSuggestions = suggestions;
+        _savingsSuggestionsBySolution[activeIndex] = suggestions;
+        _savingsContextHashesBySolution[activeIndex] =
+            _savingsContextHashForSolution(activeIndex);
       });
+      if (showFeedback && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Savings scenarios updated')),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _savingsError = e.toString();
-        _savingsSuggestions = [];
+        _clearSavingsSuggestionsForSolution(activeIndex);
       });
     } finally {
-      if (!mounted) return;
-      setState(() {
+      if (mounted) {
+        setState(() {
+          _isSavingsGenerating = false;
+        });
+      } else {
         _isSavingsGenerating = false;
-      });
+      }
     }
   }
 
-  Future<void> _generateProjectValue() async {
+  Future<void> _generateProjectValue({
+    int? solutionIndex,
+    bool showFeedback = true,
+    bool persist = true,
+  }) async {
     if (_isGeneratingValue) return;
+    final targetIndex = solutionIndex ?? _activeSolutionIndex();
+    final scopedSolution = _solutionAt(targetIndex);
+    final scopedSolutions = scopedSolution == null
+        ? widget.solutions
+        : <AiSolutionItem>[scopedSolution];
     setState(() {
       _isGeneratingValue = true;
       _projectValueError = null;
     });
     try {
       final provider = ProjectDataHelper.getProvider(context);
-      final activeIndex = _activeSolutionIndex();
       final contextNotes = _buildUnifiedAiContext(
         sectionLabel: 'Cost Benefit Analysis - Project Benefit Calculation',
-        forSolution: activeIndex,
+        forSolution: targetIndex,
       );
 
       // Add current values to history before regenerating
-      provider.addFieldToHistory(
-          'project_value_amount', _projectValueAmountController.text,
+      provider.addFieldToHistory('project_value_amount_$targetIndex',
+          _projectValueAmountBySolution[targetIndex],
           isAiGenerated: true);
       for (final field in _projectValueFields) {
-        final controller = _projectValueBenefitControllers[field.key];
-        if (controller != null) {
-          provider.addFieldToHistory(
-              'project_value_${field.key}', controller.text,
-              isAiGenerated: true);
-        }
+        provider.addFieldToHistory(
+          'project_value_${field.key}_$targetIndex',
+          _projectValueBenefitsBySolution[targetIndex][field.key] ?? '',
+          isAiGenerated: true,
+        );
       }
 
       final insights = await _openAi.generateProjectValueInsights(
-        widget.solutions,
+        scopedSolutions,
         contextNotes: contextNotes,
       );
       if (!mounted) return;
@@ -7500,7 +8081,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       if (insights.estimatedProjectValue > 0) {
         try {
           benefitLineItems = await _openAi.generateBenefitLineItems(
-            solutions: widget.solutions,
+            solutions: scopedSolutions,
             estimatedProjectValue: insights.estimatedProjectValue,
             contextNotes: contextNotes,
             currency: _currency,
@@ -7512,20 +8093,21 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       }
 
       if (!mounted) return;
-      _syncingProjectValueEditors = true;
+      final normalizedBenefits =
+          _normalizeProjectValueBenefitEntries(insights.benefits);
       setState(() {
         if (insights.estimatedProjectValue > 0) {
-          _projectValueAmountController.text =
+          _projectValueAmountBySolution[targetIndex] =
               insights.estimatedProjectValue.toStringAsFixed(0);
         }
-        _applyProjectValueBenefitInsights(insights.benefits);
+        _projectValueBenefitsBySolution[targetIndex] = normalizedBenefits;
 
         // Clear existing project benefits and add generated ones
-        for (final entry in _benefitLineItems) {
+        for (final entry in _benefitItemsForSolution(targetIndex)) {
           entry.unbind();
           WidgetsBinding.instance.addPostFrameCallback((_) => entry.dispose());
         }
-        _benefitLineItems.clear();
+        _benefitItemsForSolution(targetIndex).clear();
 
         // Add generated project benefits
         final baseTimestamp = DateTime.now().microsecondsSinceEpoch;
@@ -7540,16 +8122,24 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             notes: item.notes,
           );
           entry.bind(_onBenefitEntryEdited);
-          _benefitLineItems.add(entry);
+          _benefitItemsForSolution(targetIndex).add(entry);
         }
+        _projectValueContextHashesBySolution[targetIndex] =
+            _projectValueContextHashForSolution(targetIndex);
+        _clearSavingsSuggestionsForSolution(targetIndex);
       });
-      _syncingProjectValueEditors = false;
-      _persistProjectValueEditorsForSolution(_activeSolutionIndex());
+      if (targetIndex == _activeSolutionIndex()) {
+        _syncingProjectValueEditors = true;
+        _loadProjectValueEditorsForSolution(targetIndex);
+        _syncingProjectValueEditors = false;
+      }
 
-      // Auto-save after regeneration
-      await provider.saveToFirebase(checkpoint: 'cost_analysis_regenerated');
+      if (persist) {
+        await _saveCostAnalysisData();
+        await provider.saveToFirebase(checkpoint: 'cost_analysis_regenerated');
+      }
 
-      if (mounted) {
+      if (showFeedback && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('Project value regenerated successfully')),
@@ -7562,40 +8152,48 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       setState(() {
         _projectValueError = e.toString();
       });
-      if (mounted) {
+      if (showFeedback && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to regenerate project value: $e')),
         );
       }
     } finally {
-      if (!mounted) return;
-      setState(() {
+      if (mounted) {
+        setState(() {
+          _isGeneratingValue = false;
+        });
+      } else {
         _isGeneratingValue = false;
-      });
+      }
     }
   }
 
-  Future<void> _suggestUnitValueWithAI(_BenefitLineItemEntry entry) async {
+  Future<double?> _estimateBenefitUnitValue({
+    required String title,
+    required String categoryKey,
+    required String notes,
+    required String unitsText,
+    required String baselineValue,
+    required int solutionIndex,
+    String? excludeEntryId,
+  }) async {
     try {
       final provider = ProjectDataInherited.maybeOf(context);
-      if (provider == null) return;
+      if (provider == null) return null;
 
-      final benefitTitle = entry.titleController.text.trim();
-      if (benefitTitle.isEmpty) {
+      if (title.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please enter a benefit title first')),
         );
-        return;
+        return null;
       }
 
-      final activeIndex = _activeSolutionIndex();
-      final solutionLabel = _solutionTitle(activeIndex);
-      final categoryLabel = _benefitCategoryLabel(entry.categoryKey);
-      final benefitNotes = entry.notesController.text.trim();
-      final baselineValue = _projectValueAmountController.text.trim();
+      final solutionLabel = _solutionTitle(solutionIndex);
+      final categoryLabel = _benefitCategoryLabel(categoryKey);
       final baselineNumeric = _parseCurrencyInput(baselineValue);
-      final unitsValue = _parseCurrencyInput(entry.unitsController.text.trim());
-      final otherRows = _benefitLineItems.where((row) => row.id != entry.id);
+      final unitsValue = _parseCurrencyInput(unitsText);
+      final otherRows = _benefitItemsForSolution(solutionIndex)
+          .where((row) => row.id != excludeEntryId);
       final peerValues = otherRows
           .map((row) => _parseCurrencyInput(row.unitValueController.text))
           .where((value) => value > 0)
@@ -7609,7 +8207,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       final contextBuffer = StringBuffer()
         ..writeln('Solution: $solutionLabel')
         ..writeln('Benefit category: $categoryLabel')
-        ..writeln('Benefit title: $benefitTitle')
+        ..writeln('Benefit title: $title')
         ..writeln('Tracker basis: $_trackerBasisFrequency')
         ..writeln('Primary basis frequency: ${_basisFrequency ?? "Not set"}')
         ..writeln(
@@ -7620,25 +8218,25 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             'Average unit value of other benefit rows ($_currency): ${peerAverage <= 0 ? "Not available" : peerAverage.toStringAsFixed(2)}')
         ..writeln('Project context: $projectContext')
         ..writeln(
-            'Cost context: ${_buildUnifiedAiContext(sectionLabel: "Cost Benefit Analysis - Unit Value Suggestion", forSolution: activeIndex)}')
+            'Cost context: ${_buildUnifiedAiContext(sectionLabel: "Cost Benefit Analysis - Unit Value Suggestion", forSolution: solutionIndex)}')
         ..writeln(
             'Unit value mode: Return unit value only, not aggregate total.');
-      if (benefitNotes.isNotEmpty) {
-        contextBuffer.writeln('Benefit notes: $benefitNotes');
+      if (notes.isNotEmpty) {
+        contextBuffer.writeln('Benefit notes: $notes');
       }
 
       final suggestedValue = await _openAi.estimateCostForItem(
-        itemName: benefitTitle,
+        itemName: title,
         description:
             'Project benefit category: $categoryLabel. Estimate the unit value for a single unit.',
-        assumptions: benefitNotes,
+        assumptions: notes,
         contextNotes: contextBuffer.toString(),
         currency: _currency,
         estimationMode: 'benefit_unit_value',
         basisFrequency: _trackerBasisFrequency,
       );
 
-      if (!mounted) return;
+      if (!mounted) return null;
       if (_looksLikePlaceholderUnitValue(suggestedValue)) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -7647,7 +8245,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             ),
           ),
         );
-        return;
+        return null;
       }
 
       final annualMultiplier = _trackerBasisFrequency == 'Monthly' ? 12.0 : 1.0;
@@ -7662,35 +8260,37 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
             ),
           ),
         );
-        return;
+        return null;
       }
 
       if (suggestedValue > 0) {
-        setState(() {
-          entry.unitValueController.text = suggestedValue.toStringAsFixed(2);
-          _onBenefitEntryEdited();
-        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(
-                  'AI suggested unit value: ${_formatCurrencyValue(suggestedValue)}')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
             content: Text(
-              'AI could not produce a confident unit value for this item yet.',
+              'AI suggested unit value: ${_formatCurrencyValue(suggestedValue)}',
             ),
           ),
         );
+        return suggestedValue;
       }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'AI could not produce a confident unit value for this item yet.',
+          ),
+        ),
+      );
+      return null;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Failed to generate suggestion: ${e.toString()}')),
+            content: Text('Failed to generate suggestion: ${e.toString()}'),
+          ),
         );
       }
+      return null;
     }
   }
 
@@ -7706,7 +8306,11 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         intValue == 1000000;
   }
 
-  Future<void> _generateCostBreakdownForSolution(int index) async {
+  Future<void> _generateCostBreakdownForSolution(
+    int index, {
+    bool showFeedback = true,
+    bool persist = true,
+  }) async {
     final solution = _solutionAt(index);
     if (solution == null || _solutionLoading.contains(index)) return;
     setState(() {
@@ -7729,8 +8333,20 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         _applyCostItemsToRows(index, items);
         // Also roll up into Project Value categories and surface ideas
         _applyCategoryEstimatesFromItems(index, items);
+        _costBreakdownContextHashesBySolution[index] =
+            _costBreakdownContextHashForSolution(index);
         _solutionLoading.remove(index);
       });
+      if (persist) {
+        await _saveCostAnalysisData();
+      }
+      if (showFeedback && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${_solutionTitle(index)} cost breakdown updated'),
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -7747,40 +8363,87 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       _error = null;
     });
     try {
-      final map = await _openAi.generateCostBreakdownForSolutions(
-        widget.solutions,
-        contextNotes: _buildUnifiedAiContext(
-          sectionLabel: 'Cost Benefit Analysis - Initial Cost Estimate',
-        ),
-        currency: _currency,
-      );
-      for (int i = 0;
-          i < _rowsPerSolution.length && i < widget.solutions.length;
-          i++) {
-        final title = widget.solutions[i].title;
-        final items = map[title] ?? <AiCostItem>[];
-        // Seed editable rows
-        _applyCostItemsToRows(i, items);
-        // Auto-fill Project Value category estimates from the same AI items
-        _applyCategoryEstimatesFromItems(i, items);
+      for (int i = 0; i < _rowsPerSolution.length; i++) {
+        await _generateCostBreakdownForSolution(
+          i,
+          showFeedback: false,
+          persist: false,
+        );
       }
-    } catch (e) {
-      print('Error generating cost breakdown: $e');
-      _error = e.toString();
+      await _saveCostAnalysisData();
     } finally {
-      if (mounted) setState(() => _isGenerating = false);
+      if (mounted) {
+        setState(() {
+          _isGenerating = false;
+        });
+      } else {
+        _isGenerating = false;
+      }
     }
   }
 
   Future<void> _regenerateAllCostAnalysis() async {
     // Regenerate all AI-derived sections to keep the page synchronized.
-    await _generateProjectValue();
-    await _generateCostBreakdown();
-    if (_benefitLineItems.isNotEmpty) {
-      await _generateSavingsSuggestions();
+    for (int i = 0; i < _rowsPerSolution.length; i++) {
+      await _generateProjectValue(
+        solutionIndex: i,
+        showFeedback: false,
+        persist: false,
+      );
+      await _generateCostBreakdownForSolution(
+        i,
+        showFeedback: false,
+        persist: false,
+      );
+      if (_benefitItemsForSolution(i).isNotEmpty) {
+        final previousTab = _activeTab;
+        if (previousTab != i) {
+          _activeTab = i;
+        }
+        await _generateSavingsSuggestions(showFeedback: false);
+        if (previousTab != i) {
+          _activeTab = previousTab;
+        }
+      }
     }
     await _saveCostAnalysisData();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Cost analysis content regenerated')),
+    );
   }
+}
+
+enum _EditorDialogMode { create, edit, view }
+
+class _BenefitLineItemDraft {
+  final String categoryKey;
+  final String title;
+  final String unitValue;
+  final String units;
+  final String notes;
+
+  const _BenefitLineItemDraft({
+    required this.categoryKey,
+    required this.title,
+    required this.unitValue,
+    required this.units,
+    required this.notes,
+  });
+}
+
+class _InitialCostRowDraft {
+  final String itemName;
+  final String description;
+  final String cost;
+  final String assumptions;
+
+  const _InitialCostRowDraft({
+    required this.itemName,
+    required this.description,
+    required this.cost,
+    required this.assumptions,
+  });
 }
 
 class _StepDefinition {

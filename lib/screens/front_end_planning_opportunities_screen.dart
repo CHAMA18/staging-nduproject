@@ -344,6 +344,7 @@ class _FrontEndPlanningOpportunitiesScreenState
         return ProjectDataHelper.applyTaggedFrontEndPlanningData(updated);
       },
     );
+    provider.saveToFirebase(checkpoint: 'fep_opportunities');
   }
 
   String _resolvePreferredSolutionTitle(ProjectDataModel data) {

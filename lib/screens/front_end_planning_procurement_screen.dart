@@ -2325,6 +2325,7 @@ class _FrontEndPlanningProcurementScreenState
         ),
       ),
     );
+    provider.saveToFirebase(checkpoint: _checkpointId);
   }
 
   bool get _isPlanningMode => widget.mode == ProcurementScreenMode.planning;

@@ -92,6 +92,7 @@ class _FrontEndPlanningAllowanceScreenState
         ),
       ),
     );
+    provider.saveToFirebase(checkpoint: 'fep_allowance');
   }
 
   void _syncItemsToProvider() {
@@ -108,6 +109,7 @@ class _FrontEndPlanningAllowanceScreenState
         return ProjectDataHelper.applyTaggedFrontEndPlanningData(updated);
       },
     );
+    provider.saveToFirebase(checkpoint: 'fep_allowance');
   }
 
   Future<void> _generateDefaultAllowances() async {

@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/utils/text_sanitizer.dart';
+import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 
 class PlanningAiNotesCard extends StatefulWidget {
   const PlanningAiNotesCard({
@@ -59,13 +61,14 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
     final stored = data.planningNotes[widget.noteKey] ?? '';
     final fallback = widget.fallbackText ?? '';
     _currentText = stored.trim().isNotEmpty ? stored.trim() : fallback.trim();
-    _controller = TextEditingController(text: _currentText);
+    _controller = RichTextEditingController(text: _currentText);
     _didInit = true;
   }
 
   @override
   void dispose() {
     _saveDebounce.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -118,7 +121,7 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
         temperature: widget.autoGenerateTemperature,
       );
       if (!mounted) return;
-      final cleaned = TextSanitizer.sanitizeAiText(text).trim();
+      final cleaned = TextSanitizer.sanitizeAiRichText(text).trim();
       if (cleaned.isEmpty) return;
       _controller.text = cleaned;
       _handleChanged(cleaned);
@@ -246,6 +249,13 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
             ),
           ],
           const SizedBox(height: 16),
+          TextFormattingToolbar(
+            controller: _controller,
+            onBeforeUndo: () {
+              _saveNow();
+            },
+          ),
+          const SizedBox(height: 10),
           TextField(
             controller: _controller,
             onChanged: _handleChanged,

@@ -12,6 +12,7 @@ import 'package:ndu_project/widgets/content_text.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
+import 'package:ndu_project/widgets/delete_confirmation_dialog.dart';
 
 /// Front End Planning – Project Risks page
 /// Matches the provided screenshot with:
@@ -912,37 +913,11 @@ class _FrontEndPlanningRisksScreenState
   }
 
   Future<void> _confirmAndDeleteRow(int index) async {
-    final shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Delete row?',
-          style:
-              TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF111827)),
-        ),
-        content: const Text(
-          'This action cannot be undone.',
-          style: TextStyle(color: Color(0xFF6B7280)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFFE4E6),
-              foregroundColor: const Color(0xFFDC2626),
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final shouldDelete = await showDeleteConfirmationDialog(
+      context,
+      title: 'Delete Risk?',
+      itemLabel:
+          index >= 0 && index < _rows.length ? _rows[index].risk.trim() : null,
     );
 
     if (shouldDelete == true && index >= 0 && index < _rows.length) {
@@ -1441,7 +1416,7 @@ class _FrontEndPlanningRisksScreenState
                                   SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
-                                      'Use the Edit column or double-click any row cell to edit risk details.',
+                                      'Use the Action column or double-click any row cell to edit risk details.',
                                       style: TextStyle(
                                         fontSize: 12.5,
                                         color: Color(0xFF6B7280),
@@ -2065,19 +2040,18 @@ class _FrontEndPlanningRisksScreenState
                 child: Table(
                   columnWidths: const {
                     0: FixedColumnWidth(60),
-                    1: FixedColumnWidth(96),
-                    2: FixedColumnWidth(220),
-                    3: FixedColumnWidth(260),
-                    4: FixedColumnWidth(130),
+                    1: FixedColumnWidth(220),
+                    2: FixedColumnWidth(260),
+                    3: FixedColumnWidth(130),
+                    4: FixedColumnWidth(100),
                     5: FixedColumnWidth(100),
-                    6: FixedColumnWidth(100),
-                    7: FixedColumnWidth(120),
-                    8: FixedColumnWidth(260),
-                    9: FixedColumnWidth(140),
-                    10: FixedColumnWidth(160),
-                    11: FixedColumnWidth(140),
-                    12: FixedColumnWidth(120),
-                    13: FixedColumnWidth(80),
+                    6: FixedColumnWidth(120),
+                    7: FixedColumnWidth(260),
+                    8: FixedColumnWidth(140),
+                    9: FixedColumnWidth(160),
+                    10: FixedColumnWidth(140),
+                    11: FixedColumnWidth(120),
+                    12: FixedColumnWidth(132),
                   },
                   border: TableBorder(
                     horizontalInside: border,
@@ -2093,7 +2067,6 @@ class _FrontEndPlanningRisksScreenState
                       decoration: const BoxDecoration(color: Color(0xFFF9FAFB)),
                       children: [
                         _th('ID', headerStyle),
-                        _th('Edit', headerStyle),
                         _th('Risk Title', headerStyle),
                         _th('Description', headerStyle),
                         _th('Category', headerStyle),
@@ -2105,7 +2078,7 @@ class _FrontEndPlanningRisksScreenState
                         _th('Project Role', headerStyle),
                         _th('Owner', headerStyle),
                         _th('Status', headerStyle),
-                        _th('Del', headerStyle),
+                        _th('Action', headerStyle),
                       ],
                     ),
                     ...List.generate(_rows.length, (i) {
@@ -2115,48 +2088,6 @@ class _FrontEndPlanningRisksScreenState
                       return TableRow(children: [
                         _td(Text(r.id, style: cellStyle),
                             onDoubleTap: () => _showEditRiskSheet(i)),
-                        _td(
-                          Center(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                InkWell(
-                                  onTap: () => _showEditRiskSheet(i),
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF3F4F6),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Icon(Icons.edit_outlined,
-                                        size: 16, color: Color(0xFF4B5563)),
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                InkWell(
-                                  onTap:
-                                      rowCanUndo ? () => _undoRiskRow(i) : null,
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: rowCanUndo
-                                          ? const Color(0xFFEFF6FF)
-                                          : const Color(0xFFF3F4F6),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Icon(Icons.undo_rounded,
-                                        size: 16,
-                                        color: rowCanUndo
-                                            ? const Color(0xFF2563EB)
-                                            : const Color(0xFF9CA3AF)),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
                         _td(
                             _ExpandableCellText(
                               text: r.risk,
@@ -2229,20 +2160,62 @@ class _FrontEndPlanningRisksScreenState
                                 ? const SizedBox.shrink()
                                 : _statusPill(r.status),
                             onDoubleTap: () => _showEditRiskSheet(i)),
-                        _td(Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            InkWell(
-                              onTap: () => _confirmAndDeleteRow(i),
-                              borderRadius: BorderRadius.circular(8),
-                              child: const Padding(
-                                padding: EdgeInsets.all(4.0),
-                                child: Icon(Icons.delete_outline,
-                                    size: 18, color: Color(0xFF6B7280)),
-                              ),
+                        _td(
+                          Center(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                InkWell(
+                                  onTap: () => _showEditRiskSheet(i),
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF3F4F6),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(Icons.edit_outlined,
+                                        size: 16, color: Color(0xFF4B5563)),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                InkWell(
+                                  onTap:
+                                      rowCanUndo ? () => _undoRiskRow(i) : null,
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: rowCanUndo
+                                          ? const Color(0xFFEFF6FF)
+                                          : const Color(0xFFF3F4F6),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(Icons.undo_rounded,
+                                        size: 16,
+                                        color: rowCanUndo
+                                            ? const Color(0xFF2563EB)
+                                            : const Color(0xFF9CA3AF)),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                InkWell(
+                                  onTap: () => _confirmAndDeleteRow(i),
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFEF2F2),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(Icons.delete_outline,
+                                        size: 16, color: Color(0xFFDC2626)),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        )),
+                          ),
+                        ),
                       ]);
                     }),
                   ],
@@ -2258,12 +2231,15 @@ class _FrontEndPlanningRisksScreenState
   Widget _th(String text, TextStyle style) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: EditableContentText(
-        contentKey:
-            'fep_risks_header_${text.toLowerCase().replaceAll(' ', '_')}',
-        fallback: text,
-        category: 'front_end_planning',
-        style: style,
+      child: Center(
+        child: EditableContentText(
+          contentKey:
+              'fep_risks_header_${text.toLowerCase().replaceAll(' ', '_')}',
+          fallback: text,
+          category: 'front_end_planning',
+          style: style,
+          textAlign: TextAlign.center,
+        ),
       ),
     );
   }

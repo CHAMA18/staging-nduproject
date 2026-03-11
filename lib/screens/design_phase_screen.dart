@@ -12,12 +12,12 @@ import 'package:ndu_project/widgets/architecture_canvas.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/architecture_service.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/utils/phase_transition_helper.dart';
 import 'package:ndu_project/widgets/whiteboard_canvas.dart';
 import 'package:ndu_project/widgets/chart_builder_workspace.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:ndu_project/widgets/design_management_widgets.dart';
 import 'package:ndu_project/services/design_phase_service.dart';
 import 'package:ndu_project/models/design_phase_models.dart';
@@ -71,7 +71,6 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
 
   DesignTool _activeTool = DesignTool.architecture;
   late final TextEditingController _richTextController;
-  bool _showRichPreview = true;
 
   // Component Library for dragging into Output Docs OR directly onto canvas
   final List<_PaletteItem> _library = const [
@@ -112,11 +111,10 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
   @override
   void initState() {
     super.initState();
-    _richTextController = TextEditingController(
+    _richTextController = RichTextEditingController(
       text:
           '### Design Notes\n\nStart drafting your design narrative here. Use the toolbar above for quick formatting.',
     );
-    _richTextController.addListener(_onRichTextChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final provider = ProjectDataInherited.maybeOf(context);
       final pid = provider?.projectData.projectId;
@@ -154,16 +152,8 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
   @override
   void dispose() {
     _saveDebounce?.cancel();
-    _richTextController.removeListener(_onRichTextChanged);
     _richTextController.dispose();
     super.dispose();
-  }
-
-  void _onRichTextChanged() {
-    if (!mounted) return;
-    if (_showRichPreview) {
-      setState(() {});
-    }
   }
 
   Future<void> _loadPersisted(String projectId) async {
@@ -773,8 +763,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
 
     final projectData = provider.projectData;
     final DesignManagementData managementData =
-        projectData.designManagementData ??
-            DesignManagementData();
+        projectData.designManagementData ?? DesignManagementData();
     final methodology = managementData.methodology;
     final strategy = managementData.executionStrategy;
     final industry = managementData.industry;
@@ -1398,18 +1387,6 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                 Text('Rich Text Editor',
                     style: TextStyle(
                         fontWeight: FontWeight.w700, color: Colors.grey[800])),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: () =>
-                      setState(() => _showRichPreview = !_showRichPreview),
-                  icon: Icon(
-                      _showRichPreview
-                          ? Icons.visibility_off
-                          : Icons.visibility,
-                      size: 16),
-                  label:
-                      Text(_showRichPreview ? 'Hide preview' : 'Show preview'),
-                ),
               ],
             ),
           ),
@@ -1421,51 +1398,23 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: TextField(
-                        controller: _richTextController,
-                        expands: true,
-                        maxLines: null,
-                        minLines: null,
-                        decoration: const InputDecoration.collapsed(
-                          hintText: 'Start typing your design notes...',
-                        ),
-                        style: const TextStyle(height: 1.5),
-                      ),
-                    ),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: TextField(
+                  controller: _richTextController,
+                  expands: true,
+                  maxLines: null,
+                  minLines: null,
+                  decoration: const InputDecoration.collapsed(
+                    hintText: 'Start typing your design notes...',
                   ),
-                  if (_showRichPreview) ...[
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF9FAFB),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade200),
-                        ),
-                        child: Markdown(
-                          data: _richTextController.text,
-                          shrinkWrap: true,
-                          styleSheet:
-                              MarkdownStyleSheet.fromTheme(Theme.of(context))
-                                  .copyWith(
-                            p: const TextStyle(height: 1.5),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
+                  style: const TextStyle(height: 1.5),
+                ),
               ),
             ),
           ),

@@ -364,12 +364,15 @@ class _InfrastructureTable extends StatelessWidget {
   Widget _th(String text, TextStyle style) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: EditableContentText(
-        contentKey:
-            'fep_infra_header_${text.toLowerCase().replaceAll(' ', '_')}',
-        fallback: text,
-        category: 'front_end_planning',
-        style: style,
+      child: Center(
+        child: EditableContentText(
+          contentKey:
+              'fep_infra_header_${text.toLowerCase().replaceAll(' ', '_')}',
+          fallback: text,
+          category: 'front_end_planning',
+          style: style,
+          textAlign: TextAlign.center,
+        ),
       ),
     );
   }

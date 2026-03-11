@@ -10,6 +10,7 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/vendors_table_widget.dart';
 import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -652,7 +653,8 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
     final costController =
         TextEditingController(text: vendor?.costAdherence.toString() ?? '0.65');
     // Vendor Notes - regular TextEditingController (prose)
-    final notesController = TextEditingController(text: vendor?.notes ?? '');
+    final notesController =
+        RichTextEditingController(text: vendor?.notes ?? '');
 
     // Grab provider early so we don't cross async gaps with BuildContext.
     final provider = ProjectDataInherited.maybeOf(context);

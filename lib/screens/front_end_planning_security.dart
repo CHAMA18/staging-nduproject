@@ -11,7 +11,9 @@ import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
+import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 
 /// Front End Planning – Security screen
 /// Mirrors the provided layout with shared workspace chrome,
@@ -33,8 +35,8 @@ class FrontEndPlanningSecurityScreen extends StatefulWidget {
 class _FrontEndPlanningSecurityScreenState
     extends State<FrontEndPlanningSecurityScreen> {
   final GlobalKey _securityFieldKey = GlobalKey();
-  final TextEditingController _notes = TextEditingController();
-  final TextEditingController _securityNotes = TextEditingController();
+  final TextEditingController _notes = RichTextEditingController();
+  final TextEditingController _securityNotes = RichTextEditingController();
   bool _isSyncReady = false;
   bool _isGenerating = false;
   bool _autoGenerationTriggered = false;
@@ -444,15 +446,22 @@ class _SecurityPanel extends StatelessWidget {
             ),
           ),
           padding: const EdgeInsets.all(16),
-          child: TextField(
-            controller: controller,
-            minLines: 12,
-            maxLines: null,
-            decoration: const InputDecoration(
-              border: InputBorder.none,
-              hintText: '',
-            ),
-            style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextFormattingToolbar(controller: controller),
+              const SizedBox(height: 8),
+              TextField(
+                controller: controller,
+                minLines: 12,
+                maxLines: null,
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  hintText: '',
+                ),
+                style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),
+              ),
+            ],
           ),
         ),
         if (hasError) ...[
@@ -562,17 +571,24 @@ Widget _roundedField(
       border: Border.all(color: const Color(0xFFE4E7EC)),
     ),
     padding: const EdgeInsets.all(14),
-    child: TextField(
-      controller: controller,
-      minLines: minLines,
-      maxLines: null,
-      decoration: InputDecoration(
-        isDense: true,
-        border: InputBorder.none,
-        hintText: hint,
-        hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
-      ),
-      style: const TextStyle(fontSize: 14, color: Color(0xFF374151)),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormattingToolbar(controller: controller),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          minLines: minLines,
+          maxLines: null,
+          decoration: InputDecoration(
+            isDense: true,
+            border: InputBorder.none,
+            hintText: hint,
+            hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
+          ),
+          style: const TextStyle(fontSize: 14, color: Color(0xFF374151)),
+        ),
+      ],
     ),
   );
 }

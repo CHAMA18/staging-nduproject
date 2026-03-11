@@ -256,15 +256,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   // Page 2: Stay on Schedule
   Widget _buildPage2() {
     return Container(
-      color: const Color(0xFF1A1A1A), // Dark theme
+      color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
             const SizedBox(height: 40),
 
-            // Logo (light version)
-            _buildLogo(isDark: true),
+            // Logo
+            _buildLogo(),
 
             const SizedBox(height: 60),
 
@@ -272,7 +272,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Container(
               height: 240,
               decoration: BoxDecoration(
-                color: Colors.grey.shade900,
+                color: Colors.grey.shade50,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Center(
@@ -317,7 +317,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 fontSize: 28,
                 fontWeight: FontWeight.w900,
                 height: 1.2,
-                color: Colors.white,
+                color: Colors.black,
               ),
             ),
 
@@ -330,7 +330,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               style: TextStyle(
                 fontSize: 16,
                 height: 1.5,
-                color: Colors.white70,
+                color: Colors.black54,
               ),
             ),
           ],

@@ -18,6 +18,8 @@ import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/project_service.dart';
 import 'package:ndu_project/services/user_service.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
+import 'package:ndu_project/widgets/delete_confirmation_dialog.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 
 /// Front End Planning - Project Requirements page
@@ -45,7 +47,7 @@ class FrontEndPlanningRequirementsScreen extends StatefulWidget {
 class _FrontEndPlanningRequirementsScreenState
     extends State<FrontEndPlanningRequirementsScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  final TextEditingController _notesController = TextEditingController();
+  final TextEditingController _notesController = RichTextEditingController();
   final ScrollController _requirementsHorizontalController = ScrollController();
   final ScrollController _requirementsVerticalController = ScrollController();
   bool _isGeneratingRequirements = false;
@@ -1644,8 +1646,17 @@ class _FrontEndPlanningRequirementsScreenState
     sourceController.dispose();
   }
 
-  void _deleteRow(int index) {
+  Future<void> _deleteRow(int index) async {
     if (index < 0 || index >= _rows.length) return;
+    final requirementTitle = _rows[index].descriptionController.text.trim();
+    final confirmed = await showDeleteConfirmationDialog(
+      context,
+      title: 'Delete Requirement?',
+      itemLabel: requirementTitle.isEmpty
+          ? 'Requirement ${index + 1}'
+          : requirementTitle,
+    );
+    if (!confirmed) return;
 
     setState(() {
       _rows[index].dispose();
@@ -1663,11 +1674,15 @@ class _FrontEndPlanningRequirementsScreenState
   Widget _th(String text, TextStyle style) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: EditableContentText(
-        contentKey: 'fep_req_header_${text.toLowerCase().replaceAll(' ', '_')}',
-        fallback: text,
-        category: 'front_end_planning',
-        style: style,
+      child: Center(
+        child: EditableContentText(
+          contentKey:
+              'fep_req_header_${text.toLowerCase().replaceAll(' ', '_')}',
+          fallback: text,
+          category: 'front_end_planning',
+          style: style,
+          textAlign: TextAlign.center,
+        ),
       ),
     );
   }
@@ -2307,7 +2322,7 @@ class _RequirementRow {
   TableRow buildRow(
     BuildContext context,
     int index,
-    void Function(int) onDelete, {
+    Future<void> Function(int) onDelete, {
     required List<_AssignableMember> personOptions,
     required bool isRegenerating,
     required VoidCallback onRegenerate,

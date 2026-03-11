@@ -8,6 +8,7 @@ import 'package:ndu_project/screens/home_screen.dart';
 import 'package:ndu_project/screens/front_end_planning_requirements_screen.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/utils/phase_transition_helper.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/widgets/planning_dashboard_card.dart';
@@ -17,6 +18,7 @@ import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:provider/provider.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
+import 'package:ndu_project/widgets/delete_confirmation_dialog.dart';
 
 /// Front End Planning – Summary screen
 /// Mirrors the provided layout with shared workspace chrome,
@@ -41,8 +43,8 @@ class _FrontEndPlanningSummaryScreenState
     extends State<FrontEndPlanningSummaryScreen> {
   final GlobalKey<ScaffoldState> _mobileScaffoldKey =
       GlobalKey<ScaffoldState>();
-  final TextEditingController _notes = TextEditingController();
-  final TextEditingController _summaryNotes = TextEditingController();
+  final TextEditingController _notes = RichTextEditingController();
+  final TextEditingController _summaryNotes = RichTextEditingController();
   bool _isSyncReady = false;
 
   @override
@@ -1074,22 +1076,10 @@ class _PlanningCardsSectionState extends State<_PlanningCardsSection> {
       String listKey,
       PlanningDashboardItem item,
       List<PlanningDashboardItem> currentList) async {
-    final confirm = await showDialog<bool>(
+    final confirm = await showDeleteConfirmationDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Item?'),
-        content: const Text('Are you sure you want to delete this item?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+      title: 'Delete Item?',
+      itemLabel: item.title,
     );
 
     if (confirm == true) {
@@ -1236,22 +1226,10 @@ class _PlanningCardsSectionState extends State<_PlanningCardsSection> {
 
   Future<void> _handleDeleteGoal(BuildContext context, ProjectGoal item,
       List<ProjectGoal> currentList) async {
-    final confirm = await showDialog<bool>(
+    final confirm = await showDeleteConfirmationDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Goal?'),
-        content: const Text('Are you sure you want to delete this goal?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+      title: 'Delete Goal?',
+      itemLabel: item.name,
     );
 
     if (confirm == true) {

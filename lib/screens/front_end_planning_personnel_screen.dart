@@ -156,7 +156,13 @@ class _PersonnelTable extends StatelessWidget {
 
     Widget th(String text) => Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Text(text, style: headerStyle),
+          child: Center(
+            child: Text(
+              text,
+              style: headerStyle,
+              textAlign: TextAlign.center,
+            ),
+          ),
         );
 
     Widget dropdownPlaceholder() {

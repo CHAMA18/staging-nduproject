@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 
 /// Unified list bullet: period "." per spec (prose fields must not use auto-bullet).
 const String kListBullet = '. ';
@@ -38,16 +39,20 @@ class AutoBulletTextController extends TextEditingController {
             currentText.substring(selection.baseOffset);
         value = TextEditingValue(
           text: newText,
-          selection: TextSelection.collapsed(offset: selection.baseOffset + bullet.length),
+          selection: TextSelection.collapsed(
+              offset: selection.baseOffset + bullet.length),
         );
         return;
       }
     }
 
-    if (currentText.isNotEmpty && !currentText.startsWith(bullet) && !currentText.contains('\n')) {
+    if (currentText.isNotEmpty &&
+        !currentText.startsWith(bullet) &&
+        !currentText.contains('\n')) {
       value = TextEditingValue(
         text: '$bullet$currentText',
-        selection: TextSelection.collapsed(offset: selection.baseOffset + bullet.length),
+        selection: TextSelection.collapsed(
+            offset: selection.baseOffset + bullet.length),
       );
     }
   }
@@ -56,6 +61,22 @@ class AutoBulletTextController extends TextEditingController {
   void dispose() {
     removeListener(_handleTextChange);
     super.dispose();
+  }
+}
+
+class RichAutoBulletTextController extends AutoBulletTextController {
+  RichAutoBulletTextController({super.text});
+
+  @override
+  TextSpan buildTextSpan({
+    required BuildContext context,
+    TextStyle? style,
+    required bool withComposing,
+  }) {
+    return buildInlineFormattedTextSpan(
+      text: text,
+      baseStyle: style ?? DefaultTextStyle.of(context).style,
+    );
   }
 }
 
@@ -93,7 +114,8 @@ extension AutoBulletExtension on TextEditingController {
             currentText.substring(selection.baseOffset);
         value = TextEditingValue(
           text: newText,
-          selection: TextSelection.collapsed(offset: selection.baseOffset + bullet.length),
+          selection: TextSelection.collapsed(
+              offset: selection.baseOffset + bullet.length),
         );
         return;
       }
@@ -104,7 +126,8 @@ extension AutoBulletExtension on TextEditingController {
         !currentText.startsWith(bullet)) {
       value = TextEditingValue(
         text: '$bullet$currentText',
-        selection: TextSelection.collapsed(offset: selection.baseOffset + bullet.length),
+        selection: TextSelection.collapsed(
+            offset: selection.baseOffset + bullet.length),
       );
     }
   }

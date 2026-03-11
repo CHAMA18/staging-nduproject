@@ -26,6 +26,7 @@ import 'package:ndu_project/screens/settings_screen.dart';
 import 'package:ndu_project/screens/cost_analysis_screen.dart';
 import 'package:ndu_project/screens/preferred_solution_analysis_screen.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/services/sidebar_navigation_service.dart';
 import 'package:ndu_project/services/access_policy.dart';
 import 'package:ndu_project/widgets/page_hint_dialog.dart';
@@ -75,21 +76,21 @@ class _InfrastructureConsiderationsScreenState
     if (!_canUseAdminControls) return;
     setState(() {
       _solutions.add(AiSolutionItem(title: '', description: ''));
-      _infraControllers.add(TextEditingController());
+      _infraControllers.add(RichTextEditingController());
     });
   }
 
   @override
   void initState() {
     super.initState();
-    _notesController = TextEditingController(text: widget.notes);
+    _notesController = RichTextEditingController(text: widget.notes);
     _solutions = List.from(widget.solutions); // Create mutable copy
     // Initialize with at least one empty item if solutions list is empty
     if (_solutions.isEmpty) {
       _solutions.add(AiSolutionItem(title: '', description: ''));
     }
     _infraControllers =
-        List.generate(_solutions.length, (_) => TextEditingController());
+        List.generate(_solutions.length, (_) => RichTextEditingController());
 
     // Initialize API key manager
     ApiKeyManager.initializeApiKey();
@@ -130,7 +131,7 @@ class _InfrastructureConsiderationsScreenState
       while (_infraControllers.length <
           infraData.solutionInfrastructureData.length) {
         _solutions.add(AiSolutionItem(title: '', description: ''));
-        _infraControllers.add(TextEditingController());
+        _infraControllers.add(RichTextEditingController());
       }
       for (int i = 0;
           i < infraData.solutionInfrastructureData.length &&
@@ -1427,7 +1428,7 @@ class _InfrastructureConsiderationsScreenState
           );
         }
         while (_infraControllers.length < previewRows.length) {
-          _infraControllers.add(TextEditingController());
+          _infraControllers.add(RichTextEditingController());
         }
 
         for (var i = 0; i < previewRows.length; i++) {

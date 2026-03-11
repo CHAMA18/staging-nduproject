@@ -10,6 +10,9 @@ import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
+import 'package:ndu_project/widgets/delete_confirmation_dialog.dart';
+import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:intl/intl.dart';
 
 /// Front End Planning – Milestone screen
@@ -45,6 +48,8 @@ class _FrontEndPlanningMilestoneScreenState
   bool _autoGenerationTriggered = false;
   final DateFormat _dateFormat = DateFormat('MMM dd, yyyy');
   final ScrollController _milestonesHorizontalScroll = ScrollController();
+  final List<TextEditingController> _milestoneCommentControllers =
+      <TextEditingController>[];
   late final OpenAiServiceSecure _openAi;
   Map<String, String> _validationErrors = const {};
 
@@ -68,9 +73,23 @@ class _FrontEndPlanningMilestoneScreenState
 
     // Load milestones from project data
     _milestones = List.from(data.keyMilestones);
+    _rebuildMilestoneCommentControllers();
 
     _isSyncReady = true;
     if (mounted) setState(() {});
+  }
+
+  void _rebuildMilestoneCommentControllers() {
+    for (final controller in _milestoneCommentControllers) {
+      controller.dispose();
+    }
+    _milestoneCommentControllers
+      ..clear()
+      ..addAll(
+        _milestones.map(
+          (milestone) => RichTextEditingController(text: milestone.comments),
+        ),
+      );
   }
 
   Future<void> _triggerAutoMilestoneGenerationIfMissing() async {
@@ -364,6 +383,7 @@ class _FrontEndPlanningMilestoneScreenState
         references: '',
         comments: '',
       ));
+      _rebuildMilestoneCommentControllers();
       _validationErrors = Map<String, String>.from(_validationErrors)
         ..remove('key_milestones');
     });
@@ -373,6 +393,7 @@ class _FrontEndPlanningMilestoneScreenState
   void _removeMilestone(int index) {
     setState(() {
       _milestones.removeAt(index);
+      _rebuildMilestoneCommentControllers();
       _milestoneNameFieldKeys.clear();
       _milestoneDateFieldKeys.clear();
       final nextErrors = Map<String, String>.from(_validationErrors)
@@ -382,6 +403,19 @@ class _FrontEndPlanningMilestoneScreenState
       _validationErrors = nextErrors;
     });
     _syncToProvider();
+  }
+
+  Future<void> _confirmDeleteMilestone(int index) async {
+    if (index < 0 || index >= _milestones.length) return;
+    final milestoneName = _milestones[index].name.trim();
+    final confirmed = await showDeleteConfirmationDialog(
+      context,
+      title: 'Delete Milestone?',
+      itemLabel:
+          milestoneName.isEmpty ? 'Milestone ${index + 1}' : milestoneName,
+    );
+    if (!confirmed) return;
+    _removeMilestone(index);
   }
 
   void _updateMilestoneField(int index, String field, String value) {
@@ -447,6 +481,7 @@ Generate milestones that cover the typical project lifecycle phases.''';
         if (generatedMilestones.isNotEmpty) {
           setState(() {
             _milestones = generatedMilestones;
+            _rebuildMilestoneCommentControllers();
           });
           _syncToProvider();
 
@@ -483,6 +518,7 @@ Generate milestones that cover the typical project lifecycle phases.''';
     if (!mounted) return;
     setState(() {
       _milestones = getDefaultMilestones();
+      _rebuildMilestoneCommentControllers();
     });
     _syncToProvider();
 
@@ -634,6 +670,9 @@ Consider typical project timelines and ensure end date is after start date.''';
 
   @override
   void dispose() {
+    for (final controller in _milestoneCommentControllers) {
+      controller.dispose();
+    }
     _milestonesHorizontalScroll.dispose();
     super.dispose();
   }
@@ -1112,46 +1151,58 @@ Consider typical project timelines and ensure end date is after start date.''';
                         children: [
                           SizedBox(
                               width: 40,
-                              child: Text('#',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 12,
-                                      color: Color(0xFF374151)))),
+                              child: Center(
+                                child: Text('#',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                        color: Color(0xFF374151))),
+                              )),
                           Expanded(
                               flex: 3,
-                              child: Text('Milestone Name',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 12,
-                                      color: Color(0xFF374151)))),
+                              child: Center(
+                                child: Text('Milestone Name',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                        color: Color(0xFF374151))),
+                              )),
                           Expanded(
                               flex: 2,
-                              child: Text('Target Date',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 12,
-                                      color: Color(0xFF374151)))),
+                              child: Center(
+                                child: Text('Target Date',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                        color: Color(0xFF374151))),
+                              )),
                           Expanded(
                               flex: 2,
-                              child: Text('Discipline',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 12,
-                                      color: Color(0xFF374151)))),
+                              child: Center(
+                                child: Text('Discipline',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                        color: Color(0xFF374151))),
+                              )),
                           Expanded(
                               flex: 3,
-                              child: Text('Notes',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 12,
-                                      color: Color(0xFF374151)))),
+                              child: Center(
+                                child: Text('Notes',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                        color: Color(0xFF374151))),
+                              )),
                           SizedBox(
                               width: 50,
-                              child: Text('Actions',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 12,
-                                      color: Color(0xFF374151)))),
+                              child: Center(
+                                child: Text('Actions',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                        color: Color(0xFF374151))),
+                              )),
                         ],
                       ),
                     ),
@@ -1294,28 +1345,44 @@ Consider typical project timelines and ensure end date is after start date.''';
                             const SizedBox(width: 12),
                             Expanded(
                               flex: 3,
-                              child: TextFormField(
-                                initialValue: milestone.comments,
-                                onChanged: (value) => _updateMilestoneField(
-                                    index, 'comments', value),
-                                decoration: InputDecoration(
-                                  hintText: 'Add notes (optional)',
-                                  hintStyle: TextStyle(
-                                      color: Colors.grey[400], fontSize: 13),
-                                  border: _milestoneFieldBorder(false),
-                                  enabledBorder: _milestoneFieldBorder(false),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 10),
-                                  isDense: true,
-                                ),
-                                style: const TextStyle(fontSize: 13),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  TextFormattingToolbar(
+                                    controller:
+                                        _milestoneCommentControllers[index],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextFormField(
+                                    controller:
+                                        _milestoneCommentControllers[index],
+                                    onChanged: (value) => _updateMilestoneField(
+                                        index, 'comments', value),
+                                    decoration: InputDecoration(
+                                      hintText: 'Add notes (optional)',
+                                      hintStyle: TextStyle(
+                                          color: Colors.grey[400],
+                                          fontSize: 13),
+                                      border: _milestoneFieldBorder(false),
+                                      enabledBorder:
+                                          _milestoneFieldBorder(false),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 12, vertical: 10),
+                                      isDense: true,
+                                    ),
+                                    style: const TextStyle(fontSize: 13),
+                                    minLines: 1,
+                                    maxLines: null,
+                                  ),
+                                ],
                               ),
                             ),
                             const SizedBox(width: 12),
                             SizedBox(
                               width: 50,
                               child: IconButton(
-                                onPressed: () => _removeMilestone(index),
+                                onPressed: () => _confirmDeleteMilestone(index),
                                 icon: const Icon(Icons.delete_outline,
                                     size: 18, color: Color(0xFFEF4444)),
                                 tooltip: 'Remove milestone',

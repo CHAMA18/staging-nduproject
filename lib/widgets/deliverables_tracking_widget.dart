@@ -5,6 +5,7 @@ import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/widgets/inline_editable_text.dart';
 import 'package:ndu_project/widgets/progress_charts.dart';
 import 'package:ndu_project/widgets/progress_quick_actions.dart';
@@ -408,8 +409,8 @@ class _DeliverableRowWidgetState extends State<_DeliverableRowWidget> {
     final titleController = TextEditingController(text: _deliverable.title);
     // Prose fields - no bullets
     final descriptionController =
-        TextEditingController(text: _deliverable.description);
-    final notesController = TextEditingController(text: _deliverable.notes);
+        RichTextEditingController(text: _deliverable.description);
+    final notesController = RichTextEditingController(text: _deliverable.notes);
     // List fields - use AutoBulletTextController for "." bullet format
     final blockersController =
         AutoBulletTextController(text: _deliverable.blockers);
@@ -481,7 +482,8 @@ class _DeliverableRowWidgetState extends State<_DeliverableRowWidget> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    initialValue: selectedStatus.isEmpty ? null : selectedStatus,
+                    initialValue:
+                        selectedStatus.isEmpty ? null : selectedStatus,
                     decoration: const InputDecoration(
                       labelText: 'Status',
                       isDense: true,

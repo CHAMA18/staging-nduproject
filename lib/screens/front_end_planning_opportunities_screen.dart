@@ -13,8 +13,10 @@ import 'package:ndu_project/screens/front_end_planning_procurement_screen.dart';
 import 'package:ndu_project/screens/project_charter_screen.dart';
 import 'package:ndu_project/services/sidebar_navigation_service.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
+import 'package:ndu_project/widgets/delete_confirmation_dialog.dart';
 import 'package:ndu_project/screens/home_screen.dart';
 import 'package:ndu_project/screens/design_phase_screen.dart';
 import 'package:ndu_project/screens/staff_team_screen.dart';
@@ -47,15 +49,13 @@ class FrontEndPlanningOpportunitiesScreen extends StatefulWidget {
 class _FrontEndPlanningOpportunitiesScreenState
     extends State<FrontEndPlanningOpportunitiesScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  final TextEditingController _notes = TextEditingController();
+  final TextEditingController _notes = RichTextEditingController();
   bool _isSyncReady = false;
   bool _hasAttemptedInitialAutofill = false;
 
   // Backing rows for the table; built from incoming requirements (if any).
   late List<OpportunityItem> _rows;
   bool _isGeneratingOpportunities = false;
-  final Map<String, OpportunityItem> _redoSnapshotsByRowId =
-      <String, OpportunityItem>{};
 
   @override
   void initState() {
@@ -612,7 +612,7 @@ Opportunity generation constraints:
                                   SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
-                                      'Use Edit or double-click a row cell to update. Use Undo in each row to roll back the latest edit.',
+                                      'Use the Action column or double-click a row cell to update. Use Undo in each row to roll back the latest edit.',
                                       style: TextStyle(
                                         fontSize: 12.5,
                                         color: Color(0xFF6B7280),
@@ -643,17 +643,9 @@ Opportunity generation constraints:
                                     _showAddOpportunityDialog(
                                         existingItem: item);
                                   },
-                                  onDelete: (id) {
-                                    setState(() {
-                                      _rows.removeWhere((r) => r.id == id);
-                                      _redoSnapshotsByRowId.remove(id);
-                                      _syncOpportunitiesToProvider();
-                                    });
-                                  },
+                                  onDelete: _confirmDeleteOpportunity,
                                   onUndo: _undoOpportunityRow,
                                   canUndoRow: _canUndoOpportunityRow,
-                                  onRedo: _redoOpportunityRow,
-                                  canRedoRow: _canRedoOpportunityRow,
                                 ),
                               const SizedBox(height: 80),
                             ],
@@ -676,14 +668,12 @@ Opportunity generation constraints:
       {bool trackHistory = true}) {
     if (index < 0 || index >= _rows.length) return;
     final normalized = _normalizeOpportunityItem(next, index: index);
-    final rowId = _rows[index].id;
     if (trackHistory) {
       _recordOpportunityFieldHistory(
           index: index, previous: _rows[index], next: normalized);
     }
     setState(() {
       _rows[index] = normalized;
-      _redoSnapshotsByRowId.remove(rowId);
     });
     _syncOpportunitiesToProvider();
   }
@@ -746,12 +736,6 @@ Opportunity generation constraints:
     return keys.any(data.canUndoField);
   }
 
-  bool _canRedoOpportunityRow(int index) {
-    if (index < 0 || index >= _rows.length) return false;
-    final id = _rows[index].id;
-    return _redoSnapshotsByRowId.containsKey(id);
-  }
-
   void _undoOpportunityRow(int index) {
     if (index < 0 || index >= _rows.length) return;
     final row = _rows[index];
@@ -785,21 +769,25 @@ Opportunity generation constraints:
     );
 
     setState(() {
-      _redoSnapshotsByRowId[row.id] = row;
       _rows[index] = reverted;
     });
     _syncOpportunitiesToProvider();
   }
 
-  void _redoOpportunityRow(int index) {
-    if (index < 0 || index >= _rows.length) return;
-    final row = _rows[index];
-    final snapshot = _redoSnapshotsByRowId[row.id];
-    if (snapshot == null) return;
-
+  Future<void> _confirmDeleteOpportunity(String id) async {
+    final index = _rows.indexWhere((row) => row.id == id);
+    if (index == -1) return;
+    final opportunityTitle = _rows[index].opportunity.trim();
+    final confirmed = await showDeleteConfirmationDialog(
+      context,
+      title: 'Delete Opportunity?',
+      itemLabel: opportunityTitle.isEmpty
+          ? 'Opportunity ${index + 1}'
+          : opportunityTitle,
+    );
+    if (!confirmed) return;
     setState(() {
-      _rows[index] = snapshot;
-      _redoSnapshotsByRowId.remove(row.id);
+      _rows.removeAt(index);
     });
     _syncOpportunitiesToProvider();
   }
@@ -1587,17 +1575,13 @@ class _OpportunityTable extends StatefulWidget {
     required this.onDelete,
     required this.onUndo,
     required this.canUndoRow,
-    required this.onRedo,
-    required this.canRedoRow,
   });
 
   final List<OpportunityItem> rows;
   final Function(OpportunityItem) onEdit;
-  final Function(String) onDelete;
+  final Future<void> Function(String) onDelete;
   final ValueChanged<int> onUndo;
   final bool Function(int) canUndoRow;
-  final ValueChanged<int> onRedo;
-  final bool Function(int) canRedoRow;
 
   @override
   State<_OpportunityTable> createState() => _OpportunityTableState();
@@ -1656,17 +1640,16 @@ class _OpportunityTableState extends State<_OpportunityTable> {
                 child: Table(
                   columnWidths: const {
                     0: FixedColumnWidth(52),
-                    1: FixedColumnWidth(92),
-                    2: FixedColumnWidth(260),
+                    1: FixedColumnWidth(260),
+                    2: FixedColumnWidth(150),
                     3: FixedColumnWidth(150),
-                    4: FixedColumnWidth(150),
-                    5: FixedColumnWidth(320),
-                    6: FixedColumnWidth(160),
-                    7: FixedColumnWidth(180),
-                    8: FixedColumnWidth(170),
-                    9: FixedColumnWidth(160),
-                    10: FixedColumnWidth(130),
-                    11: FixedColumnWidth(60),
+                    4: FixedColumnWidth(320),
+                    5: FixedColumnWidth(160),
+                    6: FixedColumnWidth(180),
+                    7: FixedColumnWidth(170),
+                    8: FixedColumnWidth(160),
+                    9: FixedColumnWidth(130),
+                    10: FixedColumnWidth(140),
                   },
                   border: TableBorder(
                     horizontalInside: border,
@@ -1682,7 +1665,6 @@ class _OpportunityTableState extends State<_OpportunityTable> {
                       decoration: const BoxDecoration(color: Color(0xFFF9FAFB)),
                       children: [
                         _th('No', headerStyle),
-                        _th('Edit', headerStyle),
                         _th('Potential Opportunity', headerStyle),
                         _th('Potential Cost Savings', headerStyle),
                         _th('Potential Schedule Savings', headerStyle),
@@ -1692,7 +1674,7 @@ class _OpportunityTableState extends State<_OpportunityTable> {
                         _th('Owner', headerStyle),
                         _th('Applicable Phase', headerStyle),
                         _th('Status', headerStyle),
-                        _th('Del', headerStyle),
+                        _th('Action', headerStyle),
                       ],
                     ),
                     ...List<TableRow>.generate(rows.length, (i) {
@@ -1710,73 +1692,10 @@ class _OpportunityTableState extends State<_OpportunityTable> {
                       final status =
                           r.status.trim().isNotEmpty ? r.status : 'Identified';
                       final canUndo = widget.canUndoRow(i);
-                      final canRedo = widget.canRedoRow(i);
 
                       return TableRow(children: [
                         td(Text('${i + 1}', style: cellStyle),
                             onDoubleTap: () => widget.onEdit(r)),
-                        td(
-                          Center(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                InkWell(
-                                  onTap: () => widget.onEdit(r),
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF3F4F6),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Icon(Icons.edit_outlined,
-                                        size: 16, color: Color(0xFF4B5563)),
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                InkWell(
-                                  onTap:
-                                      canUndo ? () => widget.onUndo(i) : null,
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: canUndo
-                                          ? const Color(0xFFEFF6FF)
-                                          : const Color(0xFFF3F4F6),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Icon(Icons.undo_rounded,
-                                        size: 16,
-                                        color: canUndo
-                                            ? const Color(0xFF2563EB)
-                                            : const Color(0xFF9CA3AF)),
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                InkWell(
-                                  onTap:
-                                      canRedo ? () => widget.onRedo(i) : null,
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: canRedo
-                                          ? const Color(0xFFF0FDF4)
-                                          : const Color(0xFFF3F4F6),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Icon(Icons.redo_rounded,
-                                        size: 16,
-                                        color: canRedo
-                                            ? const Color(0xFF15803D)
-                                            : const Color(0xFF9CA3AF)),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
                         td(
                           _ExpandableCellText(
                             text: r.opportunity,
@@ -1846,14 +1765,57 @@ class _OpportunityTableState extends State<_OpportunityTable> {
                             : _statusPill(status)),
                         td(
                           Center(
-                            child: InkWell(
-                              onTap: () => widget.onDelete(r.id),
-                              borderRadius: BorderRadius.circular(8),
-                              child: const Padding(
-                                padding: EdgeInsets.all(4.0),
-                                child: Icon(Icons.delete_outline,
-                                    size: 18, color: Color(0xFF6B7280)),
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                InkWell(
+                                  onTap: () => widget.onEdit(r),
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF3F4F6),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(Icons.edit_outlined,
+                                        size: 16, color: Color(0xFF4B5563)),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                InkWell(
+                                  onTap:
+                                      canUndo ? () => widget.onUndo(i) : null,
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: canUndo
+                                          ? const Color(0xFFEFF6FF)
+                                          : const Color(0xFFF3F4F6),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(Icons.undo_rounded,
+                                        size: 16,
+                                        color: canUndo
+                                            ? const Color(0xFF2563EB)
+                                            : const Color(0xFF9CA3AF)),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                InkWell(
+                                  onTap: () => widget.onDelete(r.id),
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFEF2F2),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(Icons.delete_outline,
+                                        size: 16, color: Color(0xFFDC2626)),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -1872,11 +1834,15 @@ class _OpportunityTableState extends State<_OpportunityTable> {
   Widget _th(String text, TextStyle style) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: EditableContentText(
-        contentKey: 'fep_opp_header_${text.toLowerCase().replaceAll(' ', '_')}',
-        fallback: text,
-        category: 'front_end_planning',
-        style: style,
+      child: Center(
+        child: EditableContentText(
+          contentKey:
+              'fep_opp_header_${text.toLowerCase().replaceAll(' ', '_')}',
+          fallback: text,
+          category: 'front_end_planning',
+          style: style,
+          textAlign: TextAlign.center,
+        ),
       ),
     );
   }

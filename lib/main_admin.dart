@@ -37,7 +37,8 @@ void main() async {
         message.contains('saved with invalid state') ||
         message.contains('invalid state. Nested arrays') ||
         stackTrace.contains('mode#') ||
-        (message.contains('listening to') && message.contains('invalid state'))) {
+        (message.contains('listening to') &&
+            message.contains('invalid state'))) {
       debugPrint('Route state warning suppressed: $message');
       return;
     }
@@ -68,7 +69,8 @@ void main() async {
         message.contains('saved with invalid state') ||
         message.contains('invalid state. Nested arrays') ||
         stackTrace.contains('mode#') ||
-        (message.contains('listening to') && message.contains('invalid state'))) {
+        (message.contains('listening to') &&
+            message.contains('invalid state'))) {
       return const SizedBox.shrink(); // Return empty widget
     }
 
@@ -78,7 +80,8 @@ void main() async {
 
   // Initialize Firebase
   try {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform);
     debugPrint('Firebase initialized for Admin App');
   } catch (e) {
     debugPrint('Firebase init error: $e');
@@ -98,19 +101,22 @@ class AdminApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ProjectDataProvider()),
-        ChangeNotifierProvider(create: (_) => AppContentProvider()..watchContent()..loadLocalOverrides()),
+        ChangeNotifierProvider(
+            create: (_) => AppContentProvider()
+              ..watchContent()
+              ..loadLocalOverrides()),
       ],
       child: Builder(
         builder: (context) {
-          final projectProvider = Provider.of<ProjectDataProvider>(context, listen: false);
+          final projectProvider =
+              Provider.of<ProjectDataProvider>(context, listen: false);
           return ProjectDataInherited(
             provider: projectProvider,
             child: MaterialApp.router(
               title: 'NDU Project - Admin Dashboard',
               debugShowCheckedModeBanner: false,
               theme: lightTheme,
-              darkTheme: darkTheme,
-              themeMode: ThemeMode.system,
+              themeMode: ThemeMode.light,
               routerConfig: AppRouter.admin,
               builder: (context, child) {
                 return MediaQuery(

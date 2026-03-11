@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
 
-/// A toolbar for basic text formatting (bold, underline, text size, undo)
-/// Works with standard TextField controllers by inserting markdown-like syntax
+/// A toolbar for lightweight rich-text formatting tokens and undo support.
+/// Pair it with `RichTextEditingController` to render formatting inline.
 class TextFormattingToolbar extends StatefulWidget {
   const TextFormattingToolbar({
     super.key,
@@ -24,6 +25,9 @@ class _TextFormattingToolbarState extends State<TextFormattingToolbar> {
   final List<String> _undoHistory = [];
   static const int _maxUndoHistory = 50;
   bool _isUndoAvailable = false;
+
+  bool get _showHeadingButtons =>
+      widget.controller is! AutoBulletTextController;
 
   @override
   void initState() {
@@ -90,15 +94,66 @@ class _TextFormattingToolbarState extends State<TextFormattingToolbar> {
         _insertText('__', '__');
         break;
       case 'h1':
-        _insertText('# ', '\n');
+        _applyHeading(1);
         break;
       case 'h2':
-        _insertText('## ', '\n');
+        _applyHeading(2);
         break;
       case 'h3':
-        _insertText('### ', '\n');
+        _applyHeading(3);
         break;
     }
+  }
+
+  void _applyHeading(int level) {
+    final selection = widget.controller.selection;
+    final text = widget.controller.text;
+    final start = selection.start;
+    final end = selection.end;
+
+    if (start == -1 || end == -1) return;
+
+    final marker = '${'#' * level} ';
+    final lineStart = start <= 0 ? 0 : text.lastIndexOf('\n', start - 1) + 1;
+    var normalizedEnd = end;
+    if (normalizedEnd > lineStart && text[normalizedEnd - 1] == '\n') {
+      normalizedEnd -= 1;
+    }
+    final lineEnd = normalizedEnd >= text.length
+        ? text.length
+        : (() {
+            final nextBreak = text.indexOf('\n', normalizedEnd);
+            return nextBreak == -1 ? text.length : nextBreak;
+          })();
+    final affectedText = text.substring(lineStart, lineEnd);
+    final lines = affectedText.split('\n');
+    final transformedLines = lines
+        .map((line) => '$marker${line.replaceFirst(RegExp(r'^#{1,3}\s+'), '')}')
+        .toList();
+    final replacement = transformedLines.join('\n');
+
+    if (selection.isCollapsed) {
+      final originalLine = lines.isEmpty ? '' : lines.first;
+      final trimmedLine = originalLine.replaceFirst(RegExp(r'^#{1,3}\s+'), '');
+      final removedPrefixLength = originalLine.length - trimmedLine.length;
+      final relativeOffset = (start - lineStart - removedPrefixLength)
+          .clamp(0, trimmedLine.length);
+      widget.controller.value = TextEditingValue(
+        text: text.replaceRange(lineStart, lineEnd, replacement),
+        selection: TextSelection.collapsed(
+          offset: lineStart + marker.length + relativeOffset,
+        ),
+      );
+      return;
+    }
+
+    widget.controller.value = TextEditingValue(
+      text: text.replaceRange(lineStart, lineEnd, replacement),
+      selection: TextSelection(
+        baseOffset: lineStart,
+        extentOffset: lineStart + replacement.length,
+      ),
+    );
   }
 
   void _undo() {
@@ -146,17 +201,19 @@ class _TextFormattingToolbarState extends State<TextFormattingToolbar> {
               tooltip: 'Underline',
               onPressed: () => _applyFormat('underline'),
             ),
-            const VerticalDivider(width: 1, thickness: 1),
-            _ToolbarButton(
-              icon: Icons.text_fields,
-              tooltip: 'Heading 1',
-              onPressed: () => _applyFormat('h1'),
-            ),
-            _ToolbarButton(
-              icon: Icons.title,
-              tooltip: 'Heading 2',
-              onPressed: () => _applyFormat('h2'),
-            ),
+            if (_showHeadingButtons) ...[
+              const VerticalDivider(width: 1, thickness: 1),
+              _ToolbarButton(
+                icon: Icons.text_fields,
+                tooltip: 'Heading 1',
+                onPressed: () => _applyFormat('h1'),
+              ),
+              _ToolbarButton(
+                icon: Icons.title,
+                tooltip: 'Heading 2',
+                onPressed: () => _applyFormat('h2'),
+              ),
+            ],
             const VerticalDivider(width: 1, thickness: 1),
             _ToolbarButton(
               icon: Icons.undo,

@@ -32,6 +32,7 @@ import 'package:ndu_project/screens/cost_analysis_screen.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/widgets/select_project_kaz_button.dart';
 import 'package:ndu_project/services/sidebar_navigation_service.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/widgets/page_hint_dialog.dart';
 import 'package:ndu_project/widgets/solution_detail_section.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
@@ -89,7 +90,7 @@ class _PreferredSolutionAnalysisScreenState
             .toList()
         : _fallbackSolutions();
     _tabController = TabController(length: _solutions.length, vsync: this);
-    _notesController = TextEditingController(text: widget.notes);
+    _notesController = RichTextEditingController(text: widget.notes);
     _notesController.addListener(_handleNotesChanged);
     _projectNameController = TextEditingController();
     _analysis = _solutions

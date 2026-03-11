@@ -10,6 +10,7 @@ import 'package:ndu_project/screens/vendor_tracking_screen.dart';
 import 'package:ndu_project/services/contract_service.dart';
 import 'package:ndu_project/services/execution_phase_service.dart';
 import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/widgets/contracts_table_widget.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
@@ -570,7 +571,8 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
             daysUntilRenewal > 0 &&
             c.status != 'Expired';
       }
-      if (_selectedFilters.contains('Pending sign-off') && c.status == 'Draft') {
+      if (_selectedFilters.contains('Pending sign-off') &&
+          c.status == 'Draft') {
         return true;
       }
       if (_selectedFilters.contains('Archived') && c.status == 'Expired') {
@@ -1088,7 +1090,8 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
     final disciplineController =
         TextEditingController(text: contract?.discipline ?? '');
     // Contract Notes - regular TextEditingController (prose)
-    final notesController = TextEditingController(text: contract?.notes ?? '');
+    final notesController =
+        RichTextEditingController(text: contract?.notes ?? '');
     DateTime? startDate = contract?.startDate;
     DateTime? endDate = contract?.endDate;
 

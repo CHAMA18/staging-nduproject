@@ -26,9 +26,11 @@ import 'package:ndu_project/screens/preferred_solution_analysis_screen.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/services/access_policy.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/widgets/page_hint_dialog.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:ndu_project/widgets/field_regenerate_undo_buttons.dart';
+import 'package:ndu_project/widgets/delete_confirmation_dialog.dart';
 
 class PotentialSolutionsScreen extends StatefulWidget {
   const PotentialSolutionsScreen({super.key});
@@ -58,7 +60,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
     _SidebarItem(icon: Icons.shopping_cart_outlined, title: 'Procurement'),
   ];
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  final TextEditingController _notesController = TextEditingController();
+  final TextEditingController _notesController = RichTextEditingController();
   late final String _incomingBusinessCase;
   late final TextEditingController _projectNameController;
   final List<SolutionRow> _solutions = [];
@@ -75,6 +77,10 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
   bool _frontEndExpanded = true;
 
   bool get _isAdminHost => AccessPolicy.isRestrictedAdminHost();
+
+  TextEditingController _createDescriptionController({String text = ''}) {
+    return RichTextEditingController(text: text);
+  }
 
   @override
   void initState() {
@@ -106,7 +112,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
                 number: solution.number,
                 titleController: TextEditingController(text: solution.title),
                 descriptionController:
-                    TextEditingController(text: solution.description),
+                    _createDescriptionController(text: solution.description),
                 isAiGenerated: true,
               ),
             );
@@ -306,8 +312,8 @@ ${_notesController.text.trim().isEmpty ? 'None' : _notesController.text.trim()}
             number: i + 1,
             titleController:
                 TextEditingController(text: solutionsToUse[i].title),
-            descriptionController:
-                TextEditingController(text: solutionsToUse[i].description),
+            descriptionController: _createDescriptionController(
+                text: solutionsToUse[i].description),
             isAiGenerated: true,
           ),
         );
@@ -331,7 +337,7 @@ ${_notesController.text.trim().isEmpty ? 'None' : _notesController.text.trim()}
             number: i + 1,
             titleController:
                 TextEditingController(text: 'Proposed Solution ${i + 1}'),
-            descriptionController: TextEditingController(
+            descriptionController: _createDescriptionController(
               text:
                   'Describe how this option addresses the project\'s needs, assumptions, constraints, and expected benefits.',
             ),
@@ -678,6 +684,8 @@ ${_notesController.text.trim().isEmpty ? 'None' : _notesController.text.trim()}
             ),
           ),
           const SizedBox(height: 4),
+          TextFormattingToolbar(controller: solution.descriptionController),
+          const SizedBox(height: 6),
           TextField(
             controller: solution.descriptionController,
             minLines: 3,
@@ -1438,23 +1446,27 @@ ${_notesController.text.trim().isEmpty ? 'None' : _notesController.text.trim()}
             children: [
               Expanded(
                 flex: 3,
-                child: const Text(
-                  'Solution Title',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                child: const Center(
+                  child: Text(
+                    'Solution Title',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
                   ),
                 ),
               ),
               Expanded(
                 flex: 4,
-                child: const Text(
-                  'Description',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                child: const Center(
+                  child: Text(
+                    'Description',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
                   ),
                 ),
               ),
@@ -1841,7 +1853,7 @@ ${_notesController.text.trim().isEmpty ? 'None' : _notesController.text.trim()}
       created = SolutionRow(
         number: _solutions.length + 1,
         titleController: TextEditingController(),
-        descriptionController: TextEditingController(),
+        descriptionController: _createDescriptionController(),
         isAiGenerated: false,
       );
       _solutions.add(created);
@@ -1871,25 +1883,13 @@ ${_notesController.text.trim().isEmpty ? 'None' : _notesController.text.trim()}
   Future<void> _confirmDeleteSolution(int index) async {
     if (index < 0 || index >= _solutions.length) return;
 
-    final confirmed = await showDialog<bool>(
+    final solutionTitle = _solutions[index].titleController.text.trim();
+    final confirmed = await showDeleteConfirmationDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Solution'),
-        content: const Text(
-          'Are you sure you want to delete this solution? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+      title: 'Delete Solution?',
+      itemLabel: solutionTitle.isEmpty
+          ? 'Potential Solution ${index + 1}'
+          : solutionTitle,
     );
 
     if (confirmed == true && mounted) {
@@ -1972,8 +1972,9 @@ ${_notesController.text.trim().isEmpty ? 'None' : _notesController.text.trim()}
               number: i + 1,
               titleController:
                   TextEditingController(text: solutionsToUse[i].title),
-              descriptionController:
-                  TextEditingController(text: solutionsToUse[i].description),
+              descriptionController: _createDescriptionController(
+                text: solutionsToUse[i].description,
+              ),
               isAiGenerated: true,
             ),
           );
@@ -2113,36 +2114,73 @@ ${_notesController.text.trim().isEmpty ? 'None' : _notesController.text.trim()}
       onRegenerate: () => _regenerateSolutionField(solution, fieldName),
       onUndo: () => _undoSolutionField(solution, fieldName),
       onRedo: () => _redoSolutionField(solution, fieldName),
-      child: isMobile
-          ? TextField(
-              controller: controller,
-              decoration: InputDecoration(
-                hintText: hintText,
-                border: const OutlineInputBorder(),
-                isDense: true,
-              ),
-              style: const TextStyle(fontSize: 14),
-              minLines: fieldName == 'description' ? 2 : 1,
-              maxLines: fieldName == 'description' ? 5 : 1,
-              onChanged: (value) =>
-                  _recordSolutionFieldEdit(solution, fieldName, value),
+      child: fieldName == 'description'
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextFormattingToolbar(controller: controller),
+                const SizedBox(height: 8),
+                if (isMobile)
+                  TextField(
+                    controller: controller,
+                    decoration: InputDecoration(
+                      hintText: hintText,
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    style: const TextStyle(fontSize: 14),
+                    minLines: 2,
+                    maxLines: 5,
+                    onChanged: (value) =>
+                        _recordSolutionFieldEdit(solution, fieldName, value),
+                  )
+                else
+                  ExpandingTextField(
+                    controller: controller,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                    ).copyWith(hintText: hintText),
+                    minLines: 1,
+                    onChanged: (value) =>
+                        _recordSolutionFieldEdit(solution, fieldName, value),
+                  ),
+              ],
             )
-          : ExpandingTextField(
-              controller: controller,
-              style: TextStyle(
-                fontSize: 14,
-                color:
-                    fieldName == 'description' ? Colors.grey : Colors.black87,
-              ),
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-              ).copyWith(hintText: hintText),
-              minLines: 1,
-              onChanged: (value) =>
-                  _recordSolutionFieldEdit(solution, fieldName, value),
-            ),
+          : isMobile
+              ? TextField(
+                  controller: controller,
+                  decoration: InputDecoration(
+                    hintText: hintText,
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  style: const TextStyle(fontSize: 14),
+                  minLines: 1,
+                  maxLines: 1,
+                  onChanged: (value) =>
+                      _recordSolutionFieldEdit(solution, fieldName, value),
+                )
+              : ExpandingTextField(
+                  controller: controller,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black87,
+                  ),
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ).copyWith(hintText: hintText),
+                  minLines: 1,
+                  onChanged: (value) =>
+                      _recordSolutionFieldEdit(solution, fieldName, value),
+                ),
     );
   }
 }

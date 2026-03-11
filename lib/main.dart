@@ -149,8 +149,7 @@ class MyApp extends StatelessWidget {
               title: AppStrings.appName,
               debugShowCheckedModeBanner: false,
               theme: lightTheme,
-              darkTheme: darkTheme,
-              themeMode: ThemeMode.system,
+              themeMode: ThemeMode.light,
               routerConfig: _routerFor(firebaseInitError),
               // Performance optimizations
               builder: (context, child) {

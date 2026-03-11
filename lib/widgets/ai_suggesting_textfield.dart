@@ -4,7 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:ndu_project/openai/openai_config.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/utils/text_sanitizer.dart';
+import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 
 /// Debouncer utility to limit API calls while typing
 class _Debouncer {
@@ -69,7 +71,7 @@ class AiSuggestingTextField extends StatefulWidget {
 
 class _AiSuggestingTextFieldState extends State<AiSuggestingTextField> {
   static const int _basicPlanAiLimit = 2;
-  final TextEditingController _controller = TextEditingController();
+  final TextEditingController _controller = RichTextEditingController();
   final FocusNode _focusNode = FocusNode();
   final _debouncer = _Debouncer();
   List<String> _suggestions = const [];
@@ -135,7 +137,7 @@ class _AiSuggestingTextFieldState extends State<AiSuggestingTextField> {
   void initState() {
     super.initState();
     if ((widget.initialText ?? '').isNotEmpty) {
-      _controller.text = TextSanitizer.sanitizeAiText(widget.initialText);
+      _controller.text = TextSanitizer.sanitizeAiRichText(widget.initialText);
     }
     _controller.addListener(_onTextChanged);
     if (_aiEnabled && widget.autoGenerate) {
@@ -191,7 +193,7 @@ class _AiSuggestingTextFieldState extends State<AiSuggestingTextField> {
       if (!mounted) return;
       _recordAiUsage();
       if (_controller.text.trim().isEmpty && text.trim().isNotEmpty) {
-        _controller.text = TextSanitizer.sanitizeAiText(text);
+        _controller.text = TextSanitizer.sanitizeAiRichText(text);
         _controller.selection = TextSelection.fromPosition(
           TextPosition(offset: _controller.text.length),
         );
@@ -255,7 +257,7 @@ class _AiSuggestingTextFieldState extends State<AiSuggestingTextField> {
       if (!mounted) return;
       setState(() {
         _suggestions =
-            items.map((s) => TextSanitizer.sanitizeAiText(s)).toList();
+            items.map((s) => TextSanitizer.sanitizeAiRichText(s)).toList();
         _loading = false;
       });
       _recordAiUsage();
@@ -276,7 +278,7 @@ class _AiSuggestingTextFieldState extends State<AiSuggestingTextField> {
   }
 
   void _applySuggestion(String suggestion) {
-    final sanitized = TextSanitizer.sanitizeAiText(suggestion);
+    final sanitized = TextSanitizer.sanitizeAiRichText(suggestion);
 
     if (_isReplaceMode) {
       // Replace entire field content
@@ -337,6 +339,8 @@ class _AiSuggestingTextFieldState extends State<AiSuggestingTextField> {
           ),
           const SizedBox(height: 14),
         ],
+        TextFormattingToolbar(controller: _controller),
+        const SizedBox(height: 10),
         MouseRegion(
           onEnter: (_) => setState(() => _isHovering = true),
           onExit: (_) => setState(() => _isHovering = false),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/models/meeting_row.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'dart:async';
 
@@ -437,10 +439,10 @@ class _MeetingRowWidgetState extends State<_MeetingRowWidget> {
     final durationController =
         TextEditingController(text: _meeting.durationHours);
     final objectiveController =
-        TextEditingController(text: _meeting.meetingObjective);
+        RichTextEditingController(text: _meeting.meetingObjective);
     final actionItemsController =
-        TextEditingController(text: _meeting.actionItems);
-    final notesController = TextEditingController(text: _meeting.notes);
+        RichAutoBulletTextController(text: _meeting.actionItems);
+    final notesController = RichTextEditingController(text: _meeting.notes);
     final nextDateController =
         TextEditingController(text: _meeting.nextScheduledDate ?? '');
     final statusController = TextEditingController(text: _meeting.status);
@@ -497,7 +499,8 @@ class _MeetingRowWidgetState extends State<_MeetingRowWidget> {
                   const SizedBox(height: 12),
                   // Frequency
                   DropdownButtonFormField<String>(
-                    initialValue: selectedFrequency.isEmpty ? null : selectedFrequency,
+                    initialValue:
+                        selectedFrequency.isEmpty ? null : selectedFrequency,
                     decoration: const InputDecoration(
                       labelText: 'Frequency *',
                       isDense: true,
@@ -625,7 +628,8 @@ class _MeetingRowWidgetState extends State<_MeetingRowWidget> {
                   const SizedBox(height: 12),
                   // Status
                   DropdownButtonFormField<String>(
-                    initialValue: selectedStatus.isEmpty ? null : selectedStatus,
+                    initialValue:
+                        selectedStatus.isEmpty ? null : selectedStatus,
                     decoration: const InputDecoration(
                       labelText: 'Status',
                       isDense: true,

@@ -12,6 +12,9 @@ import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
+import 'package:ndu_project/widgets/delete_confirmation_dialog.dart';
+import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 
 /// Front End Planning – Details (Scope, Assumptions, Constraints)
 ///
@@ -58,11 +61,11 @@ class FrontEndPlanningWorkspaceScreen extends StatefulWidget {
 class _FrontEndPlanningWorkspaceScreenState
     extends State<FrontEndPlanningWorkspaceScreen> {
   // We keep local controllers/lists to manage state before sync
-  final TextEditingController _notesController = TextEditingController();
+  final TextEditingController _notesController = RichTextEditingController();
 
   // Note: We are migrating away from a big "Summary" text block to structured fields.
   // However, we'll keep the summary text for backward compatibility or as an "Executive Summary".
-  final TextEditingController _summaryController = TextEditingController();
+  final TextEditingController _summaryController = RichTextEditingController();
 
   // Structured Data Lists
   List<String> _withinScope = [];
@@ -620,18 +623,25 @@ class _FrontEndPlanningWorkspaceScreenState
         border: Border.all(color: const Color(0xFFE4E7EC)),
       ),
       padding: const EdgeInsets.all(14),
-      child: TextField(
-        controller: controller,
-        minLines: minLines,
-        maxLines: null,
-        onChanged: onChanged,
-        decoration: InputDecoration(
-          isDense: true,
-          border: InputBorder.none,
-          hintText: hint,
-          hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
-        ),
-        style: const TextStyle(fontSize: 14, color: Color(0xFF374151)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextFormattingToolbar(controller: controller),
+          const SizedBox(height: 8),
+          TextField(
+            controller: controller,
+            minLines: minLines,
+            maxLines: null,
+            onChanged: onChanged,
+            decoration: InputDecoration(
+              isDense: true,
+              border: InputBorder.none,
+              hintText: hint,
+              hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
+            ),
+            style: const TextStyle(fontSize: 14, color: Color(0xFF374151)),
+          ),
+        ],
       ),
     );
   }
@@ -800,22 +810,10 @@ class _ListEditorCard extends StatelessWidget {
       BuildContext context, int index, String itemText) async {
     final preview =
         itemText.length > 120 ? '${itemText.substring(0, 120)}...' : itemText;
-    final confirm = await showDialog<bool>(
+    final confirm = await showDeleteConfirmationDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete this item?'),
-        content: Text(preview),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+      title: 'Delete Item?',
+      itemLabel: preview,
     );
     if (confirm == true) {
       onItemDeleted(index);

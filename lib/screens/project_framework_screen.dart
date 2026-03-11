@@ -4,13 +4,13 @@ import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/front_end_planning_header.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:ndu_project/screens/work_breakdown_structure_screen.dart';
 import 'project_framework_next_screen.dart';
-import 'package:ndu_project/screens/project_charter_screen.dart';
 import 'package:ndu_project/screens/ssher_stacked_screen.dart';
 import 'package:ndu_project/services/sidebar_navigation_service.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
@@ -51,7 +51,7 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
   void initState() {
     super.initState();
     _projectNameController = TextEditingController();
-    _projectObjectiveController = TextEditingController();
+    _projectObjectiveController = RichTextEditingController();
     _projectNameFocus = FocusNode()..addListener(_onFocusChange);
     _projectObjectiveFocus = FocusNode()..addListener(_onFocusChange);
     _openAi = OpenAiServiceSecure();

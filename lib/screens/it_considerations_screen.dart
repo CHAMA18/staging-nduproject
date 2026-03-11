@@ -26,6 +26,7 @@ import 'package:ndu_project/screens/cost_analysis_screen.dart';
 import 'package:ndu_project/screens/preferred_solution_analysis_screen.dart';
 import 'package:ndu_project/screens/home_screen.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/services/sidebar_navigation_service.dart';
 import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
 import 'package:ndu_project/services/user_service.dart';
@@ -77,7 +78,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
     setState(() {
       _solutions.add(AiSolutionItem(
           title: '', description: '')); // Add a new solution item
-      final newController = TextEditingController();
+      final newController = RichTextEditingController();
       newController.enableAutoBullet(); // Enable auto-bullet for new field
       _techControllers.add(newController); // Add a new controller
     });
@@ -88,7 +89,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
     super.initState();
     // IMPORTANT: don't read inherited widgets in initState (causes dependOnInheritedWidget errors).
     // We'll hydrate from provider in didChangeDependencies.
-    _notesController = TextEditingController(text: widget.notes);
+    _notesController = RichTextEditingController(text: widget.notes);
     // Notes = prose; no auto-bullet
 
     _solutions = List.from(widget.solutions); // Create mutable copy
@@ -97,7 +98,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
       _solutions.add(AiSolutionItem(title: '', description: ''));
     }
     _techControllers = List.generate(_solutions.length, (_) {
-      final controller = TextEditingController();
+      final controller = RichTextEditingController();
       controller.enableAutoBullet(); // Enable auto-bullet for each tech field
       return controller;
     });
@@ -160,7 +161,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
 
       while (_techControllers.length < maxItems) {
         _solutions.add(AiSolutionItem(title: '', description: ''));
-        final newController = TextEditingController();
+        final newController = RichTextEditingController();
         newController.enableAutoBullet(); // Enable auto-bullet for new field
         _techControllers.add(newController);
       }
@@ -215,7 +216,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
         ));
         // Ensure we have a controller for this
         if (_techControllers.isEmpty) {
-          _techControllers.add(TextEditingController());
+          _techControllers.add(RichTextEditingController());
         }
         if (_solutions.isEmpty) {
           _solutions.addAll(solutionsToUse);
@@ -1206,7 +1207,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
           );
         }
         while (_techControllers.length < previewRows.length) {
-          final controller = TextEditingController();
+          final controller = RichTextEditingController();
           controller.enableAutoBullet();
           _techControllers.add(controller);
         }

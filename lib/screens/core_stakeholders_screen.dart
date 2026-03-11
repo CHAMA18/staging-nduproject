@@ -31,6 +31,7 @@ import 'package:ndu_project/services/access_policy.dart';
 import 'package:ndu_project/widgets/page_hint_dialog.dart';
 import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
 import 'package:ndu_project/widgets/field_regenerate_undo_buttons.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 
 enum _MissingStakeholderAction { manual, autoFill, skip }
@@ -75,6 +76,10 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
   bool get _canUseAdminControls =>
       _isAdmin && AccessPolicy.isRestrictedAdminHost();
 
+  TextEditingController _createStakeholderController({String text = ''}) {
+    return RichAutoBulletTextController(text: text);
+  }
+
   // ignore: unused_field
   static const List<_SidebarEntry> _navItems = [
     _SidebarEntry(icon: Icons.home_outlined, title: 'Home'),
@@ -95,7 +100,7 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
     super.initState();
     // IMPORTANT: don't read inherited widgets in initState (causes dependOnInheritedWidget errors).
     // We'll hydrate from provider in didChangeDependencies.
-    _notesController = TextEditingController(text: widget.notes);
+    _notesController = RichTextEditingController(text: widget.notes);
     // Notes = prose; no auto-bullet
 
     _solutions = List.from(widget.solutions); // Create mutable copy
@@ -107,19 +112,11 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
     // Initialize controllers lists to match solutions length
     _internalStakeholderControllers = List.generate(
       _solutions.length,
-      (index) {
-        final controller = TextEditingController();
-        controller.enableAutoBullet();
-        return controller;
-      },
+      (index) => _createStakeholderController(),
     );
     _externalStakeholderControllers = List.generate(
       _solutions.length,
-      (index) {
-        final controller = TextEditingController();
-        controller.enableAutoBullet();
-        return controller;
-      },
+      (index) => _createStakeholderController(),
     );
 
     ApiKeyManager.initializeApiKey();
@@ -167,13 +164,9 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
 
     setState(() {
       _solutions.add(AiSolutionItem(title: '', description: ''));
-      final newInternalController = TextEditingController();
-      newInternalController
-          .enableAutoBullet(); // Enable auto-bullet for new field
+      final newInternalController = _createStakeholderController();
       _internalStakeholderControllers.add(newInternalController);
-      final newExternalController = TextEditingController();
-      newExternalController
-          .enableAutoBullet(); // Enable auto-bullet for new field
+      final newExternalController = _createStakeholderController();
       _externalStakeholderControllers.add(newExternalController);
     });
   }
@@ -195,13 +188,9 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
       final requiredLength = stakeholdersData.solutionStakeholderData.length;
       while (_internalStakeholderControllers.length < requiredLength) {
         _solutions.add(AiSolutionItem(title: '', description: ''));
-        final newInternalController = TextEditingController();
-        newInternalController
-            .enableAutoBullet(); // Enable auto-bullet for new field
+        final newInternalController = _createStakeholderController();
         _internalStakeholderControllers.add(newInternalController);
-        final newExternalController = TextEditingController();
-        newExternalController
-            .enableAutoBullet(); // Enable auto-bullet for new field
+        final newExternalController = _createStakeholderController();
         _externalStakeholderControllers.add(newExternalController);
       }
       // Limit to 3 items for non-admins
@@ -1193,14 +1182,10 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
           );
         }
         while (_internalStakeholderControllers.length < previewRows.length) {
-          final c = TextEditingController();
-          c.enableAutoBullet();
-          _internalStakeholderControllers.add(c);
+          _internalStakeholderControllers.add(_createStakeholderController());
         }
         while (_externalStakeholderControllers.length < previewRows.length) {
-          final c = TextEditingController();
-          c.enableAutoBullet();
-          _externalStakeholderControllers.add(c);
+          _externalStakeholderControllers.add(_createStakeholderController());
         }
 
         for (var i = 0; i < previewRows.length; i++) {
@@ -1577,20 +1562,28 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(6),
             border: Border.all(color: Colors.grey.withValues(alpha: 0.25))),
-        child: TextField(
-          controller: controller,
-          minLines: 2,
-          maxLines: null,
-          onChanged: (value) {
-            provider.addFieldToHistory(fieldKey, value, isAiGenerated: true);
-          },
-          decoration: InputDecoration(
-              hintText: hintText,
-              hintStyle: TextStyle(fontSize: 12, color: Colors.grey[400]),
-              border: InputBorder.none,
-              isDense: true,
-              contentPadding: EdgeInsets.zero),
-          style: const TextStyle(fontSize: 12, color: Colors.black87),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextFormattingToolbar(controller: controller),
+            const SizedBox(height: 8),
+            TextField(
+              controller: controller,
+              minLines: 2,
+              maxLines: null,
+              onChanged: (value) {
+                provider.addFieldToHistory(fieldKey, value,
+                    isAiGenerated: true);
+              },
+              decoration: InputDecoration(
+                  hintText: hintText,
+                  hintStyle: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero),
+              style: const TextStyle(fontSize: 12, color: Colors.black87),
+            ),
+          ],
         ),
       ),
     );
@@ -1685,11 +1678,9 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
         ));
         // Ensure we have controllers for this
         if (_internalStakeholderControllers.isEmpty) {
-          final newInternalController = TextEditingController();
-          newInternalController.enableAutoBullet();
+          final newInternalController = _createStakeholderController();
           _internalStakeholderControllers.add(newInternalController);
-          final newExternalController = TextEditingController();
-          newExternalController.enableAutoBullet();
+          final newExternalController = _createStakeholderController();
           _externalStakeholderControllers.add(newExternalController);
         }
         if (_solutions.isEmpty) {

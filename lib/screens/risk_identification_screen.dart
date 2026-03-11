@@ -26,12 +26,14 @@ import 'package:ndu_project/screens/settings_screen.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/utils/text_sanitizer.dart';
 import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/services/access_policy.dart';
 import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/widgets/page_hint_dialog.dart';
 import 'package:ndu_project/widgets/field_regenerate_undo_buttons.dart';
 import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
+import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 
 class RiskIdentificationScreen extends StatefulWidget {
   final String notes;
@@ -78,10 +80,16 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
   bool get _canUseAdminControls =>
       _isAdmin && AccessPolicy.isRestrictedAdminHost();
 
+  TextEditingController _createRiskController({String text = ''}) {
+    final controller = RichAutoBulletTextController(text: text);
+    controller.addListener(_onDataChanged);
+    return controller;
+  }
+
   @override
   void initState() {
     super.initState();
-    _notesController = TextEditingController(text: widget.notes);
+    _notesController = RichTextEditingController(text: widget.notes);
     _notesController.addListener(_onDataChanged);
     // Notes = prose; no auto-bullet
 
@@ -93,15 +101,8 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
       return controller;
     }).toList();
 
-    _riskControllers = List.generate(
-        _solutions.length,
-        (_) => List.generate(3, (_) {
-              final controller = TextEditingController();
-              controller.addListener(_onDataChanged);
-              controller
-                  .enableAutoBullet(); // Enable auto-bullet for risk fields
-              return controller;
-            }));
+    _riskControllers = List.generate(_solutions.length,
+        (_) => List.generate(3, (_) => _createRiskController()));
     ApiKeyManager.initializeApiKey();
 
     // Check admin status
@@ -231,14 +232,8 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
       setState(() {
         _solutions = List<AiSolutionItem>.from(generated);
         _disposeRiskControllers();
-        _riskControllers = List.generate(
-            _solutions.length,
-            (_) => List.generate(3, (_) {
-                  final controller = TextEditingController();
-                  controller.addListener(_onDataChanged);
-                  controller.enableAutoBullet();
-                  return controller;
-                }));
+        _riskControllers = List.generate(_solutions.length,
+            (_) => List.generate(3, (_) => _createRiskController()));
       });
       await _generateRisks();
     } catch (e) {
@@ -261,12 +256,7 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
     // Add a new solution row with empty risk fields
     setState(() {
       _solutions.add(AiSolutionItem(title: '', description: ''));
-      _riskControllers.add(List.generate(3, (_) {
-        final controller = TextEditingController();
-        controller.addListener(_onDataChanged);
-        controller.enableAutoBullet();
-        return controller;
-      }));
+      _riskControllers.add(List.generate(3, (_) => _createRiskController()));
     });
     _onDataChanged(); // Trigger auto-save
   }
@@ -1149,16 +1139,23 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.grey.withValues(alpha: 0.3))),
-          child: TextField(
-            controller: _notesController,
-            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-            decoration: InputDecoration(
-                hintText: 'Input your notes here...',
-                hintStyle: TextStyle(color: Colors.grey[400]),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.zero),
-            minLines: 1,
-            maxLines: null,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextFormattingToolbar(controller: _notesController),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _notesController,
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                decoration: InputDecoration(
+                    hintText: 'Input your notes here...',
+                    hintStyle: TextStyle(color: Colors.grey[400]),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.zero),
+                minLines: 1,
+                maxLines: null,
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 24),
@@ -1493,26 +1490,33 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-              child: TextField(
-                controller: controller,
-                minLines: 2,
-                maxLines: null,
-                textAlign: TextAlign.center,
-                onChanged: (value) {
-                  provider.addFieldToHistory(fieldKey, value,
-                      isAiGenerated: true);
-                },
-                decoration: InputDecoration(
-                  border: InputBorder.none,
-                  isDense: true,
-                  contentPadding: EdgeInsets.zero,
-                  hintText: hintTexts[riskIndex % 3],
-                  hintStyle: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[400],
-                      fontStyle: FontStyle.italic),
-                ),
-                style: const TextStyle(fontSize: 12, color: Colors.black87),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextFormattingToolbar(controller: controller),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: controller,
+                    minLines: 2,
+                    maxLines: null,
+                    textAlign: TextAlign.center,
+                    onChanged: (value) {
+                      provider.addFieldToHistory(fieldKey, value,
+                          isAiGenerated: true);
+                    },
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                      hintText: hintTexts[riskIndex % 3],
+                      hintStyle: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[400],
+                          fontStyle: FontStyle.italic),
+                    ),
+                    style: const TextStyle(fontSize: 12, color: Colors.black87),
+                  ),
+                ],
               ),
             ),
             // KAZ AI suggestion button

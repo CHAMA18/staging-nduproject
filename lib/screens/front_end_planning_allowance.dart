@@ -12,6 +12,7 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/widgets/delete_confirmation_dialog.dart';
 
 /// Front End Planning – Allowance screen
 /// Refactored to support structured "Program-Aware Financial Inputs".
@@ -158,7 +159,21 @@ class _FrontEndPlanningAllowanceScreenState
     _showItemDialog(item: item);
   }
 
-  void _deleteItem(String id) {
+  Future<void> _deleteItem(String id) async {
+    AllowanceItem? item;
+    for (final entry in _allowanceItems) {
+      if (entry.id == id) {
+        item = entry;
+        break;
+      }
+    }
+    final confirmed = await showDeleteConfirmationDialog(
+      context,
+      title: 'Delete Allowance?',
+      itemLabel: item?.name,
+    );
+    if (!confirmed) return;
+
     setState(() {
       _allowanceItems.removeWhere((item) => item.id == id);
     });
@@ -547,7 +562,10 @@ class _FrontEndPlanningAllowanceScreenState
                       PopupMenuItem(
                         child: const Text('Delete',
                             style: TextStyle(color: Colors.red)),
-                        onTap: () => _deleteItem(item.id),
+                        onTap: () => Future.delayed(
+                          Duration.zero,
+                          () => _deleteItem(item.id),
+                        ),
                       ),
                     ],
                   );

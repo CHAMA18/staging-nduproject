@@ -12,6 +12,7 @@ import 'package:ndu_project/services/execution_phase_service.dart';
 import 'package:ndu_project/models/agile_task.dart';
 import 'package:ndu_project/utils/form_validation_engine.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/widgets/agile_iteration_table_widget.dart';
 import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
 import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
@@ -470,9 +471,9 @@ class _AgileDevelopmentIterationsScreenState
 
   void _showAddTaskDialog(BuildContext context) {
     final userStoryController = TextEditingController();
-    final taskDescriptionController = TextEditingController();
-    final acceptanceCriteriaController = AutoBulletTextController();
-    final iterationNotesController = TextEditingController();
+    final taskDescriptionController = RichTextEditingController();
+    final acceptanceCriteriaController = RichAutoBulletTextController();
+    final iterationNotesController = RichTextEditingController();
     final userStoryFieldKey = GlobalKey();
     final assignedRoleFieldKey = GlobalKey();
     String selectedRole = '';

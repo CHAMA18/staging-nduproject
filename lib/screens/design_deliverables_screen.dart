@@ -276,6 +276,127 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
     }
   }
 
+  Future<void> _showAddPipelineItemDialog() async {
+    final labelController = TextEditingController();
+    String status = 'In progress';
+
+    final item = await showDialog<DesignDeliverablePipelineItem>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              title: const Text('Add Pipeline Item'),
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: labelController,
+                      decoration: const InputDecoration(
+                        labelText: 'Stage or deliverable',
+                        hintText: 'e.g. Final signage package',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      initialValue: status,
+                      items: const [
+                        DropdownMenuItem(
+                            value: 'In progress', child: Text('In progress')),
+                        DropdownMenuItem(
+                            value: 'Pending', child: Text('Pending')),
+                        DropdownMenuItem(
+                            value: 'In review', child: Text('In review')),
+                        DropdownMenuItem(
+                            value: 'Approved', child: Text('Approved')),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setModalState(() => status = value);
+                      },
+                      decoration: const InputDecoration(
+                        labelText: 'Status',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final label = labelController.text.trim();
+                    if (label.isEmpty) return;
+                    Navigator.of(context).pop(
+                      DesignDeliverablePipelineItem(
+                        label: label,
+                        status: status,
+                      ),
+                    );
+                  },
+                  child: const Text('Add Item'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    labelController.dispose();
+    if (item == null) return;
+    _updateData(_data.copyWith(pipeline: [..._data.pipeline, item]));
+  }
+
+  Future<void> _showAddApprovalDialog() async {
+    final approvalController = TextEditingController();
+
+    final approval = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Add Approval'),
+          content: SizedBox(
+            width: 420,
+            child: TextField(
+              controller: approvalController,
+              decoration: const InputDecoration(
+                labelText: 'Approval item',
+                hintText: 'e.g. Sponsor sign-off for production pack',
+              ),
+              minLines: 2,
+              maxLines: 3,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final value = approvalController.text.trim();
+                if (value.isEmpty) return;
+                Navigator.of(context).pop(value);
+              },
+              child: const Text('Add Approval'),
+            ),
+          ],
+        );
+      },
+    );
+
+    approvalController.dispose();
+    if (approval == null) return;
+    _updateData(_data.copyWith(approvals: [..._data.approvals, approval]));
+  }
+
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
@@ -319,12 +440,14 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
                             const SizedBox(height: 24),
                             _DeliverablePipelineCard(
                               items: data.pipeline,
+                              onAddRequested: _showAddPipelineItemDialog,
                               onChanged: (items) =>
                                   _updateData(data.copyWith(pipeline: items)),
                             ),
                             const SizedBox(height: 20),
                             _ApprovalStatusCard(
                               items: data.approvals,
+                              onAddRequested: _showAddApprovalDialog,
                               onChanged: (items) => _updateData(
                                 data.copyWith(approvals: items),
                               ),
@@ -900,10 +1023,13 @@ class _MetricCard extends StatelessWidget {
 
 class _DeliverablePipelineCard extends StatelessWidget {
   const _DeliverablePipelineCard(
-      {required this.items, required this.onChanged});
+      {required this.items,
+      required this.onChanged,
+      required this.onAddRequested});
 
   final List<DesignDeliverablePipelineItem> items;
   final ValueChanged<List<DesignDeliverablePipelineItem>> onChanged;
+  final VoidCallback onAddRequested;
 
   List<DesignDeliverablePipelineItem> _updateItem(
     List<DesignDeliverablePipelineItem> list,
@@ -946,10 +1072,7 @@ class _DeliverablePipelineCard extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
-              onPressed: () => onChanged([
-                ...items,
-                const DesignDeliverablePipelineItem(status: 'In progress'),
-              ]),
+              onPressed: onAddRequested,
               icon: const Icon(Icons.add, size: 16),
               label: const Text('Add pipeline item'),
             ),
@@ -961,10 +1084,14 @@ class _DeliverablePipelineCard extends StatelessWidget {
 }
 
 class _ApprovalStatusCard extends StatelessWidget {
-  const _ApprovalStatusCard({required this.items, required this.onChanged});
+  const _ApprovalStatusCard(
+      {required this.items,
+      required this.onChanged,
+      required this.onAddRequested});
 
   final List<String> items;
   final ValueChanged<List<String>> onChanged;
+  final VoidCallback onAddRequested;
 
   @override
   Widget build(BuildContext context) {
@@ -995,7 +1122,7 @@ class _ApprovalStatusCard extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
-              onPressed: () => onChanged([...items, '']),
+              onPressed: onAddRequested,
               icon: const Icon(Icons.add, size: 16),
               label: const Text('Add approval'),
             ),

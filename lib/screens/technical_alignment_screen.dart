@@ -1,6 +1,7 @@
 // ignore_for_file: unused_element
 
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:ndu_project/models/design_phase_models.dart';
 import 'package:ndu_project/models/project_data_model.dart';
@@ -8,12 +9,15 @@ import 'package:ndu_project/services/design_phase_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/screens/design_phase_screen.dart';
 import 'package:ndu_project/screens/requirements_implementation_screen.dart';
 import 'package:ndu_project/screens/development_set_up_screen.dart';
+import 'package:ndu_project/screens/ui_ux_design_screen.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/widgets/design_phase_stable_shell.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
@@ -407,6 +411,14 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
       ownerOptions.add('Unassigned');
     }
 
+    if (kIsWeb) {
+      return _buildStableWebScreen(
+        padding: padding,
+        snapshot: snapshot,
+        ownerOptions: ownerOptions,
+      );
+    }
+
     return ResponsiveScaffold(
       activeItemLabel: 'Technical Alignment',
       body: Column(
@@ -466,6 +478,293 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildStableWebScreen({
+    required double padding,
+    required _TechnicalAlignmentDashboardSnapshot snapshot,
+    required List<String> ownerOptions,
+  }) {
+    return DesignPhaseStableShell(
+      activeLabel: 'Technical Alignment',
+      onItemSelected: _openStableDesignItem,
+      child: ListView(
+        padding: EdgeInsets.all(padding),
+        children: [
+          _buildStableHeaderCard(),
+          const SizedBox(height: 24),
+          Wrap(
+            spacing: 16,
+            runSpacing: 16,
+            children: [
+              _buildStableMetricCard(
+                'Constraints',
+                '${_constraints.length}',
+                const Color(0xFF1D4ED8),
+              ),
+              _buildStableMetricCard(
+                'Mappings',
+                '${_mappings.length}',
+                const Color(0xFF0F766E),
+              ),
+              _buildStableMetricCard(
+                'Dependencies',
+                '${_dependencies.length}',
+                const Color(0xFFD97706),
+              ),
+              _buildStableMetricCard(
+                'Owners',
+                '${ownerOptions.length}',
+                const Color(0xFF7C3AED),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _buildStableSectionCard(
+            title: 'Alignment Notes',
+            child: TextField(
+              controller: _notesController,
+              minLines: 6,
+              maxLines: 10,
+              decoration: const InputDecoration(
+                hintText:
+                    'Capture technical constraints, feasibility risks, and cross-team decisions...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildStableSectionCard(
+            title: 'Constraint Register',
+            child: Column(
+              children: _constraints.take(5).map((row) {
+                return _buildStableListTile(
+                  title: row.constraint,
+                  subtitle: '${row.guardrail} · ${row.owner} · ${row.status}',
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildStableSectionCard(
+            title: 'Requirement Mapping',
+            child: Column(
+              children: _mappings.take(5).map((row) {
+                return _buildStableListTile(
+                  title: row.requirement,
+                  subtitle: '${row.approach} · ${row.status}',
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildStableSectionCard(
+            title: 'Dependency Watchlist',
+            child: Column(
+              children: _dependencies.take(5).map((row) {
+                return _buildStableListTile(
+                  title: row.item,
+                  subtitle: '${row.detail} · ${row.owner} · ${row.status}',
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppSemanticColors.border),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                OutlinedButton(
+                  onPressed: _navigateToRequirementsImplementation,
+                  child: const Text('Back: Requirements Implementation'),
+                ),
+                ElevatedButton(
+                  onPressed: _navigateToDevelopmentSetUp,
+                  child: const Text('Next: Development Set Up'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Stable web mode keeps Technical Alignment visible while the heavier dashboard widgets remain isolated.',
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStableHeaderCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppSemanticColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 18,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: _navigateToRequirementsImplementation,
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+            tooltip: 'Back',
+          ),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Technical Alignment',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStableMetricCard(String label, String value, Color color) {
+    return Container(
+      width: 180,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStableSectionCard({
+    required String title,
+    required Widget child,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStableListTile({
+    required String title,
+    required String subtitle,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              style: const TextStyle(
+                fontSize: 13,
+                height: 1.45,
+                color: Color(0xFF4B5563),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openStableDesignItem(String label) {
+    Widget? destination;
+    switch (label) {
+      case 'Design Management':
+        destination =
+            const DesignPhaseScreen(activeItemLabel: 'Design Management');
+        break;
+      case 'Design Specifications':
+        destination = const RequirementsImplementationScreen();
+        break;
+      case 'Technical Alignment':
+        destination = const TechnicalAlignmentScreen();
+        break;
+      case 'Development Set Up':
+        destination = const DevelopmentSetUpScreen();
+        break;
+      case 'UI/UX Design':
+        destination = const UiUxDesignScreen();
+        break;
+    }
+
+    if (destination == null) return;
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => destination!),
     );
   }
 

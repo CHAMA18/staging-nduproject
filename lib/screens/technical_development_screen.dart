@@ -300,7 +300,6 @@ class _TechnicalDevelopmentScreenState
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
-    final isDesktop = AppBreakpoints.isDesktop(context);
     final padding = AppBreakpoints.pagePadding(context);
     final sectionGap = AppBreakpoints.sectionGap(context);
     final provider = ProjectDataInherited.maybeOf(context);
@@ -335,30 +334,14 @@ class _TechnicalDevelopmentScreenState
                       SizedBox(height: sectionGap),
                       _buildWorkflowCard(snapshot),
                       SizedBox(height: sectionGap),
-                      if (isMobile)
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildComponentBuildRegister(snapshot),
-                            SizedBox(height: sectionGap),
-                            _buildValidationPanel(snapshot),
-                          ],
-                        )
-                      else
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              flex: isDesktop ? 9 : 8,
-                              child: _buildComponentBuildRegister(snapshot),
-                            ),
-                            SizedBox(width: sectionGap),
-                            SizedBox(
-                              width: isDesktop ? 360 : 320,
-                              child: _buildValidationPanel(snapshot),
-                            ),
-                          ],
-                        ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildComponentBuildRegister(snapshot),
+                          SizedBox(height: sectionGap),
+                          _buildValidationPanel(snapshot),
+                        ],
+                      ),
                       SizedBox(height: sectionGap),
                       _buildGovernanceGrid(snapshot, isMobile: isMobile),
                       SizedBox(height: sectionGap),

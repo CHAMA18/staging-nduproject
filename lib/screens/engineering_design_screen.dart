@@ -593,20 +593,40 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
             ),
           ],
           const SizedBox(height: 18),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _buildHeroMetricPill('Models', '${snapshot.modelFiles.length}'),
-              _buildHeroMetricPill('Sign-offs', '${snapshot.signoffs.length}'),
-              _buildHeroMetricPill(
-                  'Specs', '${snapshot.interfaceSpecs.length}'),
-              _buildHeroMetricPill('ECNs', '${snapshot.ecnItems.length}'),
-              _buildHeroMetricPill('AI Signals', '${snapshot.aiSignalCount}'),
-            ],
-          ),
+          _buildHeroMetricsSection(snapshot),
         ],
       ),
+    );
+  }
+
+  Widget _buildHeroMetricsSection(_EngineeringDashboardSnapshot snapshot) {
+    final metrics = [
+      _buildHeroMetricPill('Models', '${snapshot.modelFiles.length}'),
+      _buildHeroMetricPill('Sign-offs', '${snapshot.signoffs.length}'),
+      _buildHeroMetricPill('Specs', '${snapshot.interfaceSpecs.length}'),
+      _buildHeroMetricPill('ECNs', '${snapshot.ecnItems.length}'),
+      _buildHeroMetricPill('AI Signals', '${snapshot.aiSignalCount}'),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 760) {
+          return Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: metrics,
+          );
+        }
+
+        return Row(
+          children: [
+            for (var index = 0; index < metrics.length; index++) ...[
+              Expanded(child: metrics[index]),
+              if (index < metrics.length - 1) const SizedBox(width: 10),
+            ],
+          ],
+        );
+      },
     );
   }
 
@@ -637,26 +657,39 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
   Widget _buildSpecificationsGrid(_EngineeringDashboardSnapshot snapshot) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final spacing = 20.0;
-        final columns = constraints.maxWidth >= 1080
-            ? 3
-            : constraints.maxWidth >= 760
-                ? 2
-                : 1;
-        final width = columns == 1
-            ? constraints.maxWidth
-            : (constraints.maxWidth - spacing * (columns - 1)) / columns;
-        final cards = [
-          _buildInterfaceSpecsPanel(snapshot),
-          _buildCalculationsPanel(snapshot),
-          _buildDatasheetsPanel(snapshot),
-        ];
+        final isStacked = constraints.maxWidth < 560;
 
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children:
-              cards.map((card) => SizedBox(width: width, child: card)).toList(),
+        if (isStacked) {
+          return Column(
+            children: [
+              _buildInterfaceSpecsPanel(snapshot),
+              const SizedBox(height: 20),
+              _buildCalculationsPanel(snapshot),
+              const SizedBox(height: 20),
+              _buildDatasheetsPanel(snapshot),
+            ],
+          );
+        }
+
+        return Column(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 6,
+                  child: _buildInterfaceSpecsPanel(snapshot),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  flex: 6,
+                  child: _buildCalculationsPanel(snapshot),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _buildDatasheetsPanel(snapshot),
+          ],
         );
       },
     );

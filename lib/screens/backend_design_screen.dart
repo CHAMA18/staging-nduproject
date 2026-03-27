@@ -26,6 +26,16 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
       TextEditingController();
   final TextEditingController _databaseSummaryController =
       TextEditingController();
+  final TextEditingController _quickComponentNameController =
+      TextEditingController();
+  final TextEditingController _quickComponentResponsibilityController =
+      TextEditingController();
+  final TextEditingController _quickEntityNameController =
+      TextEditingController();
+  final TextEditingController _quickEntityPrimaryKeyController =
+      TextEditingController();
+  final TextEditingController _quickEntityDescriptionController =
+      TextEditingController();
 
   final List<_ArchitectureComponent> _components = [];
   final List<_ArchitectureDataFlow> _dataFlows = [];
@@ -67,6 +77,10 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
     'Approved',
     'Deprecated'
   ];
+  String _quickComponentType = 'Service';
+  String _quickComponentStatus = 'Planned';
+  String _quickComponentOwner = 'Platform';
+  String _quickEntityOwner = 'Operations';
 
   List<String> _ownerOptions({String? currentValue}) {
     final data = ProjectDataHelper.getData(context);
@@ -110,6 +124,11 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
   void dispose() {
     _architectureSummaryController.dispose();
     _databaseSummaryController.dispose();
+    _quickComponentNameController.dispose();
+    _quickComponentResponsibilityController.dispose();
+    _quickEntityNameController.dispose();
+    _quickEntityPrimaryKeyController.dispose();
+    _quickEntityDescriptionController.dispose();
     _saveDebounce.dispose();
     super.dispose();
   }
@@ -552,22 +571,11 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
     _BackendInfrastructureSnapshot snapshot,
     bool isMobile,
   ) {
-    if (isMobile) {
-      return Column(
-        children: [
-          _buildSystemArchitecturePanel(snapshot),
-          const SizedBox(height: 20),
-          _buildDataArchitecturePanel(snapshot),
-        ],
-      );
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
       children: [
-        Expanded(flex: 6, child: _buildSystemArchitecturePanel(snapshot)),
-        const SizedBox(width: 20),
-        Expanded(flex: 5, child: _buildDataArchitecturePanel(snapshot)),
+        _buildSystemArchitecturePanel(snapshot),
+        const SizedBox(height: 20),
+        _buildDataArchitecturePanel(snapshot),
       ],
     );
   }
@@ -576,22 +584,11 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
     _BackendInfrastructureSnapshot snapshot,
     bool isMobile,
   ) {
-    if (isMobile) {
-      return Column(
-        children: [
-          _buildInterfaceContractsPanel(snapshot),
-          const SizedBox(height: 20),
-          _buildSecurityAccessPanel(snapshot),
-        ],
-      );
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
       children: [
-        Expanded(flex: 6, child: _buildInterfaceContractsPanel(snapshot)),
-        const SizedBox(width: 20),
-        Expanded(flex: 5, child: _buildSecurityAccessPanel(snapshot)),
+        _buildInterfaceContractsPanel(snapshot),
+        const SizedBox(height: 20),
+        _buildSecurityAccessPanel(snapshot),
       ],
     );
   }
@@ -673,6 +670,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
 
   Widget _buildSystemArchitecturePanel(
       _BackendInfrastructureSnapshot snapshot) {
+    final ownerOptions = _ownerOptions(currentValue: _quickComponentOwner);
     return _buildDashboardPanel(
       title: 'System Architecture & Structural Framework',
       subtitle:
@@ -784,12 +782,85 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 18),
+          _buildInlineComposerCard(
+            icon: Icons.add_business_rounded,
+            accent: const Color(0xFF1D4ED8),
+            title: 'Quick add architecture component',
+            subtitle:
+                'Capture a new service, integration, or infrastructure block directly in the architecture view.',
+            child: Column(
+              children: [
+                _buildComposerTextField(
+                  controller: _quickComponentNameController,
+                  label: 'Component name',
+                  hint: 'e.g. Access Control Service',
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildComposerDropdown(
+                        label: 'Type',
+                        value: _quickComponentType,
+                        items: _componentTypes,
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() => _quickComponentType = value);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildComposerDropdown(
+                        label: 'Status',
+                        value: _quickComponentStatus,
+                        items: _componentStatuses,
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() => _quickComponentStatus = value);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _buildComposerDropdown(
+                  label: 'Owner',
+                  value: _quickComponentOwner,
+                  items: ownerOptions,
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _quickComponentOwner = value);
+                  },
+                ),
+                const SizedBox(height: 12),
+                _buildComposerTextField(
+                  controller: _quickComponentResponsibilityController,
+                  label: 'Responsibility',
+                  hint: 'Describe what this component owns or enables.',
+                  minLines: 2,
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 14),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: FilledButton.icon(
+                    onPressed: _addQuickArchitectureComponent,
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Add Component'),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildDataArchitecturePanel(_BackendInfrastructureSnapshot snapshot) {
+    final ownerOptions = _ownerOptions(currentValue: _quickEntityOwner);
     return _buildDashboardPanel(
       title: 'Data Architecture & Information Flow',
       subtitle:
@@ -797,76 +868,133 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
       icon: Icons.dataset_outlined,
       accent: const Color(0xFF0F766E),
       child: Column(
-        children: snapshot.dataEntities
-            .map(
-              (entity) => Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            entity.name,
-                            style: const TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF0F172A),
-                            ),
+        children: [
+          ...snapshot.dataEntities.map(
+            (entity) => Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          entity.name,
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0F172A),
                           ),
                         ),
-                        _buildStatusBadge(
-                            entity.flowLabel, const Color(0xFF0F766E)),
-                      ],
+                      ),
+                      _buildStatusBadge(
+                          entity.flowLabel, const Color(0xFF0F766E)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: entity.attributes
+                        .map((attribute) => Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(999),
+                                border:
+                                    Border.all(color: const Color(0xFFE2E8F0)),
+                              ),
+                              child: Text(
+                                attribute,
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF334155),
+                                ),
+                              ),
+                            ))
+                        .toList(),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    entity.flowDetail,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF64748B),
+                      height: 1.45,
                     ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: entity.attributes
-                          .map((attribute) => Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                      color: const Color(0xFFE2E8F0)),
-                                ),
-                                child: Text(
-                                  attribute,
-                                  style: const TextStyle(
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF334155),
-                                  ),
-                                ),
-                              ))
-                          .toList(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          _buildInlineComposerCard(
+            icon: Icons.dataset_linked_rounded,
+            accent: const Color(0xFF0F766E),
+            title: 'Quick add data entity',
+            subtitle:
+                'Add the next entity and its core key from the information flow panel itself.',
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildComposerTextField(
+                        controller: _quickEntityNameController,
+                        label: 'Entity name',
+                        hint: 'e.g. DispatchLedger',
+                      ),
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      entity.flowDetail,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF64748B),
-                        height: 1.45,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildComposerTextField(
+                        controller: _quickEntityPrimaryKeyController,
+                        label: 'Primary key',
+                        hint: 'e.g. dispatch_id',
                       ),
                     ),
                   ],
                 ),
-              ),
-            )
-            .toList(),
+                const SizedBox(height: 12),
+                _buildComposerDropdown(
+                  label: 'Owner',
+                  value: _quickEntityOwner,
+                  items: ownerOptions,
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _quickEntityOwner = value);
+                  },
+                ),
+                const SizedBox(height: 12),
+                _buildComposerTextField(
+                  controller: _quickEntityDescriptionController,
+                  label: 'Description',
+                  hint: 'Summarize the entity purpose and operational flow.',
+                  minLines: 2,
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 14),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: FilledButton.icon(
+                    onPressed: _addQuickDataEntity,
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Add Entity'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1382,6 +1510,185 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
     );
   }
 
+  Widget _buildInlineComposerCard({
+    required IconData icon,
+    required Color accent,
+    required String title,
+    required String subtitle,
+    required Widget child,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            accent.withValues(alpha: 0.08),
+            Colors.white,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: accent.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: accent),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: Color(0xFF64748B),
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildComposerTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    int minLines = 1,
+    int maxLines = 1,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF475569),
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          minLines: minLines,
+          maxLines: maxLines,
+          decoration: InputDecoration(
+            hintText: hint,
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFFD8E1EC)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFFD8E1EC)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: Color(0xFF2563EB),
+                width: 1.4,
+              ),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 12,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildComposerDropdown({
+    required String label,
+    required String value,
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF475569),
+          ),
+        ),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<String>(
+          initialValue: value,
+          items: items
+              .map(
+                (item) => DropdownMenuItem<String>(
+                  value: item,
+                  child: Text(item),
+                ),
+              )
+              .toList(),
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFFD8E1EC)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFFD8E1EC)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(
+                color: Color(0xFF2563EB),
+                width: 1.4,
+              ),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 12,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildHeroMetricPill(String label, String value) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -1594,6 +1901,31 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
     _scheduleSave();
   }
 
+  void _addQuickArchitectureComponent() {
+    final name = _quickComponentNameController.text.trim();
+    final responsibility = _quickComponentResponsibilityController.text.trim();
+    final owner = _quickComponentOwner.trim();
+    if (name.isEmpty || responsibility.isEmpty || owner.isEmpty) return;
+
+    setState(() {
+      _components.add(
+        _ArchitectureComponent(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          name: name,
+          type: _quickComponentType,
+          responsibility: responsibility,
+          owner: owner,
+          status: _quickComponentStatus,
+        ),
+      );
+      _quickComponentNameController.clear();
+      _quickComponentResponsibilityController.clear();
+      _quickComponentType = _componentTypes.first;
+      _quickComponentStatus = _componentStatuses.first;
+    });
+    _scheduleSave();
+  }
+
   void _addDataFlow() {
     setState(() => _dataFlows.add(_ArchitectureDataFlow.empty()));
     _scheduleSave();
@@ -1643,6 +1975,35 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
 
   void _deleteEntity(String id) {
     setState(() => _entities.removeWhere((entry) => entry.id == id));
+    _scheduleSave();
+  }
+
+  void _addQuickDataEntity() {
+    final name = _quickEntityNameController.text.trim();
+    final primaryKey = _quickEntityPrimaryKeyController.text.trim();
+    final owner = _quickEntityOwner.trim();
+    final description = _quickEntityDescriptionController.text.trim();
+    if (name.isEmpty ||
+        primaryKey.isEmpty ||
+        owner.isEmpty ||
+        description.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _entities.add(
+        _DbEntity(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          name: name,
+          primaryKey: primaryKey,
+          owner: owner,
+          description: description,
+        ),
+      );
+      _quickEntityNameController.clear();
+      _quickEntityPrimaryKeyController.clear();
+      _quickEntityDescriptionController.clear();
+    });
     _scheduleSave();
   }
 

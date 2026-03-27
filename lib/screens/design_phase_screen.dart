@@ -4,7 +4,10 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/screens/development_set_up_screen.dart';
 import 'package:ndu_project/screens/requirements_implementation_screen.dart';
+import 'package:ndu_project/screens/technical_alignment_screen.dart';
+import 'package:ndu_project/screens/ui_ux_design_screen.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/theme.dart';
@@ -24,6 +27,7 @@ import 'package:ndu_project/models/design_phase_models.dart';
 import 'package:ndu_project/widgets/design_readiness_card.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/utils/web_utils.dart';
+import 'package:ndu_project/widgets/design_phase_stable_shell.dart';
 
 class DesignPhaseScreen extends StatefulWidget {
   const DesignPhaseScreen(
@@ -69,7 +73,8 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
   DateTime? _lastSavedAt;
   Timer? _saveDebounce;
 
-  DesignTool _activeTool = DesignTool.architecture;
+  DesignTool _activeTool =
+      kIsWeb ? DesignTool.richText : DesignTool.architecture;
   late final TextEditingController _richTextController;
 
   // Component Library for dragging into Output Docs OR directly onto canvas
@@ -311,6 +316,12 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
     final padding = isMobile ? 16.0 : 24.0;
+    if (widget.activeItemLabel == 'Design Management') {
+      return _buildStableManagementScreen(padding);
+    }
+    if (kIsWeb) {
+      return _buildMinimalWebScreen(padding);
+    }
 
     return ResponsiveScaffold(
       activeItemLabel: widget.activeItemLabel,
@@ -347,8 +358,6 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                     style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 24),
-
-                  // Main Layout: Responsive - stacked on mobile, side-by-side on desktop
                   if (isMobile)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -404,6 +413,684 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
               MaterialPageRoute(
                   builder: (_) => const RequirementsImplementationScreen()),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStableManagementScreen(double padding) {
+    return DesignPhaseStableShell(
+      activeLabel: 'Design Management',
+      onItemSelected: _openStableDesignItem,
+      child: ListView(
+        padding: EdgeInsets.all(padding),
+        children: [
+          _buildStableManagementHeader(),
+          const SizedBox(height: 24),
+          _buildStableNotesCard(),
+          const SizedBox(height: 24),
+          Text(
+            'Collaborative workspace for Waterfall design and documentation',
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Design Management',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const Text(
+            'Develop project design documentation',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 16),
+          _buildWebSafeStrategySection(),
+          const SizedBox(height: 24),
+          _buildWebGovernanceSummary(),
+          const SizedBox(height: 24),
+          _buildWebEditorSummary(),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppSemanticColors.border),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                OutlinedButton(
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  child: const Text('Back: Design overview'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const RequirementsImplementationScreen(),
+                    ),
+                  ),
+                  child: const Text('Next: Requirements Implementation'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openStableDesignItem(String label) {
+    Widget? destination;
+    switch (label) {
+      case 'Design Management':
+        destination =
+            const DesignPhaseScreen(activeItemLabel: 'Design Management');
+        break;
+      case 'Design Specifications':
+        destination = const RequirementsImplementationScreen();
+        break;
+      case 'Technical Alignment':
+        destination = const TechnicalAlignmentScreen();
+        break;
+      case 'Development Set Up':
+        destination = const DevelopmentSetUpScreen();
+        break;
+      case 'UI/UX Design':
+        destination = const UiUxDesignScreen();
+        break;
+    }
+
+    if (destination == null) return;
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => destination!),
+    );
+  }
+
+  Widget _buildStableManagementHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppSemanticColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 18,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+            tooltip: 'Back',
+          ),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Design',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStableNotesCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppSemanticColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 18,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7D6),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const Icon(
+                  Icons.sticky_note_2_outlined,
+                  size: 14,
+                  color: Color(0xFFF4B400),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Notes',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Summarize design goals, artifacts, and key decisions.',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextFormattingToolbar(controller: _richTextController),
+          const SizedBox(height: 12),
+          Container(
+            constraints: const BoxConstraints(minHeight: 120),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppSemanticColors.border),
+            ),
+            child: TextField(
+              controller: _richTextController,
+              minLines: 4,
+              maxLines: 6,
+              decoration: const InputDecoration.collapsed(
+                hintText:
+                    'Capture the key decisions and details for this section...',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMinimalWebScreen(double padding) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(padding),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppSemanticColors.border),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x12000000),
+                      blurRadius: 18,
+                      offset: Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Design Management',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'Web diagnostic mode is active.',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'If this placeholder renders, the previous layout failure was inside the Design Management widget tree. If it still crashes, the failure is outside this screen and in a shared app wrapper.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.5,
+                        color: Color(0xFF4B5563),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ignore: unused_element
+  Widget _buildWebSafeNavigationCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppSemanticColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Next Step',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Continue to requirements implementation once the strategy and notes are updated.',
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[600],
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              OutlinedButton(
+                onPressed: () => Navigator.of(context).maybePop(),
+                child: const Text('Back'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const RequirementsImplementationScreen(),
+                  ),
+                ),
+                child: const Text('Requirements Implementation'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ignore: unused_element
+  Widget _buildWebSafeStrategySection() {
+    final provider = ProjectDataInherited.maybeOf(context);
+    if (provider == null) return const SizedBox.shrink();
+
+    final projectData = provider.projectData;
+    final managementData =
+        projectData.designManagementData ?? DesignManagementData();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppSemanticColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 18,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Design Strategy & Governance',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'The web layout uses a simplified single-column strategy form to keep the screen stable.',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 18),
+          _buildWebSafeDropdownBlock<ProjectMethodology>(
+            label: 'Methodology',
+            value: managementData.methodology,
+            items: ProjectMethodology.values
+                .map(
+                  (methodology) => DropdownMenuItem(
+                    value: methodology,
+                    child: Text(
+                      methodology.name.toUpperCase(),
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              if (value != null) _updateMethodology(value);
+            },
+            helper: _getMethodologyDescription(managementData.methodology),
+          ),
+          const SizedBox(height: 16),
+          _buildWebSafeDropdownBlock<ProjectIndustry>(
+            label: 'Industry',
+            value: managementData.industry,
+            items: ProjectIndustry.values
+                .map(
+                  (industry) => DropdownMenuItem(
+                    value: industry,
+                    child: Text(
+                      industry.name.substring(0, 1).toUpperCase() +
+                          industry.name.substring(1),
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              if (value != null) _updateIndustry(value);
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildWebSafeDropdownBlock<ExecutionStrategy>(
+            label: 'Execution Strategy',
+            value: managementData.executionStrategy,
+            items: ExecutionStrategy.values
+                .map(
+                  (strategy) => DropdownMenuItem(
+                    value: strategy,
+                    child: Text(
+                      strategy.name
+                          .replaceAll(RegExp(r'(?<!^)(?=[A-Z])'), ' ')
+                          .toUpperCase(),
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              if (value != null) _updateStrategy(value);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWebSafeDropdownBlock<T>({
+    required String label,
+    required T value,
+    required List<DropdownMenuItem<T>> items,
+    required ValueChanged<T?> onChanged,
+    String? helper,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<T>(
+          initialValue: value,
+          decoration: InputDecoration(
+            isDense: true,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          items: items,
+          onChanged: onChanged,
+        ),
+        if (helper != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            helper,
+            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+          ),
+        ],
+      ],
+    );
+  }
+
+  // ignore: unused_element
+  Widget _buildWebGovernanceSummary() {
+    final provider = ProjectDataInherited.maybeOf(context);
+    final projectData = provider?.projectData ?? ProjectDataModel();
+    final data = projectData.designManagementData ?? DesignManagementData();
+    final readiness = _progress ?? data.readiness;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppSemanticColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 18,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.admin_panel_settings_outlined,
+              color: Color(0xFF2563EB),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Governance Snapshot',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _buildGovernanceMetric(
+                'Readiness',
+                '${(readiness.overallScore * 100).toInt()}%',
+                const Color(0xFF2563EB),
+              ),
+              _buildGovernanceMetric(
+                'Team Members',
+                '${projectData.teamMembers.length}',
+                const Color(0xFF0F766E),
+              ),
+              _buildGovernanceMetric(
+                'Requirements',
+                '${projectData.frontEndPlanningData.requirements.length}',
+                const Color(0xFFD97706),
+              ),
+              _buildGovernanceMetric(
+                'Architecture Nodes',
+                '${_nodes.length}',
+                const Color(0xFF7C3AED),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Web-safe mode is active for this screen. Core design strategy, governance summary, and editor tools remain available while the heavier visual workspace is simplified for reliable rendering.',
+            style: TextStyle(
+              fontSize: 13,
+              color: Color(0xFF6B7280),
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGovernanceMetric(String label, String value, Color color) {
+    return Container(
+      width: 180,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppSemanticColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ignore: unused_element
+  Widget _buildWebEditorSummary() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppSemanticColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 18,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child:
+                const Icon(Icons.edit_note_outlined, color: Color(0xFF2563EB)),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Design Editor Summary',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'The full interactive editor stack is simplified on web to avoid layout failures while keeping core design documentation accessible.',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 18),
+          TextFormattingToolbar(controller: _richTextController),
+          const SizedBox(height: 12),
+          Container(
+            constraints: const BoxConstraints(minHeight: 320),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppSemanticColors.border),
+            ),
+            child: TextField(
+              controller: _richTextController,
+              minLines: 12,
+              maxLines: 18,
+              decoration: const InputDecoration.collapsed(
+                hintText: 'Start typing your design notes...',
+              ),
+              style: const TextStyle(height: 1.5),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _buildGovernanceMetric(
+                'Nodes',
+                '${_nodes.length}',
+                const Color(0xFF7C3AED),
+              ),
+              _buildGovernanceMetric(
+                'Edges',
+                '${_edges.length}',
+                const Color(0xFF2563EB),
+              ),
+              _buildGovernanceMetric(
+                'Status',
+                _isSaving ? 'Saving' : 'Ready',
+                const Color(0xFF0F766E),
+              ),
+            ],
           ),
         ],
       ),
@@ -1339,6 +2026,9 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
       case DesignTool.richText:
         return _buildRichTextPlaceholder();
       case DesignTool.architecture:
+        if (kIsWeb) {
+          return _buildWebArchitectureFallback();
+        }
         return ArchitectureCanvas(
           nodes: _nodes,
           edges: _edges,
@@ -1360,6 +2050,105 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
           },
         );
     }
+  }
+
+  Widget _buildWebArchitectureFallback() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppSemanticColors.border),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.account_tree_outlined,
+                    color: Color(0xFF2563EB)),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Architecture Workspace',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Web-safe summary mode is active to keep the Design Management screen stable and visible.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF6B7280),
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppSemanticColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${_nodes.length} architecture nodes captured',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF111827),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _nodes.isEmpty
+                      ? 'No architecture nodes have been added yet. Use the Rich Text Editor or add nodes from a non-web environment if you need the full interactive canvas.'
+                      : _nodes.take(6).map((n) => '• ${n.label}').join('\n'),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF4B5563),
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () => setState(() => _activeTool = DesignTool.richText),
+            icon: const Icon(Icons.text_fields, size: 18),
+            label: const Text('Switch to Rich Text Editor'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF111827),
+              side: const BorderSide(color: Color(0xFFE5E7EB)),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildRichTextPlaceholder() {

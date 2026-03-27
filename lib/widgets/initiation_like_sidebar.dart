@@ -119,6 +119,22 @@ class InitiationLikeSidebar extends StatefulWidget {
 }
 
 class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
+  static const Set<String> _designPhaseLabels = {
+    'Design Phase',
+    'Design Management',
+    'Design Specifications',
+    'Technical Alignment',
+    'Development Set Up',
+    'UI/UX Design',
+    'Backend Design',
+    'Engineering',
+    'Technical Development',
+    'Tools Integration',
+    'Long Lead Equipment Ordering',
+    'Specialized Design',
+    'Design Deliverables',
+  };
+
   // Shared expansion and scroll state across all instances so navigation
   // doesn't reset the sidebar UI state.
   static bool? _sharedInitiationExpanded;
@@ -170,6 +186,11 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
+  bool get _shouldExpandDesignPhase {
+    final activeLabel = widget.activeItemLabel;
+    return activeLabel != null && _designPhaseLabels.contains(activeLabel);
+  }
+
   bool get _isBasicPlanProject {
     final provider = ProjectDataInherited.maybeOf(context);
     return provider?.projectData.isBasicPlanProject ?? false;
@@ -214,10 +235,25 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
   @override
   void initState() {
     super.initState();
+    if (_shouldExpandDesignPhase) {
+      _designPhaseExpanded = true;
+      _sharedDesignPhaseExpanded = true;
+    }
     // Keep the shared state in sync as the user scrolls.
     _scrollController.addListener(() {
       _sharedScrollOffset = _scrollController.offset;
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant InitiationLikeSidebar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_shouldExpandDesignPhase && !_designPhaseExpanded) {
+      setState(() {
+        _designPhaseExpanded = true;
+        _sharedDesignPhaseExpanded = true;
+      });
+    }
   }
 
   @override

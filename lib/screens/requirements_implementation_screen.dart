@@ -1,15 +1,19 @@
 // ignore_for_file: unused_element
 
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:ndu_project/models/design_phase_models.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/services/design_phase_service.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/screens/design_phase_screen.dart';
+import 'package:ndu_project/screens/development_set_up_screen.dart';
 import 'package:ndu_project/screens/technical_alignment_screen.dart';
+import 'package:ndu_project/screens/ui_ux_design_screen.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
+import 'package:ndu_project/widgets/design_phase_stable_shell.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/requirements_traceability_dashboard.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -408,6 +412,13 @@ class _RequirementsImplementationScreenState
         ? null
         : _requirementRows[_safeSelectedRequirementIndex];
 
+    if (kIsWeb) {
+      return _buildStableWebScreen(
+        horizontalPadding: horizontalPadding,
+        projectData: projectData,
+      );
+    }
+
     return ResponsiveScaffold(
       activeItemLabel: 'Design Specifications',
       body: Column(
@@ -462,6 +473,304 @@ class _RequirementsImplementationScreenState
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStableWebScreen({
+    required double horizontalPadding,
+    required ProjectDataModel projectData,
+  }) {
+    final closedCount = _requirementRows
+        .where((row) => row.gapStatus.toLowerCase() == 'closed')
+        .length;
+    final pendingCount = _requirementRows.length - closedCount;
+
+    return DesignPhaseStableShell(
+      activeLabel: 'Design Specifications',
+      onItemSelected: _openStableDesignItem,
+      child: ListView(
+        padding: EdgeInsets.fromLTRB(
+          horizontalPadding,
+          24,
+          horizontalPadding,
+          32,
+        ),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x12000000),
+                  blurRadius: 18,
+                  offset: Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: _navigateToDesignOverview,
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                      tooltip: 'Back',
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Design Specifications',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Stable web mode is active so the design specifications workspace remains visible while the heavier dashboard layout is isolated.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Wrap(
+            spacing: 16,
+            runSpacing: 16,
+            children: [
+              _buildStableMetricCard(
+                'Requirements',
+                '${_requirementRows.length}',
+                const Color(0xFF1D4ED8),
+              ),
+              _buildStableMetricCard(
+                'Closed',
+                '$closedCount',
+                const Color(0xFF0F766E),
+              ),
+              _buildStableMetricCard(
+                'Pending',
+                '$pendingCount',
+                const Color(0xFFD97706),
+              ),
+              _buildStableMetricCard(
+                'Owners',
+                '${_ownerOptions(projectData).length}',
+                const Color(0xFF7C3AED),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _buildStableSectionCard(
+            title: 'Current Requirements Snapshot',
+            child: Column(
+              children: _requirementRows.take(6).map((row) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${row.requirementId} · ${row.title}',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF111827),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          row.definition,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            height: 1.45,
+                            color: Color(0xFF4B5563),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            _buildTag('Owner: ${row.owner}'),
+                            _buildTag('Status: ${row.gapStatus}'),
+                            _buildTag('Validation: ${row.validationStatus}'),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildStableSectionCard(
+            title: 'Working Notes',
+            child: TextField(
+              controller: _notesController,
+              minLines: 8,
+              maxLines: 14,
+              decoration: const InputDecoration(
+                hintText:
+                    'Capture implementation notes, handoff decisions, and traceability comments...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              OutlinedButton(
+                onPressed: _navigateToDesignOverview,
+                child: const Text('Back: Design Management'),
+              ),
+              ElevatedButton(
+                onPressed: _saveNotesNow,
+                child: const Text('Save Notes'),
+              ),
+              ElevatedButton(
+                onPressed: _navigateToTechnicalAlignment,
+                child: const Text('Next: Technical Alignment'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openStableDesignItem(String label) {
+    Widget? destination;
+    switch (label) {
+      case 'Design Management':
+        destination =
+            const DesignPhaseScreen(activeItemLabel: 'Design Management');
+        break;
+      case 'Design Specifications':
+        destination = const RequirementsImplementationScreen();
+        break;
+      case 'Technical Alignment':
+        destination = const TechnicalAlignmentScreen();
+        break;
+      case 'Development Set Up':
+        destination = const DevelopmentSetUpScreen();
+        break;
+      case 'UI/UX Design':
+        destination = const UiUxDesignScreen();
+        break;
+    }
+
+    if (destination == null) return;
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => destination!),
+    );
+  }
+
+  Widget _buildStableMetricCard(String label, String value, Color color) {
+    return Container(
+      width: 180,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStableSectionCard({
+    required String title,
+    required Widget child,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 18,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTag(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF1D4ED8),
+        ),
       ),
     );
   }

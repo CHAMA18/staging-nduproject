@@ -502,74 +502,35 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
   }
 
   Widget _buildTopSection(_DevelopmentSetupSnapshot snapshot, bool isMobile) {
-    if (isMobile) {
-      return Column(
-        children: [
-          _buildEnvironmentProvisioningCard(snapshot),
-          const SizedBox(height: 20),
-          _buildRepositoryCard(snapshot),
-        ],
-      );
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
       children: [
-        Expanded(child: _buildEnvironmentProvisioningCard(snapshot)),
-        const SizedBox(width: 20),
-        Expanded(child: _buildRepositoryCard(snapshot)),
+        _buildEnvironmentProvisioningCard(snapshot),
+        const SizedBox(height: 20),
+        _buildRepositoryCard(snapshot),
       ],
     );
   }
 
   Widget _buildMiddleSection(
       _DevelopmentSetupSnapshot snapshot, bool isMobile) {
-    if (isMobile) {
-      return Column(
-        children: [
-          _buildToolingCard(snapshot),
-          const SizedBox(height: 20),
-          _buildPipelineCard(snapshot),
-        ],
-      );
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
       children: [
-        Expanded(child: _buildToolingCard(snapshot)),
-        const SizedBox(width: 20),
-        Expanded(child: _buildPipelineCard(snapshot)),
+        _buildToolingCard(snapshot),
+        const SizedBox(height: 20),
+        _buildPipelineCard(snapshot),
       ],
     );
   }
 
   Widget _buildOperationalReadinessGrid(_DevelopmentSetupSnapshot snapshot) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final spacing = 20.0;
-        final columns = constraints.maxWidth >= 1260
-            ? 3
-            : constraints.maxWidth >= 760
-                ? 2
-                : 1;
-        final width = columns == 1
-            ? constraints.maxWidth
-            : (constraints.maxWidth - spacing * (columns - 1)) / columns;
-
-        final cards = [
-          _buildTestDataCard(snapshot),
-          _buildChannelsCard(snapshot),
-          _buildSecurityCard(snapshot),
-        ];
-
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children:
-              cards.map((card) => SizedBox(width: width, child: card)).toList(),
-        );
-      },
+    return Column(
+      children: [
+        _buildTestDataCard(snapshot),
+        const SizedBox(height: 20),
+        _buildChannelsCard(snapshot),
+        const SizedBox(height: 20),
+        _buildSecurityCard(snapshot),
+      ],
     );
   }
 

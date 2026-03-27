@@ -480,74 +480,35 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
   }
 
   Widget _buildTopSection(_UiUxDashboardSnapshot snapshot, bool isMobile) {
-    if (isMobile) {
-      return Column(
-        children: [
-          _buildInformationArchitectureCard(snapshot),
-          const SizedBox(height: 20),
-          _buildStyleGuideCard(snapshot),
-        ],
-      );
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
       children: [
-        Expanded(child: _buildInformationArchitectureCard(snapshot)),
-        const SizedBox(width: 20),
-        Expanded(child: _buildStyleGuideCard(snapshot)),
+        _buildInformationArchitectureCard(snapshot),
+        const SizedBox(height: 20),
+        _buildStyleGuideCard(snapshot),
       ],
     );
   }
 
   Widget _buildGalleryAndInteractionSection(
       _UiUxDashboardSnapshot snapshot, bool isMobile) {
-    if (isMobile) {
-      return Column(
-        children: [
-          _buildGalleryCard(snapshot),
-          const SizedBox(height: 20),
-          _buildInteractionCard(snapshot),
-        ],
-      );
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
       children: [
-        Expanded(flex: 8, child: _buildGalleryCard(snapshot)),
-        const SizedBox(width: 20),
-        Expanded(flex: 4, child: _buildInteractionCard(snapshot)),
+        _buildGalleryCard(snapshot),
+        const SizedBox(height: 20),
+        _buildInteractionCard(snapshot),
       ],
     );
   }
 
   Widget _buildValidationGrid(_UiUxDashboardSnapshot snapshot) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final spacing = 20.0;
-        final columns = constraints.maxWidth >= 1260
-            ? 3
-            : constraints.maxWidth >= 760
-                ? 2
-                : 1;
-        final width = columns == 1
-            ? constraints.maxWidth
-            : (constraints.maxWidth - spacing * (columns - 1)) / columns;
-
-        final cards = [
-          _buildUsabilityCard(snapshot),
-          _buildAccessibilityCard(snapshot),
-          _buildHandoffCard(snapshot),
-        ];
-
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children:
-              cards.map((card) => SizedBox(width: width, child: card)).toList(),
-        );
-      },
+    return Column(
+      children: [
+        _buildUsabilityCard(snapshot),
+        const SizedBox(height: 20),
+        _buildAccessibilityCard(snapshot),
+        const SizedBox(height: 20),
+        _buildHandoffCard(snapshot),
+      ],
     );
   }
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:ndu_project/services/activity_log_service.dart';
 import 'package:ndu_project/services/project_intelligence_service.dart';
 
 /// Provider that manages project data state across the entire application
@@ -157,6 +158,18 @@ class ProjectDataProvider extends ChangeNotifier {
       if (hasNewProjectId || hasCheckpointChange) {
         notifyListeners();
       }
+
+      final projectId = _projectData.projectId;
+      if (checkpoint != null && projectId != null && projectId.isNotEmpty) {
+        unawaited(
+          ActivityLogService.instance.logCheckpointActivity(
+            projectId: projectId,
+            checkpoint: checkpoint,
+            action: 'Saved page changes',
+          ),
+        );
+      }
+
       return true;
     } catch (e) {
       _lastError = e.toString();

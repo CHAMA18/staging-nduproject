@@ -11,6 +11,7 @@ import 'package:ndu_project/widgets/front_end_planning_header.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/widgets/activity_log_panel.dart';
 
 class ProjectActivitiesLogScreen extends StatefulWidget {
   const ProjectActivitiesLogScreen({super.key});
@@ -37,9 +38,7 @@ class ProjectActivitiesLogScreen extends StatefulWidget {
       }
     }
 
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ProjectActivitiesLogScreen()),
-    );
+    ActivityLogPanel.open(context);
   }
 
   @override

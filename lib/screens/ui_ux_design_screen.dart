@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
+import 'package:ndu_project/services/activity_log_service.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -166,8 +167,22 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
         'keyComponents': _keyComponents.map((e) => e.toMap()).toList(),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+      await ActivityLogService.instance.logActivity(
+        projectId: projectId,
+        phase: 'Design Phase',
+        page: 'UI/UX Design',
+        action: 'Updated UI/UX design data',
+      );
     } catch (error) {
       debugPrint('UI/UX design save error: $error');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Unable to save UI/UX Design changes right now. Please try again.',
+          ),
+        ),
+      );
     }
   }
 
@@ -276,51 +291,321 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
   String _newId() => DateTime.now().microsecondsSinceEpoch.toString();
 
   void _addJourney() {
-    setState(() {
-      _journeys.add(_JourneyItem(
-        id: _newId(),
-        title: '',
-        description: '',
-        status: _journeyStatusOptions.first,
-      ));
-    });
-    _scheduleSave();
+    _openJourneyDialog();
   }
 
   void _addInterface() {
-    setState(() {
-      _interfaces.add(_InterfaceItem(
-        id: _newId(),
-        area: '',
-        purpose: '',
-        state: _interfaceStateOptions.first,
-      ));
-    });
-    _scheduleSave();
+    _openInterfaceDialog();
   }
 
   void _addCoreToken() {
-    setState(() {
-      _coreTokens.add(_DesignElement(
-        id: _newId(),
-        title: '',
-        description: '',
-        status: _elementStatusOptions.first,
-      ));
-    });
-    _scheduleSave();
+    _openDesignElementDialog(
+      list: _coreTokens,
+      actionLabel: 'design token',
+    );
   }
 
   void _addKeyComponent() {
+    _openDesignElementDialog(
+      list: _keyComponents,
+      actionLabel: 'key component',
+    );
+  }
+
+  Future<void> _openJourneyDialog({_JourneyItem? existing}) async {
+    final titleController = TextEditingController(text: existing?.title ?? '');
+    final descriptionController =
+        TextEditingController(text: existing?.description ?? '');
+    String status = existing?.status ?? _journeyStatusOptions.first;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          title: Text(existing == null ? 'Add journey' : 'Edit journey'),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Journey title',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descriptionController,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Journey description',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: status,
+                  items: _journeyStatusOptions
+                      .map((option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(option),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setModalState(() => status = value);
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(existing == null ? 'Add journey' : 'Save changes'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != true) return;
+
     setState(() {
-      _keyComponents.add(_DesignElement(
-        id: _newId(),
-        title: '',
-        description: '',
-        status: _elementStatusOptions.first,
-      ));
+      if (existing == null) {
+        _journeys.add(_JourneyItem(
+          id: _newId(),
+          title: titleController.text.trim(),
+          description: descriptionController.text.trim(),
+          status: status,
+        ));
+      } else {
+        existing
+          ..title = titleController.text.trim()
+          ..description = descriptionController.text.trim()
+          ..status = status;
+      }
     });
     _scheduleSave();
+    _logActivity(
+      existing == null ? 'Added journey row' : 'Edited journey row',
+      details: {'itemId': existing?.id},
+    );
+  }
+
+  Future<void> _openInterfaceDialog({_InterfaceItem? existing}) async {
+    final areaController = TextEditingController(text: existing?.area ?? '');
+    final purposeController =
+        TextEditingController(text: existing?.purpose ?? '');
+    String state = existing?.state ?? _interfaceStateOptions.first;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          title: Text(
+              existing == null ? 'Add interface area' : 'Edit interface area'),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: areaController,
+                  decoration: const InputDecoration(
+                    labelText: 'Area / screen / asset',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: purposeController,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Purpose',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: state,
+                  items: _interfaceStateOptions
+                      .map((option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(option),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setModalState(() => state = value);
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'State',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(existing == null ? 'Add area' : 'Save changes'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != true) return;
+
+    setState(() {
+      if (existing == null) {
+        _interfaces.add(_InterfaceItem(
+          id: _newId(),
+          area: areaController.text.trim(),
+          purpose: purposeController.text.trim(),
+          state: state,
+        ));
+      } else {
+        existing
+          ..area = areaController.text.trim()
+          ..purpose = purposeController.text.trim()
+          ..state = state;
+      }
+    });
+    _scheduleSave();
+    _logActivity(
+      existing == null ? 'Added interface row' : 'Edited interface row',
+      details: {'itemId': existing?.id},
+    );
+  }
+
+  Future<void> _openDesignElementDialog({
+    required List<_DesignElement> list,
+    required String actionLabel,
+    _DesignElement? existing,
+  }) async {
+    final titleController = TextEditingController(text: existing?.title ?? '');
+    final descriptionController =
+        TextEditingController(text: existing?.description ?? '');
+    String status = existing?.status ?? _elementStatusOptions.first;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          title:
+              Text(existing == null ? 'Add $actionLabel' : 'Edit $actionLabel'),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: InputDecoration(
+                    labelText:
+                        '${actionLabel[0].toUpperCase()}${actionLabel.substring(1)} title',
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descriptionController,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: status,
+                  items: _elementStatusOptions
+                      .map((option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(option),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setModalState(() => status = value);
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(existing == null ? 'Add item' : 'Save changes'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != true) return;
+
+    setState(() {
+      if (existing == null) {
+        list.add(_DesignElement(
+          id: _newId(),
+          title: titleController.text.trim(),
+          description: descriptionController.text.trim(),
+          status: status,
+        ));
+      } else {
+        existing
+          ..title = titleController.text.trim()
+          ..description = descriptionController.text.trim()
+          ..status = status;
+      }
+    });
+    _scheduleSave();
+    _logActivity(
+      existing == null ? 'Added $actionLabel row' : 'Edited $actionLabel row',
+      details: {'itemId': existing?.id},
+    );
+  }
+
+  void _logActivity(String action, {Map<String, dynamic>? details}) {
+    final projectId =
+        ProjectDataInherited.maybeOf(context)?.projectData.projectId?.trim() ??
+            '';
+    if (projectId.isEmpty) return;
+    unawaited(
+      ActivityLogService.instance.logActivity(
+        projectId: projectId,
+        phase: 'Design Phase',
+        page: 'UI/UX Design',
+        action: action,
+        details: details,
+      ),
+    );
   }
 
   @override
@@ -344,7 +629,7 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
       body: Column(
         children: [
           const PlanningPhaseHeader(
-            title: 'Design Phase',
+            title: 'UI/UX Design',
             showImportButton: false,
             showContentButton: false,
             showNavigationButtons: false,
@@ -1922,10 +2207,20 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
                         Expanded(child: statusField),
                         const SizedBox(width: 8),
                         IconButton(
+                          onPressed: () =>
+                              _openJourneyDialog(existing: journey),
+                          icon: const Icon(Icons.edit_outlined,
+                              size: 18, color: Color(0xFF2563EB)),
+                        ),
+                        IconButton(
                           onPressed: () {
                             setState(() => _journeys
                                 .removeWhere((item) => item.id == journey.id));
                             _scheduleSave();
+                            _logActivity(
+                              'Deleted journey row',
+                              details: {'itemId': journey.id},
+                            );
                           },
                           icon: const Icon(Icons.delete_outline,
                               size: 18, color: Color(0xFFEF4444)),
@@ -1941,10 +2236,19 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
                     const SizedBox(width: 12),
                     SizedBox(width: 160, child: statusField),
                     IconButton(
+                      onPressed: () => _openJourneyDialog(existing: journey),
+                      icon: const Icon(Icons.edit_outlined,
+                          size: 18, color: Color(0xFF2563EB)),
+                    ),
+                    IconButton(
                       onPressed: () {
                         setState(() => _journeys
                             .removeWhere((item) => item.id == journey.id));
                         _scheduleSave();
+                        _logActivity(
+                          'Deleted journey row',
+                          details: {'itemId': journey.id},
+                        );
                       },
                       icon: const Icon(Icons.delete_outline,
                           size: 18, color: Color(0xFFEF4444)),
@@ -2042,10 +2346,19 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
                         Expanded(child: stateField),
                         const SizedBox(width: 8),
                         IconButton(
+                          onPressed: () => _openInterfaceDialog(existing: item),
+                          icon: const Icon(Icons.edit_outlined,
+                              size: 18, color: Color(0xFF2563EB)),
+                        ),
+                        IconButton(
                           onPressed: () {
                             setState(() => _interfaces
                                 .removeWhere((entry) => entry.id == item.id));
                             _scheduleSave();
+                            _logActivity(
+                              'Deleted interface row',
+                              details: {'itemId': item.id},
+                            );
                           },
                           icon: const Icon(Icons.delete_outline,
                               size: 18, color: Color(0xFFEF4444)),
@@ -2063,10 +2376,19 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
                     const SizedBox(width: 12),
                     SizedBox(width: 150, child: stateField),
                     IconButton(
+                      onPressed: () => _openInterfaceDialog(existing: item),
+                      icon: const Icon(Icons.edit_outlined,
+                          size: 18, color: Color(0xFF2563EB)),
+                    ),
+                    IconButton(
                       onPressed: () {
                         setState(() => _interfaces
                             .removeWhere((entry) => entry.id == item.id));
                         _scheduleSave();
+                        _logActivity(
+                          'Deleted interface row',
+                          details: {'itemId': item.id},
+                        );
                       },
                       icon: const Icon(Icons.delete_outline,
                           size: 18, color: Color(0xFFEF4444)),
@@ -2192,10 +2514,25 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
                         Expanded(child: statusField),
                         const SizedBox(width: 8),
                         IconButton(
+                          onPressed: () => _openDesignElementDialog(
+                            list: list,
+                            actionLabel: identical(list, _coreTokens)
+                                ? 'design token'
+                                : 'key component',
+                            existing: element,
+                          ),
+                          icon: const Icon(Icons.edit_outlined,
+                              size: 18, color: Color(0xFF2563EB)),
+                        ),
+                        IconButton(
                           onPressed: () {
                             setState(() => list.removeWhere(
                                 (entry) => entry.id == element.id));
                             _scheduleSave();
+                            _logActivity(
+                              'Deleted design system row',
+                              details: {'itemId': element.id},
+                            );
                           },
                           icon: const Icon(Icons.delete_outline,
                               size: 18, color: Color(0xFFEF4444)),
@@ -2211,10 +2548,25 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
                     const SizedBox(width: 12),
                     SizedBox(width: 160, child: statusField),
                     IconButton(
+                      onPressed: () => _openDesignElementDialog(
+                        list: list,
+                        actionLabel: identical(list, _coreTokens)
+                            ? 'design token'
+                            : 'key component',
+                        existing: element,
+                      ),
+                      icon: const Icon(Icons.edit_outlined,
+                          size: 18, color: Color(0xFF2563EB)),
+                    ),
+                    IconButton(
                       onPressed: () {
                         setState(() => list
                             .removeWhere((entry) => entry.id == element.id));
                         _scheduleSave();
+                        _logActivity(
+                          'Deleted design system row',
+                          details: {'itemId': element.id},
+                        );
                       },
                       icon: const Icon(Icons.delete_outline,
                           size: 18, color: Color(0xFFEF4444)),

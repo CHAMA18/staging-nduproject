@@ -1264,11 +1264,13 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
       if (!mounted || action == null) return;
 
       if (action == _MissingItConsiderationsAction.manual) {
-        ProjectDataHelper.showMissingDataMessage(
-          context,
-          'Please add IT considerations for at least one solution before proceeding.',
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Continuing without IT considerations. You can complete this later or let AI fill it in later.',
+            ),
+          ),
         );
-        return;
       }
 
       if (action == _MissingItConsiderationsAction.autoFill) {
@@ -1278,11 +1280,13 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
         hasITData =
             _hasRequiredItData(ProjectDataInherited.read(context).projectData);
         if (!hasITData) {
-          ProjectDataHelper.showMissingDataMessage(
-            context,
-            'AI could not generate complete IT considerations. Add at least one entry manually or skip.',
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'AI could not generate IT considerations right now. Continuing anyway so you can complete this later.',
+              ),
+            ),
           );
-          return;
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

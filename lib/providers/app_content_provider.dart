@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -17,8 +18,10 @@ class AppContentProvider extends ChangeNotifier {
   bool _isEditMode = false;
   bool _isStaticEditMode = false;
   Offset _editButtonPosition = const Offset(16, 170);
-  bool _showEditButton = true; // false = button visible, true = button hidden (default: hidden)
+  bool _showEditButton =
+      true; // false = button visible, true = button hidden (default: hidden)
   bool _isWatching = false; // Prevent multiple stream subscriptions
+  StreamSubscription<List<AppContent>>? _contentSubscription;
 
   Map<String, String> get contentCache => Map.unmodifiable(_contentCache);
   Map<String, String> get localOverrides => Map.unmodifiable(_localOverrides);
@@ -98,7 +101,8 @@ class AppContentProvider extends ChangeNotifier {
   }
 
   /// Get content value by key with optional fallback
-  String getContent(String key, {String fallback = ''}) => _contentCache[key] ?? fallback;
+  String getContent(String key, {String fallback = ''}) =>
+      _contentCache[key] ?? fallback;
 
   /// Get content value considering local overrides and edit mode.
   String getDisplayContent(String key, {String fallback = ''}) {
@@ -143,19 +147,20 @@ class AppContentProvider extends ChangeNotifier {
   void watchContent() {
     if (_isWatching) return; // Prevent multiple subscriptions
     _isWatching = true;
-    
-    AppContentService.watchContent().listen(
+
+    _contentSubscription?.cancel();
+    _contentSubscription = AppContentService.watchContent().listen(
       (content) {
         bool hasChanges = false;
         final newCache = <String, String>{};
-        
+
         for (final item in content) {
           newCache[item.key] = item.value;
           if (_contentCache[item.key] != item.value) {
             hasChanges = true;
           }
         }
-        
+
         // Only notify if content actually changed
         if (hasChanges || _contentCache.length != newCache.length) {
           _contentCache.clear();
@@ -165,9 +170,16 @@ class AppContentProvider extends ChangeNotifier {
       },
       onError: (e) {
         _error = e.toString();
+        _isWatching = false;
         notifyListeners();
       },
     );
+  }
+
+  @override
+  void dispose() {
+    _contentSubscription?.cancel();
+    super.dispose();
   }
 
   /// Load local static overrides (device-only).
@@ -180,7 +192,8 @@ class AppContentProvider extends ChangeNotifier {
       if (decoded is Map<String, dynamic>) {
         _localOverrides
           ..clear()
-          ..addAll(decoded.map((key, value) => MapEntry(key, value?.toString() ?? '')));
+          ..addAll(decoded
+              .map((key, value) => MapEntry(key, value?.toString() ?? '')));
         notifyListeners();
       }
     } catch (e) {

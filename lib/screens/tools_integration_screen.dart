@@ -4,19 +4,21 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ndu_project/services/integration_oauth_service.dart';
-import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
-import 'package:ndu_project/widgets/app_logo.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/routing/app_router.dart';
+import 'package:ndu_project/services/activity_log_service.dart';
 import 'package:ndu_project/theme.dart';
+import 'package:ndu_project/widgets/app_logo.dart';
+import 'package:ndu_project/widgets/planning_phase_header.dart';
+import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
 class ToolsIntegrationScreen extends StatefulWidget {
   const ToolsIntegrationScreen({super.key});
 
   static void open(BuildContext context) => Navigator.push(
-    context,
-    MaterialPageRoute(builder: (_) => const ToolsIntegrationScreen()),
-  );
+        context,
+        MaterialPageRoute(builder: (_) => const ToolsIntegrationScreen()),
+      );
 
   @override
   State<ToolsIntegrationScreen> createState() => _ToolsIntegrationScreenState();
@@ -28,7 +30,8 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
   final _Debouncer _saveDebouncer = _Debouncer();
   bool _isLoading = false;
   bool _suspendSave = false;
-  
+  String? _loadError;
+
   // Mock data for integrations
   List<_IntegrationItem> _integrations = [
     _IntegrationItem(
@@ -157,7 +160,10 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
     final projectId = provider?.projectData.projectId;
     if (projectId == null || projectId.isEmpty) return;
     if (!mounted) return;
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
     try {
       final doc = await _docFor(projectId).get();
       final data = doc.data() ?? {};
@@ -171,6 +177,11 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
       });
     } catch (error) {
       debugPrint('Tools integration load error: $error');
+      if (!mounted) return;
+      setState(() {
+        _loadError =
+            'Unable to load tools integration data right now. Please retry.';
+      });
     } finally {
       _suspendSave = false;
       if (mounted) setState(() => _isLoading = false);
@@ -187,17 +198,47 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
         'integrations': _integrations.map((e) => e.toMap()).toList(),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+      await ActivityLogService.instance.logActivity(
+        projectId: projectId,
+        phase: 'Design Phase',
+        page: 'Tools Integration',
+        action: 'Updated Tools Integration data',
+      );
     } catch (error) {
       debugPrint('Tools integration save error: $error');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Unable to save tools integration changes right now. Please try again.',
+          ),
+        ),
+      );
     }
   }
 
   List<_StatItem> _defaultStats() {
     return [
-      _StatItem(id: 'connected_tools', label: 'Connected tools', value: '4 / 4 healthy', valueColor: Colors.green),
-      _StatItem(id: 'health_score', label: 'Integration health score', value: '92 / 100', valueColor: const Color(0xFF0EA5E9)),
-      _StatItem(id: 'last_sync', label: 'Last full sync', value: '09:42 · every 15 min', valueColor: Colors.grey),
-      _StatItem(id: 'open_issues', label: 'Open integration issues', value: '4 items', valueColor: Colors.orange),
+      _StatItem(
+          id: 'connected_tools',
+          label: 'Connected tools',
+          value: '4 / 4 healthy',
+          valueColor: Colors.green),
+      _StatItem(
+          id: 'health_score',
+          label: 'Integration health score',
+          value: '92 / 100',
+          valueColor: const Color(0xFF0EA5E9)),
+      _StatItem(
+          id: 'last_sync',
+          label: 'Last full sync',
+          value: '09:42 · every 15 min',
+          valueColor: Colors.grey),
+      _StatItem(
+          id: 'open_issues',
+          label: 'Open integration issues',
+          value: '4 items',
+          valueColor: Colors.orange),
     ];
   }
 
@@ -206,29 +247,33 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isNarrow = screenWidth < 900;
 
-    return Scaffold(
+    return ResponsiveScaffold(
+      activeItemLabel: 'Tools Integration',
       backgroundColor: const Color(0xFFF8FAFC),
-      body: Row(
-        children: [
-          const InitiationLikeSidebar(activeItemLabel: 'Tools Integration'),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.all(isNarrow ? 16 : 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (_isLoading) const LinearProgressIndicator(minHeight: 2),
-                  if (_isLoading) const SizedBox(height: 16),
-                  _buildHeader(isNarrow),
-                  const SizedBox(height: 24),
-                  _buildToolConnectionManager(isNarrow),
-                  const SizedBox(height: 24),
-                  _buildBottomNavigation(isNarrow),
-                ],
-              ),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(isNarrow ? 16 : 32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const PlanningPhaseHeader(
+              title: 'Tools Integration',
+              showImportButton: false,
+              showContentButton: false,
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+            if (_isLoading) const LinearProgressIndicator(minHeight: 2),
+            if (_isLoading) const SizedBox(height: 16),
+            if (_loadError != null) ...[
+              _buildLoadErrorCard(),
+              const SizedBox(height: 16),
+            ],
+            _buildHeader(isNarrow),
+            const SizedBox(height: 24),
+            _buildToolConnectionManager(isNarrow),
+            const SizedBox(height: 24),
+            _buildBottomNavigation(isNarrow),
+          ],
+        ),
       ),
     );
   }
@@ -245,7 +290,8 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
     }
   }
 
-  _IntegrationItem _applyAuthState(_IntegrationItem item, IntegrationAuthState state) {
+  _IntegrationItem _applyAuthState(
+      _IntegrationItem item, IntegrationAuthState state) {
     final status = state.connected
         ? 'Connected'
         : state.hasToken
@@ -267,32 +313,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
     );
   }
 
-  void _addIntegration() {
-    setState(() {
-      _integrations.add(_IntegrationItem(
-        id: _newId(),
-        provider: IntegrationProvider.figma,
-        name: '',
-        subtitle: '',
-        icon: Icons.link,
-        iconColor: const Color(0xFF94A3B8),
-        scopes: '',
-        features: '',
-        status: _statusOptions.first,
-        statusColor: Colors.grey,
-        mapsTo: '',
-        autoHandoff: null,
-        autoSummary: null,
-        autoTranscribe: null,
-        syncMode: null,
-        lastSync: null,
-        errorInfo: null,
-        events: null,
-        sessions: null,
-      ));
-    });
-    _scheduleSave();
-  }
+  Future<void> _addIntegration() => _openIntegrationCreateDialog();
 
   void _updateIntegration(_IntegrationItem item) {
     final index = _integrations.indexWhere((entry) => entry.id == item.id);
@@ -304,6 +325,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
   void _deleteIntegration(String id) {
     setState(() => _integrations.removeWhere((entry) => entry.id == id));
     _scheduleSave();
+    _logActivity('Deleted tool integration row', details: {'itemId': id});
   }
 
   void _updateStat(_StatItem stat) {
@@ -316,19 +338,397 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
   void _deleteStat(String id) {
     setState(() => _stats.removeWhere((entry) => entry.id == id));
     _scheduleSave();
+    _logActivity('Deleted integration stat row', details: {'itemId': id});
   }
 
   // ignore: unused_element
-  void _addStat() {
+  Future<void> _addStat() => _openStatDialog();
+
+  Future<void> _openIntegrationCreateDialog() async {
+    IntegrationProvider provider = IntegrationProvider.figma;
+    final nameController = TextEditingController(text: 'Figma integration');
+    final subtitleController = TextEditingController(text: 'Design files');
+    final scopesController =
+        TextEditingController(text: 'files:read, files:write');
+    final featuresController =
+        TextEditingController(text: 'Project mapping enabled.');
+    final mapsToController = TextEditingController(text: 'Requirements');
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Connect new tool'),
+          content: SizedBox(
+            width: 560,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<IntegrationProvider>(
+                    initialValue: provider,
+                    items: IntegrationProvider.values
+                        .map(
+                          (option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(_providerLabel(option)),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setDialogState(() {
+                        provider = value;
+                        nameController.text =
+                            '${_providerLabel(value)} integration';
+                        subtitleController.text = _providerSubtitle(value);
+                        scopesController.text = _providerScopes(value);
+                        featuresController.text = _providerFeatureHint(value);
+                        mapsToController.text = _providerMapping(value);
+                      });
+                    },
+                    decoration: const InputDecoration(
+                      labelText: 'Provider',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Integration name',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: subtitleController,
+                    decoration: const InputDecoration(
+                      labelText: 'Subtitle / scope',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: scopesController,
+                    decoration: const InputDecoration(
+                      labelText: 'Scopes',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: featuresController,
+                    minLines: 2,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Features / notes',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: mapsToController,
+                    decoration: const InputDecoration(
+                      labelText: 'Maps to',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Add integration'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != true) return;
+
+    final item = _IntegrationItem(
+      id: _newId(),
+      provider: provider,
+      name: nameController.text.trim(),
+      subtitle: subtitleController.text.trim(),
+      icon: _IntegrationItem._iconForProvider(provider),
+      iconColor: _providerColor(provider),
+      scopes: scopesController.text.trim(),
+      features: featuresController.text.trim(),
+      status: 'Not connected',
+      statusColor: Colors.grey,
+      mapsTo: mapsToController.text.trim(),
+      autoHandoff: _providerSupportsHandoff(provider) ? 'OFF' : null,
+      autoSummary: _providerSupportsSummary(provider) ? 'OFF' : null,
+      autoTranscribe: _providerSupportsTranscribe(provider) ? 'OFF' : null,
+      syncMode: _providerSupportsSyncMode(provider) ? 'scheduled' : null,
+      lastSync: null,
+      errorInfo: null,
+      events: provider == IntegrationProvider.miro ? 'Events: 0 / min' : null,
+      sessions: provider == IntegrationProvider.whiteboard
+          ? 'Sessions today: 0'
+          : null,
+    );
+    setState(() => _integrations.add(item));
+    _scheduleSave();
+    _logActivity(
+      'Added tool integration row',
+      details: {'itemId': item.id, 'provider': provider.name},
+    );
+  }
+
+  Future<void> _openStatDialog({_StatItem? existing}) async {
+    final labelController = TextEditingController(text: existing?.label ?? '');
+    final valueController = TextEditingController(text: existing?.value ?? '');
+    String colorKey = _colorKeyFor(existing?.valueColor ?? Colors.grey);
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title:
+              Text(existing == null ? 'Add integration metric' : 'Edit metric'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: labelController,
+                  decoration: const InputDecoration(
+                    labelText: 'Metric label',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: valueController,
+                  decoration: const InputDecoration(
+                    labelText: 'Metric value',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: colorKey,
+                  items: const [
+                    DropdownMenuItem(value: 'green', child: Text('Healthy')),
+                    DropdownMenuItem(value: 'blue', child: Text('Info')),
+                    DropdownMenuItem(value: 'orange', child: Text('Warning')),
+                    DropdownMenuItem(value: 'grey', child: Text('Neutral')),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setDialogState(() => colorKey = value);
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Highlight',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(existing == null ? 'Add metric' : 'Save changes'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != true) return;
+
+    final item = _StatItem(
+      id: existing?.id ?? _newId(),
+      label: labelController.text.trim(),
+      value: valueController.text.trim(),
+      valueColor: _colorForKey(colorKey),
+    );
     setState(() {
-      _stats.add(_StatItem(
-        id: _newId(),
-        label: '',
-        value: '',
-        valueColor: Colors.grey,
-      ));
+      if (existing == null) {
+        _stats.add(item);
+      } else {
+        final index = _stats.indexWhere((entry) => entry.id == existing.id);
+        if (index != -1) _stats[index] = item;
+      }
     });
     _scheduleSave();
+    _logActivity(
+      existing == null
+          ? 'Added integration stat row'
+          : 'Edited integration stat row',
+      details: {'itemId': item.id},
+    );
+  }
+
+  String _providerLabel(IntegrationProvider provider) {
+    switch (provider) {
+      case IntegrationProvider.figma:
+        return 'Figma';
+      case IntegrationProvider.drawio:
+        return 'Draw.io';
+      case IntegrationProvider.miro:
+        return 'Miro';
+      case IntegrationProvider.whiteboard:
+        return 'Whiteboard';
+    }
+  }
+
+  String _providerSubtitle(IntegrationProvider provider) {
+    switch (provider) {
+      case IntegrationProvider.figma:
+        return 'Design files';
+      case IntegrationProvider.drawio:
+        return 'Architecture diagrams';
+      case IntegrationProvider.miro:
+        return 'Workshops & ideation';
+      case IntegrationProvider.whiteboard:
+        return 'Live sessions';
+    }
+  }
+
+  String _providerScopes(IntegrationProvider provider) {
+    switch (provider) {
+      case IntegrationProvider.figma:
+        return 'files:read, files:write, comments';
+      case IntegrationProvider.drawio:
+        return 'diagrams:read';
+      case IntegrationProvider.miro:
+        return 'boards:read, comments';
+      case IntegrationProvider.whiteboard:
+        return 'sessions:read';
+    }
+  }
+
+  String _providerFeatureHint(IntegrationProvider provider) {
+    switch (provider) {
+      case IntegrationProvider.figma:
+        return 'Project mapping enabled.';
+      case IntegrationProvider.drawio:
+        return 'Architecture sync with change detection.';
+      case IntegrationProvider.miro:
+        return 'Workshop capture with clustering.';
+      case IntegrationProvider.whiteboard:
+        return 'Outputs pushed to notes and actions.';
+    }
+  }
+
+  String _providerMapping(IntegrationProvider provider) {
+    switch (provider) {
+      case IntegrationProvider.figma:
+        return 'Epics, stories';
+      case IntegrationProvider.drawio:
+        return 'Tech specs';
+      case IntegrationProvider.miro:
+        return 'Requirements';
+      case IntegrationProvider.whiteboard:
+        return 'Decisions, actions';
+    }
+  }
+
+  Color _providerColor(IntegrationProvider provider) {
+    switch (provider) {
+      case IntegrationProvider.figma:
+        return const Color(0xFFF24E1E);
+      case IntegrationProvider.drawio:
+        return const Color(0xFFFF6D00);
+      case IntegrationProvider.miro:
+        return const Color(0xFFFFD02F);
+      case IntegrationProvider.whiteboard:
+        return const Color(0xFF0078D4);
+    }
+  }
+
+  bool _providerSupportsHandoff(IntegrationProvider provider) =>
+      provider == IntegrationProvider.figma;
+
+  bool _providerSupportsSummary(IntegrationProvider provider) =>
+      provider == IntegrationProvider.miro;
+
+  bool _providerSupportsTranscribe(IntegrationProvider provider) =>
+      provider == IntegrationProvider.whiteboard;
+
+  bool _providerSupportsSyncMode(IntegrationProvider provider) =>
+      provider == IntegrationProvider.drawio;
+
+  Color _colorForKey(String key) {
+    switch (key) {
+      case 'green':
+        return Colors.green;
+      case 'blue':
+        return const Color(0xFF0EA5E9);
+      case 'orange':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _colorKeyFor(Color color) {
+    if (color == Colors.green) return 'green';
+    if (color == Colors.orange) return 'orange';
+    if (color.toARGB32() == const Color(0xFF0EA5E9).toARGB32()) {
+      return 'blue';
+    }
+    return 'grey';
+  }
+
+  Widget _buildLoadErrorCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFDE68A)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706)),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              'Unable to load tools integration data right now. Please retry.',
+              style: TextStyle(
+                color: Color(0xFF92400E),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          OutlinedButton(
+            onPressed: _loadFromFirestore,
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _logActivity(String action, {Map<String, dynamic>? details}) {
+    final projectId =
+        ProjectDataInherited.maybeOf(context)?.projectData.projectId?.trim() ??
+            '';
+    if (projectId.isEmpty) return;
+    unawaited(
+      ActivityLogService.instance.logActivity(
+        projectId: projectId,
+        phase: 'Design Phase',
+        page: 'Tools Integration',
+        action: action,
+        details: details,
+      ),
+    );
   }
 
   String _newId() => DateTime.now().microsecondsSinceEpoch.toString();
@@ -359,7 +759,10 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                   children: [
                     const Text(
                       'Design Integration Control Center',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFF1A1D1F)),
+                      style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1A1D1F)),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -380,6 +783,28 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
           const SizedBox(height: 16),
           _buildActionButtons(),
         ],
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Editable integration metrics',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[700],
+                ),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: _addStat,
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Add metric'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _buildStatsRow(isNarrow),
       ],
     );
   }
@@ -424,11 +849,15 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
               onTap: () => setState(() => _selectedPhase = index),
               borderRadius: BorderRadius.circular(20),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF0EA5E9) : Colors.transparent,
+                  color:
+                      isSelected ? const Color(0xFF0EA5E9) : Colors.transparent,
                   borderRadius: BorderRadius.circular(20),
-                  border: isSelected ? null : Border.all(color: const Color(0xFFE2E8F0)),
+                  border: isSelected
+                      ? null
+                      : Border.all(color: const Color(0xFFE2E8F0)),
                 ),
                 child: Text(
                   phases[index],
@@ -473,15 +902,25 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
       spacing: 12,
       runSpacing: 8,
       children: [
-        _buildActionButton(Icons.add, 'Connect new tool', onTap: () {}),
-        _buildActionButton(Icons.tune, 'Edit integration rules', onTap: () {}),
-        _buildActionButton(Icons.warning_amber, 'View incidents', onTap: () {}),
-        _buildPrimaryActionButton('Run manual sync', onTap: () {}),
+        _buildActionButton(Icons.add, 'Connect new tool',
+            onTap: _addIntegration),
+        _buildActionButton(
+          Icons.tune,
+          'Add metric',
+          onTap: _addStat,
+        ),
+        _buildActionButton(
+          Icons.warning_amber,
+          'View incidents',
+          onTap: _showIncidentSummary,
+        ),
+        _buildPrimaryActionButton('Run manual sync', onTap: _runManualSync),
       ],
     );
   }
 
-  Widget _buildActionButton(IconData icon, String label, {VoidCallback? onTap}) {
+  Widget _buildActionButton(IconData icon, String label,
+      {VoidCallback? onTap}) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -497,7 +936,11 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
           children: [
             Icon(icon, size: 16, color: const Color(0xFF64748B)),
             const SizedBox(width: 8),
-            Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF64748B))),
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF64748B))),
           ],
         ),
       ),
@@ -519,7 +962,11 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
           children: [
             const Icon(Icons.sync, size: 16, color: Colors.white),
             const SizedBox(width: 8),
-            Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white)),
           ],
         ),
       ),
@@ -532,15 +979,19 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
       return Wrap(
         spacing: 12,
         runSpacing: 12,
-        children: _stats.map((stat) => _buildStatChip(stat, flex: false)).toList(),
+        children:
+            _stats.map((stat) => _buildStatChip(stat, flex: false)).toList(),
       );
     }
 
     return Row(
-      children: _stats.map((stat) => Expanded(child: Padding(
-        padding: const EdgeInsets.only(right: 12),
-        child: _buildStatChip(stat),
-      ))).toList(),
+      children: _stats
+          .map((stat) => Expanded(
+                  child: Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: _buildStatChip(stat),
+              )))
+          .toList(),
     );
   }
 
@@ -571,13 +1022,23 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
               key: ValueKey('stat-value-${stat.id}'),
               initialValue: stat.value,
               decoration: _inlineDecoration('Value'),
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: stat.valueColor),
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: stat.valueColor),
               textAlign: TextAlign.right,
               onChanged: (value) => _updateStat(stat.copyWith(value: value)),
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)),
+            icon: const Icon(Icons.edit_outlined,
+                size: 18, color: Color(0xFF2563EB)),
+            onPressed: () => _openStatDialog(existing: stat),
+            tooltip: 'Edit metric',
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline,
+                size: 18, color: Color(0xFFEF4444)),
             onPressed: () => _deleteStat(stat.id),
           ),
         ],
@@ -604,7 +1065,10 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                   children: [
                     const Text(
                       'Tool connection manager',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF1A1D1F)),
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1D1F)),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -615,10 +1079,11 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                 ),
               ),
               TextButton.icon(
-                onPressed: () {},
+                onPressed: _addStat,
                 icon: const Icon(Icons.edit, size: 16),
-                label: const Text('Edit all'),
-                style: TextButton.styleFrom(foregroundColor: const Color(0xFF64748B)),
+                label: const Text('Add metric'),
+                style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF64748B)),
               ),
             ],
           ),
@@ -628,7 +1093,8 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
             icon: const Icon(Icons.add, size: 18),
             label: const Text('Add integration'),
           ),
-          ..._integrations.asMap().entries.map((entry) => _buildIntegrationCard(entry.value, isNarrow, entry.key)),
+          ..._integrations.asMap().entries.map((entry) =>
+              _buildIntegrationCard(entry.value, isNarrow, entry.key)),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -639,13 +1105,80 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                 ),
               ),
               TextButton(
-                onPressed: () {},
+                onPressed: _integrations.isEmpty
+                    ? null
+                    : () => _openIntegrationConfig(_integrations.first, 0),
                 child: const Text(
                   'Open integration settings',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF0EA5E9)),
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF0EA5E9)),
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _runManualSync() async {
+    await _refreshIntegrationStatuses();
+    if (!mounted) return;
+    _logActivity('Ran manual integration sync');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Integration statuses refreshed.'),
+      ),
+    );
+  }
+
+  void _showIncidentSummary() {
+    final degraded = _integrations
+        .where((item) => item.status.toLowerCase().contains('degraded'))
+        .toList(growable: false);
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Integration incidents'),
+        content: SizedBox(
+          width: 420,
+          child: degraded.isEmpty
+              ? const Text(
+                  'No active incidents. All integrations are currently connected or awaiting setup.',
+                )
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: degraded
+                      .map(
+                        (item) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.warning_amber_rounded,
+                                  color: Color(0xFFD97706), size: 18),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '${item.name}: ${item.status}\n${item.lastSync}',
+                                  style: const TextStyle(height: 1.4),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Close'),
           ),
         ],
       ),
@@ -686,8 +1219,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
               ),
               const SizedBox(height: 12),
               ElevatedButton.icon(
-                onPressed: () =>
-                    context.push('/${AppRoutes.uiUxDesign}'),
+                onPressed: () => context.push('/${AppRoutes.uiUxDesign}'),
                 icon: const Icon(Icons.arrow_forward, size: 18),
                 label: const Text('Next: UI/UX Design'),
                 style: ElevatedButton.styleFrom(
@@ -725,8 +1257,7 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                   style: TextStyle(fontSize: 13, color: Colors.grey[500])),
               const Spacer(),
               ElevatedButton.icon(
-                onPressed: () =>
-                    context.push('/${AppRoutes.uiUxDesign}'),
+                onPressed: () => context.push('/${AppRoutes.uiUxDesign}'),
                 icon: const Icon(Icons.arrow_forward, size: 18),
                 label: const Text('Next: UI/UX Design'),
                 style: ElevatedButton.styleFrom(
@@ -746,7 +1277,8 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
     );
   }
 
-  Widget _buildIntegrationCard(_IntegrationItem item, bool isNarrow, int index) {
+  Widget _buildIntegrationCard(
+      _IntegrationItem item, bool isNarrow, int index) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -755,7 +1287,9 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      child: isNarrow ? _buildNarrowCard(item, index) : _buildWideCard(item, index),
+      child: isNarrow
+          ? _buildNarrowCard(item, index)
+          : _buildWideCard(item, index),
     );
   }
 
@@ -786,8 +1320,12 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                       key: ValueKey('integration-name-${item.id}'),
                       initialValue: item.name,
                       decoration: _inlineDecoration('Integration name'),
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1A1D1F)),
-                      onChanged: (value) => _updateIntegration(item.copyWith(name: value)),
+                      style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1D1F)),
+                      onChanged: (value) =>
+                          _updateIntegration(item.copyWith(name: value)),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -797,7 +1335,8 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                       initialValue: item.subtitle,
                       decoration: _inlineDecoration('Scope'),
                       style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                      onChanged: (value) => _updateIntegration(item.copyWith(subtitle: value)),
+                      onChanged: (value) =>
+                          _updateIntegration(item.copyWith(subtitle: value)),
                     ),
                   ),
                 ],
@@ -811,7 +1350,8 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                       initialValue: item.scopes,
                       decoration: _inlineDecoration('Scopes'),
                       style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                      onChanged: (value) => _updateIntegration(item.copyWith(scopes: value)),
+                      onChanged: (value) =>
+                          _updateIntegration(item.copyWith(scopes: value)),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -821,7 +1361,8 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                       initialValue: item.features,
                       decoration: _inlineDecoration('Features'),
                       style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                      onChanged: (value) => _updateIntegration(item.copyWith(features: value)),
+                      onChanged: (value) =>
+                          _updateIntegration(item.copyWith(features: value)),
                     ),
                   ),
                 ],
@@ -835,12 +1376,25 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
         ),
         Column(
           children: [
+            OutlinedButton.icon(
+              onPressed: () => _openIntegrationConfig(item, index),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF2563EB),
+                side: const BorderSide(color: Color(0xFFE2E8F0)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              icon: const Icon(Icons.tune, size: 16),
+              label: const Text('Configure', style: TextStyle(fontSize: 12)),
+            ),
+            const SizedBox(height: 8),
             OutlinedButton(
               onPressed: () => _deleteIntegration(item.id),
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFFEF4444),
                 side: const BorderSide(color: Color(0xFFE2E8F0)),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               ),
               child: const Text('Remove', style: TextStyle(fontSize: 12)),
             ),
@@ -874,15 +1428,18 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                     key: ValueKey('integration-name-narrow-${item.id}'),
                     initialValue: item.name,
                     decoration: _inlineDecoration('Integration name'),
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                    onChanged: (value) => _updateIntegration(item.copyWith(name: value)),
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w600),
+                    onChanged: (value) =>
+                        _updateIntegration(item.copyWith(name: value)),
                   ),
                   TextFormField(
                     key: ValueKey('integration-subtitle-narrow-${item.id}'),
                     initialValue: item.subtitle,
                     decoration: _inlineDecoration('Scope'),
                     style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    onChanged: (value) => _updateIntegration(item.copyWith(subtitle: value)),
+                    onChanged: (value) =>
+                        _updateIntegration(item.copyWith(subtitle: value)),
                   ),
                 ],
               ),
@@ -895,18 +1452,33 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
           initialValue: item.scopes,
           decoration: _inlineDecoration('Scopes'),
           style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-          onChanged: (value) => _updateIntegration(item.copyWith(scopes: value)),
+          onChanged: (value) =>
+              _updateIntegration(item.copyWith(scopes: value)),
         ),
         const SizedBox(height: 4),
         TextFormField(
           initialValue: item.features,
           decoration: _inlineDecoration('Features'),
           style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-          onChanged: (value) => _updateIntegration(item.copyWith(features: value)),
+          onChanged: (value) =>
+              _updateIntegration(item.copyWith(features: value)),
         ),
         const SizedBox(height: 8),
         _buildMappingRow(item),
         const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => _openIntegrationConfig(item, index),
+            icon: const Icon(Icons.tune, size: 16),
+            label: const Text('Configure integration'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF2563EB),
+              side: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
           child: OutlinedButton(
@@ -932,8 +1504,10 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
 
     final scopesController = TextEditingController(text: item.scopes);
     final mapsToController = TextEditingController(text: item.mapsTo);
-    final clientIdController = TextEditingController(text: clientConfig.clientId ?? '');
-    final clientSecretController = TextEditingController(text: clientConfig.clientSecret ?? '');
+    final clientIdController =
+        TextEditingController(text: clientConfig.clientId ?? '');
+    final clientSecretController =
+        TextEditingController(text: clientConfig.clientSecret ?? '');
     String? syncMode = item.syncMode;
     bool autoHandoff = (item.autoHandoff ?? '').toLowerCase() == 'on';
     bool autoSummary = (item.autoSummary ?? '').toLowerCase() == 'on';
@@ -970,17 +1544,23 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                         Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
                                 color: statusColor.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Text('Status: $statusLabel', style: TextStyle(fontSize: 12, color: statusColor, fontWeight: FontWeight.w600)),
+                              child: Text('Status: $statusLabel',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: statusColor,
+                                      fontWeight: FontWeight.w600)),
                             ),
                             const Spacer(),
                             Text(
                               'Redirect URI: ${config.redirectUri}',
-                              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                              style: TextStyle(
+                                  fontSize: 11, color: Colors.grey[600]),
                             ),
                           ],
                         ),
@@ -1025,18 +1605,24 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                               border: OutlineInputBorder(),
                             ),
                             items: const [
-                              DropdownMenuItem(value: 'scheduled', child: Text('Scheduled')),
-                              DropdownMenuItem(value: 'manual', child: Text('Manual')),
-                              DropdownMenuItem(value: 'continuous', child: Text('Continuous')),
+                              DropdownMenuItem(
+                                  value: 'scheduled', child: Text('Scheduled')),
+                              DropdownMenuItem(
+                                  value: 'manual', child: Text('Manual')),
+                              DropdownMenuItem(
+                                  value: 'continuous',
+                                  child: Text('Continuous')),
                             ],
-                            onChanged: (value) => setDialogState(() => syncMode = value),
+                            onChanged: (value) =>
+                                setDialogState(() => syncMode = value),
                           ),
                         ],
                         if (item.autoHandoff != null) ...[
                           const SizedBox(height: 8),
                           SwitchListTile.adaptive(
                             value: autoHandoff,
-                            onChanged: (value) => setDialogState(() => autoHandoff = value),
+                            onChanged: (value) =>
+                                setDialogState(() => autoHandoff = value),
                             title: const Text('Auto-handoff'),
                           ),
                         ],
@@ -1044,7 +1630,8 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                           const SizedBox(height: 8),
                           SwitchListTile.adaptive(
                             value: autoSummary,
-                            onChanged: (value) => setDialogState(() => autoSummary = value),
+                            onChanged: (value) =>
+                                setDialogState(() => autoSummary = value),
                             title: const Text('Auto-summary'),
                           ),
                         ],
@@ -1052,13 +1639,16 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                           const SizedBox(height: 8),
                           SwitchListTile.adaptive(
                             value: autoTranscribe,
-                            onChanged: (value) => setDialogState(() => autoTranscribe = value),
+                            onChanged: (value) =>
+                                setDialogState(() => autoTranscribe = value),
                             title: const Text('Auto-transcribe'),
                           ),
                         ],
                         if ((authError ?? '').isNotEmpty) ...[
                           const SizedBox(height: 8),
-                          Text(authError!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                          Text(authError!,
+                              style: const TextStyle(
+                                  color: Colors.red, fontSize: 12)),
                         ],
                       ],
                     ),
@@ -1077,12 +1667,24 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                           status: 'Not connected',
                           statusColor: Colors.grey,
                           lastSync: null,
-                          scopes: scopesController.text.trim().isEmpty ? item.scopes : scopesController.text.trim(),
-                          mapsTo: mapsToController.text.trim().isEmpty ? item.mapsTo : mapsToController.text.trim(),
-                          syncMode: item.syncMode != null ? (syncMode ?? item.syncMode) : null,
-                          autoHandoff: item.autoHandoff != null ? (autoHandoff ? 'ON' : 'OFF') : null,
-                          autoSummary: item.autoSummary != null ? (autoSummary ? 'ON' : 'OFF') : null,
-                          autoTranscribe: item.autoTranscribe != null ? (autoTranscribe ? 'ON' : 'OFF') : null,
+                          scopes: scopesController.text.trim().isEmpty
+                              ? item.scopes
+                              : scopesController.text.trim(),
+                          mapsTo: mapsToController.text.trim().isEmpty
+                              ? item.mapsTo
+                              : mapsToController.text.trim(),
+                          syncMode: item.syncMode != null
+                              ? (syncMode ?? item.syncMode)
+                              : null,
+                          autoHandoff: item.autoHandoff != null
+                              ? (autoHandoff ? 'ON' : 'OFF')
+                              : null,
+                          autoSummary: item.autoSummary != null
+                              ? (autoSummary ? 'ON' : 'OFF')
+                              : null,
+                          autoTranscribe: item.autoTranscribe != null
+                              ? (autoTranscribe ? 'ON' : 'OFF')
+                              : null,
                         );
                         if (!dialogContext.mounted) return;
                         Navigator.of(dialogContext).pop(updatedItem);
@@ -1096,7 +1698,8 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                           : () async {
                               final clientId = clientIdController.text.trim();
                               if (clientId.isEmpty) {
-                                setDialogState(() => authError = 'Client ID is required.');
+                                setDialogState(
+                                    () => authError = 'Client ID is required.');
                                 return;
                               }
                               setDialogState(() {
@@ -1107,25 +1710,46 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                                 await service.saveClientConfig(
                                   provider: item.provider,
                                   clientId: clientId,
-                                  clientSecret: clientSecretController.text.trim(),
+                                  clientSecret:
+                                      clientSecretController.text.trim(),
                                 );
-                                final scopes = _parseScopes(scopesController.text);
+                                final scopes =
+                                    _parseScopes(scopesController.text);
                                 final state = await service.connect(
                                   provider: item.provider,
                                   clientId: clientId,
-                                  clientSecret: clientSecretController.text.trim(),
+                                  clientSecret:
+                                      clientSecretController.text.trim(),
                                   scopesOverride: scopes,
                                 );
                                 final updatedItem = item.copyWith(
-                                  status: state.connected ? 'Connected' : 'Not connected',
-                                  statusColor: state.connected ? Colors.green : Colors.grey,
-                                  lastSync: state.updatedAt == null ? item.lastSync : 'Token refresh: ${_formatRelativeTime(state.updatedAt!)}',
-                                  scopes: scopesController.text.trim().isEmpty ? item.scopes : scopesController.text.trim(),
-                                  mapsTo: mapsToController.text.trim().isEmpty ? item.mapsTo : mapsToController.text.trim(),
-                                  syncMode: item.syncMode != null ? (syncMode ?? item.syncMode) : null,
-                                  autoHandoff: item.autoHandoff != null ? (autoHandoff ? 'ON' : 'OFF') : null,
-                                  autoSummary: item.autoSummary != null ? (autoSummary ? 'ON' : 'OFF') : null,
-                                  autoTranscribe: item.autoTranscribe != null ? (autoTranscribe ? 'ON' : 'OFF') : null,
+                                  status: state.connected
+                                      ? 'Connected'
+                                      : 'Not connected',
+                                  statusColor: state.connected
+                                      ? Colors.green
+                                      : Colors.grey,
+                                  lastSync: state.updatedAt == null
+                                      ? item.lastSync
+                                      : 'Token refresh: ${_formatRelativeTime(state.updatedAt!)}',
+                                  scopes: scopesController.text.trim().isEmpty
+                                      ? item.scopes
+                                      : scopesController.text.trim(),
+                                  mapsTo: mapsToController.text.trim().isEmpty
+                                      ? item.mapsTo
+                                      : mapsToController.text.trim(),
+                                  syncMode: item.syncMode != null
+                                      ? (syncMode ?? item.syncMode)
+                                      : null,
+                                  autoHandoff: item.autoHandoff != null
+                                      ? (autoHandoff ? 'ON' : 'OFF')
+                                      : null,
+                                  autoSummary: item.autoSummary != null
+                                      ? (autoSummary ? 'ON' : 'OFF')
+                                      : null,
+                                  autoTranscribe: item.autoTranscribe != null
+                                      ? (autoTranscribe ? 'ON' : 'OFF')
+                                      : null,
                                 );
                                 if (!dialogContext.mounted) return;
                                 Navigator.of(dialogContext).pop(updatedItem);
@@ -1148,12 +1772,24 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                   ElevatedButton(
                     onPressed: () {
                       final updatedItem = item.copyWith(
-                        scopes: scopesController.text.trim().isEmpty ? item.scopes : scopesController.text.trim(),
-                        mapsTo: mapsToController.text.trim().isEmpty ? item.mapsTo : mapsToController.text.trim(),
-                        syncMode: item.syncMode != null ? (syncMode ?? item.syncMode) : null,
-                        autoHandoff: item.autoHandoff != null ? (autoHandoff ? 'ON' : 'OFF') : null,
-                        autoSummary: item.autoSummary != null ? (autoSummary ? 'ON' : 'OFF') : null,
-                        autoTranscribe: item.autoTranscribe != null ? (autoTranscribe ? 'ON' : 'OFF') : null,
+                        scopes: scopesController.text.trim().isEmpty
+                            ? item.scopes
+                            : scopesController.text.trim(),
+                        mapsTo: mapsToController.text.trim().isEmpty
+                            ? item.mapsTo
+                            : mapsToController.text.trim(),
+                        syncMode: item.syncMode != null
+                            ? (syncMode ?? item.syncMode)
+                            : null,
+                        autoHandoff: item.autoHandoff != null
+                            ? (autoHandoff ? 'ON' : 'OFF')
+                            : null,
+                        autoSummary: item.autoSummary != null
+                            ? (autoSummary ? 'ON' : 'OFF')
+                            : null,
+                        autoTranscribe: item.autoTranscribe != null
+                            ? (autoTranscribe ? 'ON' : 'OFF')
+                            : null,
                       );
                       Navigator.of(dialogContext).pop(updatedItem);
                     },
@@ -1175,6 +1811,11 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
     final saved = updated;
     if (saved == null || !mounted) return;
     setState(() => _integrations[index] = saved);
+    _scheduleSave();
+    _logActivity(
+      'Updated integration configuration',
+      details: {'itemId': saved.id, 'provider': saved.provider.name},
+    );
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('${saved.name} settings updated'),
@@ -1186,8 +1827,12 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
   Color _statusColorFor(String status) {
     final normalized = status.toLowerCase();
     if (normalized.contains('connected')) return Colors.green;
-    if (normalized.contains('degraded') || normalized.contains('retry')) return Colors.orange;
-    if (normalized.contains('paused') || normalized.contains('disconnected')) return Colors.grey;
+    if (normalized.contains('degraded') || normalized.contains('retry')) {
+      return Colors.orange;
+    }
+    if (normalized.contains('paused') || normalized.contains('disconnected')) {
+      return Colors.grey;
+    }
     return const Color(0xFF64748B);
   }
 
@@ -1227,13 +1872,18 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
           const SizedBox(width: 6),
           DropdownButtonHideUnderline(
             child: DropdownButton<String>(
-              value: _statusOptions.contains(status) ? status : _statusOptions.first,
+              value: _statusOptions.contains(status)
+                  ? status
+                  : _statusOptions.first,
               items: _statusOptions
                   .map((option) => DropdownMenuItem(
                         value: option,
                         child: Text(
                           option,
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: color),
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: color),
                         ),
                       ))
                   .toList(),
@@ -1261,7 +1911,8 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
             value: item.errorInfo ?? '',
             hint: 'Error info',
             color: Colors.red,
-            onChanged: (value) => _updateIntegration(item.copyWith(errorInfo: value)),
+            onChanged: (value) =>
+                _updateIntegration(item.copyWith(errorInfo: value)),
           ),
         if (item.lastSync != null)
           _buildMetaField(
@@ -1269,7 +1920,8 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
             value: item.lastSync ?? '',
             hint: 'Last sync',
             color: Colors.grey[500],
-            onChanged: (value) => _updateIntegration(item.copyWith(lastSync: value)),
+            onChanged: (value) =>
+                _updateIntegration(item.copyWith(lastSync: value)),
           ),
         if (item.events != null)
           _buildMetaField(
@@ -1277,7 +1929,8 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
             value: item.events ?? '',
             hint: 'Events',
             color: Colors.grey[500],
-            onChanged: (value) => _updateIntegration(item.copyWith(events: value)),
+            onChanged: (value) =>
+                _updateIntegration(item.copyWith(events: value)),
           ),
         if (item.sessions != null)
           _buildMetaField(
@@ -1285,7 +1938,8 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
             value: item.sessions ?? '',
             hint: 'Sessions',
             color: Colors.grey[500],
-            onChanged: (value) => _updateIntegration(item.copyWith(sessions: value)),
+            onChanged: (value) =>
+                _updateIntegration(item.copyWith(sessions: value)),
           ),
       ],
     );
@@ -1319,31 +1973,36 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
         _buildMappingChip(
           label: 'Maps to',
           value: item.mapsTo ?? '',
-          onChanged: (value) => _updateIntegration(item.copyWith(mapsTo: value)),
+          onChanged: (value) =>
+              _updateIntegration(item.copyWith(mapsTo: value)),
         ),
         if (item.autoHandoff != null)
           _buildMappingChip(
             label: 'Auto-handoff',
             value: item.autoHandoff ?? '',
-            onChanged: (value) => _updateIntegration(item.copyWith(autoHandoff: value)),
+            onChanged: (value) =>
+                _updateIntegration(item.copyWith(autoHandoff: value)),
           ),
         if (item.syncMode != null)
           _buildMappingChip(
             label: 'Sync mode',
             value: item.syncMode ?? '',
-            onChanged: (value) => _updateIntegration(item.copyWith(syncMode: value)),
+            onChanged: (value) =>
+                _updateIntegration(item.copyWith(syncMode: value)),
           ),
         if (item.autoSummary != null)
           _buildMappingChip(
             label: 'Auto-summary',
             value: item.autoSummary ?? '',
-            onChanged: (value) => _updateIntegration(item.copyWith(autoSummary: value)),
+            onChanged: (value) =>
+                _updateIntegration(item.copyWith(autoSummary: value)),
           ),
         if (item.autoTranscribe != null)
           _buildMappingChip(
             label: 'Auto-transcribe',
             value: item.autoTranscribe ?? '',
-            onChanged: (value) => _updateIntegration(item.copyWith(autoTranscribe: value)),
+            onChanged: (value) =>
+                _updateIntegration(item.copyWith(autoTranscribe: value)),
           ),
       ],
     );
@@ -1363,7 +2022,8 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('$label: ', style: const TextStyle(fontSize: 11, color: Color(0xFF475569))),
+          Text('$label: ',
+              style: const TextStyle(fontSize: 11, color: Color(0xFF475569))),
           SizedBox(
             width: 120,
             child: TextFormField(
@@ -1492,22 +2152,26 @@ class _IntegrationItem {
     if (data is! List) return [];
     return data.map((item) {
       final map = Map<String, dynamic>.from(item as Map? ?? {});
-      final providerName = map['provider']?.toString() ?? IntegrationProvider.figma.name;
+      final providerName =
+          map['provider']?.toString() ?? IntegrationProvider.figma.name;
       final provider = IntegrationProvider.values.firstWhere(
         (value) => value.name == providerName,
         orElse: () => IntegrationProvider.figma,
       );
       return _IntegrationItem(
-        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: map['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         provider: provider,
         name: map['name']?.toString() ?? '',
         subtitle: map['subtitle']?.toString() ?? '',
         icon: _iconForProvider(provider),
-        iconColor: Color(map['iconColor'] is int ? map['iconColor'] as int : 0xFF94A3B8),
+        iconColor: Color(
+            map['iconColor'] is int ? map['iconColor'] as int : 0xFF94A3B8),
         scopes: map['scopes']?.toString() ?? '',
         features: map['features']?.toString() ?? '',
         status: map['status']?.toString() ?? 'Not connected',
-        statusColor: _statusColorForLabel(map['status']?.toString() ?? 'Not connected'),
+        statusColor:
+            _statusColorForLabel(map['status']?.toString() ?? 'Not connected'),
         mapsTo: map['mapsTo']?.toString(),
         autoHandoff: map['autoHandoff']?.toString(),
         syncMode: map['syncMode']?.toString(),
@@ -1569,17 +2233,21 @@ class _StatItem {
     return data.map((item) {
       final map = Map<String, dynamic>.from(item as Map? ?? {});
       return _StatItem(
-        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: map['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         label: map['label']?.toString() ?? '',
         value: map['value']?.toString() ?? '',
-        valueColor: Color(map['valueColor'] is int ? map['valueColor'] as int : Colors.grey.toARGB32()),
+        valueColor: Color(map['valueColor'] is int
+            ? map['valueColor'] as int
+            : Colors.grey.toARGB32()),
       );
     }).toList();
   }
 }
 
 class _Debouncer {
-  _Debouncer({Duration? delay}) : delay = delay ?? const Duration(milliseconds: 700);
+  _Debouncer({Duration? delay})
+      : delay = delay ?? const Duration(milliseconds: 700);
 
   final Duration delay;
   Timer? _timer;
@@ -1597,7 +2265,11 @@ class _Debouncer {
 Color _statusColorForLabel(String status) {
   final normalized = status.toLowerCase();
   if (normalized.contains('connected')) return Colors.green;
-  if (normalized.contains('degraded') || normalized.contains('retry')) return Colors.orange;
-  if (normalized.contains('paused') || normalized.contains('disconnected')) return Colors.grey;
+  if (normalized.contains('degraded') || normalized.contains('retry')) {
+    return Colors.orange;
+  }
+  if (normalized.contains('paused') || normalized.contains('disconnected')) {
+    return Colors.grey;
+  }
   return const Color(0xFF64748B);
 }

@@ -1479,11 +1479,13 @@ class _InfrastructureConsiderationsScreenState
       if (!mounted || action == null) return;
 
       if (action == _MissingInfrastructureAction.manual) {
-        ProjectDataHelper.showMissingDataMessage(
-          context,
-          'Please add infrastructure considerations for at least one solution before proceeding.',
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Continuing without infrastructure considerations. You can complete this later or let AI fill it in later.',
+            ),
+          ),
         );
-        return;
       }
 
       if (action == _MissingInfrastructureAction.autoFill) {
@@ -1494,11 +1496,13 @@ class _InfrastructureConsiderationsScreenState
           ProjectDataInherited.read(context).projectData,
         );
         if (!hasInfraData) {
-          ProjectDataHelper.showMissingDataMessage(
-            context,
-            'AI could not generate complete infrastructure considerations. Add at least one entry manually or skip.',
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'AI could not generate infrastructure considerations right now. Continuing anyway so you can complete this later.',
+              ),
+            ),
           );
-          return;
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

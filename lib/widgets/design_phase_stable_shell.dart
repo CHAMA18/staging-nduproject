@@ -55,7 +55,38 @@ class DesignPhaseStableShell extends StatelessWidget {
                 showHeader: true,
               ),
             ),
-            Expanded(child: child),
+            Expanded(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 20,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x0F000000),
+                            blurRadius: 12,
+                            offset: Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: UnifiedPhaseHeader(
+                        title: activeLabel,
+                        showActivityLogAction: true,
+                      ),
+                    ),
+                  ),
+                  Expanded(child: child),
+                ],
+              ),
+            ),
           ],
         ),
       ),

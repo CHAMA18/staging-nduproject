@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:ndu_project/services/activity_log_service.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
@@ -126,6 +127,18 @@ class _PlanningAiNotesCardState extends State<PlanningAiNotesCard> {
       _controller.text = cleaned;
       _handleChanged(cleaned);
       await _saveNow();
+      final projectId = data.projectId?.trim() ?? '';
+      if (projectId.isNotEmpty) {
+        await ActivityLogService.instance.logCheckpointActivity(
+          projectId: projectId,
+          checkpoint: widget.checkpoint,
+          action: 'Generated AI content',
+          details: {
+            'page': widget.sectionLabel,
+            'noteKey': widget.noteKey,
+          },
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

@@ -266,10 +266,10 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
     super.dispose();
   }
 
-  /// Validate Planning Phase requirements before navigation
-  bool _validatePlanningPhaseRequirements() {
+  /// Surface missing setup context without blocking navigation.
+  void _notifyPlanningPhaseRequirements() {
     final provider = ProjectDataInherited.maybeOf(context);
-    if (provider == null) return true; // Skip validation if no provider
+    if (provider == null) return;
 
     final projectData = provider.projectData;
     final missingFields = <String>[];
@@ -290,13 +290,13 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Please complete the following before proceeding: ${missingFields.join(', ')}',
+              'Opening this page with partial setup. Missing context: ${missingFields.join(', ')}. AI or manual entry can fill this in later.',
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
-            backgroundColor: const Color(0xFFEF4444),
+            backgroundColor: const Color(0xFFD97706),
             duration: const Duration(seconds: 4),
             action: SnackBarAction(
-              label: 'Go to Framework',
+              label: 'Project Details',
               textColor: Colors.white,
               onPressed: () {
                 _openProjectFramework();
@@ -305,10 +305,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
           ),
         );
       }
-      return false;
     }
-
-    return true;
   }
 
   // Navigation helper.
@@ -346,9 +343,8 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
       'quality_management',
     ];
 
-    if (planningPhaseCheckpoints.contains(checkpoint) &&
-        !_validatePlanningPhaseRequirements()) {
-      return; // Block navigation if validation fails
+    if (planningPhaseCheckpoints.contains(checkpoint)) {
+      _notifyPlanningPhaseRequirements();
     }
 
     final provider = ProjectDataInherited.maybeOf(context);

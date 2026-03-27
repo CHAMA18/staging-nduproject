@@ -314,7 +314,7 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
       body: Column(
         children: [
           const PlanningPhaseHeader(
-            title: 'Design Phase',
+            title: 'Development Set Up',
             showImportButton: false,
             showContentButton: false,
           ),

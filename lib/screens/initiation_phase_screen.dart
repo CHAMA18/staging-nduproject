@@ -667,11 +667,11 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
           'infrastructure_considerations';
     }
 
-    // If fields are missing, route to the first missing screen
+    // Missing setup context should no longer block phase progression.
     if (missingFields.isNotEmpty) {
       if (!mounted) return;
 
-      // Save current data first
+      // Save current data first so the next phase still has the latest context.
       provider.updateInitiationData(
         notes: _notesController.text.trim(),
         businessCase: _businessCaseController.text.trim(),
@@ -679,54 +679,26 @@ class _InitiationPhaseScreenState extends State<InitiationPhaseScreen> {
       await provider.saveToFirebase(checkpoint: 'business_case');
       if (!mounted) return;
 
-      // Show dialog indicating which fields need to be filled
-      await showDialog(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Required Information Missing'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Please complete the following sections:'),
-              const SizedBox(height: 12),
-              ...missingFields.keys.map((field) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      children: [
-                        Icon(Icons.circle, size: 8, color: Colors.orange),
-                        const SizedBox(width: 8),
-                        Text(field,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                  )),
-            ],
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Continuing to Front End Planning with partial setup. Missing: ${missingFields.keys.join(', ')}.',
           ),
-          actions: [
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                // Navigate to first missing field
-                final firstMissingCheckpoint = missingFields.values.first;
-                _navigateToRequiredField(firstMissingCheckpoint);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFD700),
-                foregroundColor: Colors.black,
-              ),
-              child: const Text('Fill Required Fields'),
-            ),
-          ],
+          backgroundColor: const Color(0xFFD97706),
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'Review',
+            textColor: Colors.white,
+            onPressed: () {
+              final firstMissingCheckpoint = missingFields.values.first;
+              _navigateToRequiredField(firstMissingCheckpoint);
+            },
+          ),
         ),
       );
-      return;
     }
 
-    // All required fields are filled - proceed to Front End Planning
+    // Proceed to Front End Planning even if some setup is still empty.
     provider.updateInitiationData(
       notes: _notesController.text.trim(),
       businessCase: _businessCaseController.text.trim(),

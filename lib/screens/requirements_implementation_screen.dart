@@ -424,7 +424,7 @@ class _RequirementsImplementationScreenState
       body: Column(
         children: [
           const PlanningPhaseHeader(
-            title: 'Design',
+            title: 'Requirements Implementation',
             showImportButton: false,
             showContentButton: false,
           ),

@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/services/architecture_service.dart';
+import 'package:ndu_project/services/activity_log_service.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
 import 'package:ndu_project/theme.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
@@ -311,7 +312,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
       body: Column(
         children: [
           const PlanningPhaseHeader(
-            title: 'Design Phase',
+            title: 'Backend Design',
             showImportButton: false,
             showContentButton: false,
             showNavigationButtons: false,
@@ -463,12 +464,44 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
       'updatedAt': FieldValue.serverTimestamp(),
     };
 
-    await FirebaseFirestore.instance
-        .collection('projects')
-        .doc(projectId)
-        .collection('design_phase_sections')
-        .doc('backend_design')
-        .set(payload, SetOptions(merge: true));
+    try {
+      await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('design_phase_sections')
+          .doc('backend_design')
+          .set(payload, SetOptions(merge: true));
+      await ActivityLogService.instance.logActivity(
+        projectId: projectId,
+        phase: 'Design Phase',
+        page: 'Backend Design',
+        action: 'Updated Backend Design data',
+      );
+    } catch (error) {
+      debugPrint('Backend design save error: $error');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Unable to save Backend Design changes right now. Please try again.',
+          ),
+        ),
+      );
+    }
+  }
+
+  void _logActivity(String action, {Map<String, dynamic>? details}) {
+    final projectId = _projectId()?.trim() ?? '';
+    if (projectId.isEmpty) return;
+    unawaited(
+      ActivityLogService.instance.logActivity(
+        projectId: projectId,
+        phase: 'Design Phase',
+        page: 'Backend Design',
+        action: action,
+        details: details,
+      ),
+    );
   }
 
   Widget _buildInfrastructureHero({
@@ -1884,10 +1917,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
     );
   }
 
-  void _addComponent() {
-    setState(() => _components.add(_ArchitectureComponent.empty()));
-    _scheduleSave();
-  }
+  Future<void> _addComponent() => _openComponentDialog();
 
   void _updateComponent(_ArchitectureComponent updated) {
     final index = _components.indexWhere((entry) => entry.id == updated.id);
@@ -1899,6 +1929,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
   void _deleteComponent(String id) {
     setState(() => _components.removeWhere((entry) => entry.id == id));
     _scheduleSave();
+    _logActivity('Deleted architecture component row', details: {'itemId': id});
   }
 
   void _addQuickArchitectureComponent() {
@@ -1924,12 +1955,10 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
       _quickComponentStatus = _componentStatuses.first;
     });
     _scheduleSave();
+    _logActivity('Added architecture component row', details: {'name': name});
   }
 
-  void _addDataFlow() {
-    setState(() => _dataFlows.add(_ArchitectureDataFlow.empty()));
-    _scheduleSave();
-  }
+  Future<void> _addDataFlow() => _openDataFlowDialog();
 
   void _updateDataFlow(_ArchitectureDataFlow updated) {
     final index = _dataFlows.indexWhere((entry) => entry.id == updated.id);
@@ -1941,12 +1970,10 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
   void _deleteDataFlow(String id) {
     setState(() => _dataFlows.removeWhere((entry) => entry.id == id));
     _scheduleSave();
+    _logActivity('Deleted data flow row', details: {'itemId': id});
   }
 
-  void _addDesignDocument() {
-    setState(() => _designDocuments.add(_DesignDocument.empty()));
-    _scheduleSave();
-  }
+  Future<void> _addDesignDocument() => _openDesignDocumentDialog();
 
   void _updateDesignDocument(_DesignDocument updated) {
     final index =
@@ -1959,12 +1986,10 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
   void _deleteDesignDocument(String id) {
     setState(() => _designDocuments.removeWhere((entry) => entry.id == id));
     _scheduleSave();
+    _logActivity('Deleted design document row', details: {'itemId': id});
   }
 
-  void _addEntity() {
-    setState(() => _entities.add(_DbEntity.empty()));
-    _scheduleSave();
-  }
+  Future<void> _addEntity() => _openEntityDialog();
 
   void _updateEntity(_DbEntity updated) {
     final index = _entities.indexWhere((entry) => entry.id == updated.id);
@@ -1976,6 +2001,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
   void _deleteEntity(String id) {
     setState(() => _entities.removeWhere((entry) => entry.id == id));
     _scheduleSave();
+    _logActivity('Deleted data entity row', details: {'itemId': id});
   }
 
   void _addQuickDataEntity() {
@@ -2005,11 +2031,506 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
       _quickEntityDescriptionController.clear();
     });
     _scheduleSave();
+    _logActivity('Added quick data entity row', details: {'name': name});
   }
 
-  void _addField() {
-    setState(() => _fields.add(_DbField.empty()));
+  Future<void> _addField() => _openFieldDialog();
+
+  Future<void> _openComponentDialog({_ArchitectureComponent? existing}) async {
+    final nameController = TextEditingController(text: existing?.name ?? '');
+    final responsibilityController =
+        TextEditingController(text: existing?.responsibility ?? '');
+    final ownerOptions = _ownerOptions(currentValue: existing?.owner);
+    String type = existing?.type ?? _componentTypes.first;
+    String owner = existing?.owner.isNotEmpty == true
+        ? existing!.owner
+        : ownerOptions.first;
+    String status = existing?.status ?? _componentStatuses.first;
+    final saved = await _showBackendDialog(
+      title: existing == null ? 'Add architecture component' : 'Edit component',
+      content: StatefulBuilder(
+        builder: (context, setDialogState) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: 'Component name',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: type,
+              items: _componentTypes
+                  .map((option) =>
+                      DropdownMenuItem(value: option, child: Text(option)))
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setDialogState(() => type = value);
+              },
+              decoration: const InputDecoration(
+                labelText: 'Component type',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: responsibilityController,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Responsibility',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: owner,
+              items: ownerOptions
+                  .map((option) =>
+                      DropdownMenuItem(value: option, child: Text(option)))
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setDialogState(() => owner = value);
+              },
+              decoration: const InputDecoration(
+                labelText: 'Owner',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: status,
+              items: _componentStatuses
+                  .map((option) =>
+                      DropdownMenuItem(value: option, child: Text(option)))
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setDialogState(() => status = value);
+              },
+              decoration: const InputDecoration(
+                labelText: 'Status',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+      ),
+      confirmLabel: existing == null ? 'Add component' : 'Save changes',
+    );
+    if (saved != true) return;
+
+    final item = _ArchitectureComponent(
+      id: existing?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+      name: nameController.text.trim(),
+      type: type,
+      responsibility: responsibilityController.text.trim(),
+      owner: owner,
+      status: status,
+    );
+    setState(() {
+      if (existing == null) {
+        _components.add(item);
+      } else {
+        final index =
+            _components.indexWhere((entry) => entry.id == existing.id);
+        if (index != -1) _components[index] = item;
+      }
+    });
     _scheduleSave();
+    _logActivity(
+      existing == null
+          ? 'Added architecture component row'
+          : 'Edited architecture component row',
+      details: {'itemId': item.id, 'name': item.name},
+    );
+  }
+
+  Future<void> _openDataFlowDialog({_ArchitectureDataFlow? existing}) async {
+    final sourceController =
+        TextEditingController(text: existing?.source ?? '');
+    final destinationController =
+        TextEditingController(text: existing?.destination ?? '');
+    final notesController = TextEditingController(text: existing?.notes ?? '');
+    String protocol = existing?.protocol ?? _protocolOptions.first;
+    final saved = await _showBackendDialog(
+      title: existing == null ? 'Add data flow' : 'Edit data flow',
+      content: StatefulBuilder(
+        builder: (context, setDialogState) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: sourceController,
+              decoration: const InputDecoration(
+                labelText: 'Source',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: destinationController,
+              decoration: const InputDecoration(
+                labelText: 'Destination',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: protocol,
+              items: _protocolOptions
+                  .map((option) =>
+                      DropdownMenuItem(value: option, child: Text(option)))
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setDialogState(() => protocol = value);
+              },
+              decoration: const InputDecoration(
+                labelText: 'Protocol',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: notesController,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Notes',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+      ),
+      confirmLabel: existing == null ? 'Add flow' : 'Save changes',
+    );
+    if (saved != true) return;
+
+    final item = _ArchitectureDataFlow(
+      id: existing?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+      source: sourceController.text.trim(),
+      destination: destinationController.text.trim(),
+      protocol: protocol,
+      notes: notesController.text.trim(),
+    );
+    setState(() {
+      if (existing == null) {
+        _dataFlows.add(item);
+      } else {
+        final index = _dataFlows.indexWhere((entry) => entry.id == existing.id);
+        if (index != -1) _dataFlows[index] = item;
+      }
+    });
+    _scheduleSave();
+    _logActivity(
+      existing == null ? 'Added data flow row' : 'Edited data flow row',
+      details: {'itemId': item.id},
+    );
+  }
+
+  Future<void> _openDesignDocumentDialog({_DesignDocument? existing}) async {
+    final titleController = TextEditingController(text: existing?.title ?? '');
+    final descriptionController =
+        TextEditingController(text: existing?.description ?? '');
+    final locationController =
+        TextEditingController(text: existing?.location ?? '');
+    final ownerOptions = _ownerOptions(currentValue: existing?.owner);
+    String owner = existing?.owner.isNotEmpty == true
+        ? existing!.owner
+        : ownerOptions.first;
+    String status = existing?.status ?? _documentStatuses.first;
+    final saved = await _showBackendDialog(
+      title: existing == null ? 'Add design document' : 'Edit design document',
+      content: StatefulBuilder(
+        builder: (context, setDialogState) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(
+                labelText: 'Document title',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: descriptionController,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: owner,
+              items: ownerOptions
+                  .map((option) =>
+                      DropdownMenuItem(value: option, child: Text(option)))
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setDialogState(() => owner = value);
+              },
+              decoration: const InputDecoration(
+                labelText: 'Owner',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: status,
+              items: _documentStatuses
+                  .map((option) =>
+                      DropdownMenuItem(value: option, child: Text(option)))
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setDialogState(() => status = value);
+              },
+              decoration: const InputDecoration(
+                labelText: 'Status',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: locationController,
+              decoration: const InputDecoration(
+                labelText: 'Link or location',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+      ),
+      confirmLabel: existing == null ? 'Add document' : 'Save changes',
+    );
+    if (saved != true) return;
+
+    final item = _DesignDocument(
+      id: existing?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+      title: titleController.text.trim(),
+      description: descriptionController.text.trim(),
+      owner: owner,
+      status: status,
+      location: locationController.text.trim(),
+    );
+    setState(() {
+      if (existing == null) {
+        _designDocuments.add(item);
+      } else {
+        final index =
+            _designDocuments.indexWhere((entry) => entry.id == existing.id);
+        if (index != -1) _designDocuments[index] = item;
+      }
+    });
+    _scheduleSave();
+    _logActivity(
+      existing == null
+          ? 'Added design document row'
+          : 'Edited design document row',
+      details: {'itemId': item.id},
+    );
+  }
+
+  Future<void> _openEntityDialog({_DbEntity? existing}) async {
+    final nameController = TextEditingController(text: existing?.name ?? '');
+    final primaryKeyController =
+        TextEditingController(text: existing?.primaryKey ?? '');
+    final descriptionController =
+        TextEditingController(text: existing?.description ?? '');
+    final ownerOptions = _ownerOptions(currentValue: existing?.owner);
+    String owner = existing?.owner.isNotEmpty == true
+        ? existing!.owner
+        : ownerOptions.first;
+    final saved = await _showBackendDialog(
+      title: existing == null ? 'Add data entity' : 'Edit data entity',
+      content: StatefulBuilder(
+        builder: (context, setDialogState) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: 'Entity / collection',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: primaryKeyController,
+              decoration: const InputDecoration(
+                labelText: 'Primary key',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: owner,
+              items: ownerOptions
+                  .map((option) =>
+                      DropdownMenuItem(value: option, child: Text(option)))
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setDialogState(() => owner = value);
+              },
+              decoration: const InputDecoration(
+                labelText: 'Owner',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: descriptionController,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+      ),
+      confirmLabel: existing == null ? 'Add entity' : 'Save changes',
+    );
+    if (saved != true) return;
+
+    final item = _DbEntity(
+      id: existing?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+      name: nameController.text.trim(),
+      primaryKey: primaryKeyController.text.trim(),
+      owner: owner,
+      description: descriptionController.text.trim(),
+    );
+    setState(() {
+      if (existing == null) {
+        _entities.add(item);
+      } else {
+        final index = _entities.indexWhere((entry) => entry.id == existing.id);
+        if (index != -1) _entities[index] = item;
+      }
+    });
+    _scheduleSave();
+    _logActivity(
+      existing == null ? 'Added data entity row' : 'Edited data entity row',
+      details: {'itemId': item.id},
+    );
+  }
+
+  Future<void> _openFieldDialog({_DbField? existing}) async {
+    final tableController = TextEditingController(text: existing?.table ?? '');
+    final fieldController = TextEditingController(text: existing?.field ?? '');
+    final typeController = TextEditingController(text: existing?.type ?? '');
+    final constraintsController =
+        TextEditingController(text: existing?.constraints ?? '');
+    final notesController = TextEditingController(text: existing?.notes ?? '');
+    final saved = await _showBackendDialog(
+      title: existing == null ? 'Add field' : 'Edit field',
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: tableController,
+            decoration: const InputDecoration(
+              labelText: 'Entity / table',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: fieldController,
+            decoration: const InputDecoration(
+              labelText: 'Field name',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: typeController,
+            decoration: const InputDecoration(
+              labelText: 'Type',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: constraintsController,
+            decoration: const InputDecoration(
+              labelText: 'Constraints',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: notesController,
+            minLines: 2,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              labelText: 'Notes',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      confirmLabel: existing == null ? 'Add field' : 'Save changes',
+    );
+    if (saved != true) return;
+
+    final item = _DbField(
+      id: existing?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+      table: tableController.text.trim(),
+      field: fieldController.text.trim(),
+      type: typeController.text.trim(),
+      constraints: constraintsController.text.trim(),
+      notes: notesController.text.trim(),
+    );
+    setState(() {
+      if (existing == null) {
+        _fields.add(item);
+      } else {
+        final index = _fields.indexWhere((entry) => entry.id == existing.id);
+        if (index != -1) _fields[index] = item;
+      }
+    });
+    _scheduleSave();
+    _logActivity(
+      existing == null ? 'Added field row' : 'Edited field row',
+      details: {'itemId': item.id},
+    );
+  }
+
+  Future<bool?> _showBackendDialog({
+    required String title,
+    required Widget content,
+    required String confirmLabel,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content:
+            SizedBox(width: 560, child: SingleChildScrollView(child: content)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
   }
 
   void _updateField(_DbField updated) {
@@ -2022,6 +2543,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
   void _deleteField(String id) {
     setState(() => _fields.removeWhere((entry) => entry.id == id));
     _scheduleSave();
+    _logActivity('Deleted field row', details: {'itemId': id});
   }
 
   Widget _buildComponentsTable() {
@@ -2031,7 +2553,8 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
       const _TableColumnDef('Responsibility', 240),
       const _TableColumnDef('Owner', 160),
       const _TableColumnDef('Status', 140),
-      const _TableColumnDef('', 60),
+      const _TableColumnDef('', 56),
+      const _TableColumnDef('', 56),
     ];
 
     if (_components.isEmpty) {
@@ -2085,6 +2608,9 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
                 onChanged: (value) =>
                     _updateComponent(entry.copyWith(status: value)),
               ),
+              _EditCell(
+                onPressed: () => _openComponentDialog(existing: entry),
+              ),
               _DeleteCell(onPressed: () => _deleteComponent(entry.id)),
             ],
           ),
@@ -2098,7 +2624,8 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
       const _TableColumnDef('Destination', 180),
       const _TableColumnDef('Protocol', 140),
       const _TableColumnDef('Notes', 240),
-      const _TableColumnDef('', 60),
+      const _TableColumnDef('', 56),
+      const _TableColumnDef('', 56),
     ];
 
     if (_dataFlows.isEmpty) {
@@ -2145,6 +2672,9 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
                 onChanged: (value) =>
                     _updateDataFlow(entry.copyWith(notes: value)),
               ),
+              _EditCell(
+                onPressed: () => _openDataFlowDialog(existing: entry),
+              ),
               _DeleteCell(onPressed: () => _deleteDataFlow(entry.id)),
             ],
           ),
@@ -2159,7 +2689,8 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
       const _TableColumnDef('Owner', 160),
       const _TableColumnDef('Status', 140),
       const _TableColumnDef('Location', 200),
-      const _TableColumnDef('', 60),
+      const _TableColumnDef('', 56),
+      const _TableColumnDef('', 56),
     ];
 
     if (_designDocuments.isEmpty) {
@@ -2213,6 +2744,9 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
                 onChanged: (value) =>
                     _updateDesignDocument(entry.copyWith(location: value)),
               ),
+              _EditCell(
+                onPressed: () => _openDesignDocumentDialog(existing: entry),
+              ),
               _DeleteCell(onPressed: () => _deleteDesignDocument(entry.id)),
             ],
           ),
@@ -2226,7 +2760,8 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
       const _TableColumnDef('Primary key', 160),
       const _TableColumnDef('Owner', 160),
       const _TableColumnDef('Description', 240),
-      const _TableColumnDef('', 60),
+      const _TableColumnDef('', 56),
+      const _TableColumnDef('', 56),
     ];
 
     if (_entities.isEmpty) {
@@ -2273,6 +2808,9 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
                 onChanged: (value) =>
                     _updateEntity(entry.copyWith(description: value)),
               ),
+              _EditCell(
+                onPressed: () => _openEntityDialog(existing: entry),
+              ),
               _DeleteCell(onPressed: () => _deleteEntity(entry.id)),
             ],
           ),
@@ -2287,7 +2825,8 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
       const _TableColumnDef('Type', 140),
       const _TableColumnDef('Constraints', 200),
       const _TableColumnDef('Notes', 220),
-      const _TableColumnDef('', 60),
+      const _TableColumnDef('', 56),
+      const _TableColumnDef('', 56),
     ];
 
     if (_fields.isEmpty) {
@@ -2339,6 +2878,9 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
                 maxLines: 2,
                 onChanged: (value) =>
                     _updateField(entry.copyWith(notes: value)),
+              ),
+              _EditCell(
+                onPressed: () => _openFieldDialog(existing: entry),
               ),
               _DeleteCell(onPressed: () => _deleteField(entry.id)),
             ],
@@ -3270,6 +3812,21 @@ class _DeleteCell extends StatelessWidget {
   }
 }
 
+class _EditCell extends StatelessWidget {
+  const _EditCell({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onPressed,
+      icon: const Icon(Icons.edit_outlined, color: Color(0xFF2563EB)),
+      tooltip: 'Edit',
+    );
+  }
+}
+
 class _InlineEmptyState extends StatelessWidget {
   const _InlineEmptyState({required this.title, required this.message});
 
@@ -3337,17 +3894,6 @@ class _ArchitectureComponent {
   final String owner;
   final String status;
 
-  factory _ArchitectureComponent.empty() {
-    return _ArchitectureComponent(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      name: '',
-      type: 'Service',
-      responsibility: '',
-      owner: '',
-      status: 'Planned',
-    );
-  }
-
   _ArchitectureComponent copyWith({
     String? name,
     String? type,
@@ -3408,16 +3954,6 @@ class _ArchitectureDataFlow {
   final String protocol;
   final String notes;
 
-  factory _ArchitectureDataFlow.empty() {
-    return _ArchitectureDataFlow(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      source: '',
-      destination: '',
-      protocol: 'HTTP',
-      notes: '',
-    );
-  }
-
   _ArchitectureDataFlow copyWith({
     String? source,
     String? destination,
@@ -3475,17 +4011,6 @@ class _DesignDocument {
   final String owner;
   final String status;
   final String location;
-
-  factory _DesignDocument.empty() {
-    return _DesignDocument(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      title: '',
-      description: '',
-      owner: '',
-      status: 'Draft',
-      location: '',
-    );
-  }
 
   _DesignDocument copyWith({
     String? title,
@@ -3547,16 +4072,6 @@ class _DbEntity {
   final String owner;
   final String description;
 
-  factory _DbEntity.empty() {
-    return _DbEntity(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      name: '',
-      primaryKey: '',
-      owner: '',
-      description: '',
-    );
-  }
-
   _DbEntity copyWith({
     String? name,
     String? primaryKey,
@@ -3614,17 +4129,6 @@ class _DbField {
   final String type;
   final String constraints;
   final String notes;
-
-  factory _DbField.empty() {
-    return _DbField(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      table: '',
-      field: '',
-      type: '',
-      constraints: '',
-      notes: '',
-    );
-  }
 
   _DbField copyWith({
     String? table,

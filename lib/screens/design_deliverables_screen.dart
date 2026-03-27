@@ -1,15 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:ndu_project/widgets/draggable_sidebar.dart';
-import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
+import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/screens/design_phase_screen.dart';
+import 'package:ndu_project/screens/project_activities_log_screen.dart';
+import 'package:ndu_project/services/activity_log_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
-import 'package:ndu_project/services/firebase_auth_service.dart';
-import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/services/design_phase_service.dart';
@@ -178,6 +177,15 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
         (current) => current.copyWith(designDeliverablesData: generated),
       );
 
+      await _logActivity(
+        'Generated Design Deliverables with AI',
+        details: {
+          'pipelineCount': generated.pipeline.length,
+          'registerCount': generated.register.length,
+          'approvalCount': generated.approvals.length,
+        },
+      );
+
       setState(() {
         _applyData(generated);
         _loading = false;
@@ -262,6 +270,14 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
     try {
       await DesignPhaseService.instance
           .saveDesignDeliverables(projectId, _data);
+      await _logActivity(
+        'Updated Design Deliverables data',
+        details: {
+          'pipelineCount': _data.pipeline.length,
+          'registerCount': _data.register.length,
+          'dependencyCount': _data.dependencies.length,
+        },
+      );
 
       if (!mounted) return;
       setState(() {
@@ -271,9 +287,28 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        debugPrint('Save error: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to save Design Deliverables right now.'),
+          ),
+        );
       }
     }
+  }
+
+  Future<void> _logActivity(
+    String action, {
+    Map<String, dynamic>? details,
+  }) async {
+    final projectId = ProjectDataHelper.getData(context).projectId;
+    if (projectId == null || projectId.isEmpty) return;
+    await ActivityLogService.instance.logActivity(
+      projectId: projectId,
+      phase: 'Design Phase',
+      page: 'Design Deliverables',
+      action: action,
+      details: details,
+    );
   }
 
   Future<void> _showAddPipelineItemDialog() async {
@@ -403,175 +438,117 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
     final horizontalPadding = isMobile ? 20.0 : 32.0;
     final data = _data;
 
-    return Scaffold(
+    return ResponsiveScaffold(
+      activeItemLabel: 'Design Deliverables',
       backgroundColor: _kPageBackground,
-      body: SafeArea(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            DraggableSidebar(
-              openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(
-                  activeItemLabel: 'Design Deliverables'),
-            ),
-            Expanded(
-              child: Stack(
-                children: [
-                  SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: horizontalPadding, vertical: 24),
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _TopHeader(
-                                onBack: () => Navigator.maybePop(context)),
-                            const SizedBox(height: 20),
-                            _ExecutiveIntroBanner(
-                              isSaving: _saving,
-                              savedAt: _lastSavedAt,
-                              isLoading: _loading,
-                              error: _error,
-                            ),
-                            const SizedBox(height: 20),
-                            const SizedBox(height: 24),
-                            _MetricsPanel(metrics: data.metrics),
-                            const SizedBox(height: 24),
-                            _DeliverablePipelineCard(
-                              items: data.pipeline,
-                              onAddRequested: _showAddPipelineItemDialog,
-                              onChanged: (items) =>
-                                  _updateData(data.copyWith(pipeline: items)),
-                            ),
-                            const SizedBox(height: 20),
-                            _ApprovalStatusCard(
-                              items: data.approvals,
-                              onAddRequested: _showAddApprovalDialog,
-                              onChanged: (items) => _updateData(
-                                data.copyWith(approvals: items),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            _DesignDeliverablesTable(
-                              rows: data.register,
-                              onChanged: (rows) =>
-                                  _updateData(data.copyWith(register: rows)),
-                            ),
-                            const SizedBox(height: 20),
-                            _DesignDependenciesCard(
-                              items: data.dependencies,
-                              onChanged: (items) => _updateData(
-                                data.copyWith(dependencies: items),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            _DesignHandoffCard(
-                              items: data.handoffChecklist,
-                              onChanged: (items) => _updateData(
-                                data.copyWith(handoffChecklist: items),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            const _IntegrityPanel(),
-                            const SizedBox(height: 28),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: ElevatedButton(
-                                onPressed: () =>
-                                    DesignPhaseScreen.open(context),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFFFD700),
-                                  foregroundColor: const Color(0xFF111827),
-                                  elevation: 0,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 36, vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20)),
-                                ),
-                                child: const Text('Next',
-                                    style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700)),
-                              ),
-                            ),
-                            const SizedBox(height: 40),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                  const Positioned(
-                      right: 24,
-                      bottom: 24,
-                      child: KazAiChatBubble(positioned: false)),
-                ],
-              ),
-            ),
-          ],
-        ),
+      floatingActionButton: const Positioned(
+        right: 24,
+        bottom: 24,
+        child: KazAiChatBubble(positioned: false),
       ),
-    );
-  }
-}
-
-class _TopHeader extends StatelessWidget {
-  const _TopHeader({required this.onBack});
-
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
-      decoration: BoxDecoration(
-        color: _kSurface,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: _kBorder),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x12082A63),
-            blurRadius: 22,
-            offset: Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          _CircleIconButton(
-            icon: Icons.arrow_back_ios_new_rounded,
-            onTap: onBack,
-          ),
-          const SizedBox(width: 12),
-          const _CircleIconButton(icon: Icons.arrow_forward_ios_rounded),
-          const SizedBox(width: 16),
-          const Expanded(
-            child: Column(
+      body: SingleChildScrollView(
+        padding:
+            EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 24),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Design Deliverables',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                    color: _kPrimaryDeep,
+                PlanningPhaseHeader(
+                  title: 'Design Deliverables',
+                  onBack: () => Navigator.maybePop(context),
+                  onForward: () => DesignPhaseScreen.open(context),
+                  showImportButton: false,
+                  showContentButton: false,
+                ),
+                const SizedBox(height: 20),
+                _ExecutiveIntroBanner(
+                  isSaving: _saving,
+                  savedAt: _lastSavedAt,
+                  isLoading: _loading,
+                  error: _error,
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 16),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      onPressed: _generateFromAi,
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Retry AI Generation'),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                _MetricsPanel(metrics: data.metrics),
+                const SizedBox(height: 24),
+                _DeliverablePipelineCard(
+                  items: data.pipeline,
+                  onAddRequested: _showAddPipelineItemDialog,
+                  onChanged: (items) =>
+                      _updateData(data.copyWith(pipeline: items)),
+                ),
+                const SizedBox(height: 20),
+                _ApprovalStatusCard(
+                  items: data.approvals,
+                  onAddRequested: _showAddApprovalDialog,
+                  onChanged: (items) => _updateData(
+                    data.copyWith(approvals: items),
                   ),
                 ),
-                SizedBox(height: 6),
-                Text(
-                  'Track design artifacts, approvals, dependencies, and delivery readiness in one executive-grade workspace.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: _kSubtext,
-                    height: 1.45,
+                const SizedBox(height: 24),
+                _DesignDeliverablesTable(
+                  rows: data.register,
+                  onChanged: (rows) =>
+                      _updateData(data.copyWith(register: rows)),
+                ),
+                const SizedBox(height: 20),
+                _DesignDependenciesCard(
+                  items: data.dependencies,
+                  onChanged: (items) => _updateData(
+                    data.copyWith(dependencies: items),
                   ),
                 ),
+                const SizedBox(height: 24),
+                _DesignHandoffCard(
+                  items: data.handoffChecklist,
+                  onChanged: (items) => _updateData(
+                    data.copyWith(handoffChecklist: items),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const _IntegrityPanel(),
+                const SizedBox(height: 28),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ElevatedButton(
+                    onPressed: () => DesignPhaseScreen.open(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFFD700),
+                      foregroundColor: const Color(0xFF111827),
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 36,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                    child: const Text(
+                      'Next',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 40),
               ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          const _UserChip(),
-        ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -823,7 +800,7 @@ class _IntegrityPanel extends StatelessWidget {
                 const SizedBox(height: 18),
                 _OutlineActionButton(
                   label: 'View Logs',
-                  onPressed: () {},
+                  onPressed: () => ProjectActivitiesLogScreen.open(context),
                 ),
               ],
             );
@@ -837,106 +814,12 @@ class _IntegrityPanel extends StatelessWidget {
               const SizedBox(width: 20),
               _OutlineActionButton(
                 label: 'View Logs',
-                onPressed: () {},
+                onPressed: () => ProjectActivitiesLogScreen.open(context),
               ),
             ],
           );
         },
       ),
-    );
-  }
-}
-
-class _CircleIconButton extends StatelessWidget {
-  const _CircleIconButton({required this.icon, this.onTap});
-
-  final IconData icon;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: _kPanelSoft,
-          shape: BoxShape.circle,
-          border: Border.all(color: _kBorder),
-        ),
-        child: Icon(icon, size: 18, color: _kPrimaryDeep),
-      ),
-    );
-  }
-}
-
-class _UserChip extends StatelessWidget {
-  const _UserChip();
-
-  @override
-  Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    final displayName =
-        FirebaseAuthService.displayNameOrEmail(fallback: 'User');
-    final email = user?.email ?? '';
-    final primaryText = email.isNotEmpty ? email : displayName;
-
-    return StreamBuilder<bool>(
-      stream: UserService.watchAdminStatus(),
-      builder: (context, snapshot) {
-        final isAdmin = snapshot.data ?? UserService.isAdminEmail(email);
-        final role = isAdmin ? 'Admin' : 'Member';
-
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: _kPanelSoft,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: _kBorder),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: const Color(0xFFDCE7FF),
-                backgroundImage: user?.photoURL != null
-                    ? NetworkImage(user!.photoURL!)
-                    : null,
-                child: user?.photoURL == null
-                    ? Text(
-                        displayName.isNotEmpty
-                            ? displayName[0].toUpperCase()
-                            : 'U',
-                        style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: _kPrimaryDeep),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(primaryText,
-                      style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: _kPrimaryDeep)),
-                  Text(role,
-                      style: const TextStyle(fontSize: 10, color: _kSubtext)),
-                ],
-              ),
-              const SizedBox(width: 6),
-              const Icon(Icons.keyboard_arrow_down, size: 18, color: _kSubtext),
-            ],
-          ),
-        );
-      },
     );
   }
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:ndu_project/screens/specialized_design_screen.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -12,10 +13,12 @@ class LongLeadEquipmentOrderingScreen extends StatefulWidget {
   const LongLeadEquipmentOrderingScreen({super.key});
 
   @override
-  State<LongLeadEquipmentOrderingScreen> createState() => _LongLeadEquipmentOrderingScreenState();
+  State<LongLeadEquipmentOrderingScreen> createState() =>
+      _LongLeadEquipmentOrderingScreenState();
 }
 
-class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrderingScreen> {
+class _LongLeadEquipmentOrderingScreenState
+    extends State<LongLeadEquipmentOrderingScreen> {
   final TextEditingController _notesController = TextEditingController();
   final _Debouncer _saveDebounce = _Debouncer();
   bool _isLoading = false;
@@ -26,8 +29,30 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
   final List<_ProcurementAction> _actions = [];
 
   final List<String> _criticalityOptions = const ['High', 'Medium', 'Low'];
-  final List<String> _equipmentStatusOptions = const ['Planned', 'Ordered', 'In production', 'In transit', 'Delivered', 'On hold'];
-  final List<String> _actionStatusOptions = const ['Planned', 'Active', 'Blocked', 'Completed'];
+  final List<String> _equipmentStatusOptions = const [
+    'Planned',
+    'Ordered',
+    'In production',
+    'In transit',
+    'Delivered',
+    'On hold'
+  ];
+  final List<String> _actionStatusOptions = const [
+    'Planned',
+    'Active',
+    'Blocked',
+    'Completed'
+  ];
+
+  void _showExportFeedback() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Equipment schedule export will use the latest saved register data.',
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -117,7 +142,7 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
       body: Column(
         children: [
           const PlanningPhaseHeader(
-            title: 'Design Phase',
+            title: 'Long Lead Equipment Ordering',
             showImportButton: false,
             showContentButton: false,
           ),
@@ -230,14 +255,15 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () {},
+              onPressed: _showExportFeedback,
               icon: const Icon(Icons.download, size: 18),
               label: const Text('Export equipment schedule'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: LightModeColors.accent,
                 foregroundColor: Colors.black87,
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
               ),
             ),
           ),
@@ -255,29 +281,39 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Design phase • Long lead equipment ordering', style: TextStyle(fontSize: 13, color: Colors.grey[500]), textAlign: TextAlign.center),
+              Text('Design phase • Long lead equipment ordering',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                  textAlign: TextAlign.center),
               const SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.arrow_back, size: 18),
                 label: const Text('Back: Tools integration'),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                   side: BorderSide(color: Colors.grey[300]!),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
                   foregroundColor: Colors.black87,
                 ),
               ),
               const SizedBox(height: 12),
               ElevatedButton.icon(
-                onPressed: () {},
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const SpecializedDesignScreen(),
+                  ),
+                ),
                 icon: const Icon(Icons.arrow_forward, size: 18),
                 label: const Text('Next: Specialized design'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black87,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
                 ),
               ),
             ],
@@ -290,24 +326,33 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
                 icon: const Icon(Icons.arrow_back, size: 18),
                 label: const Text('Back: Tools integration'),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                   side: BorderSide(color: Colors.grey[300]!),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
                   foregroundColor: Colors.black87,
                 ),
               ),
               const SizedBox(width: 16),
-              Text('Design phase • Long lead equipment ordering', style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+              Text('Design phase • Long lead equipment ordering',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[500])),
               const Spacer(),
               ElevatedButton.icon(
-                onPressed: () {},
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const SpecializedDesignScreen(),
+                  ),
+                ),
                 icon: const Icon(Icons.arrow_forward, size: 18),
                 label: const Text('Next: Specialized design'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.black87,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
                 ),
               ),
             ],
@@ -317,7 +362,8 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.lightbulb_outline, size: 18, color: LightModeColors.accent),
+            Icon(Icons.lightbulb_outline,
+                size: 18, color: LightModeColors.accent),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -339,20 +385,23 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
         controller: _notesController,
         maxLines: 3,
         decoration: InputDecoration(
-          hintText: 'Document key ordering considerations, vendor contacts, and escalation triggers.',
+          hintText:
+              'Document key ordering considerations, vendor contacts, and escalation triggers.',
           hintStyle: TextStyle(color: Colors.grey[500], fontSize: 13),
           filled: true,
           fillColor: Colors.white,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
       ),
     );
   }
 
   void _addCategory() {
-    setState(() => _categories.add(_EquipmentCategory.empty()));
-    _scheduleSave();
+    _openCategoryDialog();
   }
 
   void _updateCategory(_EquipmentCategory updated) {
@@ -368,8 +417,7 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
   }
 
   void _addEquipmentItem() {
-    setState(() => _equipmentItems.add(_EquipmentItem.empty()));
-    _scheduleSave();
+    _openEquipmentDialog();
   }
 
   void _updateEquipmentItem(_EquipmentItem updated) {
@@ -385,8 +433,7 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
   }
 
   void _addAction() {
-    setState(() => _actions.add(_ProcurementAction.empty()));
-    _scheduleSave();
+    _openActionDialog();
   }
 
   void _updateAction(_ProcurementAction updated) {
@@ -398,6 +445,324 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
 
   void _deleteAction(String id) {
     setState(() => _actions.removeWhere((entry) => entry.id == id));
+    _scheduleSave();
+  }
+
+  Future<void> _openCategoryDialog() async {
+    final draft = _EquipmentCategory.empty();
+    final titleController = TextEditingController();
+    final descriptionController = TextEditingController();
+    final thresholdController = TextEditingController();
+    final ownerController = TextEditingController();
+    String criticality = _criticalityOptions[1];
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          title: const Text('Add equipment category'),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Category',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descriptionController,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: criticality,
+                  items: _criticalityOptions
+                      .map((option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(option),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setModalState(() => criticality = value);
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Criticality',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: thresholdController,
+                  decoration: const InputDecoration(
+                    labelText: 'Lead time threshold',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: ownerController,
+                  decoration: const InputDecoration(
+                    labelText: 'Owner',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Add category'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != true) return;
+    setState(() {
+      _categories.add(
+        draft.copyWith(
+          title: titleController.text.trim(),
+          description: descriptionController.text.trim(),
+          criticality: criticality,
+          leadTimeThreshold: thresholdController.text.trim(),
+          owner: ownerController.text.trim(),
+        ),
+      );
+    });
+    _scheduleSave();
+  }
+
+  Future<void> _openEquipmentDialog() async {
+    final draft = _EquipmentItem.empty();
+    final nameController = TextEditingController();
+    final categoryController = TextEditingController();
+    final vendorController = TextEditingController();
+    final leadTimeController = TextEditingController();
+    final deliveryController = TextEditingController();
+    final ownerController = TextEditingController();
+    String status = _equipmentStatusOptions.first;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          title: const Text('Add equipment item'),
+          content: SizedBox(
+            width: 560,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Item',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: categoryController,
+                  decoration: const InputDecoration(
+                    labelText: 'Category',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: vendorController,
+                  decoration: const InputDecoration(
+                    labelText: 'Vendor',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: leadTimeController,
+                  decoration: const InputDecoration(
+                    labelText: 'Lead time',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: deliveryController,
+                  decoration: const InputDecoration(
+                    labelText: 'Expected delivery',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: status,
+                  items: _equipmentStatusOptions
+                      .map((option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(option),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setModalState(() => status = value);
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: ownerController,
+                  decoration: const InputDecoration(
+                    labelText: 'Owner',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Add item'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != true) return;
+    setState(() {
+      _equipmentItems.add(
+        draft.copyWith(
+          name: nameController.text.trim(),
+          category: categoryController.text.trim(),
+          vendor: vendorController.text.trim(),
+          leadTime: leadTimeController.text.trim(),
+          expectedDelivery: deliveryController.text.trim(),
+          status: status,
+          owner: ownerController.text.trim(),
+        ),
+      );
+    });
+    _scheduleSave();
+  }
+
+  Future<void> _openActionDialog() async {
+    final draft = _ProcurementAction.empty();
+    final titleController = TextEditingController();
+    final ownerController = TextEditingController();
+    final dueDateController = TextEditingController();
+    final notesController = TextEditingController();
+    String status = _actionStatusOptions.first;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          title: const Text('Add procurement action'),
+          content: SizedBox(
+            width: 540,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Action',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: ownerController,
+                  decoration: const InputDecoration(
+                    labelText: 'Owner',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: dueDateController,
+                  decoration: const InputDecoration(
+                    labelText: 'Due date',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: status,
+                  items: _actionStatusOptions
+                      .map((option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(option),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setModalState(() => status = value);
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: notesController,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Notes',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Add action'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != true) return;
+    setState(() {
+      _actions.add(
+        draft.copyWith(
+          title: titleController.text.trim(),
+          owner: ownerController.text.trim(),
+          dueDate: dueDateController.text.trim(),
+          status: status,
+          notes: notesController.text.trim(),
+        ),
+      );
+    });
     _scheduleSave();
   }
 
@@ -430,32 +795,37 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
                 value: entry.title,
                 fieldKey: '${entry.id}_title',
                 hintText: 'Category',
-                onChanged: (value) => _updateCategory(entry.copyWith(title: value)),
+                onChanged: (value) =>
+                    _updateCategory(entry.copyWith(title: value)),
               ),
               _TextCell(
                 value: entry.description,
                 fieldKey: '${entry.id}_desc',
                 hintText: 'Description',
                 maxLines: 2,
-                onChanged: (value) => _updateCategory(entry.copyWith(description: value)),
+                onChanged: (value) =>
+                    _updateCategory(entry.copyWith(description: value)),
               ),
               _DropdownCell(
                 value: entry.criticality,
                 fieldKey: '${entry.id}_criticality',
                 options: _criticalityOptions,
-                onChanged: (value) => _updateCategory(entry.copyWith(criticality: value)),
+                onChanged: (value) =>
+                    _updateCategory(entry.copyWith(criticality: value)),
               ),
               _TextCell(
                 value: entry.leadTimeThreshold,
                 fieldKey: '${entry.id}_threshold',
                 hintText: 'e.g., 6 weeks',
-                onChanged: (value) => _updateCategory(entry.copyWith(leadTimeThreshold: value)),
+                onChanged: (value) =>
+                    _updateCategory(entry.copyWith(leadTimeThreshold: value)),
               ),
               _TextCell(
                 value: entry.owner,
                 fieldKey: '${entry.id}_owner',
                 hintText: 'Owner',
-                onChanged: (value) => _updateCategory(entry.copyWith(owner: value)),
+                onChanged: (value) =>
+                    _updateCategory(entry.copyWith(owner: value)),
               ),
               _DeleteCell(onPressed: () => _deleteCategory(entry.id)),
             ],
@@ -495,43 +865,50 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
                 value: entry.name,
                 fieldKey: '${entry.id}_name',
                 hintText: 'Item',
-                onChanged: (value) => _updateEquipmentItem(entry.copyWith(name: value)),
+                onChanged: (value) =>
+                    _updateEquipmentItem(entry.copyWith(name: value)),
               ),
               _TextCell(
                 value: entry.category,
                 fieldKey: '${entry.id}_category',
                 hintText: 'Category',
-                onChanged: (value) => _updateEquipmentItem(entry.copyWith(category: value)),
+                onChanged: (value) =>
+                    _updateEquipmentItem(entry.copyWith(category: value)),
               ),
               _TextCell(
                 value: entry.vendor,
                 fieldKey: '${entry.id}_vendor',
                 hintText: 'Vendor',
-                onChanged: (value) => _updateEquipmentItem(entry.copyWith(vendor: value)),
+                onChanged: (value) =>
+                    _updateEquipmentItem(entry.copyWith(vendor: value)),
               ),
               _TextCell(
                 value: entry.leadTime,
                 fieldKey: '${entry.id}_lead',
                 hintText: 'e.g., 12 weeks',
-                onChanged: (value) => _updateEquipmentItem(entry.copyWith(leadTime: value)),
+                onChanged: (value) =>
+                    _updateEquipmentItem(entry.copyWith(leadTime: value)),
               ),
               _TextCell(
                 value: entry.expectedDelivery,
                 fieldKey: '${entry.id}_delivery',
                 hintText: 'YYYY-MM-DD',
-                onChanged: (value) => _updateEquipmentItem(entry.copyWith(expectedDelivery: value)),
+                onChanged: (value) => _updateEquipmentItem(
+                    entry.copyWith(expectedDelivery: value)),
               ),
               _DropdownCell(
                 value: entry.status,
                 fieldKey: '${entry.id}_status',
                 options: _equipmentStatusOptions,
-                onChanged: (value) => _updateEquipmentItem(entry.copyWith(status: value)),
+                onChanged: (value) =>
+                    _updateEquipmentItem(entry.copyWith(status: value)),
               ),
               _TextCell(
                 value: entry.owner,
                 fieldKey: '${entry.id}_owner',
                 hintText: 'Owner',
-                onChanged: (value) => _updateEquipmentItem(entry.copyWith(owner: value)),
+                onChanged: (value) =>
+                    _updateEquipmentItem(entry.copyWith(owner: value)),
               ),
               _DeleteCell(onPressed: () => _deleteEquipmentItem(entry.id)),
             ],
@@ -569,32 +946,37 @@ class _LongLeadEquipmentOrderingScreenState extends State<LongLeadEquipmentOrder
                 value: entry.title,
                 fieldKey: '${entry.id}_title',
                 hintText: 'Action',
-                onChanged: (value) => _updateAction(entry.copyWith(title: value)),
+                onChanged: (value) =>
+                    _updateAction(entry.copyWith(title: value)),
               ),
               _TextCell(
                 value: entry.owner,
                 fieldKey: '${entry.id}_owner',
                 hintText: 'Owner',
-                onChanged: (value) => _updateAction(entry.copyWith(owner: value)),
+                onChanged: (value) =>
+                    _updateAction(entry.copyWith(owner: value)),
               ),
               _TextCell(
                 value: entry.dueDate,
                 fieldKey: '${entry.id}_due',
                 hintText: 'YYYY-MM-DD',
-                onChanged: (value) => _updateAction(entry.copyWith(dueDate: value)),
+                onChanged: (value) =>
+                    _updateAction(entry.copyWith(dueDate: value)),
               ),
               _DropdownCell(
                 value: entry.status,
                 fieldKey: '${entry.id}_status',
                 options: _actionStatusOptions,
-                onChanged: (value) => _updateAction(entry.copyWith(status: value)),
+                onChanged: (value) =>
+                    _updateAction(entry.copyWith(status: value)),
               ),
               _TextCell(
                 value: entry.notes,
                 fieldKey: '${entry.id}_notes',
                 hintText: 'Notes',
                 maxLines: 2,
-                onChanged: (value) => _updateAction(entry.copyWith(notes: value)),
+                onChanged: (value) =>
+                    _updateAction(entry.copyWith(notes: value)),
               ),
               _DeleteCell(onPressed: () => _deleteAction(entry.id)),
             ],
@@ -638,9 +1020,13 @@ class _SectionCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    Text(title,
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
-                    Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                    Text(subtitle,
+                        style:
+                            TextStyle(fontSize: 12, color: Colors.grey[600])),
                   ],
                 ),
               ),
@@ -686,7 +1072,11 @@ class _EditableTable extends StatelessWidget {
                   width: column.width,
                   child: Text(
                     column.label.toUpperCase(),
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.7, color: Color(0xFF6B7280)),
+                    style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.7,
+                        color: Color(0xFF6B7280)),
                   ),
                 ))
             .toList(),
@@ -696,7 +1086,9 @@ class _EditableTable extends StatelessWidget {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: ConstrainedBox(
-        constraints: BoxConstraints(minWidth: columns.fold<double>(0, (total, col) => total + col.width)),
+        constraints: BoxConstraints(
+            minWidth:
+                columns.fold<double>(0, (total, col) => total + col.width)),
         child: Column(
           children: [
             header,
@@ -704,7 +1096,8 @@ class _EditableTable extends StatelessWidget {
             for (int i = 0; i < rows.length; i++)
               Container(
                 margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
                   color: i.isEven ? Colors.white : const Color(0xFFF9FAFB),
                   borderRadius: BorderRadius.circular(10),
@@ -797,7 +1190,9 @@ class _DropdownCell extends StatelessWidget {
     return DropdownButtonFormField<String>(
       key: ValueKey(fieldKey),
       initialValue: resolvedValue,
-      items: options.map((option) => DropdownMenuItem(value: option, child: Text(option))).toList(),
+      items: options
+          .map((option) => DropdownMenuItem(value: option, child: Text(option)))
+          .toList(),
       onChanged: (value) {
         if (value != null) onChanged(value);
       },
@@ -852,16 +1247,23 @@ class _InlineEmptyState extends StatelessWidget {
               color: const Color(0xFFFFF7ED),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.info_outline, size: 18, color: Color(0xFFF59E0B)),
+            child: const Icon(Icons.info_outline,
+                size: 18, color: Color(0xFFF59E0B)),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF111827))),
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827))),
                 const SizedBox(height: 4),
-                Text(message, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                Text(message,
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF6B7280))),
               ],
             ),
           ),
@@ -932,7 +1334,8 @@ class _EquipmentCategory {
     return raw.whereType<Map>().map((item) {
       final data = Map<String, dynamic>.from(item);
       return _EquipmentCategory(
-        id: data['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: data['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         title: data['title']?.toString() ?? '',
         description: data['description']?.toString() ?? '',
         criticality: data['criticality']?.toString() ?? 'Medium',
@@ -1016,7 +1419,8 @@ class _EquipmentItem {
     return raw.whereType<Map>().map((item) {
       final data = Map<String, dynamic>.from(item);
       return _EquipmentItem(
-        id: data['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: data['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         name: data['name']?.toString() ?? '',
         category: data['category']?.toString() ?? '',
         vendor: data['vendor']?.toString() ?? '',
@@ -1090,7 +1494,8 @@ class _ProcurementAction {
     return raw.whereType<Map>().map((item) {
       final data = Map<String, dynamic>.from(item);
       return _ProcurementAction(
-        id: data['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: data['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         title: data['title']?.toString() ?? '',
         owner: data['owner']?.toString() ?? '',
         dueDate: data['dueDate']?.toString() ?? '',
@@ -1102,7 +1507,8 @@ class _ProcurementAction {
 }
 
 class _Debouncer {
-  _Debouncer({Duration? delay}) : delay = delay ?? const Duration(milliseconds: 600);
+  _Debouncer({Duration? delay})
+      : delay = delay ?? const Duration(milliseconds: 600);
 
   final Duration delay;
   Timer? _timer;

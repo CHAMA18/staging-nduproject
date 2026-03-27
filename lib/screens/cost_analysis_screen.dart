@@ -2114,10 +2114,14 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
 
     if (projectData.costAnalysisData == null) {
       if (mounted) {
-        ProjectDataHelper.showMissingDataMessage(
-            context, 'Please complete the cost analysis before proceeding.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Continuing without completed cost analysis. You can complete it later or use AI to fill it in.',
+            ),
+          ),
+        );
       }
-      return;
     }
 
     // 3. Smart checkpoint check

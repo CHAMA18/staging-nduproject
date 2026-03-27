@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/routing/app_router.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/services/activity_log_service.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
 import 'package:ndu_project/theme.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
@@ -206,8 +207,22 @@ class _TechnicalDevelopmentScreenState
         'readinessItems': _readinessItems.map((e) => e.toMap()).toList(),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+      await ActivityLogService.instance.logActivity(
+        projectId: projectId,
+        phase: 'Design Phase',
+        page: 'Technical Development',
+        action: 'Updated Technical Development data',
+      );
     } catch (error) {
       debugPrint('Technical development save error: $error');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Unable to save Technical Development changes right now. Please try again.',
+          ),
+        ),
+      );
     }
   }
 
@@ -284,6 +299,22 @@ class _TechnicalDevelopmentScreenState
 
   String _newId() => DateTime.now().microsecondsSinceEpoch.toString();
 
+  void _logActivity(String action, {Map<String, dynamic>? details}) {
+    final projectId =
+        ProjectDataInherited.maybeOf(context)?.projectData.projectId?.trim() ??
+            '';
+    if (projectId.isEmpty) return;
+    unawaited(
+      ActivityLogService.instance.logActivity(
+        projectId: projectId,
+        phase: 'Design Phase',
+        page: 'Technical Development',
+        action: action,
+        details: details,
+      ),
+    );
+  }
+
   _TechnicalDevelopmentDashboardSnapshot _snapshotFor(ProjectDataModel data) {
     return _TechnicalDevelopmentDashboardSnapshot.from(
       projectData: data,
@@ -313,7 +344,7 @@ class _TechnicalDevelopmentScreenState
           Column(
             children: [
               const PlanningPhaseHeader(
-                title: 'Design Phase',
+                title: 'Technical Development',
                 showImportButton: false,
                 showContentButton: false,
                 showNavigationButtons: false,
@@ -2221,6 +2252,14 @@ class _TechnicalDevelopmentScreenState
             ),
           ),
           IconButton(
+            icon: const Icon(Icons.edit_outlined,
+                size: 16, color: Color(0xFF2563EB)),
+            onPressed: () => _openStandardsChipDialog(existing: chip),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+          const SizedBox(width: 6),
+          IconButton(
             icon: const Icon(Icons.close, size: 16, color: Color(0xFFEF4444)),
             onPressed: () => _deleteStandardChip(chip.id),
             padding: EdgeInsets.zero,
@@ -2334,6 +2373,11 @@ class _TechnicalDevelopmentScreenState
           ),
           const SizedBox(width: 8),
           _buildStatusBadge(item),
+          IconButton(
+            icon: const Icon(Icons.edit_outlined,
+                size: 18, color: Color(0xFF2563EB)),
+            onPressed: () => _openWorkstreamDialog(existing: item),
+          ),
           IconButton(
             icon: const Icon(Icons.delete_outline,
                 size: 18, color: Color(0xFFEF4444)),
@@ -2535,6 +2579,11 @@ class _TechnicalDevelopmentScreenState
             ],
           ),
           IconButton(
+            icon: const Icon(Icons.edit_outlined,
+                size: 18, color: Color(0xFF2563EB)),
+            onPressed: () => _openReadinessItemDialog(existing: item),
+          ),
+          IconButton(
             icon: const Icon(Icons.delete_outline,
                 size: 18, color: Color(0xFFEF4444)),
             onPressed: () => _deleteReadinessItem(item.id),
@@ -2545,10 +2594,7 @@ class _TechnicalDevelopmentScreenState
   }
 
   void _addStandardChip() {
-    setState(() {
-      _standardsChips.add(_ChipItem(id: _newId(), label: ''));
-    });
-    _scheduleSave();
+    _openStandardsChipDialog();
   }
 
   void _updateStandardChip(_ChipItem chip) {
@@ -2561,18 +2607,11 @@ class _TechnicalDevelopmentScreenState
   void _deleteStandardChip(String id) {
     setState(() => _standardsChips.removeWhere((item) => item.id == id));
     _scheduleSave();
+    _logActivity('Deleted standards chip', details: {'itemId': id});
   }
 
   void _addWorkstream() {
-    setState(() {
-      _workstreams.add(_WorkstreamItem(
-        id: _newId(),
-        title: '',
-        subtitle: '',
-        status: _workstreamStatusOptions.first,
-      ));
-    });
-    _scheduleSave();
+    _openWorkstreamDialog();
   }
 
   void _updateWorkstream(_WorkstreamItem item) {
@@ -2585,18 +2624,11 @@ class _TechnicalDevelopmentScreenState
   void _deleteWorkstream(String id) {
     setState(() => _workstreams.removeWhere((item) => item.id == id));
     _scheduleSave();
+    _logActivity('Deleted workstream row', details: {'itemId': id});
   }
 
   void _addReadinessItem() {
-    setState(() {
-      _readinessItems.add(_ReadinessItem(
-        id: _newId(),
-        title: '',
-        owner: '',
-        status: _readinessStatusOptions.first,
-      ));
-    });
-    _scheduleSave();
+    _openReadinessItemDialog();
   }
 
   void _updateReadinessItem(_ReadinessItem item) {
@@ -2609,6 +2641,247 @@ class _TechnicalDevelopmentScreenState
   void _deleteReadinessItem(String id) {
     setState(() => _readinessItems.removeWhere((item) => item.id == id));
     _scheduleSave();
+    _logActivity('Deleted readiness row', details: {'itemId': id});
+  }
+
+  Future<void> _openStandardsChipDialog({_ChipItem? existing}) async {
+    final controller = TextEditingController(text: existing?.label ?? '');
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(existing == null
+            ? 'Add quality standard'
+            : 'Edit quality standard'),
+        content: SizedBox(
+          width: 420,
+          child: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: 'Standard / quality code',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(existing == null ? 'Add standard' : 'Save changes'),
+          ),
+        ],
+      ),
+    );
+    if (saved != true) return;
+    final item =
+        _ChipItem(id: existing?.id ?? _newId(), label: controller.text.trim());
+    setState(() {
+      if (existing == null) {
+        _standardsChips.add(item);
+      } else {
+        final index =
+            _standardsChips.indexWhere((entry) => entry.id == existing.id);
+        if (index != -1) _standardsChips[index] = item;
+      }
+    });
+    _scheduleSave();
+    _logActivity(
+      existing == null ? 'Added standards chip' : 'Edited standards chip',
+      details: {'itemId': item.id},
+    );
+  }
+
+  Future<void> _openWorkstreamDialog({_WorkstreamItem? existing}) async {
+    final titleController = TextEditingController(text: existing?.title ?? '');
+    final subtitleController =
+        TextEditingController(text: existing?.subtitle ?? '');
+    String status = existing?.status ?? _workstreamStatusOptions.first;
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          title: Text(existing == null ? 'Add workstream' : 'Edit workstream'),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Workstream',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: subtitleController,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Scope / notes',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: status,
+                  items: _workstreamStatusOptions
+                      .map((option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(option),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setModalState(() => status = value);
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(existing == null ? 'Add workstream' : 'Save changes'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != true) return;
+    final item = _WorkstreamItem(
+      id: existing?.id ?? _newId(),
+      title: titleController.text.trim(),
+      subtitle: subtitleController.text.trim(),
+      status: status,
+    );
+    setState(() {
+      if (existing == null) {
+        _workstreams.add(item);
+      } else {
+        final index =
+            _workstreams.indexWhere((entry) => entry.id == existing.id);
+        if (index != -1) _workstreams[index] = item;
+      }
+    });
+    _scheduleSave();
+    _logActivity(
+      existing == null ? 'Added workstream row' : 'Edited workstream row',
+      details: {'itemId': item.id},
+    );
+  }
+
+  Future<void> _openReadinessItemDialog({_ReadinessItem? existing}) async {
+    final titleController = TextEditingController(text: existing?.title ?? '');
+    String owner =
+        existing?.owner ?? _ownerOptions(currentValue: existing?.owner).first;
+    String status = existing?.status ?? _readinessStatusOptions.first;
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          title: Text(
+              existing == null ? 'Add checklist item' : 'Edit checklist item'),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Checklist item',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue:
+                      _ownerOptions(currentValue: owner).contains(owner)
+                          ? owner
+                          : _ownerOptions(currentValue: owner).first,
+                  items: _ownerOptions(currentValue: owner)
+                      .map((option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(option),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setModalState(() => owner = value);
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Owner',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: status,
+                  items: _readinessStatusOptions
+                      .map((option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(option),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setModalState(() => status = value);
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(
+                  existing == null ? 'Add checklist item' : 'Save changes'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != true) return;
+    final item = _ReadinessItem(
+      id: existing?.id ?? _newId(),
+      title: titleController.text.trim(),
+      owner: owner,
+      status: status,
+    );
+    setState(() {
+      if (existing == null) {
+        _readinessItems.add(item);
+      } else {
+        final index =
+            _readinessItems.indexWhere((entry) => entry.id == existing.id);
+        if (index != -1) _readinessItems[index] = item;
+      }
+    });
+    _scheduleSave();
+    _logActivity(
+      existing == null ? 'Added readiness row' : 'Edited readiness row',
+      details: {'itemId': item.id},
+    );
   }
 
   Widget _buildBottomNavigation(bool isMobile) {

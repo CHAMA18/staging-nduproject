@@ -1248,11 +1248,13 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
       if (!mounted || action == null) return;
 
       if (action == _MissingStakeholderAction.manual) {
-        ProjectDataHelper.showMissingDataMessage(
-          context,
-          'Please identify key stakeholders for at least one solution before proceeding.',
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Continuing without stakeholder details. You can complete this later or let AI fill it in later.',
+            ),
+          ),
         );
-        return;
       }
 
       if (action == _MissingStakeholderAction.autoFill) {
@@ -1263,11 +1265,13 @@ class _CoreStakeholdersScreenState extends State<CoreStakeholdersScreen> {
           ProjectDataInherited.read(context).projectData,
         );
         if (!hasCoreStakeholders) {
-          ProjectDataHelper.showMissingDataMessage(
-            context,
-            'AI could not generate complete stakeholder data. Add at least one entry manually or skip.',
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'AI could not generate stakeholder details right now. Continuing anyway so you can complete this later.',
+              ),
+            ),
           );
-          return;
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

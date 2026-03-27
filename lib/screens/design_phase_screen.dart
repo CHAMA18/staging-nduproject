@@ -328,7 +328,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
       body: Column(
         children: [
           const PlanningPhaseHeader(
-            title: 'Design',
+            title: 'Design Management',
             showImportButton: false,
             showContentButton: false,
           ),
@@ -1714,18 +1714,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                 ),
                 const Spacer(),
                 OutlinedButton.icon(
-                  onPressed: () {
-                    final node = ArchitectureNode(
-                      id: 'n_${_nodeCounter++}',
-                      label: 'New node',
-                      position: Offset(220 + (_nodes.length * 24).toDouble(),
-                          160 + (_nodes.length * 24).toDouble()),
-                      color: Colors.white,
-                      icon: Icons.widgets_outlined,
-                    );
-                    setState(() => _nodes.add(node));
-                    _scheduleSave();
-                  },
+                  onPressed: _addArchitectureNode,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.black87,
                     side: const BorderSide(color: Color(0xFFE5E7EB)),
@@ -1739,6 +1728,44 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
                       style:
                           TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                 ),
+                if (_nodes.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: _deleteLastArchitectureNode,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFB42318),
+                      side: const BorderSide(color: Color(0xFFFECACA)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    icon: const Icon(Icons.delete_outline, size: 16),
+                    label: const Text(
+                      'Delete last',
+                      style:
+                          TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: _clearArchitectureCanvas,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF7A0916),
+                      side: const BorderSide(color: Color(0xFFFDA4AF)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    icon: const Icon(Icons.layers_clear_outlined, size: 16),
+                    label: const Text(
+                      'Clear canvas',
+                      style:
+                          TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
                 const SizedBox(width: 12),
                 Container(
                   padding:
@@ -2145,6 +2172,124 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
               side: const BorderSide(color: Color(0xFFE5E7EB)),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             ),
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppSemanticColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Manual node register',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: _addArchitectureNode,
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text('Add node'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (_nodes.isEmpty)
+                  Text(
+                    'No nodes yet. Add one manually to keep the architecture model editable on web.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  )
+                else
+                  ..._nodes.map(_buildWebNodeEditor),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _addArchitectureNode() {
+    final node = ArchitectureNode(
+      id: 'n_${_nodeCounter++}',
+      label: 'New node',
+      position: Offset(
+        220 + (_nodes.length * 24).toDouble(),
+        160 + (_nodes.length * 24).toDouble(),
+      ),
+      color: Colors.white,
+      icon: Icons.widgets_outlined,
+    );
+    setState(() => _nodes.add(node));
+    _scheduleSave();
+  }
+
+  void _deleteLastArchitectureNode() {
+    if (_nodes.isEmpty) return;
+    final id = _nodes.last.id;
+    _deleteArchitectureNode(id);
+  }
+
+  void _deleteArchitectureNode(String id) {
+    setState(() {
+      _nodes.removeWhere((node) => node.id == id);
+      _edges.removeWhere((edge) => edge.fromId == id || edge.toId == id);
+    });
+    _scheduleSave();
+  }
+
+  void _clearArchitectureCanvas() {
+    setState(() {
+      _nodes.clear();
+      _edges.clear();
+    });
+    _scheduleSave();
+  }
+
+  Widget _buildWebNodeEditor(ArchitectureNode node) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppSemanticColors.border),
+      ),
+      child: Row(
+        children: [
+          Icon(node.icon ?? Icons.widgets_outlined,
+              size: 18, color: const Color(0xFF475467)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TextFormField(
+              key: ValueKey('web-node-${node.id}'),
+              initialValue: node.label,
+              decoration: const InputDecoration(
+                isDense: true,
+                hintText: 'Node label',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (value) {
+                node.label = value;
+                _scheduleSave();
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            tooltip: 'Delete node',
+            onPressed: () => _deleteArchitectureNode(node.id),
+            icon: const Icon(Icons.delete_outline, color: Color(0xFFB42318)),
           ),
         ],
       ),

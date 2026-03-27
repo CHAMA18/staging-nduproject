@@ -4069,8 +4069,7 @@ class _PreferredSolutionAnalysisScreenState
     );
   }
 
-  bool get _canNavigateToComparison =>
-      !_isLoading && _error == null && _analysis.isNotEmpty;
+  bool get _canNavigateToComparison => !_isLoading;
 
   Future<void> _openComparisonPage() async {
     if (!_canNavigateToComparison) {
@@ -4082,12 +4081,14 @@ class _PreferredSolutionAnalysisScreenState
       }
       if (_error != null) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Resolve the analysis error before continuing.')));
-        return;
+            content: Text(
+                'Comparison data is incomplete right now. Opening anyway so you can continue.')));
       }
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Add solution details to view the comparison.')));
-      return;
+      if (_error == null && _analysis.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                'Opening comparison without completed analysis. You can fill this in later.')));
+      }
     }
 
     // 1. Save data FIRST before validation
@@ -4099,10 +4100,14 @@ class _PreferredSolutionAnalysisScreenState
     final provider = ProjectDataInherited.read(context);
     if (provider.projectData.preferredSolutionAnalysis == null) {
       if (mounted) {
-        ProjectDataHelper.showMissingDataMessage(context,
-            'Please complete the preferred solution analysis before continuing.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Continuing without completed preferred solution analysis. You can complete it later.',
+            ),
+          ),
+        );
       }
-      return;
     }
 
     // Show 3-second loading dialog
@@ -4958,10 +4963,14 @@ class _PreferredSolutionComparisonScreen extends StatelessWidget {
 
     if (projectData.preferredSolutionAnalysis == null) {
       if (context.mounted) {
-        ProjectDataHelper.showMissingDataMessage(
-            context, 'Please complete the preferred solution analysis.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Continuing to the summary without completed preferred solution analysis.',
+            ),
+          ),
+        );
       }
-      return;
     }
 
     // Smart Checkpoint Check

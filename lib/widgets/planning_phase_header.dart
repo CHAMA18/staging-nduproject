@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:ndu_project/services/firebase_auth_service.dart';
-import 'package:ndu_project/services/user_service.dart';
+import 'package:ndu_project/widgets/unified_phase_header.dart';
 
-/// Standardized header for all Planning Phase screens
-/// Shows user email, role/status, navigation arrows, and action buttons
 class PlanningPhaseHeader extends StatelessWidget {
   const PlanningPhaseHeader({
     super.key,
@@ -36,118 +32,56 @@ class PlanningPhaseHeader extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: const [
-          BoxShadow(color: Color(0x0F000000), blurRadius: 12, offset: Offset(0, 6)),
+          BoxShadow(
+            color: Color(0x0F000000),
+            blurRadius: 12,
+            offset: Offset(0, 6),
+          ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              if (showNavigationButtons) ...[
-                _CircleIconButton(
-                  icon: Icons.arrow_back_ios_new_rounded,
-                  onTap: onBack ?? () => Navigator.maybePop(context),
-                ),
-                const SizedBox(width: 12),
-                _CircleIconButton(
-                  icon: Icons.arrow_forward_ios_rounded,
-                  onTap: onForward,
-                ),
-                const SizedBox(width: 16),
+          UnifiedPhaseHeader(
+            title: title,
+            onBackPressed: showNavigationButtons
+                ? onBack ?? () => Navigator.maybePop(context)
+                : null,
+            trailingActions: showNavigationButtons
+                ? [
+                    _CircleIconButton(
+                      icon: Icons.arrow_forward_ios_rounded,
+                      onTap: onForward,
+                    ),
+                  ]
+                : const <Widget>[],
+            showActivityLogAction: true,
+          ),
+          if (showImportButton || showContentButton) ...[
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: Color(0xFFE5E7EB)),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                if (showImportButton)
+                  _YellowButton(
+                    label: 'Import',
+                    icon: Icons.upload_outlined,
+                    onPressed: onImportPressed ?? () {},
+                  ),
+                if (showImportButton && showContentButton)
+                  const SizedBox(width: 12),
+                if (showContentButton)
+                  _WhiteButton(
+                    label: 'Content',
+                    icon: Icons.download_outlined,
+                    onPressed: onContentPressed ?? () {},
+                  ),
               ],
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.black87),
-                ),
-              ),
-              const _UserInfo(),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Divider(height: 1, color: Color(0xFFE5E7EB)),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              if (showImportButton)
-                _YellowButton(
-                  label: 'Import',
-                  icon: Icons.upload_outlined,
-                  onPressed: onImportPressed ?? () {},
-                ),
-              if (showImportButton && showContentButton) const SizedBox(width: 12),
-              if (showContentButton)
-                _WhiteButton(
-                  label: 'Content',
-                  icon: Icons.download_outlined,
-                  onPressed: onContentPressed ?? () {},
-                ),
-            ],
-          ),
+            ),
+          ],
         ],
       ),
-    );
-  }
-}
-
-class _UserInfo extends StatelessWidget {
-  const _UserInfo();
-
-  String _getInitials(String text) {
-    if (text.isEmpty) return 'U';
-    final words = text.trim().split(' ');
-    if (words.length >= 2) {
-      return '${words[0][0]}${words[1][0]}'.toUpperCase();
-    }
-    return text.substring(0, 1).toUpperCase();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    final displayName = FirebaseAuthService.displayNameOrEmail(fallback: 'User');
-    final email = user?.email ?? '';
-    final initials = _getInitials(displayName);
-    final primaryText = email.isNotEmpty ? email : displayName;
-
-    return StreamBuilder<bool>(
-      stream: UserService.watchAdminStatus(),
-      builder: (context, snapshot) {
-        final isAdmin = snapshot.data ?? UserService.isAdminEmail(email);
-        final role = isAdmin ? 'Admin' : 'Member';
-
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: const Color(0xFFE5E7EB),
-              child: Text(
-                initials,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[700]),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  primaryText,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                ),
-                Text(
-                  role,
-                  style: const TextStyle(fontSize: 10, color: Colors.grey),
-                ),
-              ],
-            ),
-            const SizedBox(width: 4),
-            const Icon(Icons.keyboard_arrow_down, color: Colors.grey, size: 20),
-          ],
-        );
-      },
     );
   }
 }
@@ -178,7 +112,8 @@ class _CircleIconButton extends StatelessWidget {
 }
 
 class _YellowButton extends StatelessWidget {
-  const _YellowButton({required this.label, required this.icon, this.onPressed});
+  const _YellowButton(
+      {required this.label, required this.icon, this.onPressed});
 
   final String label;
   final IconData icon;
@@ -196,7 +131,10 @@ class _YellowButton extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
       icon: Icon(icon, size: 18),
-      label: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+      label: Text(
+        label,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+      ),
     );
   }
 }
@@ -220,7 +158,10 @@ class _WhiteButton extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
       icon: Icon(icon, size: 18),
-      label: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+      label: Text(
+        label,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+      ),
     );
   }
 }

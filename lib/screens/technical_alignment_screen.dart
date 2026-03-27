@@ -424,7 +424,7 @@ class _TechnicalAlignmentScreenState extends State<TechnicalAlignmentScreen> {
       body: Column(
         children: [
           const PlanningPhaseHeader(
-            title: 'Design Phase',
+            title: 'Technical Alignment',
             showImportButton: false,
             showContentButton: false,
             showNavigationButtons: false,

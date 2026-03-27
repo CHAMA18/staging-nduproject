@@ -1780,10 +1780,11 @@ ${_notesController.text.trim().isEmpty ? 'None' : _notesController.text.trim()}
     if (solutions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content:
-                Text('Add at least one solution option before continuing.')),
+          content: Text(
+            'Continuing without saved solution options. You can add them later or let AI generate them.',
+          ),
+        ),
       );
-      return;
     }
 
     FocusScope.of(context).unfocus();

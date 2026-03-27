@@ -392,20 +392,6 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
   }
 
   Future<void> _handleNextPressed() async {
-    // Validate required fields before proceeding
-    if (_selectedOverallFramework == null ||
-        _selectedOverallFramework!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content:
-              Text('Please select an Overall Framework before proceeding.'),
-          backgroundColor: Color(0xFFEF4444),
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return;
-    }
-
     final projectGoals = _goals
         .map((g) => ProjectGoal(
               name: g.nameController.text.trim(),
@@ -414,16 +400,24 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
             ))
         .toList();
 
+    final missingFields = <String>[];
+    if (_selectedOverallFramework == null || _selectedOverallFramework!.isEmpty) {
+      missingFields.add('Overall Framework');
+    }
     if (projectGoals.isEmpty) {
+      missingFields.add('Project Goals');
+    }
+
+    if (missingFields.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content:
-              Text('Please add at least one Project Goal before proceeding.'),
-          backgroundColor: Color(0xFFEF4444),
-          duration: Duration(seconds: 3),
+        SnackBar(
+          content: Text(
+            'Continuing with partial project details. Missing: ${missingFields.join(', ')}.',
+          ),
+          backgroundColor: const Color(0xFFD97706),
+          duration: const Duration(seconds: 3),
         ),
       );
-      return;
     }
 
     final isBasicPlan =

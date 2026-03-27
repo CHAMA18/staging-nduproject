@@ -293,8 +293,14 @@ class _FrontEndPlanningMilestoneScreenState
           return;
         }
       } else {
-        FormValidationEngine.showValidationSnackBar(context, validation);
-        await FormValidationEngine.scrollToFirstIssue(validation);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Continuing with incomplete milestone details. You can complete them later or auto-fill them later.',
+            ),
+          ),
+        );
+        await _saveAndClose(skippedValidation: true);
         return;
       }
     }

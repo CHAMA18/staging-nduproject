@@ -11,6 +11,7 @@ import 'package:ndu_project/theme.dart';
 import 'package:ndu_project/routing/app_router.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/services/activity_log_service.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -209,8 +210,22 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
         'readinessItems': _readinessItems.map((e) => e.toMap()).toList(),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+      await ActivityLogService.instance.logActivity(
+        projectId: projectId,
+        phase: 'Design Phase',
+        page: 'Engineering',
+        action: 'Updated Engineering data',
+      );
     } catch (error) {
       debugPrint('Engineering design save error: $error');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Unable to save Engineering changes right now. Please try again.',
+          ),
+        ),
+      );
     }
   }
 
@@ -296,6 +311,22 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
 
   String _newId() => DateTime.now().microsecondsSinceEpoch.toString();
 
+  void _logActivity(String action, {Map<String, dynamic>? details}) {
+    final projectId =
+        ProjectDataInherited.maybeOf(context)?.projectData.projectId?.trim() ??
+            '';
+    if (projectId.isEmpty) return;
+    unawaited(
+      ActivityLogService.instance.logActivity(
+        projectId: projectId,
+        phase: 'Design Phase',
+        page: 'Engineering',
+        action: action,
+        details: details,
+      ),
+    );
+  }
+
   void _updateCoreLayer(_CoreLayerItem updated) {
     final index = _coreLayers.indexWhere((item) => item.id == updated.id);
     if (index == -1) return;
@@ -304,15 +335,13 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
   }
 
   void _addCoreLayer() {
-    setState(() {
-      _coreLayers.add(_CoreLayerItem(id: _newId(), name: '', description: ''));
-    });
-    _scheduleSave();
+    _openCoreLayerDialog();
   }
 
   void _removeCoreLayer(String id) {
     setState(() => _coreLayers.removeWhere((item) => item.id == id));
     _scheduleSave();
+    _logActivity('Deleted core layer row', details: {'itemId': id});
   }
 
   void _updateComponent(_ComponentItem updated) {
@@ -323,19 +352,13 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
   }
 
   void _addComponent() {
-    setState(() {
-      _components.add(_ComponentItem(
-          id: _newId(),
-          name: '',
-          responsibility: '',
-          statusLabel: _statusOptions.first));
-    });
-    _scheduleSave();
+    _openComponentDialog();
   }
 
   void _removeComponent(String id) {
     setState(() => _components.removeWhere((item) => item.id == id));
     _scheduleSave();
+    _logActivity('Deleted component row', details: {'itemId': id});
   }
 
   void _updateReadiness(_ReadinessItem updated) {
@@ -346,16 +369,271 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
   }
 
   void _addReadiness() {
-    setState(() {
-      _readinessItems.add(
-          _ReadinessItem(id: _newId(), title: '', description: '', owner: ''));
-    });
-    _scheduleSave();
+    _openReadinessDialog();
   }
 
   void _removeReadiness(String id) {
     setState(() => _readinessItems.removeWhere((item) => item.id == id));
     _scheduleSave();
+    _logActivity('Deleted readiness row', details: {'itemId': id});
+  }
+
+  Future<void> _openCoreLayerDialog({_CoreLayerItem? existing}) async {
+    final nameController = TextEditingController(text: existing?.name ?? '');
+    final descriptionController =
+        TextEditingController(text: existing?.description ?? '');
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(existing == null
+            ? 'Add architecture layer'
+            : 'Edit architecture layer'),
+        content: SizedBox(
+          width: 480,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Layer name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: descriptionController,
+                minLines: 2,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'Responsibility',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(existing == null ? 'Add layer' : 'Save changes'),
+          ),
+        ],
+      ),
+    );
+
+    if (saved != true) return;
+    final item = _CoreLayerItem(
+      id: existing?.id ?? _newId(),
+      name: nameController.text.trim(),
+      description: descriptionController.text.trim(),
+    );
+    setState(() {
+      if (existing == null) {
+        _coreLayers.add(item);
+      } else {
+        final index =
+            _coreLayers.indexWhere((entry) => entry.id == existing.id);
+        if (index != -1) _coreLayers[index] = item;
+      }
+    });
+    _scheduleSave();
+    _logActivity(
+      existing == null ? 'Added core layer row' : 'Edited core layer row',
+      details: {'itemId': item.id},
+    );
+  }
+
+  Future<void> _openComponentDialog({_ComponentItem? existing}) async {
+    final nameController = TextEditingController(text: existing?.name ?? '');
+    final responsibilityController =
+        TextEditingController(text: existing?.responsibility ?? '');
+    String status = existing?.statusLabel ?? _statusOptions.first;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          title: Text(existing == null ? 'Add component' : 'Edit component'),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Component name',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: responsibilityController,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Responsibility / specification',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: status,
+                  items: _statusOptions
+                      .map((option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(option),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setModalState(() => status = value);
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(existing == null ? 'Add component' : 'Save changes'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (saved != true) return;
+    final item = _ComponentItem(
+      id: existing?.id ?? _newId(),
+      name: nameController.text.trim(),
+      responsibility: responsibilityController.text.trim(),
+      statusLabel: status,
+    );
+    setState(() {
+      if (existing == null) {
+        _components.add(item);
+      } else {
+        final index =
+            _components.indexWhere((entry) => entry.id == existing.id);
+        if (index != -1) _components[index] = item;
+      }
+    });
+    _scheduleSave();
+    _logActivity(
+      existing == null ? 'Added component row' : 'Edited component row',
+      details: {'itemId': item.id},
+    );
+  }
+
+  Future<void> _openReadinessDialog({_ReadinessItem? existing}) async {
+    final titleController = TextEditingController(text: existing?.title ?? '');
+    final descriptionController =
+        TextEditingController(text: existing?.description ?? '');
+    String owner = existing?.owner ?? _ownerOptions().first;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          title: Text(existing == null
+              ? 'Add engineering entry'
+              : 'Edit engineering entry'),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Entry title',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descriptionController,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue:
+                      _ownerOptions(currentValue: owner).contains(owner)
+                          ? owner
+                          : _ownerOptions(currentValue: owner).first,
+                  items: _ownerOptions(currentValue: owner)
+                      .map((option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(option),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setModalState(() => owner = value);
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Owner',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(existing == null ? 'Add entry' : 'Save changes'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (saved != true) return;
+    final item = _ReadinessItem(
+      id: existing?.id ?? _newId(),
+      title: titleController.text.trim(),
+      description: descriptionController.text.trim(),
+      owner: owner,
+    );
+    setState(() {
+      if (existing == null) {
+        _readinessItems.add(item);
+      } else {
+        final index =
+            _readinessItems.indexWhere((entry) => entry.id == existing.id);
+        if (index != -1) _readinessItems[index] = item;
+      }
+    });
+    _scheduleSave();
+    _logActivity(
+      existing == null ? 'Added readiness row' : 'Edited readiness row',
+      details: {'itemId': item.id},
+    );
   }
 
   Future<void> _exportEngineeringChecklist() async {
@@ -477,7 +755,7 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
           Column(
             children: [
               const PlanningPhaseHeader(
-                title: 'Design Phase',
+                title: 'Engineering',
                 showImportButton: false,
                 showContentButton: false,
                 showNavigationButtons: false,
@@ -1570,14 +1848,24 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
   Widget _buildSectionHeader({
     required String title,
     required String subtitle,
+    Widget? action,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-              fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87),
+              ),
+            ),
+            if (action != null) action,
+          ],
         ),
         const SizedBox(height: 6),
         Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
@@ -1599,6 +1887,11 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
           _buildSectionHeader(
             title: 'System architecture',
             subtitle: 'High-level layers and responsibilities',
+            action: TextButton.icon(
+              onPressed: _addCoreLayer,
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Add layer'),
+            ),
           ),
           const SizedBox(height: 20),
           ..._coreLayers.map((layer) => Padding(
@@ -1633,6 +1926,11 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                       ),
                     ),
                     IconButton(
+                      onPressed: () => _openCoreLayerDialog(existing: layer),
+                      icon: const Icon(Icons.edit_outlined,
+                          size: 18, color: Color(0xFF2563EB)),
+                    ),
+                    IconButton(
                       onPressed: () => _removeCoreLayer(layer.id),
                       icon: const Icon(Icons.delete_outline,
                           size: 18, color: Color(0xFFEF4444)),
@@ -1640,14 +1938,6 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                   ],
                 ),
               )),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: _addCoreLayer,
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('Add architecture layer'),
-            ),
-          ),
           const SizedBox(height: 16),
           Text('Key decisions',
               style: TextStyle(
@@ -1680,6 +1970,11 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
             _buildSectionHeader(
               title: 'Components & interfaces',
               subtitle: 'Who owns what and how they talk',
+              action: TextButton.icon(
+                onPressed: _addComponent,
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Add component'),
+              ),
             ),
             const SizedBox(height: 20),
             // Header Row
@@ -1772,6 +2067,12 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                       ),
                       const SizedBox(width: 8),
                       IconButton(
+                        onPressed: () =>
+                            _openComponentDialog(existing: component),
+                        icon: const Icon(Icons.edit_outlined,
+                            size: 18, color: Color(0xFF2563EB)),
+                      ),
+                      IconButton(
                         onPressed: () => _removeComponent(component.id),
                         icon: const Icon(Icons.delete_outline,
                             size: 18, color: Color(0xFFEF4444)),
@@ -1779,14 +2080,6 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                     ],
                   ),
                 )),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: _addComponent,
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('Add component'),
-              ),
-            ),
           ],
         ),
       );
@@ -1804,6 +2097,11 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
             _buildSectionHeader(
               title: 'Engineering readiness',
               subtitle: 'Design reviews, sign-offs, and ownership',
+              action: TextButton.icon(
+                onPressed: _addReadiness,
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Add entry'),
+              ),
             ),
             const SizedBox(height: 20),
             ..._readinessItems.map((item) => Padding(
@@ -1854,6 +2152,11 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                         ),
                       ),
                       IconButton(
+                        onPressed: () => _openReadinessDialog(existing: item),
+                        icon: const Icon(Icons.edit_outlined,
+                            size: 18, color: Color(0xFF2563EB)),
+                      ),
+                      IconButton(
                         onPressed: () => _removeReadiness(item.id),
                         icon: const Icon(Icons.delete_outline,
                             size: 18, color: Color(0xFFEF4444)),
@@ -1861,34 +2164,6 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
                     ],
                   ),
                 )),
-            const SizedBox(height: 8),
-            // Add engineering entry button
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: _addReadiness,
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[300]!),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.add, size: 18, color: Colors.grey[700]),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Add engineering entry',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
             const SizedBox(height: 16),
             // Export button
             Center(

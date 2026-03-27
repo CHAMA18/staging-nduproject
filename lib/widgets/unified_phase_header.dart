@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:ndu_project/screens/project_activities_log_screen.dart';
 import 'package:ndu_project/screens/settings_screen.dart';
 import 'package:ndu_project/services/auth_nav.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
@@ -13,6 +14,8 @@ class UnifiedPhaseHeader extends StatelessWidget {
     this.scaffoldKey,
     this.onBackPressed,
     this.trailingActions = const <Widget>[],
+    this.showActivityLogAction = true,
+    this.onOpenActivityLog,
     this.backgroundColor = Colors.white,
   });
 
@@ -20,12 +23,15 @@ class UnifiedPhaseHeader extends StatelessWidget {
   final GlobalKey<ScaffoldState>? scaffoldKey;
   final VoidCallback? onBackPressed;
   final List<Widget> trailingActions;
+  final bool showActivityLogAction;
+  final VoidCallback? onOpenActivityLog;
   final Color backgroundColor;
 
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
     final headerHeight = isMobile ? 72.0 : 88.0;
+    final useDrawerTrigger = isMobile && scaffoldKey != null;
 
     return Container(
       height: headerHeight,
@@ -33,7 +39,7 @@ class UnifiedPhaseHeader extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 24),
       child: Row(
         children: [
-          if (isMobile)
+          if (useDrawerTrigger)
             IconButton(
               icon: const Icon(Icons.menu),
               tooltip: 'Open menu',
@@ -56,6 +62,13 @@ class UnifiedPhaseHeader extends StatelessWidget {
               ),
             ),
           const Spacer(),
+          if (showActivityLogAction)
+            _ActivityLogAction(
+              compact: isMobile,
+              onTap: onOpenActivityLog ??
+                  () => ProjectActivitiesLogScreen.open(context),
+            ),
+          if (showActivityLogAction) SizedBox(width: isMobile ? 8 : 12),
           ...trailingActions,
           if (trailingActions.isNotEmpty) SizedBox(width: isMobile ? 8 : 12),
           const UnifiedProfileMenu(),
@@ -72,11 +85,15 @@ class UnifiedScaffoldAppBar extends StatelessWidget
     this.backgroundColor,
     this.title,
     this.onMenuTap,
+    this.showActivityLogAction = true,
+    this.onOpenActivityLog,
   });
 
   final Color? backgroundColor;
   final String? title;
   final VoidCallback? onMenuTap;
+  final bool showActivityLogAction;
+  final VoidCallback? onOpenActivityLog;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -109,6 +126,15 @@ class UnifiedScaffoldAppBar extends StatelessWidget
             ),
       centerTitle: true,
       actions: [
+        if (showActivityLogAction)
+          Padding(
+            padding: EdgeInsets.only(right: isMobile ? 8 : 10),
+            child: _ActivityLogAction(
+              compact: isMobile,
+              onTap: onOpenActivityLog ??
+                  () => ProjectActivitiesLogScreen.open(context),
+            ),
+          ),
         Padding(
           padding: EdgeInsets.only(right: isMobile ? 8 : 12),
           child: const UnifiedProfileMenu(compact: true),
@@ -252,6 +278,59 @@ class UnifiedProfileMenu extends StatelessWidget {
         ),
       ],
       child: label,
+    );
+  }
+}
+
+class _ActivityLogAction extends StatelessWidget {
+  const _ActivityLogAction({
+    required this.compact,
+    required this.onTap,
+  });
+
+  final bool compact;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Project Activity Log',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 8 : 10,
+            vertical: 8,
+          ),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF7E0),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFFFD873)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.fact_check_outlined,
+                size: 18,
+                color: Color(0xFFB45309),
+              ),
+              if (!compact) ...[
+                const SizedBox(width: 6),
+                const Text(
+                  'Activity Log',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFB45309),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

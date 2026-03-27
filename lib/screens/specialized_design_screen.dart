@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:ndu_project/screens/design_deliverables_screen.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/theme.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/services/activity_log_service.dart';
 import 'package:ndu_project/services/design_phase_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/models/design_phase_models.dart';
@@ -35,6 +37,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
   Timer? _saveDebounce;
   bool _isLoading = false;
   String? _loadError;
+  bool _didAttemptAutoGeneration = false;
 
   final List<SecurityPatternRow> _securityRows = [];
 
@@ -152,6 +155,15 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
           ..addAll(_dedupeIntegrationRows(data.integrationFlows));
         _isLoading = false;
       });
+
+      final sectionIsEmpty = _notesController.text.trim().isEmpty &&
+          _securityRows.isEmpty &&
+          _performanceRows.isEmpty &&
+          _integrationRows.isEmpty;
+      if (sectionIsEmpty && !_didAttemptAutoGeneration) {
+        _didAttemptAutoGeneration = true;
+        await _generateAllSpecializedDesign(showSnackbar: false);
+      }
     } catch (e) {
       debugPrint('Error loading specialized design: $e');
       setState(() {
@@ -178,21 +190,27 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
     );
 
     await DesignPhaseService.instance.saveSpecializedDesign(projectId, data);
+    _logActivity('Updated Specialized Design data');
   }
 
   bool _isGenerating = false;
   final OpenAiServiceSecure _openAi = OpenAiServiceSecure();
 
-  Future<void> _generateAllSpecializedDesign() async {
+  Future<void> _generateAllSpecializedDesign({bool showSnackbar = true}) async {
     final projectId = _currentProjectId();
     if (projectId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error: No active project found.')),
-      );
+      if (showSnackbar) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error: No active project found.')),
+        );
+      }
       return;
     }
 
-    setState(() => _isGenerating = true);
+    setState(() {
+      _isGenerating = true;
+      _loadError = null;
+    });
 
     try {
       // Build context
@@ -238,25 +256,55 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
 
       _scheduleSave();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Specialized Design generated successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      _logActivity('Generated Specialized Design with AI');
+
+      if (showSnackbar && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Specialized Design generated successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
       debugPrint('Error generating specialized design: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('AI Generation failed: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        setState(() {
+          _loadError =
+              'Unable to generate specialized design with AI right now.';
+        });
+        if (showSnackbar) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('AI Generation failed: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } finally {
       if (mounted) setState(() => _isGenerating = false);
     }
+  }
+
+  bool get _isSpecializedDesignEmpty =>
+      _notesController.text.trim().isEmpty &&
+      _securityRows.isEmpty &&
+      _performanceRows.isEmpty &&
+      _integrationRows.isEmpty;
+
+  void _logActivity(String action, {Map<String, dynamic>? details}) {
+    final projectId = _currentProjectId();
+    if (projectId == null) return;
+    unawaited(
+      ActivityLogService.instance.logActivity(
+        projectId: projectId,
+        phase: 'Design Phase',
+        page: 'Specialized Design',
+        action: action,
+        details: details,
+      ),
+    );
   }
 
   // Helper to build list of context-aware options (Project members)
@@ -379,10 +427,52 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: const Color(0xFFFECACA)),
                       ),
-                      child: Text(
-                        _loadError!,
-                        style: const TextStyle(
-                            fontSize: 12, color: Color(0xFFB91C1C)),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _loadError!,
+                              style: const TextStyle(
+                                  fontSize: 12, color: Color(0xFFB91C1C)),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          OutlinedButton(
+                            onPressed: () => _generateAllSpecializedDesign(
+                                showSnackbar: true),
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (_isGenerating && _isSpecializedDesignEmpty)
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 20),
+                      padding: const EdgeInsets.all(28),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: _kSpecBorder),
+                      ),
+                      child: const Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: CircularProgressIndicator(strokeWidth: 3),
+                          ),
+                          SizedBox(height: 14),
+                          Text(
+                            'Generating Specialized Design with AI...',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF111827),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   _buildSecurityPatternsCard(ownerOptions),
@@ -914,19 +1004,8 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
             subtitle:
                 'Exceptional guardrails for world-class data protection and access control.',
             actionLabel: 'Add control',
-            onAction: () {
-              setState(() {
-                _securityRows.add(
-                  SecurityPatternRow(
-                    pattern: 'New security control',
-                    decision: 'Define the implementation requirement.',
-                    owner: 'Owner',
-                    status: 'Draft',
-                  ),
-                );
-              });
-              _scheduleSave();
-            },
+            onAction: () =>
+                _openSecurityPatternDialog(ownerOptions: ownerOptions),
           ),
           const SizedBox(height: 16),
           _buildTableHeaderRow(
@@ -945,19 +1024,8 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
               message:
                   'No security patterns captured yet. Add your first control.',
               actionLabel: 'Add control',
-              onAction: () {
-                setState(() {
-                  _securityRows.add(
-                    SecurityPatternRow(
-                      pattern: '',
-                      decision: '',
-                      owner: '',
-                      status: 'Draft',
-                    ),
-                  );
-                });
-                _scheduleSave();
-              },
+              onAction: () =>
+                  _openSecurityPatternDialog(ownerOptions: ownerOptions),
             )
           else
             for (int i = 0; i < _securityRows.length; i++) ...[
@@ -999,19 +1067,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
             subtitle:
                 'Exceptional performance decisions that keep the system stable at peak load.',
             actionLabel: 'Add hotspot',
-            onAction: () {
-              setState(() {
-                _performanceRows.add(
-                  PerformancePatternRow(
-                    hotspot: 'New hotspot',
-                    focus: 'Describe the scaling or resiliency focus.',
-                    sla: 'Define SLA',
-                    status: 'Draft',
-                  ),
-                );
-              });
-              _scheduleSave();
-            },
+            onAction: _openPerformancePatternDialog,
           ),
           const SizedBox(height: 16),
           _buildTableHeaderRow(
@@ -1030,19 +1086,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
               message:
                   'No performance hotspots yet. Add the first scaling decision.',
               actionLabel: 'Add hotspot',
-              onAction: () {
-                setState(() {
-                  _performanceRows.add(
-                    PerformancePatternRow(
-                      hotspot: '',
-                      focus: '',
-                      sla: '',
-                      status: 'Draft',
-                    ),
-                  );
-                });
-                _scheduleSave();
-              },
+              onAction: _openPerformancePatternDialog,
             )
           else
             for (int i = 0; i < _performanceRows.length; i++) ...[
@@ -1080,19 +1124,8 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
             subtitle:
                 'World-class clarity for every system boundary and data contract.',
             actionLabel: 'Add flow',
-            onAction: () {
-              setState(() {
-                _integrationRows.add(
-                  IntegrationFlowRow(
-                    flow: 'New integration flow',
-                    owner: 'Owner',
-                    system: 'System',
-                    status: 'Draft',
-                  ),
-                );
-              });
-              _scheduleSave();
-            },
+            onAction: () =>
+                _openIntegrationFlowDialog(ownerOptions: ownerOptions),
           ),
           const SizedBox(height: 16),
           _buildTableHeaderRow(
@@ -1111,19 +1144,8 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
               message:
                   'No integration flows yet. Add the first contract or system boundary.',
               actionLabel: 'Add flow',
-              onAction: () {
-                setState(() {
-                  _integrationRows.add(
-                    IntegrationFlowRow(
-                      flow: '',
-                      owner: '',
-                      system: '',
-                      status: 'Draft',
-                    ),
-                  );
-                });
-                _scheduleSave();
-              },
+              onAction: () =>
+                  _openIntegrationFlowDialog(ownerOptions: ownerOptions),
             )
           else
             for (int i = 0; i < _integrationRows.length; i++) ...[
@@ -1140,7 +1162,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () {},
+              onPressed: _showExportFeedback,
               icon: const Icon(Icons.download, size: 18),
               label: const Text('Export specialized design brief'),
               style: ElevatedButton.styleFrom(
@@ -1698,6 +1720,303 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
     return result ?? false;
   }
 
+  Future<void> _openSecurityPatternDialog({
+    required List<String> ownerOptions,
+  }) async {
+    final patternController = TextEditingController();
+    final decisionController = TextEditingController();
+    String owner = ownerOptions.first;
+    String status = 'Draft';
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          title: const Text('Add security control'),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: patternController,
+                  decoration: const InputDecoration(
+                    labelText: 'Pattern',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: decisionController,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Decision and scope',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: owner,
+                  items: ownerOptions
+                      .map((option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(option),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setModalState(() => owner = value);
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Owner',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: status,
+                  items: _statusOptions
+                      .map((option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(option),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setModalState(() => status = value);
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Add control'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != true) return;
+    setState(() {
+      _securityRows.add(
+        SecurityPatternRow(
+          pattern: patternController.text.trim(),
+          decision: decisionController.text.trim(),
+          owner: owner,
+          status: status,
+        ),
+      );
+    });
+    _scheduleSave();
+  }
+
+  Future<void> _openPerformancePatternDialog() async {
+    final hotspotController = TextEditingController();
+    final focusController = TextEditingController();
+    final slaController = TextEditingController();
+    String status = 'Draft';
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          title: const Text('Add performance hotspot'),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: hotspotController,
+                  decoration: const InputDecoration(
+                    labelText: 'Service hotspot',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: focusController,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Design focus',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: slaController,
+                  decoration: const InputDecoration(
+                    labelText: 'SLA target',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: status,
+                  items: _statusOptions
+                      .map((option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(option),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setModalState(() => status = value);
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Add hotspot'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != true) return;
+    setState(() {
+      _performanceRows.add(
+        PerformancePatternRow(
+          hotspot: hotspotController.text.trim(),
+          focus: focusController.text.trim(),
+          sla: slaController.text.trim(),
+          status: status,
+        ),
+      );
+    });
+    _scheduleSave();
+  }
+
+  Future<void> _openIntegrationFlowDialog({
+    required List<String> ownerOptions,
+  }) async {
+    final flowController = TextEditingController();
+    final systemController = TextEditingController();
+    String owner = ownerOptions.first;
+    String status = 'Draft';
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          title: const Text('Add integration flow'),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: flowController,
+                  decoration: const InputDecoration(
+                    labelText: 'Flow or contract',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: systemController,
+                  decoration: const InputDecoration(
+                    labelText: 'System',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: owner,
+                  items: ownerOptions
+                      .map((option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(option),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setModalState(() => owner = value);
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Owner',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: status,
+                  items: _statusOptions
+                      .map((option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(option),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setModalState(() => status = value);
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Add flow'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != true) return;
+    setState(() {
+      _integrationRows.add(
+        IntegrationFlowRow(
+          flow: flowController.text.trim(),
+          owner: owner,
+          system: systemController.text.trim(),
+          status: status,
+        ),
+      );
+    });
+    _scheduleSave();
+  }
+
+  void _showExportFeedback() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Specialized design brief export will use the latest saved rows.',
+        ),
+      ),
+    );
+  }
+
   Widget _buildBottomNavigation(bool isMobile) {
     const accent = LightModeColors.lightPrimary;
     return Column(
@@ -1728,7 +2047,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
               ),
               const SizedBox(height: 12),
               ElevatedButton.icon(
-                onPressed: () {},
+                onPressed: () => DesignDeliverablesScreen.open(context),
                 icon: const Icon(Icons.arrow_forward, size: 18),
                 label: const Text('Next: Design deliverables'),
                 style: ElevatedButton.styleFrom(
@@ -1765,7 +2084,7 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
                   style: TextStyle(fontSize: 13, color: Colors.grey[500])),
               const Spacer(),
               ElevatedButton.icon(
-                onPressed: () {},
+                onPressed: () => DesignDeliverablesScreen.open(context),
                 icon: const Icon(Icons.arrow_forward, size: 18),
                 label: const Text('Next: Design deliverables'),
                 style: ElevatedButton.styleFrom(

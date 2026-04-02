@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ndu_project/models/design_phase_models.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -151,6 +152,17 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
     });
   }
 
+  DesignManagementData? _syncedDesignManagementData(ProjectDataModel data) {
+    final mappedMethodology =
+        ProjectDataHelper.projectMethodologyFromOverallFramework(
+      _selectedOverallFramework,
+    );
+    if (mappedMethodology == null) return data.designManagementData;
+    return (data.designManagementData ?? DesignManagementData()).copyWith(
+      methodology: mappedMethodology,
+    );
+  }
+
   Future<void> _saveData() async {
     if (!mounted) return;
 
@@ -166,12 +178,15 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
       await ProjectDataHelper.updateAndSave(
         context: context,
         checkpoint: 'project_framework',
-        dataUpdater: (data) => data.copyWith(
-          projectName: _projectNameController.text.trim(),
-          projectObjective: _projectObjectiveController.text.trim(),
-          overallFramework: _selectedOverallFramework,
-          projectGoals: projectGoals,
-        ),
+        dataUpdater: (data) {
+          return data.copyWith(
+            projectName: _projectNameController.text.trim(),
+            projectObjective: _projectObjectiveController.text.trim(),
+            overallFramework: _selectedOverallFramework,
+            projectGoals: projectGoals,
+            designManagementData: _syncedDesignManagementData(data),
+          );
+        },
         showSnackbar: false,
       );
     } catch (e) {
@@ -301,16 +316,19 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
       await ProjectDataHelper.updateAndSave(
         context: context,
         checkpoint: 'project_framework',
-        dataUpdater: (data) => data.copyWith(
-          overallFramework: _selectedOverallFramework,
-          projectGoals: _goals
-              .map((g) => ProjectGoal(
-                    name: g.nameController.text.trim(),
-                    description: g.controller.text.trim(),
-                    framework: g.framework,
-                  ))
-              .toList(),
-        ),
+        dataUpdater: (data) {
+          return data.copyWith(
+            overallFramework: _selectedOverallFramework,
+            projectGoals: _goals
+                .map((g) => ProjectGoal(
+                      name: g.nameController.text.trim(),
+                      description: g.controller.text.trim(),
+                      framework: g.framework,
+                    ))
+                .toList(),
+            designManagementData: _syncedDesignManagementData(data),
+          );
+        },
         showSnackbar: false,
       );
     } catch (e) {
@@ -401,7 +419,8 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
         .toList();
 
     final missingFields = <String>[];
-    if (_selectedOverallFramework == null || _selectedOverallFramework!.isEmpty) {
+    if (_selectedOverallFramework == null ||
+        _selectedOverallFramework!.isEmpty) {
       missingFields.add('Overall Framework');
     }
     if (projectGoals.isEmpty) {
@@ -444,12 +463,15 @@ class _ProjectFrameworkScreenState extends State<ProjectFrameworkScreen> {
       checkpoint: 'project_framework',
       saveInBackground: true,
       nextScreenBuilder: () => nextScreen,
-      dataUpdater: (data) => data.copyWith(
-        projectName: _projectNameController.text.trim(),
-        projectObjective: _projectObjectiveController.text.trim(),
-        overallFramework: _selectedOverallFramework,
-        projectGoals: projectGoals,
-      ),
+      dataUpdater: (data) {
+        return data.copyWith(
+          projectName: _projectNameController.text.trim(),
+          projectObjective: _projectObjectiveController.text.trim(),
+          overallFramework: _selectedOverallFramework,
+          projectGoals: projectGoals,
+          designManagementData: _syncedDesignManagementData(data),
+        );
+      },
     );
   }
 

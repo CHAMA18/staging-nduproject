@@ -26,6 +26,7 @@ import 'package:ndu_project/services/design_phase_service.dart';
 import 'package:ndu_project/models/design_phase_models.dart';
 import 'package:ndu_project/widgets/design_readiness_card.dart';
 import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/utils/web_utils.dart';
 import 'package:ndu_project/widgets/design_phase_stable_shell.dart';
 
@@ -746,8 +747,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
     if (provider == null) return const SizedBox.shrink();
 
     final projectData = provider.projectData;
-    final managementData =
-        projectData.designManagementData ?? DesignManagementData();
+    final managementData = _resolvedManagementData(projectData);
 
     return Container(
       width: double.infinity,
@@ -891,7 +891,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
   Widget _buildWebGovernanceSummary() {
     final provider = ProjectDataInherited.maybeOf(context);
     final projectData = provider?.projectData ?? ProjectDataModel();
-    final data = projectData.designManagementData ?? DesignManagementData();
+    final data = _resolvedManagementData(projectData);
     final readiness = _progress ?? data.readiness;
 
     return Container(
@@ -1469,7 +1469,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
 
     final projectData = provider.projectData;
     final DesignManagementData managementData =
-        projectData.designManagementData ?? DesignManagementData();
+        _resolvedManagementData(projectData);
     final methodology = managementData.methodology;
     final strategy = managementData.executionStrategy;
     final industry = managementData.industry;
@@ -1627,11 +1627,25 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
     }
   }
 
+  DesignManagementData _resolvedManagementData(ProjectDataModel projectData) {
+    final existing = projectData.designManagementData;
+    if (existing != null) return existing;
+    final mapped = ProjectDataHelper.projectMethodologyFromOverallFramework(
+          projectData.overallFramework,
+        ) ??
+        ProjectMethodology.waterfall;
+    return DesignManagementData(methodology: mapped);
+  }
+
   void _updateMethodology(ProjectMethodology val) {
     final provider = ProjectDataInherited.maybeOf(context);
     provider?.updateField((ProjectDataModel p) {
       final dm = p.designManagementData ?? DesignManagementData();
-      return p.copyWith(designManagementData: dm.copyWith(methodology: val));
+      return p.copyWith(
+        designManagementData: dm.copyWith(methodology: val),
+        overallFramework:
+            ProjectDataHelper.overallFrameworkFromMethodology(val),
+      );
     });
   }
 
@@ -1655,7 +1669,7 @@ class _DesignPhaseScreenState extends State<DesignPhaseScreen> {
   Widget _buildManagementCards() {
     final ProjectDataProvider? provider = ProjectDataInherited.maybeOf(context);
     final projectData = provider?.projectData ?? ProjectDataModel();
-    final data = projectData.designManagementData ?? DesignManagementData();
+    final data = _resolvedManagementData(projectData);
 
     return DesignGovernanceDashboard(
       projectData: projectData,

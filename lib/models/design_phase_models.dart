@@ -10,9 +10,15 @@ class RequirementRow {
     required this.definition,
     this.requirementId = '',
     this.requirementType = 'Functional',
+    this.ruleType = 'Internal',
+    this.sourceType = 'Standard',
     this.designArtifactLabel = '',
     this.designArtifactType = 'Figma',
     this.designArtifactUrl = '',
+    this.artifactStoragePath = '',
+    this.artifactFileName = '',
+    this.artifactMimeType = '',
+    this.artifactSizeBytes = 0,
     this.validationStatus = 'Unmapped',
     this.acceptanceCriteria = '',
     this.testMethod = '',
@@ -29,9 +35,15 @@ class RequirementRow {
   String definition;
   String requirementId;
   String requirementType;
+  String ruleType;
+  String sourceType;
   String designArtifactLabel;
   String designArtifactType;
   String designArtifactUrl;
+  String artifactStoragePath;
+  String artifactFileName;
+  String artifactMimeType;
+  int artifactSizeBytes;
   String validationStatus;
   String acceptanceCriteria;
   String testMethod;
@@ -47,9 +59,15 @@ class RequirementRow {
     String? definition,
     String? requirementId,
     String? requirementType,
+    String? ruleType,
+    String? sourceType,
     String? designArtifactLabel,
     String? designArtifactType,
     String? designArtifactUrl,
+    String? artifactStoragePath,
+    String? artifactFileName,
+    String? artifactMimeType,
+    int? artifactSizeBytes,
     String? validationStatus,
     String? acceptanceCriteria,
     String? testMethod,
@@ -66,9 +84,15 @@ class RequirementRow {
       definition: definition ?? this.definition,
       requirementId: requirementId ?? this.requirementId,
       requirementType: requirementType ?? this.requirementType,
+      ruleType: ruleType ?? this.ruleType,
+      sourceType: sourceType ?? this.sourceType,
       designArtifactLabel: designArtifactLabel ?? this.designArtifactLabel,
       designArtifactType: designArtifactType ?? this.designArtifactType,
       designArtifactUrl: designArtifactUrl ?? this.designArtifactUrl,
+      artifactStoragePath: artifactStoragePath ?? this.artifactStoragePath,
+      artifactFileName: artifactFileName ?? this.artifactFileName,
+      artifactMimeType: artifactMimeType ?? this.artifactMimeType,
+      artifactSizeBytes: artifactSizeBytes ?? this.artifactSizeBytes,
       validationStatus: validationStatus ?? this.validationStatus,
       acceptanceCriteria: acceptanceCriteria ?? this.acceptanceCriteria,
       testMethod: testMethod ?? this.testMethod,
@@ -88,9 +112,15 @@ class RequirementRow {
       'definition': definition,
       'requirementId': requirementId,
       'requirementType': requirementType,
+      'ruleType': ruleType,
+      'sourceType': sourceType,
       'designArtifactLabel': designArtifactLabel,
       'designArtifactType': designArtifactType,
       'designArtifactUrl': designArtifactUrl,
+      'artifactStoragePath': artifactStoragePath,
+      'artifactFileName': artifactFileName,
+      'artifactMimeType': artifactMimeType,
+      'artifactSizeBytes': artifactSizeBytes,
       'validationStatus': validationStatus,
       'acceptanceCriteria': acceptanceCriteria,
       'testMethod': testMethod,
@@ -114,6 +144,12 @@ class RequirementRow {
       requirementType: map['requirementType']?.toString() ??
           map['requirement_type']?.toString() ??
           'Functional',
+      ruleType: map['ruleType']?.toString() ??
+          map['rule_type']?.toString() ??
+          'Internal',
+      sourceType: map['sourceType']?.toString() ??
+          map['source_type']?.toString() ??
+          'Standard',
       designArtifactLabel: map['designArtifactLabel']?.toString() ??
           map['design_artifact_label']?.toString() ??
           '',
@@ -123,6 +159,18 @@ class RequirementRow {
       designArtifactUrl: map['designArtifactUrl']?.toString() ??
           map['design_artifact_url']?.toString() ??
           '',
+      artifactStoragePath: map['artifactStoragePath']?.toString() ??
+          map['artifact_storage_path']?.toString() ??
+          '',
+      artifactFileName: map['artifactFileName']?.toString() ??
+          map['artifact_file_name']?.toString() ??
+          '',
+      artifactMimeType: map['artifactMimeType']?.toString() ??
+          map['artifact_mime_type']?.toString() ??
+          '',
+      artifactSizeBytes: map['artifactSizeBytes'] is num
+          ? (map['artifactSizeBytes'] as num).toInt()
+          : int.tryParse(map['artifactSizeBytes']?.toString() ?? '') ?? 0,
       validationStatus: map['validationStatus']?.toString() ??
           map['validation_status']?.toString() ??
           'Unmapped',

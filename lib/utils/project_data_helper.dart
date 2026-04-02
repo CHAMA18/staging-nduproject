@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ndu_project/models/design_phase_models.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/services/project_intelligence_service.dart';
@@ -8,6 +9,35 @@ import 'package:provider/provider.dart';
 
 /// Helper functions for easy integration of ProjectDataProvider across screens
 class ProjectDataHelper {
+  static ProjectMethodology? projectMethodologyFromOverallFramework(
+      String? framework) {
+    final normalized = (framework ?? '').trim().toLowerCase();
+    if (normalized == 'agile') return ProjectMethodology.agile;
+    if (normalized == 'hybrid') return ProjectMethodology.hybrid;
+    if (normalized == 'waterfall') return ProjectMethodology.waterfall;
+    return null;
+  }
+
+  static String? overallFrameworkFromMethodology(ProjectMethodology? method) {
+    switch (method) {
+      case ProjectMethodology.agile:
+        return 'Agile';
+      case ProjectMethodology.hybrid:
+        return 'Hybrid';
+      case ProjectMethodology.waterfall:
+        return 'Waterfall';
+      case null:
+        return null;
+    }
+  }
+
+  static ProjectMethodology resolvedProjectMethodology(ProjectDataModel data) {
+    final management = data.designManagementData;
+    if (management != null) return management.methodology;
+    return projectMethodologyFromOverallFramework(data.overallFramework) ??
+        ProjectMethodology.waterfall;
+  }
+
   /// Check if a destination checkpoint is locked/not accessible
   /// Returns true if the destination is locked, false if accessible
   static bool isDestinationLocked(

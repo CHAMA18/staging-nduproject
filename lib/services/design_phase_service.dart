@@ -40,12 +40,22 @@ class DesignPhaseService {
     required String notes,
     required List<RequirementRow> requirements,
     required List<RequirementChecklistItem> checklist,
+    List<Map<String, dynamic>> documents = const [],
+    String sectionApprovalStatus = 'Draft',
+    String sectionApprovedBy = '',
+    String sectionApprovalDate = '',
+    String sectionApprovalNotes = '',
   }) async {
     try {
       await _sectionDoc(projectId, 'requirements_implementation').set({
         'notes': notes,
         'requirements': requirements.map((e) => e.toMap()).toList(),
         'checklist': checklist.map((e) => e.toMap()).toList(),
+        'documents': documents,
+        'sectionApprovalStatus': sectionApprovalStatus,
+        'sectionApprovedBy': sectionApprovedBy,
+        'sectionApprovalDate': sectionApprovalDate,
+        'sectionApprovalNotes': sectionApprovalNotes,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } catch (e) {

@@ -143,7 +143,7 @@ class SidebarNavigationService {
     // Execution Plan sub-items
     SidebarItem(checkpoint: 'execution_plan', label: 'Execution Plan'),
     SidebarItem(checkpoint: 'schedule', label: 'Schedule'),
-    SidebarItem(checkpoint: 'design', label: 'Design'),
+    SidebarItem(checkpoint: 'design', label: 'Design Planning'),
     SidebarItem(checkpoint: 'technology', label: 'Technology'),
     SidebarItem(
         checkpoint: 'interface_management', label: 'Interface Management'),

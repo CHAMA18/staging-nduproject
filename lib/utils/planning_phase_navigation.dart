@@ -99,7 +99,7 @@ class PlanningPhaseNavigation {
     ),
     PlanningPage(
       id: 'design',
-      title: 'Design',
+      title: 'Design Planning',
       builder: (_) => const DesignPlanningScreen(),
     ),
     PlanningPage(

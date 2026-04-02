@@ -1844,8 +1844,9 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
               isActive: widget.activeItemLabel ==
                   'Execution Plan - Agile Delivery Plan'),
         ],
-        _buildSubMenuItem('Design',
-            onTap: _openDesign, isActive: widget.activeItemLabel == 'Design'),
+        _buildSubMenuItem('Design Planning',
+            onTap: _openDesign,
+            isActive: widget.activeItemLabel == 'Design Planning'),
         _buildSubMenuItem('Technology',
             onTap: _openTechnology,
             isActive: widget.activeItemLabel == 'Technology'),
@@ -2616,9 +2617,11 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
           onTap: _openSchedule,
           isActive: widget.activeItemLabel == 'Schedule'));
     }
-    if ('design'.contains(query)) {
-      results.add(_buildMenuItem(Icons.design_services_outlined, 'Design',
-          onTap: _openDesign, isActive: widget.activeItemLabel == 'Design'));
+    if ('design planning'.contains(query) || 'design'.contains(query)) {
+      results.add(_buildMenuItem(
+          Icons.design_services_outlined, 'Design Planning',
+          onTap: _openDesign,
+          isActive: widget.activeItemLabel == 'Design Planning'));
     }
     if ('technology'.contains(query)) {
       results.add(_buildMenuItem(Icons.computer_outlined, 'Technology',

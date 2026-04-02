@@ -13,6 +13,7 @@ import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/activity_log_service.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
+import 'package:ndu_project/utils/design_planning_document.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -171,14 +172,57 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
         final components = _ComponentItem.fromList(data['components']);
         final readiness = _ReadinessItem.fromList(data['readinessItems']);
         if (shouldSeedDefaults) {
+          final planningDoc = DesignPlanningDocument.fromProjectData(
+            provider?.projectData ?? ProjectDataModel(),
+          );
+          final moduleSeed = planningDoc.modules
+              .where((item) => item.name.trim().isNotEmpty)
+              .map(
+                (item) => _CoreLayerItem(
+                  id: _newId(),
+                  name: item.name,
+                  description: item.purpose,
+                ),
+              )
+              .toList();
+          final integrationSeed = planningDoc.integrations
+              .where((item) => item.name.trim().isNotEmpty)
+              .map(
+                (item) => _ComponentItem(
+                  id: _newId(),
+                  name: item.name,
+                  responsibility: item.purpose,
+                  statusLabel: item.status.isEmpty ? 'Planned' : item.status,
+                ),
+              )
+              .toList();
+          final readinessSeed = planningDoc.validationSummary
+              .split('\n')
+              .map((line) => line.trim())
+              .where((line) => line.isNotEmpty)
+              .map(
+                (line) => _ReadinessItem(
+                  id: _newId(),
+                  title: line,
+                  description: line,
+                  owner: 'Owner',
+                ),
+              )
+              .toList();
           _didSeedDefaults = true;
-          _notesController.text =
-              'Engineering detail set covers blueprint validation, model sign-off, interface specs, calculations, standards, and change notices before implementation.';
-          _keyDecisionsController.text =
-              'Prioritize stamped approvals, interface freeze, and mixed software/physical compliance before technical development starts.';
-          _coreLayers = _defaultCoreLayers();
-          _components = _defaultComponents();
-          _readinessItems = _defaultReadinessItems();
+          _notesController.text = [
+            planningDoc.architectureSummary.trim(),
+            planningDoc.buildTechnicalDigest().trim(),
+          ].where((value) => value.isNotEmpty).join('\n\n');
+          _keyDecisionsController.text = planningDoc.decisions
+              .map((item) => item.decision.trim())
+              .where((value) => value.isNotEmpty)
+              .join('\n');
+          _coreLayers = moduleSeed.isEmpty ? _defaultCoreLayers() : moduleSeed;
+          _components =
+              integrationSeed.isEmpty ? _defaultComponents() : integrationSeed;
+          _readinessItems =
+              readinessSeed.isEmpty ? _defaultReadinessItems() : readinessSeed;
         } else {
           _notesController.text = data['notes']?.toString() ?? '';
           _keyDecisionsController.text = data['keyDecisions']?.toString() ?? '';

@@ -15,6 +15,7 @@ import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/screens/backend_design_screen.dart';
 import 'package:ndu_project/screens/development_set_up_screen.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/utils/design_planning_document.dart';
 
 class UiUxDesignScreen extends StatefulWidget {
   const UiUxDesignScreen({super.key});
@@ -128,14 +129,89 @@ class _UiUxDesignScreenState extends State<UiUxDesignScreen> {
       final hasKeyComponentsKey = data.containsKey('keyComponents');
       shouldSeedDefaults = data.isEmpty && !_didSeedDefaults;
       setState(() {
-        _notesController.text = notes;
         if (shouldSeedDefaults) {
+          final planningDoc = DesignPlanningDocument.fromProjectData(
+            provider?.projectData ?? ProjectDataModel(),
+          );
           _didSeedDefaults = true;
-          _journeys = _defaultJourneys();
-          _interfaces = _defaultInterfaces();
-          _coreTokens = _defaultCoreTokens();
-          _keyComponents = _defaultKeyComponents();
+          _notesController.text = planningDoc.uiUxSummary.trim().isNotEmpty
+              ? planningDoc.uiUxSummary.trim()
+              : notes;
+          _journeys = planningDoc.journeys.isEmpty
+              ? _defaultJourneys()
+              : planningDoc.journeys
+                  .map(
+                    (item) => _JourneyItem(
+                      id: _newId(),
+                      title: item.name,
+                      description: item.purpose,
+                      status: item.status.isEmpty ? 'Planned' : item.status,
+                    ),
+                  )
+                  .toList();
+          _interfaces = planningDoc.interfaces.isEmpty
+              ? _defaultInterfaces()
+              : planningDoc.interfaces
+                  .map(
+                    (item) => _InterfaceItem(
+                      id: _newId(),
+                      area: item.name,
+                      purpose: item.purpose,
+                      state: item.status.isEmpty ? 'To define' : item.status,
+                    ),
+                  )
+                  .toList();
+          _coreTokens = planningDoc.designSystemNotes.trim().isEmpty
+              ? _defaultCoreTokens()
+              : planningDoc.designSystemNotes
+                  .split('\n')
+                  .map((line) => line.trim())
+                  .where((line) => line.isNotEmpty)
+                  .map(
+                    (line) => _DesignElement(
+                      id: _newId(),
+                      title: line,
+                      description: line,
+                      status: 'Planned',
+                    ),
+                  )
+                  .toList();
+          _keyComponents = planningDoc.requirements
+                  .where((item) =>
+                      item.designArea.toLowerCase().contains('ui') ||
+                      item.designArea.toLowerCase().contains('ux'))
+                  .map(
+                    (item) => _DesignElement(
+                      id: _newId(),
+                      title: item.designResponse.isEmpty
+                          ? item.requirementText
+                          : item.designResponse,
+                      description: item.acceptanceCriteria,
+                      status: item.status.isEmpty ? 'Planned' : item.status,
+                    ),
+                  )
+                  .where((item) => item.title.trim().isNotEmpty)
+                  .toList()
+                  .isEmpty
+              ? _defaultKeyComponents()
+              : planningDoc.requirements
+                  .where((item) =>
+                      item.designArea.toLowerCase().contains('ui') ||
+                      item.designArea.toLowerCase().contains('ux'))
+                  .map(
+                    (item) => _DesignElement(
+                      id: _newId(),
+                      title: item.designResponse.isEmpty
+                          ? item.requirementText
+                          : item.designResponse,
+                      description: item.acceptanceCriteria,
+                      status: item.status.isEmpty ? 'Planned' : item.status,
+                    ),
+                  )
+                  .where((item) => item.title.trim().isNotEmpty)
+                  .toList();
         } else {
+          _notesController.text = notes;
           _journeys = hasJourneysKey ? journeys : _defaultJourneys();
           _interfaces = hasInterfacesKey ? interfaces : _defaultInterfaces();
           _coreTokens = hasCoreTokensKey ? coreTokens : _defaultCoreTokens();

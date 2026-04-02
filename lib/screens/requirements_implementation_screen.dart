@@ -1,6 +1,10 @@
 // ignore_for_file: unused_element
 
 import 'dart:async';
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:ndu_project/models/design_phase_models.dart';
@@ -35,6 +39,14 @@ class _RequirementsImplementationScreenState
   bool _suspendSave = false;
   bool _showAllRows = false;
   int _selectedRequirementIndex = 0;
+  String _sectionApprovalStatus = 'Draft';
+  final TextEditingController _sectionApprovedByController =
+      TextEditingController();
+  final TextEditingController _sectionApprovalDateController =
+      TextEditingController();
+  final TextEditingController _sectionApprovalNotesController =
+      TextEditingController();
+  final List<_DesignSpecDocumentRow> _documents = [];
 
   final List<RequirementRow> _requirementRows = [
     RequirementRow(
@@ -185,6 +197,9 @@ class _RequirementsImplementationScreenState
   void dispose() {
     _notesController.removeListener(_onNotesChanged);
     _notesController.dispose();
+    _sectionApprovedByController.dispose();
+    _sectionApprovalDateController.dispose();
+    _sectionApprovalNotesController.dispose();
     _saveDebounce?.cancel();
     super.dispose();
   }
@@ -236,6 +251,28 @@ class _RequirementsImplementationScreenState
               ..addAll(_dedupeChecklist(parsed));
           }
 
+          _sectionApprovalStatus =
+              data['sectionApprovalStatus']?.toString() ?? 'Draft';
+          _sectionApprovedByController.text =
+              data['sectionApprovedBy']?.toString() ?? '';
+          _sectionApprovalDateController.text =
+              data['sectionApprovalDate']?.toString() ?? '';
+          _sectionApprovalNotesController.text =
+              data['sectionApprovalNotes']?.toString() ?? '';
+
+          final rawDocuments = data['documents'];
+          if (rawDocuments is List) {
+            _documents
+              ..clear()
+              ..addAll(
+                rawDocuments.whereType<Map>().map((item) =>
+                    _DesignSpecDocumentRow.fromMap(
+                        Map<String, dynamic>.from(item))),
+              );
+          } else {
+            _documents.clear();
+          }
+
           if (_selectedRequirementIndex >= _requirementRows.length) {
             _selectedRequirementIndex =
                 _requirementRows.isEmpty ? 0 : _requirementRows.length - 1;
@@ -268,6 +305,11 @@ class _RequirementsImplementationScreenState
         notes: _notesController.text,
         requirements: dedupedRequirements,
         checklist: dedupedChecklist,
+        documents: _documents.map((item) => item.toMap()).toList(),
+        sectionApprovalStatus: _sectionApprovalStatus,
+        sectionApprovedBy: _sectionApprovedByController.text.trim(),
+        sectionApprovalDate: _sectionApprovalDateController.text.trim(),
+        sectionApprovalNotes: _sectionApprovalNotesController.text.trim(),
       );
     } catch (e) {
       debugPrint('Error saving requirements: $e');
@@ -356,6 +398,8 @@ class _RequirementsImplementationScreenState
           definition:
               'Describe the requirement intent, design dependency, and release constraints.',
           requirementType: 'Functional',
+          ruleType: 'Internal',
+          sourceType: 'Standard',
           designArtifactType: 'Figma',
           validationStatus: 'Unmapped',
           acceptanceCriteria:
@@ -401,6 +445,245 @@ class _RequirementsImplementationScreenState
     );
   }
 
+  Future<void> _uploadArtifactForRequirement(RequirementRow row) async {
+    final uploaded = await _pickAndUploadAttachment(
+      folder: 'design-specifications',
+    );
+    if (uploaded == null || !mounted) return;
+    final index = _requirementRows.indexWhere((item) => item.id == row.id);
+    if (index == -1) return;
+    setState(() {
+      _requirementRows[index] = _requirementRows[index].copyWith(
+        designArtifactUrl: uploaded.url,
+        artifactStoragePath: uploaded.storagePath,
+        artifactFileName: uploaded.name,
+        artifactMimeType: uploaded.contentType,
+        artifactSizeBytes: uploaded.sizeBytes,
+      );
+    });
+    _scheduleSave();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Artifact uploaded and linked.')),
+    );
+  }
+
+  Future<_UploadedDoc?> _pickAndUploadAttachment({
+    required String folder,
+  }) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      messenger.showSnackBar(
+        const SnackBar(
+            content: Text('Sign in is required before uploading files.')),
+      );
+      return null;
+    }
+    final provider = ProjectDataInherited.maybeOf(context);
+    final projectId = provider?.projectData.projectId;
+    if (projectId == null || projectId.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Select a project before uploading.')),
+      );
+      return null;
+    }
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        withData: true,
+        allowedExtensions: const [
+          'pdf',
+          'doc',
+          'docx',
+          'xls',
+          'xlsx',
+          'ppt',
+          'pptx',
+          'txt',
+          'csv',
+          'png',
+          'jpg',
+          'jpeg'
+        ],
+      );
+      if (result == null || result.files.isEmpty) return null;
+      final file = result.files.first;
+      final Uint8List? bytes = file.bytes;
+      if (bytes == null) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Unable to read selected file.')),
+        );
+        return null;
+      }
+      final safeName = file.name.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+      final storagePath =
+          'projects/$projectId/$folder/${DateTime.now().millisecondsSinceEpoch}_$safeName';
+      final ref = FirebaseStorage.instance.ref(storagePath);
+      final metadata = SettableMetadata(
+        contentType: _contentTypeForExtension(file.extension),
+      );
+      await ref.putData(bytes, metadata);
+      final downloadUrl = await ref.getDownloadURL();
+      return _UploadedDoc(
+        name: file.name,
+        url: downloadUrl,
+        storagePath: storagePath,
+        contentType: metadata.contentType ?? '',
+        sizeBytes: file.size,
+      );
+    } on FirebaseException catch (error) {
+      _showStorageUploadError(error.toString());
+      return null;
+    } catch (error) {
+      _showStorageUploadError(error.toString());
+      return null;
+    }
+  }
+
+  void _showStorageUploadError(String rawError) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to upload file: $rawError')),
+    );
+  }
+
+  String _contentTypeForExtension(String? extension) {
+    switch ((extension ?? '').toLowerCase()) {
+      case 'pdf':
+        return 'application/pdf';
+      case 'doc':
+        return 'application/msword';
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'xls':
+        return 'application/vnd.ms-excel';
+      case 'xlsx':
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'ppt':
+        return 'application/vnd.ms-powerpoint';
+      case 'pptx':
+        return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      case 'csv':
+        return 'text/csv';
+      case 'txt':
+        return 'text/plain';
+      case 'png':
+        return 'image/png';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
+  bool get _isDesignSpecificationsSectionReady {
+    if (_requirementRows.isEmpty) return false;
+    final allRowsValid = _requirementRows.every((row) {
+      final baseReady = row.title.trim().isNotEmpty &&
+          row.owner.trim().isNotEmpty &&
+          row.definition.trim().isNotEmpty &&
+          row.ruleType.trim().isNotEmpty &&
+          row.sourceType.trim().isNotEmpty;
+      if (!baseReady) return false;
+      if (row.validationStatus.trim().toLowerCase() == 'mapped') {
+        return row.acceptanceCriteria.trim().isNotEmpty &&
+            row.testMethod.trim().isNotEmpty;
+      }
+      return true;
+    });
+    if (!allRowsValid) return false;
+
+    final hasPending = _requirementRows
+        .any((row) => row.gapStatus.trim().toLowerCase() == 'pending approval');
+    if (hasPending) return false;
+
+    return _sectionApprovalStatus == 'In Review' ||
+        _sectionApprovalStatus == 'Approved';
+  }
+
+  Future<void> _tryNavigateToTechnicalAlignment() async {
+    if (_isDesignSpecificationsSectionReady) {
+      _navigateToTechnicalAlignment();
+      return;
+    }
+    final reasons = <String>[];
+    if (_requirementRows.isEmpty) {
+      reasons.add('Add at least one specification row.');
+    }
+    final incompleteBasics = _requirementRows.where((row) =>
+        row.title.trim().isEmpty ||
+        row.owner.trim().isEmpty ||
+        row.definition.trim().isEmpty ||
+        row.ruleType.trim().isEmpty ||
+        row.sourceType.trim().isEmpty);
+    if (incompleteBasics.isNotEmpty) {
+      reasons.add(
+          'Complete required fields (title, owner, definition, rule/source type).');
+    }
+    final mappedMissingEvidence = _requirementRows.where((row) =>
+        row.validationStatus.trim().toLowerCase() == 'mapped' &&
+        (row.acceptanceCriteria.trim().isEmpty ||
+            row.testMethod.trim().isEmpty));
+    if (mappedMissingEvidence.isNotEmpty) {
+      reasons.add(
+          'Mapped items must include acceptance criteria and test method.');
+    }
+    if (_requirementRows.any(
+        (row) => row.gapStatus.trim().toLowerCase() == 'pending approval')) {
+      reasons.add('Resolve pending approval gaps before continuing.');
+    }
+    if (!(_sectionApprovalStatus == 'In Review' ||
+        _sectionApprovalStatus == 'Approved')) {
+      reasons.add('Set section approval status to In Review or Approved.');
+    }
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Design Specifications Incomplete'),
+        content: Text(reasons.join('\n')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _addDocumentRow() {
+    setState(() => _documents.add(_DesignSpecDocumentRow()));
+    _scheduleSave();
+  }
+
+  void _updateDocumentRow(int index,
+      _DesignSpecDocumentRow Function(_DesignSpecDocumentRow row) update) {
+    if (index < 0 || index >= _documents.length) return;
+    setState(() => _documents[index] = update(_documents[index]));
+    _scheduleSave();
+  }
+
+  Future<void> _uploadDocumentRow(int index) async {
+    if (index < 0 || index >= _documents.length) return;
+    final uploaded = await _pickAndUploadAttachment(folder: 'design-spec-docs');
+    if (uploaded == null) return;
+    _updateDocumentRow(
+      index,
+      (row) => row.copyWith(
+        link: uploaded.url,
+        storagePath: uploaded.storagePath,
+        fileName: uploaded.name,
+      ),
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Document uploaded.')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isMobile = AppBreakpoints.isMobile(context);
@@ -424,7 +707,7 @@ class _RequirementsImplementationScreenState
       body: Column(
         children: [
           const PlanningPhaseHeader(
-            title: 'Requirements Implementation',
+            title: 'Design Specifications',
             showImportButton: false,
             showContentButton: false,
           ),
@@ -443,22 +726,34 @@ class _RequirementsImplementationScreenState
                   Padding(
                     padding: EdgeInsets.symmetric(
                         horizontal: horizontalPadding, vertical: 24),
-                    child: RequirementsTraceabilityDashboard(
-                      projectData: projectData,
-                      requirements: _requirementRows,
-                      checklistItems: _checklistItems,
-                      ownerOptions: ownerOptions,
-                      notesController: _notesController,
-                      selectedRequirementIndex: _safeSelectedRequirementIndex,
-                      selectedRequirement: selectedRequirement,
-                      showAllRows: _showAllRows,
-                      onAddRequirement: () => _addRequirement(projectData),
-                      onRefreshContext: _syncAndLoad,
-                      onToggleShowAll: _toggleShowAllRows,
-                      onSelectRequirement: _selectRequirement,
-                      onDeleteRequirement: _deleteRequirement,
-                      onArtifactTap: _showArtifactMessage,
-                      onUpdateSelectedRequirement: _updateSelectedRequirement,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSectionApprovalCard(ownerOptions),
+                        const SizedBox(height: 16),
+                        RequirementsTraceabilityDashboard(
+                          projectData: projectData,
+                          requirements: _requirementRows,
+                          checklistItems: _checklistItems,
+                          ownerOptions: ownerOptions,
+                          notesController: _notesController,
+                          selectedRequirementIndex:
+                              _safeSelectedRequirementIndex,
+                          selectedRequirement: selectedRequirement,
+                          showAllRows: _showAllRows,
+                          onAddRequirement: () => _addRequirement(projectData),
+                          onRefreshContext: _syncAndLoad,
+                          onToggleShowAll: _toggleShowAllRows,
+                          onSelectRequirement: _selectRequirement,
+                          onDeleteRequirement: _deleteRequirement,
+                          onArtifactTap: _showArtifactMessage,
+                          onUpdateSelectedRequirement:
+                              _updateSelectedRequirement,
+                          onUploadArtifact: _uploadArtifactForRequirement,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildDocumentsRegister(ownerOptions),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 40),
@@ -466,11 +761,305 @@ class _RequirementsImplementationScreenState
                     backLabel: 'Back: Design Management',
                     nextLabel: 'Next: Technical Alignment',
                     onBack: _navigateToDesignOverview,
-                    onNext: _navigateToTechnicalAlignment,
+                    onNext: _tryNavigateToTechnicalAlignment,
                   ),
                 ],
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionApprovalCard(List<String> ownerOptions) {
+    final approverOptions = <String>{
+      ...ownerOptions,
+      if (_sectionApprovedByController.text.trim().isNotEmpty)
+        _sectionApprovedByController.text.trim(),
+    }.toList()
+      ..sort();
+    final selectedApprover = _sectionApprovedByController.text.trim();
+    final effectiveApprover = approverOptions.contains(selectedApprover)
+        ? selectedApprover
+        : (approverOptions.isEmpty ? '' : approverOptions.first);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Design Specifications Approval',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Section-level approval is required before continuing to Technical Alignment.',
+            style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: _sectionApprovalStatus,
+                  decoration: const InputDecoration(
+                    labelText: 'Approval Status',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  items: const ['Draft', 'In Review', 'Approved']
+                      .map((value) => DropdownMenuItem(
+                            value: value,
+                            child: Text(value),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _sectionApprovalStatus = value);
+                    _scheduleSave();
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue:
+                      effectiveApprover.isEmpty ? null : effectiveApprover,
+                  decoration: const InputDecoration(
+                    labelText: 'Approved By',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  items: approverOptions
+                      .map((owner) => DropdownMenuItem(
+                            value: owner,
+                            child: Text(owner),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    _sectionApprovedByController.text = value ?? '';
+                    _scheduleSave();
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _sectionApprovalDateController,
+                  onChanged: (_) => _scheduleSave(),
+                  decoration: const InputDecoration(
+                    labelText: 'Approval Date',
+                    hintText: 'YYYY-MM-DD',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _sectionApprovalNotesController,
+            onChanged: (_) => _scheduleSave(),
+            minLines: 2,
+            maxLines: 4,
+            decoration: const InputDecoration(
+              labelText: 'Approval Notes',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDocumentsRegister(List<String> ownerOptions) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Documents & Links Register',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _addDocumentRow,
+                icon: const Icon(Icons.add),
+                label: const Text('Add document'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (_documents.isEmpty)
+            const Text(
+              'No documents added yet.',
+              style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+            ),
+          for (var i = 0; i < _documents.length; i++) ...[
+            const SizedBox(height: 10),
+            _buildDocumentRow(i, _documents[i], ownerOptions),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDocumentRow(
+      int index, _DesignSpecDocumentRow row, List<String> ownerOptions) {
+    final options = <String>{
+      ...ownerOptions,
+      if (row.owner.trim().isNotEmpty) row.owner.trim(),
+    }.toList()
+      ..sort();
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  initialValue: row.name,
+                  onChanged: (value) => _updateDocumentRow(
+                      index, (current) => current.copyWith(name: value)),
+                  decoration: const InputDecoration(
+                    labelText: 'Document Name',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextFormField(
+                  initialValue: row.category,
+                  onChanged: (value) => _updateDocumentRow(
+                      index, (current) => current.copyWith(category: value)),
+                  decoration: const InputDecoration(
+                    labelText: 'Category',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextFormField(
+                  initialValue: row.version,
+                  onChanged: (value) => _updateDocumentRow(
+                      index, (current) => current.copyWith(version: value)),
+                  decoration: const InputDecoration(
+                    labelText: 'Version',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: options.contains(row.owner) ? row.owner : null,
+                  decoration: const InputDecoration(
+                    labelText: 'Owner',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  items: options
+                      .map((owner) =>
+                          DropdownMenuItem(value: owner, child: Text(owner)))
+                      .toList(),
+                  onChanged: (value) => _updateDocumentRow(
+                    index,
+                    (current) => current.copyWith(owner: value ?? ''),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextFormField(
+                  initialValue: row.linkedSpecId,
+                  onChanged: (value) => _updateDocumentRow(index,
+                      (current) => current.copyWith(linkedSpecId: value)),
+                  decoration: const InputDecoration(
+                    labelText: 'Linked Spec ID',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextFormField(
+                  initialValue: row.status,
+                  onChanged: (value) => _updateDocumentRow(
+                      index, (current) => current.copyWith(status: value)),
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  initialValue: row.link,
+                  onChanged: (value) => _updateDocumentRow(
+                      index, (current) => current.copyWith(link: value)),
+                  decoration: const InputDecoration(
+                    labelText: 'Link / Uploaded URL',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              OutlinedButton.icon(
+                onPressed: () => _uploadDocumentRow(index),
+                icon: const Icon(Icons.upload_file),
+                label: const Text('Upload'),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: () {
+                  setState(() => _documents.removeAt(index));
+                  _scheduleSave();
+                },
+                icon:
+                    const Icon(Icons.delete_outline, color: Color(0xFFB91C1C)),
+              ),
+            ],
           ),
         ],
       ),
@@ -653,7 +1242,7 @@ class _RequirementsImplementationScreenState
                 child: const Text('Save Notes'),
               ),
               ElevatedButton(
-                onPressed: _navigateToTechnicalAlignment,
+                onPressed: _tryNavigateToTechnicalAlignment,
                 child: const Text('Next: Technical Alignment'),
               ),
             ],
@@ -1455,4 +2044,99 @@ class _TableColumn {
   final String label;
   final int flex;
   final Alignment alignment;
+}
+
+class _UploadedDoc {
+  const _UploadedDoc({
+    required this.name,
+    required this.url,
+    required this.storagePath,
+    required this.contentType,
+    required this.sizeBytes,
+  });
+
+  final String name;
+  final String url;
+  final String storagePath;
+  final String contentType;
+  final int sizeBytes;
+}
+
+class _DesignSpecDocumentRow {
+  _DesignSpecDocumentRow({
+    String? id,
+    this.name = '',
+    this.category = '',
+    this.version = '',
+    this.owner = '',
+    this.linkedSpecId = '',
+    this.link = '',
+    this.status = 'Draft',
+    this.fileName = '',
+    this.storagePath = '',
+  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+
+  final String id;
+  String name;
+  String category;
+  String version;
+  String owner;
+  String linkedSpecId;
+  String link;
+  String status;
+  String fileName;
+  String storagePath;
+
+  _DesignSpecDocumentRow copyWith({
+    String? name,
+    String? category,
+    String? version,
+    String? owner,
+    String? linkedSpecId,
+    String? link,
+    String? status,
+    String? fileName,
+    String? storagePath,
+  }) {
+    return _DesignSpecDocumentRow(
+      id: id,
+      name: name ?? this.name,
+      category: category ?? this.category,
+      version: version ?? this.version,
+      owner: owner ?? this.owner,
+      linkedSpecId: linkedSpecId ?? this.linkedSpecId,
+      link: link ?? this.link,
+      status: status ?? this.status,
+      fileName: fileName ?? this.fileName,
+      storagePath: storagePath ?? this.storagePath,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'name': name,
+        'category': category,
+        'version': version,
+        'owner': owner,
+        'linkedSpecId': linkedSpecId,
+        'link': link,
+        'status': status,
+        'fileName': fileName,
+        'storagePath': storagePath,
+      };
+
+  factory _DesignSpecDocumentRow.fromMap(Map<String, dynamic> map) {
+    return _DesignSpecDocumentRow(
+      id: map['id']?.toString(),
+      name: map['name']?.toString() ?? '',
+      category: map['category']?.toString() ?? '',
+      version: map['version']?.toString() ?? '',
+      owner: map['owner']?.toString() ?? '',
+      linkedSpecId: map['linkedSpecId']?.toString() ?? '',
+      link: map['link']?.toString() ?? '',
+      status: map['status']?.toString() ?? 'Draft',
+      fileName: map['fileName']?.toString() ?? '',
+      storagePath: map['storagePath']?.toString() ?? '',
+    );
+  }
 }

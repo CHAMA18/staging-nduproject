@@ -23,6 +23,7 @@ class RequirementsTraceabilityDashboard extends StatelessWidget {
     required this.onDeleteRequirement,
     required this.onArtifactTap,
     required this.onUpdateSelectedRequirement,
+    required this.onUploadArtifact,
   });
 
   final ProjectDataModel projectData;
@@ -41,6 +42,7 @@ class RequirementsTraceabilityDashboard extends StatelessWidget {
   final ValueChanged<RequirementRow> onArtifactTap;
   final void Function(RequirementRow Function(RequirementRow current))
       onUpdateSelectedRequirement;
+  final Future<void> Function(RequirementRow row) onUploadArtifact;
 
   @override
   Widget build(BuildContext context) {
@@ -263,7 +265,7 @@ class RequirementsTraceabilityDashboard extends StatelessWidget {
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(
-                'Requirements Implementation',
+                'Design Specifications',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     color: Colors.white, fontWeight: FontWeight.w800),
               ),
@@ -832,6 +834,33 @@ class RequirementsTraceabilityDashboard extends StatelessWidget {
                   return stacked ? Column(children: row) : Row(children: row);
                 }),
                 const SizedBox(height: 14),
+                LayoutBuilder(builder: (context, constraints) {
+                  final stacked = constraints.maxWidth < 720;
+                  final row = [
+                    Expanded(
+                        child: _dropdown(
+                            label: 'Rule Type',
+                            value: selected.source.ruleType,
+                            items: const ['Internal', 'External'],
+                            onChanged: (v) => onUpdateSelectedRequirement(
+                                (c) => c.copyWith(ruleType: v)))),
+                    const SizedBox(width: 14, height: 14),
+                    Expanded(
+                        child: _dropdown(
+                            label: 'Source Type',
+                            value: selected.source.sourceType,
+                            items: const [
+                              'Contract',
+                              'Vendor',
+                              'Regulatory',
+                              'Standard'
+                            ],
+                            onChanged: (v) => onUpdateSelectedRequirement(
+                                (c) => c.copyWith(sourceType: v)))),
+                  ];
+                  return stacked ? Column(children: row) : Row(children: row);
+                }),
+                const SizedBox(height: 14),
                 _field(
                     label: 'Description',
                     value: selected.title,
@@ -914,6 +943,22 @@ class RequirementsTraceabilityDashboard extends StatelessWidget {
                           fieldKey: '${selected.source.id}-source',
                           onChanged: (v) => onUpdateSelectedRequirement(
                               (c) => c.copyWith(sourceDocument: v)))),
+                ]),
+                const SizedBox(height: 14),
+                Row(children: [
+                  Expanded(
+                      child: _field(
+                          label: 'Artifact URL',
+                          value: selected.source.designArtifactUrl,
+                          fieldKey: '${selected.source.id}-artifact-url',
+                          onChanged: (v) => onUpdateSelectedRequirement(
+                              (c) => c.copyWith(designArtifactUrl: v.trim())))),
+                  const SizedBox(width: 14),
+                  ElevatedButton.icon(
+                    onPressed: () => onUploadArtifact(selected.source),
+                    icon: const Icon(Icons.upload_file),
+                    label: const Text('Upload File'),
+                  ),
                 ]),
                 const SizedBox(height: 16),
                 Container(

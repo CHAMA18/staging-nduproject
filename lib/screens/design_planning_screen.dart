@@ -63,6 +63,36 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
     'Regulatory',
     'Standards',
   ];
+  static const _specDisciplineAreaOptions = [
+    'Architecture',
+    'Civil',
+    'Structural',
+    'Geotechnical',
+    'Mechanical (HVAC)',
+    'Electrical',
+    'Plumbing',
+    'Fire Protection',
+    'Survey / Geomatics',
+    'Landscape',
+    'Environmental',
+    'Telecommunications / ICT',
+    'Frontend',
+    'Backend',
+    'Full-Stack',
+    'Data / Analytics',
+    'Integration / APIs',
+    'DevOps / Platform / SRE',
+    'QA / Testing',
+    'Cybersecurity',
+    'IT / Infrastructure',
+    'Operations',
+    'Procurement',
+    'Commercial / Contracts',
+    'Quality / QA-QC',
+    'Regulatory / Compliance',
+    'Program / Project Management',
+    'Safety / HSE',
+  ];
   static const _specRowStatusOptions = ['Draft', 'Planned', 'In Review'];
   static const _designAreaOptions = [
     'Architecture',
@@ -117,6 +147,7 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
   final Map<String, GlobalKey> _sectionKeys = {
     for (final section in _sectionOrder) section.id: GlobalKey(),
   };
+  final Map<String, GlobalKey> _specificationRowKeys = {};
   Timer? _saveDebounce;
   bool _didInit = false;
   bool _saving = false;
@@ -251,6 +282,30 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeInOut,
       alignment: 0.0,
+    );
+  }
+
+  Future<void> _openSpecificationsAndScrollToRow(String rowId) async {
+    if (!mounted) return;
+    setState(() {
+      _showDesignSpecsPlanningConfig = true;
+      _sectionExpanded['design_specifications_workspace'] = true;
+      _sectionTileVersion['design_specifications_workspace'] =
+          (_sectionTileVersion['design_specifications_workspace'] ?? 0) + 1;
+      _activeSectionId = 'design_specifications_workspace';
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    if (!mounted) return;
+    await _scrollToSectionStart('design_specifications_workspace');
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    if (!mounted) return;
+    final target = _specificationRowKeys[rowId]?.currentContext;
+    if (target == null || !target.mounted) return;
+    await Scrollable.ensureVisible(
+      target,
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutCubic,
+      alignment: 0.12,
     );
   }
 
@@ -1009,6 +1064,31 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
     return options.toList()..sort();
   }
 
+  List<_RequirementAttachmentOption> _requirementAttachmentOptions(
+    ProjectDataModel projectData,
+  ) {
+    final options = <_RequirementAttachmentOption>[];
+    for (var index = 0;
+        index < projectData.frontEndPlanning.requirementItems.length;
+        index++) {
+      final item = projectData.frontEndPlanning.requirementItems[index];
+      final description = item.description.trim();
+      if (description.isEmpty && item.id.trim().isEmpty) continue;
+      final id = item.id.trim().isNotEmpty
+          ? item.id.trim()
+          : 'fep_req_${index + 1}_${description.toLowerCase().hashCode.abs()}';
+      options.add(
+        _RequirementAttachmentOption(
+          id: id,
+          label: description.isEmpty ? 'Requirement ${index + 1}' : description,
+        ),
+      );
+    }
+    options
+        .sort((a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()));
+    return options;
+  }
+
   @override
   Widget build(BuildContext context) {
     final projectData = ProjectDataHelper.getData(context);
@@ -1368,38 +1448,58 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
         ),
         const SizedBox(height: 16),
         _RailCard(
-          title: 'Approvals',
+          title: 'Specs',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final item in _document.approvals.take(5))
+              if (_document.specifications.isEmpty)
+                const Text(
+                  'No specification rows yet.',
+                  style: TextStyle(fontSize: 12, color: _kMuted, height: 1.45),
+                ),
+              for (var i = 0; i < _document.specifications.length; i++)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        margin: const EdgeInsets.only(top: 6),
-                        decoration: BoxDecoration(
-                          color:
-                              item.status == 'Approved' ? _kSuccess : _kWarning,
-                          shape: BoxShape.circle,
-                        ),
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: InkWell(
+                    onTap: () => _openSpecificationsAndScrollToRow(
+                      _document.specifications[i].id,
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 8,
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          '${item.reviewer.isEmpty ? 'Reviewer' : item.reviewer} • ${item.status}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: _kText,
-                            height: 1.45,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 7,
+                            height: 7,
+                            margin: const EdgeInsets.only(top: 6),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF0F766E),
+                              shape: BoxShape.circle,
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 9),
+                          Expanded(
+                            child: Text(
+                              _document.specifications[i].title.trim().isEmpty
+                                  ? 'Spec Row ${i + 1}'
+                                  : _document.specifications[i].title.trim(),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: _kText,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
             ],
@@ -1546,7 +1646,7 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
       sectionKey: _sectionKeys['requirements']!,
       title: 'Requirements to Design Mapping',
       subtitle:
-          'Link requirements from initiation/planning to concrete design responses, owners, and evidence.',
+          'Link requirements from initiation/planning to concrete design details, owners, and evidence.',
       accent: const Color(0xFF0F9D58),
       child: Column(
         children: [
@@ -1607,7 +1707,7 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
           const SizedBox(height: 12),
           _TextAreaField(
             controller: _designWhoController,
-            label: 'Who & ownership model',
+            label: 'Responsibilities',
             hintText:
                 'Who leads architecture, UI/UX, technical design, reviews, and approvals.',
             minLines: 4,
@@ -1616,7 +1716,7 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
           const SizedBox(height: 14),
           _TextAreaField(
             controller: _designHowController,
-            label: 'How design will be executed',
+            label: 'Design Execution Strategy',
             hintText:
                 'Methodology, cadence, standards, decision flow, and governance approach.',
             minLines: 4,
@@ -1721,7 +1821,9 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
   }
 
   Widget _buildDesignSpecificationsWorkspaceSection() {
-    final owners = _ownerOptions(ProjectDataHelper.getData(context));
+    final projectData = ProjectDataHelper.getData(context);
+    final owners = _ownerOptions(projectData);
+    final requirementOptions = _requirementAttachmentOptions(projectData);
     return _buildGuidedSectionCard(
       sectionId: 'design_specifications_workspace',
       sectionKey: _sectionKeys['design_specifications_workspace']!,
@@ -1790,23 +1892,38 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
                     for (var i = 0;
                         i < _document.specifications.length;
                         i++) ...[
-                      _SpecificationPlanRowCard(
-                        key: ValueKey(_document.specifications[i].id),
-                        index: i + 1,
-                        data: _document.specifications[i],
-                        owners: owners,
-                        sourceTypeOptions: _specSourceTypeOptions,
-                        ruleTypeOptions: _specRuleTypeOptions,
-                        statusOptions: _specRowStatusOptions,
-                        uploadsEnabled: true,
-                        onChanged: _queueSave,
-                        onUpload: () => _uploadSpecificationArtifact(
+                      Container(
+                        key: _specificationRowKeys.putIfAbsent(
                           _document.specifications[i].id,
+                          () => GlobalKey(
+                            debugLabel:
+                                'spec_row_${_document.specifications[i].id}',
+                          ),
                         ),
-                        onRemove: () {
-                          setState(() => _document.specifications.removeAt(i));
-                          _queueSave();
-                        },
+                        child: _SpecificationPlanRowCard(
+                          key: ValueKey(_document.specifications[i].id),
+                          index: i + 1,
+                          data: _document.specifications[i],
+                          owners: owners,
+                          requirementOptions: requirementOptions,
+                          disciplineAreaOptions: _specDisciplineAreaOptions,
+                          sourceTypeOptions: _specSourceTypeOptions,
+                          ruleTypeOptions: _specRuleTypeOptions,
+                          statusOptions: _specRowStatusOptions,
+                          uploadsEnabled: true,
+                          onChanged: _queueSave,
+                          onUpload: () => _uploadSpecificationArtifact(
+                            _document.specifications[i].id,
+                          ),
+                          onRemove: () {
+                            final removedId = _document.specifications[i].id;
+                            setState(() {
+                              _document.specifications.removeAt(i);
+                              _specificationRowKeys.remove(removedId);
+                            });
+                            _queueSave();
+                          },
+                        ),
                       ),
                       if (i != _document.specifications.length - 1)
                         const SizedBox(height: 12),
@@ -1830,6 +1947,7 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
                         key: ValueKey(_document.specificationDocuments[i].id),
                         index: i + 1,
                         data: _document.specificationDocuments[i],
+                        requirementOptions: requirementOptions,
                         sourceTypeOptions: _specSourceTypeOptions,
                         uploadsEnabled: true,
                         onChanged: _queueSave,
@@ -2576,7 +2694,7 @@ class _MappingCard extends StatelessWidget {
             initialValue: data.designResponse,
             minLines: 2,
             maxLines: 4,
-            decoration: _inputDecoration('Design response'),
+            decoration: _inputDecoration('Details'),
             onChanged: (value) {
               data.designResponse = value;
               onChanged();
@@ -2614,7 +2732,7 @@ class _MappingCard extends StatelessWidget {
               ),
               _TextFormField(
                 initialValue: data.linkedArtifact,
-                label: 'Linked artifact',
+                label: 'Linked artifacts',
                 onChanged: (value) {
                   data.linkedArtifact = value;
                   onChanged();
@@ -2737,6 +2855,8 @@ class _SpecificationPlanRowCard extends StatelessWidget {
     required this.index,
     required this.data,
     required this.owners,
+    required this.requirementOptions,
+    required this.disciplineAreaOptions,
     required this.sourceTypeOptions,
     required this.ruleTypeOptions,
     required this.statusOptions,
@@ -2749,6 +2869,8 @@ class _SpecificationPlanRowCard extends StatelessWidget {
   final int index;
   final DesignSpecificationPlanRow data;
   final List<String> owners;
+  final List<_RequirementAttachmentOption> requirementOptions;
+  final List<String> disciplineAreaOptions;
   final List<String> sourceTypeOptions;
   final List<String> ruleTypeOptions;
   final List<String> statusOptions;
@@ -2817,14 +2939,33 @@ class _SpecificationPlanRowCard extends StatelessWidget {
             },
           ),
           const SizedBox(height: 12),
+          _RequirementMultiSelectField(
+            label: 'Attached requirements',
+            options: requirementOptions,
+            selectedIds: data.attachedRequirementIds,
+            onChanged: (ids) {
+              data.attachedRequirementIds = ids;
+              onChanged();
+            },
+          ),
+          const SizedBox(height: 12),
           _FourColumnGrid(
             children: [
               _DropdownField(
                 value: data.ruleType,
-                label: 'Rule type',
+                label: 'Source',
                 options: ruleTypeOptions,
                 onChanged: (value) {
                   data.ruleType = value;
+                  onChanged();
+                },
+              ),
+              _FilterableCreatableDropdownField(
+                value: data.disciplineArea,
+                label: 'Discipline / area',
+                options: disciplineAreaOptions,
+                onChanged: (value) {
+                  data.disciplineArea = value.trim();
                   onChanged();
                 },
               ),
@@ -2883,6 +3024,7 @@ class _SpecificationDocumentCard extends StatelessWidget {
     super.key,
     required this.index,
     required this.data,
+    required this.requirementOptions,
     required this.sourceTypeOptions,
     required this.uploadsEnabled,
     required this.onChanged,
@@ -2892,6 +3034,7 @@ class _SpecificationDocumentCard extends StatelessWidget {
 
   final int index;
   final DesignPlanningReferenceDoc data;
+  final List<_RequirementAttachmentOption> requirementOptions;
   final List<String> sourceTypeOptions;
   final bool uploadsEnabled;
   final VoidCallback onChanged;
@@ -2947,6 +3090,16 @@ class _SpecificationDocumentCard extends StatelessWidget {
                 onChanged();
               },
             ),
+          ),
+          const SizedBox(height: 12),
+          _RequirementMultiSelectField(
+            label: 'Attached requirements',
+            options: requirementOptions,
+            selectedIds: data.attachedRequirementIds,
+            onChanged: (ids) {
+              data.attachedRequirementIds = ids;
+              onChanged();
+            },
           ),
           const SizedBox(height: 12),
           _ResponsivePair(
@@ -3448,6 +3601,413 @@ class _DropdownField extends StatelessWidget {
             onChanged(value);
           },
         ),
+      ],
+    );
+  }
+}
+
+class _FilterableCreatableDropdownField extends StatefulWidget {
+  const _FilterableCreatableDropdownField({
+    required this.value,
+    required this.label,
+    required this.options,
+    required this.onChanged,
+  });
+
+  final String value;
+  final String label;
+  final List<String> options;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_FilterableCreatableDropdownField> createState() =>
+      _FilterableCreatableDropdownFieldState();
+}
+
+class _FilterableCreatableDropdownFieldState
+    extends State<_FilterableCreatableDropdownField> {
+  static const _createTokenPrefix = '__create__:';
+
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value.trim());
+    _focusNode = FocusNode();
+  }
+
+  @override
+  void didUpdateWidget(covariant _FilterableCreatableDropdownField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.value != widget.value) {
+      final next = widget.value.trim();
+      if (_controller.text.trim() != next) {
+        _controller.text = next;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  List<String> _normalizedOptions() {
+    final deduped = <String>[];
+    final seen = <String>{};
+    for (final option in widget.options) {
+      final normalized = option.trim();
+      if (normalized.isEmpty) continue;
+      final key = normalized.toLowerCase();
+      if (seen.contains(key)) continue;
+      seen.add(key);
+      deduped.add(normalized);
+    }
+    return deduped;
+  }
+
+  Iterable<String> _buildOptions(String query) {
+    final trimmed = query.trim();
+    final all = _normalizedOptions();
+    if (trimmed.isEmpty) return all;
+
+    final needle = trimmed.toLowerCase();
+    final matches = all
+        .where((option) => option.toLowerCase().contains(needle))
+        .toList(growable: false);
+    if (matches.isNotEmpty) return matches;
+    return ['$_createTokenPrefix$trimmed'];
+  }
+
+  String _displayLabel(String option) {
+    if (option.startsWith(_createTokenPrefix)) {
+      final custom = option.substring(_createTokenPrefix.length);
+      return 'Create "$custom"';
+    }
+    return option;
+  }
+
+  String _resolvedValue(String option) {
+    if (!option.startsWith(_createTokenPrefix)) return option;
+    return option.substring(_createTokenPrefix.length);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: _kMuted,
+          ),
+        ),
+        const SizedBox(height: 6),
+        RawAutocomplete<String>(
+          textEditingController: _controller,
+          focusNode: _focusNode,
+          optionsBuilder: (textEditingValue) {
+            return _buildOptions(textEditingValue.text);
+          },
+          displayStringForOption: _displayLabel,
+          onSelected: (selected) {
+            final value = _resolvedValue(selected).trim();
+            _controller.text = value;
+            widget.onChanged(value);
+          },
+          fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
+            return TextFormField(
+              controller: controller,
+              focusNode: focusNode,
+              decoration: _inputDecoration(
+                'Type to filter options. If no match, create custom.',
+              ),
+              onFieldSubmitted: (raw) {
+                final value = raw.trim();
+                if (value.isEmpty) return;
+                widget.onChanged(value);
+                onSubmitted();
+              },
+            );
+          },
+          optionsViewBuilder: (context, onSelected, options) {
+            final list = options.toList(growable: false);
+            if (list.isEmpty) return const SizedBox.shrink();
+            return Align(
+              alignment: Alignment.topLeft,
+              child: Material(
+                elevation: 8,
+                color: _kSurface,
+                borderRadius: BorderRadius.circular(12),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxHeight: 240,
+                    minWidth: 260,
+                    maxWidth: 440,
+                  ),
+                  child: ListView.separated(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    shrinkWrap: true,
+                    itemCount: list.length,
+                    separatorBuilder: (_, __) =>
+                        const Divider(height: 1, color: _kBorder),
+                    itemBuilder: (context, index) {
+                      final option = list[index];
+                      final isCreate = option.startsWith(_createTokenPrefix);
+                      return InkWell(
+                        onTap: () => onSelected(option),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                isCreate ? Icons.add_circle : Icons.list_alt,
+                                size: 16,
+                                color: isCreate ? _kPrimary : _kMuted,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _displayLabel(option),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: isCreate ? _kPrimary : _kText,
+                                    fontWeight: isCreate
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _RequirementAttachmentOption {
+  const _RequirementAttachmentOption({required this.id, required this.label});
+
+  final String id;
+  final String label;
+}
+
+class _RequirementMultiSelectField extends StatelessWidget {
+  const _RequirementMultiSelectField({
+    required this.label,
+    required this.options,
+    required this.selectedIds,
+    required this.onChanged,
+  });
+
+  final String label;
+  final List<_RequirementAttachmentOption> options;
+  final List<String> selectedIds;
+  final ValueChanged<List<String>> onChanged;
+
+  Future<void> _openSelector(BuildContext context) async {
+    final selected = {...selectedIds};
+    final searchController = TextEditingController();
+    String query = '';
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: _kSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final filtered = options.where((option) {
+              return option.label.toLowerCase().contains(query.toLowerCase());
+            }).toList(growable: false);
+
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          label,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: _kText,
+                          ),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () {
+                            selected.clear();
+                            setModalState(() {});
+                          },
+                          child: const Text('Clear'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: searchController,
+                      decoration: _inputDecoration(
+                        'Filter requirements by text',
+                      ),
+                      onChanged: (value) {
+                        setModalState(() => query = value.trim());
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    Flexible(
+                      child: filtered.isEmpty
+                          ? const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 20),
+                              child: Text(
+                                'No matching requirements.',
+                                style: TextStyle(color: _kMuted),
+                              ),
+                            )
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: filtered.length,
+                              itemBuilder: (context, index) {
+                                final option = filtered[index];
+                                final checked = selected.contains(option.id);
+                                return CheckboxListTile(
+                                  dense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                  value: checked,
+                                  title: Text(
+                                    option.label,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  onChanged: (value) {
+                                    setModalState(() {
+                                      if (value == true) {
+                                        selected.add(option.id);
+                                      } else {
+                                        selected.remove(option.id);
+                                      }
+                                    });
+                                  },
+                                );
+                              },
+                            ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: () {
+                          onChanged(selected.toList(growable: false));
+                          Navigator.of(context).pop();
+                        },
+                        child: const Text('Apply selection'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+    searchController.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final labelsById = {
+      for (final option in options) option.id: option.label,
+    };
+    final selectedLabels = selectedIds
+        .where((id) => id.trim().isNotEmpty)
+        .map((id) => labelsById[id] ?? 'Requirement (unavailable)')
+        .toList(growable: false);
+    final summary =
+        selectedLabels.isEmpty ? 'None' : '${selectedLabels.length} selected';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: _kMuted,
+          ),
+        ),
+        const SizedBox(height: 6),
+        InkWell(
+          onTap: options.isEmpty ? null : () => _openSelector(context),
+          borderRadius: BorderRadius.circular(12),
+          child: InputDecorator(
+            decoration: _inputDecoration(
+              options.isEmpty ? 'No requirements available' : '',
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    summary,
+                    style: const TextStyle(color: _kText),
+                  ),
+                ),
+                const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: _kMuted,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (selectedLabels.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: selectedLabels
+                .take(6)
+                .map(
+                  (label) => Chip(
+                    label: Text(
+                      label,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                )
+                .toList(),
+          ),
+        ],
       ],
     );
   }

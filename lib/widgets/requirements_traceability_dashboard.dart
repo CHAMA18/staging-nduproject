@@ -839,7 +839,7 @@ class RequirementsTraceabilityDashboard extends StatelessWidget {
                   final row = [
                     Expanded(
                         child: _dropdown(
-                            label: 'Rule Type',
+                            label: 'Source',
                             value: selected.source.ruleType,
                             items: const ['Internal', 'External'],
                             onChanged: (v) => onUpdateSelectedRequirement(

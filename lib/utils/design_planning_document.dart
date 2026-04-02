@@ -191,6 +191,7 @@ class DesignPlanningDocument {
                 ? item.plannedText.trim()
                 : item.notes.trim(),
             details: item.notes.trim(),
+            disciplineArea: item.priority.trim(),
             ruleType: 'Internal',
             sourceType: _inferSpecificationSourceType(item, data),
             owner: item.owner.trim(),
@@ -518,9 +519,9 @@ class DesignPlanningDocument {
     return [
       overviewSummary.trim(),
       if (designWhoAndOwnership.trim().isNotEmpty)
-        'Who & Ownership:\n${designWhoAndOwnership.trim()}',
+        'Responsibilities\n${designWhoAndOwnership.trim()}',
       if (designExecutionApproach.trim().isNotEmpty)
-        'How Design Will Be Executed:\n${designExecutionApproach.trim()}',
+        'Design Execution Strategy:\n${designExecutionApproach.trim()}',
       if (designVendorContractInputs.trim().isNotEmpty)
         'Vendor & Contract Inputs:\n${designVendorContractInputs.trim()}',
       if (designInterfacesAndConstraints.trim().isNotEmpty)
@@ -947,6 +948,8 @@ class DesignSpecificationPlanRow {
     String? id,
     this.title = '',
     this.details = '',
+    this.disciplineArea = '',
+    List<String>? attachedRequirementIds,
     this.ruleType = 'Internal',
     this.sourceType = 'Standards',
     this.owner = '',
@@ -954,11 +957,14 @@ class DesignSpecificationPlanRow {
     this.referenceLink = '',
     this.uploadedFileName = '',
     this.uploadedStoragePath = '',
-  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+  })  : id = id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        attachedRequirementIds = attachedRequirementIds ?? [];
 
   final String id;
   String title;
   String details;
+  String disciplineArea;
+  List<String> attachedRequirementIds;
   String ruleType;
   String sourceType;
   String owner;
@@ -972,6 +978,17 @@ class DesignSpecificationPlanRow {
       id: json['id']?.toString(),
       title: json['title']?.toString() ?? '',
       details: json['details']?.toString() ?? '',
+      disciplineArea: json['disciplineArea']?.toString() ??
+          json['designArea']?.toString() ??
+          json['discipline']?.toString() ??
+          '',
+      attachedRequirementIds: (json['attachedRequirementIds'] as List?)
+              ?.map((item) => item.toString())
+              .toList() ??
+          (json['requirementIds'] as List?)
+              ?.map((item) => item.toString())
+              .toList() ??
+          const [],
       ruleType: json['ruleType']?.toString() ?? 'Internal',
       sourceType: json['sourceType']?.toString() ?? 'Standards',
       owner: json['owner']?.toString() ?? '',
@@ -986,6 +1003,8 @@ class DesignSpecificationPlanRow {
         'id': id,
         'title': title,
         'details': details,
+        'disciplineArea': disciplineArea,
+        'attachedRequirementIds': attachedRequirementIds,
         'ruleType': ruleType,
         'sourceType': sourceType,
         'owner': owner,
@@ -1001,15 +1020,18 @@ class DesignPlanningReferenceDoc {
     String? id,
     this.title = '',
     this.category = 'Standards',
+    List<String>? attachedRequirementIds,
     this.link = '',
     this.fileName = '',
     this.storagePath = '',
     this.notes = '',
-  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+  })  : id = id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        attachedRequirementIds = attachedRequirementIds ?? [];
 
   final String id;
   String title;
   String category;
+  List<String> attachedRequirementIds;
   String link;
   String fileName;
   String storagePath;
@@ -1020,6 +1042,13 @@ class DesignPlanningReferenceDoc {
       id: json['id']?.toString(),
       title: json['title']?.toString() ?? '',
       category: json['category']?.toString() ?? 'Standards',
+      attachedRequirementIds: (json['attachedRequirementIds'] as List?)
+              ?.map((item) => item.toString())
+              .toList() ??
+          (json['requirementIds'] as List?)
+              ?.map((item) => item.toString())
+              .toList() ??
+          const [],
       link: json['link']?.toString() ?? '',
       fileName: json['fileName']?.toString() ?? '',
       storagePath: json['storagePath']?.toString() ?? '',
@@ -1031,6 +1060,7 @@ class DesignPlanningReferenceDoc {
         'id': id,
         'title': title,
         'category': category,
+        'attachedRequirementIds': attachedRequirementIds,
         'link': link,
         'fileName': fileName,
         'storagePath': storagePath,

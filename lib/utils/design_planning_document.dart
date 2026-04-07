@@ -43,6 +43,7 @@ class DesignPlanningDocument {
     this.lastUpdatedIso = '',
     List<DesignRequirementMapping>? requirements,
     List<DesignSpecificationPlanRow>? specifications,
+    List<DesignSpecificationDeviation>? deviations,
     List<DesignPlanningReferenceDoc>? specificationDocuments,
     List<DesignPlanningWorkItem>? modules,
     List<DesignPlanningWorkItem>? journeys,
@@ -56,6 +57,7 @@ class DesignPlanningDocument {
     List<DesignApprovalEntry>? approvals,
   })  : requirements = requirements ?? [],
         specifications = specifications ?? [],
+        deviations = deviations ?? [],
         specificationDocuments = specificationDocuments ?? [],
         modules = modules ?? [],
         journeys = journeys ?? [],
@@ -97,6 +99,7 @@ class DesignPlanningDocument {
   String lastUpdatedIso;
   List<DesignRequirementMapping> requirements;
   List<DesignSpecificationPlanRow> specifications;
+  List<DesignSpecificationDeviation> deviations;
   List<DesignPlanningReferenceDoc> specificationDocuments;
   List<DesignPlanningWorkItem> modules;
   List<DesignPlanningWorkItem> journeys;
@@ -191,8 +194,10 @@ class DesignPlanningDocument {
                 ? item.plannedText.trim()
                 : item.notes.trim(),
             details: item.notes.trim(),
-            disciplineArea: item.priority.trim(),
+            area: item.priority.trim(),
             ruleType: 'Internal',
+            specificationType:
+                _inferSpecificationType(item, data, fallback: 'Standard'),
             sourceType: _inferSpecificationSourceType(item, data),
             owner: item.owner.trim(),
             status: item.status.trim().isEmpty ? 'Draft' : item.status.trim(),
@@ -397,6 +402,11 @@ class DesignPlanningDocument {
                   item as Map<String, dynamic>))
               .toList() ??
           [],
+      deviations: (json['deviations'] as List?)
+              ?.map((item) => DesignSpecificationDeviation.fromJson(
+                  item as Map<String, dynamic>))
+              .toList() ??
+          [],
       specificationDocuments: (json['specificationDocuments'] as List?)
               ?.map((item) => DesignPlanningReferenceDoc.fromJson(
                   item as Map<String, dynamic>))
@@ -483,6 +493,7 @@ class DesignPlanningDocument {
         'lastUpdatedIso': lastUpdatedIso,
         'requirements': requirements.map((item) => item.toJson()).toList(),
         'specifications': specifications.map((item) => item.toJson()).toList(),
+        'deviations': deviations.map((item) => item.toJson()).toList(),
         'specificationDocuments':
             specificationDocuments.map((item) => item.toJson()).toList(),
         'modules': modules.map((item) => item.toJson()).toList(),
@@ -795,6 +806,31 @@ class DesignPlanningDocument {
     return fallback;
   }
 
+  static String _inferSpecificationType(
+    PlanningRequirementItem item,
+    ProjectDataModel data, {
+    required String fallback,
+  }) {
+    final sourceType = _inferSpecificationSourceType(item, data);
+    if (sourceType == 'Regulatory') return 'Law';
+    if (sourceType == 'Contracts' || sourceType == 'Vendors') {
+      return 'Criteria';
+    }
+
+    final haystack = '${item.priority} ${item.notes} ${item.verificationMethod}'
+        .toLowerCase();
+    if (haystack.contains('code')) return 'Code';
+    if (haystack.contains('law') ||
+        haystack.contains('legal') ||
+        haystack.contains('statut')) {
+      return 'Law';
+    }
+    if (haystack.contains('criterion') || haystack.contains('criteria')) {
+      return 'Criteria';
+    }
+    return fallback;
+  }
+
   static String _inferSpecificationSourceType(
     PlanningRequirementItem item,
     ProjectDataModel data,
@@ -948,7 +984,9 @@ class DesignSpecificationPlanRow {
     String? id,
     this.title = '',
     this.details = '',
-    this.disciplineArea = '',
+    this.specificationType = 'Standard',
+    this.discipline = '',
+    this.area = '',
     List<String>? attachedRequirementIds,
     this.ruleType = 'Internal',
     this.sourceType = 'Standards',
@@ -963,7 +1001,9 @@ class DesignSpecificationPlanRow {
   final String id;
   String title;
   String details;
-  String disciplineArea;
+  String specificationType;
+  String discipline;
+  String area;
   List<String> attachedRequirementIds;
   String ruleType;
   String sourceType;
@@ -974,13 +1014,23 @@ class DesignSpecificationPlanRow {
   String uploadedStoragePath;
 
   factory DesignSpecificationPlanRow.fromJson(Map<String, dynamic> json) {
+    final legacyDisciplineArea = json['disciplineArea']?.toString().trim() ??
+        json['designArea']?.toString().trim() ??
+        '';
+    final parsedLegacy = _parseLegacyDisciplineArea(legacyDisciplineArea);
     return DesignSpecificationPlanRow(
       id: json['id']?.toString(),
       title: json['title']?.toString() ?? '',
       details: json['details']?.toString() ?? '',
-      disciplineArea: json['disciplineArea']?.toString() ??
+      specificationType: json['specificationType']?.toString() ??
+          json['type']?.toString() ??
+          'Standard',
+      discipline: json['discipline']?.toString() ??
+          parsedLegacy.$1 ??
+          legacyDisciplineArea,
+      area: json['area']?.toString() ??
           json['designArea']?.toString() ??
-          json['discipline']?.toString() ??
+          parsedLegacy.$2 ??
           '',
       attachedRequirementIds: (json['attachedRequirementIds'] as List?)
               ?.map((item) => item.toString())
@@ -1003,7 +1053,13 @@ class DesignSpecificationPlanRow {
         'id': id,
         'title': title,
         'details': details,
-        'disciplineArea': disciplineArea,
+        'specificationType': specificationType,
+        'discipline': discipline,
+        'area': area,
+        // Keep legacy key for backward compatibility with old readers.
+        'disciplineArea': [discipline.trim(), area.trim()]
+            .where((item) => item.isNotEmpty)
+            .join(' / '),
         'attachedRequirementIds': attachedRequirementIds,
         'ruleType': ruleType,
         'sourceType': sourceType,
@@ -1012,6 +1068,47 @@ class DesignSpecificationPlanRow {
         'referenceLink': referenceLink,
         'uploadedFileName': uploadedFileName,
         'uploadedStoragePath': uploadedStoragePath,
+      };
+
+  static (String?, String?) _parseLegacyDisciplineArea(String raw) {
+    if (raw.trim().isEmpty) return (null, null);
+    final parts = raw
+        .split(RegExp(r'\s*(/|\\||>|->)\s*'))
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+    if (parts.length < 2) return (raw.trim(), null);
+    return (parts.first, parts.sublist(1).join(' / '));
+  }
+}
+
+class DesignSpecificationDeviation {
+  DesignSpecificationDeviation({
+    String? id,
+    this.specificationId = '',
+    this.description = '',
+  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+
+  final String id;
+  String specificationId;
+  String description;
+
+  factory DesignSpecificationDeviation.fromJson(Map<String, dynamic> json) {
+    return DesignSpecificationDeviation(
+      id: json['id']?.toString(),
+      specificationId: json['specificationId']?.toString() ??
+          json['linkedSpecificationId']?.toString() ??
+          '',
+      description: json['description']?.toString() ??
+          json['deviationText']?.toString() ??
+          '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'specificationId': specificationId,
+        'description': description,
       };
 }
 

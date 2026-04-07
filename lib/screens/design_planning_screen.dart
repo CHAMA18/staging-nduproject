@@ -63,7 +63,16 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
     'Regulatory',
     'Standards',
   ];
-  static const _specDisciplineAreaOptions = [
+  static const _specificationTypeOptions = [
+    'Code',
+    'Law',
+    'Standard',
+    'Criteria',
+    'Guideline',
+    'Contract',
+    'Other',
+  ];
+  static const _specDisciplineOptions = [
     'Architecture',
     'Civil',
     'Structural',
@@ -92,6 +101,26 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
     'Regulatory / Compliance',
     'Program / Project Management',
     'Safety / HSE',
+  ];
+  static const _specAreaOptions = [
+    'General',
+    'Design',
+    'Construction',
+    'Operations',
+    'Security',
+    'Compliance',
+    'Testing',
+    'Data',
+    'Integration',
+    'Quality',
+    'Safety',
+    'Environmental',
+    'UI/UX',
+    'Frontend',
+    'Backend',
+    'Infrastructure',
+    'Procurement',
+    'Commercial',
   ];
   static const _specRowStatusOptions = ['Draft', 'Planned', 'In Review'];
   static const _designAreaOptions = [
@@ -637,12 +666,158 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
     setState(() {
       _document.specifications.add(
         DesignSpecificationPlanRow(
+          specificationType: _specificationTypeOptions[2],
           sourceType: _specSourceTypeOptions.first,
           ruleType: _specRuleTypeOptions.first,
         ),
       );
     });
     _queueSave();
+  }
+
+  void _addDeviation() {
+    setState(() {
+      _document.deviations.add(DesignSpecificationDeviation());
+    });
+    _queueSave();
+  }
+
+  Future<void> _showSpecificationsTableDialog() async {
+    final rows = _specificationOptions();
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Specifications Table'),
+          content: SizedBox(
+            width: 1240,
+            child: rows.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Text(
+                      'No specification rows available.',
+                      style: TextStyle(color: _kMuted),
+                    ),
+                  )
+                : Scrollbar(
+                    thumbVisibility: true,
+                    child: SingleChildScrollView(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(minWidth: 1180),
+                          child: DataTable(
+                            columnSpacing: 34,
+                            dataRowMinHeight: 56,
+                            dataRowMaxHeight: 72,
+                            columns: const [
+                              DataColumn(
+                                  label: SizedBox(
+                                      width: 220, child: Text('Title'))),
+                              DataColumn(
+                                  label: SizedBox(
+                                      width: 120, child: Text('Spec type'))),
+                              DataColumn(
+                                  label: SizedBox(
+                                      width: 150, child: Text('Discipline'))),
+                              DataColumn(
+                                  label: SizedBox(
+                                      width: 150, child: Text('Area'))),
+                              DataColumn(
+                                  label: SizedBox(
+                                      width: 130, child: Text('Source type'))),
+                              DataColumn(
+                                  label: SizedBox(
+                                      width: 140, child: Text('Owner'))),
+                              DataColumn(
+                                  label: SizedBox(
+                                      width: 100, child: Text('Status'))),
+                            ],
+                            rows: rows
+                                .map(
+                                  (item) => DataRow(
+                                    cells: [
+                                      DataCell(SizedBox(
+                                        width: 220,
+                                        child: Text(
+                                          item.title,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      )),
+                                      DataCell(SizedBox(
+                                        width: 120,
+                                        child: Text(
+                                          item.specificationType,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      )),
+                                      DataCell(SizedBox(
+                                        width: 150,
+                                        child: Text(
+                                          item.discipline.isEmpty
+                                              ? '-'
+                                              : item.discipline,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      )),
+                                      DataCell(SizedBox(
+                                        width: 150,
+                                        child: Text(
+                                          item.area.isEmpty ? '-' : item.area,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      )),
+                                      DataCell(SizedBox(
+                                        width: 130,
+                                        child: Text(
+                                          item.sourceType.isEmpty
+                                              ? '-'
+                                              : item.sourceType,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      )),
+                                      DataCell(SizedBox(
+                                        width: 140,
+                                        child: Text(
+                                          item.owner.isEmpty ? '-' : item.owner,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      )),
+                                      DataCell(SizedBox(
+                                        width: 100,
+                                        child: Text(
+                                          item.status.isEmpty
+                                              ? '-'
+                                              : item.status,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      )),
+                                    ],
+                                  ),
+                                )
+                                .toList(growable: false),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _addSpecificationDocument() {
@@ -1089,6 +1264,30 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
     return options;
   }
 
+  List<_SpecificationOption> _specificationOptions() {
+    final options = <_SpecificationOption>[];
+    for (var index = 0; index < _document.specifications.length; index++) {
+      final row = _document.specifications[index];
+      final fallback = 'Specification ${index + 1}';
+      final title = row.title.trim().isEmpty ? fallback : row.title.trim();
+      options.add(
+        _SpecificationOption(
+          id: row.id,
+          title: title,
+          details: row.details.trim(),
+          specificationType: row.specificationType.trim(),
+          discipline: row.discipline.trim(),
+          area: row.area.trim(),
+          sourceType: row.sourceType.trim(),
+          owner: row.owner.trim(),
+          status: row.status.trim(),
+          referenceLink: row.referenceLink.trim(),
+        ),
+      );
+    }
+    return options;
+  }
+
   @override
   Widget build(BuildContext context) {
     final projectData = ProjectDataHelper.getData(context);
@@ -1356,6 +1555,18 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
   }
 
   Widget _buildRightRail(ProjectDataModel data) {
+    final mappedSpecificationIds = _document.requirements
+        .map((item) => item.requirementId.trim())
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    final mappedSpecsCount = _document.specifications
+        .where((item) => mappedSpecificationIds.contains(item.id))
+        .length;
+    final deviationsCount = _document.deviations
+        .where((item) =>
+            item.specificationId.trim().isNotEmpty ||
+            item.description.trim().isNotEmpty)
+        .length;
     final summary = [
       (
         'Solution',
@@ -1452,6 +1663,23 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _Badge(
+                    label: 'Mapped specs: $mappedSpecsCount',
+                    background: const Color(0xFFE8F0FF),
+                    foreground: _kPrimary,
+                  ),
+                  _Badge(
+                    label: 'Deviations: $deviationsCount',
+                    background: const Color(0xFFECFDF3),
+                    foreground: _kSuccess,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
               if (_document.specifications.isEmpty)
                 const Text(
                   'No specification rows yet.',
@@ -1519,7 +1747,9 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
         const SizedBox(height: 18),
         _buildDesignSpecificationsWorkspaceSection(),
         const SizedBox(height: 18),
-        _buildRequirementsSection(data, owners),
+        _buildDeviationsSection(),
+        const SizedBox(height: 18),
+        _buildRequirementsSection(owners),
         const SizedBox(height: 18),
         _buildArchitectureSection(owners),
         const SizedBox(height: 18),
@@ -1639,14 +1869,14 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
     );
   }
 
-  Widget _buildRequirementsSection(ProjectDataModel data, List<String> owners) {
-    final requirements = data.frontEndPlanning.requirementItems;
+  Widget _buildRequirementsSection(List<String> owners) {
+    final specificationOptions = _specificationOptions();
     return _buildGuidedSectionCard(
       sectionId: 'requirements',
       sectionKey: _sectionKeys['requirements']!,
       title: 'Requirements to Design Mapping',
       subtitle:
-          'Link requirements from initiation/planning to concrete design details, owners, and evidence.',
+          'Link specification items from planning to concrete design details, owners, and evidence.',
       accent: const Color(0xFF0F9D58),
       child: Column(
         children: [
@@ -1657,14 +1887,14 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
               setState(
                   () => _document.requirements.add(DesignRequirementMapping()));
               _queueSave();
-              _showToast('Requirement mapping row added.');
+              _showToast('Mapping row added.');
             },
           ),
           const SizedBox(height: 12),
           for (var i = 0; i < _document.requirements.length; i++) ...[
             _MappingCard(
               data: _document.requirements[i],
-              availableRequirements: requirements,
+              availableSpecifications: specificationOptions,
               owners: owners,
               onChanged: _queueSave,
               onRemove: () {
@@ -1678,7 +1908,7 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
           if (_document.requirements.isEmpty)
             const _EmptyState(
               message:
-                  'No requirement mappings yet. Add rows here to make the design basis traceable.',
+                  'No mappings yet. Add rows here to make the design basis traceable.',
             ),
         ],
       ),
@@ -1888,6 +2118,12 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
                       actionLabel: 'Add row',
                       onAction: _addSpecificationRow,
                     ),
+                    const SizedBox(height: 8),
+                    _ActionButton(
+                      label: 'View table',
+                      icon: Icons.table_chart_outlined,
+                      onPressed: _showSpecificationsTableDialog,
+                    ),
                     const SizedBox(height: 12),
                     for (var i = 0;
                         i < _document.specifications.length;
@@ -1906,7 +2142,9 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
                           data: _document.specifications[i],
                           owners: owners,
                           requirementOptions: requirementOptions,
-                          disciplineAreaOptions: _specDisciplineAreaOptions,
+                          specificationTypeOptions: _specificationTypeOptions,
+                          disciplineOptions: _specDisciplineOptions,
+                          areaOptions: _specAreaOptions,
                           sourceTypeOptions: _specSourceTypeOptions,
                           ruleTypeOptions: _specRuleTypeOptions,
                           statusOptions: _specRowStatusOptions,
@@ -1977,6 +2215,58 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
                 : CrossFadeState.showFirst,
             duration: const Duration(milliseconds: 180),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeviationsSection() {
+    final specificationOptions = _specificationOptions();
+    return _buildGuidedSectionCard(
+      sectionId: 'deviations',
+      sectionKey: _sectionKeys['deviations']!,
+      title: 'Deviations',
+      subtitle:
+          'Record approved exceptions that deviate from planned specification items before execution begins.',
+      accent: const Color(0xFF0EA5E9),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SubHeader(
+            title: 'Deviation entries',
+            actionLabel: 'Add deviation',
+            onAction: _addDeviation,
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Exceptions from Specifications, Codes, Standards and Criteria',
+            style: TextStyle(
+              fontSize: 12.5,
+              color: _kMuted,
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 12),
+          for (var i = 0; i < _document.deviations.length; i++) ...[
+            _SpecificationDeviationCard(
+              key: ValueKey(_document.deviations[i].id),
+              index: i + 1,
+              data: _document.deviations[i],
+              specificationOptions: specificationOptions,
+              onChanged: _queueSave,
+              onRemove: () {
+                setState(() => _document.deviations.removeAt(i));
+                _queueSave();
+              },
+            ),
+            if (i != _document.deviations.length - 1)
+              const SizedBox(height: 12),
+          ],
+          if (_document.deviations.isEmpty)
+            const _EmptyState(
+              message:
+                  'No deviations logged. Add deviations to capture approved exceptions.',
+            ),
         ],
       ),
     );
@@ -2395,6 +2685,7 @@ const List<_SectionMeta> _sectionOrder = [
   _SectionMeta('design_overview', 'Design Overview', Color(0xFF1D4ED8)),
   _SectionMeta('design_specifications_workspace', 'Design Specifications',
       Color(0xFF0F766E)),
+  _SectionMeta('deviations', 'Deviations', Color(0xFF0EA5E9)),
   _SectionMeta('requirements', 'Requirements Mapping', Color(0xFF0F9D58)),
   _SectionMeta('architecture', 'Architecture Basis', Color(0xFF7C3AED)),
   _SectionMeta('uiux', 'UI/UX Basis', Color(0xFFDB2777)),
@@ -2585,26 +2876,30 @@ class _TextAreaField extends StatelessWidget {
 class _MappingCard extends StatelessWidget {
   const _MappingCard({
     required this.data,
-    required this.availableRequirements,
+    required this.availableSpecifications,
     required this.owners,
     required this.onChanged,
     required this.onRemove,
   });
 
   final DesignRequirementMapping data;
-  final List<RequirementItem> availableRequirements;
+  final List<_SpecificationOption> availableSpecifications;
   final List<String> owners;
   final VoidCallback onChanged;
   final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
-    final requirementOptions = <RequirementItem>[
-      ...availableRequirements.where(
-        (item) =>
-            item.description.trim().isNotEmpty || item.id.trim().isNotEmpty,
+    final specificationOptions = <_SpecificationOption>[
+      ...availableSpecifications.where(
+        (item) => item.title.trim().isNotEmpty || item.id.trim().isNotEmpty,
       ),
     ];
+    final selectedId = specificationOptions.any(
+      (item) => item.id == data.requirementId,
+    )
+        ? data.requirementId
+        : null;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -2627,18 +2922,17 @@ class _MappingCard extends StatelessWidget {
               ),
             ],
           ),
-          if (requirementOptions.isNotEmpty)
+          if (specificationOptions.isNotEmpty)
             DropdownButtonFormField<String>(
-              initialValue:
-                  data.requirementId.isEmpty ? null : data.requirementId,
+              initialValue: selectedId,
               isExpanded: true,
-              decoration: _inputDecoration('Select source requirement'),
-              items: requirementOptions
+              decoration: _inputDecoration('Select specification item'),
+              items: specificationOptions
                   .map(
                     (item) => DropdownMenuItem<String>(
                       value: item.id,
                       child: Text(
-                        '${item.id.isEmpty ? 'Req' : item.id} • ${item.description.isEmpty ? 'Requirement' : item.description}',
+                        item.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -2646,12 +2940,12 @@ class _MappingCard extends StatelessWidget {
                   )
                   .toList(),
               selectedItemBuilder: (context) {
-                return requirementOptions
+                return specificationOptions
                     .map(
                       (item) => Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          '${item.id.isEmpty ? 'Req' : item.id} • ${item.description.isEmpty ? 'Requirement' : item.description}',
+                          item.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -2661,29 +2955,38 @@ class _MappingCard extends StatelessWidget {
               },
               onChanged: (value) {
                 if (value == null) return;
-                final selected = requirementOptions.firstWhere(
+                final selected = specificationOptions.firstWhere(
                   (item) => item.id == value,
-                  orElse: () => RequirementItem(id: value),
+                  orElse: () => _SpecificationOption(id: value, title: ''),
                 );
                 data.requirementId = selected.id;
-                data.requirementText = selected.description;
-                if (data.owner.trim().isEmpty) {
-                  data.owner = selected.person.trim().isNotEmpty
-                      ? selected.person.trim()
-                      : selected.role.trim();
+                data.requirementText =
+                    selected.title.isEmpty ? selected.details : selected.title;
+                if (selected.details.isNotEmpty) {
+                  data.designResponse = selected.details;
                 }
-                if (data.designArea.trim().isEmpty) {
-                  data.designArea = selected.discipline.trim();
+                final mappedArea = selected.area.isNotEmpty
+                    ? selected.area
+                    : selected.discipline;
+                if (mappedArea.isNotEmpty) {
+                  data.designArea = mappedArea;
+                }
+                if (selected.owner.isNotEmpty) {
+                  data.owner = selected.owner;
+                }
+                if (selected.referenceLink.isNotEmpty) {
+                  data.linkedArtifact = selected.referenceLink;
+                  data.verificationMethod = selected.referenceLink;
                 }
                 onChanged();
               },
             ),
-          if (requirementOptions.isNotEmpty) const SizedBox(height: 12),
+          if (specificationOptions.isNotEmpty) const SizedBox(height: 12),
           TextFormField(
             initialValue: data.requirementText,
             minLines: 2,
             maxLines: 4,
-            decoration: _inputDecoration('Requirement'),
+            decoration: _inputDecoration('Specification item'),
             onChanged: (value) {
               data.requirementText = value;
               onChanged();
@@ -2856,7 +3159,9 @@ class _SpecificationPlanRowCard extends StatelessWidget {
     required this.data,
     required this.owners,
     required this.requirementOptions,
-    required this.disciplineAreaOptions,
+    required this.specificationTypeOptions,
+    required this.disciplineOptions,
+    required this.areaOptions,
     required this.sourceTypeOptions,
     required this.ruleTypeOptions,
     required this.statusOptions,
@@ -2870,7 +3175,9 @@ class _SpecificationPlanRowCard extends StatelessWidget {
   final DesignSpecificationPlanRow data;
   final List<String> owners;
   final List<_RequirementAttachmentOption> requirementOptions;
-  final List<String> disciplineAreaOptions;
+  final List<String> specificationTypeOptions;
+  final List<String> disciplineOptions;
+  final List<String> areaOptions;
   final List<String> sourceTypeOptions;
   final List<String> ruleTypeOptions;
   final List<String> statusOptions;
@@ -2952,6 +3259,15 @@ class _SpecificationPlanRowCard extends StatelessWidget {
           _FourColumnGrid(
             children: [
               _DropdownField(
+                value: data.specificationType,
+                label: 'Specification type',
+                options: specificationTypeOptions,
+                onChanged: (value) {
+                  data.specificationType = value;
+                  onChanged();
+                },
+              ),
+              _DropdownField(
                 value: data.ruleType,
                 label: 'Source',
                 options: ruleTypeOptions,
@@ -2961,11 +3277,20 @@ class _SpecificationPlanRowCard extends StatelessWidget {
                 },
               ),
               _FilterableCreatableDropdownField(
-                value: data.disciplineArea,
-                label: 'Discipline / area',
-                options: disciplineAreaOptions,
+                value: data.discipline,
+                label: 'Discipline',
+                options: disciplineOptions,
                 onChanged: (value) {
-                  data.disciplineArea = value.trim();
+                  data.discipline = value.trim();
+                  onChanged();
+                },
+              ),
+              _FilterableCreatableDropdownField(
+                value: data.area,
+                label: 'Area',
+                options: areaOptions,
+                onChanged: (value) {
+                  data.area = value.trim();
                   onChanged();
                 },
               ),
@@ -3013,6 +3338,100 @@ class _SpecificationPlanRowCard extends StatelessWidget {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SpecificationDeviationCard extends StatelessWidget {
+  const _SpecificationDeviationCard({
+    super.key,
+    required this.index,
+    required this.data,
+    required this.specificationOptions,
+    required this.onChanged,
+    required this.onRemove,
+  });
+
+  final int index;
+  final DesignSpecificationDeviation data;
+  final List<_SpecificationOption> specificationOptions;
+  final VoidCallback onChanged;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedId = specificationOptions.any(
+      (item) => item.id == data.specificationId,
+    )
+        ? data.specificationId
+        : null;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _kBorder),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Text(
+                'Deviation $index',
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+              const Spacer(),
+              IconButton(
+                onPressed: onRemove,
+                icon: const Icon(Icons.delete_outline, size: 18),
+              ),
+            ],
+          ),
+          if (specificationOptions.isNotEmpty)
+            DropdownButtonFormField<String>(
+              initialValue: selectedId,
+              isExpanded: true,
+              decoration: _inputDecoration('Select specification item'),
+              items: specificationOptions
+                  .map(
+                    (item) => DropdownMenuItem<String>(
+                      value: item.id,
+                      child: Text(
+                        item.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                  .toList(growable: false),
+              onChanged: (value) {
+                if (value == null) return;
+                data.specificationId = value;
+                onChanged();
+              },
+            )
+          else
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Add specification rows before selecting a specification item.',
+                style: TextStyle(fontSize: 12, color: _kMuted),
+              ),
+            ),
+          const SizedBox(height: 12),
+          TextFormField(
+            initialValue: data.description,
+            minLines: 2,
+            maxLines: 4,
+            decoration: _inputDecoration('Deviation description'),
+            onChanged: (value) {
+              data.description = value;
+              onChanged();
+            },
+          ),
         ],
       ),
     );
@@ -3811,6 +4230,32 @@ class _RequirementAttachmentOption {
 
   final String id;
   final String label;
+}
+
+class _SpecificationOption {
+  const _SpecificationOption({
+    required this.id,
+    required this.title,
+    this.details = '',
+    this.specificationType = '',
+    this.discipline = '',
+    this.area = '',
+    this.sourceType = '',
+    this.owner = '',
+    this.status = '',
+    this.referenceLink = '',
+  });
+
+  final String id;
+  final String title;
+  final String details;
+  final String specificationType;
+  final String discipline;
+  final String area;
+  final String sourceType;
+  final String owner;
+  final String status;
+  final String referenceLink;
 }
 
 class _RequirementMultiSelectField extends StatelessWidget {

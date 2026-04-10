@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:intl/intl.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
-import 'package:ndu_project/utils/form_validation_engine.dart';
+import 'package:ndu_project/utils/form_validation_engine.dart' as validation;
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/front_end_planning_header.dart';
@@ -3007,49 +3007,14 @@ class _FrontEndPlanningProcurementScreenState
     final visible = summaries.take(6).toList(growable: false);
     final hiddenCount = summaries.length - visible.length;
 
-    return showDialog<_MissingProcurementAction>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Color(0xFFB45309)),
-            SizedBox(width: 10),
-            Text('Procurement Requirements Missing'),
-          ],
-        ),
-        content: SizedBox(
-          width: 560,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'You still have missing procurement details. You can add them now, auto-fill them, or continue and update later.',
-                style: TextStyle(fontSize: 13, height: 1.35),
-              ),
-              const SizedBox(height: 10),
-              for (final item in visible)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Text(
-                    '- $item',
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF374151),
-                    ),
-                  ),
-                ),
-              if (hiddenCount > 0)
-                Text(
-                  '- +$hiddenCount more',
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF374151),
-                  ),
-                ),
-              const SizedBox(height: 12),
+    return FormValidationEngine.showMissingRequirementsDialog(
+      context,
+      validation,
+      title: 'Procurement Requirements Missing',
+      intro:
+          'You still have missing procurement details. You can add them now, auto-fill them, or continue and update later.',
+      isAiGenerated: true, // Skip validation for AI-generated content
+    );
               const Text(
                 'Choose one option:',
                 style: TextStyle(

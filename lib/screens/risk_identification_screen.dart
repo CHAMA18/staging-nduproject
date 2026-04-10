@@ -1238,7 +1238,7 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
           if (!isMobile) ...[
             // Table header
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                   color: Colors.grey[200],
                   borderRadius: BorderRadius.circular(6),
@@ -1357,7 +1357,7 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
     final solution = _solutions[index];
     final isMobile = AppBreakpoints.isMobile(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
           border: Border(
               top: BorderSide(color: Colors.grey.withValues(alpha: 0.25)))),
@@ -1375,21 +1375,17 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
                             fontSize: 14, fontWeight: FontWeight.w600))),
               ]),
               if (solution.description.isNotEmpty) ...[
-                const SizedBox(height: 6),
                 Text(solution.description,
                     style: const TextStyle(fontSize: 12, color: Colors.grey)),
               ],
-              const SizedBox(height: 10),
               _labeled(
                   'Risk 1',
                   _riskTextAreaWithAI(
                       _riskControllers[index][0], index, 0, solution.title)),
-              const SizedBox(height: 10),
               _labeled(
                   'Risk 2',
                   _riskTextAreaWithAI(
                       _riskControllers[index][1], index, 1, solution.title)),
-              const SizedBox(height: 10),
               _labeled(
                   'Risk 3',
                   _riskTextAreaWithAI(
@@ -1438,12 +1434,12 @@ class _RiskIdentificationScreenState extends State<RiskIdentificationScreen> {
               Expanded(
                   child: _riskTextAreaWithAI(
                       _riskControllers[index][0], index, 0, solution.title)),
-              const SizedBox(width: 16),
+              const SizedBox(width: 8),
               // Risk 2
               Expanded(
                   child: _riskTextAreaWithAI(
                       _riskControllers[index][1], index, 1, solution.title)),
-              const SizedBox(width: 16),
+              const SizedBox(width: 8),
               // Risk 3
               Expanded(
                   child: _riskTextAreaWithAI(

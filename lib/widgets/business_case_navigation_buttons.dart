@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/utils/business_case_navigation.dart';
 import 'package:ndu_project/widgets/proceed_confirmation_gate.dart';
+import 'package:ndu_project/utils/form_validation_engine.dart' as validation;
 
 /// Navigation buttons for Business Case screens
 class BusinessCaseNavigationButtons extends StatelessWidget {
@@ -40,11 +41,13 @@ class BusinessCaseNavigationButtons extends StatelessWidget {
   ) async {
     final needsReview = !isNextEnabled || (showReviewGate && !reviewConfirmed);
     if (needsReview) {
-      final continueAnyway = await showProceedWithoutReviewDialog(
+      final continueAnyway = await validation.showMissingRequirementsDialog(
         context,
+        validation.FormValidationResult([]), // Empty result for now
         title: 'Some Information Is Still Missing',
         message:
             'You have not confirmed this page yet. You can continue now and return to complete it later, or stay and add missing information now.',
+        isAiGenerated: true, // Skip validation for AI-generated content
       );
       if (!continueAnyway) return;
     }

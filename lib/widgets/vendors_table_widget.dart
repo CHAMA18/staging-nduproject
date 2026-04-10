@@ -543,8 +543,10 @@ class _VendorRowWidgetState extends State<_VendorRowWidget> {
         );
       case 'actions':
         return MouseRegion(
-          onEnter: (_) => setState(() => _isHovering = true),
-          onExit: (_) => setState(() => _isHovering = false),
+          onEnter: (_) =>
+              Future.microtask(() => setState(() => _isHovering = true)),
+          onExit: (_) =>
+              Future.microtask(() => setState(() => _isHovering = false)),
           child: Center(
             child: _isHovering
                 ? Row(

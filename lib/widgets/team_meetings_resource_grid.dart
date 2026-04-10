@@ -742,8 +742,10 @@ class _MeetingRowWidgetState extends State<_MeetingRowWidget> {
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovering = true),
-      onExit: (_) => setState(() => _isHovering = false),
+      onEnter: (_) =>
+          Future.microtask(() => setState(() => _isHovering = true)),
+      onExit: (_) =>
+          Future.microtask(() => setState(() => _isHovering = false)),
       child: Container(
         color: _isHovering ? const Color(0xFFF9FAFB) : Colors.white,
         child: Column(

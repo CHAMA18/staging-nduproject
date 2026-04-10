@@ -374,7 +374,7 @@ class _TechnicalDevelopmentScreenState
                         ],
                       ),
                       SizedBox(height: sectionGap),
-                      _buildGovernanceGrid(snapshot, isMobile: isMobile),
+                      _buildGovernanceGrid(snapshot),
                       SizedBox(height: sectionGap),
                       _buildDetailedRegistersSection(),
                       SizedBox(height: sectionGap),
@@ -1394,38 +1394,18 @@ class _TechnicalDevelopmentScreenState
   }
 
   Widget _buildGovernanceGrid(
-    _TechnicalDevelopmentDashboardSnapshot snapshot, {
-    required bool isMobile,
-  }) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = isMobile ? 1 : 2;
-        const spacing = 16.0;
-        final itemWidth =
-            (constraints.maxWidth - (columns - 1) * spacing) / columns;
-        return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: [
-            SizedBox(
-              width: itemWidth,
-              child: _buildIssueTrackerCard(snapshot),
-            ),
-            SizedBox(
-              width: itemWidth,
-              child: _buildQualityCodeCard(snapshot),
-            ),
-            SizedBox(
-              width: itemWidth,
-              child: _buildDocumentationCard(snapshot),
-            ),
-            SizedBox(
-              width: itemWidth,
-              child: _buildReleasePreparationCard(snapshot),
-            ),
-          ],
-        );
-      },
+    _TechnicalDevelopmentDashboardSnapshot snapshot,
+  ) {
+    return Column(
+      children: [
+        _buildIssueTrackerCard(snapshot),
+        const SizedBox(height: 16),
+        _buildQualityCodeCard(snapshot),
+        const SizedBox(height: 16),
+        _buildDocumentationCard(snapshot),
+        const SizedBox(height: 16),
+        _buildReleasePreparationCard(snapshot),
+      ],
     );
   }
 

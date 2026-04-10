@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' as material;
 
 enum ValidationFieldType {
   text,
@@ -27,6 +27,7 @@ class ValidationFieldRule {
     this.fieldKey,
     this.focusNode,
     this.isMissing,
+    this.isAiGenerated = false,
   });
 
   final String id;
@@ -39,6 +40,7 @@ class ValidationFieldRule {
   final GlobalKey? fieldKey;
   final FocusNode? focusNode;
   final bool Function(ValidationFieldRule field)? isMissing;
+  final bool isAiGenerated;
 }
 
 class ValidationIssue {
@@ -93,11 +95,16 @@ class FormValidationEngine {
   /// navigation/actions that depend on `FormValidationResult.isValid`.
   static bool enforceBlockingValidation = false;
 
-  static FormValidationResult validateForm(List<ValidationFieldRule> fields) {
+  static FormValidationResult validateForm(List<ValidationFieldRule> fields, {bool isAiGenerated = false}) {
     final issues = <ValidationIssue>[];
 
     for (final field in fields) {
       if (!field.required) continue;
+
+      // Skip validation for AI-generated content in specific phases
+      if (isAiGenerated && field.isAiGenerated) {
+        continue;
+      }
 
       final missing = field.isMissing != null
           ? field.isMissing!(field)
@@ -123,8 +130,14 @@ class FormValidationEngine {
     FormValidationResult result, {
     int maxItems = 6,
     String intro = 'Please complete the following before continuing:',
+    bool isAiGenerated = false,
   }) {
     if (result.issues.isEmpty) return '';
+
+    // Skip message for AI-generated content
+    if (isAiGenerated) {
+      return '';
+    }
 
     final sections = result.issuesBySection.keys.toList(growable: false);
     final header = sections.length == 1
@@ -156,29 +169,33 @@ class FormValidationEngine {
     String intro = 'Please complete the following before continuing:',
     Duration duration = const Duration(seconds: 5),
     Color backgroundColor = const Color(0xFFEF4444),
+    bool isAiGenerated = false,
   }) {
     if (!context.mounted || result.issues.isEmpty) return;
     final message = buildMissingFieldsMessage(
       result,
       maxItems: maxItems,
       intro: intro,
+      isAiGenerated: isAiGenerated,
     );
 
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            message,
-            style: const TextStyle(fontWeight: FontWeight.w600),
+    if (message.isNotEmpty) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              message,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            backgroundColor: backgroundColor,
+            duration: duration,
           ),
-          backgroundColor: backgroundColor,
-          duration: duration,
-        ),
-      );
+        );
+    }
   }
 
-  static Future<MissingRequirementsAction?> showMissingRequirementsDialog(
+static Future<MissingRequirementsAction?> showMissingRequirementsDialog(
     BuildContext context,
     FormValidationResult result, {
     String title = 'Missing Required Information',
@@ -187,22 +204,67 @@ class FormValidationEngine {
     String manualActionLabel = 'Edit on Page',
     String autoFillActionLabel = 'Auto-fill with AI',
     String skipActionLabel = 'Continue Anyway',
-    bool showAutoFillAction = false,
-    int maxItems = 6,
-    int dialogWidth = 560,
-  }) {
-    final summaries = <String>[];
-    final seen = <String>{};
-    for (final issue in result.issues) {
-      final section = (issue.section ?? '').trim();
-      final summary =
-          section.isEmpty ? issue.label : '${issue.label} ($section)';
-      if (seen.add(summary)) {
-        summaries.add(summary);
-      }
+    Duration duration = const Duration(seconds: 5),
+    Color backgroundColor = const Color(0xFFEF4444),
+    bool isAiGenerated = false,
+  }) async {
+    if (!context.mounted || result.issues.isEmpty) return null;
+    final message = buildMissingFieldsMessage(
+      result,
+      maxItems: 6,
+      intro: intro,
+      isAiGenerated: isAiGenerated,
+    );
+
+    if (message.isEmpty) {
+      return MissingRequirementsAction.skip;
     }
-    final visible = summaries.take(maxItems).toList(growable: false);
-    final hiddenCount = summaries.length - visible.length;
+
+    return material.showDialog<MissingRequirementsAction>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(MissingRequirementsAction.manual),
+            child: Text(manualActionLabel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(MissingRequirementsAction.autoFill),
+            child: Text(autoFillActionLabel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(MissingRequirementsAction.skip),
+            child: Text(skipActionLabel),
+          ),
+        ],
+      ),
+    );
+  }
+
+    return showDialog<MissingRequirementsAction>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(MissingRequirementsAction.manual),
+            child: Text(manualActionLabel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(MissingRequirementsAction.autoFill),
+            child: Text(autoFillActionLabel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(MissingRequirementsAction.skip),
+            child: Text(skipActionLabel),
+),
+        ],
+      ),
+    );
+  }
 
     return showDialog<MissingRequirementsAction>(
       context: context,
@@ -220,11 +282,7 @@ class FormValidationEngine {
             ),
           ],
         ),
-        content: SizedBox(
-          width: dialogWidth.toDouble(),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+content: Text(message),
             children: [
               Text(
                 intro,
@@ -240,9 +298,27 @@ class FormValidationEngine {
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF374151),
-                    ),
-                  ),
-                ),
+),
+         ),
+         actions: [
+           TextButton.icon(
+             onPressed: () => Navigator.of(dialogContext)
+                 .pop(MissingRequirementsAction.autoFill),
+             icon: const Icon(Icons.auto_awesome, size: 16),
+             label: Text(autoFillActionLabel),
+           ),
+           OutlinedButton(
+             onPressed: () => Navigator.of(dialogContext)
+                 .pop(MissingRequirementsAction.manual),
+             child: Text(manualActionLabel),
+           ),
+           ElevatedButton(
+             onPressed: () =>
+                 Navigator.of(dialogContext).pop(MissingRequirementsAction.skip),
+             style: ElevatedButton.styleFrom(
+               backgroundColor: const Color(0xFFFFD700),
+               foregroundColor: Colors.black,
+             ),
               if (hiddenCount > 0)
                 Text(
                   '- +$hiddenCount more',
@@ -253,28 +329,27 @@ class FormValidationEngine {
                   ),
                 ),
             ],
-          ),
-        ),
-        actions: [
-          if (showAutoFillAction)
-            TextButton.icon(
-              onPressed: () => Navigator.of(dialogContext)
-                  .pop(MissingRequirementsAction.autoFill),
-              icon: const Icon(Icons.auto_awesome, size: 16),
-              label: Text(autoFillActionLabel),
-            ),
-          OutlinedButton(
-            onPressed: () => Navigator.of(dialogContext)
-                .pop(MissingRequirementsAction.manual),
-            child: Text(manualActionLabel),
-          ),
-          ElevatedButton(
-            onPressed: () =>
-                Navigator.of(dialogContext).pop(MissingRequirementsAction.skip),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFFD700),
-              foregroundColor: Colors.black,
-            ),
+),
+         ),
+         actions: [
+           TextButton.icon(
+             onPressed: () => Navigator.of(dialogContext)
+                 .pop(MissingRequirementsAction.autoFill),
+             icon: const Icon(Icons.auto_awesome, size: 16),
+             label: Text(autoFillActionLabel),
+           ),
+           OutlinedButton(
+             onPressed: () => Navigator.of(dialogContext)
+                 .pop(MissingRequirementsAction.manual),
+             child: Text(manualActionLabel),
+           ),
+           ElevatedButton(
+             onPressed: () =>
+                 Navigator.of(dialogContext).pop(MissingRequirementsAction.skip),
+             style: ElevatedButton.styleFrom(
+               backgroundColor: const Color(0xFFFFD700),
+               foregroundColor: Colors.black,
+             ),
             child: Text(skipActionLabel),
           ),
         ],

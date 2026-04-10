@@ -53,6 +53,33 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
     'In progress'
   ];
 
+  String _normalizeStatus(String value) {
+    final normalized = _normalize(value);
+    if (normalized.isEmpty) return 'Draft';
+
+    for (final option in _statusOptions) {
+      if (_normalize(option) == normalized) return option;
+    }
+
+    const aliases = <String, String>{
+      'recommended': 'In review',
+      'recommend': 'In review',
+      'under review': 'In review',
+      'complete': 'Ready',
+      'completed': 'Ready',
+      'done': 'Ready',
+      'todo': 'Draft',
+      'to do': 'Draft',
+      'not started': 'Draft',
+      'inreview': 'In review',
+      'in-review': 'In review',
+      'inprogress': 'In progress',
+      'in-progress': 'In progress',
+    };
+
+    return aliases[normalized] ?? 'Draft';
+  }
+
   String _normalize(String value) {
     return value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
   }
@@ -147,12 +174,21 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
         _securityRows
           ..clear()
           ..addAll(_dedupeSecurityRows(data.securityPatterns));
+        for (final row in _securityRows) {
+          row.status = _normalizeStatus(row.status);
+        }
         _performanceRows
           ..clear()
           ..addAll(_dedupePerformanceRows(data.performancePatterns));
+        for (final row in _performanceRows) {
+          row.status = _normalizeStatus(row.status);
+        }
         _integrationRows
           ..clear()
           ..addAll(_dedupeIntegrationRows(data.integrationFlows));
+        for (final row in _integrationRows) {
+          row.status = _normalizeStatus(row.status);
+        }
         _isLoading = false;
       });
 
@@ -239,18 +275,27 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
           _securityRows
             ..clear()
             ..addAll(_dedupeSecurityRows(result.securityPatterns));
+          for (final row in _securityRows) {
+            row.status = _normalizeStatus(row.status);
+          }
         }
 
         if (result.performancePatterns.isNotEmpty) {
           _performanceRows
             ..clear()
             ..addAll(_dedupePerformanceRows(result.performancePatterns));
+          for (final row in _performanceRows) {
+            row.status = _normalizeStatus(row.status);
+          }
         }
 
         if (result.integrationFlows.isNotEmpty) {
           _integrationRows
             ..clear()
             ..addAll(_dedupeIntegrationRows(result.integrationFlows));
+          for (final row in _integrationRows) {
+            row.status = _normalizeStatus(row.status);
+          }
         }
       });
 
@@ -1639,8 +1684,9 @@ class _SpecializedDesignScreenState extends State<SpecializedDesignScreen> {
     required ValueChanged<String> onChanged,
     required Color accent,
   }) {
+    final normalizedValue = _normalizeStatus(value);
     return DropdownButtonFormField<String>(
-      initialValue: value,
+      initialValue: normalizedValue,
       alignment: Alignment.center,
       isExpanded: true,
       style: const TextStyle(fontSize: 14, color: Color(0xFF1F2937)),

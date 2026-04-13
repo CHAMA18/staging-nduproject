@@ -24,7 +24,7 @@ class LaunchPhaseNavigation extends StatelessWidget {
     if (!nextEnabled) {
       final continueAnyway = await showProceedWithoutReviewDialog(
         context,
-        title: 'Some Information Is Still Missing',
+        title: 'Please confirm you have reviewed and understood this step',
         message:
             'You have not confirmed this page yet. You can continue now and return to update missing information later, or stay and complete it now.',
       );

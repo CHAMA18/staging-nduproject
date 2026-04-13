@@ -173,7 +173,7 @@ class _FrontEndPlanningWorkspaceScreenState
     if (!_reviewConfirmed) {
       final continueAnyway = await showProceedWithoutReviewDialog(
         context,
-        title: 'Some Information Is Still Missing',
+        title: 'Please confirm you have reviewed and understood this step',
         message:
             'You have not confirmed this page yet. You can continue now and return later to complete details, or stay and update information now.',
       );

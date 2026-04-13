@@ -4,7 +4,6 @@ import 'package:shimmer/shimmer.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
-import 'package:ndu_project/widgets/expanding_text_field.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/screens/home_screen.dart';
 import 'package:ndu_project/screens/risk_identification_screen.dart';
@@ -78,6 +77,7 @@ class _PotentialSolutionsScreenState extends State<PotentialSolutionsScreen> {
   bool _businessCaseExpanded = true;
   bool _frontEndExpanded = true;
   bool _reviewConfirmed = false;
+  final Set<String> _expandedDescriptionRows = <String>{};
 
   bool get _isAdminHost => AccessPolicy.isRestrictedAdminHost();
 
@@ -1474,7 +1474,7 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
               topRight: Radius.circular(8),
             ),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           child: Row(
             children: [
               Expanded(
@@ -1665,7 +1665,7 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
   Widget _buildSolutionRow(SolutionRow solution,
       {required int index, bool isLast = false}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
       decoration: BoxDecoration(
         border: Border(
           bottom: isLast
@@ -1701,7 +1701,7 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
                 const SizedBox(width: 12),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.only(right: 12),
+                    padding: const EdgeInsets.only(right: 10),
                     child: _buildFieldWithControls(
                       solution: solution,
                       fieldName: 'title',
@@ -1716,7 +1716,7 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
           Expanded(
             flex: 4,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
               child: _buildFieldWithControls(
                 solution: solution,
                 fieldName: 'description',
@@ -1929,6 +1929,7 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
 
     if (confirmed == true && mounted) {
       final row = _solutions.removeAt(index);
+      _expandedDescriptionRows.remove(row.id);
       row.titleController.dispose();
       row.descriptionController.dispose();
 
@@ -2002,6 +2003,7 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
         }
 
         _solutions.clear();
+        _expandedDescriptionRows.clear();
         final solutionsToUse = aiSolutions.take(targetCount).toList();
 
         for (int i = 0; i < solutionsToUse.length; i++) {
@@ -2145,6 +2147,11 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
     final fieldKey = 'solution_${solution.id}_$fieldName';
     final canUndo = provider.canUndoField(fieldKey);
     final canRedo = provider.canRedoField(fieldKey);
+    final isDescriptionField = fieldName == 'description';
+    final isDescriptionExpanded =
+        _expandedDescriptionRows.contains(solution.id);
+    final canToggleDescription =
+        isDescriptionField && _shouldShowDescriptionToggle(controller.text);
 
     return HoverableFieldControls(
       isAiGenerated: true,
@@ -2154,12 +2161,12 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
       onRegenerate: () => _regenerateSolutionField(solution, fieldName),
       onUndo: () => _undoSolutionField(solution, fieldName),
       onRedo: () => _redoSolutionField(solution, fieldName),
-      child: fieldName == 'description'
+      child: isDescriptionField
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TextFormattingToolbar(controller: controller),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 if (isMobile)
                   TextField(
                     controller: controller,
@@ -2171,11 +2178,12 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
                     style: const TextStyle(fontSize: 14),
                     minLines: 2,
                     maxLines: 5,
-                    onChanged: (value) =>
-                        _recordSolutionFieldEdit(solution, fieldName, value),
+                    onChanged: (value) {
+                      _recordSolutionFieldEdit(solution, fieldName, value);
+                    },
                   )
                 else
-                  ExpandingTextField(
+                  TextField(
                     controller: controller,
                     style: const TextStyle(
                       fontSize: 14,
@@ -2186,9 +2194,45 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
                       isDense: true,
                       contentPadding: EdgeInsets.zero,
                     ).copyWith(hintText: hintText),
-                    minLines: 1,
-                    onChanged: (value) =>
-                        _recordSolutionFieldEdit(solution, fieldName, value),
+                    minLines: isDescriptionExpanded ? 4 : 2,
+                    maxLines: isDescriptionExpanded ? 12 : 4,
+                    onChanged: (value) {
+                      _recordSolutionFieldEdit(solution, fieldName, value);
+                      final shouldShowToggle =
+                          _shouldShowDescriptionToggle(value);
+                      if (shouldShowToggle != canToggleDescription) {
+                        setState(() {});
+                      }
+                      if (_expandedDescriptionRows.contains(solution.id) &&
+                          !shouldShowToggle) {
+                        setState(() {
+                          _expandedDescriptionRows.remove(solution.id);
+                        });
+                      }
+                    },
+                  ),
+                if (!isMobile && canToggleDescription)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () => _toggleDescriptionExpansion(solution.id),
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        minimumSize: const Size(0, 28),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                      ),
+                      child: Text(
+                        isDescriptionExpanded ? 'Show less' : 'Show more',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   ),
               ],
             )
@@ -2206,7 +2250,7 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
                   onChanged: (value) =>
                       _recordSolutionFieldEdit(solution, fieldName, value),
                 )
-              : ExpandingTextField(
+              : TextField(
                   controller: controller,
                   style: const TextStyle(
                     fontSize: 14,
@@ -2218,10 +2262,34 @@ ${contextScan.trim().isEmpty ? 'No additional project context available.' : cont
                     contentPadding: EdgeInsets.zero,
                   ).copyWith(hintText: hintText),
                   minLines: 1,
-                  onChanged: (value) =>
-                      _recordSolutionFieldEdit(solution, fieldName, value),
+                  maxLines: 2,
+                  onChanged: (value) {
+                    _recordSolutionFieldEdit(solution, fieldName, value);
+                  },
                 ),
     );
+  }
+
+  bool _shouldShowDescriptionToggle(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      return false;
+    }
+    if (trimmed.length > 260) {
+      return true;
+    }
+    final lines = '\n'.allMatches(trimmed).length + 1;
+    return lines > 4;
+  }
+
+  void _toggleDescriptionExpansion(String solutionId) {
+    setState(() {
+      if (_expandedDescriptionRows.contains(solutionId)) {
+        _expandedDescriptionRows.remove(solutionId);
+      } else {
+        _expandedDescriptionRows.add(solutionId);
+      }
+    });
   }
 }
 

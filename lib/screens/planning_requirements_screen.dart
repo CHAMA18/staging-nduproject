@@ -15,6 +15,7 @@ import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
+import 'package:ndu_project/widgets/proceed_confirmation_gate.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 
 class PlanningRequirementsScreen extends StatefulWidget {
@@ -39,7 +40,6 @@ class _PlanningRequirementsScreenState
   bool _settingPlanFromAi = false;
   bool _isRegeneratingRow = false;
   int? _regeneratingRowIndex;
-  bool _stakeholderAlignmentConfirmed = false;
 
   Timer? _autoSaveTimer;
   Timer? _planTimer;
@@ -801,16 +801,13 @@ $requirementsList
   }
 
   void _handleSubmit() async {
-    if (!_stakeholderAlignmentConfirmed) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Check the stakeholder alignment confirmation box before submitting requirements.',
-          ),
-        ),
-      );
-      return;
-    }
+    final continueAnyway = await showProceedWithoutReviewDialog(
+      context,
+      title: 'Confirm before submitting requirements',
+      message:
+          'You are about to continue to the next step. You can proceed now and return later to refine details, or cancel and review first.',
+    );
+    if (!continueAnyway) return;
 
     final requirementItems = _buildRequirementItems();
     if (requirementItems.isEmpty) {
@@ -1463,34 +1460,10 @@ $requirementsList
             child: const Icon(Icons.arrow_back_ios_new_rounded, size: 16),
           ),
           const SizedBox(width: 16),
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Checkbox(
-                  value: _stakeholderAlignmentConfirmed,
-                  onChanged: (value) {
-                    setState(() {
-                      _stakeholderAlignmentConfirmed = value ?? false;
-                    });
-                  },
-                ),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'Check this box to confirm that all relevant stakeholders and subject matter experts are aligned with the documented requirements.',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      color: Color(0xFF374151),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          const Expanded(child: SizedBox.shrink()),
           const SizedBox(width: 16),
           ElevatedButton(
-            onPressed: _stakeholderAlignmentConfirmed ? _handleSubmit : null,
+            onPressed: _handleSubmit,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFFD700),
               foregroundColor: Colors.black,

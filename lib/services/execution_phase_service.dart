@@ -711,6 +711,45 @@ class ExecutionPhaseService {
 
       if (frontEndPlanning == null) return [];
 
+      // Prefer structured requirement items and robust delimiter parsing first.
+      final prioritizedDeliverables = <String>[];
+
+      final requirementItems = frontEndPlanning['requirementItems'];
+      if (requirementItems is List) {
+        for (final item in requirementItems) {
+          if (item is! Map) continue;
+          final map = Map<String, dynamic>.from(item);
+          final description =
+              (map['description'] ?? map['requirement'] ?? map['title'] ?? '')
+                  .toString()
+                  .trim();
+          if (description.isNotEmpty) {
+            prioritizedDeliverables.add(description);
+          }
+        }
+      }
+
+      final freeTextRequirements =
+          frontEndPlanning['requirements']?.toString() ?? '';
+      if (freeTextRequirements.trim().isNotEmpty) {
+        prioritizedDeliverables.addAll(
+          freeTextRequirements
+              .split(RegExp(r'[\n\r,;•·\-]+'))
+              .map((item) => item.trim())
+              .where((item) => item.isNotEmpty && item.length > 3),
+        );
+      }
+
+      if (prioritizedDeliverables.isNotEmpty) {
+        final seen = <String>{};
+        return prioritizedDeliverables.where((item) {
+          final key = item.toLowerCase();
+          if (seen.contains(key)) return false;
+          seen.add(key);
+          return true;
+        }).toList();
+      }
+
       // Extract requirements which typically contains scope items
       final requirements = frontEndPlanning['requirements']?.toString() ?? '';
       if (requirements.isEmpty) return [];
@@ -883,6 +922,7 @@ class ExecutionPhaseService {
     for (final line in lines) {
       // Remove bullet prefix if present
       String cleaned = line.replaceFirst(RegExp(r'^[.\-•]\s*'), '').trim();
+      cleaned = cleaned.replaceFirst(RegExp(r'^[•·]\s*'), '').trim();
       if (cleaned.isEmpty) continue;
 
       String name = cleaned;

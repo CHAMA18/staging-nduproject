@@ -3,6 +3,7 @@ import 'package:ndu_project/screens/agile_development_iterations_screen.dart';
 import 'package:ndu_project/screens/vendor_tracking_screen.dart';
 import 'package:ndu_project/models/design_component.dart';
 import 'package:ndu_project/services/execution_phase_service.dart';
+import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
@@ -28,6 +29,8 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
   final Set<String> _selectedFilters = {'All packages'};
   List<DesignComponent> _components = [];
   bool _isLoading = false;
+  bool _autoGenerationTriggered = false;
+  bool _isAutoGenerating = false;
 
   String? get _projectId {
     try {
@@ -59,12 +62,74 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
           _isLoading = false;
         });
       }
+      await _autoGenerateIfNeeded();
     } catch (e) {
       debugPrint('Error loading design components: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<void> _autoGenerateIfNeeded() async {
+    if (!mounted || _autoGenerationTriggered || _isAutoGenerating) return;
+    if (_components.isNotEmpty) return;
+
+    _autoGenerationTriggered = true;
+    _isAutoGenerating = true;
+    try {
+      final generated = await ExecutionPhaseAiSeed.generateEntries(
+        context: context,
+        section: 'Detailed Design',
+        sections: const {
+          'designComponents': 'Key design components and integration needs',
+        },
+        itemsPerSection: 4,
+      );
+
+      final entries = generated['designComponents'] ?? const [];
+      if (entries.isEmpty) return;
+
+      final newComponents = entries
+          .map(
+            (entry) => DesignComponent(
+              componentName: entry.title,
+              category: _inferCategory('${entry.title} ${entry.details}'),
+              specificationDetails: entry.details.isNotEmpty
+                  ? '. ${entry.details}'
+                  : '',
+              integrationPoint: 'TBD',
+              status: 'Draft',
+              designNotes: entry.details,
+            ),
+          )
+          .toList();
+
+      if (!mounted) return;
+      setState(() => _components = newComponents);
+      final projectId = _projectId;
+      if (projectId != null) {
+        await ExecutionPhaseService.saveDesignComponents(
+          projectId: projectId,
+          components: newComponents,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error auto-generating design components: $e');
+    } finally {
+      _isAutoGenerating = false;
+    }
+  }
+
+  String _inferCategory(String text) {
+    final lower = text.toLowerCase();
+    if (lower.contains('ui') || lower.contains('ux')) return 'UI/UX';
+    if (lower.contains('security')) return 'Security';
+    if (lower.contains('network')) return 'Networking';
+    if (lower.contains('infrastructure') || lower.contains('facility')) {
+      return 'Physical Infrastructure';
+    }
+    return 'Backend';
   }
 
   @override

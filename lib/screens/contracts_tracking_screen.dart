@@ -9,6 +9,7 @@ import 'package:ndu_project/screens/progress_tracking_screen.dart';
 import 'package:ndu_project/screens/vendor_tracking_screen.dart';
 import 'package:ndu_project/services/contract_service.dart';
 import 'package:ndu_project/services/execution_phase_service.dart';
+import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
 import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/widgets/contracts_table_widget.dart';
@@ -37,6 +38,9 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
   final _Debouncer _saveDebouncer = _Debouncer();
   bool _isLoading = false;
   bool _suspendSave = false;
+  bool _hasSavedData = false;
+  bool _autoGenerationTriggered = false;
+  bool _isAutoGenerating = false;
 
   List<_RenewalLaneData> _renewalLanes = [];
   List<_RiskSignalData> _riskSignals = [];
@@ -103,21 +107,93 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
       final data = doc.data() ?? {};
       _suspendSave = true;
       if (!mounted) return;
+      final lanes = _RenewalLaneData.fromList(data['renewalLanes']);
+      final signals = _RiskSignalData.fromList(data['riskSignals']);
+      final approvals =
+          _ApprovalCheckpointData.fromList(data['approvalCheckpoints']);
       setState(() {
-        final lanes = _RenewalLaneData.fromList(data['renewalLanes']);
-        final signals = _RiskSignalData.fromList(data['riskSignals']);
-        final approvals =
-            _ApprovalCheckpointData.fromList(data['approvalCheckpoints']);
         _renewalLanes = lanes.isEmpty ? _defaultRenewalLanes() : lanes;
         _riskSignals = signals.isEmpty ? _defaultRiskSignals() : signals;
         _approvalCheckpoints =
             approvals.isEmpty ? _defaultApprovalCheckpoints() : approvals;
       });
+      _hasSavedData = doc.exists &&
+          (lanes.isNotEmpty || signals.isNotEmpty || approvals.isNotEmpty);
     } catch (error) {
       debugPrint('Contracts tracking load error: $error');
     } finally {
       _suspendSave = false;
       if (mounted) setState(() => _isLoading = false);
+    }
+    await _autoGenerateIfNeeded();
+  }
+
+  Future<void> _autoGenerateIfNeeded() async {
+    if (!mounted || _autoGenerationTriggered || _isAutoGenerating) return;
+    if (_hasSavedData) return;
+
+    _autoGenerationTriggered = true;
+    _isAutoGenerating = true;
+    try {
+      final contextText = ExecutionPhaseAiSeed.buildContext(
+        context,
+        section: 'Contracts Tracking',
+      );
+      if (contextText.isEmpty) return;
+
+      final generated = await ExecutionPhaseAiSeed.generateEntries(
+        context: context,
+        section: 'Contracts Tracking',
+        sections: const {
+          'riskSignals': 'Contract renewal risks and signals',
+          'approvalCheckpoints': 'Approval checkpoints and sign-offs',
+        },
+        itemsPerSection: 3,
+      );
+
+      final riskSignals = generated['riskSignals'] ?? const [];
+      final approvalCheckpoints = generated['approvalCheckpoints'] ?? const [];
+
+      if (riskSignals.isNotEmpty) {
+        _riskSignals = riskSignals
+            .map(
+              (entry) => _RiskSignalData(
+                id: _newId(),
+                title: entry.title,
+                detail: entry.details,
+                owner: 'Legal',
+                status: entry.status?.isNotEmpty == true
+                    ? entry.status!
+                    : 'On track',
+              ),
+            )
+            .toList();
+      }
+
+      if (approvalCheckpoints.isNotEmpty) {
+        _approvalCheckpoints = approvalCheckpoints
+            .map(
+              (entry) => _ApprovalCheckpointData(
+                id: _newId(),
+                title: entry.title,
+                status: entry.status?.isNotEmpty == true
+                    ? entry.status!
+                    : 'Pending',
+                owner: 'Legal',
+                dueDate: 'TBD',
+              ),
+            )
+            .toList();
+      }
+
+      if (mounted) {
+        setState(() {});
+        await _saveTrackingData();
+      }
+    } catch (e) {
+      debugPrint('Error auto-generating contracts tracking data: $e');
+    } finally {
+      _isAutoGenerating = false;
     }
   }
 
@@ -296,8 +372,21 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
       children: [
         _actionButton(Icons.add, 'Add contract',
             onPressed: () => _showAddContractDialog(context)),
-        _actionButton(Icons.upload_outlined, 'Upload addendum'),
-        _actionButton(Icons.description_outlined, 'Export register'),
+        _actionButton(Icons.upload_outlined, 'Upload addendum', onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text(
+                    'Upload addendum is available from each contract record edit dialog.')),
+          );
+        }),
+        _actionButton(Icons.description_outlined, 'Export register',
+            onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text(
+                    'Export register is queued. Use the contracts table while export tools are finalized.')),
+          );
+        }),
         _primaryButton('Start renewal review'),
       ],
     );
@@ -322,7 +411,18 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
 
   Widget _primaryButton(String label) {
     return ElevatedButton.icon(
-      onPressed: () {},
+      onPressed: () {
+        setState(() {
+          _selectedFilters
+            ..clear()
+            ..add('Needs review');
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text(
+                  'Renewal review started. Filter set to contracts that need review.')),
+        );
+      },
       icon: const Icon(Icons.play_arrow, size: 18),
       label: Text(label,
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),

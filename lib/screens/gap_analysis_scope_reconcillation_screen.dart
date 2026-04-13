@@ -3,15 +3,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'package:ndu_project/screens/deliver_project_closure_screen.dart';
+import 'package:ndu_project/screens/punchlist_actions_screen.dart';
 import 'package:ndu_project/screens/scope_completion_screen.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
-import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/widgets/launch_editable_section.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 
 class GapAnalysisScopeReconcillationScreen extends StatefulWidget {
@@ -152,10 +153,9 @@ class _GapAnalysisScopeReconcillationScreenState
                         const SizedBox(height: 24),
                         LaunchPhaseNavigation(
                           backLabel: 'Back: Scope Completion',
-                          nextLabel: 'Next: Deliver Project',
+                          nextLabel: 'Next: Punchlist Actions',
                           onBack: () => ScopeCompletionScreen.open(context),
-                          onNext: () =>
-                              DeliverProjectClosureScreen.open(context),
+                          onNext: () => PunchlistActionsScreen.open(context),
                         ),
                         const SizedBox(height: 48),
                       ],
@@ -178,12 +178,12 @@ class _GapAnalysisScopeReconcillationScreenState
     if (projectId == null || projectId.isEmpty) return;
 
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('projects')
-          .doc(projectId)
-          .collection('launch_phase')
-          .doc('gap_analysis_scope_reconciliation')
-          .get();
+      var doc = await _executionDocRef(projectId).get();
+      if (!doc.exists) {
+        // Backward compatibility with older saves that wrote this screen under
+        // launch-phase storage.
+        doc = await _legacyLaunchDocRef(projectId).get();
+      }
       if (doc.exists) {
         final data = doc.data() ?? {};
         final gapEntries = (data['gapRegister'] as List?)
@@ -250,7 +250,11 @@ class _GapAnalysisScopeReconcillationScreenState
         });
       }
       _loadedEntries = true;
-      if (_impactRows.isEmpty &&
+      if (_gapEntries.isEmpty &&
+          _rootCauseThemes.isEmpty &&
+          _mitigationConfidence.isEmpty &&
+          _reconciliationPlans.isEmpty &&
+          _impactRows.isEmpty &&
           _workflowSteps.isEmpty &&
           _lessonsLearned.isEmpty) {
         await _populateFromAi();
@@ -262,17 +266,17 @@ class _GapAnalysisScopeReconcillationScreenState
 
   Future<void> _populateFromAi() async {
     if (_aiGenerated || _isGenerating) return;
-    final projectData = ProjectDataHelper.getData(context);
-    final contextText = ProjectDataHelper.buildFepContext(projectData,
-        sectionLabel: 'Gap Analysis & Scope Reconciliation');
-    if (contextText.trim().isEmpty) return;
-
     setState(() => _isGenerating = true);
-    Map<String, List<Map<String, dynamic>>> generated = {};
+    Map<String, List<LaunchEntry>> generated = {};
     try {
-      generated = await OpenAiServiceSecure().generateLaunchPhaseEntries(
-        context: contextText,
+      generated = await ExecutionPhaseAiSeed.generateEntries(
+        context: context,
+        section: 'Gap Analysis & Scope Reconciliation',
         sections: const {
+          'gap_register': 'Gap register items with owner and next step',
+          'root_causes': 'Root cause themes driving the gaps',
+          'mitigation_confidence': 'Mitigation confidence insights',
+          'reconciliation_plans': 'Reconciliation plans with due dates',
           'impact_assessment': 'Impact assessment results',
           'reconciliation_workflow': 'Reconciliation workflow & backlog',
           'lessons_learned': 'Lessons learned & prevention',
@@ -284,7 +288,11 @@ class _GapAnalysisScopeReconcillationScreenState
     }
 
     if (!mounted) return;
-    if (_impactRows.isNotEmpty ||
+    if (_gapEntries.isNotEmpty ||
+        _rootCauseThemes.isNotEmpty ||
+        _mitigationConfidence.isNotEmpty ||
+        _reconciliationPlans.isNotEmpty ||
+        _impactRows.isNotEmpty ||
         _workflowSteps.isNotEmpty ||
         _lessonsLearned.isNotEmpty) {
       setState(() => _isGenerating = false);
@@ -293,6 +301,18 @@ class _GapAnalysisScopeReconcillationScreenState
     }
 
     setState(() {
+      _gapEntries
+        ..clear()
+        ..addAll(_mapGapEntries(generated['gap_register']));
+      _rootCauseThemes
+        ..clear()
+        ..addAll(_mapRootCauseItems(generated['root_causes']));
+      _mitigationConfidence
+        ..clear()
+        ..addAll(_mapRootCauseItems(generated['mitigation_confidence']));
+      _reconciliationPlans
+        ..clear()
+        ..addAll(_mapPlanEntries(generated['reconciliation_plans']));
       _impactRows
         ..clear()
         ..addAll(_mapImpactRows(generated['impact_assessment']));
@@ -308,26 +328,103 @@ class _GapAnalysisScopeReconcillationScreenState
     await _persistEntries();
   }
 
-  List<_ImpactRow> _mapImpactRows(List<Map<String, dynamic>>? raw) {
+  String _extractField(String text, String key) {
+    final match = RegExp('$key\\s*[:=-]\\s*([^|;\\n]+)',
+            caseSensitive: false)
+        .firstMatch(text);
+    return match?.group(1)?.trim() ?? '';
+  }
+
+  List<_GapEntry> _mapGapEntries(List<LaunchEntry>? raw) {
     if (raw == null) return [];
     return raw
-        .map((item) => _ImpactRow.fromLaunchEntry(item))
+        .map((entry) {
+          final details = entry.details;
+          final owner = _extractField(details, 'Owner');
+          final nextStep = _extractField(details, 'Next');
+          return _GapEntry(
+            uid: DateTime.now().microsecondsSinceEpoch.toString(),
+            id: entry.title.trim().isEmpty ? 'GAP' : entry.title.trim(),
+            title: entry.title.trim(),
+            stage: entry.status?.trim().isNotEmpty == true
+                ? entry.status!.trim()
+                : 'Moderate',
+            owner: owner,
+            nextStep: nextStep.isNotEmpty
+                ? nextStep
+                : entry.details.trim().isNotEmpty
+                    ? entry.details.trim()
+                    : 'Define next step',
+          );
+        })
+        .where((entry) => entry.title.isNotEmpty)
+        .toList();
+  }
+
+  List<_RootCauseItem> _mapRootCauseItems(List<LaunchEntry>? raw) {
+    if (raw == null) return [];
+    return raw
+        .map((entry) => _RootCauseItem(
+              id: DateTime.now().microsecondsSinceEpoch.toString(),
+              text: entry.title.trim().isNotEmpty
+                  ? entry.title.trim()
+                  : entry.details.trim(),
+            ))
+        .where((item) => item.text.isNotEmpty)
+        .toList();
+  }
+
+  List<_PlanEntry> _mapPlanEntries(List<LaunchEntry>? raw) {
+    if (raw == null) return [];
+    return raw
+        .map((entry) {
+          final details = entry.details;
+          final owner = _extractField(details, 'Owner');
+          final due = _extractField(details, 'Due');
+          return _PlanEntry(
+            id: DateTime.now().microsecondsSinceEpoch.toString(),
+            title: entry.title.trim(),
+            due: due.isNotEmpty ? due : entry.status?.trim() ?? '',
+            owner: owner,
+            status: entry.status?.trim().isNotEmpty == true
+                ? entry.status!.trim()
+                : 'On track',
+          );
+        })
+        .where((plan) => plan.title.isNotEmpty)
+        .toList();
+  }
+
+  List<_ImpactRow> _mapImpactRows(List<LaunchEntry>? raw) {
+    if (raw == null) return [];
+    return raw
+        .map((entry) => _ImpactRow.fromLaunchEntry({
+              'title': entry.title,
+              'details': entry.details,
+              'status': entry.status ?? '',
+            }))
         .where((row) => row.area.isNotEmpty)
         .toList();
   }
 
-  List<_WorkflowStep> _mapWorkflowSteps(List<Map<String, dynamic>>? raw) {
+  List<_WorkflowStep> _mapWorkflowSteps(List<LaunchEntry>? raw) {
     if (raw == null) return [];
     return raw
-        .map((item) => _WorkflowStep.fromLaunchEntry(item))
+        .map((entry) => _WorkflowStep.fromLaunchEntry({
+              'title': entry.title,
+              'details': entry.details,
+              'status': entry.status ?? '',
+            }))
         .where((step) => step.label.isNotEmpty)
         .toList();
   }
 
-  List<String> _mapLessons(List<Map<String, dynamic>>? raw) {
+  List<String> _mapLessons(List<LaunchEntry>? raw) {
     if (raw == null) return [];
     return raw
-        .map((item) => (item['title'] ?? '').toString().trim())
+        .map((entry) => entry.title.trim().isNotEmpty
+            ? entry.title.trim()
+            : entry.details.trim())
         .where((text) => text.isNotEmpty)
         .toList();
   }
@@ -350,12 +447,24 @@ class _GapAnalysisScopeReconcillationScreenState
       'updatedAt': FieldValue.serverTimestamp(),
     };
 
-    await FirebaseFirestore.instance
+    await _executionDocRef(projectId).set(payload, SetOptions(merge: true));
+  }
+
+  DocumentReference<Map<String, dynamic>> _executionDocRef(String projectId) {
+    return FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId)
+        .collection('execution_phase_entries')
+        .doc('gap_analysis_scope_reconciliation');
+  }
+
+  DocumentReference<Map<String, dynamic>> _legacyLaunchDocRef(
+      String projectId) {
+    return FirebaseFirestore.instance
         .collection('projects')
         .doc(projectId)
         .collection('launch_phase')
-        .doc('gap_analysis_scope_reconciliation')
-        .set(payload, SetOptions(merge: true));
+        .doc('gap_analysis_scope_reconciliation');
   }
 
   void _schedulePersist() {
@@ -2805,8 +2914,9 @@ class _WorkflowBoardColumn extends StatelessWidget {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color:
-                isActive ? accent.withValues(alpha: 0.08) : const Color(0xFFF8FAFC),
+            color: isActive
+                ? accent.withValues(alpha: 0.08)
+                : const Color(0xFFF8FAFC),
             borderRadius: BorderRadius.circular(16),
             border:
                 Border.all(color: isActive ? accent : const Color(0xFFE5E7EB)),

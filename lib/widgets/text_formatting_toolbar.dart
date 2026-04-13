@@ -63,18 +63,31 @@ class _TextFormattingToolbarState extends State<TextFormattingToolbar> {
     _syncToolbarVisibility();
   }
 
-  bool get _hasActiveSelection {
-    final selection = widget.controller.selection;
-    return selection.baseOffset >= 0 && selection.extentOffset >= 0;
+  bool get _hasControllerFocus {
+    final focusContext = FocusManager.instance.primaryFocus?.context;
+    if (focusContext == null) {
+      return false;
+    }
+    final editableAncestor =
+        focusContext.findAncestorWidgetOfExactType<EditableText>();
+    if (editableAncestor != null) {
+      return identical(editableAncestor.controller, widget.controller);
+    }
+    final focusedWidget = focusContext.widget;
+    if (focusedWidget is EditableText) {
+      return identical(focusedWidget.controller, widget.controller);
+    }
+    return false;
   }
 
   void _syncToolbarVisibility() {
     if (!mounted) return;
+    final hasFocus = _hasControllerFocus;
 
-    if (_manuallyExpanded && !_hasActiveSelection) {
+    if (_manuallyExpanded && !hasFocus) {
       _manuallyExpanded = false;
     }
-    final shouldExpand = _hasActiveSelection || _manuallyExpanded;
+    final shouldExpand = hasFocus || _manuallyExpanded;
 
     if (_isExpanded != shouldExpand) {
       setState(() {
@@ -244,65 +257,68 @@ class _TextFormattingToolbarState extends State<TextFormattingToolbar> {
       );
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _ToolbarButton(
-              icon: Icons.format_bold,
-              tooltip: 'Bold',
-              onPressed: () => _applyFormat('bold'),
-            ),
-            _ToolbarButton(
-              icon: Icons.format_italic,
-              tooltip: 'Italic',
-              onPressed: () => _applyFormat('italic'),
-            ),
-            _ToolbarButton(
-              icon: Icons.format_underlined,
-              tooltip: 'Underline',
-              onPressed: () => _applyFormat('underline'),
-            ),
-            if (_showHeadingButtons) ...[
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _ToolbarButton(
+                icon: Icons.format_bold,
+                tooltip: 'Bold',
+                onPressed: () => _applyFormat('bold'),
+              ),
+              _ToolbarButton(
+                icon: Icons.format_italic,
+                tooltip: 'Italic',
+                onPressed: () => _applyFormat('italic'),
+              ),
+              _ToolbarButton(
+                icon: Icons.format_underlined,
+                tooltip: 'Underline',
+                onPressed: () => _applyFormat('underline'),
+              ),
+              if (_showHeadingButtons) ...[
+                const VerticalDivider(width: 1, thickness: 1),
+                _ToolbarButton(
+                  icon: Icons.text_fields,
+                  tooltip: 'Heading 1',
+                  onPressed: () => _applyFormat('h1'),
+                ),
+                _ToolbarButton(
+                  icon: Icons.title,
+                  tooltip: 'Heading 2',
+                  onPressed: () => _applyFormat('h2'),
+                ),
+              ],
               const VerticalDivider(width: 1, thickness: 1),
               _ToolbarButton(
-                icon: Icons.text_fields,
-                tooltip: 'Heading 1',
-                onPressed: () => _applyFormat('h1'),
+                icon: Icons.undo,
+                tooltip: 'Undo',
+                onPressed: _isUndoAvailable ? _undo : null,
+                isDisabled: !_isUndoAvailable,
               ),
+              const VerticalDivider(width: 1, thickness: 1),
               _ToolbarButton(
-                icon: Icons.title,
-                tooltip: 'Heading 2',
-                onPressed: () => _applyFormat('h2'),
+                icon: Icons.close_rounded,
+                tooltip: 'Hide formatting tools',
+                onPressed: () {
+                  setState(() {
+                    _manuallyExpanded = false;
+                    _isExpanded = false;
+                  });
+                },
               ),
             ],
-            const VerticalDivider(width: 1, thickness: 1),
-            _ToolbarButton(
-              icon: Icons.undo,
-              tooltip: 'Undo',
-              onPressed: _isUndoAvailable ? _undo : null,
-              isDisabled: !_isUndoAvailable,
-            ),
-            const VerticalDivider(width: 1, thickness: 1),
-            _ToolbarButton(
-              icon: Icons.close_rounded,
-              tooltip: 'Hide formatting tools',
-              onPressed: () {
-                setState(() {
-                  _manuallyExpanded = false;
-                  _isExpanded = false;
-                });
-              },
-            ),
-          ],
+          ),
         ),
       ),
     );

@@ -6,6 +6,8 @@ import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/screens/design_deliverables_screen.dart';
 import 'package:ndu_project/screens/team_meetings_screen.dart';
 import 'package:ndu_project/services/execution_phase_service.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/utils/phase_transition_helper.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -33,6 +35,8 @@ class _StaffTeamScreenState extends State<StaffTeamScreen> {
   List<launch.LaunchEntry> _onboardingActions = [];
   List<launch.LaunchEntry> _coverageRisks = [];
   bool _loading = true;
+  bool _autoGenerationTriggered = false;
+  bool _isAutoGenerating = false;
   Timer? _autoSaveDebounce;
 
   String? get _projectId {
@@ -89,9 +93,124 @@ class _StaffTeamScreenState extends State<StaffTeamScreen> {
           _loading = false;
         });
       }
+      await _autoGenerateIfNeeded();
     } catch (e) {
       debugPrint('Error loading staff team data: $e');
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _autoGenerateIfNeeded() async {
+    if (!mounted || _autoGenerationTriggered || _isAutoGenerating) return;
+    if (_staffingRows.isNotEmpty ||
+        _onboardingActions.isNotEmpty ||
+        _coverageRisks.isNotEmpty) {
+      return;
+    }
+
+    _autoGenerationTriggered = true;
+    _isAutoGenerating = true;
+
+    try {
+      final data = ProjectDataHelper.getData(context);
+      var contextText = ProjectDataHelper.buildExecutivePlanContext(
+        data,
+        sectionLabel: 'Staff Team Orchestration',
+      );
+      if (contextText.trim().isEmpty) {
+        contextText = ProjectDataHelper.buildProjectContextScan(
+          data,
+          sectionLabel: 'Staff Team Orchestration',
+        );
+      }
+      final safeContext =
+          contextText.trim().isEmpty ? 'Project context unavailable.' : contextText;
+
+      final ai = OpenAiServiceSecure();
+      final staffingRows = await ai.generateStaffingRows(
+        context: safeContext,
+        maxRows: 4,
+      );
+      Map<String, List<Map<String, dynamic>>> sections = {};
+      if (contextText.trim().isNotEmpty) {
+        sections = await ai.generateLaunchPhaseEntries(
+          context: contextText,
+          sections: const {
+            'onboardingActions': 'Onboarding actions and ownership assignments',
+            'coverageRisks': 'Coverage gaps and staffing risks',
+          },
+          itemsPerSection: 3,
+        );
+      }
+
+      List<launch.LaunchEntry> onboarding = (sections['onboardingActions'] ?? [])
+          .map(
+            (e) => launch.LaunchEntry(
+              title: e['title']?.toString() ?? '',
+              details: e['details']?.toString() ?? '',
+              status: e['status']?.toString(),
+            ),
+          )
+          .where((entry) => entry.title.trim().isNotEmpty)
+          .toList();
+      List<launch.LaunchEntry> coverage = (sections['coverageRisks'] ?? [])
+          .map(
+            (e) => launch.LaunchEntry(
+              title: e['title']?.toString() ?? '',
+              details: e['details']?.toString() ?? '',
+              status: e['status']?.toString(),
+            ),
+          )
+          .where((entry) => entry.title.trim().isNotEmpty)
+          .toList();
+
+      if (onboarding.isEmpty) {
+        onboarding = const [
+          launch.LaunchEntry(
+            title: 'Confirm onboarding timeline',
+            details: 'Assign owners and due dates for new team members.',
+            status: 'Planned',
+          ),
+          launch.LaunchEntry(
+            title: 'Access and tooling setup',
+            details: 'Provision credentials and tools before start date.',
+            status: 'Planned',
+          ),
+        ];
+      }
+      if (coverage.isEmpty) {
+        coverage = const [
+          launch.LaunchEntry(
+            title: 'Coverage gap in critical role',
+            details: 'Identify backfill or interim owner for key workstream.',
+            status: 'Open',
+          ),
+          launch.LaunchEntry(
+            title: 'Skill overlap risk',
+            details: 'Ensure cross-training for high-dependency roles.',
+            status: 'Open',
+          ),
+        ];
+      }
+
+      if (!mounted) return;
+      setState(() {
+        if (staffingRows.isNotEmpty) {
+          _staffingRows = staffingRows;
+        }
+        if (onboarding.isNotEmpty) {
+          _onboardingActions = onboarding;
+        }
+        if (coverage.isNotEmpty) {
+          _coverageRisks = coverage;
+        }
+      });
+
+      await _persistChanges();
+    } catch (e) {
+      debugPrint('Error auto-generating staff team data: $e');
+    } finally {
+      _isAutoGenerating = false;
     }
   }
 

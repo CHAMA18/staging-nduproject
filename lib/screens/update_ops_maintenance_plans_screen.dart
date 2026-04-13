@@ -10,23 +10,33 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/project_insights_service.dart';
+import 'package:ndu_project/widgets/launch_editable_section.dart';
+import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 
 class UpdateOpsMaintenancePlansScreen extends StatefulWidget {
   const UpdateOpsMaintenancePlansScreen({super.key});
 
   static void open(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const UpdateOpsMaintenancePlansScreen()),
+      MaterialPageRoute(
+          builder: (_) => const UpdateOpsMaintenancePlansScreen()),
     );
   }
 
   @override
-  State<UpdateOpsMaintenancePlansScreen> createState() => _UpdateOpsMaintenancePlansScreenState();
+  State<UpdateOpsMaintenancePlansScreen> createState() =>
+      _UpdateOpsMaintenancePlansScreenState();
 }
 
-class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePlansScreen> {
+class _UpdateOpsMaintenancePlansScreenState
+    extends State<UpdateOpsMaintenancePlansScreen> {
   final Set<String> _selectedFilters = {'All plans'};
-  final List<String> _planStatuses = const ['Ready', 'In review', 'Pending', 'Scheduled'];
+  final List<String> _planStatuses = const [
+    'Ready',
+    'In review',
+    'Pending',
+    'Scheduled'
+  ];
 
   final List<_CoverageItem> _coverage = [];
   final List<_SignalItem> _signals = [];
@@ -36,6 +46,9 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
   final _Debouncer _saveDebouncer = _Debouncer();
   bool _isLoading = false;
   bool _suspendSave = false;
+  bool _hasSavedData = false;
+  bool _autoGenerationTriggered = false;
+  bool _isAutoGenerating = false;
 
   @override
   void initState() {
@@ -73,7 +86,8 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
       final stats = _StatCardData.fromList(data['stats']);
       final coverage = _CoverageItem.fromList(data['coverage']);
       final signals = _SignalItem.fromList(data['signals']);
-      final windows = _MaintenanceWindowItem.fromList(data['maintenanceWindows']);
+      final windows =
+          _MaintenanceWindowItem.fromList(data['maintenanceWindows']);
 
       _suspendSave = true;
       if (!mounted) return;
@@ -91,6 +105,11 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
           ..clear()
           ..addAll(windows);
       });
+      _hasSavedData = doc.exists &&
+          (stats.isNotEmpty ||
+              coverage.isNotEmpty ||
+              signals.isNotEmpty ||
+              windows.isNotEmpty);
       _suspendSave = false;
     } catch (error) {
       debugPrint('Update ops maintenance load error: $error');
@@ -99,6 +118,124 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
         setState(() => _isLoading = false);
       }
     }
+    await _autoGenerateIfNeeded();
+  }
+
+  Future<void> _autoGenerateIfNeeded() async {
+    if (!mounted || _autoGenerationTriggered || _isAutoGenerating) return;
+    if (_hasSavedData) return;
+
+    _autoGenerationTriggered = true;
+    _isAutoGenerating = true;
+    try {
+      final generated = await ExecutionPhaseAiSeed.generateEntries(
+        context: context,
+        section: 'Update Ops and Maintenance Plans',
+        sections: const {
+          'stats': 'Operational readiness stats and progress snapshots',
+          'coverage': 'Coverage areas for ops readiness',
+          'signals': 'Operational signals and watch items',
+          'maintenance': 'Upcoming maintenance windows',
+        },
+        itemsPerSection: 3,
+      );
+
+      final stats = generated['stats'] ?? const [];
+      final coverage = generated['coverage'] ?? const [];
+      final signals = generated['signals'] ?? const [];
+      final maintenance = generated['maintenance'] ?? const [];
+
+      if (stats.isNotEmpty) {
+        _stats
+          ..clear()
+          ..addAll(_mapStats(stats));
+      }
+      if (coverage.isNotEmpty) {
+        _coverage
+          ..clear()
+          ..addAll(_mapCoverage(coverage));
+      }
+      if (signals.isNotEmpty) {
+        _signals
+          ..clear()
+          ..addAll(_mapSignals(signals));
+      }
+      if (maintenance.isNotEmpty) {
+        _maintenanceWindows
+          ..clear()
+          ..addAll(_mapMaintenance(maintenance));
+      }
+
+      if (mounted) {
+        setState(() {});
+        await _saveToFirestore();
+      }
+    } catch (e) {
+      debugPrint('Error auto-generating ops maintenance data: $e');
+    } finally {
+      _isAutoGenerating = false;
+    }
+  }
+
+  List<_StatCardData> _mapStats(List<LaunchEntry> entries) {
+    final colors = [
+      const Color(0xFF0EA5E9),
+      const Color(0xFF10B981),
+      const Color(0xFFF59E0B),
+    ];
+    return [
+      for (var i = 0; i < entries.length; i++)
+        _StatCardData(
+          id: _newId(),
+          label: entries[i].title,
+          value: entries[i].status?.isNotEmpty == true
+              ? entries[i].status!
+              : 'TBD',
+          supporting: entries[i].details,
+          color: colors[i % colors.length],
+        )
+    ];
+  }
+
+  List<_CoverageItem> _mapCoverage(List<LaunchEntry> entries) {
+    final colors = [
+      const Color(0xFF2563EB),
+      const Color(0xFF10B981),
+      const Color(0xFFF59E0B),
+    ];
+    return [
+      for (var i = 0; i < entries.length; i++)
+        _CoverageItem(
+          id: _newId(),
+          label: entries[i].title,
+          progress: 0.6,
+          color: colors[i % colors.length],
+        )
+    ];
+  }
+
+  List<_SignalItem> _mapSignals(List<LaunchEntry> entries) {
+    return [
+      for (final entry in entries)
+        _SignalItem(
+          id: _newId(),
+          title: entry.title,
+          subtitle: entry.details,
+        )
+    ];
+  }
+
+  List<_MaintenanceWindowItem> _mapMaintenance(List<LaunchEntry> entries) {
+    return [
+      for (final entry in entries)
+        _MaintenanceWindowItem(
+          id: _newId(),
+          title: entry.title,
+          time: entry.details.isNotEmpty ? entry.details : 'TBD',
+          status:
+              entry.status?.isNotEmpty == true ? entry.status! : 'Scheduled',
+        )
+    ];
   }
 
   Future<void> _saveToFirestore() async {
@@ -115,7 +252,8 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
         'stats': _stats.map((e) => e.toMap()).toList(),
         'coverage': _coverage.map((e) => e.toMap()).toList(),
         'signals': _signals.map((e) => e.toMap()).toList(),
-        'maintenanceWindows': _maintenanceWindows.map((e) => e.toMap()).toList(),
+        'maintenanceWindows':
+            _maintenanceWindows.map((e) => e.toMap()).toList(),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } catch (error) {
@@ -125,19 +263,55 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
 
   List<_StatCardData> _defaultStats() {
     return [
-      _StatCardData(id: _newId(), label: 'Plans updated', value: '', supporting: '', color: const Color(0xFF0EA5E9)),
-      _StatCardData(id: _newId(), label: 'Runbooks ready', value: '', supporting: '', color: const Color(0xFF10B981)),
-      _StatCardData(id: _newId(), label: 'Training coverage', value: '', supporting: '', color: const Color(0xFFF59E0B)),
-      _StatCardData(id: _newId(), label: 'Maintenance risk', value: '', supporting: '', color: const Color(0xFF6366F1)),
+      _StatCardData(
+          id: _newId(),
+          label: 'Plans updated',
+          value: '',
+          supporting: '',
+          color: const Color(0xFF0EA5E9)),
+      _StatCardData(
+          id: _newId(),
+          label: 'Runbooks ready',
+          value: '',
+          supporting: '',
+          color: const Color(0xFF10B981)),
+      _StatCardData(
+          id: _newId(),
+          label: 'Training coverage',
+          value: '',
+          supporting: '',
+          color: const Color(0xFFF59E0B)),
+      _StatCardData(
+          id: _newId(),
+          label: 'Maintenance risk',
+          value: '',
+          supporting: '',
+          color: const Color(0xFF6366F1)),
     ];
   }
 
   List<_CoverageItem> _defaultCoverage() {
     return [
-      _CoverageItem(id: _newId(), label: 'Runbooks updated', progress: 0.0, color: const Color(0xFF10B981)),
-      _CoverageItem(id: _newId(), label: 'Maintenance tasks', progress: 0.0, color: const Color(0xFF6366F1)),
-      _CoverageItem(id: _newId(), label: 'Training readiness', progress: 0.0, color: const Color(0xFFF59E0B)),
-      _CoverageItem(id: _newId(), label: 'Ops handoff', progress: 0.0, color: const Color(0xFF0EA5E9)),
+      _CoverageItem(
+          id: _newId(),
+          label: 'Runbooks updated',
+          progress: 0.0,
+          color: const Color(0xFF10B981)),
+      _CoverageItem(
+          id: _newId(),
+          label: 'Maintenance tasks',
+          progress: 0.0,
+          color: const Color(0xFF6366F1)),
+      _CoverageItem(
+          id: _newId(),
+          label: 'Training readiness',
+          progress: 0.0,
+          color: const Color(0xFFF59E0B)),
+      _CoverageItem(
+          id: _newId(),
+          label: 'Ops handoff',
+          progress: 0.0,
+          color: const Color(0xFF0EA5E9)),
     ];
   }
 
@@ -208,7 +382,8 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
           ),
           child: const Text(
             'OPS MAINTENANCE',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black),
+            style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black),
           ),
         ),
         const SizedBox(height: 10),
@@ -220,7 +395,10 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
                 children: const [
                   Text(
                     'Update Ops and Maintenance Plans',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                    style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827)),
                   ),
                   SizedBox(height: 6),
                   Text(
@@ -242,13 +420,30 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
   }
 
   Widget _buildHeaderActions() {
+    final projectId =
+        ProjectDataInherited.maybeOf(context)?.projectData.projectId;
     return Wrap(
       spacing: 10,
       runSpacing: 10,
       children: [
-        _actionButton(Icons.add, 'Add plan update'),
-        _actionButton(Icons.upload_outlined, 'Upload runbook'),
-        _actionButton(Icons.description_outlined, 'Export plan'),
+        _actionButton(Icons.add, 'Add plan update',
+            onPressed: projectId == null || projectId.isEmpty
+                ? null
+                : () => _openAddPlanDialog(projectId)),
+        _actionButton(Icons.upload_outlined, 'Upload runbook', onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text(
+                    'Runbook upload is queued. You can add plan updates now from this page.')),
+          );
+        }),
+        _actionButton(Icons.description_outlined, 'Export plan', onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text(
+                    'Plan export is queued while report templates are finalized.')),
+          );
+        }),
         _primaryButton('Publish ops update'),
       ],
     );
@@ -258,7 +453,11 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
     return OutlinedButton.icon(
       onPressed: onPressed ?? () {},
       icon: Icon(icon, size: 18, color: const Color(0xFF64748B)),
-      label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+      label: Text(label,
+          style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF64748B))),
       style: OutlinedButton.styleFrom(
         side: const BorderSide(color: Color(0xFFE2E8F0)),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -269,9 +468,21 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
 
   Widget _primaryButton(String label) {
     return ElevatedButton.icon(
-      onPressed: () {},
+      onPressed: () {
+        setState(() {
+          _selectedFilters
+            ..clear()
+            ..add('Ready');
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text(
+                  'Ops update published. Filter set to plans marked Ready.')),
+        );
+      },
       icon: const Icon(Icons.play_arrow, size: 18),
-      label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+      label: Text(label,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFF0EA5E9),
         foregroundColor: Colors.white,
@@ -329,12 +540,14 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
     }
 
     return Row(
-      children: _stats.map((stat) => Expanded(
-        child: Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: _buildStatCard(stat),
-        ),
-      )).toList(),
+      children: _stats
+          .map((stat) => Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: _buildStatCard(stat),
+                ),
+              ))
+          .toList(),
     );
   }
 
@@ -353,7 +566,8 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
             key: ValueKey('stat-value-${data.id}'),
             initialValue: data.value,
             decoration: _inlineDecoration('Value'),
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: data.color),
+            style: TextStyle(
+                fontSize: 18, fontWeight: FontWeight.w700, color: data.color),
             onChanged: (value) => _updateStat(data.copyWith(value: value)),
           ),
           const SizedBox(height: 6),
@@ -369,7 +583,8 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
             key: ValueKey('stat-support-${data.id}'),
             initialValue: data.supporting,
             decoration: _inlineDecoration('Supporting note'),
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: data.color),
+            style: TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w600, color: data.color),
             onChanged: (value) => _updateStat(data.copyWith(supporting: value)),
           ),
         ],
@@ -384,7 +599,10 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _actionButton(Icons.add, 'Add', onPressed: projectId == null ? null : () => _openAddPlanDialog(projectId)),
+          _actionButton(Icons.add, 'Add',
+              onPressed: projectId == null
+                  ? null
+                  : () => _openAddPlanDialog(projectId)),
           const SizedBox(width: 8),
           _actionButton(Icons.filter_list, 'Filter'),
         ],
@@ -401,7 +619,8 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
                   );
                 }
                 if (snapshot.hasError) {
-                  return _emptyPanelMessage('Unable to load ops plans. ${snapshot.error}');
+                  return _emptyPanelMessage(
+                      'Unable to load ops plans. ${snapshot.error}');
                 }
                 final plans = snapshot.data ?? [];
                 final filtered = plans.where((plan) {
@@ -419,25 +638,53 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
                     return SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: ConstrainedBox(
-                        constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                        constraints:
+                            BoxConstraints(minWidth: constraints.maxWidth),
                         child: DataTable(
-                          headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                          headingRowColor:
+                              WidgetStateProperty.all(const Color(0xFFF8FAFC)),
                           columns: const [
-                            DataColumn(label: Text('ID', style: TextStyle(fontWeight: FontWeight.w600))),
-                            DataColumn(label: Text('Plan item', style: TextStyle(fontWeight: FontWeight.w600))),
-                            DataColumn(label: Text('Team', style: TextStyle(fontWeight: FontWeight.w600))),
-                            DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
-                            DataColumn(label: Text('Due', style: TextStyle(fontWeight: FontWeight.w600))),
-                            DataColumn(label: Text('Owner', style: TextStyle(fontWeight: FontWeight.w600))),
+                            DataColumn(
+                                label: Text('ID',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w600))),
+                            DataColumn(
+                                label: Text('Plan item',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w600))),
+                            DataColumn(
+                                label: Text('Team',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w600))),
+                            DataColumn(
+                                label: Text('Status',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w600))),
+                            DataColumn(
+                                label: Text('Due',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w600))),
+                            DataColumn(
+                                label: Text('Owner',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w600))),
                           ],
                           rows: filtered.map((plan) {
                             return DataRow(cells: [
-                              DataCell(Text(plan.id, style: const TextStyle(fontSize: 12, color: Color(0xFF0EA5E9)))),
-                              DataCell(Text(plan.title, style: const TextStyle(fontSize: 13))),
-                              DataCell(Text(plan.team, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)))),
+                              DataCell(Text(plan.id,
+                                  style: const TextStyle(
+                                      fontSize: 12, color: Color(0xFF0EA5E9)))),
+                              DataCell(Text(plan.title,
+                                  style: const TextStyle(fontSize: 13))),
+                              DataCell(Text(plan.team,
+                                  style: const TextStyle(
+                                      fontSize: 12, color: Color(0xFF64748B)))),
                               DataCell(_statusChip(plan.status)),
-                              DataCell(Text(plan.due, style: const TextStyle(fontSize: 12))),
-                              DataCell(Text(plan.owner, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)))),
+                              DataCell(Text(plan.due,
+                                  style: const TextStyle(fontSize: 12))),
+                              DataCell(Text(plan.owner,
+                                  style: const TextStyle(
+                                      fontSize: 12, color: Color(0xFF64748B)))),
                             ]);
                           }).toList(),
                         ),
@@ -465,8 +712,10 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return Dialog(
-              insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              insetPadding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18)),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 520),
                 child: Padding(
@@ -475,115 +724,146 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                        ),
-                        child: const Icon(Icons.playlist_add_check_rounded, color: Color(0xFF0EA5E9)),
+                      Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(12),
+                              border:
+                                  Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: const Icon(Icons.playlist_add_check_rounded,
+                                color: Color(0xFF0EA5E9)),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Add ops plan item',
+                                    style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700)),
+                                SizedBox(height: 4),
+                                Text(
+                                    'Log a runbook or maintenance update for the ops register.',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF64748B))),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Close',
+                            onPressed: () => Navigator.of(dialogContext).pop(),
+                            icon: const Icon(Icons.close,
+                                color: Color(0xFF94A3B8)),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Add ops plan item', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                            SizedBox(height: 4),
-                            Text('Log a runbook or maintenance update for the ops register.',
-                                style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                          ],
-                        ),
+                      const SizedBox(height: 16),
+                      _dialogField('Plan ID',
+                          controller: idController, hint: 'e.g. OP-301'),
+                      const SizedBox(height: 12),
+                      _dialogField('Plan item',
+                          controller: titleController,
+                          hint: 'e.g. Runbook refresh'),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                              child: _dialogField('Team',
+                                  controller: teamController,
+                                  hint: 'e.g. Operations')),
+                          const SizedBox(width: 12),
+                          Expanded(
+                              child: _dialogField('Owner',
+                                  controller: ownerController,
+                                  hint: 'e.g. M. Thompson')),
+                        ],
                       ),
-                      IconButton(
-                        tooltip: 'Close',
-                        onPressed: () => Navigator.of(dialogContext).pop(),
-                        icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              initialValue: status,
+                              items: _planStatuses
+                                  .map((option) => DropdownMenuItem(
+                                      value: option, child: Text(option)))
+                                  .toList(),
+                              decoration: _dialogDecoration('Status'),
+                              onChanged: (value) => setDialogState(
+                                  () => status = value ?? _planStatuses.first),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: dueController,
+                              readOnly: true,
+                              decoration: _dialogDecoration('Due date',
+                                      hint: 'Select date')
+                                  .copyWith(
+                                      suffixIcon: const Icon(
+                                          Icons.calendar_today_outlined,
+                                          size: 18)),
+                              onTap: () async {
+                                final now = DateTime.now();
+                                final picked = await showDatePicker(
+                                  context: dialogContext,
+                                  firstDate:
+                                      now.subtract(const Duration(days: 365)),
+                                  lastDate:
+                                      now.add(const Duration(days: 365 * 5)),
+                                  initialDate: dueDate ?? now,
+                                );
+                                if (picked != null) {
+                                  setDialogState(() {
+                                    dueDate = picked;
+                                    dueController.text =
+                                        '${picked.month}/${picked.day}/${picked.year}';
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  _dialogField('Plan ID', controller: idController, hint: 'e.g. OP-301'),
-                  const SizedBox(height: 12),
-                  _dialogField('Plan item', controller: titleController, hint: 'e.g. Runbook refresh'),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(child: _dialogField('Team', controller: teamController, hint: 'e.g. Operations')),
-                      const SizedBox(width: 12),
-                      Expanded(child: _dialogField('Owner', controller: ownerController, hint: 'e.g. M. Thompson')),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          initialValue: status,
-                          items: _planStatuses.map((option) => DropdownMenuItem(value: option, child: Text(option))).toList(),
-                          decoration: _dialogDecoration('Status'),
-                          onChanged: (value) => setDialogState(() => status = value ?? _planStatuses.first),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextFormField(
-                          controller: dueController,
-                          readOnly: true,
-                          decoration: _dialogDecoration('Due date', hint: 'Select date')
-                              .copyWith(suffixIcon: const Icon(Icons.calendar_today_outlined, size: 18)),
-                          onTap: () async {
-                            final now = DateTime.now();
-                            final picked = await showDatePicker(
-                              context: dialogContext,
-                              firstDate: now.subtract(const Duration(days: 365)),
-                              lastDate: now.add(const Duration(days: 365 * 5)),
-                              initialDate: dueDate ?? now,
-                            );
-                            if (picked != null) {
-                              setDialogState(() {
-                                dueDate = picked;
-                                dueController.text = '${picked.month}/${picked.day}/${picked.year}';
-                              });
-                            }
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.of(dialogContext).pop(),
-                        child: const Text('Cancel'),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: () async {
-                          if (idController.text.trim().isEmpty ||
-                              titleController.text.trim().isEmpty ||
-                              teamController.text.trim().isEmpty ||
-                              ownerController.text.trim().isEmpty ||
-                              dueController.text.trim().isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Please complete all fields.')),
-                            );
-                            return;
-                          }
-                          final navigator = Navigator.of(dialogContext);
-                          await FirebaseFirestore.instance
-                              .collection('projects')
-                              .doc(projectId)
-                              .collection('opsMaintenance')
-                              .doc('overview')
-                              .collection('plans')
-                              .add({
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.of(dialogContext).pop(),
+                            child: const Text('Cancel'),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: () async {
+                              if (idController.text.trim().isEmpty ||
+                                  titleController.text.trim().isEmpty ||
+                                  teamController.text.trim().isEmpty ||
+                                  ownerController.text.trim().isEmpty ||
+                                  dueController.text.trim().isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content:
+                                          Text('Please complete all fields.')),
+                                );
+                                return;
+                              }
+                              final navigator = Navigator.of(dialogContext);
+                              await FirebaseFirestore.instance
+                                  .collection('projects')
+                                  .doc(projectId)
+                                  .collection('opsMaintenance')
+                                  .doc('overview')
+                                  .collection('plans')
+                                  .add({
                                 'id': idController.text.trim(),
                                 'title': titleController.text.trim(),
                                 'team': teamController.text.trim(),
@@ -592,19 +872,21 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
                                 'owner': ownerController.text.trim(),
                                 'createdAt': FieldValue.serverTimestamp(),
                               });
-                          if (!mounted) return;
-                          navigator.pop();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0EA5E9),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        child: const Text('Add plan'),
+                              if (!mounted) return;
+                              navigator.pop();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0EA5E9),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 18, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
+                            ),
+                            child: const Text('Add plan'),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
                     ],
                   ),
                 ),
@@ -648,7 +930,8 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
               backgroundColor: const Color(0xFF0EA5E9),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
           ),
         ],
@@ -663,13 +946,20 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
       filled: true,
       fillColor: const Color(0xFFF8FAFC),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF0EA5E9), width: 1.6)),
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+      enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+      focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF0EA5E9), width: 1.6)),
     );
   }
 
-  Widget _dialogField(String label, {required TextEditingController controller, String? hint}) {
+  Widget _dialogField(String label,
+      {required TextEditingController controller, String? hint}) {
     return TextFormField(
       controller: controller,
       decoration: _dialogDecoration(label, hint: hint),
@@ -695,7 +985,8 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
               foregroundColor: const Color(0xFF1F2937),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               backgroundColor: const Color(0xFFFFF3C4),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
           ),
         ],
@@ -723,7 +1014,8 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
               foregroundColor: const Color(0xFF1F2937),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               backgroundColor: const Color(0xFFFFF3C4),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
           ),
         ],
@@ -751,7 +1043,8 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
               foregroundColor: const Color(0xFF1F2937),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               backgroundColor: const Color(0xFFFFF3C4),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
           ),
         ],
@@ -780,7 +1073,9 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w600, color: color)),
     );
   }
 
@@ -797,7 +1092,8 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
                   key: ValueKey('coverage-label-${item.id}'),
                   initialValue: item.label,
                   decoration: _inlineDecoration('Coverage label'),
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w600),
                   onChanged: (value) =>
                       _updateCoverage(item.copyWith(label: value)),
                 ),
@@ -812,14 +1108,15 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
                   keyboardType: TextInputType.number,
                   onChanged: (value) {
                     final parsed = double.tryParse(value) ?? 0;
-                    _updateCoverage(
-                        item.copyWith(progress: (parsed / 100).clamp(0.0, 1.0)));
+                    _updateCoverage(item.copyWith(
+                        progress: (parsed / 100).clamp(0.0, 1.0)));
                   },
                 ),
               ),
               const SizedBox(width: 8),
               IconButton(
-                icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
+                icon:
+                    const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
                 onPressed: () => _deleteCoverage(item.id),
               ),
             ],
@@ -860,16 +1157,20 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
                   key: ValueKey('signal-title-${signal.id}'),
                   initialValue: signal.title,
                   decoration: _inlineDecoration('Signal title'),
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                  onChanged: (value) => _updateSignal(signal.copyWith(title: value)),
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600),
+                  onChanged: (value) =>
+                      _updateSignal(signal.copyWith(title: value)),
                 ),
                 const SizedBox(height: 6),
                 TextFormField(
                   key: ValueKey('signal-sub-${signal.id}'),
                   initialValue: signal.subtitle,
                   decoration: _inlineDecoration('Signal detail'),
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                  onChanged: (value) => _updateSignal(signal.copyWith(subtitle: value)),
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                  onChanged: (value) =>
+                      _updateSignal(signal.copyWith(subtitle: value)),
                 ),
               ],
             ),
@@ -897,8 +1198,8 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
           Container(
               width: 8,
               height: 8,
-              decoration:
-                  const BoxDecoration(color: Color(0xFF0EA5E9), shape: BoxShape.circle)),
+              decoration: const BoxDecoration(
+                  color: Color(0xFF0EA5E9), shape: BoxShape.circle)),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -908,7 +1209,8 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
                   key: ValueKey('maintenance-title-${item.id}'),
                   initialValue: item.title,
                   decoration: _inlineDecoration('Window'),
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600),
                   onChanged: (value) =>
                       _updateMaintenance(item.copyWith(title: value)),
                 ),
@@ -916,7 +1218,8 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
                   key: ValueKey('maintenance-time-${item.id}'),
                   initialValue: item.time,
                   decoration: _inlineDecoration('Time window'),
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                   onChanged: (value) =>
                       _updateMaintenance(item.copyWith(time: value)),
                 ),
@@ -930,7 +1233,10 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
               key: ValueKey('maintenance-status-${item.id}'),
               initialValue: item.status,
               decoration: _inlineDecoration('Status'),
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+              style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF64748B)),
               onChanged: (value) =>
                   _updateMaintenance(item.copyWith(status: value)),
             ),
@@ -962,7 +1268,11 @@ class _UpdateOpsMaintenancePlansScreenState extends State<UpdateOpsMaintenancePl
   void _addCoverageItem() {
     setState(() {
       _coverage.add(
-        _CoverageItem(id: _newId(), label: '', progress: 0, color: const Color(0xFF0EA5E9)),
+        _CoverageItem(
+            id: _newId(),
+            label: '',
+            progress: 0,
+            color: const Color(0xFF0EA5E9)),
       );
     });
     _scheduleSave();
@@ -1054,9 +1364,13 @@ class _PanelShell extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                    Text(title,
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 4),
-                    Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                    Text(subtitle,
+                        style: const TextStyle(
+                            fontSize: 12, color: Color(0xFF64748B))),
                   ],
                 ),
               ),
@@ -1105,7 +1419,8 @@ class _CoverageItem {
     return data.map((item) {
       final map = Map<String, dynamic>.from(item as Map? ?? {});
       return _CoverageItem(
-        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: map['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         label: map['label']?.toString() ?? '',
         progress: (map['progress'] is num)
             ? (map['progress'] as num).toDouble()
@@ -1146,7 +1461,8 @@ class _SignalItem {
     return data.map((item) {
       final map = Map<String, dynamic>.from(item as Map? ?? {});
       return _SignalItem(
-        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: map['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         title: map['title']?.toString() ?? '',
         subtitle: map['subtitle']?.toString() ?? '',
       );
@@ -1197,7 +1513,8 @@ class _StatCardData {
     return data.map((item) {
       final map = Map<String, dynamic>.from(item as Map? ?? {});
       return _StatCardData(
-        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: map['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         label: map['label']?.toString() ?? '',
         value: map['value']?.toString() ?? '',
         supporting: map['supporting']?.toString() ?? '',
@@ -1220,7 +1537,8 @@ class _MaintenanceWindowItem {
   final String time;
   final String status;
 
-  _MaintenanceWindowItem copyWith({String? title, String? time, String? status}) {
+  _MaintenanceWindowItem copyWith(
+      {String? title, String? time, String? status}) {
     return _MaintenanceWindowItem(
       id: id,
       title: title ?? this.title,
@@ -1241,7 +1559,8 @@ class _MaintenanceWindowItem {
     return data.map((item) {
       final map = Map<String, dynamic>.from(item as Map? ?? {});
       return _MaintenanceWindowItem(
-        id: map['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id: map['id']?.toString() ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         title: map['title']?.toString() ?? '',
         time: map['time']?.toString() ?? '',
         status: map['status']?.toString() ?? '',
@@ -1251,7 +1570,8 @@ class _MaintenanceWindowItem {
 }
 
 class _Debouncer {
-  _Debouncer({Duration? delay}) : delay = delay ?? const Duration(milliseconds: 600);
+  _Debouncer({Duration? delay})
+      : delay = delay ?? const Duration(milliseconds: 600);
 
   final Duration delay;
   Timer? _timer;

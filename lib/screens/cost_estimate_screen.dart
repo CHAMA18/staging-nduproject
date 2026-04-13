@@ -338,16 +338,29 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
     final provider = ProjectDataHelper.getProvider(context);
     final pd = provider.projectData;
     final messenger = ScaffoldMessenger.of(context);
+    final structuredContext = ProjectDataHelper.buildFepContext(
+      pd,
+      sectionLabel: 'Cost Estimate',
+    ).trim();
+    final scanContext = ProjectDataHelper.buildProjectContextScan(
+      pd,
+      sectionLabel: 'Cost Estimate',
+    ).trim();
 
-    // Construct context context for AI
-    final projectContext = '''
+    // Build a context payload that carries forward upstream project data.
+    final projectContext = [
+      '''
 Project Info:
 Name: ${pd.projectName}
 Objective: ${pd.projectObjective}
 Description: ${pd.solutionDescription}
 Business Case: ${pd.businessCase}
 Current Cost Items: ${pd.costEstimateItems.map((e) => "${e.title} (${e.costType})").join(", ")}
-''';
+''',
+      if (structuredContext.isNotEmpty)
+        'Structured Project Context:\n$structuredContext',
+      if (scanContext.isNotEmpty) 'Project Context Scan:\n$scanContext',
+    ].join('\n\n');
 
     final selectedItems = await showDialog<List<CostEstimateItem>>(
       context: context,

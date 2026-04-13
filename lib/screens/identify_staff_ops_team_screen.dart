@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:ndu_project/screens/salvage_disposal_team_screen.dart';
+import 'package:ndu_project/screens/technical_debt_management_screen.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
+import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/services/ops_service.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
+import 'package:ndu_project/widgets/launch_editable_section.dart';
 
 class IdentifyStaffOpsTeamScreen extends StatefulWidget {
   const IdentifyStaffOpsTeamScreen({super.key});
@@ -15,10 +21,12 @@ class IdentifyStaffOpsTeamScreen extends StatefulWidget {
   }
 
   @override
-  State<IdentifyStaffOpsTeamScreen> createState() => _IdentifyStaffOpsTeamScreenState();
+  State<IdentifyStaffOpsTeamScreen> createState() =>
+      _IdentifyStaffOpsTeamScreenState();
 }
 
-class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen> {
+class _IdentifyStaffOpsTeamScreenState
+    extends State<IdentifyStaffOpsTeamScreen> {
   String? get _projectId {
     try {
       final provider = ProjectDataInherited.maybeOf(context);
@@ -26,6 +34,20 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
     } catch (e) {
       return null;
     }
+  }
+
+  bool _autoGenerationTriggered = false;
+  bool _isAutoGenerating = false;
+  List<_HandoffItemData> _handoffItems = const [
+    _HandoffItemData('On-call rotation published', 'Pending confirmation'),
+    _HandoffItemData('Ops runbook review', 'Scheduled for Oct 16'),
+    _HandoffItemData('Stakeholder sign-off', 'Awaiting sponsor'),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _autoPopulateIfNeeded());
   }
 
   @override
@@ -57,6 +79,13 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
                     _buildChecklistPanel(),
                     const SizedBox(height: 20),
                     _buildHandoffPanel(),
+                    const SizedBox(height: 24),
+                    LaunchPhaseNavigation(
+                      backLabel: 'Back: Technical Debt Management',
+                      nextLabel: 'Next: Salvage & Disposal Plan',
+                      onBack: () => TechnicalDebtManagementScreen.open(context),
+                      onNext: () => SalvageDisposalTeamScreen.open(context),
+                    ),
                   ],
                 ),
               ],
@@ -80,7 +109,8 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
           ),
           child: const Text(
             'OPS READINESS',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black),
+            style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black),
           ),
         ),
         const SizedBox(height: 10),
@@ -92,7 +122,10 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
                 children: const [
                   Text(
                     'Identify & Staff Ops Team',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                    style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827)),
                   ),
                   SizedBox(height: 6),
                   Text(
@@ -118,7 +151,8 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
       spacing: 10,
       runSpacing: 10,
       children: [
-        _actionButton(Icons.person_add_alt_1, 'Add role', onPressed: () => _showAddMemberDialog(context)),
+        _actionButton(Icons.person_add_alt_1, 'Add role',
+            onPressed: () => _showAddMemberDialog(context)),
         _actionButton(Icons.assignment_ind_outlined, 'Assign member'),
         _actionButton(Icons.description_outlined, 'Export roster'),
         _primaryButton('Publish handoff'),
@@ -130,7 +164,11 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
     return OutlinedButton.icon(
       onPressed: onPressed ?? () {},
       icon: Icon(icon, size: 18, color: const Color(0xFF64748B)),
-      label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+      label: Text(label,
+          style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF64748B))),
       style: OutlinedButton.styleFrom(
         side: const BorderSide(color: Color(0xFFE2E8F0)),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -141,9 +179,16 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
 
   Widget _primaryButton(String label) {
     return ElevatedButton.icon(
-      onPressed: () {},
+      onPressed: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text(
+                  'Ops handoff published. Continue updating checklist completion as evidence.')),
+        );
+      },
       icon: const Icon(Icons.check_circle_outline, size: 18),
-      label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+      label: Text(label,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFF0EA5E9),
         foregroundColor: Colors.white,
@@ -151,6 +196,161 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
+  }
+
+  Future<void> _autoPopulateIfNeeded() async {
+    if (_autoGenerationTriggered || _isAutoGenerating) return;
+    final projectId = _projectId;
+    if (projectId == null || projectId.isEmpty) return;
+    _autoGenerationTriggered = true;
+    setState(() => _isAutoGenerating = true);
+
+    final membersSnap = await FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId)
+        .collection('ops_members')
+        .limit(1)
+        .get();
+    final checklistSnap = await FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId)
+        .collection('ops_checklist')
+        .limit(1)
+        .get();
+    final handoffDoc = await _handoffDocRef(projectId).get();
+
+    final needsMembers = membersSnap.docs.isEmpty;
+    final needsChecklist = checklistSnap.docs.isEmpty;
+    final needsHandoff = !handoffDoc.exists ||
+        (_HandoffItemData.fromList(handoffDoc.data()?['items']).isEmpty);
+
+    if (!needsMembers && !needsChecklist && !needsHandoff) {
+      if (mounted) setState(() => _isAutoGenerating = false);
+      return;
+    }
+
+    Map<String, List<LaunchEntry>> generated = {};
+    try {
+      generated = await ExecutionPhaseAiSeed.generateEntries(
+        context: context,
+        section: 'Identify & Staff Ops Team',
+        sections: const {
+          'roles': 'Ops roles with responsibilities and readiness',
+          'checklist': 'Ops readiness checklist items',
+          'handoff': 'Handoff summary items and status',
+        },
+        itemsPerSection: 4,
+      );
+    } catch (error) {
+      debugPrint('Ops team AI call failed: $error');
+    }
+
+    if (!mounted) return;
+    if (needsMembers) {
+      final members = _mapOpsMembers(generated['roles']);
+      for (final member in members) {
+        await OpsService.createMember(
+          projectId: projectId,
+          name: member.name,
+          role: member.role,
+          responsibility: member.responsibility,
+          status: member.status,
+          readinessScore: member.readinessScore,
+          notes: member.notes,
+        );
+      }
+    }
+    if (needsChecklist) {
+      final items = _mapChecklistItems(generated['checklist']);
+      for (final item in items) {
+        await OpsService.createChecklistItem(
+          projectId: projectId,
+          item: item,
+          completed: false,
+        );
+      }
+    }
+    if (needsHandoff) {
+      final handoffItems = _mapHandoffItems(generated['handoff']);
+      if (handoffItems.isNotEmpty) {
+        await _handoffDocRef(projectId).set({
+          'items': handoffItems.map((item) => item.toMap()).toList(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        setState(() => _handoffItems = handoffItems);
+      }
+    }
+
+    if (mounted) {
+      setState(() => _isAutoGenerating = false);
+    }
+  }
+
+  List<_OpsMemberSeed> _mapOpsMembers(List<LaunchEntry>? entries) {
+    if (entries == null) return [];
+    return entries
+        .map((entry) {
+          final details = entry.details;
+          final name = _extractField(details, 'Name');
+          final role = _extractField(details, 'Role');
+          final responsibility = _extractField(details, 'Responsibility');
+          final status = _extractField(details, 'Status');
+          final readiness = _extractNumber(details, fallback: 75);
+          return _OpsMemberSeed(
+            name: name.isNotEmpty ? name : entry.title.trim(),
+            role: role.isNotEmpty ? role : 'Ops Specialist',
+            responsibility:
+                responsibility.isNotEmpty ? responsibility : entry.details,
+            status: status.isNotEmpty ? status : 'Active',
+            readinessScore: readiness,
+            notes: entry.status,
+          );
+        })
+        .where((item) => item.name.isNotEmpty)
+        .toList();
+  }
+
+  List<String> _mapChecklistItems(List<LaunchEntry>? entries) {
+    if (entries == null) return [];
+    return entries
+        .map((entry) => entry.title.trim().isNotEmpty
+            ? entry.title.trim()
+            : entry.details.trim())
+        .where((text) => text.isNotEmpty)
+        .toList();
+  }
+
+  List<_HandoffItemData> _mapHandoffItems(List<LaunchEntry>? entries) {
+    if (entries == null) return [];
+    return entries
+        .map((entry) => _HandoffItemData(
+              entry.title.trim(),
+              entry.status?.trim().isNotEmpty == true
+                  ? entry.status!.trim()
+                  : 'Pending',
+            ))
+        .where((item) => item.title.isNotEmpty)
+        .toList();
+  }
+
+  String _extractField(String text, String key) {
+    final match = RegExp('$key\\s*[:=-]\\s*([^|;\\n]+)',
+            caseSensitive: false)
+        .firstMatch(text);
+    return match?.group(1)?.trim() ?? '';
+  }
+
+  int _extractNumber(String text, {required int fallback}) {
+    final match = RegExp(r'(\\d{1,3})').firstMatch(text);
+    return match != null ? int.parse(match.group(1) ?? '$fallback') : fallback;
+  }
+
+  DocumentReference<Map<String, dynamic>> _handoffDocRef(String projectId) {
+    return FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId)
+        .collection('execution_phase_sections')
+        .doc('ops_handoff');
   }
 
   Widget _buildStatsRow(bool isNarrow) {
@@ -169,14 +369,25 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
         final activeCount = members.where((m) => m.status == 'Active').length;
         final avgReadiness = members.isEmpty
             ? 0.0
-            : members.map((m) => m.readinessScore).reduce((a, b) => a + b) / members.length;
+            : members.map((m) => m.readinessScore).reduce((a, b) => a + b) /
+                members.length;
         final pendingCount = members.where((m) => m.status == 'Pending').length;
 
         final stats = [
-          _StatCardData('Roles filled', '$activeCount/${members.length}', '${members.length - activeCount} open roles', const Color(0xFF0EA5E9)),
-          _StatCardData('Avg readiness', '${avgReadiness.round()}%', 'Team capability', const Color(0xFF10B981)),
-          _StatCardData('Pending', '$pendingCount', pendingCount > 0 ? 'Awaiting assignment' : 'All assigned', const Color(0xFFF59E0B)),
-          _StatCardData('Total members', '${members.length}', 'Ops team size', const Color(0xFF6366F1)),
+          _StatCardData(
+              'Roles filled',
+              '$activeCount/${members.length}',
+              '${members.length - activeCount} open roles',
+              const Color(0xFF0EA5E9)),
+          _StatCardData('Avg readiness', '${avgReadiness.round()}%',
+              'Team capability', const Color(0xFF10B981)),
+          _StatCardData(
+              'Pending',
+              '$pendingCount',
+              pendingCount > 0 ? 'Awaiting assignment' : 'All assigned',
+              const Color(0xFFF59E0B)),
+          _StatCardData('Total members', '${members.length}', 'Ops team size',
+              const Color(0xFF6366F1)),
         ];
 
         if (isNarrow) {
@@ -188,12 +399,14 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
         }
 
         return Row(
-          children: stats.map((stat) => Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: _buildStatCard(stat),
-            ),
-          )).toList(),
+          children: stats
+              .map((stat) => Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: _buildStatCard(stat),
+                    ),
+                  ))
+              .toList(),
         );
       },
     );
@@ -210,11 +423,20 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(data.value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: data.color)),
+          Text(data.value,
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: data.color)),
           const SizedBox(height: 6),
-          Text(data.label, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+          Text(data.label,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
           const SizedBox(height: 6),
-          Text(data.supporting, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: data.color)),
+          Text(data.supporting,
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: data.color)),
         ],
       ),
     );
@@ -228,7 +450,8 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
         child: const Center(
           child: Padding(
             padding: EdgeInsets.all(24.0),
-            child: Text('No project selected. Please open a project first.', style: TextStyle(color: Color(0xFF64748B))),
+            child: Text('No project selected. Please open a project first.',
+                style: TextStyle(color: Color(0xFF64748B))),
           ),
         ),
       );
@@ -242,14 +465,18 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
         stream: OpsService.streamMembers(_projectId!),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: Padding(padding: EdgeInsets.all(24.0), child: CircularProgressIndicator()));
+            return const Center(
+                child: Padding(
+                    padding: EdgeInsets.all(24.0),
+                    child: CircularProgressIndicator()));
           }
 
           if (snapshot.hasError) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
-                child: Text('Error loading members: ${snapshot.error}', style: const TextStyle(color: Colors.red)),
+                child: Text('Error loading members: ${snapshot.error}',
+                    style: const TextStyle(color: Colors.red)),
               ),
             );
           }
@@ -262,7 +489,8 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
                   children: [
-                    const Text('No ops members found.', style: TextStyle(color: Color(0xFF64748B))),
+                    const Text('No ops members found.',
+                        style: TextStyle(color: Color(0xFF64748B))),
                     const SizedBox(height: 12),
                     ElevatedButton.icon(
                       onPressed: () => _showAddMemberDialog(context),
@@ -280,18 +508,34 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
             child: DataTable(
               headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
               columns: const [
-                DataColumn(label: Text('Name', style: TextStyle(fontWeight: FontWeight.w600))),
-                DataColumn(label: Text('Role', style: TextStyle(fontWeight: FontWeight.w600))),
-                DataColumn(label: Text('Responsibility', style: TextStyle(fontWeight: FontWeight.w600))),
-                DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
-                DataColumn(label: Text('Readiness', style: TextStyle(fontWeight: FontWeight.w600))),
-                DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(
+                    label: Text('Name',
+                        style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(
+                    label: Text('Role',
+                        style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(
+                    label: Text('Responsibility',
+                        style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(
+                    label: Text('Status',
+                        style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(
+                    label: Text('Readiness',
+                        style: TextStyle(fontWeight: FontWeight.w600))),
+                DataColumn(
+                    label: Text('Actions',
+                        style: TextStyle(fontWeight: FontWeight.w600))),
               ],
               rows: members.map((member) {
                 return DataRow(cells: [
-                  DataCell(Text(member.name, style: const TextStyle(fontSize: 13))),
-                  DataCell(Text(member.role, style: const TextStyle(fontSize: 13))),
-                  DataCell(Text(member.responsibility, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)))),
+                  DataCell(
+                      Text(member.name, style: const TextStyle(fontSize: 13))),
+                  DataCell(
+                      Text(member.role, style: const TextStyle(fontSize: 13))),
+                  DataCell(Text(member.responsibility,
+                      style: const TextStyle(
+                          fontSize: 13, color: Color(0xFF64748B)))),
                   DataCell(_statusChip(member.status)),
                   DataCell(_capacityChip(member.readinessScore)),
                   DataCell(
@@ -299,13 +543,17 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.edit, size: 18, color: Color(0xFF64748B)),
-                          onPressed: () => _showEditMemberDialog(context, member),
+                          icon: const Icon(Icons.edit,
+                              size: 18, color: Color(0xFF64748B)),
+                          onPressed: () =>
+                              _showEditMemberDialog(context, member),
                           tooltip: 'Edit',
                         ),
                         IconButton(
-                          icon: const Icon(Icons.delete, size: 18, color: Color(0xFFEF4444)),
-                          onPressed: () => _showDeleteMemberDialog(context, member),
+                          icon: const Icon(Icons.delete,
+                              size: 18, color: Color(0xFFEF4444)),
+                          onPressed: () =>
+                              _showDeleteMemberDialog(context, member),
                           tooltip: 'Delete',
                         ),
                       ],
@@ -339,26 +587,49 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(24.0),
-                child: Text('No member data available', style: TextStyle(color: Color(0xFF64748B))),
+                child: Text('No member data available',
+                    style: TextStyle(color: Color(0xFF64748B))),
               ),
             );
           }
 
           final members = snapshot.data!;
-          final avgReadiness = members.map((m) => m.readinessScore / 100.0).reduce((a, b) => a + b) / members.length;
-          final incidentResponse = members.where((m) => m.responsibility.toLowerCase().contains('incident') || m.responsibility.toLowerCase().contains('response')).isEmpty
-              ? 0.0
-              : members.where((m) => m.responsibility.toLowerCase().contains('incident') || m.responsibility.toLowerCase().contains('response'))
+          final avgReadiness = members
                   .map((m) => m.readinessScore / 100.0)
-                  .reduce((a, b) => a + b) / members.where((m) => m.responsibility.toLowerCase().contains('incident') || m.responsibility.toLowerCase().contains('response')).length;
-          final trainingCompletion = avgReadiness * 0.75; // Estimate based on readiness
+                  .reduce((a, b) => a + b) /
+              members.length;
+          final incidentResponse = members
+                  .where((m) =>
+                      m.responsibility.toLowerCase().contains('incident') ||
+                      m.responsibility.toLowerCase().contains('response'))
+                  .isEmpty
+              ? 0.0
+              : members
+                      .where((m) =>
+                          m.responsibility.toLowerCase().contains('incident') ||
+                          m.responsibility.toLowerCase().contains('response'))
+                      .map((m) => m.readinessScore / 100.0)
+                      .reduce((a, b) => a + b) /
+                  members
+                      .where((m) =>
+                          m.responsibility.toLowerCase().contains('incident') ||
+                          m.responsibility.toLowerCase().contains('response'))
+                      .length;
+          final trainingCompletion =
+              avgReadiness * 0.75; // Estimate based on readiness
           final serviceDesk = avgReadiness * 0.9; // Estimate
 
           final capabilities = [
-            _CapabilityItem('Incident response coverage', incidentResponse > 0 ? incidentResponse : avgReadiness * 0.78, const Color(0xFF0EA5E9)),
-            _CapabilityItem('Runbook completeness', avgReadiness * 0.64, const Color(0xFF6366F1)),
-            _CapabilityItem('Training completion', trainingCompletion, const Color(0xFFF59E0B)),
-            _CapabilityItem('Service desk readiness', serviceDesk, const Color(0xFF10B981)),
+            _CapabilityItem(
+                'Incident response coverage',
+                incidentResponse > 0 ? incidentResponse : avgReadiness * 0.78,
+                const Color(0xFF0EA5E9)),
+            _CapabilityItem('Runbook completeness', avgReadiness * 0.64,
+                const Color(0xFF6366F1)),
+            _CapabilityItem('Training completion', trainingCompletion,
+                const Color(0xFFF59E0B)),
+            _CapabilityItem(
+                'Service desk readiness', serviceDesk, const Color(0xFF10B981)),
           ];
 
           return Column(
@@ -370,8 +641,14 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
                   children: [
                     Row(
                       children: [
-                        Expanded(child: Text(capability.label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
-                        Text('${(capability.progress * 100).round()}%', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                        Expanded(
+                            child: Text(capability.label,
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600))),
+                        Text('${(capability.progress * 100).round()}%',
+                            style: const TextStyle(
+                                fontSize: 11, color: Color(0xFF64748B))),
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -381,7 +658,8 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
                         value: capability.progress,
                         minHeight: 8,
                         backgroundColor: const Color(0xFFE2E8F0),
-                        valueColor: AlwaysStoppedAnimation<Color>(capability.color),
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(capability.color),
                       ),
                     ),
                   ],
@@ -410,14 +688,18 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
         stream: OpsService.streamChecklist(_projectId!),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: Padding(padding: EdgeInsets.all(24.0), child: CircularProgressIndicator()));
+            return const Center(
+                child: Padding(
+                    padding: EdgeInsets.all(24.0),
+                    child: CircularProgressIndicator()));
           }
 
           if (snapshot.hasError) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
-                child: Text('Error loading checklist: ${snapshot.error}', style: const TextStyle(color: Colors.red)),
+                child: Text('Error loading checklist: ${snapshot.error}',
+                    style: const TextStyle(color: Colors.red)),
               ),
             );
           }
@@ -430,7 +712,8 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
                   children: [
-                    const Text('No checklist items found.', style: TextStyle(color: Color(0xFF64748B))),
+                    const Text('No checklist items found.',
+                        style: TextStyle(color: Color(0xFF64748B))),
                     const SizedBox(height: 12),
                     ElevatedButton.icon(
                       onPressed: () => _showAddChecklistItemDialog(context),
@@ -450,9 +733,14 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
                 child: Row(
                   children: [
                     IconButton(
-                      icon: Icon(item.completed ? Icons.check_circle : Icons.radio_button_unchecked, 
-                          size: 20, 
-                          color: item.completed ? const Color(0xFF10B981) : const Color(0xFF94A3B8)),
+                      icon: Icon(
+                          item.completed
+                              ? Icons.check_circle
+                              : Icons.radio_button_unchecked,
+                          size: 20,
+                          color: item.completed
+                              ? const Color(0xFF10B981)
+                              : const Color(0xFF94A3B8)),
                       onPressed: () {
                         OpsService.updateChecklistItem(
                           projectId: _projectId!,
@@ -461,14 +749,20 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
                         );
                       },
                     ),
-                    Expanded(child: Text(item.item, style: const TextStyle(fontSize: 12))),
+                    Expanded(
+                        child: Text(item.item,
+                            style: const TextStyle(fontSize: 12))),
                     IconButton(
-                      icon: const Icon(Icons.edit, size: 16, color: Color(0xFF64748B)),
-                      onPressed: () => _showEditChecklistItemDialog(context, item),
+                      icon: const Icon(Icons.edit,
+                          size: 16, color: Color(0xFF64748B)),
+                      onPressed: () =>
+                          _showEditChecklistItemDialog(context, item),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete, size: 16, color: Color(0xFFEF4444)),
-                      onPressed: () => _showDeleteChecklistItemDialog(context, item),
+                      icon: const Icon(Icons.delete,
+                          size: 16, color: Color(0xFFEF4444)),
+                      onPressed: () =>
+                          _showDeleteChecklistItemDialog(context, item),
                     ),
                   ],
                 ),
@@ -485,36 +779,43 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
       title: 'Handoff summary',
       subtitle: 'Critical items to complete before launch',
       child: Column(
-        children: const [
-          _HandoffItem('On-call rotation published', 'Pending confirmation'),
-          _HandoffItem('Ops runbook review', 'Scheduled for Oct 16'),
-          _HandoffItem('Stakeholder sign-off', 'Awaiting sponsor'),
-        ],
+        children: _handoffItems
+            .map((item) => _HandoffItem(item.title, item.status))
+            .toList(),
       ),
     );
   }
 
   Widget _statusChip(String label) {
-    final color = label == 'Active' ? const Color(0xFF10B981) : const Color(0xFFF59E0B);
+    final color =
+        label == 'Active' ? const Color(0xFF10B981) : const Color(0xFFF59E0B);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w600, color: color)),
     );
   }
 
   Widget _capacityChip(int value) {
-    final color = value >= 80 ? const Color(0xFF10B981) : value >= 60 ? const Color(0xFFF59E0B) : const Color(0xFFEF4444);
+    final color = value >= 80
+        ? const Color(0xFF10B981)
+        : value >= 60
+            ? const Color(0xFFF59E0B)
+            : const Color(0xFFEF4444);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Text('$value%', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+      child: Text('$value%',
+          style: TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w600, color: color)),
     );
   }
 
@@ -522,7 +823,8 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
     final projectId = _projectId;
     if (projectId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No project selected. Please open a project first.')),
+        const SnackBar(
+            content: Text('No project selected. Please open a project first.')),
       );
       return;
     }
@@ -533,20 +835,25 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
     final projectId = _projectId;
     if (projectId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No project selected. Please open a project first.')),
+        const SnackBar(
+            content: Text('No project selected. Please open a project first.')),
       );
       return;
     }
     _showMemberDialog(context, member, projectId);
   }
 
-  void _showMemberDialog(BuildContext context, OpsMemberModel? member, String projectId) {
+  void _showMemberDialog(
+      BuildContext context, OpsMemberModel? member, String projectId) {
     final isEdit = member != null;
     final nameController = TextEditingController(text: member?.name ?? '');
     final roleController = TextEditingController(text: member?.role ?? '');
-    final responsibilityController = TextEditingController(text: member?.responsibility ?? '');
-    final statusController = TextEditingController(text: member?.status ?? 'Active');
-    final readinessController = TextEditingController(text: member?.readinessScore.toString() ?? '0');
+    final responsibilityController =
+        TextEditingController(text: member?.responsibility ?? '');
+    final statusController =
+        TextEditingController(text: member?.status ?? 'Active');
+    final readinessController =
+        TextEditingController(text: member?.readinessScore.toString() ?? '0');
     final notesController = TextEditingController(text: member?.notes ?? '');
 
     showDialog(
@@ -557,22 +864,37 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Name *')),
+              TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Name *')),
               const SizedBox(height: 12),
-              TextField(controller: roleController, decoration: const InputDecoration(labelText: 'Role *')),
+              TextField(
+                  controller: roleController,
+                  decoration: const InputDecoration(labelText: 'Role *')),
               const SizedBox(height: 12),
-              TextField(controller: responsibilityController, decoration: const InputDecoration(labelText: 'Responsibility *')),
+              TextField(
+                  controller: responsibilityController,
+                  decoration:
+                      const InputDecoration(labelText: 'Responsibility *')),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: statusController.text,
                 decoration: const InputDecoration(labelText: 'Status *'),
-                items: ['Active', 'Pending', 'Inactive'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                items: ['Active', 'Pending', 'Inactive']
+                    .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                    .toList(),
                 onChanged: (v) => statusController.text = v ?? 'Active',
               ),
               const SizedBox(height: 12),
-              TextField(controller: readinessController, decoration: const InputDecoration(labelText: 'Readiness Score (0-100) *')),
+              TextField(
+                  controller: readinessController,
+                  decoration: const InputDecoration(
+                      labelText: 'Readiness Score (0-100) *')),
               const SizedBox(height: 12),
-              TextField(controller: notesController, decoration: const InputDecoration(labelText: 'Notes'), maxLines: 3),
+              TextField(
+                  controller: notesController,
+                  decoration: const InputDecoration(labelText: 'Notes'),
+                  maxLines: 3),
             ],
           ),
         ),
@@ -585,7 +907,8 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
             onPressed: () async {
               if (nameController.text.isEmpty || roleController.text.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please fill in required fields')),
+                  const SnackBar(
+                      content: Text('Please fill in required fields')),
                 );
                 return;
               }
@@ -602,7 +925,9 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
                     responsibility: responsibilityController.text,
                     status: statusController.text,
                     readinessScore: readiness,
-                    notes: notesController.text.isEmpty ? null : notesController.text,
+                    notes: notesController.text.isEmpty
+                        ? null
+                        : notesController.text,
                   );
                 } else {
                   await OpsService.createMember(
@@ -612,14 +937,19 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
                     responsibility: responsibilityController.text,
                     status: statusController.text,
                     readinessScore: readiness,
-                    notes: notesController.text.isEmpty ? null : notesController.text,
+                    notes: notesController.text.isEmpty
+                        ? null
+                        : notesController.text,
                   );
                 }
 
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(isEdit ? 'Member updated successfully' : 'Member added successfully')),
+                    SnackBar(
+                        content: Text(isEdit
+                            ? 'Member updated successfully'
+                            : 'Member added successfully')),
                   );
                 }
               } catch (e) {
@@ -641,7 +971,8 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
     final projectId = _projectId;
     if (projectId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No project selected. Please open a project first.')),
+        const SnackBar(
+            content: Text('No project selected. Please open a project first.')),
       );
       return;
     }
@@ -650,7 +981,8 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Member'),
-        content: Text('Are you sure you want to delete "${member.name}"? This action cannot be undone.'),
+        content: Text(
+            'Are you sure you want to delete "${member.name}"? This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -659,11 +991,13 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
           ElevatedButton(
             onPressed: () async {
               try {
-                await OpsService.deleteMember(projectId: projectId, memberId: member.id);
+                await OpsService.deleteMember(
+                    projectId: projectId, memberId: member.id);
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Member deleted successfully')),
+                    const SnackBar(
+                        content: Text('Member deleted successfully')),
                   );
                 }
               } catch (e) {
@@ -687,25 +1021,29 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
     final projectId = _projectId;
     if (projectId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No project selected. Please open a project first.')),
+        const SnackBar(
+            content: Text('No project selected. Please open a project first.')),
       );
       return;
     }
     _showChecklistItemDialog(context, null, projectId);
   }
 
-  void _showEditChecklistItemDialog(BuildContext context, OpsChecklistItemModel item) {
+  void _showEditChecklistItemDialog(
+      BuildContext context, OpsChecklistItemModel item) {
     final projectId = _projectId;
     if (projectId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No project selected. Please open a project first.')),
+        const SnackBar(
+            content: Text('No project selected. Please open a project first.')),
       );
       return;
     }
     _showChecklistItemDialog(context, item, projectId);
   }
 
-  void _showChecklistItemDialog(BuildContext context, OpsChecklistItemModel? item, String projectId) {
+  void _showChecklistItemDialog(
+      BuildContext context, OpsChecklistItemModel? item, String projectId) {
     final isEdit = item != null;
     final itemController = TextEditingController(text: item?.item ?? '');
     final notesController = TextEditingController(text: item?.notes ?? '');
@@ -719,7 +1057,9 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: itemController, decoration: const InputDecoration(labelText: 'Item *')),
+              TextField(
+                  controller: itemController,
+                  decoration: const InputDecoration(labelText: 'Item *')),
               const SizedBox(height: 12),
               CheckboxListTile(
                 title: const Text('Completed'),
@@ -727,7 +1067,10 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
                 onChanged: (v) => setState(() => completed = v ?? false),
               ),
               const SizedBox(height: 12),
-              TextField(controller: notesController, decoration: const InputDecoration(labelText: 'Notes'), maxLines: 2),
+              TextField(
+                  controller: notesController,
+                  decoration: const InputDecoration(labelText: 'Notes'),
+                  maxLines: 2),
             ],
           ),
           actions: [
@@ -739,7 +1082,8 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
               onPressed: () async {
                 if (itemController.text.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please fill in the item field')),
+                    const SnackBar(
+                        content: Text('Please fill in the item field')),
                   );
                   return;
                 }
@@ -751,21 +1095,28 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
                       itemId: item.id,
                       item: itemController.text,
                       completed: completed,
-                      notes: notesController.text.isEmpty ? null : notesController.text,
+                      notes: notesController.text.isEmpty
+                          ? null
+                          : notesController.text,
                     );
                   } else {
                     await OpsService.createChecklistItem(
                       projectId: projectId,
                       item: itemController.text,
                       completed: completed,
-                      notes: notesController.text.isEmpty ? null : notesController.text,
+                      notes: notesController.text.isEmpty
+                          ? null
+                          : notesController.text,
                     );
                   }
 
                   if (context.mounted) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(isEdit ? 'Item updated successfully' : 'Item added successfully')),
+                      SnackBar(
+                          content: Text(isEdit
+                              ? 'Item updated successfully'
+                              : 'Item added successfully')),
                     );
                   }
                 } catch (e) {
@@ -784,11 +1135,13 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
     );
   }
 
-  void _showDeleteChecklistItemDialog(BuildContext context, OpsChecklistItemModel item) {
+  void _showDeleteChecklistItemDialog(
+      BuildContext context, OpsChecklistItemModel item) {
     final projectId = _projectId;
     if (projectId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No project selected. Please open a project first.')),
+        const SnackBar(
+            content: Text('No project selected. Please open a project first.')),
       );
       return;
     }
@@ -806,7 +1159,8 @@ class _IdentifyStaffOpsTeamScreenState extends State<IdentifyStaffOpsTeamScreen>
           ElevatedButton(
             onPressed: () async {
               try {
-                await OpsService.deleteChecklistItem(projectId: projectId, itemId: item.id);
+                await OpsService.deleteChecklistItem(
+                    projectId: projectId, itemId: item.id);
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -863,9 +1217,13 @@ class _PanelShell extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                    Text(title,
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 4),
-                    Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                    Text(subtitle,
+                        style: const TextStyle(
+                            fontSize: 12, color: Color(0xFF64748B))),
                   ],
                 ),
               ),
@@ -901,15 +1259,20 @@ class _HandoffItem extends StatelessWidget {
           Container(
             width: 10,
             height: 10,
-            decoration: BoxDecoration(color: const Color(0xFF0EA5E9), shape: BoxShape.circle),
+            decoration: BoxDecoration(
+                color: const Color(0xFF0EA5E9), shape: BoxShape.circle),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                Text(status, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w600)),
+                Text(status,
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF64748B))),
               ],
             ),
           ),
@@ -917,6 +1280,48 @@ class _HandoffItem extends StatelessWidget {
       ),
     );
   }
+}
+
+class _HandoffItemData {
+  const _HandoffItemData(this.title, this.status);
+
+  final String title;
+  final String status;
+
+  Map<String, dynamic> toMap() => {
+        'title': title,
+        'status': status,
+      };
+
+  static List<_HandoffItemData> fromList(dynamic data) {
+    if (data is! List) return [];
+    return data
+        .whereType<Map>()
+        .map((item) => _HandoffItemData(
+              item['title']?.toString() ?? '',
+              item['status']?.toString() ?? '',
+            ))
+        .where((item) => item.title.trim().isNotEmpty)
+        .toList();
+  }
+}
+
+class _OpsMemberSeed {
+  const _OpsMemberSeed({
+    required this.name,
+    required this.role,
+    required this.responsibility,
+    required this.status,
+    required this.readinessScore,
+    this.notes,
+  });
+
+  final String name;
+  final String role;
+  final String responsibility;
+  final String status;
+  final int readinessScore;
+  final String? notes;
 }
 
 class _CapabilityItem {

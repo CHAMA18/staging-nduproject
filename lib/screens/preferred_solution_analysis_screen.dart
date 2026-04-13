@@ -8,6 +8,7 @@ import 'package:ndu_project/widgets/header_banner_image.dart';
 import 'package:ndu_project/services/firebase_auth_service.dart';
 import 'package:ndu_project/services/auth_nav.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
@@ -58,6 +59,7 @@ class _PreferredSolutionAnalysisScreenState
   static const String _finalSelectionWarning =
       'This selection will form the basis of the entire project and cannot be changed once confirmed. Please ensure you have reviewed all options carefully.';
   static const Set<String> _authorizedSelectionRoles = {
+    'admin',
     'owner',
     'project manager',
     'founder',
@@ -248,17 +250,33 @@ class _PreferredSolutionAnalysisScreenState
     });
 
     try {
+      final provider = ProjectDataHelper.getProvider(context);
+      final projectData = provider.projectData;
       final notes = _notesController.text.trim();
+      final structuredContext = ProjectDataHelper.buildFepContext(
+        projectData,
+        sectionLabel: 'Preferred Solution Analysis',
+      ).trim();
+      final scanContext = ProjectDataHelper.buildProjectContextScan(
+        projectData,
+        sectionLabel: 'Preferred Solution Analysis',
+      ).trim();
+      final combinedContext = [
+        if (notes.isNotEmpty) notes,
+        if (structuredContext.isNotEmpty) structuredContext,
+        if (scanContext.isNotEmpty) scanContext,
+      ].join('\n\n');
       final results = await Future.wait([
         _openAi.generateStakeholdersForSolutions(_solutions,
-            contextNotes: notes),
-        _openAi.generateRisksForSolutions(_solutions, contextNotes: notes),
+            contextNotes: combinedContext),
+        _openAi.generateRisksForSolutions(_solutions,
+            contextNotes: combinedContext),
         _openAi.generateTechnologiesForSolutions(_solutions,
-            contextNotes: notes),
+            contextNotes: combinedContext),
         _openAi.generateInfrastructureForSolutions(_solutions,
-            contextNotes: notes),
+            contextNotes: combinedContext),
         _openAi.generateCostBreakdownForSolutions(_solutions,
-            contextNotes: notes),
+            contextNotes: combinedContext),
       ]);
 
       // Stakeholders API returns Map<String, Map<String, List<String>>> with 'internal' / 'external'
@@ -334,6 +352,9 @@ class _PreferredSolutionAnalysisScreenState
 
   String _normalizeRole(String role) {
     final lower = role.trim().toLowerCase();
+    if (lower == 'administrator') {
+      return 'admin';
+    }
     if (lower == 'project_manager' || lower == 'project manager') {
       return 'project manager';
     }
@@ -384,41 +405,46 @@ class _PreferredSolutionAnalysisScreenState
       final displayName =
           FirebaseAuthService.displayNameOrEmail(fallback: '').trim();
 
-      final projectId = projectData.projectId?.trim() ?? '';
-      if (uid.isNotEmpty && projectId.isNotEmpty) {
-        final project = await ProjectService.getProjectById(projectId);
-        if (project != null) {
-          final ownerEmail = project.ownerEmail.trim().toLowerCase();
-          if (project.ownerId == uid ||
-              (email.isNotEmpty && ownerEmail == email)) {
-            resolvedRole = 'Owner';
+      final isAdmin = await UserService.isCurrentUserAdmin();
+      if (isAdmin) {
+        resolvedRole = 'Admin';
+      } else {
+        final projectId = projectData.projectId?.trim() ?? '';
+        if (uid.isNotEmpty && projectId.isNotEmpty) {
+          final project = await ProjectService.getProjectById(projectId);
+          if (project != null) {
+            final ownerEmail = project.ownerEmail.trim().toLowerCase();
+            if (project.ownerId == uid ||
+                (email.isNotEmpty && ownerEmail == email)) {
+              resolvedRole = 'Owner';
+            }
           }
         }
-      }
 
-      if (!_authorizedSelectionRoles.contains(_normalizeRole(resolvedRole))) {
-        for (final member in projectData.teamMembers) {
-          final memberEmail = member.email.trim().toLowerCase();
-          final memberName = member.name.trim().toLowerCase();
-          final role = member.role.trim();
-          final matchesByEmail = email.isNotEmpty &&
-              memberEmail.isNotEmpty &&
-              memberEmail == email;
-          final matchesByName = displayName.isNotEmpty &&
-              memberName.isNotEmpty &&
-              memberName == displayName.toLowerCase();
+        if (!_authorizedSelectionRoles.contains(_normalizeRole(resolvedRole))) {
+          for (final member in projectData.teamMembers) {
+            final memberEmail = member.email.trim().toLowerCase();
+            final memberName = member.name.trim().toLowerCase();
+            final role = member.role.trim();
+            final matchesByEmail = email.isNotEmpty &&
+                memberEmail.isNotEmpty &&
+                memberEmail == email;
+            final matchesByName = displayName.isNotEmpty &&
+                memberName.isNotEmpty &&
+                memberName == displayName.toLowerCase();
 
-          if ((matchesByEmail || matchesByName) && role.isNotEmpty) {
-            resolvedRole = role;
-            break;
+            if ((matchesByEmail || matchesByName) && role.isNotEmpty) {
+              resolvedRole = role;
+              break;
+            }
           }
         }
-      }
 
-      if (!_authorizedSelectionRoles.contains(_normalizeRole(resolvedRole))) {
-        final pmName = projectData.charterProjectManagerName.trim();
-        if (_matchesIdentity(pmName, displayName, email)) {
-          resolvedRole = 'Project Manager';
+        if (!_authorizedSelectionRoles.contains(_normalizeRole(resolvedRole))) {
+          final pmName = projectData.charterProjectManagerName.trim();
+          if (_matchesIdentity(pmName, displayName, email)) {
+            resolvedRole = 'Project Manager';
+          }
         }
       }
     } catch (e) {

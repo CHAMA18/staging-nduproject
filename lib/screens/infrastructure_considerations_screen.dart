@@ -1184,11 +1184,13 @@ class _InfrastructureConsiderationsScreenState
                 border: Border.all(color: Colors.grey.withValues(alpha: 0.35))),
             child: const Row(children: [
               Expanded(
+                  flex: 2,
                   child: Center(
                       child: Text('Potential Solution',
                           style: TextStyle(
                               fontSize: 13, fontWeight: FontWeight.w600)))),
               Expanded(
+                  flex: 3,
                   child: Center(
                       child: Text('Major Infrastructure',
                           style: TextStyle(
@@ -1672,13 +1674,13 @@ class _InfrastructureConsiderationsScreenState
             ])
           : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(
+                flex: 2,
                 child: Align(
-                  alignment: Alignment.topCenter,
+                  alignment: Alignment.topLeft,
                   child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _numberBadge(index + 1),
@@ -1688,7 +1690,6 @@ class _InfrastructureConsiderationsScreenState
                                   s.title.isEmpty
                                       ? 'Potential Solution ${index + 1}'
                                       : s.title,
-                                  textAlign: TextAlign.center,
                                   style: const TextStyle(
                                       fontSize: 13,
                                       color: Colors.black87,
@@ -1699,7 +1700,6 @@ class _InfrastructureConsiderationsScreenState
                         if (s.description.isNotEmpty) ...[
                           const SizedBox(height: 6),
                           Text(s.description,
-                              textAlign: TextAlign.center,
                               style: const TextStyle(
                                   fontSize: 12, color: Colors.grey),
                               maxLines: 5,
@@ -1711,6 +1711,7 @@ class _InfrastructureConsiderationsScreenState
               ),
               const SizedBox(width: 16),
               Expanded(
+                  flex: 3,
                   child:
                       _infraTextArea(_infraControllers[index], index: index)),
             ]),

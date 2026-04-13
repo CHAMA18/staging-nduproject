@@ -256,11 +256,11 @@ DataTable buildNduDataTable({
   required BuildContext context,
   required List<DataColumn> columns,
   required List<DataRow> rows,
-  double columnSpacing = 20,
-  double horizontalMargin = 16,
-  double headingRowHeight = 56,
-  double dataRowMinHeight = 56,
-  double dataRowMaxHeight = 120,
+  double columnSpacing = 18,
+  double horizontalMargin = 14,
+  double headingRowHeight = 52,
+  double dataRowMinHeight = 60,
+  double dataRowMaxHeight = 220,
   TableBorder? border,
   bool zebra = true,
   Color? headingRowColor,
@@ -283,7 +283,7 @@ DataTable buildNduDataTable({
   final resolvedDataTextStyle = dataTextStyle ??
       TextStyle(
         fontSize: 13,
-        height: 1.35,
+        height: 1.45,
         color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF0F172A),
       );
 
@@ -292,7 +292,7 @@ DataTable buildNduDataTable({
     headingRowColor: WidgetStatePropertyAll(resolvedHeadingColor),
     headingTextStyle: resolvedHeadingTextStyle,
     dataTextStyle: resolvedDataTextStyle,
-    dividerThickness: 0.7,
+    dividerThickness: 0.8,
     columnSpacing: columnSpacing,
     horizontalMargin: horizontalMargin,
     headingRowHeight: headingRowHeight,

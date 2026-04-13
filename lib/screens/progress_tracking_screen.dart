@@ -8,6 +8,8 @@ import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/screens/contracts_tracking_screen.dart';
 import 'package:ndu_project/screens/team_meetings_screen.dart';
 import 'package:ndu_project/services/execution_phase_service.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/utils/phase_transition_helper.dart';
 import 'package:ndu_project/widgets/deliverables_tracking_widget.dart';
 import 'package:ndu_project/widgets/progress_tracking_dashboard.dart';
@@ -38,6 +40,8 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen>
   List<RecurringDeliverableRow> _recurringDeliverables = [];
   List<StatusReportRow> _statusReports = [];
   bool _loading = true;
+  bool _autoGenerationTriggered = false;
+  bool _isAutoGenerating = false;
   Timer? _autoSaveDebounce;
   late TabController _tabController;
 
@@ -96,6 +100,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen>
           _loading = false;
         });
       }
+      await _autoGenerateIfNeeded();
     } catch (e) {
       debugPrint('Error loading progress tracking data: $e');
       if (mounted) {
@@ -104,6 +109,110 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen>
         });
       }
     }
+  }
+
+  Future<void> _autoGenerateIfNeeded() async {
+    if (!mounted || _autoGenerationTriggered || _isAutoGenerating) return;
+    if (_deliverables.isNotEmpty &&
+        _recurringDeliverables.isNotEmpty &&
+        _statusReports.isNotEmpty) {
+      return;
+    }
+
+    _autoGenerationTriggered = true;
+    _isAutoGenerating = true;
+    try {
+      final contextText =
+          ExecutionPhaseAiSeed.buildContext(context, section: 'Progress Tracking');
+      if (contextText.isEmpty) return;
+
+      final generated = await ExecutionPhaseAiSeed.generateEntries(
+        context: context,
+        section: 'Progress Tracking',
+        sections: const {
+          'deliverables': 'Key execution deliverables to track',
+          'recurringDeliverables': 'Recurring deliverables or checkpoints',
+          'statusReports': 'Status report types for stakeholders',
+        },
+        itemsPerSection: 3,
+      );
+
+      final deliverableEntries = generated['deliverables'] ?? const [];
+      final recurringEntries = generated['recurringDeliverables'] ?? const [];
+      final reportEntries = generated['statusReports'] ?? const [];
+
+      final newDeliverables = deliverableEntries
+          .map(
+            (entry) => DeliverableRow(
+              title: entry.title,
+              description: entry.details,
+              owner: 'Project Lead',
+              status: entry.status?.isNotEmpty == true
+                  ? entry.status!
+                  : 'Not Started',
+            ),
+          )
+          .toList();
+
+      final newRecurring = recurringEntries
+          .map(
+            (entry) => RecurringDeliverableRow(
+              title: entry.title,
+              description: entry.details,
+              frequency: _extractFrequency(entry.details),
+              owner: 'Ops Lead',
+              status: entry.status?.isNotEmpty == true
+                  ? entry.status!
+                  : 'Active',
+            ),
+          )
+          .toList();
+
+      final now = DateTime.now();
+      final newReports = reportEntries
+          .map(
+            (entry) => StatusReportRow(
+              reportType: entry.title,
+              stakeholder: 'Project Sponsors',
+              reportDate: now,
+              summary: entry.details,
+              status:
+                  entry.status?.isNotEmpty == true ? entry.status! : 'Draft',
+            ),
+          )
+          .toList();
+
+      if (!mounted) return;
+      setState(() {
+        if (_deliverables.isEmpty && newDeliverables.isNotEmpty) {
+          _deliverables = newDeliverables;
+        }
+        if (_recurringDeliverables.isEmpty && newRecurring.isNotEmpty) {
+          _recurringDeliverables = newRecurring;
+        }
+        if (_statusReports.isEmpty && newReports.isNotEmpty) {
+          _statusReports = newReports;
+        }
+      });
+
+      _persistChanges();
+    } catch (e) {
+      debugPrint('Error auto-generating progress tracking data: $e');
+    } finally {
+      _isAutoGenerating = false;
+    }
+  }
+
+  String _extractFrequency(String text) {
+    final lower = text.toLowerCase();
+    if (lower.contains('daily')) return 'Daily';
+    if (lower.contains('bi-weekly') || lower.contains('bi weekly')) {
+      return 'Bi-Weekly';
+    }
+    if (lower.contains('weekly')) return 'Weekly';
+    if (lower.contains('monthly')) return 'Monthly';
+    if (lower.contains('quarter')) return 'Quarterly';
+    return 'Weekly';
   }
 
   void _persistChanges() {

@@ -1272,45 +1272,19 @@ class _FrontEndPlanningRisksScreenState
     if (!validation.isValid) {
       _applyRiskValidationState(validation);
 
-      final action = await FormValidationEngine.showMissingRequirementsDialog(
+      FormValidationEngine.showValidationSnackBar(
         context,
         validation,
-        title: 'Risk Requirements Missing',
         intro:
-            'The following risk fields are still missing. You can complete them now, auto-fill with AI, or continue and return later.',
-        manualActionLabel: 'Add Risk Details',
-        showAutoFillAction: true,
-        autoFillActionLabel: 'Auto-fill with AI',
+            'Risk details are recommended before proceeding. You can continue now and complete them later.',
+        backgroundColor: const Color(0xFFF59E0B),
       );
-      if (!mounted || action == null) return;
 
-      if (action == MissingRequirementsAction.skip) {
-        if (_riskTableHasError) {
-          setState(_clearRiskTableValidationState);
-        }
-        await _saveAndNavigateToOpportunities(skippedValidation: true);
-        return;
+      if (_riskTableHasError) {
+        setState(_clearRiskTableValidationState);
       }
-
-      if (action == MissingRequirementsAction.autoFill) {
-        await _generateRequirementsFromBusinessCase();
-        if (!mounted) return;
-        final postAutoValidation = _validateRiskSection();
-        if (!postAutoValidation.isValid) {
-          _applyRiskValidationState(postAutoValidation);
-          FormValidationEngine.showValidationSnackBar(
-            context,
-            postAutoValidation,
-            intro: 'Some risk fields still need your input:',
-          );
-          await _focusFirstRiskIssue(postAutoValidation);
-          return;
-        }
-      } else {
-        FormValidationEngine.showValidationSnackBar(context, validation);
-        await _focusFirstRiskIssue(validation);
-        return;
-      }
+      await _saveAndNavigateToOpportunities(skippedValidation: true);
+      return;
     }
 
     if (_riskTableHasError) {

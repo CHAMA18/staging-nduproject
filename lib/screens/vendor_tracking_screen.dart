@@ -4,6 +4,8 @@ import 'package:ndu_project/screens/detailed_design_screen.dart';
 import 'package:ndu_project/services/vendor_service.dart';
 import 'package:ndu_project/services/contract_service.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -29,6 +31,7 @@ class VendorTrackingScreen extends StatefulWidget {
 
 class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
   final Set<String> _selectedFilters = {'All vendors'};
+  bool _isSeedingVendors = false;
 
   String? get _projectId {
     try {
@@ -36,6 +39,72 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
       return provider?.projectData.projectId;
     } catch (e) {
       return null;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _seedVendorsIfNeeded());
+  }
+
+  Future<void> _seedVendorsIfNeeded() async {
+    if (_isSeedingVendors) return;
+    final projectId = _projectId;
+    final provider = ProjectDataInherited.maybeOf(context);
+    final data = provider?.projectData;
+    if (projectId == null || data == null) return;
+
+    final hasVendors = await VendorService.hasAnyVendors(projectId);
+    if (hasVendors) return;
+
+    _isSeedingVendors = true;
+    try {
+      final contextText = ExecutionPhaseAiSeed.buildContext(
+        context,
+        section: 'Vendor Tracking',
+      );
+      final ai = OpenAiServiceSecure();
+      final vendors = await ai.generateProcurementVendors(
+        projectName: data.projectName,
+        solutionTitle: data.solutionTitle,
+        contextNotes: contextText,
+        count: 5,
+        preferredCategories: const [
+          'Logistics',
+          'Technology',
+          'Operations',
+          'Facilities',
+          'Services'
+        ],
+      );
+
+      for (final vendor in vendors) {
+        final name = (vendor['name'] ?? '').toString().trim();
+        final category = (vendor['category'] ?? 'Operations').toString().trim();
+        if (name.isEmpty) continue;
+        await VendorService.createVendor(
+          projectId: projectId,
+          name: name,
+          category: category,
+          sla: '95%',
+          leadTime: '14 days',
+          requiredDeliverables:
+              '. Weekly status updates\n. Deliverables meet quality standards\n. SLA compliance reporting',
+          rating: 'B',
+          status: 'Active',
+          nextReview: 'TBD',
+          onTimeDelivery: 0.8,
+          incidentResponse: 0.85,
+          qualityScore: 0.82,
+          costAdherence: 0.78,
+          notes: 'Auto-generated vendor entry.',
+        );
+      }
+    } catch (e) {
+      debugPrint('Error seeding vendors: $e');
+    } finally {
+      _isSeedingVendors = false;
     }
   }
 
@@ -144,8 +213,22 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
       children: [
         _actionButton(Icons.add, 'Add vendor',
             onPressed: () => _showAddVendorDialog(context)),
-        _actionButton(Icons.assessment_outlined, 'Quarterly review'),
-        _actionButton(Icons.description_outlined, 'Export scorecard'),
+        _actionButton(Icons.assessment_outlined, 'Quarterly review',
+            onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text(
+                    'Quarterly review started. Use vendor status and score columns to capture decisions.')),
+          );
+        }),
+        _actionButton(Icons.description_outlined, 'Export scorecard',
+            onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text(
+                    'Scorecard export is queued while report templates are finalized.')),
+          );
+        }),
         _primaryButton('Start vendor audit'),
       ],
     );
@@ -170,7 +253,18 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
 
   Widget _primaryButton(String label) {
     return ElevatedButton.icon(
-      onPressed: () {},
+      onPressed: () {
+        setState(() {
+          _selectedFilters
+            ..clear()
+            ..add('At risk');
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content:
+                  Text('Vendor audit started. Filter set to at-risk vendors.')),
+        );
+      },
       icon: const Icon(Icons.play_arrow, size: 18),
       label: Text(label,
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),

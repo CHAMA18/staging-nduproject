@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:ndu_project/screens/front_end_planning_procurement_screen.dart';
@@ -48,6 +50,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
   static const int _loadMoreStep = 40;
   static const int _maxAiImportRows = 25;
   static const String _contractingNotesKey = 'planning_contracting_notes';
+  static const String _contractingReportsKey = 'contracting_reports';
   static const String _contractingScopeSubtitle =
       'Identify the contract scope required for effective project execution and, where applicable, initiate contracting activities early to ensure the project schedule is maintained.';
   static const List<String> _contractTypeOptions = [
@@ -63,6 +66,20 @@ class _FrontEndPlanningContractVendorQuotesScreenState
     'Launch',
     'Operations',
     'Unsure',
+  ];
+  static const List<String> _trackingStatusOptions = [
+    'RFQ Drafted',
+    'RFQ Sent',
+    'Responses In',
+    'Evaluation',
+    'Awarded',
+    'Contract Signed',
+  ];
+  static const List<String> _reportStatusOptions = [
+    'Draft',
+    'In Review',
+    'Approved',
+    'Published',
   ];
   static const String _workflowCollectionName = 'contracting_workflows';
   static const String _workflowGlobalDocId = 'global';
@@ -139,6 +156,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
       List<_ContractingWorkflowStep>.from(_defaultWorkflowTemplate);
   Map<String, List<_ContractingWorkflowStep>> _scopeWorkflowOverrides = {};
   Map<String, _ContractScopeManagementState> _scopeManagementByScopeId = {};
+  String? _prefilledNotesProjectId;
 
   @override
   void initState() {
@@ -150,6 +168,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
       _notesController.text = data.frontEndPlanning.contractVendorQuotes;
       _notesController.addListener(_syncContractNotes);
       _isNotesSyncReady = true;
+      _prefillContractingNotesIfMissing(data);
     });
   }
 
@@ -1470,6 +1489,14 @@ class _FrontEndPlanningContractVendorQuotesScreenState
     return '${value.year}-$month-$day $hour:$minute';
   }
 
+  DateTime? _parseNotesDate(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is Timestamp) return raw.toDate();
+    if (raw is DateTime) return raw;
+    final parsed = DateTime.tryParse(raw.toString());
+    return parsed;
+  }
+
   Widget _buildManagementTabButton({
     required String label,
     required _ContractingManagementTab tab,
@@ -1974,6 +2001,14 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                 ),
               ),
               const Spacer(),
+              OutlinedButton.icon(
+                onPressed: () => _openAddContractorDialog(
+                  existingContractors: contractors,
+                ),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Add Contractor'),
+              ),
+              const SizedBox(width: 8),
               TextButton.icon(
                 onPressed: _openApprovedContractorList,
                 icon: const Icon(Icons.fact_check_outlined, size: 15),
@@ -1982,81 +2017,11 @@ class _FrontEndPlanningContractVendorQuotesScreenState
             ],
           ),
           const SizedBox(height: 8),
-          if (approvedContractors.isEmpty)
-            const Text(
-              'No approved contractors found yet.',
-              style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-            )
-          else
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: approvedContractors.map(
-                (name) {
-                  final vendor = _vendorForName(contractors, name);
-                  final statusLabel = vendor == null
-                      ? 'Untracked'
-                      : vendor.status.trim().isEmpty
-                          ? 'Pending'
-                          : vendor.status.trim();
-                  return InkWell(
-                    onTap: () => _openContractorActionsDialog(
-                      name: name,
-                      vendor: vendor,
-                      scopes: items,
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 9, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: const Color(0xFFE5E7EB)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            name,
-                            style: const TextStyle(
-                              fontSize: 11.5,
-                              color: Color(0xFF374151),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: vendor == null
-                                  ? const Color(0xFFF3F4F6)
-                                  : const Color(0xFFEFF6FF),
-                              borderRadius: BorderRadius.circular(999),
-                              border: Border.all(
-                                color: vendor == null
-                                    ? const Color(0xFFE5E7EB)
-                                    : const Color(0xFFBFDBFE),
-                              ),
-                            ),
-                            child: Text(
-                              statusLabel,
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: vendor == null
-                                    ? const Color(0xFF6B7280)
-                                    : const Color(0xFF1E3A8A),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ).toList(),
-            ),
+          _buildApprovedContractorsTable(
+            contractors: contractors,
+            items: items,
+            approvedNames: approvedContractors,
+          ),
         ],
       ),
     );
@@ -2288,6 +2253,111 @@ class _FrontEndPlanningContractVendorQuotesScreenState
       contractorName: result.name.trim(),
       scopes: scopes,
     );
+  }
+
+  Future<void> _openEditContractorDialog(VendorModel contractor) async {
+    final projectId = _activeProjectIdOrNull();
+    if (projectId == null) return;
+
+    final categoryOptions = const [
+      'Construction Services',
+      'Services',
+      'Consulting',
+      'Materials',
+      'Security',
+      'Logistics',
+      'Other',
+    ];
+
+    final result = await showDialog<VendorModel>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (dialogContext) => AddVendorDialog(
+        contextChips: _buildDialogContextChips(),
+        categoryOptions: categoryOptions,
+        showAiGenerateButton: false,
+        partnerLabel: 'Contractor',
+        partnerPluralLabel: 'Contractors',
+        initialVendor: contractor,
+        existingPartners: const <VendorModel>[],
+        allowExistingAutofill: false,
+      ),
+    );
+
+    if (result == null) return;
+    try {
+      await VendorService.updateVendor(
+        projectId: projectId,
+        vendorId: contractor.id,
+        name: result.name.trim(),
+        category: result.category.trim(),
+        criticality: result.criticality,
+        sla: result.sla,
+        slaPerformance: result.slaPerformance,
+        leadTime: result.leadTime,
+        requiredDeliverables: result.requiredDeliverables,
+        rating: result.rating,
+        status: result.status,
+        nextReview: result.nextReview,
+        contractId: result.contractId,
+        onTimeDelivery: result.onTimeDelivery,
+        incidentResponse: result.incidentResponse,
+        qualityScore: result.qualityScore,
+        costAdherence: result.costAdherence,
+        notes: result.notes,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Contractor updated.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to update contractor: $e')),
+      );
+    }
+  }
+
+  Future<void> _confirmDeleteContractor(VendorModel contractor) async {
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Remove contractor?'),
+            content: Text(
+              'Remove "${contractor.name}" from the approved contractors list?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Remove',
+                    style: TextStyle(color: Colors.red)),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed) return;
+
+    try {
+      await VendorService.deleteVendor(
+        projectId: contractor.projectId,
+        vendorId: contractor.id,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Contractor removed.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to remove contractor: $e')),
+      );
+    }
   }
 
   Future<ProcurementItemModel?> _showContractScopeDialog({
@@ -2806,6 +2876,31 @@ class _FrontEndPlanningContractVendorQuotesScreenState
   String _trackingKeyForScope(String scopeId) =>
       'contracting_tracking_$scopeId';
 
+  String _trackingUpdatedKeyForScope(String scopeId) =>
+      'contracting_tracking_updated_$scopeId';
+
+  String _trackingStatusForScope(
+    String scopeId,
+    Map<String, dynamic> notes,
+  ) {
+    return (notes[_trackingKeyForScope(scopeId)] ?? '')
+        .toString()
+        .trim()
+        .isEmpty
+        ? 'Not Started'
+        : (notes[_trackingKeyForScope(scopeId)] ?? '').toString().trim();
+  }
+
+  String _trackingUpdatedLabel(
+    String scopeId,
+    Map<String, dynamic> notes,
+  ) {
+    final raw = notes[_trackingUpdatedKeyForScope(scopeId)];
+    final parsed = _parseNotesDate(raw);
+    if (parsed == null) return '-';
+    return _formatDateTimeShort(parsed);
+  }
+
   Future<void> _savePlanningNote(String key, String value) async {
     await ProjectDataHelper.updateAndSave(
       context: context,
@@ -2883,7 +2978,38 @@ class _FrontEndPlanningContractVendorQuotesScreenState
 
     final notes = ProjectDataHelper.getData(context).planningNotes;
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'What you should do',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 6),
+              _templateGuidanceRow(
+                  'Confirm scope packages and key deliverables.'),
+              _templateGuidanceRow(
+                  'Draft template clauses for SLAs, milestones, and approvals.'),
+              _templateGuidanceRow(
+                  'Align templates with procurement and legal review.'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
         for (final item in started)
           Container(
             width: double.infinity,
@@ -2901,22 +3027,50 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        item.name.trim().isEmpty
-                            ? 'Untitled Scope'
-                            : item.name.trim(),
-                        style: const TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w700),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item.name.trim().isEmpty
+                                  ? 'Untitled Scope'
+                                  : item.name.trim(),
+                              style: const TextStyle(
+                                  fontSize: 13, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _statusBadge(
+                            (notes[_templateKeyForScope(item.id)] ?? '')
+                                    .toString()
+                                    .trim()
+                                    .isEmpty
+                                ? 'Draft Needed'
+                                : 'Template Ready',
+                            tone: (notes[_templateKeyForScope(item.id)] ?? '')
+                                    .toString()
+                                    .trim()
+                                    .isEmpty
+                                ? const Color(0xFFF59E0B)
+                                : const Color(0xFF2563EB),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       Text(
                         (notes[_templateKeyForScope(item.id)] ?? '')
                                 .toString()
+                                .trim()
                                 .isEmpty
                             ? 'No template yet. Create one for this scope.'
-                            : 'Template saved for this scope.',
+                            : (notes[_templateKeyForScope(item.id)] ?? '')
+                                .toString()
+                                .trim(),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                            fontSize: 11.5, color: Color(0xFF6B7280)),
+                          fontSize: 11.5,
+                          color: Color(0xFF6B7280),
+                        ),
                       ),
                     ],
                   ),
@@ -2945,70 +3099,89 @@ class _FrontEndPlanningContractVendorQuotesScreenState
       );
     }
 
-    const statuses = [
-      'RFQ Drafted',
-      'RFQ Sent',
-      'Responses In',
-      'Evaluation',
-      'Awarded',
-      'Contract Signed',
-    ];
     final notes = ProjectDataHelper.getData(context).planningNotes;
+    final sorted = [...started]
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final item in started)
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    item.name.trim().isEmpty
-                        ? 'Untitled Scope'
-                        : item.name.trim(),
-                    style: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w700),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 220,
-                  child: DropdownButtonFormField<String>(
-                    initialValue: (notes[_trackingKeyForScope(item.id)] ?? '')
-                            .toString()
-                            .trim()
-                            .isEmpty
-                        ? statuses.first
-                        : (notes[_trackingKeyForScope(item.id)] ?? '')
-                            .toString()
-                            .trim(),
-                    items: statuses
-                        .map((status) => DropdownMenuItem(
-                              value: status,
-                              child: Text(status),
-                            ))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value == null) return;
-                      _savePlanningNote(
-                        _trackingKeyForScope(item.id),
-                        value,
-                      );
-                    },
-                    decoration:
-                        const InputDecoration(labelText: 'Tracking Status'),
-                  ),
-                ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: OutlinedButton.icon(
+            onPressed: () => _openTrackingDialog(sorted),
+            icon: const Icon(Icons.add, size: 16),
+            label: const Text('Add Tracking Entry'),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: ResponsiveDataTableWrapper(
+            minWidth: 760,
+            child: buildNduDataTable(
+              context: context,
+              columnSpacing: 24,
+              horizontalMargin: 18,
+              headingRowHeight: 48,
+              dataRowMinHeight: 56,
+              dataRowMaxHeight: 80,
+              columns: const [
+                DataColumn(label: Text('Scope')),
+                DataColumn(label: Text('Status')),
+                DataColumn(label: Text('Last Updated')),
+                DataColumn(label: Text('Actions')),
               ],
+              rows: sorted.map((item) {
+                final status = _trackingStatusForScope(item.id, notes);
+                return DataRow(
+                  cells: [
+                    DataCell(
+                      Text(
+                        item.name.trim().isEmpty
+                            ? 'Untitled Scope'
+                            : item.name.trim(),
+                      ),
+                    ),
+                    DataCell(
+                      _statusBadge(
+                        status,
+                        tone: _trackingStatusTone(status),
+                      ),
+                    ),
+                    DataCell(
+                      Text(
+                        _trackingUpdatedLabel(item.id, notes),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                    DataCell(
+                      Row(
+                        children: [
+                          IconButton(
+                            onPressed: () =>
+                                _openTrackingDialog(sorted, initial: item),
+                            icon: const Icon(Icons.edit_outlined, size: 18),
+                            tooltip: 'Edit status',
+                          ),
+                          IconButton(
+                            onPressed: () => _clearTrackingStatus(item.id),
+                            icon: const Icon(Icons.delete_outline, size: 18),
+                            tooltip: 'Remove',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
             ),
           ),
+        ),
       ],
     );
   }
@@ -3017,45 +3190,673 @@ class _FrontEndPlanningContractVendorQuotesScreenState
     List<ProcurementItemModel> items,
     List<VendorModel> contractors,
   ) {
-    final started = items.where((item) {
+    final startedCount = items.where((item) {
       final state = _scopeManagementByScopeId[item.id];
       return state?.started == true;
-    }).toList();
+    }).length;
     final approvedCount = contractors
         .where((vendor) => vendor.status.toLowerCase() == 'approved')
         .length;
+    final reports =
+        _loadContractingReports(ProjectDataHelper.getData(context));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Contracting Summary',
+                      style: TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Started scopes: $startedCount',
+                      style:
+                          const TextStyle(fontSize: 12, color: Color(0xFF374151)),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Approved contractors: $approvedCount',
+                      style:
+                          const TextStyle(fontSize: 12, color: Color(0xFF374151)),
+                    ),
+                  ],
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _openReportDialog(),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Add Report'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (reports.isEmpty)
+          buildNduTableEmptyState(
+            context,
+            message:
+                'No reports yet. Add a contracting report to track progress and approvals.',
+          )
+        else
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: ResponsiveDataTableWrapper(
+              minWidth: 820,
+              child: buildNduDataTable(
+                context: context,
+                columnSpacing: 24,
+                horizontalMargin: 18,
+                headingRowHeight: 48,
+                dataRowMinHeight: 56,
+                dataRowMaxHeight: 80,
+                columns: const [
+                  DataColumn(label: Text('Report')),
+                  DataColumn(label: Text('Status')),
+                  DataColumn(label: Text('Owner')),
+                  DataColumn(label: Text('Updated')),
+                  DataColumn(label: Text('Actions')),
+                ],
+                rows: reports.map((report) {
+                  return DataRow(
+                    cells: [
+                      DataCell(
+                        Text(
+                          report.title.trim().isEmpty
+                              ? 'Untitled Report'
+                              : report.title.trim(),
+                        ),
+                      ),
+                      DataCell(
+                        _statusBadge(
+                          report.status,
+                          tone: _reportStatusTone(report.status),
+                        ),
+                      ),
+                      DataCell(
+                        Text(
+                          report.owner.trim().isEmpty
+                              ? '-'
+                              : report.owner.trim(),
+                        ),
+                      ),
+                      DataCell(
+                        Text(
+                          _formatDateTimeShort(report.updatedAt),
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                      DataCell(
+                        Row(
+                          children: [
+                            IconButton(
+                              onPressed: () =>
+                                  _openReportDialog(existing: report),
+                              icon: const Icon(Icons.edit_outlined, size: 18),
+                              tooltip: 'Edit report',
+                            ),
+                            IconButton(
+                              onPressed: () => _removeReport(report.id),
+                              icon: const Icon(Icons.delete_outline, size: 18),
+                              tooltip: 'Remove',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildApprovedContractorsTable({
+    required List<VendorModel> contractors,
+    required List<ProcurementItemModel> items,
+    required List<String> approvedNames,
+  }) {
+    final combined = <String, String>{};
+    for (final name in approvedNames) {
+      final trimmed = name.trim();
+      if (trimmed.isEmpty) continue;
+      combined.putIfAbsent(trimmed.toLowerCase(), () => trimmed);
+    }
+    for (final vendor in contractors) {
+      final name = vendor.name.trim();
+      if (name.isEmpty) continue;
+      combined.putIfAbsent(name.toLowerCase(), () => name);
+    }
+    final rows = combined.values.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+    if (rows.isEmpty) {
+      return buildNduTableEmptyState(
+        context,
+        message:
+            'No approved contractors yet. Add a contractor or assign one to a scope.',
+      );
+    }
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: ResponsiveDataTableWrapper(
+        minWidth: 760,
+        child: buildNduDataTable(
+          context: context,
+          columnSpacing: 24,
+          horizontalMargin: 18,
+          headingRowHeight: 48,
+          dataRowMinHeight: 56,
+          dataRowMaxHeight: 80,
+          columns: const [
+            DataColumn(label: Text('Contractor')),
+            DataColumn(label: Text('Category')),
+            DataColumn(label: Text('Status')),
+            DataColumn(label: Text('Rating')),
+            DataColumn(label: Text('Actions')),
+          ],
+          rows: rows.map((name) {
+            final vendor = _vendorForName(contractors, name);
+            final statusLabel = vendor == null || vendor.status.trim().isEmpty
+                ? 'Untracked'
+                : vendor.status.trim();
+            return DataRow(
+              cells: [
+                DataCell(Text(name)),
+                DataCell(Text(vendor?.category.trim().isEmpty ?? true
+                    ? '-'
+                    : vendor!.category.trim())),
+                DataCell(
+                  _statusBadge(
+                    statusLabel,
+                    tone: _vendorStatusTone(statusLabel),
+                  ),
+                ),
+                DataCell(Text(vendor?.rating ?? '-')),
+                DataCell(
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => _promptAssignContractorToScopes(
+                          contractorName: name,
+                          scopes: items,
+                        ),
+                        icon: const Icon(Icons.assignment_ind_outlined, size: 18),
+                        tooltip: 'Assign to scope',
+                      ),
+                      if (vendor == null)
+                        TextButton(
+                          onPressed: () => _openAddContractorDialog(
+                            existingContractors: contractors,
+                          ),
+                          child: const Text('Add'),
+                        )
+                      else ...[
+                        IconButton(
+                          onPressed: () => _openEditContractorDialog(vendor),
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          tooltip: 'Edit contractor',
+                        ),
+                        IconButton(
+                          onPressed: () => _confirmDeleteContractor(vendor),
+                          icon: const Icon(Icons.delete_outline, size: 18),
+                          tooltip: 'Remove',
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _templateGuidanceRow(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('• ',
+              style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _resolveContractingStage({
+    required int contractsCount,
+    required int scopeCount,
+    required int startedCount,
+    required int trackingCount,
+    required int reportCount,
+  }) {
+    if (contractsCount == 0) {
+      return 'Define contract packages';
+    }
+    if (scopeCount == 0) {
+      return 'Map contracting scope';
+    }
+    if (startedCount == 0) {
+      return 'Start scope processes';
+    }
+    if (trackingCount == 0) {
+      return 'Set tracking status';
+    }
+    if (reportCount == 0) {
+      return 'Publish contracting reports';
+    }
+    return 'Optimize contracting execution';
+  }
+
+  Widget _buildContractingOverviewCard({
+    required int contractsCount,
+    required int scopeCount,
+    required int startedCount,
+    required int trackingCount,
+    required int reportCount,
+    bool compact = false,
+  }) {
+    final stage = _resolveContractingStage(
+      contractsCount: contractsCount,
+      scopeCount: scopeCount,
+      startedCount: startedCount,
+      trackingCount: trackingCount,
+      reportCount: reportCount,
+    );
+    final steps = [
+      _overviewStepChip('Contracts', contractsCount > 0),
+      _overviewStepChip('Scope', scopeCount > 0),
+      _overviewStepChip('Start', startedCount > 0),
+      _overviewStepChip('Tracking', trackingCount > 0),
+      _overviewStepChip('Reports', reportCount > 0),
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(compact ? 12 : 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Contracting Summary',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
           Text(
-            'Started scopes: ${started.length}',
-            style: const TextStyle(fontSize: 12, color: Color(0xFF374151)),
+            'Contracting flow',
+            style: TextStyle(
+              fontSize: compact ? 13 : 14,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF0F172A),
+            ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Approved contractors: $approvedCount',
-            style: const TextStyle(fontSize: 12, color: Color(0xFF374151)),
+            'Current focus: $stage',
+            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Use scope tracking and templates to populate fuller reports.',
-            style: TextStyle(fontSize: 11.5, color: Color(0xFF6B7280)),
+          const SizedBox(height: 10),
+          Wrap(spacing: 8, runSpacing: 6, children: steps),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _overviewMetric('Contracts', contractsCount),
+              _overviewMetric('Scopes', scopeCount),
+              _overviewMetric('Started', startedCount),
+              _overviewMetric('Tracking', trackingCount),
+              _overviewMetric('Reports', reportCount),
+            ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _overviewMetric(String label, int value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value.toString(),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _overviewStepChip(String label, bool complete) {
+    final tone = complete ? const Color(0xFF16A34A) : const Color(0xFFCBD5F5);
+    final textColor =
+        complete ? const Color(0xFF166534) : const Color(0xFF64748B);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: tone.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: tone.withOpacity(0.6)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w700,
+          color: textColor,
+        ),
+      ),
+    );
+  }
+
+  Widget _statusBadge(String label, {Color tone = const Color(0xFF2563EB)}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: tone.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: tone.withOpacity(0.35)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w700,
+          color: tone,
+        ),
+      ),
+    );
+  }
+
+  Color _trackingStatusTone(String status) {
+    final normalized = status.toLowerCase();
+    if (normalized.contains('draft')) return const Color(0xFF94A3B8);
+    if (normalized.contains('sent')) return const Color(0xFF2563EB);
+    if (normalized.contains('response')) return const Color(0xFF14B8A6);
+    if (normalized.contains('evaluation')) return const Color(0xFFF59E0B);
+    if (normalized.contains('award') || normalized.contains('signed')) {
+      return const Color(0xFF16A34A);
+    }
+    return const Color(0xFF64748B);
+  }
+
+  Color _reportStatusTone(String status) {
+    final normalized = status.toLowerCase();
+    if (normalized.contains('draft')) return const Color(0xFF94A3B8);
+    if (normalized.contains('review')) return const Color(0xFFF59E0B);
+    if (normalized.contains('approved')) return const Color(0xFF2563EB);
+    if (normalized.contains('publish')) return const Color(0xFF16A34A);
+    return const Color(0xFF64748B);
+  }
+
+  Color _vendorStatusTone(String status) {
+    final normalized = status.toLowerCase();
+    if (normalized.contains('approved') || normalized.contains('active')) {
+      return const Color(0xFF16A34A);
+    }
+    if (normalized.contains('denied') || normalized.contains('blocked')) {
+      return const Color(0xFFDC2626);
+    }
+    if (normalized.contains('watch') || normalized.contains('pending')) {
+      return const Color(0xFFF59E0B);
+    }
+    return const Color(0xFF64748B);
+  }
+
+  Future<void> _openTrackingDialog(
+    List<ProcurementItemModel> scopes, {
+    ProcurementItemModel? initial,
+  }) async {
+    if (scopes.isEmpty) return;
+    final notes = ProjectDataHelper.getData(context).planningNotes;
+    ProcurementItemModel selected = initial ?? scopes.first;
+    var status = _trackingStatusForScope(selected.id, notes);
+    if (status == 'Not Started') {
+      status = _trackingStatusOptions.first;
+    }
+
+    final saved = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => StatefulBuilder(
+            builder: (context, setState) => AlertDialog(
+              title: const Text('Update Tracking Status'),
+              content: SizedBox(
+                width: 520,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      value: selected.id,
+                      decoration: const InputDecoration(labelText: 'Scope'),
+                      items: scopes
+                          .map((scope) => DropdownMenuItem<String>(
+                                value: scope.id,
+                                child: Text(scope.name.trim().isEmpty
+                                    ? 'Untitled Scope'
+                                    : scope.name.trim()),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        final match = scopes.firstWhere(
+                            (scope) => scope.id == value,
+                            orElse: () => scopes.first);
+                        setState(() {
+                          selected = match;
+                          final next =
+                              _trackingStatusForScope(match.id, notes);
+                          status = next == 'Not Started'
+                              ? _trackingStatusOptions.first
+                              : next;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: status,
+                      decoration:
+                          const InputDecoration(labelText: 'Tracking Status'),
+                      items: _trackingStatusOptions
+                          .map((option) => DropdownMenuItem<String>(
+                                value: option,
+                                child: Text(option),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => status = value);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  child: const Text('Save Status'),
+                ),
+              ],
+            ),
+          ),
+        ) ??
+        false;
+
+    if (!saved) return;
+    await _saveTrackingStatus(selected.id, status);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Tracking status updated.')),
+    );
+  }
+
+  Future<void> _openReportDialog({
+    _ContractingReportEntry? existing,
+  }) async {
+    final titleController = TextEditingController(text: existing?.title ?? '');
+    final ownerController = TextEditingController(text: existing?.owner ?? '');
+    final summaryController =
+        TextEditingController(text: existing?.summary ?? '');
+    var status = existing?.status ?? _reportStatusOptions.first;
+
+    final saved = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => StatefulBuilder(
+            builder: (context, setState) => AlertDialog(
+              title: Text(existing == null ? 'Add Report' : 'Edit Report'),
+              content: SizedBox(
+                width: 560,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: titleController,
+                        decoration:
+                            const InputDecoration(labelText: 'Report Title'),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: status,
+                        decoration:
+                            const InputDecoration(labelText: 'Status'),
+                        items: _reportStatusOptions
+                            .map((option) => DropdownMenuItem<String>(
+                                  value: option,
+                                  child: Text(option),
+                                ))
+                            .toList(),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() => status = value);
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: ownerController,
+                        decoration:
+                            const InputDecoration(labelText: 'Owner'),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: summaryController,
+                        decoration:
+                            const InputDecoration(labelText: 'Summary'),
+                        maxLines: 4,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  child: Text(existing == null ? 'Add Report' : 'Save Changes'),
+                ),
+              ],
+            ),
+          ),
+        ) ??
+        false;
+
+    if (!saved) return;
+    final data = ProjectDataHelper.getData(context);
+    final reports = _loadContractingReports(data);
+    final entry = _ContractingReportEntry(
+      id: existing?.id ??
+          'report_${DateTime.now().microsecondsSinceEpoch}',
+      title: titleController.text.trim(),
+      status: status,
+      owner: ownerController.text.trim(),
+      summary: summaryController.text.trim(),
+      updatedAt: DateTime.now(),
+    );
+
+    final next = [...reports];
+    final index = existing == null
+        ? -1
+        : reports.indexWhere((report) => report.id == existing.id);
+    if (index >= 0) {
+      next[index] = entry;
+    } else {
+      next.add(entry);
+    }
+    await _saveContractingReports(next);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+          content: Text(existing == null
+              ? 'Report added.'
+              : 'Report updated.')),
+    );
+  }
+
+  Future<void> _removeReport(String reportId) async {
+    final data = ProjectDataHelper.getData(context);
+    final reports = _loadContractingReports(data);
+    final next = reports.where((report) => report.id != reportId).toList();
+    await _saveContractingReports(next);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Report removed.')),
     );
   }
 
@@ -4023,6 +4824,193 @@ class _FrontEndPlanningContractVendorQuotesScreenState
     provider.saveToFirebase(checkpoint: 'fep_contract_vendor_quotes');
   }
 
+  void _prefillContractingNotesIfMissing(ProjectDataModel data) {
+    final projectId = data.projectId?.trim() ?? '';
+    if (projectId.isEmpty) return;
+    if (_prefilledNotesProjectId == projectId) return;
+    _prefilledNotesProjectId = projectId;
+
+    final storedNotes =
+        (data.planningNotes[_contractingNotesKey] ?? '').toString().trim();
+    final fepNotes = data.frontEndPlanning.contractVendorQuotes.trim();
+    if (storedNotes.isNotEmpty || fepNotes.isNotEmpty) return;
+
+    final seed = _buildContractingNotesSeed(data).trim();
+    if (seed.isEmpty) return;
+
+    _notesController.text = seed;
+    final provider = ProjectDataHelper.getProvider(context);
+    provider.updateField(
+      (data) => data.copyWith(
+        planningNotes: {
+          ...data.planningNotes,
+          _contractingNotesKey: seed,
+        },
+        frontEndPlanning: ProjectDataHelper.updateFEPField(
+          current: data.frontEndPlanning,
+          contractVendorQuotes: seed,
+        ),
+      ),
+    );
+    ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'fep_contract_vendor_quotes',
+      dataUpdater: (data) => data.copyWith(
+        planningNotes: {
+          ...data.planningNotes,
+          _contractingNotesKey: seed,
+        },
+        frontEndPlanning: ProjectDataHelper.updateFEPField(
+          current: data.frontEndPlanning,
+          contractVendorQuotes: seed,
+        ),
+      ),
+      showSnackbar: false,
+    );
+  }
+
+  Future<void> _saveTrackingStatus(String scopeId, String status) async {
+    final timestamp = DateTime.now().toIso8601String();
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'fep_contract_vendor_quotes',
+      dataUpdater: (data) => data.copyWith(
+        planningNotes: {
+          ...data.planningNotes,
+          _trackingKeyForScope(scopeId): status.trim(),
+          _trackingUpdatedKeyForScope(scopeId): timestamp,
+        },
+      ),
+      showSnackbar: false,
+    );
+  }
+
+  Future<void> _clearTrackingStatus(String scopeId) async {
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'fep_contract_vendor_quotes',
+      dataUpdater: (data) => data.copyWith(
+        planningNotes: {
+          ...data.planningNotes,
+          _trackingKeyForScope(scopeId): '',
+          _trackingUpdatedKeyForScope(scopeId): '',
+        },
+      ),
+      showSnackbar: false,
+    );
+  }
+
+  List<_ContractingReportEntry> _loadContractingReports(ProjectDataModel data) {
+    final raw = data.planningNotes[_contractingReportsKey];
+    dynamic decoded;
+    if (raw is String) {
+      final trimmed = raw.trim();
+      if (trimmed.isNotEmpty) {
+        try {
+          decoded = jsonDecode(trimmed);
+        } catch (_) {
+          decoded = null;
+        }
+      }
+    } else if (raw is List) {
+      decoded = raw;
+    }
+    if (decoded is! List) return const <_ContractingReportEntry>[];
+    return decoded
+        .whereType<Map>()
+        .map((entry) =>
+            _ContractingReportEntry.fromMap(Map<String, dynamic>.from(entry)))
+        .toList();
+  }
+
+  Future<void> _saveContractingReports(
+      List<_ContractingReportEntry> reports) async {
+    final payload = jsonEncode(
+      reports.map((entry) => entry.toMap()).toList(),
+    );
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'fep_contract_vendor_quotes',
+      dataUpdater: (data) => data.copyWith(
+        planningNotes: {
+          ...data.planningNotes,
+          _contractingReportsKey: payload,
+        },
+      ),
+      showSnackbar: false,
+    );
+  }
+
+  String _buildContractingNotesSeed(ProjectDataModel data) {
+    final lines = <String>[];
+    final projectName = data.projectName.trim();
+    final solutionTitle = data.solutionTitle.trim();
+    final businessCase = data.businessCase.trim();
+    final sponsor = data.charterProjectSponsorName.trim();
+    final pm = data.charterProjectManagerName.trim();
+    final withinScope = data.withinScopeItems
+        .map((e) => e.description.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    final outOfScope = data.outOfScopeItems
+        .map((e) => e.description.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    final milestones = data.keyMilestones
+        .where((m) => m.name.trim().isNotEmpty || m.dueDate.trim().isNotEmpty)
+        .toList();
+
+    if (projectName.isNotEmpty || solutionTitle.isNotEmpty) {
+      final title = projectName.isNotEmpty ? projectName : solutionTitle;
+      final subtitle = projectName.isNotEmpty ? solutionTitle : '';
+      lines.add(
+        'Project: ${title}${subtitle.isNotEmpty ? ' — $subtitle' : ''}',
+      );
+    }
+    if (sponsor.isNotEmpty || pm.isNotEmpty) {
+      final parts = <String>[];
+      if (sponsor.isNotEmpty) parts.add('Sponsor: $sponsor');
+      if (pm.isNotEmpty) parts.add('PM: $pm');
+      lines.add('Key stakeholders: ${parts.join(' | ')}');
+    }
+    if (businessCase.isNotEmpty) {
+      lines.add('Business context: $businessCase');
+    }
+    if (withinScope.isNotEmpty) {
+      lines.add('Scope highlights:');
+      for (final item in withinScope.take(5)) {
+        lines.add('- $item');
+      }
+    }
+    if (outOfScope.isNotEmpty) {
+      lines.add('Out of scope:');
+      for (final item in outOfScope.take(3)) {
+        lines.add('- $item');
+      }
+    }
+    if (milestones.isNotEmpty) {
+      lines.add('Key dates:');
+      for (final milestone in milestones.take(4)) {
+        final name = milestone.name.trim().isNotEmpty
+            ? milestone.name.trim()
+            : 'Milestone';
+        final due = milestone.dueDate.trim();
+        lines.add(due.isNotEmpty ? '- $name ($due)' : '- $name');
+      }
+    }
+
+    return lines.join('\n');
+  }
+
+  String _resolveContractingNotesFallback(ProjectDataModel data) {
+    final stored =
+        (data.planningNotes[_contractingNotesKey] ?? '').toString().trim();
+    if (stored.isNotEmpty) return stored;
+    final fepNotes = data.frontEndPlanning.contractVendorQuotes.trim();
+    if (fepNotes.isNotEmpty) return fepNotes;
+    return _buildContractingNotesSeed(data);
+  }
+
   void _handleContractingNotesChanged(String value) {
     if (_notesController.text != value) {
       _notesController.value = TextEditingValue(
@@ -4167,11 +5155,53 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                               noteKey: _contractingNotesKey,
                               checkpoint: 'fep_contract_vendor_quotes',
                               onChanged: _handleContractingNotesChanged,
-                              fallbackText: ProjectDataHelper.getData(context)
-                                  .frontEndPlanning
-                                  .contractVendorQuotes,
+                              fallbackText: _resolveContractingNotesFallback(
+                                ProjectDataHelper.getData(context),
+                              ),
                               description:
                                   'Capture contracting priorities, package boundaries, and approval constraints.',
+                            ),
+                            const SizedBox(height: 12),
+                            StreamBuilder<List<ContractModel>>(
+                              stream: _contractsStream,
+                              builder: (context, contractSnapshot) {
+                                final contracts =
+                                    contractSnapshot.data ?? const <ContractModel>[];
+                                return StreamBuilder<List<ProcurementItemModel>>(
+                                  stream: _itemsStream,
+                                  builder: (context, itemSnapshot) {
+                                    final items = itemSnapshot.data ??
+                                        const <ProcurementItemModel>[];
+                                    final notes = ProjectDataHelper.getData(context)
+                                        .planningNotes;
+                                    final startedCount = items.where(
+                                      (item) =>
+                                          _scopeManagementByScopeId[item.id]
+                                              ?.started ==
+                                          true,
+                                    ).length;
+                                    final trackingCount = items.where(
+                                      (item) =>
+                                          _trackingStatusForScope(
+                                            item.id,
+                                            notes,
+                                          ) !=
+                                          'Not Started',
+                                    ).length;
+                                    final reportCount = _loadContractingReports(
+                                            ProjectDataHelper.getData(context))
+                                        .length;
+                                    return _buildContractingOverviewCard(
+                                      contractsCount: contracts.length,
+                                      scopeCount: items.length,
+                                      startedCount: startedCount,
+                                      trackingCount: trackingCount,
+                                      reportCount: reportCount,
+                                      compact: true,
+                                    );
+                                  },
+                                );
+                              },
                             ),
                             const SizedBox(height: 12),
                             Row(
@@ -4506,10 +5536,9 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                                   noteKey: _contractingNotesKey,
                                   checkpoint: 'fep_contract_vendor_quotes',
                                   onChanged: _handleContractingNotesChanged,
-                                  fallbackText:
-                                      ProjectDataHelper.getData(context)
-                                          .frontEndPlanning
-                                          .contractVendorQuotes,
+                                  fallbackText: _resolveContractingNotesFallback(
+                                    ProjectDataHelper.getData(context),
+                                  ),
                                   description:
                                       'Capture contracting priorities, package boundaries, and approval constraints.',
                                 ),
@@ -4561,6 +5590,51 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                                       ),
                                     ],
                                   ),
+                                ),
+                                const SizedBox(height: 20),
+                                StreamBuilder<List<ContractModel>>(
+                                  stream: _contractsStream,
+                                  builder: (context, contractSnapshot) {
+                                    final contracts =
+                                        contractSnapshot.data ?? const <ContractModel>[];
+                                    return StreamBuilder<
+                                        List<ProcurementItemModel>>(
+                                      stream: _itemsStream,
+                                      builder: (context, itemSnapshot) {
+                                        final items = itemSnapshot.data ??
+                                            const <ProcurementItemModel>[];
+                                        final notes =
+                                            ProjectDataHelper.getData(context)
+                                                .planningNotes;
+                                        final startedCount = items.where(
+                                          (item) =>
+                                              _scopeManagementByScopeId[item.id]
+                                                  ?.started ==
+                                              true,
+                                        ).length;
+                                        final trackingCount = items.where(
+                                          (item) =>
+                                              _trackingStatusForScope(
+                                                item.id,
+                                                notes,
+                                              ) !=
+                                              'Not Started',
+                                        ).length;
+                                        final reportCount =
+                                            _loadContractingReports(
+                                                    ProjectDataHelper.getData(
+                                                        context))
+                                                .length;
+                                        return _buildContractingOverviewCard(
+                                          contractsCount: contracts.length,
+                                          scopeCount: items.length,
+                                          startedCount: startedCount,
+                                          trackingCount: trackingCount,
+                                          reportCount: reportCount,
+                                        );
+                                      },
+                                    );
+                                  },
                                 ),
                                 const SizedBox(height: 32),
 
@@ -4845,6 +5919,7 @@ class _FrontEndPlanningContractVendorQuotesScreenState
                         ],
                       ),
                     ),
+                    _BottomOverlay(onNext: _navigateToProcurement),
                   ],
                 ),
               ),
@@ -4852,7 +5927,6 @@ class _FrontEndPlanningContractVendorQuotesScreenState
           ),
         ],
       ),
-      bottomNavigationBar: _BottomOverlay(onNext: _navigateToProcurement),
     );
   }
 }
@@ -4878,14 +5952,6 @@ class _ContractingTopBar extends StatelessWidget {
           const SizedBox(width: 12),
           _circleButton(
               icon: Icons.arrow_forward_ios_rounded, onTap: onForward),
-          const SizedBox(width: 20),
-          const Text(
-            'Contracting',
-            style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF0F172A)),
-          ),
           const Spacer(),
           const _ContractingUserBadge(),
         ],
@@ -5801,6 +6867,53 @@ class _ContractingWorkflowStep {
       name: name.isEmpty ? 'Untitled Step' : name,
       duration: duration,
       unit: unit,
+    );
+  }
+}
+
+class _ContractingReportEntry {
+  const _ContractingReportEntry({
+    required this.id,
+    required this.title,
+    required this.status,
+    required this.owner,
+    required this.summary,
+    required this.updatedAt,
+  });
+
+  final String id;
+  final String title;
+  final String status;
+  final String owner;
+  final String summary;
+  final DateTime updatedAt;
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'title': title,
+        'status': status,
+        'owner': owner,
+        'summary': summary,
+        'updatedAt': updatedAt.toIso8601String(),
+      };
+
+  factory _ContractingReportEntry.fromMap(Map<String, dynamic> map) {
+    DateTime parse(dynamic raw) {
+      if (raw is Timestamp) return raw.toDate();
+      if (raw is DateTime) return raw;
+      final parsed = DateTime.tryParse(raw?.toString() ?? '');
+      return parsed ?? DateTime.fromMillisecondsSinceEpoch(0);
+    }
+
+    return _ContractingReportEntry(
+      id: (map['id'] ?? '').toString().trim().isEmpty
+          ? 'report_${DateTime.now().microsecondsSinceEpoch}'
+          : (map['id'] ?? '').toString(),
+      title: (map['title'] ?? '').toString(),
+      status: (map['status'] ?? 'Draft').toString(),
+      owner: (map['owner'] ?? '').toString(),
+      summary: (map['summary'] ?? '').toString(),
+      updatedAt: parse(map['updatedAt']),
     );
   }
 }

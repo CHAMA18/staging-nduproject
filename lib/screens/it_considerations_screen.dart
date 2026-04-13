@@ -1548,12 +1548,14 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
                 border: Border.all(color: Colors.grey.withValues(alpha: 0.35))),
             child: const Row(children: [
               Expanded(
-                  child: Center(
+                  child: Align(
+                      alignment: Alignment.centerLeft,
                       child: Text('Solution',
                           style: TextStyle(
                               fontSize: 13, fontWeight: FontWeight.w600)))),
               Expanded(
-                  child: Center(
+                  child: Align(
+                      alignment: Alignment.centerLeft,
                       child: Text('Core Technology',
                           style: TextStyle(
                               fontSize: 13, fontWeight: FontWeight.w600)))),
@@ -1647,12 +1649,12 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
           : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(
                 child: Align(
-                  alignment: Alignment.topCenter,
+                  alignment: Alignment.topLeft,
                   child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisAlignment: MainAxisAlignment.start,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _numberBadge(index + 1),
@@ -1660,7 +1662,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
                               Expanded(
                                 child: Text(
                                   _potentialSolutionLabel(index),
-                                  textAlign: TextAlign.center,
+                                  textAlign: TextAlign.left,
                                   style: const TextStyle(
                                       fontSize: 13,
                                       color: Colors.black87,
@@ -1671,7 +1673,7 @@ class _ITConsiderationsScreenState extends State<ITConsiderationsScreen> {
                         if (s.description.isNotEmpty) ...[
                           const SizedBox(height: 6),
                           Text(s.description,
-                              textAlign: TextAlign.center,
+                              textAlign: TextAlign.left,
                               style: const TextStyle(
                                   fontSize: 12, color: Colors.grey),
                               maxLines: 5,

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:intl/intl.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
-import 'package:ndu_project/utils/form_validation_engine.dart' as validation;
+import 'package:ndu_project/utils/form_validation_engine.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/front_end_planning_header.dart';
@@ -3007,14 +3007,49 @@ class _FrontEndPlanningProcurementScreenState
     final visible = summaries.take(6).toList(growable: false);
     final hiddenCount = summaries.length - visible.length;
 
-    return FormValidationEngine.showMissingRequirementsDialog(
-      context,
-      validation,
-      title: 'Procurement Requirements Missing',
-      intro:
-          'You still have missing procurement details. You can add them now, auto-fill them, or continue and update later.',
-      isAiGenerated: true, // Skip validation for AI-generated content
-    );
+    return showDialog<_MissingProcurementAction>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Color(0xFFB45309)),
+            SizedBox(width: 10),
+            Text('Procurement Requirements Missing'),
+          ],
+        ),
+        content: SizedBox(
+          width: 560,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'You still have missing procurement details. You can add them now, auto-fill them, or continue and update later.',
+                style: TextStyle(fontSize: 13, height: 1.35),
+              ),
+              const SizedBox(height: 10),
+              for (final item in visible)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    '- $item',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF374151),
+                    ),
+                  ),
+                ),
+              if (hiddenCount > 0)
+                Text(
+                  '- +$hiddenCount more',
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF374151),
+                  ),
+                ),
+              const SizedBox(height: 12),
               const Text(
                 'Choose one option:',
                 style: TextStyle(
@@ -3378,50 +3413,16 @@ class _FrontEndPlanningProcurementScreenState
           _showPendingSecurityPrompt = true;
         });
       }
-      final action = await _showMissingRequirementsDialog(validation);
-      if (!mounted || action == null) return;
-
-      if (action == _MissingProcurementAction.skip) {
-        await _skipMissingDataAndContinue();
-        return;
-      }
-
-      if (action == _MissingProcurementAction.autoFill) {
-        await _autoFillMissingProcurementFields(validation);
-        if (!mounted) return;
-        final postAutoValidation = _validateProcurementForNavigation();
-        if (!postAutoValidation.isValid) {
-          final postTabErrors = postAutoValidation.issues
-              .map((issue) => _tabForFieldId(issue.id))
-              .whereType<_ProcurementTab>()
-              .toSet();
-          setState(() {
-            _validationErrors = postAutoValidation.errorByFieldId;
-            _tabsWithErrors
-              ..clear()
-              ..addAll(postTabErrors);
-            _pendingSecurityIssues = postAutoValidation.issues;
-            _showPendingSecurityPrompt = true;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Some fields are still missing after auto-fill. Continuing so you can update them later.',
-              ),
-              duration: Duration(seconds: 3),
-            ),
-          );
-          await _saveAndNavigateToSecurity(
-            skippedValidation: true,
-          );
-          return;
-        }
-        _clearNavigationValidationState();
-        await _saveAndNavigateToSecurity();
-        return;
-      }
-
-      await _openManualCompletionForIssues(validation);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Some procurement fields are still missing. You can continue now and complete them later.',
+          ),
+          duration: Duration(seconds: 3),
+          backgroundColor: Color(0xFFF59E0B),
+        ),
+      );
+      await _saveAndNavigateToSecurity(skippedValidation: true);
       return;
     }
 
@@ -3803,6 +3804,8 @@ class _FrontEndPlanningProcurementScreenState
           currencyFormat: _currencyFormat,
           onAddScope: _openAddItemDialog,
         ),
+        const SizedBox(height: 20),
+        _buildWhatToProcureSection(),
         const SizedBox(height: 32),
         _VendorsSection(
           vendors: _filteredVendors,
@@ -3825,6 +3828,185 @@ class _FrontEndPlanningProcurementScreenState
         ),
       ],
     );
+  }
+
+  Widget _buildWhatToProcureSection() {
+    final data = ProjectDataHelper.getData(context);
+    final needs = _deriveProcurementNeeds(data);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text(
+              'What to procure',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            const Spacer(),
+            OutlinedButton.icon(
+              onPressed: _openAddItemDialog,
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Add Item'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Auto-populated from project requirements and scope. Adjust or add items as needed.',
+          style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+        ),
+        const SizedBox(height: 12),
+        if (needs.isEmpty)
+          buildNduTableEmptyState(
+            context,
+            message:
+                'No procurement needs identified yet. Add scope items or requirements to populate this list.',
+          )
+        else
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: ResponsiveDataTableWrapper(
+              minWidth: 820,
+              child: buildNduDataTable(
+                context: context,
+                columnSpacing: 24,
+                horizontalMargin: 18,
+                headingRowHeight: 48,
+                dataRowMinHeight: 56,
+                dataRowMaxHeight: 80,
+                columns: const [
+                  DataColumn(label: Text('Item')),
+                  DataColumn(label: Text('Source')),
+                  DataColumn(label: Text('Qty')),
+                  DataColumn(label: Text('Est. Cost')),
+                  DataColumn(label: Text('Priority')),
+                ],
+                rows: needs.map((need) {
+                  return DataRow(
+                    cells: [
+                      DataCell(Text(need.name)),
+                      DataCell(Text(need.source)),
+                      DataCell(Text(need.quantity.toString())),
+                      DataCell(Text(need.estimatedCost <= 0
+                          ? '-'
+                          : _currencyFormat.format(need.estimatedCost))),
+                      DataCell(
+                        _PriorityPill(label: need.priority),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  List<_ProcurementNeed> _deriveProcurementNeeds(ProjectDataModel data) {
+    final needs = <_ProcurementNeed>[];
+    final seen = <String>{};
+
+    void addNeed({
+      required String name,
+      required String source,
+      String priorityHint = '',
+    }) {
+      final trimmed = name.trim();
+      if (trimmed.isEmpty) return;
+      final key = trimmed.toLowerCase();
+      if (seen.contains(key)) return;
+      seen.add(key);
+      final match = _matchProcurementItem(trimmed);
+      final cost = match?.budget ?? 0.0;
+      final priority = match != null
+          ? _priorityLabel(match.priority)
+          : _priorityFromHint(priorityHint);
+      needs.add(
+        _ProcurementNeed(
+          name: trimmed,
+          source: source,
+          quantity: 1,
+          estimatedCost: cost,
+          priority: priority,
+        ),
+      );
+    }
+
+    if (data.frontEndPlanning.requirementItems.isNotEmpty) {
+      for (final req in data.frontEndPlanning.requirementItems) {
+        addNeed(
+          name: req.description,
+          source: 'Requirements',
+          priorityHint: req.requirementType,
+        );
+      }
+    }
+
+    if (needs.isEmpty && data.withinScopeItems.isNotEmpty) {
+      for (final item in data.withinScopeItems) {
+        addNeed(
+          name: item.description,
+          source: 'Scope',
+          priorityHint: item.description,
+        );
+      }
+    }
+
+    if (needs.isEmpty && _items.isNotEmpty) {
+      for (final item in _items) {
+        addNeed(
+          name: item.name,
+          source: 'Procurement',
+          priorityHint: item.priority.name,
+        );
+      }
+    }
+
+    return needs;
+  }
+
+  ProcurementItemModel? _matchProcurementItem(String name) {
+    final normalized = name.toLowerCase();
+    for (final item in _items) {
+      final itemName = item.name.toLowerCase();
+      if (itemName == normalized ||
+          itemName.contains(normalized) ||
+          normalized.contains(itemName)) {
+        return item;
+      }
+    }
+    return null;
+  }
+
+  String _priorityLabel(ProcurementPriority priority) {
+    switch (priority) {
+      case ProcurementPriority.critical:
+        return 'Critical';
+      case ProcurementPriority.high:
+        return 'High';
+      case ProcurementPriority.medium:
+        return 'Medium';
+      case ProcurementPriority.low:
+        return 'Low';
+    }
+  }
+
+  String _priorityFromHint(String hint) {
+    final normalized = hint.toLowerCase();
+    if (normalized.contains('critical')) return 'Critical';
+    if (normalized.contains('high')) return 'High';
+    if (normalized.contains('low')) return 'Low';
+    return 'Medium';
   }
 
   List<Widget> _buildDialogContextChips() {
@@ -5096,14 +5278,10 @@ class _FrontEndPlanningProcurementScreenState
                 child: SingleChildScrollView(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _ProcurementTopBar(
-                        onBack: _goToPreviousSection,
-                        onForward: _goToNextSection,
-                      ),
-                      const SizedBox(height: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Removed duplicate top bar to avoid a second app header.
                       _buildStreamErrorBanner(),
                       const SizedBox(height: 24),
                       PlanningAiNotesCard(
@@ -5240,13 +5418,6 @@ class _ProcurementTopBar extends StatelessWidget {
           _circleButton(
               icon: Icons.arrow_forward_ios_rounded, onTap: onForward),
           const SizedBox(width: 20),
-          const Text(
-            'Procurement',
-            style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF0F172A)),
-          ),
           const Spacer(),
           const _UserBadge(),
         ],
@@ -7801,9 +7972,9 @@ class _VendorDataTable extends StatelessWidget {
                     DataColumn(label: Center(child: SizedBox(width: 24))),
                     DataColumn(label: Center(child: Text('Vendor Name'))),
                     DataColumn(label: Center(child: Text('Category'))),
+                    DataColumn(label: Center(child: Text('Status'))),
+                    DataColumn(label: Center(child: Text('Contact'))),
                     DataColumn(label: Center(child: Text('Rating'))),
-                    DataColumn(label: Center(child: Text('Approved'))),
-                    DataColumn(label: Center(child: Text('Preferred'))),
                     DataColumn(label: Center(child: Text('Actions'))),
                   ],
                   rows: vendors
@@ -7819,10 +7990,9 @@ class _VendorDataTable extends StatelessWidget {
                             ),
                             DataCell(_VendorNameCell(vendor: vendor)),
                             DataCell(Text(vendor.category)),
+                            DataCell(_VendorStatusPill(status: vendor.status)),
+                            DataCell(Text(vendor.contactLabel)),
                             DataCell(_RatingStars(rating: vendor.ratingScore)),
-                            DataCell(
-                                _YesNoBadge(value: vendor.status == 'Active')),
-                            DataCell(_YesNoBadge(value: false, showStar: true)),
                             DataCell(_VendorActionsMenu(
                               vendor: vendor,
                               onEdit: () => onEditVendor(vendor),
@@ -7895,13 +8065,17 @@ class _VendorGrid extends StatelessWidget {
                   style:
                       const TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
               const SizedBox(height: 8),
+              _VendorStatusPill(status: vendor.status),
+              const SizedBox(height: 6),
+              Text(
+                vendor.contactLabel,
+                style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 8),
               _RatingStars(rating: vendor.ratingScore),
               const Spacer(),
               Row(
                 children: [
-                  _YesNoBadge(value: vendor.status == 'Active'),
-                  const SizedBox(width: 8),
-                  _YesNoBadge(value: false, showStar: true),
                   const Spacer(),
                   _VendorActionsMenu(
                     vendor: vendor,
@@ -7981,9 +8155,9 @@ class _VendorNameCell extends StatelessWidget {
                     color: Color(0xFF0F172A)),
               ),
               const SizedBox(height: 2),
-              const Text(
-                'View Company Approved Vendor List',
-                style: TextStyle(fontSize: 12, color: Color(0xFF2563EB)),
+              Text(
+                vendor.contactLabel,
+                style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
               ),
             ],
           ),
@@ -8022,6 +8196,14 @@ extension _VendorUi on VendorModel {
   bool get isPreferred {
     final value = criticality.toLowerCase();
     return value == 'high' || status.toLowerCase() == 'preferred';
+  }
+
+  String get contactLabel {
+    final email = createdByEmail.trim();
+    if (email.isNotEmpty) return email;
+    final name = createdByName.trim();
+    if (name.isNotEmpty) return name;
+    return '-';
   }
 
   int get ratingScore {
@@ -8079,6 +8261,84 @@ class _YesNoBadge extends StatelessWidget {
                 size: 16, color: foreground),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _VendorStatusPill extends StatelessWidget {
+  const _VendorStatusPill({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final normalized = status.trim().toLowerCase();
+    Color tone;
+    if (normalized.contains('active') || normalized.contains('approved')) {
+      tone = const Color(0xFF16A34A);
+    } else if (normalized.contains('watch') ||
+        normalized.contains('pending') ||
+        normalized.contains('review')) {
+      tone = const Color(0xFFF59E0B);
+    } else if (normalized.contains('blocked') ||
+        normalized.contains('denied') ||
+        normalized.contains('inactive')) {
+      tone = const Color(0xFFDC2626);
+    } else {
+      tone = const Color(0xFF64748B);
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: tone.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: tone.withOpacity(0.35)),
+      ),
+      child: Text(
+        status.trim().isEmpty ? 'Unknown' : status.trim(),
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: tone,
+        ),
+      ),
+    );
+  }
+}
+
+class _PriorityPill extends StatelessWidget {
+  const _PriorityPill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final normalized = label.toLowerCase();
+    Color tone;
+    if (normalized.contains('critical')) {
+      tone = const Color(0xFFDC2626);
+    } else if (normalized.contains('high')) {
+      tone = const Color(0xFFF59E0B);
+    } else if (normalized.contains('low')) {
+      tone = const Color(0xFF64748B);
+    } else {
+      tone = const Color(0xFF2563EB);
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: tone.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: tone.withOpacity(0.35)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: tone,
+        ),
       ),
     );
   }
@@ -11933,6 +12193,22 @@ extension _AlertSeverityExtension on _AlertSeverity {
         return const Color(0xFFFECACA);
     }
   }
+}
+
+class _ProcurementNeed {
+  const _ProcurementNeed({
+    required this.name,
+    required this.source,
+    required this.quantity,
+    required this.estimatedCost,
+    required this.priority,
+  });
+
+  final String name;
+  final String source;
+  final int quantity;
+  final double estimatedCost;
+  final String priority;
 }
 
 class _CarrierPerformance {

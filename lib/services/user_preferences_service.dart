@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class UserPreferencesService {
   static const String _firstTimeKey = 'first_time_user';
   static const String _onboardingCompleteKey = 'onboarding_complete';
+  static const String _skipStepConfirmationKey = 'skip_step_confirmation';
   static Future<SharedPreferences>? _prefsFuture;
 
   static Future<SharedPreferences> _prefs() {
@@ -40,5 +41,23 @@ class UserPreferencesService {
     final prefs = await _prefs();
     await prefs.remove(_firstTimeKey);
     await prefs.remove(_onboardingCompleteKey);
+  }
+
+  /// Whether step-by-step confirmation prompts should be skipped.
+  static Future<bool> shouldSkipStepConfirmation() async {
+    final prefs = await _prefs();
+    return prefs.getBool(_skipStepConfirmationKey) ?? false;
+  }
+
+  /// Persist step confirmation preference.
+  static Future<void> setSkipStepConfirmation(bool value) async {
+    final prefs = await _prefs();
+    await prefs.setBool(_skipStepConfirmationKey, value);
+  }
+
+  /// Reset confirmation preference to default behavior (show prompts).
+  static Future<void> resetStepConfirmationPreference() async {
+    final prefs = await _prefs();
+    await prefs.remove(_skipStepConfirmationKey);
   }
 }

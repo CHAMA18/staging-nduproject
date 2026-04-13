@@ -10,6 +10,7 @@ import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/execution_phase_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/models/stakeholder_alignment_item.dart';
 import 'package:ndu_project/widgets/stakeholder_alignment_table_widget.dart';
 import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
@@ -34,6 +35,8 @@ class _StakeholderAlignmentScreenState
   List<StakeholderAlignmentItem> _items = [];
   List<Map<String, String>> _coreStakeholders = [];
   bool _isLoading = false;
+  bool _autoGenerationTriggered = false;
+  bool _isAutoGenerating = false;
 
   String? get _projectId {
     try {
@@ -47,9 +50,11 @@ class _StakeholderAlignmentScreenState
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadItems();
-      _loadCoreStakeholders();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Load persisted rows first, then seed from prior-phase stakeholders
+      // only when the table is truly empty.
+      await _loadItems();
+      await _loadCoreStakeholders();
     });
   }
 
@@ -89,10 +94,54 @@ class _StakeholderAlignmentScreenState
         // Auto-populate stakeholders if none exist
         if (_items.isEmpty && stakeholders.isNotEmpty) {
           _autoPopulateStakeholders(stakeholders);
+        } else if (_items.isEmpty && stakeholders.isEmpty) {
+          _autoGenerateStakeholdersFromAi();
         }
       }
     } catch (e) {
       debugPrint('Error loading core stakeholders: $e');
+    }
+  }
+
+  Future<void> _autoGenerateStakeholdersFromAi() async {
+    if (!mounted || _autoGenerationTriggered || _isAutoGenerating) return;
+    _autoGenerationTriggered = true;
+    _isAutoGenerating = true;
+    try {
+      final generated = await ExecutionPhaseAiSeed.generateEntries(
+        context: context,
+        section: 'Stakeholder Alignment',
+        sections: const {
+          'stakeholders': 'Key stakeholders to align during execution',
+        },
+        itemsPerSection: 4,
+      );
+      final entries = generated['stakeholders'] ?? const [];
+      if (entries.isEmpty) return;
+
+      final newItems = entries
+          .map(
+            (entry) => StakeholderAlignmentItem(
+              stakeholderName: entry.title,
+              stakeholderRole: 'Stakeholder',
+              alignmentStatus: 'Neutral',
+              keyInterest: 'ROI',
+              feedbackSummary: entry.details,
+            ),
+          )
+          .toList();
+
+      if (newItems.isNotEmpty) {
+        setState(() => _items.addAll(newItems));
+        await _saveItems();
+        for (final item in newItems) {
+          _autoGenerateEngagementStrategy(item);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error auto-generating stakeholders: $e');
+    } finally {
+      _isAutoGenerating = false;
     }
   }
 

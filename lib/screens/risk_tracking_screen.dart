@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:ndu_project/screens/launch_checklist_screen.dart';
 import 'package:ndu_project/screens/scope_completion_screen.dart';
+import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
+import 'package:ndu_project/widgets/launch_editable_section.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -25,16 +27,105 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
   final List<_RiskItem> _risks = [];
 
   final List<_RiskSignal> _signals = const [
-    _RiskSignal('Critical path dependencies', '2 risks require executive unblock.'),
-    _RiskSignal('Security posture drift', '1 high risk pending penetration retest.'),
+    _RiskSignal(
+        'Critical path dependencies', '2 risks require executive unblock.'),
+    _RiskSignal(
+        'Security posture drift', '1 high risk pending penetration retest.'),
     _RiskSignal('Budget volatility', 'Forecast variance at 6%.'),
   ];
 
   final List<_MitigationPlan> _plans = const [
-    _MitigationPlan('Vendor API stability', 'Integrations', 'On track', 0.78, Color(0xFF10B981)),
-    _MitigationPlan('Regulatory review delay', 'Compliance', 'At risk', 0.42, Color(0xFFF97316)),
-    _MitigationPlan('Data quality regression', 'Data team', 'On track', 0.64, Color(0xFF6366F1)),
+    _MitigationPlan('Vendor API stability', 'Integrations', 'On track', 0.78,
+        Color(0xFF10B981)),
+    _MitigationPlan('Regulatory review delay', 'Compliance', 'At risk', 0.42,
+        Color(0xFFF97316)),
+    _MitigationPlan('Data quality regression', 'Data team', 'On track', 0.64,
+        Color(0xFF6366F1)),
   ];
+  bool _autoGenerationTriggered = false;
+  bool _isAutoGenerating = false;
+
+  String _newId() => DateTime.now().microsecondsSinceEpoch.toString();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _autoGenerateIfNeeded());
+  }
+
+  Future<void> _autoGenerateIfNeeded() async {
+    if (!mounted || _autoGenerationTriggered || _isAutoGenerating) return;
+    if (_risks.isNotEmpty) return;
+
+    _autoGenerationTriggered = true;
+    _isAutoGenerating = true;
+    try {
+      final generated = await ExecutionPhaseAiSeed.generateEntries(
+        context: context,
+        section: 'Risk Tracking',
+        sections: const {
+          'risks': 'Active execution risks to monitor',
+          'signals': 'Risk signals and alerts',
+          'mitigationPlans': 'Mitigation plans and ownership',
+        },
+        itemsPerSection: 3,
+      );
+
+      final risks = generated['risks'] ?? const <LaunchEntry>[];
+      final signals = generated['signals'] ?? const <LaunchEntry>[];
+      final plans = generated['mitigationPlans'] ?? const <LaunchEntry>[];
+
+      if (!mounted) return;
+      setState(() {
+        if (risks.isNotEmpty) {
+          _risks
+            ..clear()
+            ..addAll(risks.map(
+              (entry) => _RiskItem(
+                _newId(),
+                entry.title,
+                'Risk Owner',
+                'Medium',
+                'Medium',
+                entry.status?.isNotEmpty == true ? entry.status! : 'Open',
+                'TBD',
+              ),
+            ));
+        }
+        if (signals.isNotEmpty) {
+          _signals
+            ..clear()
+            ..addAll(signals.map(
+              (entry) => _RiskSignal(entry.title, entry.details),
+            ));
+        }
+        if (plans.isNotEmpty) {
+          final colors = [
+            const Color(0xFF10B981),
+            const Color(0xFFF97316),
+            const Color(0xFF6366F1),
+          ];
+          _plans
+            ..clear()
+            ..addAll(plans.asMap().entries.map(
+              (entry) => _MitigationPlan(
+                entry.value.title,
+                'Risk Lead',
+                entry.value.status?.isNotEmpty == true
+                    ? entry.value.status!
+                    : 'On track',
+                0.6,
+                colors[entry.key % colors.length],
+              ),
+            ));
+        }
+      });
+    } catch (e) {
+      debugPrint('Error auto-generating risk tracking data: $e');
+    } finally {
+      _isAutoGenerating = false;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -97,7 +188,8 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
           ),
           child: const Text(
             'EXECUTION SAFETY',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black),
+            style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black),
           ),
         ),
         const SizedBox(height: 10),
@@ -109,7 +201,10 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                 children: const [
                   Text(
                     'Risk Tracking',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+                    style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF111827)),
                   ),
                   SizedBox(height: 6),
                   Text(
@@ -136,8 +231,22 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
       runSpacing: 10,
       children: [
         _actionButton(Icons.add, 'Add risk', onPressed: _openAddRiskDialog),
-        _actionButton(Icons.download_outlined, 'Import risk log'),
-        _actionButton(Icons.description_outlined, 'Export report'),
+        _actionButton(Icons.download_outlined, 'Import risk log',
+            onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text(
+                    'Risk log import is queued. You can add risks manually now using Add risk.')),
+          );
+        }),
+        _actionButton(Icons.description_outlined, 'Export report',
+            onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text(
+                    'Risk report export is queued while report templates are finalized.')),
+          );
+        }),
         _primaryButton('Run weekly review'),
       ],
     );
@@ -147,7 +256,11 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
     return OutlinedButton.icon(
       onPressed: onPressed ?? () {},
       icon: Icon(icon, size: 18, color: const Color(0xFF64748B)),
-      label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+      label: Text(label,
+          style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF64748B))),
       style: OutlinedButton.styleFrom(
         side: const BorderSide(color: Color(0xFFE2E8F0)),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -158,9 +271,21 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
 
   Widget _primaryButton(String label) {
     return ElevatedButton.icon(
-      onPressed: () {},
+      onPressed: () {
+        setState(() {
+          _selectedFilters
+            ..clear()
+            ..add('Escalated');
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text(
+                  'Weekly review started. Filter set to escalated risks.')),
+        );
+      },
       icon: const Icon(Icons.play_arrow, size: 18),
-      label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+      label: Text(label,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFF0EA5E9),
         foregroundColor: Colors.white,
@@ -171,7 +296,14 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
   }
 
   Widget _buildFilterChips() {
-    const filters = ['All risks', 'Critical', 'High', 'Mitigating', 'Escalated', 'Watchlist'];
+    const filters = [
+      'All risks',
+      'Critical',
+      'High',
+      'Mitigating',
+      'Escalated',
+      'Watchlist'
+    ];
     return Wrap(
       spacing: 10,
       runSpacing: 10,
@@ -247,12 +379,14 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
     }
 
     return Row(
-      children: stats.map((stat) => Expanded(
-        child: Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: _buildStatCard(stat),
-        ),
-      )).toList(),
+      children: stats
+          .map((stat) => Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: _buildStatCard(stat),
+                ),
+              ))
+          .toList(),
     );
   }
 
@@ -267,11 +401,20 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(data.value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: data.color)),
+          Text(data.value,
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: data.color)),
           const SizedBox(height: 6),
-          Text(data.label, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+          Text(data.label,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
           const SizedBox(height: 6),
-          Text(data.supporting, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: data.color)),
+          Text(data.supporting,
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: data.color)),
         ],
       ),
     );
@@ -279,19 +422,28 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
 
   int get _activeRiskCount => _risks.length;
 
-  int get _criticalRiskCount => _risks.where((risk) => risk.impact == 'High').length;
+  int get _criticalRiskCount =>
+      _risks.where((risk) => risk.impact == 'High').length;
 
-  int get _mitigatedRiskCount => _risks.where((risk) => _isMitigatingStatus(risk.status)).length;
+  int get _mitigatedRiskCount =>
+      _risks.where((risk) => _isMitigatingStatus(risk.status)).length;
 
-  double get _mitigationCoverageRate => _risks.isEmpty ? 0 : _mitigatedRiskCount / _activeRiskCount;
+  double get _mitigationCoverageRate =>
+      _risks.isEmpty ? 0 : _mitigatedRiskCount / _activeRiskCount;
 
-  int get _escalationCount => _risks.where((risk) => risk.status == 'Escalated').length;
+  int get _escalationCount =>
+      _risks.where((risk) => risk.status == 'Escalated').length;
 
   double get _averageProbability => _risks.isEmpty
       ? 0
-      : _risks.map((risk) => _safeProbability(risk.probability)).reduce((a, b) => a + b) / _activeRiskCount;
+      : _risks
+              .map((risk) => _safeProbability(risk.probability))
+              .reduce((a, b) => a + b) /
+          _activeRiskCount;
 
-  int get _exposureScore => _risks.isEmpty ? 0 : ((1 - _averageProbability).clamp(0.0, 1.0) * 100).round();
+  int get _exposureScore => _risks.isEmpty
+      ? 0
+      : ((1 - _averageProbability).clamp(0.0, 1.0) * 100).round();
 
   String get _exposureStatus => _exposureScore >= 70
       ? 'Stable'
@@ -304,7 +456,9 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
   }
 
   bool _isMitigatingStatus(String status) {
-    return status == 'Mitigating' || status == 'Monitoring' || status == 'Accepted';
+    return status == 'Mitigating' ||
+        status == 'Monitoring' ||
+        status == 'Accepted';
   }
 
   Widget _buildRiskRegister() {
@@ -313,41 +467,62 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
       subtitle: 'Live view of probability, impact, and mitigation status',
       trailing: _actionButton(Icons.filter_list, 'Filter'),
       child: _risks.isEmpty
-        ? _buildEmptyRiskState()
-            : LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                      child: DataTable(
-                        headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
-                        columns: const [
-                          DataColumn(label: Text('ID', style: TextStyle(fontWeight: FontWeight.w600))),
-                          DataColumn(label: Text('Risk', style: TextStyle(fontWeight: FontWeight.w600))),
-                          DataColumn(label: Text('Owner', style: TextStyle(fontWeight: FontWeight.w600))),
-                          DataColumn(label: Text('Probability', style: TextStyle(fontWeight: FontWeight.w600))),
-                          DataColumn(label: Text('Impact', style: TextStyle(fontWeight: FontWeight.w600))),
-                          DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.w600))),
-                          DataColumn(label: Text('Next review', style: TextStyle(fontWeight: FontWeight.w600))),
-                        ],
-                        rows: _risks.map((risk) {
-                          return DataRow(cells: [
-                            DataCell(Text(risk.id, style: const TextStyle(fontSize: 12, color: Color(0xFF0EA5E9)))),
-                            DataCell(Text(risk.title, style: const TextStyle(fontSize: 13))),
-                            DataCell(Text(risk.owner, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)))),
-                            DataCell(_chip('${risk.probability} p')),
-                            DataCell(_impactChip(risk.impact)),
-                            DataCell(_statusChip(risk.status)),
-                            DataCell(Text(risk.nextReview, style: const TextStyle(fontSize: 12))),
-                          ]);
-                        }).toList(),
-                      ),
+          ? _buildEmptyRiskState()
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                    child: DataTable(
+                      headingRowColor:
+                          WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                      columns: const [
+                        DataColumn(
+                            label: Text('ID',
+                                style: TextStyle(fontWeight: FontWeight.w600))),
+                        DataColumn(
+                            label: Text('Risk',
+                                style: TextStyle(fontWeight: FontWeight.w600))),
+                        DataColumn(
+                            label: Text('Owner',
+                                style: TextStyle(fontWeight: FontWeight.w600))),
+                        DataColumn(
+                            label: Text('Probability',
+                                style: TextStyle(fontWeight: FontWeight.w600))),
+                        DataColumn(
+                            label: Text('Impact',
+                                style: TextStyle(fontWeight: FontWeight.w600))),
+                        DataColumn(
+                            label: Text('Status',
+                                style: TextStyle(fontWeight: FontWeight.w600))),
+                        DataColumn(
+                            label: Text('Next review',
+                                style: TextStyle(fontWeight: FontWeight.w600))),
+                      ],
+                      rows: _risks.map((risk) {
+                        return DataRow(cells: [
+                          DataCell(Text(risk.id,
+                              style: const TextStyle(
+                                  fontSize: 12, color: Color(0xFF0EA5E9)))),
+                          DataCell(Text(risk.title,
+                              style: const TextStyle(fontSize: 13))),
+                          DataCell(Text(risk.owner,
+                              style: const TextStyle(
+                                  fontSize: 13, color: Color(0xFF64748B)))),
+                          DataCell(_chip('${risk.probability} p')),
+                          DataCell(_impactChip(risk.impact)),
+                          DataCell(_statusChip(risk.status)),
+                          DataCell(Text(risk.nextReview,
+                              style: const TextStyle(fontSize: 12))),
+                        ]);
+                      }).toList(),
                     ),
-                  );
-                },
-              ),
-      );
+                  ),
+                );
+              },
+            ),
+    );
   }
 
   Widget _buildEmptyRiskState() {
@@ -360,7 +535,10 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
           const Text(
             'No risks logged yet.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF111827)),
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF111827)),
           ),
           const SizedBox(height: 8),
           const Text(
@@ -400,14 +578,22 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                     children: [
                       TextFormField(
                         controller: idController,
-                        decoration: const InputDecoration(labelText: 'Risk ID', hintText: 'e.g., R-050'),
-                        validator: (value) => value == null || value.trim().isEmpty ? 'Enter an ID' : null,
+                        decoration: const InputDecoration(
+                            labelText: 'Risk ID', hintText: 'e.g., R-050'),
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                                ? 'Enter an ID'
+                                : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: titleController,
-                        decoration: const InputDecoration(labelText: 'Risk title'),
-                        validator: (value) => value == null || value.trim().isEmpty ? 'Describe the risk' : null,
+                        decoration:
+                            const InputDecoration(labelText: 'Risk title'),
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                                ? 'Describe the risk'
+                                : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
@@ -417,14 +603,17 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: probabilityController,
-                        decoration: const InputDecoration(labelText: 'Probability (e.g., 0.42)'),
-                        keyboardType: TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(
+                            labelText: 'Probability (e.g., 0.42)'),
+                        keyboardType:
+                            TextInputType.numberWithOptions(decimal: true),
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
                         initialValue: selectedImpact,
                         items: const ['Low', 'Medium', 'High']
-                            .map((impact) => DropdownMenuItem(value: impact, child: Text(impact)))
+                            .map((impact) => DropdownMenuItem(
+                                value: impact, child: Text(impact)))
                             .toList(),
                         onChanged: (value) {
                           if (value != null) {
@@ -436,8 +625,14 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
                         initialValue: selectedStatus,
-                        items: const ['Mitigating', 'Monitoring', 'Escalated', 'Accepted']
-                            .map((status) => DropdownMenuItem(value: status, child: Text(status)))
+                        items: const [
+                          'Mitigating',
+                          'Monitoring',
+                          'Escalated',
+                          'Accepted'
+                        ]
+                            .map((status) => DropdownMenuItem(
+                                value: status, child: Text(status)))
                             .toList(),
                         onChanged: (value) {
                           if (value != null) {
@@ -449,7 +644,8 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: nextReviewController,
-                        decoration: const InputDecoration(labelText: 'Next review (date or note)'),
+                        decoration: const InputDecoration(
+                            labelText: 'Next review (date or note)'),
                       ),
                     ],
                   ),
@@ -514,12 +710,21 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
               children: [
                 Row(
                   children: [
-                    Expanded(child: Text(plan.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
-                    Text(plan.status, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: plan.color)),
+                    Expanded(
+                        child: Text(plan.title,
+                            style: const TextStyle(
+                                fontSize: 13, fontWeight: FontWeight.w600))),
+                    Text(plan.status,
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: plan.color)),
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text(plan.owner, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                Text(plan.owner,
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF64748B))),
                 const SizedBox(height: 8),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
@@ -555,9 +760,13 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(signal.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                Text(signal.title,
+                    style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
-                Text(signal.subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                Text(signal.subtitle,
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF64748B))),
               ],
             ),
           );
@@ -574,8 +783,10 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: const [
           _EscalationItem('Executive sync', 'Fri 9:30 AM', 'Agenda locked'),
-          _EscalationItem('Risk board update', 'Mon 3:00 PM', 'Pending approvals'),
-          _EscalationItem('Ops stakeholder review', 'Wed 11:00 AM', 'Materials sent'),
+          _EscalationItem(
+              'Risk board update', 'Mon 3:00 PM', 'Pending approvals'),
+          _EscalationItem(
+              'Ops stakeholder review', 'Wed 11:00 AM', 'Materials sent'),
         ],
       ),
     );
@@ -588,7 +799,11 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
         color: const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
+      child: Text(label,
+          style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF475569))),
     );
   }
 
@@ -606,19 +821,27 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w600, color: color)),
     );
   }
 
   Widget _impactChip(String label) {
-    final color = label == 'High' ? const Color(0xFFEF4444) : label == 'Medium' ? const Color(0xFFF59E0B) : const Color(0xFF10B981);
+    final color = label == 'High'
+        ? const Color(0xFFEF4444)
+        : label == 'Medium'
+            ? const Color(0xFFF59E0B)
+            : const Color(0xFF10B981);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+      child: Text(label,
+          style: TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w600, color: color)),
     );
   }
 }
@@ -655,9 +878,13 @@ class _PanelShell extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                    Text(title,
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 4),
-                    Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                    Text(subtitle,
+                        style: const TextStyle(
+                            fontSize: 12, color: Color(0xFF64748B))),
                   ],
                 ),
               ),
@@ -694,19 +921,28 @@ class _EscalationItem extends StatelessWidget {
           Container(
             width: 10,
             height: 10,
-            decoration: BoxDecoration(color: const Color(0xFF0EA5E9), shape: BoxShape.circle),
+            decoration: BoxDecoration(
+                color: const Color(0xFF0EA5E9), shape: BoxShape.circle),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                Text(time, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w600)),
+                Text(time,
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF64748B))),
               ],
             ),
           ),
-          Text(status, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+          Text(status,
+              style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF64748B))),
         ],
       ),
     );
@@ -714,7 +950,8 @@ class _EscalationItem extends StatelessWidget {
 }
 
 class _RiskItem {
-  const _RiskItem(this.id, this.title, this.owner, this.probability, this.impact, this.status, this.nextReview);
+  const _RiskItem(this.id, this.title, this.owner, this.probability,
+      this.impact, this.status, this.nextReview);
 
   final String id;
   final String title;
@@ -733,7 +970,8 @@ class _RiskSignal {
 }
 
 class _MitigationPlan {
-  const _MitigationPlan(this.title, this.owner, this.status, this.progress, this.color);
+  const _MitigationPlan(
+      this.title, this.owner, this.status, this.progress, this.color);
 
   final String title;
   final String owner;

@@ -94,6 +94,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
   final ScrollController _benefitTableHorizontalController = ScrollController();
   final ScrollController _benefitTableRowsVerticalController =
       ScrollController();
+  final ScrollController _initialCostTableHorizontalController =
+      ScrollController();
   bool _initiationExpanded = true;
   bool _businessCaseExpanded = true;
   final GlobalKey _tablesSectionKey = GlobalKey();
@@ -317,7 +319,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
       return {
         for (final field in _projectValueFields)
           field.key: _CategoryCostEntry(categoryKey: field.key)
-            ..bind(_markDirty),
+            ..bind(_markDirtyAndRecalc),
       };
     });
     _categoryIdeasPerSolution = List.generate(_rowsPerSolution.length, (_) {
@@ -2009,7 +2011,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                   if (!_reviewConfirmed) {
                     final continueAnyway = await showProceedWithoutReviewDialog(
                       context,
-                      title: 'Some Information Is Still Missing',
+                      title: 'Please confirm before continuing',
                       message:
                           'You have not confirmed this tab yet. You can continue now and come back to complete it, or stay and update it now.',
                     );
@@ -2455,8 +2457,18 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     _scheduleAutosave();
   }
 
+  void _markDirtyAndRecalc() {
+    if (_suppressDirtyTracking || !mounted) {
+      return;
+    }
+    _markDirty();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   void _attachRowDirtyListeners(_CostRow row) {
-    void handleChange() => _markDirty();
+    void handleChange() => _markDirtyAndRecalc();
     row.itemController.addListener(handleChange);
     row.descriptionController.addListener(handleChange);
     row.costController.addListener(handleChange);
@@ -3137,7 +3149,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
 
   Widget _buildMultiYearBenefitTable() {
     final amountText = _projectValueAmountController.text.trim();
-    final baseValue = _parseCurrencyInput(amountText);
+    final explicitValue = _parseCurrencyInput(amountText);
 
     if (_basisFrequency == null) {
       return const SizedBox.shrink();
@@ -3157,8 +3169,12 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         frequencyMultiplier = 1;
     }
 
-    // Annualized value
-    final annualValue = baseValue * frequencyMultiplier;
+    final bool usingLineItems = explicitValue <= 0;
+    final trackerDescriptor =
+        _trackerBasisFrequency == 'Monthly' ? 'annualized' : 'annual';
+    final double annualValue = usingLineItems
+        ? _benefitTotalValueForSolution(_activeSolutionIndex())
+        : explicitValue * frequencyMultiplier;
 
     // Multi-year calculations
     final year1 = annualValue;
@@ -3184,7 +3200,9 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         ]),
         const SizedBox(height: 8),
         Text(
-          'Based on $_basisFrequency basis${frequencyMultiplier > 1 ? " (x$frequencyMultiplier to annualize first)" : ""}',
+          usingLineItems
+              ? 'Derived from line item totals ($trackerDescriptor basis).'
+              : 'Based on $_basisFrequency basis${frequencyMultiplier > 1 ? " (x$frequencyMultiplier to annualize first)" : ""}',
           style: TextStyle(fontSize: 12, color: Colors.grey[600]),
         ),
         const SizedBox(height: 16),
@@ -5468,8 +5486,13 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
                 : constraints.maxWidth;
 
             return Scrollbar(
+              controller: _initialCostTableHorizontalController,
               thumbVisibility: constraints.maxWidth < minTableWidth,
+              trackVisibility: constraints.maxWidth < minTableWidth,
+              interactive: true,
+              notificationPredicate: (notification) => notification.depth == 0,
               child: SingleChildScrollView(
+                controller: _initialCostTableHorizontalController,
                 scrollDirection: Axis.horizontal,
                 child: SizedBox(
                   width: tableWidth,
@@ -6943,6 +6966,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
 
   void _applyCurrencyConversion(double factor) {
     if (factor == 1.0) return;
+    final wasSuppressed = _suppressDirtyTracking;
+    _suppressDirtyTracking = true;
     // Project value baseline for every solution.
     for (int i = 0; i < _projectValueAmountBySolution.length; i++) {
       final pv = _projectValueAmountBySolution[i].trim();
@@ -6973,6 +6998,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
         row.convertCurrency(factor);
       }
     }
+    _suppressDirtyTracking = wasSuppressed;
   }
 
   double _solutionTotalCost(int index) {
@@ -7673,6 +7699,8 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
               _lastCurrency = selected;
             });
             _markDirty();
+            final provider = ProjectDataHelper.getProvider(context);
+            provider.updateCostBenefitCurrency(selected);
           },
         ),
       ),
@@ -7981,6 +8009,7 @@ class _CostAnalysisScreenState extends State<CostAnalysisScreen>
     _mainScrollController.dispose();
     _benefitTableHorizontalController.dispose();
     _benefitTableRowsVerticalController.dispose();
+    _initialCostTableHorizontalController.dispose();
     _notesController.removeListener(_markDirty);
     _notesController.dispose();
     _projectValueAmountController.removeListener(_onProjectValueFieldChanged);

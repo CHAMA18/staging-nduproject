@@ -6,6 +6,8 @@ import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/screens/progress_tracking_screen.dart';
 import 'package:ndu_project/screens/staff_team_screen.dart';
 import 'package:ndu_project/services/execution_phase_service.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/utils/phase_transition_helper.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -34,6 +36,8 @@ class _TeamMeetingsScreenState extends State<TeamMeetingsScreen> {
   List<launch.LaunchEntry> _decisionsOutcomes = [];
   List<String> _staffRoles = []; // Roles from Staff Team section
   bool _loading = true;
+  bool _autoGenerationTriggered = false;
+  bool _isAutoGenerating = false;
   Timer? _autoSaveDebounce;
 
   String? get _projectId {
@@ -98,9 +102,69 @@ class _TeamMeetingsScreenState extends State<TeamMeetingsScreen> {
           _loading = false;
         });
       }
+      await _autoGenerateIfNeeded();
     } catch (e) {
       debugPrint('Error loading team meetings data: $e');
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _autoGenerateIfNeeded() async {
+    if (!mounted || _autoGenerationTriggered || _isAutoGenerating) return;
+    if (_meetingRows.isNotEmpty &&
+        _agendasPrep.isNotEmpty &&
+        _decisionsOutcomes.isNotEmpty) {
+      return;
+    }
+
+    _autoGenerationTriggered = true;
+    _isAutoGenerating = true;
+    try {
+      final contextText =
+          ExecutionPhaseAiSeed.buildContext(context, section: 'Team Meetings');
+      final ai = OpenAiServiceSecure();
+
+      final generatedMeetings = _meetingRows.isEmpty
+          ? await ai.generateMeetingRows(
+              context: contextText,
+              availableRoles: _staffRoles,
+              maxRows: 3,
+            )
+          : _meetingRows;
+
+      final generatedEntries = await ExecutionPhaseAiSeed.generateEntries(
+        context: context,
+        section: 'Team Meetings',
+        sections: const {
+          'agendas': 'Agendas and pre-read items for team meetings',
+          'decisions': 'Key decisions and outcomes to capture',
+        },
+        itemsPerSection: 3,
+      );
+
+      final agendas =
+          generatedEntries['agendas']?.take(4).toList() ?? const [];
+      final decisions =
+          generatedEntries['decisions']?.take(4).toList() ?? const [];
+
+      if (!mounted) return;
+      setState(() {
+        if (_meetingRows.isEmpty && generatedMeetings.isNotEmpty) {
+          _meetingRows = generatedMeetings;
+        }
+        if (_agendasPrep.isEmpty && agendas.isNotEmpty) {
+          _agendasPrep = agendas;
+        }
+        if (_decisionsOutcomes.isEmpty && decisions.isNotEmpty) {
+          _decisionsOutcomes = decisions;
+        }
+      });
+
+      await _persistChanges();
+    } catch (e) {
+      debugPrint('Error auto-generating team meetings data: $e');
+    } finally {
+      _isAutoGenerating = false;
     }
   }
 

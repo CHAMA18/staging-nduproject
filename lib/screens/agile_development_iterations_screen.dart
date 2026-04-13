@@ -18,6 +18,7 @@ import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
 import 'package:ndu_project/widgets/page_regenerate_all_button.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 
 class AgileDevelopmentIterationsScreen extends StatefulWidget {
   const AgileDevelopmentIterationsScreen({super.key});
@@ -41,6 +42,8 @@ class _AgileDevelopmentIterationsScreenState
   List<String> _availableRoles = [];
   bool _isLoading = false;
   bool _isRegeneratingAll = false;
+  bool _autoGenerationTriggered = false;
+  bool _isAutoGenerating = false;
 
   String? get _projectId {
     try {
@@ -74,6 +77,7 @@ class _AgileDevelopmentIterationsScreenState
           _isLoading = false;
         });
       }
+      await _autoGenerateIfNeeded();
     } catch (e) {
       debugPrint('Error loading agile tasks: $e');
       if (mounted) {
@@ -98,8 +102,62 @@ class _AgileDevelopmentIterationsScreenState
               .toList();
         });
       }
+      await _autoGenerateIfNeeded();
     } catch (e) {
       debugPrint('Error loading staff roles: $e');
+    }
+  }
+
+  Future<void> _autoGenerateIfNeeded() async {
+    if (!mounted || _autoGenerationTriggered || _isAutoGenerating) return;
+    if (_tasks.isNotEmpty) return;
+    if (_projectId == null) return;
+
+    _autoGenerationTriggered = true;
+    _isAutoGenerating = true;
+    try {
+      final generated = await ExecutionPhaseAiSeed.generateEntries(
+        context: context,
+        section: 'Agile Development Iterations',
+        sections: const {
+          'agileTasks': 'Agile user stories and tasks for execution',
+        },
+        itemsPerSection: 4,
+      );
+      final entries = generated['agileTasks'] ?? const [];
+      if (entries.isEmpty) return;
+
+      final roleFallback =
+          _availableRoles.isNotEmpty ? _availableRoles.first : '';
+      final newTasks = entries
+          .map(
+            (entry) => AgileTask(
+              userStory: entry.title,
+              assignedRole: roleFallback,
+              storyPoints: 3,
+              priority: 'Medium',
+              status: 'To-Do',
+              taskDescription: entry.details,
+              acceptanceCriteria: entry.details.isNotEmpty
+                  ? '. ${entry.details}'
+                  : '',
+            ),
+          )
+          .toList();
+
+      if (!mounted) return;
+      setState(() => _tasks = newTasks);
+      final projectId = _projectId;
+      if (projectId != null) {
+        await ExecutionPhaseService.saveAgileTasks(
+          projectId: projectId,
+          tasks: newTasks,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error auto-generating agile tasks: $e');
+    } finally {
+      _isAutoGenerating = false;
     }
   }
 
@@ -652,26 +710,13 @@ class _AgileDevelopmentIterationsScreenState
                     setDialogState(() {
                       validationErrors = validation.errorByFieldId;
                     });
-                    final action = await FormValidationEngine
-                        .showMissingRequirementsDialog(
+                    FormValidationEngine.showValidationSnackBar(
                       this.context,
                       validation,
-                      title: 'Task Details Missing',
                       intro:
                           'Please complete the required task fields before adding this task.',
-                      manualActionLabel: 'Add Missing Info',
-                      skipActionLabel: 'Close',
+                      backgroundColor: const Color(0xFFF59E0B),
                     );
-                    if (!mounted || !dialogContext.mounted || action == null) {
-                      return;
-                    }
-                    if (action == MissingRequirementsAction.manual) {
-                      FormValidationEngine.showValidationSnackBar(
-                        this.context,
-                        validation,
-                      );
-                      await FormValidationEngine.scrollToFirstIssue(validation);
-                    }
                     return;
                   }
 

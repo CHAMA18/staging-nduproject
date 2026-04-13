@@ -7,11 +7,13 @@ import 'package:go_router/go_router.dart';
 import 'package:ndu_project/routing/app_router.dart';
 import 'package:ndu_project/screens/gap_analysis_scope_reconcillation_screen.dart';
 import 'package:ndu_project/screens/risk_tracking_screen.dart';
+import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
+import 'package:ndu_project/widgets/launch_editable_section.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 
 class ScopeCompletionScreen extends StatefulWidget {
@@ -64,6 +66,8 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
   final _Debouncer _saveDebouncer = _Debouncer();
   bool _isLoading = false;
   bool _suspendSave = false;
+  bool _autoGenerationTriggered = false;
+  bool _isAutoGenerating = false;
 
   static const List<String> _workStatuses = [
     'Delivered',
@@ -151,6 +155,29 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
           .get();
       final data = doc.data() ?? {};
       final metrics = Map<String, dynamic>.from(data['metrics'] ?? {});
+      final packages = _WorkPackageItem.fromList(data['workPackages']);
+      final checkpoints =
+          _CheckpointItem.fromList(data['acceptanceCheckpoints']);
+      final tags = _AcceptanceTagItem.fromList(data['acceptanceTags']);
+      final changes = _ScopeChangeItem.fromList(data['scopeChanges']);
+
+      final hasContent = _hasText(data['overview']) ||
+          _hasText(data['statusSummary']) ||
+          _hasText(data['sponsorSummary']) ||
+          _hasText(data['changeSummary']) ||
+          packages.isNotEmpty ||
+          checkpoints.isNotEmpty ||
+          tags.isNotEmpty ||
+          changes.isNotEmpty ||
+          _hasText(metrics['deliveredPercent']) ||
+          _hasText(metrics['deliveredStatus']) ||
+          _hasText(metrics['deferredCount']) ||
+          _hasText(metrics['deferredStatus']) ||
+          _hasText(metrics['criticalGapCount']) ||
+          _hasText(metrics['criticalGapStatus']) ||
+          _hasText(metrics['approvedChanges']) ||
+          _hasText(metrics['unapprovedChanges']) ||
+          _hasText(metrics['openRequests']);
 
       _suspendSave = true;
       _overviewController.text = data['overview']?.toString() ?? '';
@@ -180,12 +207,6 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
           metrics['openRequests']?.toString() ?? '';
       _suspendSave = false;
 
-      final packages = _WorkPackageItem.fromList(data['workPackages']);
-      final checkpoints =
-          _CheckpointItem.fromList(data['acceptanceCheckpoints']);
-      final tags = _AcceptanceTagItem.fromList(data['acceptanceTags']);
-      final changes = _ScopeChangeItem.fromList(data['scopeChanges']);
-
       if (!mounted) return;
       setState(() {
         _workPackages
@@ -201,6 +222,9 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
           ..clear()
           ..addAll(changes);
       });
+      if (!hasContent) {
+        await _populateFromAi();
+      }
     } catch (error) {
       debugPrint('Scope Completion load error: $error');
     } finally {
@@ -245,6 +269,206 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
     } catch (error) {
       debugPrint('Scope Completion save error: $error');
     }
+  }
+
+  bool _hasText(dynamic value) =>
+      value != null && value.toString().trim().isNotEmpty;
+
+  Future<void> _populateFromAi() async {
+    if (_autoGenerationTriggered || _isAutoGenerating) return;
+    _autoGenerationTriggered = true;
+    final generated = await ExecutionPhaseAiSeed.generateEntries(
+      context: context,
+      section: 'Scope Completion',
+      sections: const {
+        'overview': 'Scope completion overview summary',
+        'status_summary':
+            'Completion narrative with delivered scope, deferrals, and gaps',
+        'sponsor_summary': 'Sponsor acceptance summary and sign-off status',
+        'change_summary': 'Key scope change summary',
+        'work_packages': 'Key work packages with owner, milestone, status',
+        'acceptance_checkpoints': 'Acceptance checkpoints with owners',
+        'acceptance_tags': 'Acceptance tags and readiness status',
+        'scope_changes': 'Most impactful scope changes',
+        'metrics':
+            'Metrics such as percent delivered, deferred count, critical gaps',
+      },
+      itemsPerSection: 4,
+    );
+
+    if (!mounted) return;
+    if (_isAutoGenerating) return;
+    setState(() => _isAutoGenerating = true);
+
+    final workPackages = _mapWorkPackages(generated['work_packages']);
+    final checkpoints = _mapCheckpoints(generated['acceptance_checkpoints']);
+    final tags = _mapAcceptanceTags(generated['acceptance_tags']);
+    final changes = _mapScopeChanges(generated['scope_changes']);
+
+    final deliveredCount = workPackages
+        .where((item) => item.status.toLowerCase().contains('deliver'))
+        .length;
+    final deferredCount = workPackages
+        .where((item) => item.status.toLowerCase().contains('defer'))
+        .length;
+    final criticalGaps = changes.length.clamp(0, 5);
+    final totalPackages = workPackages.isEmpty ? 1 : workPackages.length;
+    final deliveredPercent =
+        ((deliveredCount / totalPackages) * 100).round().clamp(55, 98);
+
+    final metricsEntries = generated['metrics'] ?? [];
+    final deliveredOverride =
+        _parseNumber(_findMetric(metricsEntries, 'deliver'));
+    final deferredOverride =
+        _parseNumber(_findMetric(metricsEntries, 'defer'));
+    final criticalOverride =
+        _parseNumber(_findMetric(metricsEntries, 'critical'));
+
+    _suspendSave = true;
+    _overviewController.text = _entryText(generated['overview']) ??
+        _overviewController.text.trim();
+    _statusSummaryController.text =
+        _entryText(generated['status_summary']) ??
+            _statusSummaryController.text.trim();
+    _sponsorSummaryController.text =
+        _entryText(generated['sponsor_summary']) ??
+            _sponsorSummaryController.text.trim();
+    _changeSummaryController.text =
+        _entryText(generated['change_summary']) ??
+            _changeSummaryController.text.trim();
+
+    _deliveredPercentController.text =
+        deliveredOverride?.toString() ?? deliveredPercent.toString();
+    _deliveredStatusController.text =
+        deliveredPercent >= 85 ? 'On track' : 'Needs attention';
+    _deferredCountController.text =
+        deferredOverride?.toString() ?? deferredCount.toString();
+    _deferredStatusController.text =
+        deferredCount == 0 ? 'Clear' : 'Review required';
+    _criticalGapCountController.text =
+        criticalOverride?.toString() ?? criticalGaps.toString();
+    _criticalGapStatusController.text =
+        criticalGaps == 0 ? 'No critical gaps' : 'Open gaps';
+    _approvedChangesController.text =
+        (changes.length - 1).clamp(0, 99).toString();
+    _unapprovedChangesController.text =
+        (changes.length > 1 ? 1 : 0).toString();
+    _openRequestsController.text =
+        (changes.length > 2 ? 2 : 0).toString();
+
+    setState(() {
+      _workPackages
+        ..clear()
+        ..addAll(workPackages);
+      _acceptanceCheckpoints
+        ..clear()
+        ..addAll(checkpoints);
+      _acceptanceTags
+        ..clear()
+        ..addAll(tags);
+      _scopeChanges
+        ..clear()
+        ..addAll(changes);
+      _isAutoGenerating = false;
+    });
+    _suspendSave = false;
+    await _saveToFirestore();
+  }
+
+  String? _entryText(List<LaunchEntry>? entries) {
+    if (entries == null || entries.isEmpty) return null;
+    final entry = entries.first;
+    final title = entry.title.trim();
+    final details = entry.details.trim();
+    if (title.isNotEmpty && details.isNotEmpty) {
+      return '$title: $details';
+    }
+    return title.isNotEmpty ? title : details;
+  }
+
+  String _extractField(String text, String key) {
+    final match = RegExp('$key\\s*[:=-]\\s*([^|;\\n]+)',
+            caseSensitive: false)
+        .firstMatch(text);
+    return match?.group(1)?.trim() ?? '';
+  }
+
+  String _findMetric(List<LaunchEntry> entries, String keyword) {
+    for (final entry in entries) {
+      final title = entry.title.toLowerCase();
+      if (title.contains(keyword)) {
+        return '${entry.title} ${entry.details} ${entry.status ?? ''}';
+      }
+    }
+    return '';
+  }
+
+  int? _parseNumber(String text) {
+    final match = RegExp(r'(\d{1,3})').firstMatch(text);
+    return match != null ? int.tryParse(match.group(1) ?? '') : null;
+  }
+
+  List<_WorkPackageItem> _mapWorkPackages(List<LaunchEntry>? entries) {
+    if (entries == null) return [];
+    return entries.map((entry) {
+      final details = entry.details;
+      final owner = _extractField(details, 'Owner');
+      final milestone = _extractField(details, 'Milestone');
+      final impact = _extractField(details, 'Impact');
+      final status = entry.status?.trim().isNotEmpty == true
+          ? entry.status!.trim()
+          : _workStatuses.first;
+      return _WorkPackageItem(
+        id: _newId(),
+        title: entry.title.trim(),
+        owner: owner,
+        milestone: milestone,
+        status: status,
+        impact: impact.isNotEmpty ? impact : _impactLevels.first,
+      );
+    }).where((item) => item.title.isNotEmpty).toList();
+  }
+
+  List<_CheckpointItem> _mapCheckpoints(List<LaunchEntry>? entries) {
+    if (entries == null) return [];
+    return entries.map((entry) {
+      final details = entry.details;
+      final owner = _extractField(details, 'Owner');
+      final status = entry.status?.trim().isNotEmpty == true
+          ? entry.status!.trim()
+          : _checkpointStatuses.first;
+      return _CheckpointItem(
+        id: _newId(),
+        title: entry.title.trim(),
+        owner: owner,
+        status: status,
+      );
+    }).where((item) => item.title.isNotEmpty).toList();
+  }
+
+  List<_AcceptanceTagItem> _mapAcceptanceTags(List<LaunchEntry>? entries) {
+    if (entries == null) return [];
+    return entries.map((entry) {
+      final status = entry.status?.trim().isNotEmpty == true
+          ? entry.status!.trim()
+          : _checkpointStatuses.first;
+      return _AcceptanceTagItem(
+        id: _newId(),
+        label: entry.title.trim(),
+        status: status,
+      );
+    }).where((item) => item.label.isNotEmpty).toList();
+  }
+
+  List<_ScopeChangeItem> _mapScopeChanges(List<LaunchEntry>? entries) {
+    if (entries == null) return [];
+    return entries
+        .map((entry) => _ScopeChangeItem(
+              id: _newId(),
+              detail: _entryText([entry]) ?? '',
+            ))
+        .where((item) => item.detail.isNotEmpty)
+        .toList();
   }
 
   @override

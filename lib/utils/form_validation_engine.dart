@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' as material;
+import 'package:flutter/material.dart';
 
 enum ValidationFieldType {
   text,
@@ -95,16 +95,15 @@ class FormValidationEngine {
   /// navigation/actions that depend on `FormValidationResult.isValid`.
   static bool enforceBlockingValidation = false;
 
-  static FormValidationResult validateForm(List<ValidationFieldRule> fields, {bool isAiGenerated = false}) {
+  static FormValidationResult validateForm(
+    List<ValidationFieldRule> fields, {
+    bool skipAiGeneratedFields = false,
+  }) {
     final issues = <ValidationIssue>[];
 
     for (final field in fields) {
       if (!field.required) continue;
-
-      // Skip validation for AI-generated content in specific phases
-      if (isAiGenerated && field.isAiGenerated) {
-        continue;
-      }
+      if (skipAiGeneratedFields && field.isAiGenerated) continue;
 
       final missing = field.isMissing != null
           ? field.isMissing!(field)
@@ -130,14 +129,8 @@ class FormValidationEngine {
     FormValidationResult result, {
     int maxItems = 6,
     String intro = 'Please complete the following before continuing:',
-    bool isAiGenerated = false,
   }) {
     if (result.issues.isEmpty) return '';
-
-    // Skip message for AI-generated content
-    if (isAiGenerated) {
-      return '';
-    }
 
     final sections = result.issuesBySection.keys.toList(growable: false);
     final header = sections.length == 1
@@ -169,102 +162,66 @@ class FormValidationEngine {
     String intro = 'Please complete the following before continuing:',
     Duration duration = const Duration(seconds: 5),
     Color backgroundColor = const Color(0xFFEF4444),
-    bool isAiGenerated = false,
   }) {
     if (!context.mounted || result.issues.isEmpty) return;
     final message = buildMissingFieldsMessage(
       result,
       maxItems: maxItems,
       intro: intro,
-      isAiGenerated: isAiGenerated,
     );
+    if (message.isEmpty) return;
 
-    if (message.isNotEmpty) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(
-              message,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-            backgroundColor: backgroundColor,
-            duration: duration,
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: const TextStyle(fontWeight: FontWeight.w600),
           ),
-        );
-    }
+          backgroundColor: backgroundColor,
+          duration: duration,
+        ),
+      );
   }
 
-static Future<MissingRequirementsAction?> showMissingRequirementsDialog(
+  static Future<MissingRequirementsAction?> showMissingRequirementsDialog(
     BuildContext context,
     FormValidationResult result, {
     String title = 'Missing Required Information',
     String intro =
         'The following fields are recommended before continuing. You can still proceed and complete them later.',
+    String? message,
     String manualActionLabel = 'Edit on Page',
     String autoFillActionLabel = 'Auto-fill with AI',
     String skipActionLabel = 'Continue Anyway',
-    Duration duration = const Duration(seconds: 5),
-    Color backgroundColor = const Color(0xFFEF4444),
-    bool isAiGenerated = false,
-  }) async {
-    if (!context.mounted || result.issues.isEmpty) return null;
-    final message = buildMissingFieldsMessage(
-      result,
-      maxItems: 6,
-      intro: intro,
-      isAiGenerated: isAiGenerated,
-    );
-
-    if (message.isEmpty) {
-      return MissingRequirementsAction.skip;
+    bool showAutoFillAction = false,
+    int maxItems = 6,
+    int dialogWidth = 560,
+  }) {
+    if (!context.mounted) {
+      return Future.value(null);
     }
 
-    return material.showDialog<MissingRequirementsAction>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(MissingRequirementsAction.manual),
-            child: Text(manualActionLabel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(MissingRequirementsAction.autoFill),
-            child: Text(autoFillActionLabel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(MissingRequirementsAction.skip),
-            child: Text(skipActionLabel),
-          ),
-        ],
-      ),
-    );
-  }
+    final summaries = <String>[];
+    final seen = <String>{};
+    for (final issue in result.issues) {
+      final section = (issue.section ?? '').trim();
+      final summary =
+          section.isEmpty ? issue.label : '${issue.label} ($section)';
+      if (seen.add(summary)) {
+        summaries.add(summary);
+      }
+    }
 
-    return showDialog<MissingRequirementsAction>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(MissingRequirementsAction.manual),
-            child: Text(manualActionLabel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(MissingRequirementsAction.autoFill),
-            child: Text(autoFillActionLabel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(MissingRequirementsAction.skip),
-            child: Text(skipActionLabel),
-),
-        ],
-      ),
-    );
-  }
+    final customMessage = (message ?? '').trim();
+    final hasIssueList = summaries.isNotEmpty;
+    if (!hasIssueList && customMessage.isEmpty) {
+      return Future.value(MissingRequirementsAction.skip);
+    }
+
+    final visible = summaries.take(maxItems).toList(growable: false);
+    final hiddenCount = summaries.length - visible.length;
 
     return showDialog<MissingRequirementsAction>(
       context: context,
@@ -282,13 +239,17 @@ static Future<MissingRequirementsAction?> showMissingRequirementsDialog(
             ),
           ],
         ),
-content: Text(message),
+        content: SizedBox(
+          width: dialogWidth.toDouble(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                intro,
+                customMessage.isNotEmpty ? customMessage : intro,
                 style: const TextStyle(fontSize: 13, height: 1.35),
               ),
-              const SizedBox(height: 10),
+              if (hasIssueList) const SizedBox(height: 10),
               for (final item in visible)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 6),
@@ -298,27 +259,9 @@ content: Text(message),
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF374151),
-),
-         ),
-         actions: [
-           TextButton.icon(
-             onPressed: () => Navigator.of(dialogContext)
-                 .pop(MissingRequirementsAction.autoFill),
-             icon: const Icon(Icons.auto_awesome, size: 16),
-             label: Text(autoFillActionLabel),
-           ),
-           OutlinedButton(
-             onPressed: () => Navigator.of(dialogContext)
-                 .pop(MissingRequirementsAction.manual),
-             child: Text(manualActionLabel),
-           ),
-           ElevatedButton(
-             onPressed: () =>
-                 Navigator.of(dialogContext).pop(MissingRequirementsAction.skip),
-             style: ElevatedButton.styleFrom(
-               backgroundColor: const Color(0xFFFFD700),
-               foregroundColor: Colors.black,
-             ),
+                    ),
+                  ),
+                ),
               if (hiddenCount > 0)
                 Text(
                   '- +$hiddenCount more',
@@ -329,27 +272,28 @@ content: Text(message),
                   ),
                 ),
             ],
-),
-         ),
-         actions: [
-           TextButton.icon(
-             onPressed: () => Navigator.of(dialogContext)
-                 .pop(MissingRequirementsAction.autoFill),
-             icon: const Icon(Icons.auto_awesome, size: 16),
-             label: Text(autoFillActionLabel),
-           ),
-           OutlinedButton(
-             onPressed: () => Navigator.of(dialogContext)
-                 .pop(MissingRequirementsAction.manual),
-             child: Text(manualActionLabel),
-           ),
-           ElevatedButton(
-             onPressed: () =>
-                 Navigator.of(dialogContext).pop(MissingRequirementsAction.skip),
-             style: ElevatedButton.styleFrom(
-               backgroundColor: const Color(0xFFFFD700),
-               foregroundColor: Colors.black,
-             ),
+          ),
+        ),
+        actions: [
+          if (showAutoFillAction)
+            TextButton.icon(
+              onPressed: () => Navigator.of(dialogContext)
+                  .pop(MissingRequirementsAction.autoFill),
+              icon: const Icon(Icons.auto_awesome, size: 16),
+              label: Text(autoFillActionLabel),
+            ),
+          OutlinedButton(
+            onPressed: () => Navigator.of(dialogContext)
+                .pop(MissingRequirementsAction.manual),
+            child: Text(manualActionLabel),
+          ),
+          ElevatedButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(MissingRequirementsAction.skip),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFFD700),
+              foregroundColor: Colors.black,
+            ),
             child: Text(skipActionLabel),
           ),
         ],
@@ -415,4 +359,34 @@ content: Text(message),
     if (value is Map) return value.isNotEmpty;
     return true;
   }
+}
+
+/// Compatibility helper used by older call sites that expect a bool response.
+Future<bool> showMissingRequirementsDialog(
+  BuildContext context,
+  FormValidationResult result, {
+  String title = 'Missing Required Information',
+  String intro =
+      'The following fields are recommended before continuing. You can still proceed and complete them later.',
+  String message = '',
+  String manualActionLabel = 'Edit on Page',
+  String skipActionLabel = 'Continue Anyway',
+  bool isAiGenerated = false,
+}) async {
+  if (isAiGenerated && result.issues.isEmpty && message.trim().isEmpty) {
+    return true;
+  }
+
+  final action = await FormValidationEngine.showMissingRequirementsDialog(
+    context,
+    result,
+    title: title,
+    intro: intro,
+    message: message.trim().isEmpty ? null : message.trim(),
+    manualActionLabel: manualActionLabel,
+    skipActionLabel: skipActionLabel,
+    showAutoFillAction: false,
+  );
+
+  return action == MissingRequirementsAction.skip;
 }

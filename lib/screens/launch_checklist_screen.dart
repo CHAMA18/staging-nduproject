@@ -5,8 +5,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:ndu_project/screens/risk_tracking_screen.dart';
 import 'package:ndu_project/screens/update_ops_maintenance_plans_screen.dart';
+import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
+import 'package:ndu_project/widgets/launch_editable_section.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
@@ -45,6 +48,8 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
   final _Debouncer _saveDebouncer = _Debouncer();
   bool _isLoading = false;
   bool _suspendSave = false;
+  bool _autoGenerationTriggered = false;
+  bool _isAutoGenerating = false;
 
   List<_InfoChipData> _contextChips = [];
   List<_StatusMetricData> _statusMetrics = [];
@@ -122,18 +127,33 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
 
       _suspendSave = true;
       if (!mounted) return;
-      setState(() {
-        final chips = _InfoChipData.fromList(data['contextChips']);
-        final metrics = _StatusMetricData.fromList(data['statusMetrics']);
-        final milestones = _MilestoneData.fromList(data['milestones']);
-        final approvals = _ApprovalItem.fromList(data['approvalItems']);
-        final checklist = _ChecklistRowData.fromList(data['checklistRows']);
-        final stages = _TimelineStage.fromList(data['timelineStages']);
-        final pills = _InfoPillData.fromList(data['timelineInfoPills']);
-        final highlights = _HighlightItem.fromList(data['highlightItems']);
-        final insights = _InsightCardData.fromList(data['insightCards']);
-        final tags = _ReadinessTagData.fromList(data['readinessTags']);
+      final chips = _InfoChipData.fromList(data['contextChips']);
+      final metrics = _StatusMetricData.fromList(data['statusMetrics']);
+      final milestones = _MilestoneData.fromList(data['milestones']);
+      final approvals = _ApprovalItem.fromList(data['approvalItems']);
+      final checklist = _ChecklistRowData.fromList(data['checklistRows']);
+      final stages = _TimelineStage.fromList(data['timelineStages']);
+      final pills = _InfoPillData.fromList(data['timelineInfoPills']);
+      final highlights = _HighlightItem.fromList(data['highlightItems']);
+      final insights = _InsightCardData.fromList(data['insightCards']);
+      final tags = _ReadinessTagData.fromList(data['readinessTags']);
 
+      final hasContent = chips.isNotEmpty ||
+          metrics.isNotEmpty ||
+          milestones.isNotEmpty ||
+          approvals.isNotEmpty ||
+          checklist.isNotEmpty ||
+          stages.isNotEmpty ||
+          pills.isNotEmpty ||
+          highlights.isNotEmpty ||
+          insights.isNotEmpty ||
+          tags.isNotEmpty ||
+          _hasText(data['confidenceStatus']) ||
+          _hasText(data['confidenceNote']) ||
+          _hasText(data['readinessSummary']) ||
+          _hasText(data['timelineSummary']) ||
+          _hasText(data['coordinator']);
+      setState(() {
         _contextChips = chips.isEmpty ? _defaultContextChips() : chips;
         _statusMetrics = metrics.isEmpty ? _defaultStatusMetrics() : metrics;
         _milestones = milestones.isEmpty ? _defaultMilestones() : milestones;
@@ -173,6 +193,9 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
         _coordinatorPhone =
             coordinator['phone']?.toString() ?? '+1 312 555 0196';
       });
+      if (!hasContent) {
+        await _autoPopulateFromAi();
+      }
     } catch (error) {
       debugPrint('Launch checklist load error: $error');
     } finally {
@@ -222,9 +245,379 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
     }
   }
 
+  bool _hasText(dynamic value) =>
+      value != null && value.toString().trim().isNotEmpty;
+
+  Future<void> _autoPopulateFromAi() async {
+    if (_autoGenerationTriggered || _isAutoGenerating) return;
+    _autoGenerationTriggered = true;
+    setState(() => _isAutoGenerating = true);
+    Map<String, List<LaunchEntry>> generated = {};
+    try {
+      generated = await ExecutionPhaseAiSeed.generateEntries(
+        context: context,
+        section: 'Launch Checklist',
+        sections: const {
+          'status_metrics': 'Status metrics for launch readiness',
+          'milestones': 'Key launch milestones with due dates',
+          'approvals': 'Approvals and sign-offs required',
+          'checklist_rows': 'Launch checklist action items with owners and due',
+          'timeline_stages': 'Timeline stages toward go-live',
+          'highlights': 'Top highlight areas or risks',
+          'readiness_tags': 'Readiness tags and status',
+          'insights': 'Checklist insights summary entries',
+        },
+        itemsPerSection: 4,
+      );
+    } catch (error) {
+      debugPrint('Launch checklist AI call failed: $error');
+    }
+
+    if (!mounted) return;
+    final projectData = ProjectDataHelper.getData(context);
+    final projectName = projectData.projectName.trim().isNotEmpty
+        ? projectData.projectName.trim()
+        : projectData.solutionTitle.trim();
+
+    final mappedChecklist = _mapChecklistRows(generated['checklist_rows']);
+    final mappedMilestones = _mapMilestones(generated['milestones']);
+    final mappedApprovals = _mapApprovals(generated['approvals']);
+    final mappedHighlights = _mapHighlights(generated['highlights']);
+    final mappedTags = _mapReadinessTags(generated['readiness_tags']);
+    final mappedMetrics = _mapStatusMetrics(generated['status_metrics']);
+    final mappedStages = _mapTimelineStages(generated['timeline_stages']);
+    final mappedInsights = _mapInsightCards(generated['insights']);
+
+    final checklistRows =
+        mappedChecklist.isNotEmpty ? mappedChecklist : _defaultChecklistRows();
+    final milestones =
+        mappedMilestones.isNotEmpty ? mappedMilestones : _defaultMilestones();
+    final approvals =
+        mappedApprovals.isNotEmpty ? mappedApprovals : _defaultApprovalItems();
+    final highlights =
+        mappedHighlights.isNotEmpty ? mappedHighlights : _defaultHighlightItems();
+    final readinessTags =
+        mappedTags.isNotEmpty ? mappedTags : _defaultReadinessTags();
+    final statusMetrics =
+        mappedMetrics.isNotEmpty ? mappedMetrics : _defaultStatusMetrics();
+    final timelineStages =
+        mappedStages.isNotEmpty ? mappedStages : _defaultTimelineStages();
+    final insightCards =
+        mappedInsights.isNotEmpty ? mappedInsights : _defaultInsightCards();
+    final infoPills = _buildInfoPills(
+        timelineStages, checklistRows, milestones);
+
+    final completedCount = checklistRows
+        .where((row) => row.status.toLowerCase().contains('complete'))
+        .length;
+    final progressValue = checklistRows.isEmpty
+        ? 0.72
+        : (completedCount / checklistRows.length).clamp(0.45, 0.95);
+    final confidencePercent = (progressValue * 100).round();
+
+    _suspendSave = true;
+    setState(() {
+      _contextChips = _createContextChips(projectName, milestones);
+      _statusMetrics = statusMetrics;
+      _milestones = milestones;
+      _approvalItems = approvals;
+      _checklistRows = checklistRows;
+      _timelineStages = timelineStages;
+      _timelineInfoPills = infoPills;
+      _highlightItems = highlights;
+      _insightCards = insightCards;
+      _readinessTags = readinessTags;
+
+      _confidencePercent = confidencePercent.toDouble();
+      _confidenceStatus = confidencePercent >= 85 ? 'On track' : 'Needs review';
+      _confidenceNote =
+          'Launch readiness aligned to ${projectName.isEmpty ? 'current' : projectName} priorities.';
+      _readinessProgress = progressValue;
+      _readinessSummary =
+          '${completedCount} of ${checklistRows.length} critical items cleared';
+      _timelineProgress = (timelineStages.length / 5).clamp(0.35, 0.9);
+      _timelineSummary = timelineStages.isNotEmpty
+          ? 'Current phase: ${timelineStages.first.label}'
+          : _timelineSummary;
+
+      _coordinatorName =
+          projectData.charterProjectManagerName.trim().isNotEmpty
+              ? projectData.charterProjectManagerName.trim()
+              : _coordinatorName;
+      _coordinatorRole = _coordinatorRole.isNotEmpty
+          ? _coordinatorRole
+          : 'Launch coordinator';
+      _coordinatorEmail = _coordinatorEmail.isNotEmpty
+          ? _coordinatorEmail
+          : projectData.charterEmail.trim();
+      _coordinatorPhone = _coordinatorPhone.isNotEmpty
+          ? _coordinatorPhone
+          : projectData.charterPhone.trim();
+      _isAutoGenerating = false;
+    });
+    _suspendSave = false;
+    await _saveToFirestore();
+  }
+
   double _toDouble(dynamic value, {required double fallback}) {
     if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '') ?? fallback;
+  }
+
+  String _extractField(String text, String key) {
+    final match = RegExp('$key\\s*[:=-]\\s*([^|;\\n]+)',
+            caseSensitive: false)
+        .firstMatch(text);
+    return match?.group(1)?.trim() ?? '';
+  }
+
+  List<_ChecklistRowData> _mapChecklistRows(List<LaunchEntry>? entries) {
+    if (entries == null) return [];
+    return entries
+        .map((entry) {
+          final details = entry.details;
+          final owner = _extractField(details, 'Owner');
+          final due = _extractField(details, 'Due');
+          final status = entry.status?.trim().isNotEmpty == true
+              ? entry.status!.trim()
+              : 'On track';
+          return _ChecklistRowData(
+            id: _newId(),
+            title: entry.title.trim(),
+            detail: details.trim().isNotEmpty
+                ? details.trim()
+                : 'Update checklist details.',
+            owner: owner.isNotEmpty ? owner : 'Owner TBD',
+            due: due.isNotEmpty ? due : 'TBD',
+            status: status,
+          );
+        })
+        .where((row) => row.title.isNotEmpty)
+        .toList();
+  }
+
+  List<_MilestoneData> _mapMilestones(List<LaunchEntry>? entries) {
+    if (entries == null) return [];
+    return entries
+        .map((entry) {
+          final due = _extractField(entry.details, 'Due');
+          final status = entry.status?.trim().isNotEmpty == true
+              ? entry.status!.trim()
+              : 'Scheduled';
+          return _MilestoneData(
+            id: _newId(),
+            title: entry.title.trim(),
+            detail: entry.details.trim(),
+            dateLabel: due.isNotEmpty ? due : (entry.status ?? 'TBD'),
+            badgeLabel: status,
+            badgeColor: _statusAccent(status),
+            iconKey: 'present',
+          );
+        })
+        .where((item) => item.title.isNotEmpty)
+        .toList();
+  }
+
+  List<_ApprovalItem> _mapApprovals(List<LaunchEntry>? entries) {
+    if (entries == null) return [];
+    return entries
+        .map((entry) {
+          final status =
+              entry.status?.trim().isNotEmpty == true ? entry.status! : 'On track';
+          final iconColor = _statusAccent(status);
+          return _ApprovalItem(
+            id: _newId(),
+            label: entry.title.trim(),
+            detail: entry.details.trim(),
+            status: status,
+            iconKey: status.toLowerCase().contains('complete') ? 'check' : 'briefcase',
+            iconColor: iconColor,
+            iconBackground: iconColor.withValues(alpha: 0.18),
+          );
+        })
+        .where((item) => item.label.isNotEmpty)
+        .toList();
+  }
+
+  List<_HighlightItem> _mapHighlights(List<LaunchEntry>? entries) {
+    if (entries == null) return [];
+    return entries
+        .map((entry) {
+          final status =
+              entry.status?.trim().isNotEmpty == true ? entry.status! : 'On track';
+          return _HighlightItem(
+            id: _newId(),
+            title: entry.title.trim(),
+            detail: entry.details.trim(),
+            status: status,
+            iconKey: 'campaign',
+            accent: _statusAccent(status),
+            ctaLabel: 'Review details',
+          );
+        })
+        .where((item) => item.title.isNotEmpty)
+        .toList();
+  }
+
+  List<_StatusMetricData> _mapStatusMetrics(List<LaunchEntry>? entries) {
+    if (entries == null || entries.isEmpty) return [];
+    const palette = [
+      Color(0xFF2563EB),
+      Color(0xFF0EA5E9),
+      Color(0xFFF97316),
+      Color(0xFF10B981),
+    ];
+    const backgrounds = [
+      Color(0xFFEFF6FF),
+      Color(0xFFE0F2FE),
+      Color(0xFFFFF7ED),
+      Color(0xFFECFDF5),
+    ];
+    const borders = [
+      Color(0xFFD2E3FC),
+      Color(0xFFBAE6FD),
+      Color(0xFFFBD5BB),
+      Color(0xFFCFFADE),
+    ];
+
+    return entries.take(4).toList().asMap().entries.map((entry) {
+      final index = entry.key;
+      final item = entry.value;
+      final accent = palette[index % palette.length];
+      return _StatusMetricData(
+        id: _newId(),
+        label: item.title.trim(),
+        value: item.details.trim().isNotEmpty
+            ? item.details.trim()
+            : (item.status ?? 'On track'),
+        annotation: item.status?.trim(),
+        iconKey: 'stacked',
+        accentColor: accent,
+        background: backgrounds[index % backgrounds.length],
+        borderColor: borders[index % borders.length],
+      );
+    }).toList();
+  }
+
+  List<_TimelineStage> _mapTimelineStages(List<LaunchEntry>? entries) {
+    if (entries == null) return [];
+    return entries
+        .map((entry) => _TimelineStage(
+              id: _newId(),
+              label: entry.title.trim(),
+              detail: entry.details.trim(),
+              date: entry.status?.trim().isNotEmpty == true
+                  ? entry.status!.trim()
+                  : 'TBD',
+              iconKey: 'factcheck',
+              accent: const Color(0xFF2563EB),
+            ))
+        .where((item) => item.label.isNotEmpty)
+        .toList();
+  }
+
+  List<_ReadinessTagData> _mapReadinessTags(List<LaunchEntry>? entries) {
+    if (entries == null) return [];
+    return entries
+        .map((entry) => _ReadinessTagData(
+              id: _newId(),
+              label: entry.title.trim(),
+              status: entry.status?.trim().isNotEmpty == true
+                  ? entry.status!.trim()
+                  : 'On track',
+            ))
+        .where((item) => item.label.isNotEmpty)
+        .toList();
+  }
+
+  List<_InsightCardData> _mapInsightCards(List<LaunchEntry>? entries) {
+    if (entries == null || entries.isEmpty) return [];
+    return [
+      _InsightCardData(
+        id: _newId(),
+        title: 'Launch readiness insights',
+        subtitle: 'Key checklist signals and ownership coverage.',
+        tag: 'Execution',
+        tagColor: const Color(0xFF2563EB),
+        entries: entries.take(3).map((entry) {
+          return _InsightEntryData(
+            id: _newId(),
+            label: entry.title.trim(),
+            detail: entry.details.trim().isNotEmpty
+                ? entry.details.trim()
+                : 'Update insight details.',
+            iconKey: 'checklist',
+            iconColor: const Color(0xFF2563EB),
+            status: entry.status?.trim(),
+          );
+        }).toList(),
+        footerLabel: 'Open checklist view',
+      ),
+    ];
+  }
+
+  List<_InfoChipData> _createContextChips(
+      String projectName, List<_MilestoneData> milestones) {
+    final name = projectName.isNotEmpty ? projectName : 'Project';
+    final nextMilestone =
+        milestones.isNotEmpty ? milestones.first.title : 'Next gate';
+    return [
+      _InfoChipData(
+          id: _newId(),
+          iconKey: 'flag',
+          label: 'Project',
+          value: name),
+      _InfoChipData(
+          id: _newId(),
+          iconKey: 'layers',
+          label: 'Phase',
+          value: 'Execution · Launch readiness'),
+      _InfoChipData(
+          id: _newId(),
+          iconKey: 'calendar',
+          label: 'Next gate',
+          value: nextMilestone),
+      _InfoChipData(
+          id: _newId(),
+          iconKey: 'update',
+          label: 'Last sync',
+          value: 'Auto-generated'),
+    ];
+  }
+
+  List<_InfoPillData> _buildInfoPills(
+    List<_TimelineStage> stages,
+    List<_ChecklistRowData> rows,
+    List<_MilestoneData> milestones,
+  ) {
+    final pills = <_InfoPillData>[];
+    if (stages.isNotEmpty) {
+      pills.add(_InfoPillData(
+          id: _newId(),
+          iconKey: 'flag_circle',
+          label: 'Next: ${stages.first.label}'));
+    }
+    if (rows.isNotEmpty) {
+      pills.add(_InfoPillData(
+          id: _newId(),
+          iconKey: 'groups',
+          label: 'Owner coverage: ${rows.length} items'));
+    }
+    if (milestones.isNotEmpty) {
+      pills.add(_InfoPillData(
+          id: _newId(),
+          iconKey: 'safety',
+          label: 'Milestones tracked: ${milestones.length}'));
+    }
+    return pills;
+  }
+
+  Color _statusAccent(String status) {
+    final normalized = status.toLowerCase();
+    if (normalized.contains('complete')) return const Color(0xFF16A34A);
+    if (normalized.contains('risk')) return const Color(0xFFF97316);
+    if (normalized.contains('review')) return const Color(0xFF7C3AED);
+    return const Color(0xFF2563EB);
   }
 
   String _newId() => DateTime.now().microsecondsSinceEpoch.toString();

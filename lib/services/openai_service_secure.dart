@@ -5,11 +5,17 @@ import 'package:http/http.dart' as http;
 import 'package:ndu_project/openai/openai_config.dart';
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/models/design_phase_models.dart';
+import 'package:ndu_project/models/staffing_row.dart';
+import 'package:ndu_project/models/meeting_row.dart';
 
 // Remove markdown bold markers commonly produced by the model (e.g. *text* or **text**)
 String _stripAsterisks(String s) => s.replaceAll('*', '');
 
 enum _AiProjectType { physical, digital, hybrid, service, unknown }
+
+class _ResponseFormatUnsupportedException implements Exception {
+  const _ResponseFormatUnsupportedException();
+}
 
 String _nduProjectSystemPrompt({
   required String specialistRole,
@@ -2405,6 +2411,9 @@ $c
       '$trimmed $description $assumptions $contextNotes',
     );
     final budgetAnchor = _extractLargestCurrencyAnchor(contextNotes);
+    final domainHints = _financialDomainHints(
+      context: '$trimmed $description $assumptions $contextNotes',
+    );
 
     final uri = OpenAiConfig.chatUri();
     final headers = {
@@ -2422,6 +2431,7 @@ $c
       budgetAnchor: budgetAnchor,
       estimationMode: estimationMode,
       basisFrequency: basisFrequency,
+      domainHints: domainHints,
     );
 
     final body = jsonEncode({
@@ -2432,8 +2442,13 @@ $c
       'messages': [
         {
           'role': 'system',
-          'content':
-              'You are a senior cost analyst. Return JSON only with keys: estimated_cost (number), confidence (0..1), needs_more_context (boolean), rationale (string).'
+          'content': _nduProjectSystemPrompt(
+            specialistRole:
+                'senior cost analyst estimating a single financial line item accurately for the detected project domain',
+            strictJson: true,
+            extraRules:
+                'Return JSON only with keys: estimated_cost (number), confidence (0..1), needs_more_context (boolean), rationale (string). Do not produce SaaS metrics for non-digital projects. Do not produce construction assumptions for purely digital projects.',
+          )
         },
         {
           'role': 'user',
@@ -2604,6 +2619,7 @@ $c
     required double budgetAnchor,
     required String estimationMode,
     required String basisFrequency,
+    required String domainHints,
   }) {
     final safeName = _escape(itemName);
     final safeDesc = _escape(description);
@@ -2640,6 +2656,7 @@ Rules:
 - Use context anchors, including project value and scope, before producing a number.
 - If confidence is low, return estimated_cost as 0 and needs_more_context as true.
 - For physical projects, avoid software lifecycle assumptions (MVP, sprint, API integration) unless explicitly stated.
+- Keep the estimate realistic for the project stage and starting point.
 $unitModeRules
 
 Item: "$safeName"
@@ -2649,6 +2666,8 @@ Additional context: "$notes"
 Detected project type hint: "$typeLabel"
 Largest numeric anchor found in context: "$budgetNote $currency"
 Estimation mode: "$mode"
+Domain guardrails:
+$domainHints
 ''';
   }
 
@@ -2660,6 +2679,7 @@ Estimation mode: "$mode"
     if (trimmed.isEmpty) throw Exception('No context provided');
     if (!OpenAiConfig.isConfigured) throw const OpenAiNotConfiguredException();
     final projectType = _detectProjectType(trimmed);
+    final domainHints = _financialDomainHints(context: trimmed);
 
     final uri = OpenAiConfig.chatUri();
     final headers = {
@@ -2675,14 +2695,20 @@ Estimation mode: "$mode"
       'messages': [
         {
           'role': 'system',
-          'content':
-              'You are a project cost estimator. Return strict JSON only. Suggest practical cost items using project type and scope. Avoid generic placeholder values. If context is weak, return an empty "items" array.'
+          'content': _nduProjectSystemPrompt(
+            specialistRole:
+                'project cost estimator generating context-aware direct and indirect cost suggestions',
+            strictJson: true,
+            extraRules:
+                'Return strict JSON only. Suggest practical cost items based on project type, scale, and prior context. Avoid generic placeholders. If context is weak, return an empty "items" array.',
+          )
         },
         {
           'role': 'user',
           'content': _costSuggestionsPrompt(
             trimmed,
             projectType: projectType,
+            domainHints: domainHints,
           ),
         },
       ],
@@ -2710,8 +2736,7 @@ Estimation mode: "$mode"
             final map = e as Map<String, dynamic>;
             final title = _stripAsterisks((map['title'] ?? '').toString());
             final notes = _stripAsterisks((map['notes'] ?? '').toString());
-            final rawType =
-                (map['costType'] ?? map['type'] ?? '').toString();
+            final rawType = (map['costType'] ?? map['type'] ?? '').toString();
             return CostEstimateItem(
               title: title,
               amount: _toDouble(map['amount']),
@@ -2860,6 +2885,7 @@ $c
   String _costSuggestionsPrompt(
     String context, {
     required _AiProjectType projectType,
+    required String domainHints,
   }) {
     final c = _escape(context);
     final typeLabel = _projectTypeLabel(projectType);
@@ -2884,11 +2910,15 @@ Rules:
 - Avoid generic placeholders like 100000, 250000, or 500000.
 - If context is insufficient, return {"items": []}.
 - For physical projects, do not output software phases such as Discovery and Planning, MVP Build, Integration, or Data.
+- Do not use SaaS-only metrics or terms (CAC/LTV/churn/MRR) unless the context explicitly indicates a SaaS/digital business model.
 
 Project Context:
 """
 $c
 """
+
+Domain guardrails:
+$domainHints
 ''';
   }
 
@@ -3202,33 +3232,84 @@ $c
 
   Future<List<Map<String, String>>> _attemptRequirementsApiCall(
       String businessCase) async {
+    Map<String, dynamic> data;
+    try {
+      data = await _postRequirementsRequest(
+        businessCase,
+        includeResponseFormat: true,
+      );
+    } on _ResponseFormatUnsupportedException {
+      data = await _postRequirementsRequest(
+        businessCase,
+        includeResponseFormat: false,
+      );
+    }
+
+    final extracted = _extractTextFromOpenAiPayload(data);
+    Map<String, dynamic>? parsed;
+
+    if (extracted != null) {
+      parsed = _decodeJsonSafely(extracted);
+      if (parsed == null) {
+        final list = _decodeJsonListSafely(extracted);
+        if (list != null) {
+          return _normalizeRequirementItems(list).take(20).toList();
+        }
+
+        final fallback = _requirementsFromText(extracted);
+        if (fallback.isNotEmpty) {
+          return fallback.take(20).toList();
+        }
+      }
+    } else if (data.containsKey('requirements')) {
+      parsed = data;
+    }
+
+    if (parsed == null) {
+      throw Exception('OpenAI returned invalid JSON for requirements.');
+    }
+
+    final list = parsed['requirements'] ?? parsed['items'];
+    if (list is List) {
+      return _normalizeRequirementItems(list).take(20).toList();
+    }
+
+    throw Exception('OpenAI returned no requirements.');
+  }
+
+  Future<Map<String, dynamic>> _postRequirementsRequest(
+    String businessCase, {
+    required bool includeResponseFormat,
+  }) async {
     final uri = OpenAiConfig.chatUri();
     final headers = {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}'
     };
-    final body = jsonEncode({
+    final payload = {
       'model': OpenAiConfig.model,
       'temperature': 0.7,
       'max_tokens': 2000,
-      'response_format': {'type': 'json_object'},
       'messages': [
         {
           'role': 'system',
           'content': _nduProjectSystemPrompt(
             specialistRole:
                 'business analyst generating requirements from project context',
-            strictJson: true,
+            strictJson: includeResponseFormat,
             extraRules:
-                'Each requirement should be clear, specific, assigned where possible, and categorized by requirement type and implementation phase.',
+                'Each requirement should be clear, specific, assigned where possible, and categorized by requirement type and implementation phase. If JSON is requested, return strict JSON only.',
           )
         },
         {'role': 'user', 'content': _requirementsPrompt(businessCase)},
       ],
-    });
+    };
+    if (includeResponseFormat) {
+      payload['response_format'] = {'type': 'json_object'};
+    }
 
     final response = await _client
-        .post(uri, headers: headers, body: body)
+        .post(uri, headers: headers, body: jsonEncode(payload))
         .timeout(const Duration(seconds: 15));
     if (response.statusCode == 429) {
       throw Exception('API quota exceeded. Please check your OpenAI billing.');
@@ -3237,31 +3318,31 @@ $c
       throw Exception('Invalid API key. Please check your OpenAI API key.');
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      final bodyText = utf8.decode(response.bodyBytes).toLowerCase();
+      if (response.statusCode == 400 &&
+          bodyText.contains('response_format')) {
+        throw const _ResponseFormatUnsupportedException();
+      }
       throw Exception(
           'OpenAI API error ${response.statusCode}: ${response.body}');
     }
 
-    final data =
-        jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    return jsonDecode(utf8.decode(response.bodyBytes))
+        as Map<String, dynamic>;
+  }
 
-    Map<String, dynamic>? parsed;
-    if (data.containsKey('choices')) {
-      final content =
-          (data['choices'] as List).first['message']['content'] as String;
-      parsed = _decodeJsonSafely(content);
-    } else if (data.containsKey('requirements')) {
-      parsed = data;
-    }
-    if (parsed == null) {
-      throw Exception('OpenAI returned invalid JSON for requirements.');
-    }
-    final items = (parsed['requirements'] as List? ?? [])
-        .map((e) {
-          final item = e as Map<String, dynamic>;
+  List<Map<String, String>> _normalizeRequirementItems(List<dynamic> items) {
+    return items
+        .whereType<Map>()
+        .map((entry) => Map<String, dynamic>.from(entry))
+        .map((item) {
           final requirement =
-              _stripAsterisks((item['requirement'] ?? '').toString().trim());
+              _stripAsterisks((item['requirement'] ?? item['text'] ?? '')
+                  .toString()
+                  .trim());
           final requirementType = _stripAsterisks((item['requirementType'] ??
                   item['requirement_type'] ??
+                  item['type'] ??
                   'Functional')
               .toString()
               .trim());
@@ -3295,9 +3376,76 @@ $c
         })
         .where((e) => e['requirement']!.isNotEmpty)
         .toList();
+  }
 
-    // Limit to 20 requirements as specified
-    return items.take(20).toList();
+  List<Map<String, String>> _requirementsFromText(String content) {
+    final lines = content
+        .split(RegExp(r'[\r\n]+'))
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .map((line) => line.replaceAll(RegExp(r'^[\-\*\d\.\)\s]+'), ''))
+        .where((line) => line.isNotEmpty)
+        .toList();
+    return lines
+        .map((line) => {
+              'requirement': _stripAsterisks(line),
+              'requirementType': 'Functional',
+              'discipline': '',
+              'role': '',
+              'person': '',
+              'phase': 'Planning',
+              'requirementSource': '',
+            })
+        .toList();
+  }
+
+  String? _extractTextFromOpenAiPayload(Map<String, dynamic> data) {
+    if (data['choices'] is List) {
+      final choices = data['choices'] as List;
+      if (choices.isNotEmpty) {
+        final message = choices.first['message'];
+        if (message is Map && message['content'] is String) {
+          return message['content'] as String;
+        }
+      }
+    }
+
+    final output = data['output'];
+    if (output is List) {
+      final buffer = StringBuffer();
+      for (final entry in output) {
+        if (entry is Map<String, dynamic>) {
+          final content = entry['content'];
+          if (content is List) {
+            for (final item in content) {
+              if (item is Map<String, dynamic>) {
+                final text = item['text'];
+                if (text is String) {
+                  buffer.write(text);
+                }
+              }
+            }
+          }
+        }
+      }
+      final extracted = buffer.toString().trim();
+      if (extracted.isNotEmpty) return extracted;
+    }
+
+    if (data['content'] is String) return data['content'] as String;
+    return null;
+  }
+
+  List<dynamic>? _decodeJsonListSafely(String content) {
+    final trimmed = content.trim();
+    if (!trimmed.startsWith('[')) return null;
+    try {
+      final decoded = jsonDecode(trimmed);
+      if (decoded is List) return decoded;
+    } catch (_) {
+      return null;
+    }
+    return null;
   }
 
   // Fallback requirements removed. OpenAI failures should surface to the UI.
@@ -3399,6 +3547,8 @@ $c
         contextNotes: contextNotes,
       );
     }
+    final domainHints =
+        _financialDomainHints(context: contextNotes, solutions: solutions);
 
     final uri = OpenAiConfig.chatUri();
     final headers = {
@@ -3418,12 +3568,17 @@ $c
                 'cost analyst producing distinct, context-aware solution cost breakdowns',
             strictJson: true,
             extraRules:
-                'Each solution must be distinct, grounded in its own scope, and should not reuse the same item list or the same costs across tabs. Do not use placeholder round values unless supported by quantities. If a solution is physical or infrastructure-led, avoid software lifecycle phases such as Discovery and Planning, MVP Build, Integration, or Data unless the context clearly requires them.',
+                'Each solution must be distinct, grounded in its own scope, and should not reuse the same item list or the same costs across tabs. Do not use placeholder round values unless supported by quantities. If a solution is physical or infrastructure-led, avoid software lifecycle phases such as Discovery and Planning, MVP Build, Integration, or Data unless the context clearly requires them. Follow these financial domain guardrails:\n$domainHints',
           )
         },
         {
           'role': 'user',
-          'content': _costBreakdownPrompt(solutions, contextNotes, currency)
+          'content': _costBreakdownPrompt(
+            solutions,
+            contextNotes,
+            currency,
+            domainHints: domainHints,
+          )
         },
       ],
     });
@@ -3528,6 +3683,10 @@ $c
 
         if (projectType != _AiProjectType.digital &&
             _isSoftwarePhaseLabel('$itemName $description')) {
+          continue;
+        }
+        if (_isDomainMismatchForProjectType(
+            '$itemName $description', projectType)) {
           continue;
         }
 
@@ -3885,7 +4044,11 @@ $c
   }
 
   String _costBreakdownPrompt(
-      List<AiSolutionItem> solutions, String notes, String currency) {
+    List<AiSolutionItem> solutions,
+    String notes,
+    String currency, {
+    required String domainHints,
+  }) {
     final safeNotes = notes.trim().isEmpty ? 'None' : _escape(notes.trim());
     final list = solutions.map((s) {
       final typeHint = _projectTypeLabel(
@@ -3917,6 +4080,9 @@ Return ONLY valid JSON with this exact structure:
 Solutions: [$list]
 
 Context notes (optional): $safeNotes
+
+Domain guardrails:
+$domainHints
 ''';
   }
 
@@ -3933,6 +4099,179 @@ Context notes (optional): $safeNotes
       case _AiProjectType.unknown:
         return 'unknown';
     }
+  }
+
+  String _detectDeliveryStartingPoint(String text, _AiProjectType projectType) {
+    final normalized = text.toLowerCase();
+    if (normalized.trim().isEmpty) return 'greenfield (from scratch)';
+
+    final existingOperation = _containsAnyKeywords(normalized, [
+      'existing',
+      'already operating',
+      'current operation',
+      'current facility',
+      'legacy',
+      'brownfield',
+      'retrofit',
+      'renovation',
+      'upgrade',
+      'expansion',
+      'live environment',
+      'in production',
+    ]);
+
+    final digitalUpgradeCue = _containsAnyKeywords(normalized, [
+      'digital enhancement',
+      'digitisation',
+      'digitization',
+      'system upgrade',
+      'software upgrade',
+      'automation only',
+      'without construction',
+      'existing site only needs digital',
+      'existing facility needs software',
+    ]);
+
+    final constructionCue = _containsAnyKeywords(normalized, [
+      'construction',
+      'new build',
+      'greenfield',
+      'site development',
+      'civil works',
+      'ground-up',
+      'new facility',
+    ]);
+
+    if ((digitalUpgradeCue || projectType == _AiProjectType.digital) &&
+        existingOperation &&
+        !constructionCue) {
+      return 'digital enhancement only';
+    }
+    if (existingOperation && !constructionCue) {
+      return 'brownfield (existing operation/facility)';
+    }
+    return 'greenfield (from scratch)';
+  }
+
+  String _financialMetricFocusForType(_AiProjectType type) {
+    switch (type) {
+      case _AiProjectType.physical:
+        return 'Focus on demand volume, customer traffic, throughput, material/equipment utilization, labour productivity, waste reduction, and compliance-cost impact.';
+      case _AiProjectType.digital:
+        return 'Focus on acquisition/conversion, active usage, retention/churn where applicable, cloud/platform operating cost, security risk cost, and deployment velocity.';
+      case _AiProjectType.hybrid:
+        return 'Balance physical readiness costs (site, permits, equipment, staffing) with digital enablement costs (systems, integrations, data, security, support).';
+      case _AiProjectType.service:
+        return 'Focus on service capacity, response time, quality outcomes, utilisation, staffing efficiency, and recurring operating margins.';
+      case _AiProjectType.unknown:
+        return 'Use conservative assumptions, make explicit assumptions, and avoid domain-specific claims that are not supported by context.';
+    }
+  }
+
+  String _financialDomainHints({
+    required String context,
+    List<AiSolutionItem> solutions = const [],
+  }) {
+    final solutionContext = solutions
+        .map((s) => '${s.title} ${s.description}')
+        .where((e) => e.trim().isNotEmpty)
+        .join('\n');
+    final combined = '$context\n$solutionContext'.trim();
+    final detectedType = _detectProjectType(combined);
+    final typeLabel = _projectTypeLabel(detectedType);
+    final startingPoint = _detectDeliveryStartingPoint(combined, detectedType);
+    final focus = _financialMetricFocusForType(detectedType);
+
+    final guardrails = switch (detectedType) {
+      _AiProjectType.physical =>
+        'Avoid SaaS-only metrics like CAC, LTV, MRR, ARR, churn, and trial-to-paid unless context explicitly requests a digital business model.',
+      _AiProjectType.digital =>
+        'Avoid physical construction assumptions such as excavation, concrete, rebar, site permits, and civil works unless context explicitly requires physical setup.',
+      _AiProjectType.service =>
+        'Avoid construction-heavy assumptions and avoid SaaS-only revenue metrics unless the context explicitly indicates those models.',
+      _AiProjectType.hybrid =>
+        'Cover both physical and digital dimensions in proportion to stated scope; do not over-index on one side without evidence.',
+      _AiProjectType.unknown =>
+        'Default to greenfield assumptions and mark assumptions explicitly instead of inventing unsupported domain specifics.',
+    };
+
+    return '''
+Detected project type: $typeLabel
+Detected starting point: $startingPoint
+Domain metric focus: $focus
+Domain guardrail: $guardrails
+''';
+  }
+
+  bool _isDomainMismatchForProjectType(String text, _AiProjectType type) {
+    final normalized = text.toLowerCase();
+    if (normalized.trim().isEmpty) return false;
+
+    const saasTerms = <String>[
+      'churn',
+      'cac',
+      'ltv',
+      'mrr',
+      'arr',
+      'trial-to-paid',
+      'trial conversion',
+      'monthly active users',
+      'daily active users',
+      'onboarding funnel',
+      'freemium',
+      'subscription tier',
+    ];
+    const physicalTerms = <String>[
+      'excavation',
+      'earthworks',
+      'foundation',
+      'concrete',
+      'rebar',
+      'civil works',
+      'site clearing',
+      'asphalt',
+      'structural steel',
+      'permit inspections',
+    ];
+
+    switch (type) {
+      case _AiProjectType.physical:
+        return _containsAnyKeywords(normalized, saasTerms);
+      case _AiProjectType.digital:
+        return _containsAnyKeywords(normalized, physicalTerms);
+      case _AiProjectType.service:
+        return _containsAnyKeywords(
+            normalized, [...saasTerms, ...physicalTerms]);
+      case _AiProjectType.hybrid:
+      case _AiProjectType.unknown:
+        return false;
+    }
+  }
+
+  bool _looksTooGenericFinancialText(String text) {
+    final normalized = text.trim().toLowerCase();
+    if (normalized.isEmpty) return true;
+    if (normalized == 'reduce churn via onboarding improvements') return true;
+
+    if (RegExp(
+      r'^(revenue|cost saving|operational efficiency|productivity|regulatory(?:\s*&\s*|\s+and\s+)?compliance|process improvement|brand image|stakeholder commitment|other)\s+impact$',
+    ).hasMatch(normalized)) {
+      return true;
+    }
+
+    const weakPhrases = <String>[
+      'improve efficiency',
+      'increase revenue',
+      'reduce costs',
+      'enhance productivity',
+      'optimize operations',
+      'streamline processes',
+      'business growth',
+      'improve outcomes',
+    ];
+    return weakPhrases.any(
+      (phrase) => normalized == phrase || normalized == '$phrase.',
+    );
   }
 
   _AiProjectType _detectProjectType(String text) {
@@ -4230,8 +4569,16 @@ Context notes (optional): $safeNotes
     List<AiSolutionItem> solutions, {
     String contextNotes = '',
   }) async {
+    final detectedType = _detectProjectType(
+      '$contextNotes ${solutions.map((s) => '${s.title} ${s.description}').join(' ')}',
+    );
+    final domainHints =
+        _financialDomainHints(context: contextNotes, solutions: solutions);
     if (!OpenAiConfig.isConfigured) {
-      return _fallbackProjectValueInsights(solutions);
+      return _fallbackProjectValueInsights(
+        solutions,
+        contextNotes: contextNotes,
+      );
     }
 
     final uri = OpenAiConfig.chatUri();
@@ -4252,12 +4599,16 @@ Context notes (optional): $safeNotes
                 'financial analyst preparing a solution-specific cost-benefit analysis',
             strictJson: true,
             extraRules:
-                'Focus on the exact solution context provided in the request and estimate direct financial value, ROI, cost savings, revenue potential, and quantifiable benefits for that solution only.',
+                'Focus on the exact solution context provided in the request and estimate direct financial value, ROI, cost savings, revenue potential, and quantifiable benefits for that solution only. Do not output SaaS metrics for non-digital projects, and do not output construction assumptions for purely digital projects. Follow these domain guardrails:\n$domainHints',
           )
         },
         {
           'role': 'user',
-          'content': _projectValuePrompt(solutions, contextNotes)
+          'content': _projectValuePrompt(
+            solutions,
+            contextNotes,
+            domainHints: domainHints,
+          )
         },
       ],
     });
@@ -4277,43 +4628,181 @@ Context notes (optional): $safeNotes
       final parsed = jsonDecode(content) as Map<String, dynamic>;
       final valueMap =
           (parsed['project_value'] ?? parsed) as Map<String, dynamic>;
-      return AiProjectValueInsights.fromMap(valueMap);
+      final insights = AiProjectValueInsights.fromMap(valueMap);
+      final mergedNarratives = [
+        insights.benefits['revenue'] ?? '',
+        insights.benefits['cost_saving'] ?? '',
+        insights.benefits['ops_efficiency'] ?? '',
+        insights.benefits['productivity'] ?? '',
+        insights.benefits['regulatory_compliance'] ?? '',
+        insights.benefits['process_improvement'] ?? '',
+        insights.benefits['brand_image'] ?? '',
+        insights.benefits['stakeholder_commitment'] ?? '',
+        insights.benefits['other'] ?? '',
+      ].join(' ');
+
+      if (insights.estimatedProjectValue <= 0 ||
+          _looksTooGenericFinancialText(mergedNarratives) ||
+          _isDomainMismatchForProjectType(mergedNarratives, detectedType)) {
+        return _fallbackProjectValueInsights(
+          solutions,
+          contextNotes: contextNotes,
+        );
+      }
+      return insights;
     } catch (e) {
       if (kDebugMode) debugPrint('generateProjectValueInsights failed: $e');
-      return _fallbackProjectValueInsights(solutions);
+      return _fallbackProjectValueInsights(
+        solutions,
+        contextNotes: contextNotes,
+      );
     }
   }
 
   AiProjectValueInsights _fallbackProjectValueInsights(
-      List<AiSolutionItem> solutions) {
-    final firstSolution =
-        solutions.isNotEmpty ? solutions.first.title : 'Proposed initiative';
+    List<AiSolutionItem> solutions, {
+    String contextNotes = '',
+  }) {
+    final firstSolution = solutions.isNotEmpty
+        ? solutions.first.title.trim()
+        : 'proposed initiative';
+    final combinedContext =
+        '$contextNotes ${solutions.map((s) => '${s.title} ${s.description}').join(' ')}';
+    final type = _detectProjectType(combinedContext);
+    final seed = _stableHash(combinedContext);
+    final baseline = switch (type) {
+      _AiProjectType.physical => 265000.0,
+      _AiProjectType.digital => 210000.0,
+      _AiProjectType.hybrid => 315000.0,
+      _AiProjectType.service => 185000.0,
+      _AiProjectType.unknown => 200000.0,
+    };
+    final variation = 0.9 + ((seed % 26) / 100);
+    final scale =
+        1 + ((solutions.length > 1 ? solutions.length - 1 : 0) * 0.07);
+    final estimated = _normalizeEstimatedCost(baseline * variation * scale);
+
+    Map<String, String> benefitNarrativesForType() {
+      switch (type) {
+        case _AiProjectType.physical:
+          return {
+            'revenue':
+                'Revenue uplift tied to improved customer throughput and capacity utilisation from $firstSolution.',
+            'cost_saving':
+                'Reduced material wastage, rework, and procurement leakage through tighter execution controls.',
+            'ops_efficiency':
+                'Faster operating cycles by improving handoffs between site, procurement, and operations teams.',
+            'productivity':
+                'Higher output per shift through clearer role planning, scheduling, and on-site coordination.',
+            'regulatory_compliance':
+                'Lower probability of permit, health, or safety penalties through proactive compliance planning.',
+            'process_improvement':
+                'Standardised SOPs and checklists reduce variation and improve repeatability across teams.',
+            'brand_image':
+                'Improved market trust from reliable delivery and visible quality standards.',
+            'stakeholder_commitment':
+                'Stronger sponsor confidence due to clearer milestones and measurable value capture.',
+            'other':
+                'Additional upside from local demand alignment and improved supplier performance.',
+          };
+        case _AiProjectType.digital:
+          return {
+            'revenue':
+                'Revenue upside from improved conversion, retention, and monetisation of digital channels.',
+            'cost_saving':
+                'Cost avoidance from automation of manual tasks and lower defect remediation overhead.',
+            'ops_efficiency':
+                'Shorter cycle times through streamlined workflows, integrations, and release execution.',
+            'productivity':
+                'Higher team throughput through reusable components and reduced context-switching.',
+            'regulatory_compliance':
+                'Lower security and compliance risk-cost exposure through built-in controls and auditability.',
+            'process_improvement':
+                'More predictable delivery through standardised engineering and change-management practices.',
+            'brand_image':
+                'Improved customer confidence through stable digital experiences and faster issue resolution.',
+            'stakeholder_commitment':
+                'Better executive confidence from traceable KPIs and transparent value realisation.',
+            'other':
+                'Additional value from data-driven decision support and operational visibility.',
+          };
+        case _AiProjectType.hybrid:
+          return {
+            'revenue':
+                'Revenue growth from combining improved physical capacity with digitally enabled service reach.',
+            'cost_saving':
+                'Savings from coordinated procurement, reduced rework, and integrated planning across streams.',
+            'ops_efficiency':
+                'Improved end-to-end flow by synchronising site readiness with system enablement milestones.',
+            'productivity':
+                'Higher productivity through aligned teams, tools, and operational handoff routines.',
+            'regulatory_compliance':
+                'Reduced compliance delays across both physical operations and digital controls.',
+            'process_improvement':
+                'Cross-functional SOP alignment reduces bottlenecks and improves delivery predictability.',
+            'brand_image':
+                'Stronger market positioning through reliable omni-channel execution quality.',
+            'stakeholder_commitment':
+                'Greater stakeholder alignment driven by clear, balanced physical and digital milestones.',
+            'other':
+                'Additional value from integrated data and operational insights across the full ecosystem.',
+          };
+        case _AiProjectType.service:
+          return {
+            'revenue':
+                'Revenue growth from increased service utilisation and improved repeat engagement.',
+            'cost_saving':
+                'Lower operating cost per service unit through standardised workflows and reduced rework.',
+            'ops_efficiency':
+                'Faster service delivery cycles through clearer intake, routing, and execution controls.',
+            'productivity':
+                'Higher staff productivity from better role clarity, training, and queue management.',
+            'regulatory_compliance':
+                'Reduced risk-cost through stronger policy adherence and auditable service records.',
+            'process_improvement':
+                'Consistent operating playbooks improve quality and reduce variation in outcomes.',
+            'brand_image':
+                'Improved client trust through dependable response times and service quality.',
+            'stakeholder_commitment':
+                'Higher stakeholder confidence supported by measurable service performance indicators.',
+            'other':
+                'Additional value from better partner coordination and continuous service optimization.',
+          };
+        case _AiProjectType.unknown:
+          return {
+            'revenue':
+                'Revenue uplift expected from stronger delivery quality and better market responsiveness.',
+            'cost_saving':
+                'Cost reduction through improved planning discipline and reduced avoidable rework.',
+            'ops_efficiency':
+                'Operational improvement from streamlined execution and clearer accountability.',
+            'productivity':
+                'Productivity gains from better workload planning and fewer blocked tasks.',
+            'regulatory_compliance':
+                'Lower compliance risk-cost through more structured controls and documentation.',
+            'process_improvement':
+                'Process stability gains through standardised workflows and quality checks.',
+            'brand_image':
+                'Improved stakeholder perception through consistent delivery outcomes.',
+            'stakeholder_commitment':
+                'Stronger support from decision-makers due to improved transparency and tracking.',
+            'other':
+                'Additional value opportunities can be captured as scope assumptions are refined.',
+          };
+      }
+    }
+
     return AiProjectValueInsights(
-      estimatedProjectValue: 185000,
-      benefits: {
-        'revenue':
-            'Projected incremental revenue uplift tied to $firstSolution adoption and improved service coverage.',
-        'cost_saving':
-            'Direct cost avoidance from reduced rework, tighter procurement cycles, and fewer manual interventions.',
-        'ops_efficiency':
-            'Operational cycle-time improvements reduce overhead and improve throughput across execution teams.',
-        'productivity':
-            'Productivity gains from fewer manual hours and clearer role accountability during delivery.',
-        'regulatory_compliance':
-            'Strengthens audit readiness and reduces potential non-compliance penalties or delays.',
-        'process_improvement':
-            'Streamlines cross-team workflows tied to $firstSolution delivery milestones.',
-        'brand_image':
-            'Signals innovation leadership and improves partner confidence in programme execution.',
-        'stakeholder_commitment':
-            'Improves confidence for sponsors and stakeholders through clearer financial and delivery outcomes.',
-        'other':
-            'Additional value can be captured from site-specific constraints and local execution opportunities.',
-      },
+      estimatedProjectValue: estimated > 0 ? estimated : 185000,
+      benefits: benefitNarrativesForType(),
     );
   }
 
-  String _projectValuePrompt(List<AiSolutionItem> solutions, String notes) {
+  String _projectValuePrompt(
+    List<AiSolutionItem> solutions,
+    String notes, {
+    required String domainHints,
+  }) {
     final list = solutions
         .map((s) =>
             '{"title": "${_escape(s.title)}", "description": "${_escape(s.description)}"}')
@@ -4332,6 +4821,9 @@ Rules:
 - Ground outputs in provided context and scope. Avoid generic statements.
 - Keep each benefit text concise (1-2 sentences) but specific.
 - Include quantifiable language when possible.
+- Do NOT use SaaS-only language (CAC/LTV/churn/MRR) unless context explicitly indicates a digital subscription model.
+- For physical projects, prefer metrics like customer traffic, throughput, utilisation, permits/compliance, material waste, and staffing productivity.
+- For service projects, prefer service capacity, response time, quality consistency, utilisation, and staffing efficiency metrics.
 - Return ONLY valid JSON with the exact key schema below.
 
 Return ONLY valid JSON with this exact structure:
@@ -4355,6 +4847,9 @@ Return ONLY valid JSON with this exact structure:
 Solutions: [$list]
 
 Context notes (optional): $notes
+
+Domain guardrails:
+$domainHints
 ''';
   }
 
@@ -4414,11 +4909,18 @@ Return plain text only.'''
     String currency = 'USD',
     int count = 6,
   }) async {
+    final detectedType = _detectProjectType(
+      '$contextNotes ${solutions.map((s) => '${s.title} ${s.description}').join(' ')}',
+    );
+    final domainHints =
+        _financialDomainHints(context: contextNotes, solutions: solutions);
     if (solutions.isEmpty || estimatedProjectValue <= 0) return [];
     if (!OpenAiConfig.isConfigured) {
       return _fallbackBenefitLineItems(
         estimatedProjectValue,
         currency,
+        solutions: solutions,
+        contextNotes: contextNotes,
         count: count,
       );
     }
@@ -4440,8 +4942,13 @@ Return plain text only.'''
       'messages': [
         {
           'role': 'system',
-          'content':
-              'You are a finance analyst. Return strict JSON for benefit line items. Use only these category keys: revenue, cost_saving, ops_efficiency, productivity, regulatory_compliance, process_improvement, brand_image, stakeholder_commitment, other.'
+          'content': _nduProjectSystemPrompt(
+            specialistRole:
+                'financial analyst generating monetised benefit line items for project value modelling',
+            strictJson: true,
+            extraRules:
+                'Return strict JSON for benefit line items. Use only these category keys: revenue, cost_saving, ops_efficiency, productivity, regulatory_compliance, process_improvement, brand_image, stakeholder_commitment, other. Do not use SaaS-only terms for non-digital projects. Do not use construction-only assumptions for purely digital projects. Follow these domain guardrails:\n$domainHints',
+          )
         },
         {
           'role': 'user',
@@ -4451,6 +4958,7 @@ Return plain text only.'''
             currency,
             contextNotes,
             count,
+            domainHints: domainHints,
           ),
         },
       ],
@@ -4464,6 +4972,8 @@ Return plain text only.'''
         return _fallbackBenefitLineItems(
           estimatedProjectValue,
           currency,
+          solutions: solutions,
+          contextNotes: contextNotes,
           count: count,
         );
       }
@@ -4472,25 +4982,54 @@ Return plain text only.'''
       final content =
           (data['choices'] as List).first['message']['content'] as String;
       final parsed = jsonDecode(content) as Map<String, dynamic>;
+      final seen = <String>{};
       final items = (parsed['items'] as List? ?? [])
           .map((e) => Map<String, dynamic>.from(e as Map))
           .map((item) {
             final rawCategory =
                 (item['category_key'] ?? item['category'] ?? '').toString();
+            final category = _normalizeBenefitCategoryKey(rawCategory);
+            var title = (item['title'] ?? '').toString().trim();
+            if (title.isEmpty ||
+                _looksTooGenericFinancialText(title) ||
+                _isDomainMismatchForProjectType(title, detectedType)) {
+              title = _fallbackBenefitTitleForCategory(
+                category,
+                detectedType,
+                solutions,
+              );
+            }
+            var notes = (item['notes'] ?? '').toString().trim();
+            if (_isDomainMismatchForProjectType(notes, detectedType) ||
+                _looksTooGenericFinancialText(notes)) {
+              notes = _fallbackBenefitNotesForCategory(category, detectedType);
+            }
+            final unitValue =
+                _toDouble(item['unit_value'] ?? item['unitValue']);
+            final unitsRaw = _toDouble(item['units'] ?? 1);
+            final units = unitsRaw > 0 ? unitsRaw : 1.0;
+            final key =
+                '${category.toLowerCase()}|${title.toLowerCase()}|${unitValue.toStringAsFixed(2)}';
+            if (seen.contains(key) || unitValue <= 0 || title.isEmpty) {
+              return null;
+            }
+            seen.add(key);
             return BenefitLineItemInput(
-              category: _normalizeBenefitCategoryKey(rawCategory),
-              title: (item['title'] ?? '').toString(),
-              unitValue: _toDouble(item['unit_value'] ?? item['unitValue']),
-              units: _toDouble(item['units'] ?? 1),
-              notes: (item['notes'] ?? '').toString(),
+              category: category,
+              title: title,
+              unitValue: unitValue,
+              units: units,
+              notes: notes,
             );
           })
-          .where((item) => item.title.isNotEmpty)
+          .whereType<BenefitLineItemInput>()
           .toList();
       return items.isEmpty
           ? _fallbackBenefitLineItems(
               estimatedProjectValue,
               currency,
+              solutions: solutions,
+              contextNotes: contextNotes,
               count: count,
             )
           : items;
@@ -4499,18 +5038,20 @@ Return plain text only.'''
       return _fallbackBenefitLineItems(
         estimatedProjectValue,
         currency,
+        solutions: solutions,
+        contextNotes: contextNotes,
         count: count,
       );
     }
   }
 
   String _benefitLineItemsPrompt(
-    String solutionsJson,
-    double estimatedProjectValue,
-    String currency,
-    String contextNotes,
-    int count,
-  ) {
+      String solutionsJson,
+      double estimatedProjectValue,
+      String currency,
+      String contextNotes,
+      int count,
+      {required String domainHints}) {
     final notes = contextNotes.trim().isEmpty
         ? 'No additional context supplied.'
         : contextNotes.trim();
@@ -4519,13 +5060,14 @@ We are preparing benefit line items for a project portfolio.
 Target total value: $currency ${estimatedProjectValue.toStringAsFixed(0)}.
 Provide $count items across these exact category keys:
 ["revenue","cost_saving","ops_efficiency","productivity","regulatory_compliance","process_improvement","brand_image","stakeholder_commitment","other"].
+Each line item must be domain-specific to the project context and must include a practical, non-generic title.
 
 Return strict JSON:
 {
   "items": [
     {
       "category_key": "revenue",
-      "title": "Reduce churn via onboarding improvements",
+      "title": "Domain-specific monetised benefit title",
       "unit_value": 5000,
       "units": 12,
       "notes": "Monthly impact"
@@ -4535,14 +5077,23 @@ Return strict JSON:
 
 Solutions: [$solutionsJson]
 Context notes: $notes
+Domain guardrails:
+$domainHints
 Return ONLY JSON.
 ''';
   }
 
   List<BenefitLineItemInput> _fallbackBenefitLineItems(
-      double estimatedProjectValue, String currency,
-      {int count = 6}) {
+    double estimatedProjectValue,
+    String currency, {
+    required List<AiSolutionItem> solutions,
+    String contextNotes = '',
+    int count = 6,
+  }) {
     final total = estimatedProjectValue > 0 ? estimatedProjectValue : 150000;
+    final type = _detectProjectType(
+      '$contextNotes ${solutions.map((s) => '${s.title} ${s.description}').join(' ')}',
+    );
     final allocations = <MapEntry<String, double>>[
       const MapEntry('revenue', 0.24),
       const MapEntry('cost_saving', 0.20),
@@ -4559,15 +5110,134 @@ Return ONLY JSON.
         : (count > allocations.length ? allocations.length : count);
     return allocations.take(cappedCount).map((entry) {
       final value = total * entry.value;
-      final categoryLabel = _benefitCategoryDisplayLabel(entry.key);
+      final title =
+          _fallbackBenefitTitleForCategory(entry.key, type, solutions);
       return BenefitLineItemInput(
         category: entry.key,
-        title: '$categoryLabel impact',
+        title: title,
         unitValue: value,
         units: 1,
-        notes: 'Estimated annualized value in $currency',
+        notes: _fallbackBenefitNotesForCategory(entry.key, type),
       );
     }).toList();
+  }
+
+  String _fallbackBenefitTitleForCategory(
+    String category,
+    _AiProjectType type,
+    List<AiSolutionItem> solutions,
+  ) {
+    final solutionRef = solutions.isNotEmpty
+        ? solutions.first.title.trim()
+        : 'the selected solution';
+    switch (type) {
+      case _AiProjectType.physical:
+        switch (category) {
+          case 'revenue':
+            return 'Increase customer traffic and average ticket for $solutionRef';
+          case 'cost_saving':
+            return 'Reduce material waste and procurement leakage in $solutionRef';
+          case 'ops_efficiency':
+            return 'Reduce service and handoff cycle time for $solutionRef';
+          case 'productivity':
+            return 'Improve workforce output per shift in $solutionRef';
+          case 'regulatory_compliance':
+            return 'Avoid permit and compliance penalty costs for $solutionRef';
+          case 'process_improvement':
+            return 'Standardize operating procedures for $solutionRef';
+          case 'brand_image':
+            return 'Improve local market confidence in $solutionRef';
+          case 'stakeholder_commitment':
+            return 'Increase sponsor confidence through milestone visibility';
+          default:
+            return 'Capture site-specific value opportunities from $solutionRef';
+        }
+      case _AiProjectType.digital:
+        switch (category) {
+          case 'revenue':
+            return 'Increase conversion and monetised usage for $solutionRef';
+          case 'cost_saving':
+            return 'Reduce manual processing and support overhead in $solutionRef';
+          case 'ops_efficiency':
+            return 'Shorten release and issue-resolution cycle time';
+          case 'productivity':
+            return 'Increase delivery throughput via automation and reuse';
+          case 'regulatory_compliance':
+            return 'Reduce security and compliance risk-cost exposure';
+          case 'process_improvement':
+            return 'Improve workflow reliability and handoff quality';
+          case 'brand_image':
+            return 'Improve trust through stable digital service quality';
+          case 'stakeholder_commitment':
+            return 'Increase executive confidence with KPI visibility';
+          default:
+            return 'Unlock additional value from data-driven optimization';
+        }
+      case _AiProjectType.hybrid:
+        switch (category) {
+          case 'revenue':
+            return 'Increase revenue via integrated physical and digital channels';
+          case 'cost_saving':
+            return 'Reduce cross-stream waste across facility and system delivery';
+          case 'ops_efficiency':
+            return 'Synchronize physical readiness with digital go-live';
+          case 'productivity':
+            return 'Improve cross-functional team output and coordination';
+          case 'regulatory_compliance':
+            return 'Reduce compliance delays across site and systems';
+          case 'process_improvement':
+            return 'Standardize integrated workflows across delivery streams';
+          case 'brand_image':
+            return 'Strengthen brand confidence through consistent experience';
+          case 'stakeholder_commitment':
+            return 'Improve stakeholder alignment on integrated milestones';
+          default:
+            return 'Capture blended value from physical-digital optimization';
+        }
+      case _AiProjectType.service:
+        switch (category) {
+          case 'revenue':
+            return 'Increase service uptake and repeat engagement';
+          case 'cost_saving':
+            return 'Reduce cost per service case through workflow controls';
+          case 'ops_efficiency':
+            return 'Improve response times and service throughput';
+          case 'productivity':
+            return 'Increase staff utilization and task completion rates';
+          case 'regulatory_compliance':
+            return 'Reduce policy and compliance breach exposure';
+          case 'process_improvement':
+            return 'Standardize service SOPs for predictable delivery';
+          case 'brand_image':
+            return 'Improve client trust via consistent service quality';
+          case 'stakeholder_commitment':
+            return 'Increase sponsor confidence through service KPIs';
+          default:
+            return 'Capture value through continuous service optimization';
+        }
+      case _AiProjectType.unknown:
+        final categoryLabel = _benefitCategoryDisplayLabel(category);
+        return '$categoryLabel value realisation for $solutionRef';
+    }
+  }
+
+  String _fallbackBenefitNotesForCategory(
+    String category,
+    _AiProjectType type,
+  ) {
+    switch (type) {
+      case _AiProjectType.physical:
+        return 'Annualized estimate based on operational throughput and cost controls.';
+      case _AiProjectType.digital:
+        return 'Annualized estimate based on usage, automation, and platform efficiency.';
+      case _AiProjectType.hybrid:
+        return 'Annualized estimate blending physical and digital delivery impacts.';
+      case _AiProjectType.service:
+        return 'Annualized estimate based on service volume, quality, and staffing efficiency.';
+      case _AiProjectType.unknown:
+        final categoryLabel = _benefitCategoryDisplayLabel(category);
+        return '$categoryLabel estimate annualized in conservative terms.';
+    }
   }
 
   Future<List<AiBenefitSavingsSuggestion>> generateBenefitSavingsSuggestions(
@@ -4576,9 +5246,19 @@ Return ONLY JSON.
     double? savingsTargetPercent,
     String contextNotes = '',
   }) async {
+    final contextFromItems =
+        items.map((e) => '${e.category} ${e.title} ${e.notes}').join(' ');
+    final detectedType = _detectProjectType('$contextNotes $contextFromItems');
+    final domainHints = _financialDomainHints(
+      context: '$contextNotes $contextFromItems',
+    );
     if (items.isEmpty) return [];
     if (!OpenAiConfig.isConfigured) {
-      return _fallbackSavingsSuggestions(items, currency: currency);
+      return _fallbackSavingsSuggestions(
+        items,
+        currency: currency,
+        contextNotes: contextNotes,
+      );
     }
 
     final uri = OpenAiConfig.chatUri();
@@ -4594,13 +5274,23 @@ Return ONLY JSON.
       'messages': [
         {
           'role': 'system',
-          'content':
-              'You are a finance analyst who identifies savings levers based on structured benefit line items. Always output a JSON object with a "savings_scenarios" array. Each scenario requires: lever, recommendation, projected_savings (number), timeframe, confidence, rationale.'
+          'content': _nduProjectSystemPrompt(
+            specialistRole:
+                'financial optimization analyst identifying savings scenarios from benefit line items',
+            strictJson: true,
+            extraRules:
+                'Always output a JSON object with a "savings_scenarios" array. Each scenario requires: lever, recommendation, projected_savings (number), timeframe, confidence, rationale. Keep levers relevant to the detected domain and avoid generic advice. Follow these domain guardrails:\n$domainHints',
+          )
         },
         {
           'role': 'user',
           'content': _benefitSavingsPrompt(
-              items, currency, savingsTargetPercent, contextNotes),
+            items,
+            currency,
+            savingsTargetPercent,
+            contextNotes,
+            domainHints: domainHints,
+          ),
         },
       ],
     });
@@ -4629,26 +5319,41 @@ Return ONLY JSON.
       final scenarios = (parsed['savings_scenarios'] as List? ?? [])
           .map((e) => AiBenefitSavingsSuggestion.fromMap(
               (e ?? {}) as Map<String, dynamic>))
-          .where((e) => e.lever.isNotEmpty)
-          .toList();
+          .where((e) {
+        if (e.lever.isEmpty) return false;
+        if (e.projectedSavings <= 0) return false;
+        final mergedText = '${e.lever} ${e.recommendation} ${e.rationale}';
+        if (_isDomainMismatchForProjectType(mergedText, detectedType)) {
+          return false;
+        }
+        if (_looksTooGenericFinancialText(mergedText)) {
+          return false;
+        }
+        return true;
+      }).toList();
       if (scenarios.isEmpty) {
-        return _fallbackSavingsSuggestions(items, currency: currency);
+        return _fallbackSavingsSuggestions(
+          items,
+          currency: currency,
+          contextNotes: contextNotes,
+        );
       }
       return scenarios;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('generateBenefitSavingsSuggestions failed: $e');
       }
-      return _fallbackSavingsSuggestions(items, currency: currency);
+      return _fallbackSavingsSuggestions(
+        items,
+        currency: currency,
+        contextNotes: contextNotes,
+      );
     }
   }
 
-  String _benefitSavingsPrompt(
-    List<BenefitLineItemInput> items,
-    String currency,
-    double? savingsTargetPercent,
-    String contextNotes,
-  ) {
+  String _benefitSavingsPrompt(List<BenefitLineItemInput> items,
+      String currency, double? savingsTargetPercent, String contextNotes,
+      {required String domainHints}) {
     final target = savingsTargetPercent != null && savingsTargetPercent > 0
         ? 'Aim for at least ${savingsTargetPercent.toStringAsFixed(1)}% savings against total monetised benefits.'
         : 'If no explicit savings target is provided, surface high-impact opportunities.';
@@ -4663,6 +5368,10 @@ $payload
 $target
 Respond with 2-4 concise savings scenarios that resemble spreadsheet-style levers (unit cost, volume, timing). Use numeric projected_savings values in $currency.
 Extra notes for context: $notes
+Do not suggest SaaS-only levers (CAC/LTV/churn/MRR) unless the project context clearly indicates SaaS/digital subscription.
+Do not suggest construction-only levers for purely digital projects.
+Domain guardrails:
+$domainHints
 
 Remember: Return ONLY a JSON object with key "savings_scenarios".
 ''';
@@ -4671,45 +5380,66 @@ Remember: Return ONLY a JSON object with key "savings_scenarios".
   List<AiBenefitSavingsSuggestion> _fallbackSavingsSuggestions(
     List<BenefitLineItemInput> items, {
     required String currency,
+    String contextNotes = '',
   }) {
     if (items.isEmpty) return [];
     final sorted = List<BenefitLineItemInput>.from(items)
       ..sort((a, b) => b.total.compareTo(a.total));
     final total = sorted.fold<double>(0, (sum, item) => sum + item.total);
+    final type = _detectProjectType(
+      '$contextNotes ${items.map((e) => '${e.category} ${e.title} ${e.notes}').join(' ')}',
+    );
 
     double cappedSavings(double value) => value.isFinite ? value : 0;
 
     final suggestions = <AiBenefitSavingsSuggestion>[];
     final top = sorted.first;
+    final topCategoryLabel = _benefitCategoryDisplayLabel(top.category);
+
+    String topRecommendation() {
+      switch (type) {
+        case _AiProjectType.physical:
+          return 'Target a 6-10% savings through supplier renegotiation, batch purchasing, and waste controls for this benefit driver.';
+        case _AiProjectType.digital:
+          return 'Target a 6-10% savings through licensing optimization, workload right-sizing, and automation of repeat tasks.';
+        case _AiProjectType.hybrid:
+          return 'Target a 6-10% savings through coordinated supplier, operations, and platform optimization across both physical and digital workstreams.';
+        case _AiProjectType.service:
+          return 'Target a 5-9% savings through service process standardization, scheduling discipline, and role optimization.';
+        case _AiProjectType.unknown:
+          return 'Target a conservative 5-8% savings by tightening assumptions, supplier rates, and execution controls.';
+      }
+    }
+
     suggestions.add(AiBenefitSavingsSuggestion(
-      lever: 'Negotiate ${top.title}',
-      recommendation:
-          'Target a 10% reduction on unit value through vendor negotiations and alternative sourcing.',
-      projectedSavings: cappedSavings(top.total * 0.1),
+      lever: 'Optimize $topCategoryLabel driver: ${top.title}',
+      recommendation: topRecommendation(),
+      projectedSavings: cappedSavings(top.total * 0.08),
       timeframe: 'Next quarter',
       confidence: 'Medium',
       rationale:
-          'Largest monetised benefit in ${top.category}; small rate improvements yield immediate savings.',
+          'Largest monetised benefit category is $topCategoryLabel; a focused improvement here can protect value quickly.',
     ));
 
     if (sorted.length > 1) {
       final runnerUp = sorted[1];
+      final runnerUpLabel = _benefitCategoryDisplayLabel(runnerUp.category);
       suggestions.add(AiBenefitSavingsSuggestion(
-        lever: 'Volume discipline for ${runnerUp.title}',
+        lever: 'Volume and utilisation discipline for ${runnerUp.title}',
         recommendation:
-            'Reduce consumption by 5% via tighter controls and usage analytics.',
+            'Reduce avoidable volume by ~5% through tighter controls, scheduling, and performance tracking.',
         projectedSavings: cappedSavings(runnerUp.total * 0.05),
         timeframe: '6 months',
         confidence: 'Medium',
         rationale:
-            'Second-largest line item where volume adjustments protect realised benefits.',
+            'Second-largest monetised benefit ($runnerUpLabel) where volume adjustments improve realised savings.',
       ));
     }
 
     suggestions.add(AiBenefitSavingsSuggestion(
       lever: 'Benefit realisation governance',
       recommendation:
-          'Embed monthly finance checkpoints to prevent benefit leakage across all categories.',
+          'Embed monthly finance checkpoints and owner-level review to prevent benefit leakage across categories.',
       projectedSavings: cappedSavings(total * 0.05),
       timeframe: '12 months',
       confidence: 'Medium',
@@ -5730,6 +6460,614 @@ $escaped
       'Business Analyst',
       'Quality Assurance Specialist',
     ];
+  }
+
+  Future<List<StaffingRow>> generateStaffingRows({
+    required String context,
+    int maxRows = 4,
+    int maxTokens = 900,
+    double temperature = 0.4,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) {
+      return _fallbackStaffingRows(trimmedContext, maxRows);
+    }
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackStaffingRows(trimmedContext, maxRows);
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content': _nduProjectSystemPrompt(
+            specialistRole:
+                'execution phase staffing lead drafting staffing needs for project delivery',
+            strictJson: true,
+            extraRules:
+                'Return only valid JSON with a "staffingRows" array. Keep roles and details aligned to the project context.',
+          ),
+        },
+        {
+          'role': 'user',
+          'content': _staffingRowsPrompt(trimmedContext, maxRows),
+        },
+      ],
+    });
+
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 14));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+            'OpenAI error ${response.statusCode}: ${response.body}');
+      }
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final choices = data['choices'] as List<dynamic>? ?? [];
+      if (choices.isNotEmpty) {
+        final firstMessage =
+            choices.first['message'] as Map<String, dynamic>? ?? {};
+        final content = (firstMessage['content'] as String?)?.trim() ?? '';
+        final parsed = _decodeJsonSafely(content);
+        if (parsed != null) {
+          final rows = _parseStaffingRows(parsed, maxRows);
+          if (rows.isNotEmpty) return rows;
+        }
+      }
+    } catch (e) {
+      debugPrint('generateStaffingRows failed: $e');
+    }
+
+    return _fallbackStaffingRows(trimmedContext, maxRows);
+  }
+
+  String _staffingRowsPrompt(String context, int maxRows) {
+    final escaped = _escape(context);
+    return '''
+Generate up to $maxRows staffing rows for the execution phase based on the project context.
+
+Return ONLY valid JSON with this structure:
+{
+  "staffingRows": [
+    {
+      "role": "Role title",
+      "quantity": 2,
+      "isInternal": true,
+      "startDate": "Month 1",
+      "durationMonths": "6",
+      "monthlyCost": "4500",
+      "roleDescription": "Single sentence summary of responsibilities.",
+      "skillRequirements": ["Skill A", "Skill B"],
+      "status": "Not Started"
+    }
+  ]
+}
+
+Guidelines:
+- Keep roles specific to the project context.
+- Use realistic quantities (1-4) and durations (1-12 months).
+- Provide concise, actionable descriptions and 2-4 skill requirements.
+
+Project context:
+"""
+$escaped
+"""
+''';
+  }
+
+  List<StaffingRow> _parseStaffingRows(
+      Map<String, dynamic> parsed, int maxRows) {
+    final rowsRaw = parsed['staffingRows'] ??
+        parsed['rows'] ??
+        parsed['staffing'] ??
+        parsed['items'];
+    if (rowsRaw is! List) return [];
+    final rows = <StaffingRow>[];
+
+    for (final entry in rowsRaw) {
+      if (entry is! Map) continue;
+      final map = Map<String, dynamic>.from(entry);
+      final role = _stripAsterisks(
+          (map['role'] ?? map['title'] ?? map['position'] ?? '')
+              .toString()
+              .trim());
+      if (role.isEmpty) continue;
+      final quantityRaw = map['quantity'];
+      final quantity = quantityRaw is num
+          ? quantityRaw.toInt()
+          : int.tryParse(quantityRaw?.toString() ?? '') ?? 1;
+      final isInternalRaw = map['isInternal'] ?? map['internal'] ?? map['type'];
+      final isInternal = isInternalRaw is bool
+          ? isInternalRaw
+          : (isInternalRaw?.toString().toLowerCase().contains('external') ??
+                  false)
+              ? false
+              : true;
+      final startDate = (map['startDate'] ?? map['start'] ?? '').toString();
+      final duration =
+          (map['durationMonths'] ?? map['duration'] ?? '').toString();
+      final monthlyCost =
+          (map['monthlyCost'] ?? map['monthlyRate'] ?? map['cost'] ?? '')
+              .toString();
+      final description = (map['roleDescription'] ??
+              map['description'] ??
+              map['summary'] ??
+              '')
+          .toString();
+      final skillRequirements =
+          _formatSkillRequirements(map['skillRequirements'] ?? map['skills']);
+      final status =
+          (map['status'] ?? map['phaseStatus'] ?? 'Not Started').toString();
+
+      rows.add(
+        StaffingRow(
+          role: role,
+          quantity: quantity <= 0 ? 1 : quantity,
+          isInternal: isInternal,
+          startDate: startDate,
+          durationMonths: duration,
+          monthlyCost: monthlyCost,
+          roleDescription: description,
+          skillRequirements: skillRequirements,
+          status: status.isEmpty ? 'Not Started' : status,
+        ),
+      );
+      if (rows.length >= maxRows) break;
+    }
+
+    return rows;
+  }
+
+  String _formatSkillRequirements(dynamic raw) {
+    if (raw == null) return '';
+    if (raw is List) {
+      final items = raw
+          .map((e) => _stripAsterisks(e.toString().trim()))
+          .where((e) => e.isNotEmpty)
+          .toList();
+      if (items.isEmpty) return '';
+      return items.map((e) => '. $e').join('\n');
+    }
+    final text = _stripAsterisks(raw.toString().trim());
+    if (text.isEmpty) return '';
+    if (text.contains('\n')) {
+      final lines =
+          text.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty);
+      return lines.map((l) => l.startsWith('.') ? l : '. $l').join('\n');
+    }
+    return text.startsWith('.') ? text : '. $text';
+  }
+
+  List<StaffingRow> _fallbackStaffingRows(String context, int maxRows) {
+    final roles = _fallbackStaffingRoles();
+    final rows = <StaffingRow>[];
+    for (final role in roles.take(maxRows)) {
+      rows.add(
+        StaffingRow(
+          role: role,
+          quantity: 1,
+          isInternal: true,
+          startDate: 'Month 1',
+          durationMonths: '6',
+          monthlyCost: '4000',
+          roleDescription: 'Owns delivery responsibilities for $role.',
+          skillRequirements: '. Planning\n. Execution\n. Stakeholder updates',
+          status: 'Not Started',
+        ),
+      );
+    }
+    return rows;
+  }
+
+  Future<List<MeetingRow>> generateMeetingRows({
+    required String context,
+    required List<String> availableRoles,
+    int maxRows = 3,
+    int maxTokens = 900,
+    double temperature = 0.4,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) {
+      return _fallbackMeetingRows(availableRoles);
+    }
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackMeetingRows(availableRoles);
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content': _nduProjectSystemPrompt(
+            specialistRole:
+                'execution coordinator designing meeting cadences and objectives',
+            strictJson: true,
+            extraRules:
+                'Return only valid JSON with a "meetings" array of meeting rows.',
+          ),
+        },
+        {
+          'role': 'user',
+          'content':
+              _meetingRowsPrompt(trimmedContext, availableRoles, maxRows),
+        },
+      ],
+    });
+
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 14));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+            'OpenAI error ${response.statusCode}: ${response.body}');
+      }
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final choices = data['choices'] as List<dynamic>? ?? [];
+      if (choices.isNotEmpty) {
+        final firstMessage =
+            choices.first['message'] as Map<String, dynamic>? ?? {};
+        final content = (firstMessage['content'] as String?)?.trim() ?? '';
+        final parsed = _decodeJsonSafely(content);
+        if (parsed != null) {
+          final rows = _parseMeetingRows(parsed, maxRows);
+          if (rows.isNotEmpty) return rows;
+        }
+      }
+    } catch (e) {
+      debugPrint('generateMeetingRows failed: $e');
+    }
+
+    return _fallbackMeetingRows(availableRoles);
+  }
+
+  String _meetingRowsPrompt(
+      String context, List<String> roles, int maxRows) {
+    final escaped = _escape(context);
+    final rolesLine =
+        roles.isEmpty ? 'No roles provided' : roles.map(_escape).join(', ');
+    return '''
+Generate up to $maxRows meeting cadence rows for execution based on the project context.
+
+Return ONLY valid JSON with this structure:
+{
+  "meetings": [
+    {
+      "meetingType": "Weekly Sync",
+      "frequency": "Weekly",
+      "keyParticipants": ["Project Manager", "Ops Lead"],
+      "durationHours": "1",
+      "meetingObjective": "Short, actionable objective",
+      "actionItems": "Optional bullet list",
+      "status": "Scheduled"
+    }
+  ]
+}
+
+Available roles (use these for keyParticipants when possible):
+$rolesLine
+
+Project context:
+"""
+$escaped
+"""
+''';
+  }
+
+  List<MeetingRow> _parseMeetingRows(Map<String, dynamic> parsed, int maxRows) {
+    final raw = parsed['meetings'] ?? parsed['rows'] ?? parsed['items'];
+    if (raw is! List) return [];
+    final rows = <MeetingRow>[];
+    for (final entry in raw) {
+      if (entry is! Map) continue;
+      final map = Map<String, dynamic>.from(entry);
+      final meetingType =
+          (map['meetingType'] ?? map['title'] ?? '').toString().trim();
+      if (meetingType.isEmpty) continue;
+      final frequency =
+          (map['frequency'] ?? map['cadence'] ?? '').toString().trim();
+      final duration =
+          (map['durationHours'] ?? map['duration'] ?? '').toString().trim();
+      final objective =
+          (map['meetingObjective'] ?? map['objective'] ?? '').toString().trim();
+      final actionItems =
+          (map['actionItems'] ?? map['agenda'] ?? '').toString().trim();
+      final status =
+          (map['status'] ?? map['state'] ?? 'Scheduled').toString().trim();
+      final participantsRaw =
+          map['keyParticipants'] ?? map['participants'] ?? const [];
+      final participants = <String>[];
+      if (participantsRaw is List) {
+        participants.addAll(participantsRaw
+            .map((e) => _stripAsterisks(e.toString().trim()))
+            .where((e) => e.isNotEmpty));
+      } else if (participantsRaw != null) {
+        final text = participantsRaw.toString();
+        participants.addAll(text
+            .split(RegExp(r'[,;\\n]+'))
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty));
+      }
+
+      rows.add(
+        MeetingRow(
+          meetingType: meetingType,
+          frequency: frequency.isEmpty ? 'Weekly' : frequency,
+          keyParticipants: participants,
+          durationHours: duration.isEmpty ? '1' : duration,
+          meetingObjective: objective,
+          actionItems: actionItems,
+          status: status.isEmpty ? 'Scheduled' : status,
+        ),
+      );
+      if (rows.length >= maxRows) break;
+    }
+    return rows;
+  }
+
+  List<MeetingRow> _fallbackMeetingRows(List<String> roles) {
+    final List<String> participants = roles.isNotEmpty
+        ? roles.take(3).map((e) => e.toString()).toList()
+        : const <String>[];
+    return [
+      MeetingRow(
+        meetingType: 'Weekly Sync',
+        frequency: 'Weekly',
+        keyParticipants: participants,
+        durationHours: '1',
+        meetingObjective: 'Align on weekly priorities and blockers.',
+        actionItems: '. Share updates\n. Resolve blockers\n. Confirm next steps',
+        status: 'Scheduled',
+      ),
+      MeetingRow(
+        meetingType: 'Stakeholder Update',
+        frequency: 'Bi-Weekly',
+        keyParticipants: participants,
+        durationHours: '1',
+        meetingObjective: 'Provide sponsors with progress and risk updates.',
+        actionItems: '. Review milestones\n. Confirm decisions needed',
+        status: 'Scheduled',
+      ),
+    ];
+  }
+
+  Future<Map<String, List<Map<String, String>>>>
+      generateSecurityRolesAndPermissions({
+    required String context,
+    int maxRoles = 4,
+    int maxPermissions = 5,
+    int maxTokens = 700,
+    double temperature = 0.4,
+  }) async {
+    final trimmedContext = context.trim();
+    if (trimmedContext.isEmpty) {
+      return _fallbackSecurityRolesPermissions(trimmedContext, maxRoles,
+          maxPermissions);
+    }
+    if (!OpenAiConfig.isConfigured) {
+      return _fallbackSecurityRolesPermissions(trimmedContext, maxRoles,
+          maxPermissions);
+    }
+
+    final uri = OpenAiConfig.chatUri();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${OpenAiConfig.apiKeyValue}',
+    };
+
+    final body = jsonEncode({
+      'model': OpenAiConfig.model,
+      'temperature': temperature,
+      'max_tokens': maxTokens,
+      'response_format': {'type': 'json_object'},
+      'messages': [
+        {
+          'role': 'system',
+          'content': _nduProjectSystemPrompt(
+            specialistRole:
+                'security governance lead defining roles and access permissions',
+            strictJson: true,
+            extraRules:
+                'Return only valid JSON with "roles" and "permissions" arrays.',
+          ),
+        },
+        {
+          'role': 'user',
+          'content': _securityRolesPermissionsPrompt(
+              trimmedContext, maxRoles, maxPermissions),
+        },
+      ],
+    });
+
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 12));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+            'OpenAI error ${response.statusCode}: ${response.body}');
+      }
+      final data =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final choices = data['choices'] as List<dynamic>? ?? [];
+      if (choices.isNotEmpty) {
+        final firstMessage =
+            choices.first['message'] as Map<String, dynamic>? ?? {};
+        final content = (firstMessage['content'] as String?)?.trim() ?? '';
+        final parsed = _decodeJsonSafely(content);
+        if (parsed != null) {
+          final results =
+              _parseSecurityRolesPermissions(parsed, maxRoles, maxPermissions);
+          if (results['roles']!.isNotEmpty ||
+              results['permissions']!.isNotEmpty) {
+            return results;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('generateSecurityRolesAndPermissions failed: $e');
+    }
+
+    return _fallbackSecurityRolesPermissions(
+        trimmedContext, maxRoles, maxPermissions);
+  }
+
+  String _securityRolesPermissionsPrompt(
+      String context, int maxRoles, int maxPermissions) {
+    final escaped = _escape(context);
+    return '''
+Create security governance seed data for the project below.
+
+Return ONLY valid JSON with this structure:
+{
+  "roles": [
+    {"name": "Role title", "description": "Short responsibility summary"}
+  ],
+  "permissions": [
+    {"resource": "System or data domain", "scope": "Access scope or level"}
+  ]
+}
+
+Guidelines:
+- Provide up to $maxRoles roles and up to $maxPermissions permissions.
+- Keep each item specific to the project context.
+- Permissions should mention the system/data area and the access level.
+
+Project context:
+"""
+$escaped
+"""
+''';
+  }
+
+  Map<String, List<Map<String, String>>> _parseSecurityRolesPermissions(
+      Map<String, dynamic> parsed, int maxRoles, int maxPermissions) {
+    final rolesRaw =
+        parsed['roles'] ?? parsed['security_roles'] ?? parsed['roleItems'];
+    final permissionsRaw = parsed['permissions'] ??
+        parsed['securityPermissions'] ??
+        parsed['permissionItems'];
+
+    final roles = <Map<String, String>>[];
+    if (rolesRaw is List) {
+      for (final entry in rolesRaw) {
+        if (entry is Map) {
+          final map = Map<String, dynamic>.from(entry);
+          final name =
+              _stripAsterisks((map['name'] ?? map['role'] ?? '').toString())
+                  .trim();
+          if (name.isEmpty) continue;
+          final desc =
+              (map['description'] ?? map['summary'] ?? '').toString().trim();
+          roles.add({'name': name, 'description': desc});
+        } else if (entry != null) {
+          final name = _stripAsterisks(entry.toString().trim());
+          if (name.isNotEmpty) {
+            roles.add({'name': name, 'description': ''});
+          }
+        }
+        if (roles.length >= maxRoles) break;
+      }
+    }
+
+    final permissions = <Map<String, String>>[];
+    if (permissionsRaw is List) {
+      for (final entry in permissionsRaw) {
+        if (entry is Map) {
+          final map = Map<String, dynamic>.from(entry);
+          final resource = _stripAsterisks(
+                  (map['resource'] ?? map['system'] ?? map['area'] ?? '')
+                      .toString())
+              .trim();
+          if (resource.isEmpty) continue;
+          final scope =
+              (map['scope'] ?? map['level'] ?? map['access'] ?? '').toString();
+          permissions.add({'resource': resource, 'scope': scope.trim()});
+        } else if (entry != null) {
+          final resource = _stripAsterisks(entry.toString().trim());
+          if (resource.isNotEmpty) {
+            permissions.add({'resource': resource, 'scope': ''});
+          }
+        }
+        if (permissions.length >= maxPermissions) break;
+      }
+    }
+
+    return {
+      'roles': roles,
+      'permissions': permissions,
+    };
+  }
+
+  Map<String, List<Map<String, String>>> _fallbackSecurityRolesPermissions(
+      String context, int maxRoles, int maxPermissions) {
+    final projectName = _extractProjectName(context);
+    final assetName = projectName.isEmpty ? 'the project' : projectName;
+    final roles = [
+      {
+        'name': 'Security Lead',
+        'description': 'Owns security controls and risk mitigation for $assetName.',
+      },
+      {
+        'name': 'IT Administrator',
+        'description': 'Manages system access, credentials, and infrastructure safeguards.',
+      },
+      {
+        'name': 'Compliance Officer',
+        'description': 'Ensures regulatory and policy compliance across delivery.',
+      },
+      {
+        'name': 'Vendor Security Coordinator',
+        'description': 'Tracks vendor access, NDA compliance, and third-party risks.',
+      },
+    ].take(maxRoles).toList();
+
+    final permissions = [
+      {
+        'resource': 'Core project systems',
+        'scope': 'Admin access for delivery leads',
+      },
+      {
+        'resource': 'Customer or stakeholder data',
+        'scope': 'Read/write with approval',
+      },
+      {
+        'resource': 'Vendor portals',
+        'scope': 'Limited access with audit logging',
+      },
+      {
+        'resource': 'Financial or contract documents',
+        'scope': 'Read-only for authorized roles',
+      },
+    ].take(maxPermissions).toList();
+
+    return {
+      'roles': roles,
+      'permissions': permissions,
+    };
   }
 
   /// Generate meeting objective/agenda based on meeting type and participant roles

@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:ndu_project/screens/gap_analysis_scope_reconcillation_screen.dart';
+import 'package:ndu_project/screens/technical_debt_management_screen.dart';
+import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
+import 'package:ndu_project/widgets/launch_phase_navigation.dart';
+import 'package:ndu_project/widgets/launch_editable_section.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 
 class PunchlistActionsScreen extends StatefulWidget {
@@ -39,6 +46,7 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
     'Flagged for launch',
   ];
 
+  /*
   final List<_PunchlistInsight> _priorityItems = const [
     _PunchlistInsight(
       title: 'Rework integrations interface alerts',
@@ -147,6 +155,30 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
       status: 'Legal review',
     ),
   ];
+  */
+
+  List<_PunchlistInsight> _priorityItems = [];
+  List<_PunchlistInsight> _technicalInsights = [];
+  List<_PunchlistInsight> _remediationItems = [];
+  List<_PunchlistInsight> _fieldExecutionItems = [];
+  List<_PunchlistInsight> _techDebtItems = [];
+  List<_PunchlistInsight> _closureItems = [];
+
+  bool _isLoading = false;
+  bool _autoGenerationTriggered = false;
+  bool _isAutoGenerating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _priorityItems = _defaultPriorityItems();
+    _technicalInsights = _defaultTechnicalInsights();
+    _remediationItems = _defaultRemediationItems();
+    _fieldExecutionItems = _defaultFieldExecutionItems();
+    _techDebtItems = _defaultTechDebtItems();
+    _closureItems = _defaultClosureItems();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadFromFirestore());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -161,16 +193,21 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
           children: [
             DraggableSidebar(
               openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(activeItemLabel: 'Punchlist Actions'),
+              child: const InitiationLikeSidebar(
+                  activeItemLabel: 'Punchlist Actions'),
             ),
             Expanded(
               child: Stack(
                 children: [
                   SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 28),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding, vertical: 28),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (_isLoading)
+                          const LinearProgressIndicator(minHeight: 2),
+                        if (_isLoading) const SizedBox(height: 16),
                         _buildContextHeader(context),
                         const SizedBox(height: 18),
                         _buildPageHeader(context),
@@ -182,6 +219,17 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
                         _buildMiddleInsights(context),
                         const SizedBox(height: 26),
                         _buildLowerGrid(context),
+                        const SizedBox(height: 26),
+                        LaunchPhaseNavigation(
+                          backLabel:
+                              'Back: Gap Analysis & Scope Reconciliation',
+                          nextLabel: 'Next: Technical Debt Management',
+                          onBack: () =>
+                              GapAnalysisScopeReconcillationScreen.open(
+                                  context),
+                          onNext: () =>
+                              TechnicalDebtManagementScreen.open(context),
+                        ),
                         const SizedBox(height: 48),
                       ],
                     ),
@@ -196,12 +244,192 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
     );
   }
 
+  void _showActionSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  String? _projectId() => ProjectDataHelper.getData(context).projectId;
+
+  Future<void> _loadFromFirestore() async {
+    if (_autoGenerationTriggered || _isAutoGenerating) return;
+    final projectId = _projectId();
+    if (projectId == null || projectId.isEmpty) return;
+    setState(() => _isLoading = true);
+    try {
+      final doc = await _docRef(projectId).get();
+      final data = doc.data() ?? {};
+      final priority = _PunchlistInsight.fromList(data['priorityItems']);
+      final technical = _PunchlistInsight.fromList(data['technicalInsights']);
+      final remediation = _PunchlistInsight.fromList(data['remediationItems']);
+      final fieldItems = _PunchlistInsight.fromList(data['fieldExecutionItems']);
+      final techDebt = _PunchlistInsight.fromList(data['techDebtItems']);
+      final closure = _PunchlistInsight.fromList(data['closureItems']);
+      final hasContent = priority.isNotEmpty ||
+          technical.isNotEmpty ||
+          remediation.isNotEmpty ||
+          fieldItems.isNotEmpty ||
+          techDebt.isNotEmpty ||
+          closure.isNotEmpty;
+
+      setState(() {
+        _priorityItems =
+            priority.isNotEmpty ? priority : _defaultPriorityItems();
+        _technicalInsights =
+            technical.isNotEmpty ? technical : _defaultTechnicalInsights();
+        _remediationItems =
+            remediation.isNotEmpty ? remediation : _defaultRemediationItems();
+        _fieldExecutionItems =
+            fieldItems.isNotEmpty ? fieldItems : _defaultFieldExecutionItems();
+        _techDebtItems =
+            techDebt.isNotEmpty ? techDebt : _defaultTechDebtItems();
+        _closureItems =
+            closure.isNotEmpty ? closure : _defaultClosureItems();
+      });
+      if (!hasContent) {
+        await _autoPopulateFromAi();
+      }
+    } catch (error) {
+      debugPrint('Punchlist actions load error: $error');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _saveToFirestore() async {
+    final projectId = _projectId();
+    if (projectId == null || projectId.isEmpty) return;
+    try {
+      await _docRef(projectId).set({
+        'priorityItems': _priorityItems.map((e) => e.toMap()).toList(),
+        'technicalInsights': _technicalInsights.map((e) => e.toMap()).toList(),
+        'remediationItems': _remediationItems.map((e) => e.toMap()).toList(),
+        'fieldExecutionItems':
+            _fieldExecutionItems.map((e) => e.toMap()).toList(),
+        'techDebtItems': _techDebtItems.map((e) => e.toMap()).toList(),
+        'closureItems': _closureItems.map((e) => e.toMap()).toList(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (error) {
+      debugPrint('Punchlist actions save error: $error');
+    }
+  }
+
+  DocumentReference<Map<String, dynamic>> _docRef(String projectId) {
+    return FirebaseFirestore.instance
+        .collection('projects')
+        .doc(projectId)
+        .collection('execution_phase_sections')
+        .doc('punchlist_actions');
+  }
+
+  Future<void> _autoPopulateFromAi() async {
+    if (_autoGenerationTriggered || _isAutoGenerating) return;
+    _autoGenerationTriggered = true;
+    setState(() => _isAutoGenerating = true);
+    Map<String, List<LaunchEntry>> generated = {};
+    try {
+      generated = await ExecutionPhaseAiSeed.generateEntries(
+        context: context,
+        section: 'Punchlist Actions',
+        sections: const {
+          'priority': 'Priority punchlist items and owners',
+          'technical': 'Technical insight punchlist items',
+          'remediation': 'Remediation planning items',
+          'field_execution': 'Field execution punch items',
+          'tech_debt': 'Technical debt closure items',
+          'closure': 'Final acceptance and closure items',
+        },
+        itemsPerSection: 3,
+      );
+    } catch (error) {
+      debugPrint('Punchlist actions AI call failed: $error');
+    }
+
+    if (!mounted) return;
+    final priority = _mapInsights(generated['priority']);
+    final technical = _mapInsights(generated['technical']);
+    final remediation = _mapInsights(generated['remediation']);
+    final fieldItems = _mapInsights(generated['field_execution']);
+    final techDebt = _mapInsights(generated['tech_debt']);
+    final closure = _mapInsights(generated['closure']);
+
+    setState(() {
+      _priorityItems =
+          priority.isNotEmpty ? priority : _defaultPriorityItems();
+      _technicalInsights =
+          technical.isNotEmpty ? technical : _defaultTechnicalInsights();
+      _remediationItems =
+          remediation.isNotEmpty ? remediation : _defaultRemediationItems();
+      _fieldExecutionItems =
+          fieldItems.isNotEmpty ? fieldItems : _defaultFieldExecutionItems();
+      _techDebtItems = techDebt.isNotEmpty ? techDebt : _defaultTechDebtItems();
+      _closureItems = closure.isNotEmpty ? closure : _defaultClosureItems();
+      _isAutoGenerating = false;
+    });
+    await _saveToFirestore();
+  }
+
+  List<_PunchlistInsight> _mapInsights(List<LaunchEntry>? entries) {
+    if (entries == null) return [];
+    return entries
+        .map((entry) {
+          final details = entry.details;
+          final owner = _extractField(details, 'Owner');
+          final due = _extractField(details, 'Due');
+          final status = _extractField(details, 'Status');
+          return _PunchlistInsight(
+            title: entry.title.trim(),
+            owner: owner.isNotEmpty ? owner : 'Owner TBD',
+            dueIn: due.isNotEmpty ? due : 'Next 7 days',
+            severity: _severityFromText(
+                '${entry.title} ${entry.details} ${entry.status ?? ''}'),
+            status: status.isNotEmpty
+                ? status
+                : (entry.status?.trim().isNotEmpty == true
+                    ? entry.status!.trim()
+                    : 'In progress'),
+          );
+        })
+        .where((item) => item.title.isNotEmpty)
+        .toList();
+  }
+
+  String _extractField(String text, String key) {
+    final match = RegExp('$key\\s*[:=-]\\s*([^|;\\n]+)',
+            caseSensitive: false)
+        .firstMatch(text);
+    return match?.group(1)?.trim() ?? '';
+  }
+
+  _PunchlistSeverity _severityFromText(String text) {
+    final lower = text.toLowerCase();
+    if (lower.contains('critical')) return _PunchlistSeverity.critical;
+    if (lower.contains('high')) return _PunchlistSeverity.high;
+    if (lower.contains('low')) return _PunchlistSeverity.low;
+    return _PunchlistSeverity.medium;
+  }
+
   Widget _buildContextHeader(BuildContext context) {
+    final projectData = ProjectDataHelper.getData(context);
+    final projectName = projectData.projectName.trim().isNotEmpty
+        ? projectData.projectName.trim()
+        : projectData.solutionTitle.trim();
     final items = [
-      const _ContextChip(icon: Icons.cases_outlined, label: 'Program', value: 'Execution Hub'),
-      const _ContextChip(icon: Icons.local_airport_outlined, label: 'Project', value: 'Airport capacity uplift'),
-      const _ContextChip(icon: Icons.flag_circle_outlined, label: 'Phase', value: 'Execution'),
-      const _ContextChip(icon: Icons.timeline_outlined, label: 'Sprint', value: 'Sprint 42 • 3 days remaining'),
+      const _ContextChip(
+          icon: Icons.cases_outlined, label: 'Program', value: 'Execution Hub'),
+      _ContextChip(
+          icon: Icons.local_airport_outlined,
+          label: 'Project',
+          value: projectName.isNotEmpty ? projectName : 'Active project'),
+      const _ContextChip(
+          icon: Icons.flag_circle_outlined, label: 'Phase', value: 'Execution'),
+      const _ContextChip(
+          icon: Icons.timeline_outlined,
+          label: 'Sprint',
+          value: 'Sprint 42 • 3 days remaining'),
     ];
 
     return Wrap(
@@ -293,21 +521,27 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
           alignment: stack ? WrapAlignment.start : WrapAlignment.end,
           children: [
             OutlinedButton.icon(
-              onPressed: () {},
+              onPressed: () => _showActionSnack(
+                  'Tracker export is queued while export templates are finalized.'),
               icon: const Icon(Icons.file_download_outlined, size: 18),
               label: const Text('Export tracker'),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18)),
               ),
             ),
             FilledButton.icon(
-              onPressed: () {},
+              onPressed: () => _showActionSnack(
+                  'Launch status shared. Keep item owners and due dates updated before the next sync.'),
               icon: const Icon(Icons.auto_graph_outlined, size: 18),
               label: const Text('Share launch status'),
               style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18)),
               ),
             ),
           ],
@@ -374,11 +608,17 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
                         backgroundColor: const Color(0xFFF3F4F6),
                         selectedColor: const Color(0xFFEFF6FF),
                         labelStyle: TextStyle(
-                          fontWeight: _selectedScopeFilters.contains(option) ? FontWeight.w700 : FontWeight.w500,
-                          color: _selectedScopeFilters.contains(option) ? const Color(0xFF1D4ED8) : const Color(0xFF4B5563),
+                          fontWeight: _selectedScopeFilters.contains(option)
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: _selectedScopeFilters.contains(option)
+                              ? const Color(0xFF1D4ED8)
+                              : const Color(0xFF4B5563),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18)),
                       ),
                     )
                     .toList(),
@@ -392,7 +632,8 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
                     prefixIcon: const Icon(Icons.search, size: 20),
                     filled: true,
                     fillColor: const Color(0xFFF9FAFB),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(18),
                       borderSide: BorderSide.none,
@@ -443,10 +684,14 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
                     selectedColor: const Color(0xFFEDE9FE),
                     labelStyle: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: _selectedViewFilters.contains(option) ? const Color(0xFF5B21B6) : const Color(0xFF4B5563),
+                      color: _selectedViewFilters.contains(option)
+                          ? const Color(0xFF5B21B6)
+                          : const Color(0xFF4B5563),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18)),
                   ),
                 )
                 .toList(),
@@ -524,6 +769,115 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
     return _wrapInsightCards(cards);
   }
 
+  List<_PunchlistInsight> _defaultPriorityItems() => [
+        _PunchlistInsight(
+          title: 'Rework integrations interface alerts',
+          owner: 'N. Chan',
+          dueIn: 'Due in 2 days',
+          severity: _PunchlistSeverity.high,
+          status: 'Field team ready',
+        ),
+        _PunchlistInsight(
+          title: 'Validate HVAC balancing readings',
+          owner: 'S. Patel',
+          dueIn: 'Due Friday',
+          severity: _PunchlistSeverity.medium,
+          status: 'QA pending',
+        ),
+        _PunchlistInsight(
+          title: 'Backfill cabinet missing fasteners',
+          owner: 'L. Santos',
+          dueIn: 'Overdue by 1 day',
+          severity: _PunchlistSeverity.critical,
+          status: 'Waiting on vendor',
+        ),
+      ];
+
+  List<_PunchlistInsight> _defaultTechnicalInsights() => [
+        _PunchlistInsight(
+          title: 'P-107: Airside zoning dampers',
+          owner: 'Systems',
+          dueIn: 'QA sign-off pending',
+          severity: _PunchlistSeverity.medium,
+          status: 'Close out ready',
+        ),
+        _PunchlistInsight(
+          title: 'Interface bus failover checks',
+          owner: 'Integration',
+          dueIn: 'Pending metrics',
+          severity: _PunchlistSeverity.low,
+          status: 'Monitoring',
+        ),
+      ];
+
+  List<_PunchlistInsight> _defaultRemediationItems() => [
+        _PunchlistInsight(
+          title: 'Resource planning aligned with sprint 42',
+          owner: 'Operations',
+          dueIn: 'In progress',
+          severity: _PunchlistSeverity.medium,
+          status: 'Capacity 80%',
+        ),
+        _PunchlistInsight(
+          title: 'Vendor escalation touchpoint',
+          owner: 'Supply chain',
+          dueIn: 'Tomorrow',
+          severity: _PunchlistSeverity.high,
+          status: 'Meeting booked',
+        ),
+      ];
+
+  List<_PunchlistInsight> _defaultFieldExecutionItems() => [
+        _PunchlistInsight(
+          title: 'Mobile inspections checklist sync',
+          owner: 'Field Ops',
+          dueIn: 'Sync nightly',
+          severity: _PunchlistSeverity.low,
+          status: 'Stable',
+        ),
+        _PunchlistInsight(
+          title: 'Crew photo verification backlog',
+          owner: 'QA',
+          dueIn: 'Need 6 uploads',
+          severity: _PunchlistSeverity.medium,
+          status: 'Chasers sent',
+        ),
+      ];
+
+  List<_PunchlistInsight> _defaultTechDebtItems() => [
+        _PunchlistInsight(
+          title: 'Legacy tag cleanup for zone controllers',
+          owner: 'Platform',
+          dueIn: 'Sprint 43',
+          severity: _PunchlistSeverity.high,
+          status: 'Ready for grooming',
+        ),
+        _PunchlistInsight(
+          title: 'Telemetry schema versioning',
+          owner: 'Data services',
+          dueIn: 'Needs impact review',
+          severity: _PunchlistSeverity.medium,
+          status: 'Blocked',
+        ),
+      ];
+
+  List<_PunchlistInsight> _defaultClosureItems() => [
+        _PunchlistInsight(
+          title: 'Stakeholder walkthrough sign-offs',
+          owner: 'PMO',
+          dueIn: '3 of 5 complete',
+          severity: _PunchlistSeverity.low,
+          status: 'Schedule review',
+        ),
+        _PunchlistInsight(
+          title: 'Final acceptance documentation pack',
+          owner: 'Quality',
+          dueIn: 'Draft ready',
+          severity: _PunchlistSeverity.medium,
+          status: 'Legal review',
+        ),
+      ];
+
   Widget _wrapInsightCards(List<Widget> cards) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -566,7 +920,8 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
 
         final rows = <Widget>[];
         for (int i = 0; i < cards.length; i += columns) {
-          final int end = (i + columns) > cards.length ? cards.length : i + columns;
+          final int end =
+              (i + columns) > cards.length ? cards.length : i + columns;
           final rowCards = cards.sublist(i, end);
           rows.add(
             IntrinsicHeight(
@@ -575,7 +930,8 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
                 children: [
                   for (int j = 0; j < rowCards.length; j++) ...[
                     Expanded(child: rowCards[j]),
-                    if (j != rowCards.length - 1) SizedBox(width: horizontalSpacing),
+                    if (j != rowCards.length - 1)
+                      SizedBox(width: horizontalSpacing),
                   ],
                 ],
               ),
@@ -595,7 +951,8 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
   Widget _buildCompletionCard() {
     return _panel(
       title: 'Punchlist completion health',
-      subtitle: '62% of punch actions closed this sprint window. 12 blockers remain triaged.',
+      subtitle:
+          '62% of punch actions closed this sprint window. 12 blockers remain triaged.',
       child: Row(
         children: [
           SizedBox(
@@ -644,13 +1001,19 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
-                _LegendRow(label: 'Closed', color: Color(0xFF2563EB), value: '112'),
+                _LegendRow(
+                    label: 'Closed', color: Color(0xFF2563EB), value: '112'),
                 SizedBox(height: 10),
-                _LegendRow(label: 'In review', color: Color(0xFF60A5FA), value: '34'),
+                _LegendRow(
+                    label: 'In review', color: Color(0xFF60A5FA), value: '34'),
                 SizedBox(height: 10),
-                _LegendRow(label: 'Field fix pending', color: Color(0xFFFACC15), value: '21'),
+                _LegendRow(
+                    label: 'Field fix pending',
+                    color: Color(0xFFFACC15),
+                    value: '21'),
                 SizedBox(height: 10),
-                _LegendRow(label: 'Escalated', color: Color(0xFFEF4444), value: '12'),
+                _LegendRow(
+                    label: 'Escalated', color: Color(0xFFEF4444), value: '12'),
               ],
             ),
           ),
@@ -665,11 +1028,20 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
       subtitle: 'Tracked across systems, facilities, and QA ownership.',
       child: Column(
         children: const [
-          _DistributionRow(title: 'Systems', count: '68', indicators: ['18 critical', '24 medium', '26 low']),
+          _DistributionRow(
+              title: 'Systems',
+              count: '68',
+              indicators: ['18 critical', '24 medium', '26 low']),
           SizedBox(height: 14),
-          _DistributionRow(title: 'Facilities', count: '44', indicators: ['10 critical', '14 medium', '20 low']),
+          _DistributionRow(
+              title: 'Facilities',
+              count: '44',
+              indicators: ['10 critical', '14 medium', '20 low']),
           SizedBox(height: 14),
-          _DistributionRow(title: 'QA', count: '32', indicators: ['4 critical', '11 medium', '17 low']),
+          _DistributionRow(
+              title: 'QA',
+              count: '32',
+              indicators: ['4 critical', '11 medium', '17 low']),
         ],
       ),
     );
@@ -697,11 +1069,18 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
       subtitle: 'Avg. resolution and reopening cadence.',
       child: Column(
         children: const [
-          _MetricPill(label: 'Median resolution', value: '3.4 days', color: Color(0xFF2563EB)),
+          _MetricPill(
+              label: 'Median resolution',
+              value: '3.4 days',
+              color: Color(0xFF2563EB)),
           SizedBox(height: 14),
-          _MetricPill(label: 'Reopen rate', value: '6%', color: Color(0xFF10B981)),
+          _MetricPill(
+              label: 'Reopen rate', value: '6%', color: Color(0xFF10B981)),
           SizedBox(height: 14),
-          _MetricPill(label: 'QA backlog aging', value: '4.6 days', color: Color(0xFFF59E0B)),
+          _MetricPill(
+              label: 'QA backlog aging',
+              value: '4.6 days',
+              color: Color(0xFFF59E0B)),
           SizedBox(height: 18),
           Align(
             alignment: Alignment.centerLeft,
@@ -726,19 +1105,32 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: const [
-          _ChecklistRow(label: 'Operations playbooks updated', status: 'On track', color: Color(0xFF22C55E)),
+          _ChecklistRow(
+              label: 'Operations playbooks updated',
+              status: 'On track',
+              color: Color(0xFF22C55E)),
           SizedBox(height: 12),
-          _ChecklistRow(label: 'Stakeholder walkthroughs', status: '3 / 5 complete', color: Color(0xFFF97316)),
+          _ChecklistRow(
+              label: 'Stakeholder walkthroughs',
+              status: '3 / 5 complete',
+              color: Color(0xFFF97316)),
           SizedBox(height: 12),
-          _ChecklistRow(label: 'Critical defects resolved', status: '2 pending', color: Color(0xFFEF4444)),
+          _ChecklistRow(
+              label: 'Critical defects resolved',
+              status: '2 pending',
+              color: Color(0xFFEF4444)),
           SizedBox(height: 12),
-          _ChecklistRow(label: 'Acceptance documentation', status: 'Draft sent', color: Color(0xFF6366F1)),
+          _ChecklistRow(
+              label: 'Acceptance documentation',
+              status: 'Draft sent',
+              color: Color(0xFF6366F1)),
         ],
       ),
     );
   }
 
-  Widget _panel({required String title, String? subtitle, required Widget child}) {
+  Widget _panel(
+      {required String title, String? subtitle, required Widget child}) {
     return Container(
       constraints: const BoxConstraints(minHeight: _panelMinHeight),
       alignment: Alignment.topLeft,
@@ -790,7 +1182,8 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
               ),
               const SizedBox(width: 12),
               IconButton(
-                onPressed: () {},
+                onPressed: () => _showActionSnack(
+                    'Additional panel actions will be available in the next refinement pass.'),
                 icon: const Icon(Icons.more_horiz, color: Color(0xFF94A3B8)),
                 splashRadius: 20,
               ),
@@ -834,12 +1227,16 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
             ),
           ),
           const SizedBox(height: 18),
-          ...items.map(_buildInsightTile).expand((widget) => [widget, const SizedBox(height: 14)]).take(items.length * 2 - 1),
+          ...items
+              .map(_buildInsightTile)
+              .expand((widget) => [widget, const SizedBox(height: 14)])
+              .take(items.length * 2 - 1),
           const SizedBox(height: 10),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
-              onPressed: () {},
+              onPressed: () => _showActionSnack(
+                  '$footerButtonLabel is queued. Continue updating this panel for now.'),
               icon: const Icon(Icons.open_in_new, size: 18),
               label: Text(footerButtonLabel),
               style: TextButton.styleFrom(
@@ -942,7 +1339,8 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
 }
 
 class _ContextChip {
-  const _ContextChip({required this.icon, required this.label, required this.value});
+  const _ContextChip(
+      {required this.icon, required this.label, required this.value});
 
   final IconData icon;
   final String label;
@@ -963,6 +1361,47 @@ class _PunchlistInsight {
   final String dueIn;
   final _PunchlistSeverity severity;
   final String status;
+
+  Map<String, dynamic> toMap() => {
+        'title': title,
+        'owner': owner,
+        'dueIn': dueIn,
+        'severity': severity.name,
+        'status': status,
+      };
+
+  static _PunchlistInsight fromMap(Map<String, dynamic> map) {
+    final severityKey = map['severity']?.toString() ?? 'medium';
+    return _PunchlistInsight(
+      title: map['title']?.toString() ?? '',
+      owner: map['owner']?.toString() ?? '',
+      dueIn: map['dueIn']?.toString() ?? '',
+      severity: _severityFromKey(severityKey),
+      status: map['status']?.toString() ?? '',
+    );
+  }
+
+  static List<_PunchlistInsight> fromList(dynamic data) {
+    if (data is! List) return [];
+    return data
+        .whereType<Map>()
+        .map((item) => _PunchlistInsight.fromMap(
+            Map<String, dynamic>.from(item)))
+        .toList();
+  }
+
+  static _PunchlistSeverity _severityFromKey(String key) {
+    switch (key.toLowerCase()) {
+      case 'critical':
+        return _PunchlistSeverity.critical;
+      case 'high':
+        return _PunchlistSeverity.high;
+      case 'low':
+        return _PunchlistSeverity.low;
+      default:
+        return _PunchlistSeverity.medium;
+    }
+  }
 }
 
 enum _PunchlistSeverity { low, medium, high, critical }
@@ -1013,7 +1452,8 @@ class _LegendRow extends StatelessWidget {
         Container(
           width: 12,
           height: 12,
-          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
+          decoration: BoxDecoration(
+              color: color, borderRadius: BorderRadius.circular(4)),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -1040,7 +1480,8 @@ class _LegendRow extends StatelessWidget {
 }
 
 class _DistributionRow extends StatelessWidget {
-  const _DistributionRow({required this.title, required this.count, required this.indicators});
+  const _DistributionRow(
+      {required this.title, required this.count, required this.indicators});
 
   final String title;
   final String count;
@@ -1070,7 +1511,8 @@ class _DistributionRow extends StatelessWidget {
                 children: indicators
                     .map(
                       (text) => Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF1F5F9),
                           borderRadius: BorderRadius.circular(14),
@@ -1112,7 +1554,8 @@ class _DistributionRow extends StatelessWidget {
 }
 
 class _VelocityRow extends StatelessWidget {
-  const _VelocityRow({required this.label, required this.trend, required this.delta});
+  const _VelocityRow(
+      {required this.label, required this.trend, required this.delta});
 
   final String label;
   final double trend;
@@ -1160,7 +1603,8 @@ class _VelocityRow extends StatelessWidget {
 }
 
 class _MetricPill extends StatelessWidget {
-  const _MetricPill({required this.label, required this.value, required this.color});
+  const _MetricPill(
+      {required this.label, required this.value, required this.color});
 
   final String label;
   final String value;
@@ -1180,7 +1624,8 @@ class _MetricPill extends StatelessWidget {
           Container(
             width: 10,
             height: 10,
-            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(999)),
+            decoration: BoxDecoration(
+                color: color, borderRadius: BorderRadius.circular(999)),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1214,7 +1659,8 @@ class _MetricPill extends StatelessWidget {
 }
 
 class _ChecklistRow extends StatelessWidget {
-  const _ChecklistRow({required this.label, required this.status, required this.color});
+  const _ChecklistRow(
+      {required this.label, required this.status, required this.color});
 
   final String label;
   final String status;

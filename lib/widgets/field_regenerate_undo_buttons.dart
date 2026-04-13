@@ -25,54 +25,71 @@ class FieldRegenerateUndoButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          icon: isLoading
-              ? SizedBox(
-                  width: size,
-                  height: size,
-                  child: const CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Color(0xFF2563EB),
-                  ),
-                )
-              : Icon(Icons.refresh, size: size, color: Colors.grey.shade600),
-          tooltip: 'Regenerate this field',
-          onPressed: isLoading ? null : onRegenerate,
-          padding: const EdgeInsets.all(8),
-          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-          splashRadius: 20,
-          hoverColor: primary.withValues(alpha: 0.08),
-        ),
-        IconButton(
-          icon: Icon(
-            Icons.undo,
-            size: size,
-            color: canUndo ? Colors.grey.shade600 : Colors.grey.shade300,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.98),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          tooltip: 'Undo last change',
-          onPressed: canUndo ? onUndo : null,
-          padding: const EdgeInsets.all(8),
-          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-          splashRadius: 20,
-          hoverColor: primary.withValues(alpha: 0.08),
-        ),
-        IconButton(
-          icon: Icon(
-            Icons.redo,
-            size: size,
-            color: canRedo ? Colors.grey.shade600 : Colors.grey.shade300,
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ToolbarActionIcon(
+            icon: isLoading
+                ? SizedBox(
+                    width: size,
+                    height: size,
+                    child: const CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xFF2563EB),
+                    ),
+                  )
+                : Icon(Icons.refresh, size: size, color: Colors.grey.shade700),
+            tooltip: 'Regenerate this field',
+            onPressed: isLoading ? null : onRegenerate,
+            hoverColor: primary.withValues(alpha: 0.08),
           ),
-          tooltip: 'Redo last change',
-          onPressed: canRedo ? onRedo : null,
-          padding: const EdgeInsets.all(8),
-          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-          splashRadius: 20,
-          hoverColor: primary.withValues(alpha: 0.08),
-        ),
-      ],
+          _verticalDivider(),
+          _ToolbarActionIcon(
+            icon: Icon(
+              Icons.undo,
+              size: size,
+              color: canUndo ? Colors.grey.shade700 : Colors.grey.shade300,
+            ),
+            tooltip: 'Undo last change',
+            onPressed: canUndo ? onUndo : null,
+            hoverColor: primary.withValues(alpha: 0.08),
+          ),
+          _verticalDivider(),
+          _ToolbarActionIcon(
+            icon: Icon(
+              Icons.redo,
+              size: size,
+              color: canRedo ? Colors.grey.shade700 : Colors.grey.shade300,
+            ),
+            tooltip: 'Redo last change',
+            onPressed: canRedo ? onRedo : null,
+            hoverColor: primary.withValues(alpha: 0.08),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _verticalDivider() {
+    return Container(
+      width: 1,
+      height: 20,
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      color: const Color(0xFFE5E7EB),
     );
   }
 }
@@ -122,23 +139,45 @@ class _HoverableFieldControlsState extends State<HoverableFieldControls> {
     final isMobile = MediaQuery.of(context).size.width < 600;
     final showControls = isMobile || _isHovering;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Floating action row above the field
-        AnimatedOpacity(
-          duration: const Duration(milliseconds: 150),
-          opacity: showControls ? 1.0 : 0.0,
-          child: MouseRegion(
-            onEnter: (_) => _setHovering(true),
-            onExit: (_) => _setHovering(false),
-            child: IgnorePointer(
-              ignoring: !showControls,
-              child: Container(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Material(
-                  color: Colors.transparent,
+    if (isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FieldRegenerateUndoButtons(
+            onRegenerate: widget.onRegenerate,
+            onUndo: widget.onUndo,
+            onRedo: widget.onRedo,
+            canUndo: widget.canUndo,
+            canRedo: widget.canRedo,
+            isLoading: widget.isLoading,
+            size: 16,
+          ),
+          const SizedBox(height: 6),
+          widget.child,
+        ],
+      );
+    }
+
+    return MouseRegion(
+      onEnter: (_) => _setHovering(true),
+      onExit: (_) => _setHovering(false),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          widget.child,
+          Positioned(
+            top: 0,
+            right: 0,
+            child: AnimatedSlide(
+              duration: const Duration(milliseconds: 150),
+              curve: Curves.easeOutCubic,
+              offset: showControls ? Offset.zero : const Offset(0.08, -0.06),
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 120),
+                opacity: showControls ? 1.0 : 0.0,
+                child: IgnorePointer(
+                  ignoring: !showControls,
                   child: FieldRegenerateUndoButtons(
                     onRegenerate: widget.onRegenerate,
                     onUndo: widget.onUndo,
@@ -146,20 +185,43 @@ class _HoverableFieldControlsState extends State<HoverableFieldControls> {
                     canUndo: widget.canUndo,
                     canRedo: widget.canRedo,
                     isLoading: widget.isLoading,
-                    size: 18,
+                    size: 16,
                   ),
                 ),
               ),
             ),
           ),
-        ),
-        // Text field without padding reservation
-        MouseRegion(
-          onEnter: (_) => _setHovering(true),
-          onExit: (_) => _setHovering(false),
-          child: widget.child,
-        ),
-      ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ToolbarActionIcon extends StatelessWidget {
+  const _ToolbarActionIcon({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    required this.hoverColor,
+  });
+
+  final Widget icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+  final Color hoverColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: IconButton(
+        icon: icon,
+        onPressed: onPressed,
+        padding: const EdgeInsets.all(6),
+        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+        splashRadius: 18,
+        hoverColor: hoverColor,
+      ),
     );
   }
 }

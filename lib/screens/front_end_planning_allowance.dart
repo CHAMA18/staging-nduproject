@@ -212,26 +212,15 @@ class _FrontEndPlanningAllowanceScreenState
   Future<bool> _confirmProceedWithoutAllowances() async {
     if (_allowanceItems.isNotEmpty) return true;
     final destination = _nextFlowDestinationLabel();
-    final shouldProceed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('No Allowance Items Added'),
+    if (!mounted) return true;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
         content: Text(
-          'You have no allowance items yet. Continue to $destination without adding contingency allowances?',
+          'No allowance items added yet. Continue to $destination and update allowances anytime.',
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Add Allowance Items'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Continue'),
-          ),
-        ],
       ),
     );
-    return shouldProceed ?? false;
+    return true;
   }
 
   void _goToPreviousStep() {

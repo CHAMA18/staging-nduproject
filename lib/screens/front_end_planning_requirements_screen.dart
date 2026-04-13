@@ -21,6 +21,7 @@ import 'package:ndu_project/services/user_service.dart';
 import 'package:ndu_project/utils/front_end_planning_navigation.dart';
 import 'package:ndu_project/utils/rich_text_editing_controller.dart';
 import 'package:ndu_project/widgets/delete_confirmation_dialog.dart';
+import 'package:ndu_project/widgets/proceed_confirmation_gate.dart';
 import 'package:ndu_project/widgets/text_formatting_toolbar.dart';
 
 /// Front End Planning - Project Requirements page
@@ -57,11 +58,9 @@ class _FrontEndPlanningRequirementsScreenState
   int? _regeneratingRowIndex;
   Timer? _autoSaveTimer;
   DateTime? _lastAutoSaveSnackAt;
-  bool _stakeholderAlignmentConfirmed = false;
   bool _didInitialGenerationCheck = false;
   bool _showInitialGenerationSpinner = false;
   String? _initialGenerationError;
-  bool _showProceedConfirmation = false;
   bool _showHorizontalScrollHint = false;
   bool _showVerticalScrollHint = false;
   List<_AssignableMember> _memberOptions = const <_AssignableMember>[];
@@ -80,7 +79,6 @@ class _FrontEndPlanningRequirementsScreenState
     super.initState();
     // Ensure OpenAI key/env is loaded for per-row regenerate.
     ApiKeyManager.initializeApiKey();
-    _mainContentScrollController.addListener(_updateProceedConfirmationState);
     _requirementsHorizontalController.addListener(_updateScrollHints);
     _requirementsVerticalController.addListener(_updateScrollHints);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -90,7 +88,6 @@ class _FrontEndPlanningRequirementsScreenState
       _notesController.addListener(_handleNotesChanged);
       _loadSavedRequirements(projectData);
       unawaited(_initializeMemberContext(projectData));
-      _updateProceedConfirmationState();
       if (mounted) setState(() {});
     });
   }
@@ -255,18 +252,6 @@ class _FrontEndPlanningRequirementsScreenState
     });
   }
 
-  void _updateProceedConfirmationState() {
-    if (!mounted) return;
-    final shouldShowConfirmation = !_mainContentScrollController.hasClients ||
-        _mainContentScrollController.position.maxScrollExtent <= 0 ||
-        _mainContentScrollController.position.pixels >=
-            _mainContentScrollController.position.maxScrollExtent - 8;
-    if (shouldShowConfirmation == _showProceedConfirmation) return;
-    setState(() {
-      _showProceedConfirmation = shouldShowConfirmation;
-    });
-  }
-
   void _loadSavedRequirements(ProjectDataModel data) {
     final savedItems = data.frontEndPlanning.requirementItems;
     if (savedItems.isNotEmpty) {
@@ -322,25 +307,41 @@ class _FrontEndPlanningRequirementsScreenState
     try {
       final data = ProjectDataHelper.getData(context);
       final provider = ProjectDataHelper.getProvider(context);
+      final structuredContext = ProjectDataHelper.buildFepContext(
+        data,
+        sectionLabel: 'Project Requirements',
+      ).trim();
+      final scanContext = ProjectDataHelper.buildProjectContextScan(
+        data,
+        sectionLabel: 'Project Requirements',
+      ).trim();
+      final fallbackContext = <String>[
+        if (data.projectName.trim().isNotEmpty)
+          'Project name: ${data.projectName.trim()}',
+        if (data.solutionTitle.trim().isNotEmpty)
+          'Solution: ${data.solutionTitle.trim()}',
+        if (data.solutionDescription.trim().isNotEmpty)
+          'Description: ${data.solutionDescription.trim()}',
+        if (data.businessCase.trim().isNotEmpty)
+          'Business case: ${data.businessCase.trim()}',
+      ].join('\n');
+
+      final combinedContext = [
+        structuredContext,
+        scanContext,
+        fallbackContext,
+      ].where((value) => value.trim().isNotEmpty).join('\n\n');
+
       final ctx = StringBuffer()
-        ..writeln(
-          ProjectDataHelper.buildFepContext(
-            data,
-            sectionLabel: 'Project Requirements',
-          ),
-        )
+        ..writeln(combinedContext)
         ..writeln()
         ..writeln('Discipline assignment instructions:')
         ..writeln(
           '- Return a specific discipline for each requirement from this list whenever possible:',
         )
         ..writeln(_RequirementRow.disciplineOptions.join(', '))
-        ..writeln(
-          '- Never return placeholder text like "Discipline".',
-        )
-        ..writeln(
-          '- If no discipline fits, return "Other".',
-        );
+        ..writeln('- Never return placeholder text like "Discipline".')
+        ..writeln('- If no discipline fits, return "Other".');
       final ai = OpenAiServiceSecure();
       final reqs = await ai.generateRequirementsFromBusinessCase(
         ctx.toString(),
@@ -414,14 +415,28 @@ class _FrontEndPlanningRequirementsScreenState
         }
         return true;
       }
+      if (mounted) {
+        setState(() {
+          _initialGenerationError =
+              'AI returned no requirements. Please add a few manually or retry.';
+        });
+      }
     } catch (e) {
       debugPrint('AI requirements suggestion failed: $e');
       if (mounted) {
         final message = e.toString();
         setState(() {
-          _initialGenerationError = message.contains('OpenAI API key')
-              ? 'OpenAI API key is not configured. Please add a valid key in Settings to use AI.'
-              : 'AI requirements suggestion failed. Please try again.';
+          if (message.contains('OpenAI API key') ||
+              message.contains('not configured')) {
+            _initialGenerationError =
+                'OpenAI API key is not configured. Please add a valid key in Settings to use AI.';
+          } else if (message.contains('response_format')) {
+            _initialGenerationError =
+                'AI response formatting failed. Please retry or check your OpenAI proxy configuration.';
+          } else {
+            _initialGenerationError =
+                'AI requirements suggestion failed. Please try again.';
+          }
         });
       }
     }
@@ -579,7 +594,6 @@ class _FrontEndPlanningRequirementsScreenState
   @override
   void dispose() {
     _autoSaveTimer?.cancel();
-    _mainContentScrollController.removeListener(_updateProceedConfirmationState);
     _mainContentScrollController.dispose();
     _requirementsHorizontalController.removeListener(_updateScrollHints);
     _requirementsVerticalController.removeListener(_updateScrollHints);
@@ -721,8 +735,6 @@ class _FrontEndPlanningRequirementsScreenState
   }
 
   Widget _buildDesktopFooter(BuildContext context) {
-    final canProceed =
-        _showProceedConfirmation && _stakeholderAlignmentConfirmed;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -750,37 +762,10 @@ class _FrontEndPlanningRequirementsScreenState
             child: const Icon(Icons.arrow_back_ios_new_rounded, size: 16),
           ),
           const SizedBox(width: 16),
-          if (_showProceedConfirmation)
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Checkbox(
-                    value: _stakeholderAlignmentConfirmed,
-                    onChanged: (value) {
-                      setState(() {
-                        _stakeholderAlignmentConfirmed = value ?? false;
-                      });
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'I confirm that I have reviewed all information on this page before proceeding.',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        color: Color(0xFF374151),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else
-            const Expanded(child: SizedBox.shrink()),
+          const Expanded(child: SizedBox.shrink()),
           const SizedBox(width: 16),
           ElevatedButton(
-            onPressed: canProceed ? _handleSubmit : null,
+            onPressed: _handleSubmit,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFFD700),
               foregroundColor: Colors.black,
@@ -846,7 +831,8 @@ class _FrontEndPlanningRequirementsScreenState
                 final generated = await _generateRequirementsFromContext();
                 if (!mounted) return;
                 setState(() {
-                  _initialGenerationError = generated ? null : _initialGenerationError;
+                  _initialGenerationError =
+                      generated ? null : _initialGenerationError;
                 });
               },
       );
@@ -864,14 +850,22 @@ class _FrontEndPlanningRequirementsScreenState
       );
     }
 
+    final showErrorBanner =
+        (_initialGenerationError ?? '').trim().isNotEmpty && hasAnyRowData;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (showErrorBanner)
+          _buildGenerationErrorBanner(
+            context,
+            message: _initialGenerationError!,
+          ),
         ..._rows.asMap().entries.map((entry) {
           final index = entry.key;
           final row = entry.value;
-          final isRowLoading = _isRegeneratingRow &&
-              _regeneratingRowIndex == index;
+          final isRowLoading =
+              _isRegeneratingRow && _regeneratingRowIndex == index;
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: _RequirementCard(
@@ -891,6 +885,51 @@ class _FrontEndPlanningRequirementsScreenState
           );
         }),
       ],
+    );
+  }
+
+  Widget _buildGenerationErrorBanner(
+    BuildContext context, {
+    required String message,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFF59E0B)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline_rounded, color: Color(0xFFB45309)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF92400E),
+                height: 1.35,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed:
+                _isGeneratingRequirements ? null : _generateRequirementsFromContext,
+            child: const Text('Retry'),
+          ),
+          IconButton(
+            onPressed: () {
+              setState(() => _initialGenerationError = null);
+            },
+            icon: const Icon(Icons.close_rounded, size: 18),
+            tooltip: 'Dismiss',
+          ),
+        ],
+      ),
     );
   }
 
@@ -1138,25 +1177,6 @@ class _FrontEndPlanningRequirementsScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (_showProceedConfirmation) ...[
-                CheckboxListTile(
-                  value: _stakeholderAlignmentConfirmed,
-                  onChanged: (value) {
-                    setState(() {
-                      _stakeholderAlignmentConfirmed = value ?? false;
-                    });
-                  },
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                  title: const Text(
-                    'I confirm that I have reviewed all information on this page before proceeding.',
-                    style:
-                        TextStyle(fontSize: 11.5, color: Color(0xFF374151)),
-                  ),
-                  controlAffinity: ListTileControlAffinity.leading,
-                ),
-                const SizedBox(height: 6),
-              ],
               Row(
                 children: [
                   Expanded(
@@ -1187,11 +1207,7 @@ class _FrontEndPlanningRequirementsScreenState
                   const SizedBox(width: 10),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed:
-                          (_showProceedConfirmation &&
-                                  _stakeholderAlignmentConfirmed)
-                              ? _handleSubmit
-                              : null,
+                      onPressed: _handleSubmit,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFF4B400),
                         foregroundColor: Colors.black,
@@ -1620,12 +1636,12 @@ class _FrontEndPlanningRequirementsScreenState
         SizedBox(
           height: 44,
           child: OutlinedButton(
-          onPressed: () {
-            setState(() {
+            onPressed: () {
+              setState(() {
                 _rows.add(_createRow(_rows.length + 1, expanded: true));
-            });
-            _scheduleAutoSave(showSnack: false);
-          },
+              });
+              _scheduleAutoSave(showSnack: false);
+            },
             style: OutlinedButton.styleFrom(
               backgroundColor: const Color(0xFFF2F4F7),
               foregroundColor: const Color(0xFF111827),
@@ -1683,8 +1699,7 @@ class _FrontEndPlanningRequirementsScreenState
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
             ),
           ),
         ],
@@ -1693,16 +1708,13 @@ class _FrontEndPlanningRequirementsScreenState
   }
 
   void _handleSubmit() async {
-    if (!_stakeholderAlignmentConfirmed) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Check the stakeholder alignment confirmation box before submitting requirements.',
-          ),
-        ),
-      );
-      return;
-    }
+    final continueAnyway = await showProceedWithoutReviewDialog(
+      context,
+      title: 'Confirm before submitting requirements',
+      message:
+          'You are about to continue to the next step. You can proceed now and return later to refine details, or cancel and review first.',
+    );
+    if (!continueAnyway) return;
 
     final requirementItems = _buildRequirementItems();
     if (requirementItems.isEmpty) {
@@ -2315,8 +2327,7 @@ class _RequirementRow {
     required this.number,
     this.onChanged,
     bool isExpanded = false,
-  })
-      : descriptionController = TextEditingController(),
+  })  : descriptionController = TextEditingController(),
         commentsController = TextEditingController(),
         roleController = TextEditingController(),
         personController = TextEditingController(),

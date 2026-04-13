@@ -10,6 +10,7 @@ import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/execution_phase_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/models/scope_tracking_item.dart';
 import 'package:ndu_project/widgets/scope_tracking_table_widget.dart';
 import 'package:ndu_project/utils/auto_bullet_text_controller.dart';
@@ -36,6 +37,8 @@ class _ScopeTrackingImplementationScreenState
   List<String> _availableRoles = [];
   List<String> _scopeStatementDeliverables = [];
   bool _isLoading = false;
+  bool _autoGenerationTriggered = false;
+  bool _isAutoGenerating = false;
 
   String? get _projectId {
     try {
@@ -49,10 +52,12 @@ class _ScopeTrackingImplementationScreenState
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadItems();
-      _loadAvailableRoles();
-      _loadScopeStatementDeliverables();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Keep loading order deterministic so auto-seeding does not race against
+      // persisted data and role lookups.
+      await _loadItems();
+      await _loadAvailableRoles();
+      await _loadScopeStatementDeliverables();
     });
   }
 
@@ -114,10 +119,55 @@ class _ScopeTrackingImplementationScreenState
         // Auto-populate scope items if none exist
         if (_items.isEmpty && deliverables.isNotEmpty) {
           _autoPopulateScopeItems(deliverables);
+        } else if (_items.isEmpty && deliverables.isEmpty) {
+          _autoGenerateScopeItemsFromAi();
         }
       }
     } catch (e) {
       debugPrint('Error loading scope statement deliverables: $e');
+    }
+  }
+
+  Future<void> _autoGenerateScopeItemsFromAi() async {
+    if (!mounted || _autoGenerationTriggered || _isAutoGenerating) return;
+    _autoGenerationTriggered = true;
+    _isAutoGenerating = true;
+    try {
+      final generated = await ExecutionPhaseAiSeed.generateEntries(
+        context: context,
+        section: 'Scope Tracking Implementation',
+        sections: const {
+          'scopeItems': 'Execution scope items to track and verify',
+        },
+        itemsPerSection: 4,
+      );
+      final entries = generated['scopeItems'] ?? const [];
+      if (entries.isEmpty) return;
+
+      final owner = _availableRoles.isNotEmpty ? _availableRoles.first : '';
+      final newItems = entries
+          .map(
+            (entry) => ScopeTrackingItem(
+              scopeItem: entry.title,
+              implementationStatus: 'Not Started',
+              owner: owner,
+              verificationMethod: '',
+              trackingNotes: entry.details,
+            ),
+          )
+          .toList();
+
+      if (newItems.isNotEmpty) {
+        setState(() => _items.addAll(newItems));
+        await _saveItems();
+        for (final item in newItems) {
+          _autoGenerateVerificationSteps(item);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error auto-generating scope items: $e');
+    } finally {
+      _isAutoGenerating = false;
     }
   }
 

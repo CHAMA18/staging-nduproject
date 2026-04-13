@@ -256,47 +256,16 @@ class _FrontEndPlanningMilestoneScreenState
         _validationErrors = validation.errorByFieldId;
       });
 
-      final action = await FormValidationEngine.showMissingRequirementsDialog(
+      FormValidationEngine.showValidationSnackBar(
         context,
         validation,
-        title: 'Milestone Requirements Missing',
         intro:
-            'Please complete the following milestone fields before continuing, or choose Skip for now.',
-        manualActionLabel: 'Add Milestone Details',
-        showAutoFillAction: true,
-        autoFillActionLabel: 'Auto-fill with AI',
+            'Milestone details are recommended before proceeding. You can continue now and complete them later.',
+        backgroundColor: const Color(0xFFF59E0B),
       );
-      if (!mounted || action == null) return;
 
-      if (action == MissingRequirementsAction.skip) {
-        if (_validationErrors.isNotEmpty) {
-          setState(() => _validationErrors = const {});
-        }
-        await _saveAndNavigate(skippedValidation: true);
-        return;
-      }
-
-      if (action == MissingRequirementsAction.autoFill) {
-        await _autoFillMilestoneRequirements(validation);
-        if (!mounted) return;
-        final postAutoValidation = _validateMilestoneSection();
-        if (!postAutoValidation.isValid) {
-          setState(() {
-            _validationErrors = postAutoValidation.errorByFieldId;
-          });
-          FormValidationEngine.showValidationSnackBar(
-            context,
-            postAutoValidation,
-            intro: 'Some milestone fields still need your input:',
-          );
-          await FormValidationEngine.scrollToFirstIssue(postAutoValidation);
-          return;
-        }
-      } else {
-        FormValidationEngine.showValidationSnackBar(context, validation);
-        await FormValidationEngine.scrollToFirstIssue(validation);
-        return;
-      }
+      await _saveAndNavigate(skippedValidation: true);
+      return;
     }
 
     if (_validationErrors.isNotEmpty) {

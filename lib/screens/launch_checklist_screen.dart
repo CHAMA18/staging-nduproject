@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'package:ndu_project/screens/risk_tracking_screen.dart';
+import 'package:ndu_project/screens/risk_tracking_workspace_screen.dart';
 import 'package:ndu_project/screens/update_ops_maintenance_plans_screen.dart';
 import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
@@ -908,7 +908,7 @@ class _LaunchChecklistScreenState extends State<LaunchChecklistScreen> {
               backLabel: 'Back: Update Ops & Maintenance Plans',
               nextLabel: 'Next: Risk Tracking',
               onBack: () => UpdateOpsMaintenancePlansScreen.open(context),
-              onNext: () => RiskTrackingScreen.open(context),
+              onNext: () => RiskTrackingWorkspaceScreen.open(context),
             ),
           ],
         ),

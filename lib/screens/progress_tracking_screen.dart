@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:ndu_project/models/deliverable_row.dart';
@@ -8,16 +9,17 @@ import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/screens/contracts_tracking_screen.dart';
 import 'package:ndu_project/screens/team_meetings_screen.dart';
 import 'package:ndu_project/services/execution_phase_service.dart';
-import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/utils/phase_transition_helper.dart';
 import 'package:ndu_project/widgets/deliverables_tracking_widget.dart';
+import 'package:ndu_project/widgets/execution_phase_ui.dart';
+import 'package:ndu_project/widgets/launch_phase_navigation.dart';
+import 'package:ndu_project/widgets/launch_editable_section.dart';
 import 'package:ndu_project/widgets/progress_tracking_dashboard.dart';
 import 'package:ndu_project/widgets/recurring_deliverables_widget.dart';
-import 'package:ndu_project/widgets/status_reports_widget.dart';
-import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
+import 'package:ndu_project/widgets/status_reports_widget.dart';
 
 class ProgressTrackingScreen extends StatefulWidget {
   const ProgressTrackingScreen({super.key});
@@ -34,8 +36,13 @@ class ProgressTrackingScreen extends StatefulWidget {
   State<ProgressTrackingScreen> createState() => _ProgressTrackingScreenState();
 }
 
-class _ProgressTrackingScreenState extends State<ProgressTrackingScreen>
-    with SingleTickerProviderStateMixin {
+enum _ProgressWorkspaceView {
+  deliverables,
+  recurring,
+  reports,
+}
+
+class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
   List<DeliverableRow> _deliverables = [];
   List<RecurringDeliverableRow> _recurringDeliverables = [];
   List<StatusReportRow> _statusReports = [];
@@ -43,78 +50,71 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen>
   bool _autoGenerationTriggered = false;
   bool _isAutoGenerating = false;
   Timer? _autoSaveDebounce;
-  late TabController _tabController;
+  _ProgressWorkspaceView _activeView = _ProgressWorkspaceView.deliverables;
 
   String? get _projectId {
     try {
       final provider = ProjectDataInherited.maybeOf(context);
       return provider?.projectData.projectId;
-    } catch (e) {
+    } catch (_) {
       return null;
     }
   }
 
-  String? get _userId {
-    try {
-      return FirebaseAuth.instance.currentUser?.uid;
-    } catch (e) {
-      return null;
-    }
-  }
+  String? get _userId => FirebaseAuth.instance.currentUser?.uid;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
   }
 
   @override
   void dispose() {
     _autoSaveDebounce?.cancel();
-    _tabController.dispose();
     super.dispose();
   }
 
   Future<void> _loadData() async {
-    final projectId = _projectId;
+    final String? projectId = _projectId;
     if (projectId == null || projectId.isEmpty) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
       return;
     }
 
     try {
-      final deliverables =
+      final List<DeliverableRow> deliverables =
           await ExecutionPhaseService.loadDeliverableRows(projectId: projectId);
-      final recurring =
+      final List<RecurringDeliverableRow> recurring =
           await ExecutionPhaseService.loadRecurringDeliverableRows(
-              projectId: projectId);
-      final reports = await ExecutionPhaseService.loadStatusReportRows(
-          projectId: projectId);
+        projectId: projectId,
+      );
+      final List<StatusReportRow> reports =
+          await ExecutionPhaseService.loadStatusReportRows(projectId: projectId);
 
-      if (mounted) {
-        setState(() {
-          _deliverables = deliverables;
-          _recurringDeliverables = recurring;
-          _statusReports = reports;
-          _loading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _deliverables = deliverables;
+        _recurringDeliverables = recurring;
+        _statusReports = reports;
+        _loading = false;
+      });
+
       await _autoGenerateIfNeeded();
     } catch (e) {
       debugPrint('Error loading progress tracking data: $e');
       if (mounted) {
-        setState(() {
-          _loading = false;
-        });
+        setState(() => _loading = false);
       }
     }
   }
 
   Future<void> _autoGenerateIfNeeded() async {
     if (!mounted || _autoGenerationTriggered || _isAutoGenerating) return;
-    if (_deliverables.isNotEmpty &&
-        _recurringDeliverables.isNotEmpty &&
+    if (_deliverables.isNotEmpty ||
+        _recurringDeliverables.isNotEmpty ||
         _statusReports.isNotEmpty) {
       return;
     }
@@ -122,7 +122,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen>
     _autoGenerationTriggered = true;
     _isAutoGenerating = true;
     try {
-      final contextText =
+      final String contextText =
           ExecutionPhaseAiSeed.buildContext(context, section: 'Progress Tracking');
       if (contextText.isEmpty) return;
 
@@ -137,64 +137,18 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen>
         itemsPerSection: 3,
       );
 
-      final deliverableEntries = generated['deliverables'] ?? const [];
-      final recurringEntries = generated['recurringDeliverables'] ?? const [];
-      final reportEntries = generated['statusReports'] ?? const [];
-
-      final newDeliverables = deliverableEntries
-          .map(
-            (entry) => DeliverableRow(
-              title: entry.title,
-              description: entry.details,
-              owner: 'Project Lead',
-              status: entry.status?.isNotEmpty == true
-                  ? entry.status!
-                  : 'Not Started',
-            ),
-          )
-          .toList();
-
-      final newRecurring = recurringEntries
-          .map(
-            (entry) => RecurringDeliverableRow(
-              title: entry.title,
-              description: entry.details,
-              frequency: _extractFrequency(entry.details),
-              owner: 'Ops Lead',
-              status: entry.status?.isNotEmpty == true
-                  ? entry.status!
-                  : 'Active',
-            ),
-          )
-          .toList();
-
-      final now = DateTime.now();
-      final newReports = reportEntries
-          .map(
-            (entry) => StatusReportRow(
-              reportType: entry.title,
-              stakeholder: 'Project Sponsors',
-              reportDate: now,
-              summary: entry.details,
-              status:
-                  entry.status?.isNotEmpty == true ? entry.status! : 'Draft',
-            ),
-          )
-          .toList();
-
       if (!mounted) return;
       setState(() {
-        if (_deliverables.isEmpty && newDeliverables.isNotEmpty) {
-          _deliverables = newDeliverables;
-        }
-        if (_recurringDeliverables.isEmpty && newRecurring.isNotEmpty) {
-          _recurringDeliverables = newRecurring;
-        }
-        if (_statusReports.isEmpty && newReports.isNotEmpty) {
-          _statusReports = newReports;
-        }
+        _deliverables = _deliverables.isEmpty
+            ? _mapDeliverables(generated['deliverables'] ?? const [])
+            : _deliverables;
+        _recurringDeliverables = _recurringDeliverables.isEmpty
+            ? _mapRecurring(generated['recurringDeliverables'] ?? const [])
+            : _recurringDeliverables;
+        _statusReports = _statusReports.isEmpty
+            ? _mapReports(generated['statusReports'] ?? const [])
+            : _statusReports;
       });
-
       _persistChanges();
     } catch (e) {
       debugPrint('Error auto-generating progress tracking data: $e');
@@ -203,8 +157,53 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen>
     }
   }
 
+  List<DeliverableRow> _mapDeliverables(List<LaunchEntry> entries) {
+    return entries
+        .map(
+          (entry) => DeliverableRow(
+            title: entry.title,
+            description: entry.details,
+            owner: 'Project Lead',
+            status:
+                entry.status?.toString().isNotEmpty == true ? entry.status! : 'Not Started',
+          ),
+        )
+        .toList();
+  }
+
+  List<RecurringDeliverableRow> _mapRecurring(List<LaunchEntry> entries) {
+    return entries
+        .map(
+          (entry) => RecurringDeliverableRow(
+            title: entry.title,
+            description: entry.details,
+            frequency: _extractFrequency(entry.details),
+            owner: 'Ops Lead',
+            status:
+                entry.status?.toString().isNotEmpty == true ? entry.status! : 'Active',
+          ),
+        )
+        .toList();
+  }
+
+  List<StatusReportRow> _mapReports(List<LaunchEntry> entries) {
+    final DateTime now = DateTime.now();
+    return entries
+        .map(
+          (entry) => StatusReportRow(
+            reportType: entry.title,
+            stakeholder: 'Project Sponsors',
+            reportDate: now,
+            summary: entry.details,
+            status:
+                entry.status?.toString().isNotEmpty == true ? entry.status! : 'Draft',
+          ),
+        )
+        .toList();
+  }
+
   String _extractFrequency(String text) {
-    final lower = text.toLowerCase();
+    final String lower = text.toLowerCase();
     if (lower.contains('daily')) return 'Daily';
     if (lower.contains('bi-weekly') || lower.contains('bi weekly')) {
       return 'Bi-Weekly';
@@ -216,8 +215,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen>
   }
 
   void _persistChanges() {
-    final projectId = _projectId;
-    final userId = _userId;
+    final String? projectId = _projectId;
     if (projectId == null || projectId.isEmpty) return;
 
     _autoSaveDebounce?.cancel();
@@ -227,23 +225,117 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen>
           ExecutionPhaseService.saveDeliverableRows(
             projectId: projectId,
             rows: _deliverables,
-            userId: userId,
+            userId: _userId,
           ),
           ExecutionPhaseService.saveRecurringDeliverableRows(
             projectId: projectId,
             rows: _recurringDeliverables,
-            userId: userId,
+            userId: _userId,
           ),
           ExecutionPhaseService.saveStatusReportRows(
             projectId: projectId,
             rows: _statusReports,
-            userId: userId,
+            userId: _userId,
           ),
         ]);
       } catch (e) {
-        debugPrint('Error saving progress tracking data: $e');
+        debugPrint('Error persisting progress tracking data: $e');
       }
     });
+  }
+
+  Future<void> _addAiDraftsForActiveView() async {
+    if (_isAutoGenerating) return;
+
+    setState(() => _isAutoGenerating = true);
+    try {
+      final generated = await ExecutionPhaseAiSeed.generateEntries(
+        context: context,
+        section: 'Progress Tracking',
+        sections: {
+          _activeSectionKey: _activeSectionPrompt,
+        },
+        itemsPerSection: 2,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        switch (_activeView) {
+          case _ProgressWorkspaceView.deliverables:
+            _deliverables = [
+              ..._deliverables,
+              ..._mapDeliverables(generated[_activeSectionKey] ?? const []),
+            ];
+            break;
+          case _ProgressWorkspaceView.recurring:
+            _recurringDeliverables = [
+              ..._recurringDeliverables,
+              ..._mapRecurring(generated[_activeSectionKey] ?? const []),
+            ];
+            break;
+          case _ProgressWorkspaceView.reports:
+            _statusReports = [
+              ..._statusReports,
+              ..._mapReports(generated[_activeSectionKey] ?? const []),
+            ];
+            break;
+        }
+      });
+      _persistChanges();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('AI draft items added to $_activeViewLabel.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to generate AI drafts: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isAutoGenerating = false);
+      }
+    }
+  }
+
+  void _addBlankItemForActiveView() {
+    setState(() {
+      switch (_activeView) {
+        case _ProgressWorkspaceView.deliverables:
+          _deliverables = [
+            DeliverableRow(
+              title: '',
+              description: '',
+              owner: '',
+              status: 'Not Started',
+            ),
+            ..._deliverables,
+          ];
+          break;
+        case _ProgressWorkspaceView.recurring:
+          _recurringDeliverables = [
+            RecurringDeliverableRow(
+              title: '',
+              description: '',
+              frequency: 'Weekly',
+              status: 'Active',
+            ),
+            ..._recurringDeliverables,
+          ];
+          break;
+        case _ProgressWorkspaceView.reports:
+          _statusReports = [
+            StatusReportRow(
+              reportType: '',
+              stakeholder: '',
+              reportDate: DateTime.now(),
+              status: 'Draft',
+            ),
+            ..._statusReports,
+          ];
+          break;
+      }
+    });
+    _persistChanges();
   }
 
   void _handleDeliverablesChanged(List<DeliverableRow> updated) {
@@ -261,14 +353,47 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen>
     _persistChanges();
   }
 
+  String get _activeViewLabel {
+    switch (_activeView) {
+      case _ProgressWorkspaceView.deliverables:
+        return 'Deliverable Status Updates';
+      case _ProgressWorkspaceView.recurring:
+        return 'Recurring Deliverables';
+      case _ProgressWorkspaceView.reports:
+        return 'Status Reports';
+    }
+  }
+
+  String get _activeSectionKey {
+    switch (_activeView) {
+      case _ProgressWorkspaceView.deliverables:
+        return 'deliverables';
+      case _ProgressWorkspaceView.recurring:
+        return 'recurringDeliverables';
+      case _ProgressWorkspaceView.reports:
+        return 'statusReports';
+    }
+  }
+
+  String get _activeSectionPrompt {
+    switch (_activeView) {
+      case _ProgressWorkspaceView.deliverables:
+        return 'Key execution deliverables to track and update';
+      case _ProgressWorkspaceView.recurring:
+        return 'Recurring deliverables, checkpoints, and review rituals';
+      case _ProgressWorkspaceView.reports:
+        return 'Status report drafts, stakeholder summaries, and asks';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isMobile = AppBreakpoints.isMobile(context);
+    final bool isMobile = AppBreakpoints.isMobile(context);
     final double horizontalPadding = isMobile ? 16 : 32;
 
     return ResponsiveScaffold(
       activeItemLabel: 'Progress Tracking',
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F7FB),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(
           horizontal: horizontalPadding,
@@ -277,88 +402,64 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            if (_loading) const LinearProgressIndicator(minHeight: 2),
+            if (_loading) const SizedBox(height: 16),
             _buildHeader(),
-            const SizedBox(height: 24),
-            // Content
-            _loading
-                ? const Center(child: CircularProgressIndicator())
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Dashboard with Summary Cards
-                      ProgressTrackingDashboard(
-                        deliverables: _deliverables,
-                        recurringDeliverables: _recurringDeliverables,
-                        statusReports: _statusReports,
-                        onDeliverablesChanged: _handleDeliverablesChanged,
-                        onRecurringChanged: _handleRecurringChanged,
-                        onStatusReportsChanged: _handleStatusReportsChanged,
-                      ),
-                      const SizedBox(height: 32),
-                      // Tab Navigation
-                      TabBar(
-                        controller: _tabController,
-                        labelColor: const Color(0xFF2563EB),
-                        unselectedLabelColor: const Color(0xFF6B7280),
-                        indicatorColor: const Color(0xFF2563EB),
-                        labelStyle: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        unselectedLabelStyle: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        tabs: const [
-                          Tab(text: 'Deliverable Status Updates'),
-                          Tab(text: 'Recurring Deliverables'),
-                          Tab(text: 'Status Reports & Asks'),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      // Tab Content
-                      SizedBox(
-                        height: 600, // Fixed height for TabBarView
-                        child: TabBarView(
-                          controller: _tabController,
-                          children: [
-                            // Deliverables Tab
-                            SingleChildScrollView(
-                              child: DeliverablesTrackingWidget(
-                                deliverables: _deliverables,
-                                onDeliverablesChanged:
-                                    _handleDeliverablesChanged,
-                              ),
-                            ),
-                            // Recurring Tab
-                            SingleChildScrollView(
-                              child: RecurringDeliverablesWidget(
-                                recurringDeliverables: _recurringDeliverables,
-                                onRecurringChanged: _handleRecurringChanged,
-                              ),
-                            ),
-                            // Status Reports Tab
-                            SingleChildScrollView(
-                              child: StatusReportsWidget(
-                                statusReports: _statusReports,
-                                onStatusReportsChanged:
-                                    _handleStatusReportsChanged,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      // Navigation
-                      LaunchPhaseNavigation(
-        backLabel: 'Back: Team Meetings',
-        nextLabel: 'Next: Contracts Tracking',
-        onBack: () => TeamMeetingsScreen.open(context),
-        onNext: () => ContractsTrackingScreen.open(context),
-      ),
-                    ],
-                  ),
+            const SizedBox(height: 20),
+            if (_loading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else ...[
+              ProgressTrackingDashboard(
+                deliverables: _deliverables,
+                recurringDeliverables: _recurringDeliverables,
+                statusReports: _statusReports,
+                onDeliverablesChanged: _handleDeliverablesChanged,
+                onRecurringChanged: _handleRecurringChanged,
+                onStatusReportsChanged: _handleStatusReportsChanged,
+              ),
+              const SizedBox(height: 20),
+              ExecutionPanelShell(
+                title: 'Workspace views',
+                subtitle:
+                    'Switch between live deliverables, recurring execution work, and stakeholder reporting without nested tables or fixed-height tabs.',
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    _buildViewChip(
+                      view: _ProgressWorkspaceView.deliverables,
+                      label: 'Deliverables',
+                      count: _deliverables.length,
+                    ),
+                    _buildViewChip(
+                      view: _ProgressWorkspaceView.recurring,
+                      label: 'Recurring',
+                      count: _recurringDeliverables.length,
+                    ),
+                    _buildViewChip(
+                      view: _ProgressWorkspaceView.reports,
+                      label: 'Reports',
+                      count: _statusReports.length,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              _buildActiveWorkspace(),
+              const SizedBox(height: 28),
+              LaunchPhaseNavigation(
+                backLabel: 'Back: Team Meetings',
+                nextLabel: 'Next: Contracts Tracking',
+                onBack: () => TeamMeetingsScreen.open(context),
+                onNext: () => ContractsTrackingScreen.open(context),
+              ),
+            ],
+            const SizedBox(height: 48),
           ],
         ),
       ),
@@ -366,27 +467,74 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen>
   }
 
   Widget _buildHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Progress Tracking Command Center',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF111827),
+    return ExecutionPageHeader(
+      badge: 'Execution Progress',
+      title: 'Progress Tracking Command Center',
+      description:
+          'Monitor execution health, track deliverables, manage recurring operating work, and shape stakeholder-ready status reporting from one connected workspace.',
+      trailing: ExecutionActionBar(
+        actions: [
+          ExecutionActionItem(
+            label: 'Add item',
+            icon: Icons.add,
+            tone: ExecutionActionTone.primary,
+            onPressed: _loading ? null : _addBlankItemForActiveView,
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          "Monitor project progress, track deliverables, manage recurring work, and communicate status updates to stakeholders.",
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-            color: Colors.grey.shade600,
+          ExecutionActionItem(
+            label: 'Add AI draft',
+            icon: Icons.auto_awesome_outlined,
+            tone: ExecutionActionTone.ai,
+            isLoading: _isAutoGenerating,
+            onPressed: _loading ? null : _addAiDraftsForActiveView,
           ),
-        ),
-      ],
+        ],
+      ),
     );
+  }
+
+  Widget _buildViewChip({
+    required _ProgressWorkspaceView view,
+    required String label,
+    required int count,
+  }) {
+    final bool selected = _activeView == view;
+    return ChoiceChip(
+      label: Text('$label · $count'),
+      selected: selected,
+      onSelected: (_) => setState(() => _activeView = view),
+      showCheckmark: false,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      selectedColor: const Color(0xFFE0F2FE),
+      backgroundColor: Colors.white,
+      side: BorderSide(
+        color: selected ? const Color(0xFF7DD3FC) : const Color(0xFFE2E8F0),
+      ),
+      labelStyle: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        color: selected ? const Color(0xFF0369A1) : const Color(0xFF475569),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+    );
+  }
+
+  Widget _buildActiveWorkspace() {
+    switch (_activeView) {
+      case _ProgressWorkspaceView.deliverables:
+        return DeliverablesTrackingWidget(
+          deliverables: _deliverables,
+          onDeliverablesChanged: _handleDeliverablesChanged,
+        );
+      case _ProgressWorkspaceView.recurring:
+        return RecurringDeliverablesWidget(
+          recurringDeliverables: _recurringDeliverables,
+          onRecurringChanged: _handleRecurringChanged,
+        );
+      case _ProgressWorkspaceView.reports:
+        return StatusReportsWidget(
+          statusReports: _statusReports,
+          onStatusReportsChanged: _handleStatusReportsChanged,
+        );
+    }
   }
 }

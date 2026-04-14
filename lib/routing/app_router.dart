@@ -103,7 +103,7 @@ import 'package:ndu_project/screens/privacy_policy_screen.dart';
 import 'package:ndu_project/screens/terms_conditions_screen.dart';
 import 'package:ndu_project/screens/backend_design_screen.dart';
 import 'package:ndu_project/screens/technical_debt_management_screen.dart';
-import 'package:ndu_project/screens/risk_tracking_screen.dart';
+import 'package:ndu_project/screens/risk_tracking_workspace_screen.dart';
 import 'package:ndu_project/screens/identify_staff_ops_team_screen.dart';
 import 'package:ndu_project/screens/contracts_tracking_screen.dart';
 import 'package:ndu_project/screens/vendor_tracking_screen.dart';
@@ -729,7 +729,7 @@ class AppRouter {
       GoRoute(
           name: AppRoutes.riskTracking,
           path: '/${AppRoutes.riskTracking}',
-          builder: (c, s) => const RiskTrackingScreen()),
+          builder: (c, s) => const RiskTrackingWorkspaceScreen()),
       GoRoute(
           name: AppRoutes.identifyStaffOpsTeam,
           path: '/${AppRoutes.identifyStaffOpsTeam}',

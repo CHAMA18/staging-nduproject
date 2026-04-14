@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ndu_project/routing/app_router.dart';
 import 'package:ndu_project/screens/gap_analysis_scope_reconcillation_screen.dart';
-import 'package:ndu_project/screens/risk_tracking_screen.dart';
+import 'package:ndu_project/screens/risk_tracking_workspace_screen.dart';
 import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
@@ -511,7 +511,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
                         LaunchPhaseNavigation(
                           backLabel: 'Back: Risk Tracking',
                           nextLabel: 'Next: Gap Analysis & Scope Reconciliation',
-                          onBack: () => RiskTrackingScreen.open(context),
+                          onBack: () => RiskTrackingWorkspaceScreen.open(context),
                           onNext: () => GapAnalysisScopeReconcillationScreen.open(context),
                         ),
                         const SizedBox(height: 48),

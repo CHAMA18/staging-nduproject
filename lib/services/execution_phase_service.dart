@@ -833,6 +833,54 @@ class ExecutionPhaseService {
     }
   }
 
+  /// Save risk tracking snapshot data.
+  static Future<void> saveRiskTrackingSnapshot({
+    required String projectId,
+    required List<Map<String, dynamic>> riskItems,
+    required List<Map<String, dynamic>> riskSignals,
+    required List<Map<String, dynamic>> mitigationPlans,
+    String? userId,
+  }) async {
+    try {
+      await _firestore
+          .collection('projects')
+          .doc(projectId)
+          .collection('execution_phase_entries')
+          .doc('risk_tracking')
+          .set({
+        'page': 'risk_tracking',
+        'riskItems': riskItems,
+        'riskSignals': riskSignals,
+        'mitigationPlans': mitigationPlans,
+        'userId': userId,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('ExecutionPhaseService saveRiskTrackingSnapshot error: $e');
+      rethrow;
+    }
+  }
+
+  /// Load risk tracking snapshot data.
+  static Future<Map<String, dynamic>> loadRiskTrackingSnapshot({
+    required String projectId,
+  }) async {
+    try {
+      final doc = await _firestore
+          .collection('projects')
+          .doc(projectId)
+          .collection('execution_phase_entries')
+          .doc('risk_tracking')
+          .get();
+
+      if (!doc.exists) return {};
+      return doc.data() ?? {};
+    } catch (e) {
+      debugPrint('ExecutionPhaseService loadRiskTrackingSnapshot error: $e');
+      return {};
+    }
+  }
+
   /// Load core stakeholders from CoreStakeholdersData
   /// Returns a list of stakeholder name/role pairs parsed from internal and external stakeholders
   static Future<List<Map<String, String>>> loadCoreStakeholders({

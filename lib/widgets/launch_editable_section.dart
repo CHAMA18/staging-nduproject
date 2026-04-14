@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ndu_project/widgets/execution_phase_ui.dart';
 
 class LaunchEntry {
   const LaunchEntry({
@@ -26,7 +27,6 @@ class LaunchEntry {
   }
 }
 
-/// Reusable section that starts empty and is filled through an add dialog.
 class LaunchEditableSection extends StatelessWidget {
   const LaunchEditableSection({
     super.key,
@@ -38,6 +38,8 @@ class LaunchEditableSection extends StatelessWidget {
     this.description,
     this.emptyLabel = 'No entries yet. Add details to get started.',
     this.showStatusChip = true,
+    this.onDuplicate,
+    this.actions = const <ExecutionActionItem>[],
   });
 
   final String title;
@@ -48,71 +50,33 @@ class LaunchEditableSection extends StatelessWidget {
   final Future<void> Function(int index, LaunchEntry entry)? onEdit;
   final String emptyLabel;
   final bool showStatusChip;
+  final void Function(int index)? onDuplicate;
+  final List<ExecutionActionItem> actions;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final useTableLayout = constraints.maxWidth >= 760;
+        final bool useTableLayout = constraints.maxWidth >= 760;
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE5E7EB)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
+        return ExecutionPanelShell(
+          title: title,
+          subtitle: description,
+          trailing: ExecutionActionBar(
+            compact: true,
+            actions: [
+              ...actions,
+              ExecutionActionItem(
+                label: 'Add',
+                icon: Icons.add,
+                tone: ExecutionActionTone.primary,
+                onPressed: () {
+                  onAdd();
+                },
               ),
             ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF111827),
-                      ),
-                    ),
-                  ),
-                  TextButton.icon(
-                    onPressed: onAdd,
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Add'),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      foregroundColor: const Color(0xFF2563EB),
-                    ),
-                  ),
-                ],
-              ),
-              if (description != null) ...[
-                const SizedBox(height: 6),
-                Text(
-                  description!,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF6B7280),
-                    height: 1.4,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 12),
-              if (useTableLayout) _buildTable(context) else _buildCardList(),
-            ],
-          ),
+          child: useTableLayout ? _buildTable() : _buildCardList(),
         );
       },
     );
@@ -120,41 +84,38 @@ class LaunchEditableSection extends StatelessWidget {
 
   Widget _buildCardList() {
     if (entries.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF9FAFB),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.info_outline, color: Color(0xFF9CA3AF), size: 18),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                emptyLabel,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF6B7280),
-                ),
+      return ExecutionEmptyState(
+        icon: Icons.playlist_add_check_circle_outlined,
+        title: 'Nothing added yet',
+        description: emptyLabel,
+        actions: [
+          FilledButton.icon(
+            onPressed: onAdd,
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Add first item'),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF0F172A),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
-      return Column(
+    return Column(
       children: [
         for (int i = 0; i < entries.length; i++) ...[
           _LaunchEntryCard(
             entry: entries[i],
             showStatusChip: showStatusChip,
-            onRemove: () => onRemove(i),
             onEdit: onEdit != null ? () => onEdit!(i, entries[i]) : null,
+            onDuplicate:
+                onDuplicate != null ? () => onDuplicate!(i) : null,
+            onRemove: () => onRemove(i),
           ),
           if (i != entries.length - 1) const SizedBox(height: 12),
         ],
@@ -162,176 +123,160 @@ class LaunchEditableSection extends StatelessWidget {
     );
   }
 
-  Widget _buildTable(BuildContext context) {
-    const headerStyle = TextStyle(
+  Widget _buildTable() {
+    const TextStyle headerStyle = TextStyle(
       fontSize: 12,
       fontWeight: FontWeight.w700,
-      color: Color(0xFF6B7280),
+      color: Color(0xFF64748B),
       letterSpacing: 0.2,
     );
-    const cellStyle = TextStyle(
+    const TextStyle cellStyle = TextStyle(
       fontSize: 13,
-      fontWeight: FontWeight.w600,
+      fontWeight: FontWeight.w700,
       color: Color(0xFF111827),
+      height: 1.35,
     );
-    const detailStyle = TextStyle(
+    const TextStyle detailStyle = TextStyle(
       fontSize: 12,
       fontWeight: FontWeight.w500,
       color: Color(0xFF4B5563),
-      height: 1.4,
+      height: 1.45,
     );
 
-    final columns = showStatusChip
+    final List<_TableColumn> columns = showStatusChip
         ? [
             const _TableColumn(label: 'Item', flex: 4),
             const _TableColumn(label: 'Details', flex: 5),
             const _TableColumn(label: 'Status', flex: 3),
-            _TableColumn(label: 'Action', flex: onEdit != null ? 2 : 1, align: TextAlign.center),
+            _TableColumn(
+              label: 'Actions',
+              flex: onEdit != null || onDuplicate != null ? 2 : 1,
+              align: TextAlign.center,
+            ),
           ]
         : [
             const _TableColumn(label: 'Item', flex: 5),
             const _TableColumn(label: 'Details', flex: 6),
-            _TableColumn(label: 'Action', flex: onEdit != null ? 2 : 1, align: TextAlign.center),
+            _TableColumn(
+              label: 'Actions',
+              flex: onEdit != null || onDuplicate != null ? 2 : 1,
+              align: TextAlign.center,
+            ),
           ];
+
+    if (entries.isEmpty) {
+      return ExecutionEmptyState(
+        icon: Icons.playlist_add_check_circle_outlined,
+        title: 'Nothing added yet',
+        description: emptyLabel,
+      );
+    }
 
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: const Color(0xFFF3F4F6),
-            borderRadius: BorderRadius.circular(12),
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
           child: Row(
             children: [
               for (final column in columns)
                 Expanded(
                   flex: column.flex,
-                  child: Text(column.label, style: headerStyle, textAlign: column.align),
+                  child: Text(
+                    column.label,
+                    style: headerStyle,
+                    textAlign: column.align,
+                  ),
                 ),
             ],
           ),
         ),
-        const SizedBox(height: 8),
-        if (entries.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
+        const SizedBox(height: 10),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFF9FAFB),
-              borderRadius: BorderRadius.circular(12),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
               border: Border.all(color: const Color(0xFFE5E7EB)),
             ),
-            child: Row(
+            child: Column(
               children: [
-                const Icon(Icons.info_outline, color: Color(0xFF9CA3AF), size: 18),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    emptyLabel,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF6B7280),
+                for (int i = 0; i < entries.length; i++) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    color: i.isEven ? Colors.white : const Color(0xFFF9FAFB),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: columns[0].flex,
+                          child: Text(
+                            entries[i].title,
+                            style: cellStyle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Expanded(
+                          flex: columns[1].flex,
+                          child: Text(
+                            entries[i].details.isNotEmpty
+                                ? entries[i].details
+                                : 'Not set',
+                            style: detailStyle,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (showStatusChip)
+                          Expanded(
+                            flex: columns[2].flex,
+                            child: (entries[i].status ?? '').trim().isNotEmpty
+                                ? Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: ExecutionStatusBadge(
+                                      label: entries[i].status!,
+                                    ),
+                                  )
+                                : Text('Not set', style: detailStyle),
+                          ),
+                        Expanded(
+                          flex: columns.last.flex,
+                          child: Align(
+                            alignment: Alignment.topCenter,
+                            child: _SectionRowMenu(
+                              onEdit: onEdit != null
+                                  ? () => onEdit!(i, entries[i])
+                                  : null,
+                              onDuplicate: onDuplicate != null
+                                  ? () => onDuplicate!(i)
+                                  : null,
+                              onDelete: () => onRemove(i),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
+                  if (i != entries.length - 1)
+                    const Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: Color(0xFFE5E7EB),
+                    ),
+                ],
               ],
             ),
-          )
-        else
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  for (int i = 0; i < entries.length; i++) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      color: i.isEven ? Colors.white : const Color(0xFFF9FAFB),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            flex: columns[0].flex,
-                            child: Text(
-                              entries[i].title,
-                              style: cellStyle,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Expanded(
-                            flex: columns[1].flex,
-                            child: Text(
-                              entries[i].details.isNotEmpty ? entries[i].details : '—',
-                              style: detailStyle,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (showStatusChip)
-                            Expanded(
-                              flex: columns[2].flex,
-                              child: (entries[i].status ?? '').isNotEmpty
-                                  ? Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFEEF2FF),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Text(
-                                        entries[i].status!,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                          color: Color(0xFF4338CA),
-                                        ),
-                                      ),
-                                    )
-                                  : Text('—', style: detailStyle),
-                            ),
-                          Expanded(
-                            flex: columns.last.flex,
-                            child: Align(
-                              alignment: Alignment.topCenter,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (onEdit != null)
-                                    IconButton(
-                                      onPressed: () => onEdit!(i, entries[i]),
-                                      icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF64748B)),
-                                      tooltip: 'Edit',
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                    ),
-                                  IconButton(
-                                    onPressed: () => onRemove(i),
-                                    icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFF9CA3AF)),
-                                    tooltip: 'Remove',
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (i != entries.length - 1)
-                      const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
-                  ],
-                ],
-              ),
-            ),
           ),
+        ),
       ],
     );
   }
@@ -343,21 +288,31 @@ class _LaunchEntryCard extends StatelessWidget {
     required this.onRemove,
     required this.showStatusChip,
     this.onEdit,
+    this.onDuplicate,
   });
 
   final LaunchEntry entry;
   final VoidCallback onRemove;
   final VoidCallback? onEdit;
+  final VoidCallback? onDuplicate;
   final bool showStatusChip;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -370,54 +325,156 @@ class _LaunchEntryCard extends StatelessWidget {
                   entry.title,
                   style: const TextStyle(
                     fontSize: 14,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                     color: Color(0xFF111827),
+                    height: 1.3,
                   ),
                 ),
               ),
-              if (onEdit != null)
-                IconButton(
-                  onPressed: onEdit,
-                  icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF64748B)),
-                  tooltip: 'Edit',
-                ),
-              IconButton(
-                onPressed: onRemove,
-                icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFF9CA3AF)),
-                tooltip: 'Remove',
+              const SizedBox(width: 12),
+              _SectionRowMenu(
+                onEdit: onEdit,
+                onDuplicate: onDuplicate,
+                onDelete: onRemove,
               ),
             ],
           ),
-          if (entry.details.isNotEmpty) ...[
-            const SizedBox(height: 6),
+          if (entry.details.trim().isNotEmpty) ...[
+            const SizedBox(height: 10),
             Text(
               entry.details,
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
                 color: Color(0xFF4B5563),
+                height: 1.45,
               ),
             ),
           ],
-          if (showStatusChip && (entry.status ?? '').isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEEF2FF),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                entry.status!,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF4338CA),
-                ),
-              ),
-            ),
+          if (showStatusChip && (entry.status ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: 12),
+            ExecutionStatusBadge(label: entry.status!),
           ],
         ],
+      ),
+    );
+  }
+}
+
+enum _SectionRowAction {
+  edit,
+  duplicate,
+  delete,
+}
+
+class _SectionRowMenu extends StatelessWidget {
+  const _SectionRowMenu({
+    required this.onDelete,
+    this.onEdit,
+    this.onDuplicate,
+  });
+
+  final VoidCallback onDelete;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDuplicate;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<_SectionRowAction>(
+      tooltip: 'Actions',
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: Colors.white,
+      surfaceTintColor: Colors.white,
+      onSelected: (value) {
+        switch (value) {
+          case _SectionRowAction.edit:
+            onEdit?.call();
+            break;
+          case _SectionRowAction.duplicate:
+            onDuplicate?.call();
+            break;
+          case _SectionRowAction.delete:
+            onDelete();
+            break;
+        }
+      },
+      itemBuilder: (context) {
+        return [
+          if (onEdit != null)
+            const PopupMenuItem<_SectionRowAction>(
+              value: _SectionRowAction.edit,
+              child: _ActionMenuItem(
+                icon: Icons.edit_outlined,
+                label: 'Edit',
+              ),
+            ),
+          if (onDuplicate != null)
+            const PopupMenuItem<_SectionRowAction>(
+              value: _SectionRowAction.duplicate,
+              child: _ActionMenuItem(
+                icon: Icons.copy_all_outlined,
+                label: 'Duplicate',
+              ),
+            ),
+          const PopupMenuItem<_SectionRowAction>(
+            value: _SectionRowAction.delete,
+            child: _ActionMenuItem(
+              icon: Icons.delete_outline,
+              label: 'Delete',
+            ),
+          ),
+        ];
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Actions',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF475569),
+              ),
+            ),
+            SizedBox(width: 6),
+            Icon(Icons.more_horiz, size: 16, color: Color(0xFF64748B)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionMenuItem extends StatelessWidget {
+  const _ActionMenuItem({
+    required this.icon,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      horizontalTitleGap: 10,
+      minLeadingWidth: 18,
+      leading: Icon(icon, size: 18),
+      title: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -442,100 +499,121 @@ Future<LaunchEntry?> showLaunchEntryDialog(
   bool includeStatus = true,
   LaunchEntry? initialEntry,
 }) {
-  final titleController = TextEditingController(text: initialEntry?.title ?? '');
-  final detailsController = TextEditingController(text: initialEntry?.details ?? '');
-  final statusController = TextEditingController(text: initialEntry?.status ?? '');
-  final formKey = GlobalKey<FormState>();
+  final TextEditingController titleController =
+      TextEditingController(text: initialEntry?.title ?? '');
+  final TextEditingController detailsController =
+      TextEditingController(text: initialEntry?.details ?? '');
+  final TextEditingController statusController =
+      TextEditingController(text: initialEntry?.status ?? '');
+  final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
-  return showDialog<LaunchEntry>(
+  const BorderSide neutralBorder = BorderSide(color: Color(0xFFE2E8F0));
+  final InputDecoration fieldDecoration = InputDecoration(
+    filled: true,
+    fillColor: const Color(0xFFF8FAFC),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: neutralBorder,
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: neutralBorder,
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: const BorderSide(color: Color(0xFFDC2626)),
+    ),
+    focusedErrorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: const BorderSide(color: Color(0xFFDC2626), width: 1.5),
+    ),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+  );
+
+  return showExecutionEditorSheet<LaunchEntry>(
     context: context,
-    barrierDismissible: false,
-    builder: (ctx) {
-      final media = MediaQuery.of(ctx);
-      final dialogWidth = media.size.width < 600 ? media.size.width * 0.92 : 560.0;
-      final fieldDecoration = InputDecoration(
-        filled: true,
-        fillColor: const Color(0xFFF8FAFC),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      );
-
-      return AlertDialog(
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-        titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-        contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-        title: Text(initialEntry == null ? 'Add entry' : 'Edit entry'),
-        content: SizedBox(
-          width: dialogWidth,
-          child: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: titleController,
-                    decoration: fieldDecoration.copyWith(labelText: titleLabel),
-                    validator: (value) => (value == null || value.trim().isEmpty) ? 'Please enter a $titleLabel' : null,
-                  ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: detailsController,
-                    decoration: fieldDecoration.copyWith(labelText: detailsLabel),
-                    maxLines: 3,
-                  ),
-                  if (includeStatus) ...[
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: statusController,
-                      decoration: fieldDecoration.copyWith(labelText: 'Status (optional)'),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF2563EB),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            ),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (!formKey.currentState!.validate()) return;
-              Navigator.of(ctx).pop(
-                LaunchEntry(
-                  title: titleController.text.trim(),
-                  details: detailsController.text.trim(),
-                  status: includeStatus && statusController.text.trim().isNotEmpty ? statusController.text.trim() : null,
-                ),
-              );
+    title: initialEntry == null ? 'Add entry' : 'Edit entry',
+    subtitle:
+        'Capture clear execution details with a title, supporting context, and an optional status.',
+    icon: initialEntry == null ? Icons.add_circle_outline : Icons.edit_outlined,
+    child: Form(
+      key: formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextFormField(
+            controller: titleController,
+            decoration: fieldDecoration.copyWith(labelText: titleLabel),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter a $titleLabel';
+              }
+              return null;
             },
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFFACC15),
-              foregroundColor: const Color(0xFF111827),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              textStyle: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            child: const Text('Save'),
           ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: detailsController,
+            decoration: fieldDecoration.copyWith(labelText: detailsLabel),
+            minLines: 3,
+            maxLines: 4,
+          ),
+          if (includeStatus) ...[
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: statusController,
+              decoration:
+                  fieldDecoration.copyWith(labelText: 'Status (optional)'),
+            ),
+          ],
         ],
-      );
-    },
+      ),
+    ),
+    actions: [
+      OutlinedButton(
+        onPressed: () => Navigator.of(context).pop(),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF475569),
+          side: const BorderSide(color: Color(0xFFE2E8F0)),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        child: const Text(
+          'Cancel',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
+      FilledButton.icon(
+        onPressed: () {
+          if (!formKey.currentState!.validate()) return;
+          Navigator.of(context).pop(
+            LaunchEntry(
+              title: titleController.text.trim(),
+              details: detailsController.text.trim(),
+              status: includeStatus && statusController.text.trim().isNotEmpty
+                  ? statusController.text.trim()
+                  : null,
+            ),
+          );
+        },
+        icon: const Icon(Icons.check, size: 18),
+        label: const Text('Save'),
+        style: FilledButton.styleFrom(
+          backgroundColor: const Color(0xFF0F172A),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          textStyle: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+      ),
+    ],
   );
 }

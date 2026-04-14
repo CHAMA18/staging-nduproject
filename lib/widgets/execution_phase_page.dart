@@ -1,8 +1,10 @@
 import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/execution_phase_service.dart';
+import 'package:ndu_project/widgets/execution_phase_ui.dart';
 import 'package:ndu_project/widgets/launch_editable_section.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
@@ -24,7 +26,6 @@ class ExecutionSectionSpec {
   final String titleLabel;
 }
 
-/// Reusable Execution Phase page builder: blank by default, with pop-up add + auto-save.
 class ExecutionPhasePage extends StatefulWidget {
   const ExecutionPhasePage({
     super.key,
@@ -50,13 +51,13 @@ class ExecutionPhasePage extends StatefulWidget {
 class _ExecutionPhasePageState extends State<ExecutionPhasePage> {
   final Map<String, List<LaunchEntry>> _sectionData = {};
   bool _loading = true;
+  Timer? _autoSaveDebounce;
 
-  /// Get project ID from ProjectDataInherited
   String? get _projectId {
     try {
       final provider = ProjectDataInherited.maybeOf(context);
       return provider?.projectData.projectId;
-    } catch (e) {
+    } catch (_) {
       return null;
     }
   }
@@ -70,11 +71,12 @@ class _ExecutionPhasePageState extends State<ExecutionPhasePage> {
     _loadData();
   }
 
-  /// Load existing data from Firebase
   Future<void> _loadData() async {
-    final projectId = _projectId;
+    final String? projectId = _projectId;
     if (projectId == null || projectId.isEmpty) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
       return;
     }
 
@@ -83,32 +85,43 @@ class _ExecutionPhasePageState extends State<ExecutionPhasePage> {
         projectId: projectId,
         pageKey: widget.pageKey,
       );
-      if (mounted && data != null && data.isNotEmpty) {
-        setState(() {
-          _sectionData.clear();
-          _sectionData.addAll(data);
-          _loading = false;
-        });
-      } else {
-        if (mounted) setState(() => _loading = false);
-      }
+
+      if (!mounted) return;
+      setState(() {
+        if (data != null && data.isNotEmpty) {
+          _sectionData
+            ..clear()
+            ..addAll(data);
+        }
+        _loading = false;
+      });
     } catch (e) {
       debugPrint('Error loading execution phase data: $e');
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
   @override
+  void dispose() {
+    _autoSaveDebounce?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isMobile = AppBreakpoints.isMobile(context);
+    final bool isMobile = AppBreakpoints.isMobile(context);
     final double horizontalPadding = isMobile ? 16 : 32;
 
     return ResponsiveScaffold(
       activeItemLabel: widget.title,
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F7FB),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(
-            horizontal: horizontalPadding, vertical: isMobile ? 16 : 28),
+          horizontal: horizontalPadding,
+          vertical: isMobile ? 16 : 28,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -120,14 +133,18 @@ class _ExecutionPhasePageState extends State<ExecutionPhasePage> {
                 description: section.description,
                 entries: _sectionData[section.key]!,
                 onAdd: () => _addEntry(_sectionData[section.key]!, section),
-                onRemove: (i) => _removeEntry(section.key, i),
-                onEdit: (i, entry) =>
-                    _editEntry(_sectionData[section.key]!, section, i, entry),
+                onRemove: (index) => _removeEntry(section.key, index),
+                onEdit: (index, entry) => _editEntry(
+                  _sectionData[section.key]!,
+                  section,
+                  index,
+                  entry,
+                ),
               ),
               const SizedBox(height: 16),
             ],
             if (widget.navigation != null) ...[
-              const SizedBox(height: 24),
+              const SizedBox(height: 8),
               LaunchPhaseNavigation(
                 backLabel: widget.navigation!.backLabel,
                 nextLabel: widget.navigation!.nextLabel,
@@ -143,41 +160,40 @@ class _ExecutionPhasePageState extends State<ExecutionPhasePage> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          widget.title,
-          style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF111827)),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          _loading ? '${widget.subtitle} · Loading...' : widget.subtitle,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: const Color(0xFF4B5563),
-                height: 1.5,
+    final List<Widget> metadata = widget.introText == null
+        ? const <Widget>[]
+        : [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
-        ),
-        if (widget.introText != null) ...[
-          const SizedBox(height: 8),
-          Text(
-            widget.introText!,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF4B5563),
-                  height: 1.5,
-                ),
-          ),
-        ],
-      ],
+              child: Text(
+                widget.introText!,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: const Color(0xFF475569),
+                      height: 1.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+              ),
+            ),
+          ];
+
+    return ExecutionPageHeader(
+      badge: 'Execution Phase',
+      title: widget.title,
+      description: _loading ? '${widget.subtitle} · Loading...' : widget.subtitle,
+      metadata: metadata,
     );
   }
 
   Future<void> _addEntry(
-      List<LaunchEntry> target, ExecutionSectionSpec section) async {
-    final entry = await showLaunchEntryDialog(
+    List<LaunchEntry> target,
+    ExecutionSectionSpec section,
+  ) async {
+    final LaunchEntry? entry = await showLaunchEntryDialog(
       context,
       titleLabel: section.titleLabel,
       detailsLabel: 'Details',
@@ -189,9 +205,13 @@ class _ExecutionPhasePageState extends State<ExecutionPhasePage> {
     }
   }
 
-  Future<void> _editEntry(List<LaunchEntry> target,
-      ExecutionSectionSpec section, int index, LaunchEntry currentEntry) async {
-    final entry = await showLaunchEntryDialog(
+  Future<void> _editEntry(
+    List<LaunchEntry> target,
+    ExecutionSectionSpec section,
+    int index,
+    LaunchEntry currentEntry,
+  ) async {
+    final LaunchEntry? entry = await showLaunchEntryDialog(
       context,
       titleLabel: section.titleLabel,
       detailsLabel: 'Details',
@@ -209,27 +229,18 @@ class _ExecutionPhasePageState extends State<ExecutionPhasePage> {
     _autoSave();
   }
 
-  Timer? _autoSaveDebounce;
   void _autoSave() {
     _autoSaveDebounce?.cancel();
     _autoSaveDebounce = Timer(const Duration(milliseconds: 1500), () {
       if (mounted) {
-        _persistChanges(showSnackbar: false);
+        _persistChanges();
       }
     });
   }
 
-  @override
-  void dispose() {
-    _autoSaveDebounce?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _persistChanges({bool showSnackbar = false}) async {
-    final projectId = _projectId;
-    if (projectId == null || projectId.isEmpty) {
-      return;
-    }
+  Future<void> _persistChanges() async {
+    final String? projectId = _projectId;
+    if (projectId == null || projectId.isEmpty) return;
 
     try {
       await ExecutionPhaseService.savePageData(
@@ -238,7 +249,6 @@ class _ExecutionPhasePageState extends State<ExecutionPhasePage> {
         sections: _sectionData,
         userId: FirebaseAuth.instance.currentUser?.uid,
       );
-      // Silent save - no snackbar unless explicitly requested
     } catch (e) {
       debugPrint('Error persisting execution phase data: $e');
     }

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:ndu_project/models/planning_contracting_models.dart';
 
 String _normalizeStatusForStorage(String status) {
   final normalized = status.trim().toLowerCase();
@@ -69,6 +70,23 @@ class ContractModel {
   final String createdByName;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final List<PaymentMilestone>? paymentMilestones;
+  final String? changeOrderProcedure;
+  final String? disputeResolution;
+  final String? contractManagerId;
+  final String? contractManagerName;
+  final String? reportingFrequency;
+  final double? contingencyAmount;
+  final double? contingencyPercent;
+  final String? negotiationStatus;
+  final String? negotiationObjectives;
+  final String? negotiationAuthority;
+  final List<NegotiationItem>? negotiationItems;
+  final String? linkedRfqId;
+  final List<EvaluationScore>? evaluationScores;
+  final ContractBudgetBreakdown? budgetBreakdown;
+  final String? performanceKpis;
+  final String? awardStrategy;
 
   const ContractModel({
     required this.id,
@@ -91,6 +109,23 @@ class ContractModel {
     required this.createdByName,
     required this.createdAt,
     required this.updatedAt,
+    this.paymentMilestones,
+    this.changeOrderProcedure,
+    this.disputeResolution,
+    this.contractManagerId,
+    this.contractManagerName,
+    this.reportingFrequency,
+    this.contingencyAmount,
+    this.contingencyPercent,
+    this.negotiationStatus,
+    this.negotiationObjectives,
+    this.negotiationAuthority,
+    this.negotiationItems,
+    this.linkedRfqId,
+    this.evaluationScores,
+    this.budgetBreakdown,
+    this.performanceKpis,
+    this.awardStrategy,
   });
 
   Map<String, dynamic> toMap() {
@@ -119,6 +154,30 @@ class ContractModel {
       'createdByName': createdByName,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
+      if (paymentMilestones != null)
+        'paymentMilestones': paymentMilestones!.map((m) => m.toMap()).toList(),
+      if (changeOrderProcedure != null)
+        'changeOrderProcedure': changeOrderProcedure,
+      if (disputeResolution != null) 'disputeResolution': disputeResolution,
+      if (contractManagerId != null) 'contractManagerId': contractManagerId,
+      if (contractManagerName != null)
+        'contractManagerName': contractManagerName,
+      if (reportingFrequency != null) 'reportingFrequency': reportingFrequency,
+      if (contingencyAmount != null) 'contingencyAmount': contingencyAmount,
+      if (contingencyPercent != null) 'contingencyPercent': contingencyPercent,
+      if (negotiationStatus != null) 'negotiationStatus': negotiationStatus,
+      if (negotiationObjectives != null)
+        'negotiationObjectives': negotiationObjectives,
+      if (negotiationAuthority != null)
+        'negotiationAuthority': negotiationAuthority,
+      if (negotiationItems != null)
+        'negotiationItems': negotiationItems!.map((n) => n.toMap()).toList(),
+      if (linkedRfqId != null) 'linkedRfqId': linkedRfqId,
+      if (evaluationScores != null)
+        'evaluationScores': evaluationScores!.map((s) => s.toMap()).toList(),
+      if (budgetBreakdown != null) 'budgetBreakdown': budgetBreakdown!.toMap(),
+      if (performanceKpis != null) 'performanceKpis': performanceKpis,
+      if (awardStrategy != null) 'awardStrategy': awardStrategy,
     };
   }
 
@@ -135,6 +194,45 @@ class ContractModel {
     double parseDouble(dynamic v) {
       if (v is num) return v.toDouble();
       return double.tryParse(v?.toString() ?? '') ?? 0.0;
+    }
+
+    String? _ns(dynamic v) {
+      final s = (v ?? '').toString().trim();
+      return s.isEmpty ? null : s;
+    }
+
+    double? _nd(dynamic v) {
+      if (v == null) return null;
+      if (v is num) return v.toDouble();
+      final d = double.tryParse(v.toString());
+      return d;
+    }
+
+    List<PaymentMilestone>? _pm(dynamic v) {
+      if (v is! List) return null;
+      final items = v
+          .whereType<Map>()
+          .map((e) => PaymentMilestone.fromMap(Map<String, dynamic>.from(e)))
+          .toList();
+      return items.isEmpty ? null : items;
+    }
+
+    List<NegotiationItem>? _ni(dynamic v) {
+      if (v is! List) return null;
+      final items = v
+          .whereType<Map>()
+          .map((e) => NegotiationItem.fromMap(Map<String, dynamic>.from(e)))
+          .toList();
+      return items.isEmpty ? null : items;
+    }
+
+    List<EvaluationScore>? _es(dynamic v) {
+      if (v is! List) return null;
+      final items = v
+          .whereType<Map>()
+          .map((e) => EvaluationScore.fromMap(Map<String, dynamic>.from(e)))
+          .toList();
+      return items.isEmpty ? null : items;
     }
 
     final rawStatus = (data['statusLabel'] ?? data['status'] ?? '').toString();
@@ -164,6 +262,26 @@ class ContractModel {
           parseTs(data['createdAt']) ?? DateTime.fromMillisecondsSinceEpoch(0),
       updatedAt:
           parseTs(data['updatedAt']) ?? DateTime.fromMillisecondsSinceEpoch(0),
+      paymentMilestones: _pm(data['paymentMilestones']),
+      changeOrderProcedure: _ns(data['changeOrderProcedure']),
+      disputeResolution: _ns(data['disputeResolution']),
+      contractManagerId: _ns(data['contractManagerId']),
+      contractManagerName: _ns(data['contractManagerName']),
+      reportingFrequency: _ns(data['reportingFrequency']),
+      contingencyAmount: _nd(data['contingencyAmount']),
+      contingencyPercent: _nd(data['contingencyPercent']),
+      negotiationStatus: _ns(data['negotiationStatus']),
+      negotiationObjectives: _ns(data['negotiationObjectives']),
+      negotiationAuthority: _ns(data['negotiationAuthority']),
+      negotiationItems: _ni(data['negotiationItems']),
+      linkedRfqId: _ns(data['linkedRfqId']),
+      evaluationScores: _es(data['evaluationScores']),
+      budgetBreakdown: data['budgetBreakdown'] != null
+          ? ContractBudgetBreakdown.fromMap(
+              Map<String, dynamic>.from(data['budgetBreakdown'] as Map))
+          : null,
+      performanceKpis: _ns(data['performanceKpis']),
+      awardStrategy: _ns(data['awardStrategy']),
     );
   }
 }
@@ -283,6 +401,87 @@ class ContractService {
     required String contractId,
   }) async {
     await _contractsCol(projectId).doc(contractId).delete();
+  }
+
+  static Future<void> updatePlanningFields({
+    required String projectId,
+    required String contractId,
+    List<PaymentMilestone>? paymentMilestones,
+    String? changeOrderProcedure,
+    String? disputeResolution,
+    String? contractManagerId,
+    String? contractManagerName,
+    String? reportingFrequency,
+    double? contingencyAmount,
+    double? contingencyPercent,
+    String? negotiationStatus,
+    String? negotiationObjectives,
+    String? negotiationAuthority,
+    List<NegotiationItem>? negotiationItems,
+    String? linkedRfqId,
+    List<EvaluationScore>? evaluationScores,
+    ContractBudgetBreakdown? budgetBreakdown,
+    String? performanceKpis,
+    String? awardStrategy,
+  }) async {
+    final updateData = <String, dynamic>{
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+    if (paymentMilestones != null) {
+      updateData['paymentMilestones'] =
+          paymentMilestones.map((m) => m.toMap()).toList();
+    }
+    if (changeOrderProcedure != null) {
+      updateData['changeOrderProcedure'] = changeOrderProcedure;
+    }
+    if (disputeResolution != null) {
+      updateData['disputeResolution'] = disputeResolution;
+    }
+    if (contractManagerId != null) {
+      updateData['contractManagerId'] = contractManagerId;
+    }
+    if (contractManagerName != null) {
+      updateData['contractManagerName'] = contractManagerName;
+    }
+    if (reportingFrequency != null) {
+      updateData['reportingFrequency'] = reportingFrequency;
+    }
+    if (contingencyAmount != null) {
+      updateData['contingencyAmount'] = contingencyAmount;
+    }
+    if (contingencyPercent != null) {
+      updateData['contingencyPercent'] = contingencyPercent;
+    }
+    if (negotiationStatus != null) {
+      updateData['negotiationStatus'] = negotiationStatus;
+    }
+    if (negotiationObjectives != null) {
+      updateData['negotiationObjectives'] = negotiationObjectives;
+    }
+    if (negotiationAuthority != null) {
+      updateData['negotiationAuthority'] = negotiationAuthority;
+    }
+    if (negotiationItems != null) {
+      updateData['negotiationItems'] =
+          negotiationItems.map((n) => n.toMap()).toList();
+    }
+    if (linkedRfqId != null) {
+      updateData['linkedRfqId'] = linkedRfqId;
+    }
+    if (evaluationScores != null) {
+      updateData['evaluationScores'] =
+          evaluationScores.map((s) => s.toMap()).toList();
+    }
+    if (budgetBreakdown != null) {
+      updateData['budgetBreakdown'] = budgetBreakdown.toMap();
+    }
+    if (performanceKpis != null) {
+      updateData['performanceKpis'] = performanceKpis;
+    }
+    if (awardStrategy != null) {
+      updateData['awardStrategy'] = awardStrategy;
+    }
+    await _contractsCol(projectId).doc(contractId).update(updateData);
   }
 
   /// Get a single contract

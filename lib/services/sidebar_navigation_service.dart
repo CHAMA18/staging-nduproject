@@ -131,14 +131,58 @@ class SidebarNavigationService {
         checkpoint: 'project_goals_milestones',
         label: 'Project Goals & Milestones'),
     SidebarItem(checkpoint: 'requirements', label: 'Requirements'),
+    // Organization Plan sub-items
+    SidebarItem(
+        checkpoint: 'organization_roles_responsibilities',
+        label: 'Roles & Responsibilities'),
+    SidebarItem(
+        checkpoint: 'organization_staffing_plan', label: 'Staffing Plan'),
+    SidebarItem(checkpoint: 'team_training', label: 'Training & Team Building'),
+    SidebarItem(
+        checkpoint: 'stakeholder_management', label: 'Stakeholder Management'),
     SidebarItem(checkpoint: 'ssher', label: 'SSHER'),
-    SidebarItem(checkpoint: 'change_management', label: 'Change Management'),
-    SidebarItem(checkpoint: 'issue_management', label: 'Issue Management'),
+    SidebarItem(checkpoint: 'quality_management', label: 'Quality Management'),
+    // Execution Plan sub-items
+    SidebarItem(
+        checkpoint: 'execution_plan_construction_plan',
+        label: 'Construction Plan'),
+    SidebarItem(
+        checkpoint: 'execution_plan_infrastructure_plan',
+        label: 'Infrastructure Plan'),
+    SidebarItem(
+        checkpoint: 'execution_plan_agile_delivery_plan',
+        label: 'Agile Delivery Plan'),
+    SidebarItem(checkpoint: 'design', label: 'Design Planning'),
+    SidebarItem(checkpoint: 'technology', label: 'Technology Planning'),
+    SidebarItem(
+        checkpoint: 'interface_management', label: 'Interface Management'),
+    SidebarItem(checkpoint: 'risk_assessment', label: 'Risk Assessment'),
+    SidebarItem(checkpoint: 'contracts', label: 'Contract'),
+    SidebarItem(checkpoint: 'procurement', label: 'Procurement'),
+    SidebarItem(checkpoint: 'schedule', label: 'Schedule'),
     SidebarItem(checkpoint: 'cost_estimate', label: 'Cost Estimate Overview'),
     SidebarItem(
         checkpoint: 'scope_tracking_plan', label: 'Scope Tracking Plan'),
-    SidebarItem(checkpoint: 'contracts', label: 'Contract'),
-    SidebarItem(checkpoint: 'procurement', label: 'Procurement'),
+    SidebarItem(checkpoint: 'change_management', label: 'Change Management'),
+    SidebarItem(checkpoint: 'issue_management', label: 'Issue Management'),
+    SidebarItem(checkpoint: 'lessons_learned', label: 'Lessons Learned'),
+    // Start-Up Planning sub-items
+    SidebarItem(checkpoint: 'startup_planning', label: 'Start-Up Planning'),
+    SidebarItem(
+        checkpoint: 'startup_planning_operations',
+        label: 'Operations Plan and Manual'),
+    SidebarItem(
+        checkpoint: 'startup_planning_hypercare', label: 'Hypercare Plan'),
+    SidebarItem(checkpoint: 'startup_planning_devops', label: 'DevOps'),
+    SidebarItem(
+        checkpoint: 'startup_planning_closeout', label: 'Close Out Plan'),
+    // Deliverable Roadmap sub-items
+    SidebarItem(checkpoint: 'deliverable_roadmap', label: 'Roadmap Overview'),
+    SidebarItem(
+        checkpoint: 'deliverable_roadmap_agile_map_out',
+        label: 'Agile Map Out'),
+    SidebarItem(
+        checkpoint: 'agile_project_baseline', label: 'Agile Project Baseline'),
     // Project Plan sub-items
     SidebarItem(checkpoint: 'project_plan', label: 'Project Plan Overview'),
     SidebarItem(
@@ -150,35 +194,7 @@ class SidebarNavigationService {
     SidebarItem(
         checkpoint: 'project_plan_condensed_summary',
         label: 'Condensed Project Summary'),
-    // Execution Plan sub-items
-    SidebarItem(checkpoint: 'execution_plan', label: 'Execution Plan'),
-    SidebarItem(checkpoint: 'schedule', label: 'Schedule'),
-    SidebarItem(checkpoint: 'design', label: 'Design Planning'),
-    SidebarItem(checkpoint: 'technology', label: 'Technology Planning'),
-    SidebarItem(
-        checkpoint: 'interface_management', label: 'Interface Management'),
-    // Start-Up Planning sub-items
-    SidebarItem(checkpoint: 'startup_planning', label: 'Start-Up Planning'),
-    // Deliverable Roadmap sub-items
-    SidebarItem(checkpoint: 'deliverable_roadmap', label: 'Roadmap Overview'),
-    SidebarItem(
-        checkpoint: 'agile_project_baseline', label: 'Agile Project Baseline'),
     SidebarItem(checkpoint: 'project_baseline', label: 'Project Baseline'),
-    // Organization Plan sub-items
-    SidebarItem(
-        checkpoint: 'organization_roles_responsibilities',
-        label: 'Roles & Responsibilities'),
-    SidebarItem(
-        checkpoint: 'organization_staffing_plan', label: 'Staffing Plan'),
-    SidebarItem(checkpoint: 'team_training', label: 'Training & Team Building'),
-    SidebarItem(
-        checkpoint: 'stakeholder_management', label: 'Stakeholder Management'),
-    SidebarItem(checkpoint: 'lessons_learned', label: 'Lessons Learned'),
-    SidebarItem(checkpoint: 'team_management', label: 'Team Management'),
-    SidebarItem(checkpoint: 'risk_assessment', label: 'Risk Assessment'),
-    SidebarItem(
-        checkpoint: 'security_management', label: 'Security Management'),
-    SidebarItem(checkpoint: 'quality_management', label: 'Quality Management'),
 
     // Design Phase
     SidebarItem(checkpoint: 'design_management', label: 'Design Management'),

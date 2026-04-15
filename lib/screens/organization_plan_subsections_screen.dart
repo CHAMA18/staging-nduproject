@@ -231,7 +231,7 @@ class _OrganizationRolesResponsibilitiesScreenState
           children: [
             PremiumEditDialog.fieldLabel('Title'),
             DropdownButtonFormField<String>(
-              value: selectedTitle,
+              initialValue: selectedTitle,
               items: [
                 ..._roleTitleOptions,
                 _customRoleOption,
@@ -311,7 +311,7 @@ class _OrganizationRolesResponsibilitiesScreenState
           children: [
             PremiumEditDialog.fieldLabel('Title'),
             DropdownButtonFormField<String>(
-              value: selectedTitle,
+              initialValue: selectedTitle,
               items: [
                 ..._roleTitleOptions,
                 _customRoleOption,
@@ -573,138 +573,12 @@ class _OrganizationStaffingPlanScreenState
                             ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(14),
-                              child: LayoutBuilder(
-                                builder: (context, constraints) {
-                                  return SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    child: ConstrainedBox(
-                                      constraints: BoxConstraints(
-                                          minWidth: constraints.maxWidth),
-                                      child: DataTable(
-                                        dataRowMinHeight: 64.0,
-                                        dataRowMaxHeight: 64.0,
-                                        headingRowHeight: 56.0,
-                                        headingRowColor:
-                                            WidgetStateProperty.all(
-                                                const Color(0xFFF9FAFB)),
-                                        headingTextStyle: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                            color: Color(0xFF374151)),
-                                        dataTextStyle: const TextStyle(
-                                            fontSize: 13,
-                                            color: Color(0xFF111827)),
-                                        columnSpacing: 40,
-                                        columns: const [
-                                          DataColumn(label: Text('#')),
-                                          DataColumn(label: Text('Position')),
-                                          DataColumn(label: Text('Person')),
-                                          DataColumn(label: Text('Location')),
-                                          DataColumn(label: Text('Type')),
-                                          DataColumn(label: Text('Status')),
-                                          DataColumn(label: Text('Timeline')),
-                                          DataColumn(label: Text('Actions')),
-                                        ],
-                                        rows: requirements
-                                            .asMap()
-                                            .entries
-                                            .map((entry) {
-                                          final index = entry.key;
-                                          final req = entry.value;
-                                          return DataRow(
-                                            cells: [
-                                              DataCell(Text('${index + 1}')),
-                                              DataCell(Text(req.title,
-                                                  style: const TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w600))),
-                                              DataCell(Text(
-                                                  req.personName.isEmpty
-                                                      ? 'TBD'
-                                                      : req.personName)),
-                                              DataCell(Text(req.location.isEmpty
-                                                  ? 'TBD'
-                                                  : req.location)),
-                                              DataCell(Text(
-                                                  '${req.employmentType} / ${req.employeeType}')),
-                                              DataCell(
-                                                Container(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 10,
-                                                      vertical: 4),
-                                                  decoration: BoxDecoration(
-                                                    color: req.status == 'Hired'
-                                                        ? const Color(
-                                                            0xFFD1FAE5)
-                                                        : const Color(
-                                                            0xFFFEF3C7),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            999),
-                                                  ),
-                                                  child: Text(
-                                                    req.status.isEmpty
-                                                        ? 'Open'
-                                                        : req.status,
-                                                    style: TextStyle(
-                                                      fontSize: 11,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      color:
-                                                          req.status == 'Hired'
-                                                              ? const Color(
-                                                                  0xFF059669)
-                                                              : const Color(
-                                                                  0xFFD97706),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              DataCell(Text(
-                                                  '${req.startDate} → ${req.endDate}')),
-                                              DataCell(
-                                                Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    IconButton(
-                                                      icon: const Icon(
-                                                          Icons.edit_outlined,
-                                                          size: 18,
-                                                          color: Color(
-                                                              0xFF6B7280)),
-                                                      onPressed: () =>
-                                                          _editStaffing(context,
-                                                              index, req),
-                                                      padding: EdgeInsets.zero,
-                                                      constraints:
-                                                          const BoxConstraints(),
-                                                    ),
-                                                    const SizedBox(width: 8),
-                                                    IconButton(
-                                                      icon: const Icon(
-                                                          Icons.delete_outline,
-                                                          size: 18,
-                                                          color: Color(
-                                                              0xFFEF4444)),
-                                                      onPressed: () =>
-                                                          _deleteStaffing(
-                                                              context, index),
-                                                      padding: EdgeInsets.zero,
-                                                      constraints:
-                                                          const BoxConstraints(),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          );
-                                        }).toList(),
-                                      ),
-                                    ),
-                                  );
-                                },
+                              child: _StaffingPlanTable(
+                                requirements: requirements,
+                                onEdit: (index, req) =>
+                                    _editStaffing(context, index, req),
+                                onDelete: (index) =>
+                                    _deleteStaffing(context, index),
                               ),
                             ),
                           ),
@@ -1064,6 +938,267 @@ class _PlanningSubsectionConfig {
   final String activeItemLabel;
   final List<_MetricData> metrics;
   final List<_SectionData> sections;
+}
+
+class _StaffingPlanTable extends StatelessWidget {
+  const _StaffingPlanTable({
+    required this.requirements,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final List<StaffingRequirement> requirements;
+  final void Function(int index, StaffingRequirement req) onEdit;
+  final ValueChanged<int> onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    const rowPadding = EdgeInsets.symmetric(horizontal: 16, vertical: 14);
+    const columns = <_StaffingColumnDef>[
+      _StaffingColumnDef('#', 72),
+      _StaffingColumnDef('Position', 220),
+      _StaffingColumnDef('Person', 180),
+      _StaffingColumnDef('Location', 170),
+      _StaffingColumnDef('Type', 170),
+      _StaffingColumnDef('Status', 150),
+      _StaffingColumnDef('Timeline', 180),
+      _StaffingColumnDef('Actions', 110),
+    ];
+
+    final contentWidth =
+        columns.fold<double>(0, (sum, column) => sum + column.width);
+    final minTableWidth = contentWidth + 32;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tableWidth = constraints.maxWidth > minTableWidth
+            ? constraints.maxWidth
+            : minTableWidth;
+
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: tableWidth,
+            child: Column(
+              children: [
+                Container(
+                  width: tableWidth,
+                  padding: rowPadding,
+                  color: const Color(0xFFF9FAFB),
+                  child: Row(
+                    children: columns
+                        .map(
+                          (column) => SizedBox(
+                            width: column.width,
+                            child: Text(
+                              column.label.toUpperCase(),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.8,
+                                color: Color(0xFF6B7280),
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+                for (int i = 0; i < requirements.length; i++)
+                  Container(
+                    width: tableWidth,
+                    padding: rowPadding,
+                    decoration: BoxDecoration(
+                      color: i.isEven ? Colors.white : const Color(0xFFF9FAFB),
+                      border: Border(
+                        top: BorderSide(
+                          color: const Color(0xFFE5E7EB),
+                          width: i == 0 ? 1 : 0.5,
+                        ),
+                      ),
+                    ),
+                    child: _StaffingTableRow(
+                      index: i,
+                      requirement: requirements[i],
+                      columns: columns,
+                      onEdit: () => onEdit(i, requirements[i]),
+                      onDelete: () => onDelete(i),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _StaffingTableRow extends StatelessWidget {
+  const _StaffingTableRow({
+    required this.index,
+    required this.requirement,
+    required this.columns,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final int index;
+  final StaffingRequirement requirement;
+  final List<_StaffingColumnDef> columns;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final cells = <Widget>[
+      Center(
+        child: Text(
+          '${index + 1}',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF4B5563),
+          ),
+        ),
+      ),
+      _StaffingTextCell(
+        requirement.title.trim().isEmpty
+            ? 'Untitled Position'
+            : requirement.title,
+        fontWeight: FontWeight.w700,
+      ),
+      _StaffingTextCell(
+        requirement.personName.trim().isEmpty ? 'TBD' : requirement.personName,
+      ),
+      _StaffingTextCell(
+        requirement.location.trim().isEmpty ? 'TBD' : requirement.location,
+      ),
+      _StaffingTextCell(
+        '${requirement.employmentType} / ${requirement.employeeType}',
+      ),
+      Center(
+        child: _StaffingStatusPill(
+          label:
+              requirement.status.trim().isEmpty ? 'Open' : requirement.status,
+        ),
+      ),
+      _StaffingTextCell(
+        '${requirement.startDate.trim().isEmpty ? 'TBD' : requirement.startDate} -> ${requirement.endDate.trim().isEmpty ? 'TBD' : requirement.endDate}',
+        textAlign: TextAlign.center,
+      ),
+      Align(
+        alignment: Alignment.topCenter,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(
+                Icons.edit_outlined,
+                size: 18,
+                color: Color(0xFF6B7280),
+              ),
+              tooltip: 'Edit position',
+              onPressed: onEdit,
+            ),
+            IconButton(
+              icon: const Icon(
+                Icons.delete_outline,
+                size: 18,
+                color: Color(0xFFEF4444),
+              ),
+              tooltip: 'Delete position',
+              onPressed: onDelete,
+            ),
+          ],
+        ),
+      ),
+    ];
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: List.generate(
+        cells.length,
+        (cellIndex) =>
+            SizedBox(width: columns[cellIndex].width, child: cells[cellIndex]),
+      ),
+    );
+  }
+}
+
+class _StaffingTextCell extends StatelessWidget {
+  const _StaffingTextCell(
+    this.text, {
+    this.fontWeight = FontWeight.w500,
+    this.textAlign = TextAlign.left,
+  });
+
+  final String text;
+  final FontWeight fontWeight;
+  final TextAlign textAlign;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: Text(
+        text,
+        textAlign: textAlign,
+        softWrap: true,
+        style: TextStyle(
+          fontSize: 13,
+          height: 1.4,
+          fontWeight: fontWeight,
+          color: const Color(0xFF111827),
+        ),
+      ),
+    );
+  }
+}
+
+class _StaffingStatusPill extends StatelessWidget {
+  const _StaffingStatusPill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final normalized = label.trim().toLowerCase();
+    final bool hired = normalized == 'hired';
+    final bool active =
+        normalized == 'active' || normalized == 'mobilized' || hired;
+    final bgColor =
+        hired || active ? const Color(0xFFD1FAE5) : const Color(0xFFFEF3C7);
+    final fgColor =
+        hired || active ? const Color(0xFF059669) : const Color(0xFFD97706);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        softWrap: true,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: fgColor,
+        ),
+      ),
+    );
+  }
+}
+
+class _StaffingColumnDef {
+  const _StaffingColumnDef(this.label, this.width);
+
+  final String label;
+  final double width;
 }
 
 class _TopHeader extends StatelessWidget {

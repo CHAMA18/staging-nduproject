@@ -34,6 +34,7 @@ class _StakeholderManagementScreenState
 
   final _stakeholderSaveDebounce = _Debouncer();
   final _planSaveDebounce = _Debouncer();
+  final ScrollController _pageScrollController = ScrollController();
   String _searchQuery = '';
 
   @override
@@ -46,6 +47,7 @@ class _StakeholderManagementScreenState
   void dispose() {
     _stakeholderSaveDebounce.dispose();
     _planSaveDebounce.dispose();
+    _pageScrollController.dispose();
     super.dispose();
   }
 
@@ -88,6 +90,7 @@ class _StakeholderManagementScreenState
                   child: Stack(
                     children: [
                       SingleChildScrollView(
+                        controller: _pageScrollController,
                         child: Padding(
                           padding: EdgeInsets.symmetric(
                               horizontal: horizontalPadding, vertical: 32),
@@ -187,6 +190,7 @@ class _StakeholderManagementScreenState
         stakeholderEntries: [...d.stakeholderEntries, StakeholderEntry.empty()],
       ),
     );
+    _scrollToLatestInlineRow();
   }
 
   void _updateStakeholder(StakeholderEntry updated) async {
@@ -227,6 +231,7 @@ class _StakeholderManagementScreenState
         ],
       ),
     );
+    _scrollToLatestInlineRow();
   }
 
   void _updateEngagementPlan(EngagementPlanEntry updated) async {
@@ -256,6 +261,19 @@ class _StakeholderManagementScreenState
             d.engagementPlanEntries.where((e) => e.id != id).toList(),
       ),
     );
+  }
+
+  void _scrollToLatestInlineRow() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      if (!mounted || !_pageScrollController.hasClients) return;
+      final position = _pageScrollController.position;
+      await _pageScrollController.animateTo(
+        position.maxScrollExtent,
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeOutCubic,
+      );
+    });
   }
 
   Future<void> _autoPopulateFromInitiation() async {
@@ -1215,6 +1233,7 @@ class _StakeholdersTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final columns = [
+      const _TableColumnDef('#', 72),
       const _TableColumnDef('Stakeholder', 200),
       const _TableColumnDef('Organization', 180),
       const _TableColumnDef('Role/Title', 160),
@@ -1242,72 +1261,82 @@ class _StakeholdersTable extends StatelessWidget {
     return _EditableTable(
       columns: columns,
       rows: [
-        for (final entry in entries)
+        for (int index = 0; index < entries.length; index++)
           _EditableRow(
-            key: ValueKey(entry.id),
+            key: ValueKey(entries[index].id),
             columns: columns,
             cells: [
+              _IndexCell(number: index + 1),
               _TextCell(
-                value: entry.name,
-                fieldKey: '${entry.id}_name',
+                value: entries[index].name,
+                fieldKey: '${entries[index].id}_name',
                 hintText: 'Name',
-                onChanged: (value) => onChanged(entry.copyWith(name: value)),
+                onChanged: (value) =>
+                    onChanged(entries[index].copyWith(name: value)),
               ),
               _TextCell(
-                value: entry.organization,
-                fieldKey: '${entry.id}_organization',
+                value: entries[index].organization,
+                fieldKey: '${entries[index].id}_organization',
                 hintText: 'Organization',
                 onChanged: (value) =>
-                    onChanged(entry.copyWith(organization: value)),
+                    onChanged(entries[index].copyWith(organization: value)),
               ),
               _TextCell(
-                value: entry.role,
-                fieldKey: '${entry.id}_role',
+                value: entries[index].role,
+                fieldKey: '${entries[index].id}_role',
                 hintText: 'Role/Title',
-                onChanged: (value) => onChanged(entry.copyWith(role: value)),
+                onChanged: (value) =>
+                    onChanged(entries[index].copyWith(role: value)),
               ),
               _TextCell(
-                value: entry.contactInfo,
-                fieldKey: '${entry.id}_contactInfo',
+                value: entries[index].contactInfo,
+                fieldKey: '${entries[index].id}_contactInfo',
                 hintText: 'Email/Phone',
                 onChanged: (value) =>
-                    onChanged(entry.copyWith(contactInfo: value)),
+                    onChanged(entries[index].copyWith(contactInfo: value)),
               ),
               _DropdownCell(
-                value: entry.influence,
-                fieldKey: '${entry.id}_influence',
+                value: entries[index].influence,
+                fieldKey: '${entries[index].id}_influence',
                 options: const ['High', 'Medium', 'Low'],
                 onChanged: (value) =>
-                    onChanged(entry.copyWith(influence: value)),
+                    onChanged(entries[index].copyWith(influence: value)),
               ),
               _DropdownCell(
-                value: entry.interest,
-                fieldKey: '${entry.id}_interest',
+                value: entries[index].interest,
+                fieldKey: '${entries[index].id}_interest',
                 options: const ['High', 'Medium', 'Low'],
                 onChanged: (value) =>
-                    onChanged(entry.copyWith(interest: value)),
+                    onChanged(entries[index].copyWith(interest: value)),
               ),
               _TextCell(
-                value: entry.channel,
-                fieldKey: '${entry.id}_channel',
+                value: entries[index].channel,
+                fieldKey: '${entries[index].id}_channel',
                 hintText: 'Channel',
-                onChanged: (value) => onChanged(entry.copyWith(channel: value)),
+                onChanged: (value) =>
+                    onChanged(entries[index].copyWith(channel: value)),
               ),
               _TextCell(
-                value: entry.owner,
-                fieldKey: '${entry.id}_owner',
+                value: entries[index].owner,
+                fieldKey: '${entries[index].id}_owner',
                 hintText: 'Owner',
-                onChanged: (value) => onChanged(entry.copyWith(owner: value)),
+                onChanged: (value) =>
+                    onChanged(entries[index].copyWith(owner: value)),
               ),
               _TextCell(
-                value: entry.notes,
-                fieldKey: '${entry.id}_notes',
+                value: entries[index].notes,
+                fieldKey: '${entries[index].id}_notes',
                 hintText: 'Notes',
                 minLines: 1,
-                maxLines: 2,
-                onChanged: (value) => onChanged(entry.copyWith(notes: value)),
+                maxLines: null,
+                onChanged: (value) =>
+                    onChanged(entries[index].copyWith(notes: value)),
               ),
-              _DeleteCell(onPressed: () => onDelete(entry.id)),
+              _DeleteCell(
+                itemName:
+                    'stakeholder "${entries[index].name.trim().isEmpty ? 'Untitled' : entries[index].name.trim()}"',
+                onPressed: () => onDelete(entries[index].id),
+              ),
             ],
           ),
       ],
@@ -1331,6 +1360,7 @@ class _EngagementPlansTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final columns = [
+      const _TableColumnDef('#', 72),
       const _TableColumnDef('Stakeholder', 200),
       const _TableColumnDef('Objective', 220),
       const _TableColumnDef('Method', 160),
@@ -1357,73 +1387,82 @@ class _EngagementPlansTable extends StatelessWidget {
     return _EditableTable(
       columns: columns,
       rows: [
-        for (final entry in entries)
+        for (int index = 0; index < entries.length; index++)
           _EditableRow(
-            key: ValueKey(entry.id),
+            key: ValueKey(entries[index].id),
             columns: columns,
             cells: [
+              _IndexCell(number: index + 1),
               _TextCell(
-                value: entry.stakeholder,
-                fieldKey: '${entry.id}_stakeholder',
+                value: entries[index].stakeholder,
+                fieldKey: '${entries[index].id}_stakeholder',
                 hintText: 'Stakeholder',
                 onChanged: (value) =>
-                    onChanged(entry.copyWith(stakeholder: value)),
+                    onChanged(entries[index].copyWith(stakeholder: value)),
               ),
               _TextCell(
-                value: entry.objective,
-                fieldKey: '${entry.id}_objective',
+                value: entries[index].objective,
+                fieldKey: '${entries[index].id}_objective',
                 hintText: 'Objective',
                 minLines: 1,
-                maxLines: 2,
+                maxLines: null,
                 onChanged: (value) =>
-                    onChanged(entry.copyWith(objective: value)),
+                    onChanged(entries[index].copyWith(objective: value)),
               ),
               _TextCell(
-                value: entry.method,
-                fieldKey: '${entry.id}_method',
+                value: entries[index].method,
+                fieldKey: '${entries[index].id}_method',
                 hintText: 'Method',
-                onChanged: (value) => onChanged(entry.copyWith(method: value)),
+                onChanged: (value) =>
+                    onChanged(entries[index].copyWith(method: value)),
               ),
               _TextCell(
-                value: entry.frequency,
-                fieldKey: '${entry.id}_frequency',
+                value: entries[index].frequency,
+                fieldKey: '${entries[index].id}_frequency',
                 hintText: 'Frequency',
                 onChanged: (value) =>
-                    onChanged(entry.copyWith(frequency: value)),
+                    onChanged(entries[index].copyWith(frequency: value)),
               ),
               _TextCell(
-                value: entry.owner,
-                fieldKey: '${entry.id}_owner',
+                value: entries[index].owner,
+                fieldKey: '${entries[index].id}_owner',
                 hintText: 'Owner',
-                onChanged: (value) => onChanged(entry.copyWith(owner: value)),
+                onChanged: (value) =>
+                    onChanged(entries[index].copyWith(owner: value)),
               ),
               _DropdownCell(
-                value: entry.status,
-                fieldKey: '${entry.id}_status',
+                value: entries[index].status,
+                fieldKey: '${entries[index].id}_status',
                 options: const [
                   'Planned',
                   'In progress',
                   'At risk',
                   'Completed'
                 ],
-                onChanged: (value) => onChanged(entry.copyWith(status: value)),
+                onChanged: (value) =>
+                    onChanged(entries[index].copyWith(status: value)),
               ),
               _TextCell(
-                value: entry.nextTouchpoint,
-                fieldKey: '${entry.id}_next_touchpoint',
+                value: entries[index].nextTouchpoint,
+                fieldKey: '${entries[index].id}_next_touchpoint',
                 hintText: 'Next touchpoint',
                 onChanged: (value) =>
-                    onChanged(entry.copyWith(nextTouchpoint: value)),
+                    onChanged(entries[index].copyWith(nextTouchpoint: value)),
               ),
               _TextCell(
-                value: entry.notes,
-                fieldKey: '${entry.id}_notes',
+                value: entries[index].notes,
+                fieldKey: '${entries[index].id}_notes',
                 hintText: 'Notes',
                 minLines: 1,
-                maxLines: 2,
-                onChanged: (value) => onChanged(entry.copyWith(notes: value)),
+                maxLines: null,
+                onChanged: (value) =>
+                    onChanged(entries[index].copyWith(notes: value)),
               ),
-              _DeleteCell(onPressed: () => onDelete(entry.id)),
+              _DeleteCell(
+                itemName:
+                    'engagement plan for "${entries[index].stakeholder.trim().isEmpty ? 'Untitled' : entries[index].stakeholder.trim()}"',
+                onPressed: () => onDelete(entries[index].id),
+              ),
             ],
           ),
       ],
@@ -1439,62 +1478,115 @@ class _EditableTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final header = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: const BoxDecoration(
-        color: Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(18), topRight: Radius.circular(18)),
-      ),
-      child: Row(
-        children: columns
-            .map((column) => SizedBox(
-                  width: column.width,
-                  child: Text(
-                    column.label.toUpperCase(),
-                    style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.8,
-                        color: Color(0xFF6B7280)),
-                  ),
-                ))
-            .toList(),
-      ),
-    );
+    const horizontalPadding = 16.0;
+    final contentWidth =
+        columns.fold<double>(0, (total, column) => total + column.width);
+    final minTableWidth = contentWidth + (horizontalPadding * 2);
 
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xFFE5E7EB)),
+        color: Colors.white,
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-              minWidth:
-                  columns.fold<double>(0, (total, col) => total + col.width)),
-          child: Column(
-            children: [
-              header,
-              for (int i = 0; i < rows.length; i++)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: i.isEven ? Colors.white : const Color(0xFFF9FAFB),
-                    border: Border(
-                      top: BorderSide(
-                          color: const Color(0xFFE5E7EB),
-                          width: i == 0 ? 1 : 0.5),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final tableWidth = constraints.maxWidth > minTableWidth
+              ? constraints.maxWidth
+              : minTableWidth;
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: tableWidth,
+              child: Column(
+                children: [
+                  Container(
+                    width: tableWidth,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: horizontalPadding, vertical: 14),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(18),
+                          topRight: Radius.circular(18)),
+                    ),
+                    child: Row(
+                      children: columns
+                          .map((column) => SizedBox(
+                                width: column.width,
+                                child: Center(
+                                  child: Text(
+                                    column.label.toUpperCase(),
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 0.8,
+                                        color: Color(0xFF6B7280)),
+                                  ),
+                                ),
+                              ))
+                          .toList(),
                     ),
                   ),
-                  child: rows[i],
-                ),
-            ],
-          ),
+                  for (int i = 0; i < rows.length; i++)
+                    Container(
+                      width: tableWidth,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: horizontalPadding, vertical: 12),
+                      decoration: BoxDecoration(
+                        color:
+                            i.isEven ? Colors.white : const Color(0xFFF9FAFB),
+                        border: Border(
+                          top: BorderSide(
+                              color: const Color(0xFFE5E7EB),
+                              width: i == 0 ? 1 : 0.5),
+                        ),
+                      ),
+                      child: rows[i],
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _IndexCell extends StatelessWidget {
+  const _IndexCell({required this.number});
+
+  final int number;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        '$number',
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF4B5563),
         ),
       ),
+    );
+  }
+}
+
+class _TableFieldShell extends StatelessWidget {
+  const _TableFieldShell({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      child: child,
     );
   }
 }
@@ -1508,6 +1600,7 @@ class _EditableRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: List.generate(
         cells.length,
         (index) => SizedBox(width: columns[index].width, child: cells[index]),
@@ -1530,14 +1623,14 @@ class _TextCell extends StatefulWidget {
     required this.onChanged,
     this.hintText,
     this.minLines = 1,
-    this.maxLines = 1,
+    this.maxLines,
   });
 
   final String value;
   final String fieldKey;
   final String? hintText;
   final int minLines;
-  final int maxLines;
+  final int? maxLines;
   final ValueChanged<String> onChanged;
 
   @override
@@ -1557,8 +1650,6 @@ class _TextCellState extends State<_TextCell> {
   void didUpdateWidget(_TextCell oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.value != widget.value && _controller.text != widget.value) {
-      // Only update from external source if it's actually different from what's currently being typed
-      // This prevents the cursor from jumping during rapid typing but allows external sync.
       _controller.text = widget.value;
     }
   }
@@ -1571,14 +1662,7 @@ class _TextCellState extends State<_TextCell> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+    return _TableFieldShell(
       child: TextFormField(
         controller: _controller,
         minLines: widget.minLines,
@@ -1586,8 +1670,22 @@ class _TextCellState extends State<_TextCell> {
         decoration: InputDecoration(
           hintText: widget.hintText,
           isDense: true,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.2),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         ),
         style: const TextStyle(fontSize: 13, color: Color(0xFF111827)),
         onChanged: widget.onChanged,
@@ -1612,43 +1710,91 @@ class _DropdownCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final resolvedValue = options.contains(value) ? value : options.first;
-    return DropdownButtonFormField<String>(
-      key: ValueKey(fieldKey),
-      initialValue: resolvedValue,
-      items: options
-          .map((option) => DropdownMenuItem(
-              value: option,
-              child: Text(option, style: const TextStyle(fontSize: 13))))
-          .toList(),
-      onChanged: (value) {
-        if (value != null) onChanged(value);
-      },
-      decoration: InputDecoration(
-        isDense: true,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+    return _TableFieldShell(
+      child: DropdownButtonFormField<String>(
+        key: ValueKey(fieldKey),
+        initialValue: resolvedValue,
+        items: options
+            .map((option) => DropdownMenuItem(
+                value: option,
+                child: Text(option, style: const TextStyle(fontSize: 13))))
+            .toList(),
+        onChanged: (value) {
+          if (value != null) onChanged(value);
+        },
+        decoration: InputDecoration(
+          isDense: true,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.2),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        ),
+        style: const TextStyle(fontSize: 13, color: Color(0xFF111827)),
       ),
     );
   }
 }
 
 class _DeleteCell extends StatelessWidget {
-  const _DeleteCell({required this.onPressed});
+  const _DeleteCell({
+    required this.onPressed,
+    this.itemName = 'this item',
+  });
 
   final VoidCallback onPressed;
+  final String itemName;
 
   @override
   Widget build(BuildContext context) {
     return Align(
-      alignment: Alignment.center,
+      alignment: Alignment.topCenter,
       child: IconButton(
         icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
-        onPressed: onPressed,
+        onPressed: () => _showDeleteConfirmation(context, onPressed),
       ),
     );
+  }
+
+  Future<void> _showDeleteConfirmation(
+    BuildContext context,
+    VoidCallback onConfirm,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Item'),
+        content: Text('Are you sure you want to delete $itemName?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      onConfirm();
+    }
   }
 }
 

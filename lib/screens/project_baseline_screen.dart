@@ -1,13 +1,17 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
-import 'package:ndu_project/widgets/planning_ai_notes_card.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
+import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/utils/text_sanitizer.dart';
+import 'package:ndu_project/models/project_data_model.dart';
 
 class ProjectBaselineScreen extends StatefulWidget {
   const ProjectBaselineScreen({super.key});
@@ -23,41 +27,394 @@ class ProjectBaselineScreen extends StatefulWidget {
 }
 
 class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
-  static const List<String> _projectOptions = [];
-  static const List<_BaselineHistoryEntry> _history = [];
-  static const List<_ScheduleVarianceRow> _scheduleVariance = [];
-  static const List<_CostVarianceRow> _costVariance = [];
+  bool _loading = true;
+  bool _showComparison = false;
+  bool _isGenerating = false;
 
-  String? _selectedProject;
+  String _projectName = '';
+  DateTime? _baselineStartDate;
+  DateTime? _baselineEndDate;
+  DateTime? _currentStartDate;
+  DateTime? _currentEndDate;
+
+  List<_BaselineVersion> _baselineVersions = [];
+  String? _activeVersionId;
+
+  List<_ScheduleMilestone> _milestones = [];
+  List<_SchedulePhase> _phases = [];
+  List<_CostItem> _costItems = [];
+  List<_ScopeItem> _scopeItems = [];
+
+  double _totalBudget = 0;
+  double _currentSpend = 0;
+  int _originalEpicCount = 0;
+  int _currentEpicCount = 0;
+  int _scopeChangeCount = 0;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final name = ProjectDataHelper.getData(context).projectName.trim();
-      if (name.isNotEmpty && mounted) {
-        setState(() => _selectedProject = name);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
+  }
+
+  void _loadData() {
+    final data = ProjectDataHelper.getData(context);
+
+    _projectName = data.projectName.trim();
+    _totalBudget = data.costEstimateItems
+        .fold<double>(0, (sum, item) => sum + item.amount);
+
+    _loadScheduleData(data);
+    _loadCostData(data);
+    _loadScopeData(data);
+    _loadBaselineHistory(data);
+
+    setState(() => _loading = false);
+  }
+
+  void _loadScheduleData(ProjectDataModel data) {
+    final milestoneStart = data.frontEndPlanning.milestoneStartDate.trim();
+    final milestoneEnd = data.frontEndPlanning.milestoneEndDate.trim();
+
+    if (milestoneStart.isNotEmpty) {
+      _baselineStartDate = DateTime.tryParse(milestoneStart);
+      _currentStartDate = _baselineStartDate;
+    }
+    if (milestoneEnd.isNotEmpty) {
+      _baselineEndDate = DateTime.tryParse(milestoneEnd);
+      _currentEndDate = _baselineEndDate;
+    }
+
+    _milestones = data.keyMilestones
+        .where((m) => m.name.trim().isNotEmpty)
+        .map((m) => _ScheduleMilestone(
+              name: m.name.trim(),
+              targetDate: _parseDate(m.dueDate),
+              discipline: m.discipline.trim(),
+              status: _mapMilestoneStatus(m),
+              baselineDate: _parseDate(m.dueDate),
+            ))
+        .toList();
+
+    if (data.scheduleActivities.isNotEmpty) {
+      final phaseMap = <String, _SchedulePhase>{};
+
+      for (final activity in data.scheduleActivities) {
+        final phaseName = activity.discipline.trim().isEmpty
+            ? 'General'
+            : activity.discipline.trim();
+        final startDate = _parseDate(activity.startDate);
+        final endDate = _parseDate(activity.dueDate);
+
+        if (!phaseMap.containsKey(phaseName)) {
+          phaseMap[phaseName] = _SchedulePhase(
+            name: phaseName,
+            baselineStart: startDate,
+            baselineEnd: endDate,
+            currentStart: startDate,
+            currentEnd: endDate,
+            taskCount: 0,
+            completedCount: 0,
+          );
+        }
+
+        final phase = phaseMap[phaseName]!;
+        phaseMap[phaseName] = _SchedulePhase(
+          name: phase.name,
+          baselineStart: _earlierDate(phase.baselineStart, startDate),
+          baselineEnd: _laterDate(phase.baselineEnd, endDate),
+          currentStart: _earlierDate(phase.currentStart, startDate),
+          currentEnd: _laterDate(phase.currentEnd, endDate),
+          taskCount: phase.taskCount + 1,
+          completedCount: phase.completedCount +
+              (activity.status.toLowerCase().contains('complete') ? 1 : 0),
+        );
       }
-    });
+
+      _phases = phaseMap.values.toList();
+      _phases.sort((a, b) => (a.baselineStart ?? DateTime.now())
+          .compareTo(b.baselineStart ?? DateTime.now()));
+
+      if (_phases.isNotEmpty) {
+        _baselineStartDate ??= _phases.first.baselineStart;
+        _baselineEndDate ??= _phases.last.baselineEnd;
+        _currentStartDate ??= _phases.first.currentStart;
+        _currentEndDate ??= _phases.last.currentEnd;
+      }
+    }
+  }
+
+  void _loadCostData(ProjectDataModel data) {
+    _costItems = data.costEstimateItems
+        .map((item) => _CostItem(
+              category: item.title.trim(),
+              estimated: item.amount,
+              actual: 0,
+            ))
+        .toList();
+
+    final storedSpend =
+        data.planningNotes['baseline_current_spend']?.trim() ?? '';
+    _currentSpend = double.tryParse(storedSpend) ?? 0;
+  }
+
+  void _loadScopeData(ProjectDataModel data) {
+    _scopeItems = [];
+
+    for (final item in data.withinScopeItems) {
+      if (item.description.trim().isNotEmpty) {
+        _scopeItems.add(_ScopeItem(
+          description: item.description.trim(),
+          isInScope: true,
+        ));
+      }
+    }
+
+    for (final item in data.outOfScopeItems) {
+      if (item.description.trim().isNotEmpty) {
+        _scopeItems.add(_ScopeItem(
+          description: item.description.trim(),
+          isInScope: false,
+        ));
+      }
+    }
+
+    _originalEpicCount = data
+                .planningNotes['baseline_original_epics']?.isNotEmpty ==
+            true
+        ? int.tryParse(data.planningNotes['baseline_original_epics']!.trim()) ??
+            0
+        : _countEpics();
+    _currentEpicCount = _countEpics();
+    _scopeChangeCount = data
+                .planningNotes['baseline_scope_changes']?.isNotEmpty ==
+            true
+        ? int.tryParse(data.planningNotes['baseline_scope_changes']!.trim()) ??
+            0
+        : 0;
+  }
+
+  int _countEpics() {
+    return _scopeItems.where((s) => s.isInScope).length;
+  }
+
+  void _loadBaselineHistory(ProjectDataModel data) {
+    _baselineVersions = [];
+
+    final historyJson = data.planningNotes['baseline_versions']?.trim() ?? '';
+    if (historyJson.isNotEmpty) {
+      try {
+        final List<dynamic> decoded = jsonDecode(historyJson);
+        _baselineVersions = decoded
+            .map((v) => _BaselineVersion.fromJson(v as Map<String, dynamic>))
+            .toList();
+        _baselineVersions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      } catch (_) {}
+    }
+
+    _activeVersionId =
+        data.planningNotes['baseline_active_version']?.trim() ?? '';
+    if (_activeVersionId!.isEmpty && _baselineVersions.isNotEmpty) {
+      _activeVersionId = _baselineVersions.first.id;
+    }
+  }
+
+  DateTime? _parseDate(String raw) {
+    if (raw.trim().isEmpty) return null;
+    final parsed = DateTime.tryParse(raw);
+    if (parsed != null) return parsed;
+
+    final parts = raw.split(RegExp(r'[\s,]+'));
+    if (parts.length >= 3) {
+      const months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec'
+      ];
+      final monthIdx =
+          months.indexWhere((m) => parts[0].toLowerCase() == m.toLowerCase());
+      if (monthIdx != -1) {
+        final day = int.tryParse(parts[1]) ?? 1;
+        final year = int.tryParse(parts[2]) ?? DateTime.now().year;
+        return DateTime(year, monthIdx + 1, day);
+      }
+    }
+    return null;
+  }
+
+  DateTime? _earlierDate(DateTime? a, DateTime? b) {
+    if (a == null) return b;
+    if (b == null) return a;
+    return a.isBefore(b) ? a : b;
+  }
+
+  DateTime? _laterDate(DateTime? a, DateTime? b) {
+    if (a == null) return b;
+    if (b == null) return a;
+    return a.isAfter(b) ? a : b;
+  }
+
+  String _mapMilestoneStatus(dynamic m) {
+    final comments = (m.comments ?? '').toString().trim().toLowerCase();
+    if (comments.contains('complete')) return 'Completed';
+    if (comments.contains('progress')) return 'In Progress';
+    final dueDate = (m.dueDate ?? '').toString().trim();
+    if (dueDate.isNotEmpty) {
+      final parsed = DateTime.tryParse(dueDate);
+      if (parsed != null && parsed.isBefore(DateTime.now())) {
+        return 'Overdue';
+      }
+    }
+    return 'Planned';
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '—';
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  String _formatShortDate(DateTime? date) {
+    if (date == null) return '—';
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    return '${months[date.month - 1]} ${date.day}';
+  }
+
+  int _daysBetween(DateTime? a, DateTime? b) {
+    if (a == null || b == null) return 0;
+    return b.difference(a).inDays;
+  }
+
+  Widget _buildTableHeaderCell(
+    String label, {
+    int flex = 1,
+    double? width,
+  }) {
+    final child = Container(
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: 12,
+          color: Color(0xFF374151),
+        ),
+      ),
+    );
+
+    if (width != null) {
+      return SizedBox(width: width, child: child);
+    }
+
+    return Expanded(flex: flex, child: child);
+  }
+
+  Widget _buildTableTextCell(
+    String text, {
+    int flex = 1,
+    double? width,
+    TextStyle? style,
+    Alignment alignment = Alignment.centerLeft,
+    TextAlign textAlign = TextAlign.left,
+  }) {
+    final child = Container(
+      alignment: alignment,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      child: Text(
+        text,
+        textAlign: textAlign,
+        softWrap: true,
+        style: style ??
+            const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF374151),
+              height: 1.35,
+            ),
+      ),
+    );
+
+    if (width != null) {
+      return SizedBox(width: width, child: child);
+    }
+
+    return Expanded(flex: flex, child: child);
+  }
+
+  Widget _buildTableActionCell({
+    required List<Widget> children,
+    double width = 120,
+  }) {
+    return SizedBox(
+      width: width,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: children,
+      ),
+    );
   }
 
   Future<void> _handleUpdateBaseline() async {
     final approvedByController = TextEditingController();
     final descriptionController = TextEditingController();
+
     try {
       final payload = await showDialog<Map<String, String>>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Update Baseline'),
+          title: const Text('Create Baseline Version'),
           content: SizedBox(
             width: 520,
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const Text(
+                  'This will capture the current schedule, cost, and scope as a new baseline version.',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                ),
+                const SizedBox(height: 16),
                 TextField(
                   controller: approvedByController,
                   decoration: const InputDecoration(
                     labelText: 'Approved By',
+                    hintText: 'Enter approver name',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -67,7 +424,8 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
                   minLines: 3,
                   maxLines: 5,
                   decoration: const InputDecoration(
-                    labelText: 'Baseline Update Description',
+                    labelText: 'Version Description',
+                    hintText: 'Describe this baseline version...',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -89,7 +447,7 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
                   'description': description,
                 });
               },
-              child: const Text('Save'),
+              child: const Text('Create Baseline'),
             ),
           ],
         ),
@@ -101,34 +459,27 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
       if (approvedBy.isEmpty || description.isEmpty) return;
 
       final now = DateTime.now();
-      final version = 'v${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-${now.millisecondsSinceEpoch % 1000}';
+      final version = _BaselineVersion(
+        id: '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-${now.millisecondsSinceEpoch % 1000}',
+        versionLabel: 'v${_baselineVersions.length + 1}',
+        createdAt: now,
+        approvedBy: approvedBy,
+        description: description,
+        scheduleSummary: _buildScheduleSummary(),
+        costSummary: _buildCostSummary(),
+        scopeSummary: _buildScopeSummary(),
+      );
 
-      await ProjectDataHelper.updateAndSave(
-        context: context,
-        checkpoint: 'project_baseline',
-        showSnackbar: false,
-        dataUpdater: (data) => data.copyWith(
-          planningNotes: {
-            ...data.planningNotes,
-            'project_baseline_last_version': version,
-            'project_baseline_last_approved_by': approvedBy,
-            'project_baseline_last_description': description,
-            'project_baseline_last_updated_at': now.toIso8601String(),
-          },
-        ),
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Baseline update saved.'),
-          duration: Duration(seconds: 2),
-        ),
-      );
+      _baselineVersions.insert(0, version);
+      _activeVersionId = version.id;
+
+      await _persistBaselineVersion(version);
+      setState(() {});
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Unable to save baseline update right now.'),
+          content: Text('Unable to save baseline version.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -138,30 +489,142 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
     }
   }
 
-  void _showBaselineHistoryEntry(_BaselineHistoryEntry entry) {
-    showDialog<void>(
+  String _buildScheduleSummary() {
+    final buffer = StringBuffer();
+    buffer.writeln('Start: ${_formatDate(_baselineStartDate)}');
+    buffer.writeln('End: ${_formatDate(_baselineEndDate)}');
+    buffer.writeln(
+        'Duration: ${_daysBetween(_baselineStartDate, _baselineEndDate)} days');
+    buffer.writeln('Milestones: ${_milestones.length}');
+    buffer.writeln('Phases: ${_phases.length}');
+    return buffer.toString();
+  }
+
+  String _buildCostSummary() {
+    final buffer = StringBuffer();
+    buffer.writeln('Total Budget: \$${_totalBudget.toStringAsFixed(2)}');
+    buffer.writeln('Cost Items: ${_costItems.length}');
+    return buffer.toString();
+  }
+
+  String _buildScopeSummary() {
+    final buffer = StringBuffer();
+    buffer.writeln('In Scope: ${_scopeItems.where((s) => s.isInScope).length}');
+    buffer.writeln(
+        'Out of Scope: ${_scopeItems.where((s) => !s.isInScope).length}');
+    return buffer.toString();
+  }
+
+  Future<void> _persistBaselineVersion(_BaselineVersion version) async {
+    final versionsJson = jsonEncode(
+      _baselineVersions.map((v) => v.toJson()).toList(),
+    );
+
+    await ProjectDataHelper.updateAndSave(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Baseline ${entry.version}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Date: ${entry.date}'),
-            const SizedBox(height: 8),
-            Text('Approved By: ${entry.approvedBy}'),
-            const SizedBox(height: 8),
-            Text('Description: ${entry.description}'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Close'),
-          ),
-        ],
+      checkpoint: 'project_baseline',
+      showSnackbar: false,
+      dataUpdater: (data) => data.copyWith(
+        planningNotes: {
+          ...data.planningNotes,
+          'baseline_versions': versionsJson,
+          'baseline_active_version': _activeVersionId ?? '',
+          'baseline_original_epics': _originalEpicCount.toString(),
+          'baseline_current_epics': _currentEpicCount.toString(),
+          'baseline_scope_changes': _scopeChangeCount.toString(),
+        },
       ),
     );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Baseline ${version.versionLabel} created.'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Future<void> _setActiveVersion(String versionId) async {
+    setState(() => _activeVersionId = versionId);
+
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'project_baseline',
+      showSnackbar: false,
+      dataUpdater: (data) => data.copyWith(
+        planningNotes: {
+          ...data.planningNotes,
+          'baseline_active_version': versionId,
+        },
+      ),
+    );
+  }
+
+  Future<void> _regenerateNotes() async {
+    if (_isGenerating) return;
+
+    setState(() => _isGenerating = true);
+
+    try {
+      final contextText = _buildAiContext();
+      final ai = OpenAiServiceSecure();
+      final text = await ai.generateFepSectionText(
+        section: 'Project Baseline Summary',
+        context: contextText,
+        maxTokens: 800,
+        temperature: 0.6,
+      );
+
+      if (!mounted) return;
+      final cleaned = TextSanitizer.sanitizeAiRichText(text).trim();
+      if (cleaned.isNotEmpty) {
+        await ProjectDataHelper.updateAndSave(
+          context: context,
+          checkpoint: 'project_baseline',
+          showSnackbar: false,
+          dataUpdater: (data) => data.copyWith(
+            planningNotes: {
+              ...data.planningNotes,
+              'planning_project_baseline_notes': cleaned,
+            },
+          ),
+        );
+        setState(() {});
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('AI generation failed: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) setState(() => _isGenerating = false);
+    }
+  }
+
+  String _buildAiContext() {
+    final buffer = StringBuffer();
+    buffer.writeln('Project: $_projectName');
+    buffer.writeln('');
+    buffer.writeln('SCHEDULE BASELINE:');
+    buffer.writeln(_buildScheduleSummary());
+    buffer.writeln('');
+    buffer.writeln('COST BASELINE:');
+    buffer.writeln(_buildCostSummary());
+    buffer.writeln('');
+    buffer.writeln('SCOPE BASELINE:');
+    buffer.writeln(_buildScopeSummary());
+    buffer.writeln('');
+    buffer.writeln('MILESTONES:');
+    for (final m in _milestones) {
+      buffer
+          .writeln('- ${m.name}: ${_formatDate(m.baselineDate)} (${m.status})');
+    }
+    buffer.writeln('');
+    buffer.writeln(
+        'Generate a summary of the project baseline including key dates, budget summary, and scope boundaries.');
+    return buffer.toString();
   }
 
   @override
@@ -183,43 +646,43 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
                       activeItemLabel: 'Project Baseline'),
                 ),
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: horizontalPadding, vertical: 28),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildHeader(context),
-                        const SizedBox(height: 24),
-                        const PlanningAiNotesCard(
-                          title: 'Notes',
-                          sectionLabel: 'Project Baseline',
-                          noteKey: 'planning_project_baseline_notes',
-                          checkpoint: 'project_baseline',
-                          description:
-                              'Summarize baseline assumptions, schedule/cost variances, and approvals.',
+                  child: _loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : SingleChildScrollView(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: horizontalPadding, vertical: 28),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildHeader(context),
+                              const SizedBox(height: 24),
+                              _buildComparisonToggle(),
+                              const SizedBox(height: 24),
+                              _buildBaselineCards(context),
+                              const SizedBox(height: 24),
+                              _buildMilestonesSection(),
+                              const SizedBox(height: 24),
+                              _buildPhasesSection(),
+                              const SizedBox(height: 24),
+                              _buildBaselineHistory(),
+                              const SizedBox(height: 24),
+                              _buildVarianceAnalysis(),
+                              const SizedBox(height: 24),
+                              LaunchPhaseNavigation(
+                                backLabel: PlanningPhaseNavigation.backLabel(
+                                    'project_baseline'),
+                                nextLabel: PlanningPhaseNavigation.nextLabel(
+                                    'project_baseline'),
+                                onBack: () =>
+                                    PlanningPhaseNavigation.goToPrevious(
+                                        context, 'project_baseline'),
+                                onNext: () => PlanningPhaseNavigation.goToNext(
+                                    context, 'project_baseline'),
+                              ),
+                              const SizedBox(height: 48),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 24),
-                        _buildBaselineCards(context),
-                        const SizedBox(height: 24),
-                        _buildBaselineHistory(),
-                        const SizedBox(height: 24),
-                        _buildVarianceAnalysis(),
-                        const SizedBox(height: 24),
-                        LaunchPhaseNavigation(
-                          backLabel: PlanningPhaseNavigation.backLabel(
-                              'project_baseline'),
-                          nextLabel: PlanningPhaseNavigation.nextLabel(
-                              'project_baseline'),
-                          onBack: () => PlanningPhaseNavigation.goToPrevious(
-                              context, 'project_baseline'),
-                          onNext: () => PlanningPhaseNavigation.goToNext(
-                              context, 'project_baseline'),
-                        ),
-                        const SizedBox(height: 48),
-                      ],
-                    ),
-                  ),
                 ),
               ],
             ),
@@ -231,143 +694,210 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    final theme = Theme.of(context);
-    final primary = const Color(0xFF2563EB);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          runSpacing: 16,
-          children: [
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 540),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Project Baseline',
-                    style: theme.textTheme.headlineLarge?.copyWith(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF111827),
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Project Baseline',
+                      style:
+                          Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF111827),
+                              ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Monitor schedule, cost, and scope baselines to keep delivery commitments visible and actionable.',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF4B5563),
+                    const SizedBox(height: 6),
+                    Text(
+                      _projectName.isNotEmpty
+                          ? _projectName
+                          : 'Track schedule, cost, and scope baselines.',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF6B7280),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                FilledButton.icon(
-                  onPressed: _handleUpdateBaseline,
-                  icon: const Icon(Icons.update, size: 18),
-                  label: const Text('Update Baseline'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: primary,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 22, vertical: 14),
-                    textStyle: const TextStyle(fontWeight: FontWeight.w700),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                  ),
+                  ],
                 ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(width: 16),
+              OutlinedButton.icon(
+                onPressed: _isGenerating ? null : _regenerateNotes,
+                icon: _isGenerating
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.auto_awesome, size: 18),
+                label: const Text('AI Assist'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF8B5CF6),
+                  side: const BorderSide(color: Color(0xFF8B5CF6)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              FilledButton.icon(
+                onPressed: _handleUpdateBaseline,
+                icon: const Icon(Icons.add_chart, size: 18),
+                label: const Text('New Baseline'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFC812),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(color: Color(0xFFE5E7EB)),
+          const SizedBox(height: 16),
+          _buildProjectStats(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProjectStats() {
+    final scheduleDuration = _daysBetween(_baselineStartDate, _baselineEndDate);
+    final activeVersion =
+        _baselineVersions.where((v) => v.id == _activeVersionId).firstOrNull;
+
+    return Wrap(
+      spacing: 24,
+      runSpacing: 12,
+      children: [
+        _buildStatChip(
+          'Start Date',
+          _formatShortDate(_baselineStartDate),
+          Icons.play_arrow_outlined,
+          const Color(0xFF10B981),
         ),
-        const SizedBox(height: 20),
-        Wrap(
-          spacing: 16,
-          runSpacing: 12,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            _buildProjectDropdown(),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: const [
-                _StatusChip(
-                    label: 'Status: —',
-                    color: Color(0xFF1F2937),
-                    inverted: true),
-                _StatusChip(
-                    label: 'Start: —',
-                    color: Color(0xFF1F2937),
-                    inverted: true),
-                _StatusChip(
-                    label: 'End: —', color: Color(0xFF1F2937), inverted: true),
-              ],
-            ),
-          ],
+        _buildStatChip(
+          'End Date',
+          _formatShortDate(_baselineEndDate),
+          Icons.stop_outlined,
+          const Color(0xFFEF4444),
+        ),
+        _buildStatChip(
+          'Duration',
+          scheduleDuration > 0 ? '$scheduleDuration days' : '—',
+          Icons.timelapse,
+          const Color(0xFF6366F1),
+        ),
+        _buildStatChip(
+          'Active Version',
+          activeVersion?.versionLabel ?? 'No baseline',
+          Icons.bookmark_outline,
+          const Color(0xFFFFC812),
+        ),
+        _buildStatChip(
+          'Versions',
+          '${_baselineVersions.length}',
+          Icons.history,
+          const Color(0xFF6B7280),
         ),
       ],
     );
   }
 
-  Widget _buildProjectDropdown() {
-    final options =
-        _selectedProject != null ? [_selectedProject!] : _projectOptions;
-    if (options.isEmpty) {
-      return _EmptyStateChip(
-        label: 'Select project',
-        icon: Icons.folder_open_outlined,
-      );
-    }
+  Widget _buildStatChip(
+      String label, String value, IconData icon, Color color) {
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: color.withValues(alpha: 0.8),
+                ),
+              ),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ],
           ),
         ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 18),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _selectedProject ?? options.first,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded),
-          borderRadius: BorderRadius.circular(12),
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF111827),
+    );
+  }
+
+  Widget _buildComparisonToggle() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.compare_arrows, size: 20, color: Color(0xFF6B7280)),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              'Show baseline vs current comparison',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF374151),
+              ),
+            ),
           ),
-          items: options
-              .map(
-                (project) => DropdownMenuItem<String>(
-                  value: project,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(project),
-                  ),
-                ),
-              )
-              .toList(),
-          onChanged: (value) {
-            if (value != null) {
-              setState(() => _selectedProject = value);
-            }
-          },
-        ),
+          Switch(
+            value: _showComparison,
+            onChanged: (value) => setState(() => _showComparison = value),
+            activeTrackColor: const Color(0xFFFFC812),
+            thumbColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
+                return Colors.white;
+              }
+              return Colors.grey;
+            }),
+          ),
+        ],
       ),
     );
   }
@@ -375,32 +905,36 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
   Widget _buildBaselineCards(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        var availableWidth = constraints.maxWidth;
-        if (!availableWidth.isFinite) {
-          availableWidth = MediaQuery.of(context).size.width;
-        }
-
+        final width = constraints.maxWidth;
         int columns;
-        if (availableWidth >= 1080) {
+        if (width >= 1080) {
           columns = 3;
-        } else if (availableWidth >= 720) {
+        } else if (width >= 720) {
           columns = 2;
         } else {
           columns = 1;
         }
 
         const spacing = 16.0;
-        final double cardWidth = columns == 1
-            ? availableWidth
-            : (availableWidth - spacing * (columns - 1)) / columns;
+        final cardWidth =
+            columns == 1 ? width : (width - spacing * (columns - 1)) / columns;
 
         return Wrap(
           spacing: spacing,
           runSpacing: 18,
           children: [
-            SizedBox(width: cardWidth, child: _buildScheduleBaselineCard()),
-            SizedBox(width: cardWidth, child: _buildCostBaselineCard()),
-            SizedBox(width: cardWidth, child: _buildScopeBaselineCard()),
+            SizedBox(
+              width: cardWidth,
+              child: _buildScheduleBaselineCard(),
+            ),
+            SizedBox(
+              width: cardWidth,
+              child: _buildCostBaselineCard(),
+            ),
+            SizedBox(
+              width: cardWidth,
+              child: _buildScopeBaselineCard(),
+            ),
           ],
         );
       },
@@ -408,25 +942,21 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
   }
 
   Widget _buildScheduleBaselineCard() {
-    if (_scheduleDetails.isEmpty) {
-      return const _EmptyStateCard(
-        title: 'No schedule baseline yet',
-        message: 'Add baseline milestones to see schedule health.',
-        icon: Icons.schedule_outlined,
-      );
-    }
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+          colors: [Color(0xFFFFC812), Color(0xFFE6B000)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: const [
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
           BoxShadow(
-              color: Color(0x331D4ED8), blurRadius: 24, offset: Offset(0, 20)),
+            color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 12),
+          ),
         ],
       ),
       child: Column(
@@ -434,164 +964,191 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
         children: [
           Row(
             children: const [
-              Icon(Icons.schedule, color: Colors.white, size: 22),
-              SizedBox(width: 10),
+              Icon(Icons.schedule, color: Colors.white, size: 24),
+              SizedBox(width: 12),
               Text(
                 'Schedule Baseline',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 16,
+                  fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 24),
-          ..._scheduleDetails.map(
-            (detail) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    detail.label,
-                    style: const TextStyle(
-                      color: Color(0xCCEFF6FF),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    detail.value,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
+          _buildScheduleMetric(
+              'Start Date', _formatShortDate(_baselineStartDate)),
+          _buildScheduleMetric('End Date', _formatShortDate(_baselineEndDate)),
+          _buildScheduleMetric('Duration',
+              '${_daysBetween(_baselineStartDate, _baselineEndDate)} days'),
+          _buildScheduleMetric('Milestones', '${_milestones.length}'),
+          _buildScheduleMetric('Phases', '${_phases.length}'),
+          if (_showComparison) ...[
+            const SizedBox(height: 16),
+            Container(
+              height: 1,
+              color: Colors.white.withValues(alpha: 0.2),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Current Status',
+              style: TextStyle(
+                color: Color(0xCCEFF6FF),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ),
-          const SizedBox(height: 20),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: LinearProgressIndicator(
-              value: 0.68,
-              minHeight: 14,
-              color: const Color(0xFF60A5FA),
-              backgroundColor: Colors.white.withValues(alpha: 0.2),
+            const SizedBox(height: 8),
+            _buildScheduleMetric(
+              'Schedule Variance',
+              _calculateScheduleVariance(),
+              isVariance: true,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScheduleMetric(String label, String value,
+      {bool isVariance = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: isVariance
+                  ? const Color(0xFFFFD700)
+                  : const Color(0xCCEFF6FF),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 10),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Start',
-                style: TextStyle(
-                    color: Color(0xCCEFF6FF),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600),
-              ),
-              Text(
-                'Current Progress (68%)',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700),
-              ),
-              Text(
-                'End',
-                style: TextStyle(
-                    color: Color(0xCCEFF6FF),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600),
-              ),
-            ],
+          Text(
+            value,
+            style: TextStyle(
+              color: isVariance ? const Color(0xFFFFD700) : Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
     );
   }
 
+  String _calculateScheduleVariance() {
+    if (_baselineStartDate == null || _currentStartDate == null) return '—';
+    final variance = _currentEndDate?.difference(_baselineEndDate!).inDays ?? 0;
+    if (variance == 0) return 'On Track';
+    return variance > 0 ? '+$variance days' : '$variance days';
+  }
+
   Widget _buildCostBaselineCard() {
-    if (_costDetails.isEmpty) {
-      return const _EmptyStateCard(
-        title: 'No cost baseline yet',
-        message: 'Add baseline cost items to track budget health.',
-        icon: Icons.account_balance_wallet_outlined,
-      );
-    }
+    final variance = _currentSpend - _totalBudget;
+    final variancePct =
+        _totalBudget > 0 ? (variance / _totalBudget * 100) : 0.0;
+
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: _whiteCardDecoration(),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: const [
-              Icon(Icons.account_balance_wallet_outlined,
-                  color: Color(0xFF1F2937), size: 22),
-              SizedBox(width: 10),
+              Icon(Icons.account_balance_wallet,
+                  color: Color(0xFF10B981), size: 24),
+              SizedBox(width: 12),
               Text(
                 'Cost Baseline',
                 style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF111827)),
+                  color: Color(0xFF111827),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 24),
-          ..._costDetails.map(
-            (detail) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 5),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    detail.label,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF6B7280),
-                    ),
-                  ),
-                  Text(
-                    detail.value,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF111827),
-                    ),
-                  ),
-                ],
+          _buildCostMetric('Total Budget', '\$${_formatNumber(_totalBudget)}'),
+          _buildCostMetric('Cost Items', '${_costItems.length}'),
+          _buildCostMetric('Categories',
+              '${_costItems.map((c) => c.category).toSet().length}'),
+          if (_showComparison) ...[
+            const SizedBox(height: 16),
+            Container(
+              height: 1,
+              color: const Color(0xFFE5E7EB),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Current Status',
+              style: TextStyle(
+                color: Color(0xFF6B7280),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ),
-          const SizedBox(height: 18),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5F3FF),
-              borderRadius: BorderRadius.circular(12),
+            const SizedBox(height: 8),
+            _buildCostMetric(
+              'Current Spend',
+              '\$${_formatNumber(_currentSpend)}',
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                Text(
-                  'Budget Variance',
-                  style: TextStyle(
-                      color: Color(0xFF6B21A8), fontWeight: FontWeight.w700),
-                ),
-                Text(
-                  '—',
-                  style: TextStyle(
-                      color: Color(0xFF6B21A8), fontWeight: FontWeight.w800),
-                ),
-              ],
+            _buildCostMetric(
+              'Variance',
+              '${variance >= 0 ? '+' : ''}\$${_formatNumber(variance)} (${variancePct.toStringAsFixed(1)}%)',
+              isVariance: true,
+              isOverBudget: variance > 0,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCostMetric(String label, String value,
+      {bool isVariance = false, bool isOverBudget = false}) {
+    Color valueColor = const Color(0xFF111827);
+    if (isVariance) {
+      valueColor =
+          isOverBudget ? const Color(0xFFEF4444) : const Color(0xFF10B981);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF6B7280),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              color: valueColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -602,248 +1159,953 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
   Widget _buildScopeBaselineCard() {
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: _whiteCardDecoration(),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.dashboard_customize_outlined,
-                            color: Color(0xFF1F2937), size: 22),
-                        SizedBox(width: 10),
-                        Text(
-                          'Scope Baseline',
-                          style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF111827)),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    _buildScopeStatRow('Last Baseline Date', '—'),
-                    _buildScopeStatRow('Original EPICs', '—'),
-                    _buildScopeStatRow('Current EPICs', '—'),
-                    _buildScopeStatRow('Original Features', '—'),
-                    _buildScopeStatRow('Current Features', '—'),
-                  ],
+            children: const [
+              Icon(Icons.dashboard_customize,
+                  color: Color(0xFF8B5CF6), size: 24),
+              SizedBox(width: 12),
+              Text(
+                'Scope Baseline',
+                style: TextStyle(
+                  color: Color(0xFF111827),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
                 ),
-              ),
-              const SizedBox(width: 12),
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  _StatusChip(
-                      label: 'Status: —',
-                      color: Color(0xFF1F2937),
-                      inverted: true),
-                  SizedBox(height: 12),
-                  Text(
-                    'Start: —',
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF6B7280)),
-                  ),
-                  Text(
-                    'End: —',
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF6B7280)),
-                  ),
-                ],
               ),
             ],
           ),
-          const SizedBox(height: 18),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
-              borderRadius: BorderRadius.circular(12),
+          const SizedBox(height: 24),
+          _buildScopeMetric('In Scope Items',
+              '${_scopeItems.where((s) => s.isInScope).length}'),
+          _buildScopeMetric('Out of Scope Items',
+              '${_scopeItems.where((s) => !s.isInScope).length}'),
+          _buildScopeMetric('Total Items', '${_scopeItems.length}'),
+          if (_showComparison) ...[
+            const SizedBox(height: 16),
+            Container(
+              height: 1,
+              color: const Color(0xFFE5E7EB),
             ),
-            child: Row(
-              children: const [
-                Icon(Icons.trending_up, color: Color(0xFF1D4ED8), size: 18),
-                SizedBox(width: 10),
-                Text(
-                  'Scope Change:',
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1D4ED8)),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Not set',
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1D4ED8)),
-                  ),
-                ),
-              ],
+            const SizedBox(height: 16),
+            const Text(
+              'Change Tracking',
+              style: TextStyle(
+                color: Color(0xFF6B7280),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildScopeMetric(
+              'Scope Changes',
+              '$_scopeChangeCount',
+              isVariance: _scopeChangeCount > 0,
+            ),
+            _buildScopeMetric(
+              'Current vs Original',
+              _scopeChangeCount >= 0
+                  ? '+$_scopeChangeCount'
+                  : '$_scopeChangeCount',
+              isVariance: true,
+              isChange: _scopeChangeCount != 0,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScopeMetric(String label, String value,
+      {bool isVariance = false, bool isChange = false}) {
+    Color valueColor = const Color(0xFF111827);
+    if (isVariance && isChange) {
+      valueColor = const Color(0xFFF59E0B);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF6B7280),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
             ),
           ),
+          Text(
+            value,
+            style: TextStyle(
+              color: valueColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatNumber(double value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(1)}M';
+    } else if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(0)}K';
+    }
+    return value.toStringAsFixed(0);
+  }
+
+  Widget _buildMilestonesSection() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF3C4),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child:
+                    const Icon(Icons.flag, color: Color(0xFFF59E0B), size: 20),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Key Milestones',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${_milestones.length} milestones',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF6B7280),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          if (_milestones.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: Text(
+                  'No milestones defined yet.',
+                  style: TextStyle(
+                    color: Color(0xFF9CA3AF),
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            )
+          else
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width:
+                        constraints.maxWidth > 600 ? constraints.maxWidth : 600,
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 10),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF8FAFC),
+                            borderRadius:
+                                BorderRadius.vertical(top: Radius.circular(10)),
+                          ),
+                          child: Row(
+                            children: [
+                              _buildTableHeaderCell('#', flex: 2),
+                              _buildTableHeaderCell('Milestone', flex: 5),
+                              _buildTableHeaderCell('Target Date', flex: 3),
+                              _buildTableHeaderCell('Status', flex: 3),
+                              _buildTableHeaderCell('Discipline', flex: 3),
+                            ],
+                          ),
+                        ),
+                        ...List.generate(_milestones.length, (index) {
+                          final m = _milestones[index];
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: index.isEven
+                                  ? Colors.white
+                                  : const Color(0xFFFAFAFA),
+                              border: const Border(
+                                  bottom: BorderSide(color: Color(0xFFE5E7EB))),
+                            ),
+                            child: Row(
+                              children: [
+                                _buildTableTextCell(
+                                  '${index + 1}',
+                                  flex: 2,
+                                  alignment: Alignment.center,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF6B7280),
+                                  ),
+                                ),
+                                _buildTableTextCell(
+                                  m.name,
+                                  flex: 5,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF111827),
+                                    height: 1.35,
+                                  ),
+                                ),
+                                _buildTableTextCell(
+                                  _formatShortDate(m.baselineDate),
+                                  flex: 3,
+                                  alignment: Alignment.center,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF374151),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 3,
+                                  child: Container(
+                                    alignment: Alignment.center,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 6),
+                                    child: _buildStatusBadge(m.status),
+                                  ),
+                                ),
+                                _buildTableTextCell(
+                                  m.discipline.isEmpty
+                                      ? 'General'
+                                      : m.discipline,
+                                  flex: 3,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF6B7280),
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(String status) {
+    Color bgColor;
+    Color textColor;
+
+    switch (status.toLowerCase()) {
+      case 'completed':
+        bgColor = const Color(0xFF10B981);
+        textColor = Colors.white;
+        break;
+      case 'in progress':
+        bgColor = const Color(0xFF3B82F6);
+        textColor = Colors.white;
+        break;
+      case 'overdue':
+        bgColor = const Color(0xFFEF4444);
+        textColor = Colors.white;
+        break;
+      default:
+        bgColor = const Color(0xFFE5E7EB);
+        textColor = const Color(0xFF6B7280);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: textColor,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhasesSection() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEEF2FF),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.layers,
+                    color: Color(0xFF6366F1), size: 20),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Schedule Phases',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${_phases.length} phases',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF6B7280),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          if (_phases.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: Text(
+                  'No schedule phases defined yet.',
+                  style: TextStyle(
+                    color: Color(0xFF9CA3AF),
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            )
+          else
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width:
+                        constraints.maxWidth > 780 ? constraints.maxWidth : 780,
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 10),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF8FAFC),
+                            borderRadius:
+                                BorderRadius.vertical(top: Radius.circular(10)),
+                          ),
+                          child: Row(
+                            children: [
+                              _buildTableHeaderCell('#', flex: 2),
+                              _buildTableHeaderCell('Phase', flex: 4),
+                              _buildTableHeaderCell('Start', flex: 2),
+                              _buildTableHeaderCell('End', flex: 2),
+                              _buildTableHeaderCell('Duration', flex: 2),
+                              _buildTableHeaderCell('Tasks', flex: 2),
+                              _buildTableHeaderCell('Progress', flex: 4),
+                            ],
+                          ),
+                        ),
+                        ...List.generate(_phases.length, (index) {
+                          final p = _phases[index];
+                          final duration =
+                              _daysBetween(p.baselineStart, p.baselineEnd);
+                          final progress = p.taskCount > 0
+                              ? p.completedCount / p.taskCount
+                              : 0.0;
+
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: index.isEven
+                                  ? Colors.white
+                                  : const Color(0xFFFAFAFA),
+                              border: const Border(
+                                  bottom: BorderSide(color: Color(0xFFE5E7EB))),
+                            ),
+                            child: Row(
+                              children: [
+                                _buildTableTextCell(
+                                  '${index + 1}',
+                                  flex: 2,
+                                  alignment: Alignment.center,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF6B7280),
+                                  ),
+                                ),
+                                _buildTableTextCell(
+                                  p.name,
+                                  flex: 4,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF111827),
+                                    height: 1.35,
+                                  ),
+                                ),
+                                _buildTableTextCell(
+                                  _formatShortDate(p.baselineStart),
+                                  flex: 2,
+                                  alignment: Alignment.center,
+                                  textAlign: TextAlign.center,
+                                ),
+                                _buildTableTextCell(
+                                  _formatShortDate(p.baselineEnd),
+                                  flex: 2,
+                                  alignment: Alignment.center,
+                                  textAlign: TextAlign.center,
+                                ),
+                                _buildTableTextCell(
+                                  '${duration}d',
+                                  flex: 2,
+                                  alignment: Alignment.center,
+                                  textAlign: TextAlign.center,
+                                ),
+                                _buildTableTextCell(
+                                  '${p.completedCount}/${p.taskCount}',
+                                  flex: 2,
+                                  alignment: Alignment.center,
+                                  textAlign: TextAlign.center,
+                                ),
+                                Expanded(
+                                  flex: 4,
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                          child: LinearProgressIndicator(
+                                            value: progress,
+                                            minHeight: 8,
+                                            backgroundColor:
+                                                const Color(0xFFE5E7EB),
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                              progress >= 1.0
+                                                  ? const Color(0xFF10B981)
+                                                  : const Color(0xFF3B82F6),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        '${(progress * 100).round()}%',
+                                        style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF374151)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );
   }
 
   Widget _buildBaselineHistory() {
-    if (_history.isEmpty) {
-      return const _EmptyStateCard(
-        title: 'No baseline history yet',
-        message: 'Capture baseline approvals to build version history.',
-        icon: Icons.history_outlined,
-      );
-    }
     return Container(
-      decoration: _whiteCardDecoration(),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Baseline History',
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF111827)),
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.history,
+                    color: Color(0xFFD97706), size: 20),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Baseline History',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${_baselineVersions.length} versions',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF6B7280),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          Container(height: 1, color: const Color(0xFFE5E7EB)),
-          const SizedBox(height: 18),
-          _buildHistoryHeaderRow(),
-          const SizedBox(height: 12),
-          ..._history.map((entry) => _buildHistoryRow(entry)),
+          const SizedBox(height: 20),
+          if (_baselineVersions.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  children: [
+                    const Icon(Icons.add_chart,
+                        size: 48, color: Color(0xFF9CA3AF)),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'No baseline versions yet.',
+                      style: TextStyle(
+                        color: Color(0xFF9CA3AF),
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Click "New Baseline" to create your first baseline version.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF9CA3AF),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width:
+                        constraints.maxWidth > 700 ? constraints.maxWidth : 700,
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 10),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF8FAFC),
+                            borderRadius:
+                                BorderRadius.vertical(top: Radius.circular(10)),
+                          ),
+                          child: Row(
+                            children: [
+                              _buildTableHeaderCell('#', flex: 1),
+                              _buildTableHeaderCell('Version', flex: 2),
+                              _buildTableHeaderCell('Date', flex: 2),
+                              _buildTableHeaderCell('Approved By', flex: 2),
+                              _buildTableHeaderCell('Description', flex: 4),
+                              _buildTableHeaderCell('Actions', width: 120),
+                            ],
+                          ),
+                        ),
+                        ...List.generate(_baselineVersions.length, (index) {
+                          final v = _baselineVersions[index];
+                          final isActive = v.id == _activeVersionId;
+
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: index.isEven
+                                  ? Colors.white
+                                  : const Color(0xFFFAFAFA),
+                              border: const Border(
+                                  bottom: BorderSide(color: Color(0xFFE5E7EB))),
+                            ),
+                            child: Row(
+                              children: [
+                                _buildTableTextCell(
+                                  '${index + 1}',
+                                  flex: 1,
+                                  alignment: Alignment.center,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF6B7280),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 6),
+                                    child: Wrap(
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
+                                      spacing: 8,
+                                      runSpacing: 6,
+                                      children: [
+                                        Text(
+                                          v.versionLabel,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFF111827),
+                                          ),
+                                        ),
+                                        if (isActive)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF10B981),
+                                              borderRadius:
+                                                  BorderRadius.circular(999),
+                                            ),
+                                            child: const Text(
+                                              'Active',
+                                              style: TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.w700,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                _buildTableTextCell(
+                                  _formatShortDate(v.createdAt),
+                                  flex: 2,
+                                  alignment: Alignment.center,
+                                  textAlign: TextAlign.center,
+                                ),
+                                _buildTableTextCell(
+                                  v.approvedBy,
+                                  flex: 2,
+                                ),
+                                _buildTableTextCell(
+                                  v.description,
+                                  flex: 4,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF6B7280),
+                                    height: 1.35,
+                                  ),
+                                ),
+                                _buildTableActionCell(
+                                  children: [
+                                    if (!isActive)
+                                      IconButton(
+                                        icon: const Icon(
+                                            Icons.check_circle_outline,
+                                            size: 18),
+                                        color: const Color(0xFF6B7280),
+                                        tooltip: 'Set as Active',
+                                        onPressed: () =>
+                                            _setActiveVersion(v.id),
+                                      ),
+                                    IconButton(
+                                      icon: const Icon(
+                                          Icons.visibility_outlined,
+                                          size: 18),
+                                      color: const Color(0xFF2563EB),
+                                      tooltip: 'View Details',
+                                      onPressed: () => _showVersionDetails(v),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildHistoryHeaderRow() {
-    return Row(
-      children: const [
-        Expanded(
-          flex: 2,
-          child: Text(
-            'Baseline Version',
-            style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF6B7280)),
+  void _showVersionDetails(_BaselineVersion version) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEEF2FF),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.history,
+                        color: Color(0xFF4F46E5),
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Baseline ${version.versionLabel}',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF111827),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Version details and captured baseline summaries',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF6B7280),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      icon: const Icon(Icons.close),
+                      tooltip: 'Close',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFE5E7EB)),
+                          ),
+                          child: Column(
+                            children: [
+                              _buildDetailRow(
+                                  'Date', _formatDate(version.createdAt)),
+                              _buildDetailRow(
+                                  'Approved By', version.approvedBy),
+                              _buildDetailRow(
+                                  'Description', version.description),
+                            ],
+                          ),
+                        ),
+                        if (version.scheduleSummary.isNotEmpty) ...[
+                          const SizedBox(height: 20),
+                          _buildVersionSummaryCard(
+                            title: 'Schedule Summary',
+                            content: version.scheduleSummary,
+                          ),
+                        ],
+                        if (version.costSummary.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          _buildVersionSummaryCard(
+                            title: 'Cost Summary',
+                            content: version.costSummary,
+                          ),
+                        ],
+                        if (version.scopeSummary.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          _buildVersionSummaryCard(
+                            title: 'Scope Summary',
+                            content: version.scopeSummary,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Close'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        Expanded(
-          child: Text(
-            'Date',
-            style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF6B7280)),
-          ),
-        ),
-        Expanded(
-          flex: 2,
-          child: Text(
-            'Approved By',
-            style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF6B7280)),
-          ),
-        ),
-        Expanded(
-          flex: 3,
-          child: Text(
-            'Description',
-            style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF6B7280)),
-          ),
-        ),
-        SizedBox(
-          width: 48,
-          child: Text(
-            'Actions',
-            style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF6B7280)),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _buildHistoryRow(_BaselineHistoryEntry entry) {
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF6B7280),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              softWrap: true,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF111827),
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVersionSummaryCard({
+    required String title,
+    required String content,
+  }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(14),
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 2,
-            child: Text(
-              entry.version,
-              style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF111827)),
+          Text(
+            title,
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: Color(0xFF111827),
             ),
           ),
-          Expanded(
-            child: Text(
-              entry.date,
-              style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF374151)),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              entry.approvedBy,
-              style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF374151)),
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Text(
-              entry.description,
-              style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF4B5563)),
-            ),
-          ),
-          SizedBox(
-            width: 48,
-            child: IconButton(
-              tooltip: 'View baseline',
-              onPressed: () => _showBaselineHistoryEntry(entry),
-              icon: const Icon(Icons.remove_red_eye_outlined,
-                  size: 20, color: Color(0xFF2563EB)),
+          const SizedBox(height: 10),
+          SelectableText(
+            content,
+            style: const TextStyle(
+              fontSize: 12,
+              fontFamily: 'monospace',
+              color: Color(0xFF374151),
+              height: 1.4,
             ),
           ),
         ],
@@ -852,416 +2114,314 @@ class _ProjectBaselineScreenState extends State<ProjectBaselineScreen> {
   }
 
   Widget _buildVarianceAnalysis() {
-    if (_scheduleVariance.isEmpty && _costVariance.isEmpty) {
-      return const _EmptyStateCard(
-        title: 'No variance data yet',
-        message: 'Add schedule and cost baselines to track variance trends.',
-        icon: Icons.equalizer_outlined,
-      );
-    }
-    return Container(
-      decoration: _whiteCardDecoration(),
-      padding: const EdgeInsets.all(24),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final bool singleColumn = constraints.maxWidth < 820;
-          final schedule = _buildScheduleVarianceColumn();
-          final cost = _buildCostVarianceColumn();
-
-          if (singleColumn) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                schedule,
-                const SizedBox(height: 24),
-                cost,
-              ],
-            );
-          }
-
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: schedule),
-              const SizedBox(width: 24),
-              Expanded(child: cost),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildScheduleVarianceColumn() {
-    if (_scheduleVariance.isEmpty) {
-      return const _EmptyStateCard(
-        title: 'No schedule variance',
-        message: 'Schedule variance will appear once baselines are captured.',
-        icon: Icons.timeline_outlined,
-      );
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Schedule Variance Breakdown',
-          style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF111827)),
-        ),
-        const SizedBox(height: 18),
-        ..._scheduleVariance.map(
-          (variance) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      variance.label,
-                      style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1F2937)),
-                    ),
-                    Text(
-                      variance.varianceLabel,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: variance.tone.color,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: variance.progress,
-                    minHeight: 12,
-                    color: variance.tone.barColor,
-                    backgroundColor: const Color(0xFFE5E7EB),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCostVarianceColumn() {
-    if (_costVariance.isEmpty) {
-      return const _EmptyStateCard(
-        title: 'No cost variance',
-        message: 'Cost variance will appear once baselines are captured.',
-        icon: Icons.payments_outlined,
-      );
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Cost Variance Breakdown',
-          style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF111827)),
-        ),
-        const SizedBox(height: 18),
-        ..._costVariance.map(
-          (row) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  row.category,
-                  style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1F2937)),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '${row.actual} (planned: ${row.planned})',
-                  style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF6B7280)),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 18),
-        Container(height: 1, color: const Color(0xFFE5E7EB)),
-        const SizedBox(height: 12),
-        const Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Total Variance',
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1F2937)),
-            ),
-            Text(
-              '+\$32,500 (5%)',
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF2563EB)),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  BoxDecoration _whiteCardDecoration() {
-    return BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(24),
-      border: Border.all(color: const Color(0xFFE5E7EB)),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.04),
-          blurRadius: 20,
-          offset: const Offset(0, 12),
-        ),
-      ],
-    );
-  }
-}
-
-class _BaselineHistoryEntry {
-  const _BaselineHistoryEntry({
-    required this.version,
-    required this.date,
-    required this.approvedBy,
-    required this.description,
-  });
-
-  final String version;
-  final String date;
-  final String approvedBy;
-  final String description;
-}
-
-class _ScheduleVarianceRow {
-  const _ScheduleVarianceRow({
-    required this.label,
-    required this.varianceLabel,
-    required this.progress,
-    required this.tone,
-  });
-
-  final String label;
-  final String varianceLabel;
-  final double progress;
-  final _VarianceTone tone;
-}
-
-class _CostVarianceRow {
-  const _CostVarianceRow({
-    required this.category,
-    required this.actual,
-    required this.planned,
-  });
-
-  final String category;
-  final String actual;
-  final String planned;
-}
-
-Widget _buildScopeStatRow(String label, String value) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 4),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Flexible(
-          child: Text(
-            label,
-            style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF6B7280)),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          value,
-          style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF111827)),
-        ),
-      ],
-    ),
-  );
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip(
-      {required this.label, required this.color, this.inverted = false});
-
-  final String label;
-  final Color color;
-  final bool inverted;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color background =
-        inverted ? const Color(0xFFF3F4F6) : color.withValues(alpha: 0.12);
-    final Color foreground = inverted ? color : color;
+    final scheduleVariance = _calculateScheduleVarianceDays();
+    final costVariance = _currentSpend - _totalBudget;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-            fontSize: 12, fontWeight: FontWeight.w700, color: foreground),
-      ),
-    );
-  }
-}
-
-class _EmptyStateCard extends StatelessWidget {
-  const _EmptyStateCard(
-      {required this.title, required this.message, required this.icon});
-
-  final String title;
-  final String message;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 12),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF7ED),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: const Color(0xFFF59E0B)),
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEE2E2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.analytics_outlined,
+                    color: Color(0xFFEF4444), size: 20),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Variance Analysis',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF111827))),
-                const SizedBox(height: 6),
-                Text(message,
-                    style: const TextStyle(
-                        fontSize: 12, color: Color(0xFF6B7280))),
-              ],
-            ),
+          const SizedBox(height: 24),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 600;
+              return isWide
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                            child:
+                                _buildScheduleVarianceCard(scheduleVariance)),
+                        const SizedBox(width: 24),
+                        Expanded(child: _buildCostVarianceCard(costVariance)),
+                      ],
+                    )
+                  : Column(
+                      children: [
+                        _buildScheduleVarianceCard(scheduleVariance),
+                        const SizedBox(height: 16),
+                        _buildCostVarianceCard(costVariance),
+                      ],
+                    );
+            },
           ),
         ],
       ),
     );
   }
-}
 
-class _EmptyStateChip extends StatelessWidget {
-  const _EmptyStateChip({required this.label, required this.icon});
+  Widget _buildScheduleVarianceCard(int varianceDays) {
+    Color varianceColor;
+    String varianceLabel;
+    IconData varianceIcon;
 
-  final String label;
-  final IconData icon;
+    if (varianceDays == 0) {
+      varianceColor = const Color(0xFF10B981);
+      varianceLabel = 'On Track';
+      varianceIcon = Icons.check_circle;
+    } else if (varianceDays < 0) {
+      varianceColor = const Color(0xFF10B981);
+      varianceLabel = '${varianceDays.abs()} days ahead';
+      varianceIcon = Icons.trending_up;
+    } else {
+      varianceColor = const Color(0xFFEF4444);
+      varianceLabel = '$varianceDays days behind';
+      varianceIcon = Icons.trending_down;
+    }
 
-  @override
-  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        color: varianceColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: varianceColor.withValues(alpha: 0.2)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: const Color(0xFF9CA3AF)),
-          const SizedBox(width: 8),
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF6B7280))),
+          Row(
+            children: [
+              Icon(varianceIcon, color: varianceColor, size: 20),
+              const SizedBox(width: 8),
+              const Text(
+                'Schedule Variance',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            varianceLabel,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: varianceColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Comparing baseline dates vs current dates',
+            style: TextStyle(
+              fontSize: 12,
+              color: varianceColor.withValues(alpha: 0.8),
+            ),
+          ),
         ],
       ),
     );
   }
+
+  Widget _buildCostVarianceCard(double varianceAmount) {
+    Color varianceColor;
+    String varianceLabel;
+    IconData varianceIcon;
+
+    if (varianceAmount == 0) {
+      varianceColor = const Color(0xFF10B981);
+      varianceLabel = 'On Budget';
+      varianceIcon = Icons.check_circle;
+    } else if (varianceAmount < 0) {
+      varianceColor = const Color(0xFF10B981);
+      varianceLabel = '\$${_formatNumber(varianceAmount.abs())} under';
+      varianceIcon = Icons.trending_up;
+    } else {
+      varianceColor = const Color(0xFFEF4444);
+      varianceLabel = '\$${_formatNumber(varianceAmount)} over';
+      varianceIcon = Icons.trending_down;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: varianceColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: varianceColor.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(varianceIcon, color: varianceColor, size: 20),
+              const SizedBox(width: 8),
+              const Text(
+                'Cost Variance',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            varianceLabel,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: varianceColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Comparing baseline budget vs current spend',
+            style: TextStyle(
+              fontSize: 12,
+              color: varianceColor.withValues(alpha: 0.8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  int _calculateScheduleVarianceDays() {
+    if (_baselineEndDate == null || _currentEndDate == null) return 0;
+    return _currentEndDate!.difference(_baselineEndDate!).inDays;
+  }
 }
 
-class _VarianceTone {
-  const _VarianceTone._(this.color, this.barColor);
+class _BaselineVersion {
+  final String id;
+  final String versionLabel;
+  final DateTime createdAt;
+  final String approvedBy;
+  final String description;
+  final String scheduleSummary;
+  final String costSummary;
+  final String scopeSummary;
 
-  final Color color;
-  final Color barColor;
+  const _BaselineVersion({
+    required this.id,
+    required this.versionLabel,
+    required this.createdAt,
+    required this.approvedBy,
+    required this.description,
+    this.scheduleSummary = '',
+    this.costSummary = '',
+    this.scopeSummary = '',
+  });
 
-  // ignore: unused_field
-  static const _VarianceTone onTrack =
-      _VarianceTone._(Color(0xFF047857), Color(0xFF10B981));
-  // ignore: unused_field
-  static const _VarianceTone warning =
-      _VarianceTone._(Color(0xFFB45309), Color(0xFFFBBF24));
-  // ignore: unused_field
-  static const _VarianceTone behind =
-      _VarianceTone._(Color(0xFFB91C1C), Color(0xFFF87171));
+  factory _BaselineVersion.fromJson(Map<String, dynamic> json) {
+    return _BaselineVersion(
+      id: json['id'] ?? '',
+      versionLabel: json['versionLabel'] ?? '',
+      createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+      approvedBy: json['approvedBy'] ?? '',
+      description: json['description'] ?? '',
+      scheduleSummary: json['scheduleSummary'] ?? '',
+      costSummary: json['costSummary'] ?? '',
+      scopeSummary: json['scopeSummary'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'versionLabel': versionLabel,
+        'createdAt': createdAt.toIso8601String(),
+        'approvedBy': approvedBy,
+        'description': description,
+        'scheduleSummary': scheduleSummary,
+        'costSummary': costSummary,
+        'scopeSummary': scopeSummary,
+      };
 }
 
-// ignore: unused_element
-class _ScheduleDetail {
-  const _ScheduleDetail({required this.label, required this.value});
+class _ScheduleMilestone {
+  final String name;
+  final DateTime? targetDate;
+  final DateTime? baselineDate;
+  final String discipline;
+  final String status;
 
-  final String label;
-  final String value;
+  const _ScheduleMilestone({
+    required this.name,
+    this.targetDate,
+    this.baselineDate,
+    this.discipline = '',
+    this.status = 'Planned',
+  });
 }
 
-// ignore: unused_element
-class _CostDetail {
-  const _CostDetail({required this.label, required this.value});
+class _SchedulePhase {
+  DateTime? baselineStart;
+  DateTime? baselineEnd;
+  DateTime? currentStart;
+  DateTime? currentEnd;
+  final String name;
+  final int taskCount;
+  final int completedCount;
 
-  final String label;
-  final String value;
+  _SchedulePhase({
+    this.baselineStart,
+    this.baselineEnd,
+    this.currentStart,
+    this.currentEnd,
+    required this.name,
+    required this.taskCount,
+    required this.completedCount,
+  });
 }
 
-const List<_ScheduleDetail> _scheduleDetails = [];
+class _CostItem {
+  final String category;
+  final double estimated;
+  final double actual;
 
-const List<_CostDetail> _costDetails = [];
+  const _CostItem({
+    required this.category,
+    required this.estimated,
+    this.actual = 0,
+  });
+}
+
+class _ScopeItem {
+  final String description;
+  final bool isInScope;
+
+  const _ScopeItem({
+    required this.description,
+    required this.isInScope,
+  });
+}

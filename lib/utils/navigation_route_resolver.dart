@@ -28,7 +28,7 @@ import 'package:ndu_project/screens/change_management_screen.dart';
 import 'package:ndu_project/screens/issue_management_screen.dart';
 import 'package:ndu_project/screens/cost_estimate_screen.dart';
 import 'package:ndu_project/screens/scope_tracking_plan_screen.dart';
-import 'package:ndu_project/screens/front_end_planning_contracts_screen.dart';
+import 'package:ndu_project/screens/planning_contracting_screen.dart';
 import 'package:ndu_project/screens/project_plan_screen.dart';
 import 'package:ndu_project/screens/execution_plan_screen.dart';
 import 'package:ndu_project/screens/schedule_screen.dart';
@@ -43,6 +43,7 @@ import 'package:ndu_project/screens/deliverable_roadmap_subsections_screen.dart'
 import 'package:ndu_project/screens/project_baseline_screen.dart';
 import 'package:ndu_project/screens/agile_project_baseline_screen.dart';
 import 'package:ndu_project/screens/project_plan_subsections_screen.dart';
+import 'package:ndu_project/screens/organization_plan_subsections_screen.dart';
 import 'package:ndu_project/screens/team_management_screen.dart';
 import 'package:ndu_project/screens/stakeholder_management_screen.dart';
 import 'package:ndu_project/screens/risk_assessment_screen.dart';
@@ -87,7 +88,6 @@ import 'package:ndu_project/screens/demobilize_team_screen.dart';
 import 'package:ndu_project/screens/requirements_implementation_screen.dart';
 import 'package:ndu_project/screens/technical_development_screen.dart';
 import 'package:ndu_project/screens/lessons_learned_screen.dart';
-import 'package:ndu_project/screens/team_roles_responsibilities_screen.dart';
 import 'package:ndu_project/screens/team_training_building_screen.dart';
 import 'package:ndu_project/screens/execution_plan_interface_management_overview_screen.dart';
 import 'package:ndu_project/screens/commerce_viability_screen.dart';
@@ -278,7 +278,7 @@ class NavigationRouteResolver {
       case 'scope_tracking_plan':
         return const ScopeTrackingPlanScreen();
       case 'contracts':
-        return const FrontEndPlanningContractsScreen();
+        return const PlanningContractingScreen();
       case 'procurement':
         return const PlanningProcurementScreen();
       case 'project_plan':
@@ -358,9 +358,9 @@ class NavigationRouteResolver {
       case 'project_baseline':
         return const ProjectBaselineScreen();
       case 'organization_roles_responsibilities':
-        return const TeamRolesResponsibilitiesScreen();
+        return const OrganizationRolesResponsibilitiesScreen();
       case 'organization_staffing_plan':
-        return const StaffTeamScreen();
+        return const OrganizationStaffingPlanScreen();
       case 'team_training':
         return const TeamTrainingAndBuildingScreen();
       case 'stakeholder_management':

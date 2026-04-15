@@ -90,7 +90,7 @@ class _ChangeManagementScreenState extends State<ChangeManagementScreen> {
                           const SizedBox(height: 24),
                           // Page title
                           const Text(
-                            'Contract Management',
+                            'Change Management',
                             style: TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.w600,
@@ -262,47 +262,6 @@ class _UserChip extends StatelessWidget {
   }
 }
 
-class _StepTile extends StatelessWidget {
-  final int step;
-  final String title;
-  final String subtitle;
-  const _StepTile(
-      {required this.step, required this.title, required this.subtitle});
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            Container(
-              width: 26,
-              height: 26,
-              decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.18),
-                  shape: BoxShape.circle),
-              child: Center(
-                  child: Text('$step',
-                      style: const TextStyle(fontWeight: FontWeight.w700))),
-            ),
-            const SizedBox(width: 8),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-          ]),
-          const SizedBox(height: 8),
-          Text(subtitle,
-              style: const TextStyle(fontSize: 12, color: Colors.black54)),
-        ],
-      ),
-    );
-  }
-}
-
 class _StatTile extends StatelessWidget {
   final String title;
   final String value;
@@ -397,201 +356,6 @@ class _StatsRow extends StatelessWidget {
   }
 }
 
-class _ChangeRequestsTable extends StatefulWidget {
-  const _ChangeRequestsTable({super.key, this.projectId});
-
-  final String? projectId;
-
-  @override
-  State<_ChangeRequestsTable> createState() => _ChangeRequestsTableState();
-}
-
-class _ChangeRequestsTableState extends State<_ChangeRequestsTable> {
-  final Set<String> _statusFilters = {'Pending', 'Approved', 'Rejected'};
-  final List<String> _allStatuses = const ['Pending', 'Approved', 'Rejected'];
-
-  Future<void> openFilterDialog(BuildContext context) async {
-    final selected = Set<String>.from(_statusFilters);
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setStateDialog) => AlertDialog(
-          title: const Text('Filter change requests'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: _allStatuses
-                .map(
-                  (status) => CheckboxListTile(
-                    value: selected.contains(status),
-                    title: Text(status),
-                    controlAffinity: ListTileControlAffinity.leading,
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (value) {
-                      setStateDialog(() {
-                        if (value ?? false) {
-                          selected.add(status);
-                        } else {
-                          selected.remove(status);
-                        }
-                      });
-                    },
-                  ),
-                )
-                .toList(),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Cancel')),
-            FilledButton(
-              onPressed: () {
-                setState(() {
-                  _statusFilters
-                    ..clear()
-                    ..addAll(selected.isEmpty ? _allStatuses : selected);
-                });
-                Navigator.of(ctx).pop();
-              },
-              child: const Text('Apply'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _openEditDialog(ChangeRequest request) async {
-    await showDialog(
-      context: context,
-      builder: (ctx) => NewChangeRequestDialog(
-        changeRequest: request,
-        onSaved: () {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Change request updated')));
-          }
-        },
-      ),
-    );
-  }
-
-  String _formatDate(DateTime d) {
-    String two(int n) => n.toString().padLeft(2, '0');
-    return '${d.year}-${two(d.month)}-${two(d.day)}';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final boxWidth = constraints.maxWidth;
-        final targetWidth = boxWidth < 1000 ? 1000.0 : boxWidth;
-        return Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
-          ),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: targetWidth,
-              child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                        color: Colors.grey.withValues(alpha: 0.10),
-                        borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(12))),
-                    child: _TableRow(
-                      isHeader: true,
-                      cells: [
-                        '#',
-                        'ID',
-                        'TITLE',
-                        'REQUEST DATE',
-                        'TYPE',
-                        'IMPACT',
-                        'STATUS',
-                        'REQUESTER',
-                        'Actions',
-                      ],
-                    ),
-                  ),
-                  StreamBuilder(
-                    stream: ChangeRequestService.streamChangeRequests(
-                        projectId: widget.projectId),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Padding(
-                          padding: EdgeInsets.all(20),
-                          child: Center(
-                              child: CircularProgressIndicator(strokeWidth: 2)),
-                        );
-                      }
-                      if (snapshot.hasError) {
-                        return Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Text('Error: ${snapshot.error}',
-                              style: const TextStyle(color: Colors.redAccent)),
-                        );
-                      }
-                      final items = snapshot.data ?? [];
-                      final filtered = items
-                          .where((item) => _statusFilters.contains(item.status))
-                          .toList();
-                      if (filtered.isEmpty) {
-                        return const Padding(
-                          padding: EdgeInsets.all(20),
-                          child: Text('No change requests yet.'),
-                        );
-                      }
-                      return Column(
-                        children: [
-                          for (int index = 0; index < filtered.length; index++)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 14),
-                              decoration: BoxDecoration(
-                                border: Border(
-                                    top: BorderSide(
-                                        color: Colors.grey
-                                            .withValues(alpha: 0.15))),
-                              ),
-                              child: _TableRow(
-                                isHeader: false,
-                                cells: [
-                                  '${index + 1}',
-                                  filtered[index].displayId,
-                                  filtered[index].title,
-                                  _formatDate(filtered[index].requestDate),
-                                  filtered[index].type,
-                                  filtered[index].impact,
-                                  filtered[index].status,
-                                  filtered[index].requester,
-                                  '',
-                                ],
-                                request: filtered[index],
-                                onEdit: _openEditDialog,
-                              ),
-                            ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
 class _ChangeRegisterCard extends StatefulWidget {
   const _ChangeRegisterCard({required this.projectId});
 
@@ -649,21 +413,6 @@ class _ChangeRegisterCardState extends State<_ChangeRegisterCard> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Delete failed: $error')),
       );
-    }
-  }
-
-  Color _statusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'approved':
-        return const Color(0xFF2E7D32);
-      case 'rejected':
-        return const Color(0xFFC62828);
-      case 'in review':
-        return const Color(0xFFF59E0B);
-      case 'submitted':
-        return const Color(0xFF2563EB);
-      default:
-        return const Color(0xFF8D6E00);
     }
   }
 
@@ -748,85 +497,10 @@ class _ChangeRegisterCardState extends State<_ChangeRegisterCard> {
               }
               return LayoutBuilder(
                 builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: ConstrainedBox(
-                      constraints:
-                          BoxConstraints(minWidth: constraints.maxWidth),
-                      child: DataTable(
-                        headingRowHeight: 44,
-                        dataRowMinHeight: 52,
-                        dataRowMaxHeight: 52,
-                        headingRowColor:
-                            WidgetStateProperty.all(const Color(0xFFF8FAFC)),
-                        columnSpacing: 24,
-                        columns: const [
-                          DataColumn(
-                              label: Text('ID',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.w600))),
-                          DataColumn(
-                              label: Text('Request',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.w600))),
-                          DataColumn(
-                              label: Text('Impact',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.w600))),
-                          DataColumn(
-                              label: Text('Owner',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.w600))),
-                          DataColumn(
-                              label: Text('Status',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.w600))),
-                          DataColumn(
-                              label: Text('Actions',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.w600))),
-                        ],
-                        rows: requests.map((request) {
-                          return DataRow(cells: [
-                            DataCell(Text(request.displayId,
-                                style: const TextStyle(
-                                    fontSize: 12, color: Color(0xFF0EA5E9)))),
-                            DataCell(Text(request.title,
-                                style: const TextStyle(fontSize: 13))),
-                            DataCell(Text(request.impact,
-                                style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600))),
-                            DataCell(Text(request.requester,
-                                style: const TextStyle(
-                                    fontSize: 12, color: Color(0xFF64748B)))),
-                            DataCell(_StatusChip(
-                                label: request.status,
-                                color: _statusColor(request.status))),
-                            DataCell(
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  IconButton(
-                                    tooltip: 'Edit request',
-                                    icon: const Icon(Icons.edit_outlined,
-                                        size: 18, color: Color(0xFF111827)),
-                                    onPressed: () =>
-                                        _openChangeDialog(request: request),
-                                  ),
-                                  IconButton(
-                                    tooltip: 'Delete request',
-                                    icon: const Icon(Icons.delete_outline,
-                                        size: 18, color: Color(0xFFEF4444)),
-                                    onPressed: () => _deleteRequest(request),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ]);
-                        }).toList(),
-                      ),
-                    ),
+                  return _ChangeRequestRegisterTable(
+                    requests: requests,
+                    onEdit: (request) => _openChangeDialog(request: request),
+                    onDelete: _deleteRequest,
                   );
                 },
               );
@@ -834,6 +508,101 @@ class _ChangeRegisterCardState extends State<_ChangeRegisterCard> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ChangeRequestRegisterTable extends StatelessWidget {
+  const _ChangeRequestRegisterTable({
+    required this.requests,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final List<ChangeRequest> requests;
+  final ValueChanged<ChangeRequest> onEdit;
+  final ValueChanged<ChangeRequest> onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    const rowPadding = EdgeInsets.symmetric(horizontal: 16, vertical: 14);
+    const columns = <_ChangeTableColumn>[
+      _ChangeTableColumn('#', 72),
+      _ChangeTableColumn('ID', 120),
+      _ChangeTableColumn('Request', 320),
+      _ChangeTableColumn('Impact', 150),
+      _ChangeTableColumn('Owner', 180),
+      _ChangeTableColumn('Status', 140),
+      _ChangeTableColumn('Actions', 120),
+    ];
+
+    final contentWidth =
+        columns.fold<double>(0, (sum, column) => sum + column.width);
+    final minTableWidth = contentWidth + 32;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tableWidth = constraints.maxWidth > minTableWidth
+            ? constraints.maxWidth
+            : minTableWidth;
+
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: tableWidth,
+            child: Column(
+              children: [
+                Container(
+                  width: tableWidth,
+                  padding: rowPadding,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF8FAFC),
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(12)),
+                  ),
+                  child: Row(
+                    children: columns
+                        .map(
+                          (column) => SizedBox(
+                            width: column.width,
+                            child: Text(
+                              column.label.toUpperCase(),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.8,
+                                color: Color(0xFF6B7280),
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+                for (int i = 0; i < requests.length; i++)
+                  Container(
+                    width: tableWidth,
+                    padding: rowPadding,
+                    decoration: BoxDecoration(
+                      color: i.isEven ? Colors.white : const Color(0xFFF9FAFB),
+                      border: const Border(
+                        top: BorderSide(color: Color(0xFFE5E7EB), width: 0.5),
+                      ),
+                    ),
+                    child: _ChangeRequestTableRow(
+                      index: i,
+                      request: requests[i],
+                      columns: columns,
+                      onEdit: () => onEdit(requests[i]),
+                      onDelete: () => onDelete(requests[i]),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -861,141 +630,90 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-class _TableRow extends StatelessWidget {
-  final List<String> cells;
-  final bool isHeader;
-  final ChangeRequest? request;
-  final void Function(ChangeRequest)? onEdit;
-
-  const _TableRow({
-    required this.cells,
-    required this.isHeader,
-    this.request,
-    this.onEdit,
+class _ChangeRequestTableRow extends StatelessWidget {
+  const _ChangeRequestTableRow({
+    required this.index,
+    required this.request,
+    required this.columns,
+    required this.onEdit,
+    required this.onDelete,
   });
+
+  final int index;
+  final ChangeRequest request;
+  final List<_ChangeTableColumn> columns;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
-    // Columns: #(0), ID(1), TITLE(2), REQUEST DATE(3), TYPE(4), IMPACT(5), STATUS(6), REQUESTER(7), Actions(8)
-    const flexes = [2, 3, 6, 4, 3, 4, 4, 4, 3];
-    final TextStyle headerStyle = const TextStyle(
-        fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black87);
-    final TextStyle cellStyle =
-        const TextStyle(fontSize: 13, color: Colors.black87);
-    return Row(
-      children: [
-        for (int i = 0; i < cells.length; i++)
-          if (i == cells.length - 1) // Actions column at end
-            _actionsCell(
-              flex: flexes[i],
-              context: context,
-              headerStyle: headerStyle,
-              cellStyle: cellStyle,
-              text: cells[i],
-              request: request,
-              onEdit: onEdit,
-            )
-          else if (i == 4) // TYPE column
-            _typeCell(cells[i],
-                flex: flexes[i],
-                isHeader: isHeader,
-                headerStyle: headerStyle,
-                cellStyle: cellStyle)
-          else if (i == 6) // STATUS column
-            _statusCell(cells[i],
-                flex: flexes[i],
-                isHeader: isHeader,
-                headerStyle: headerStyle,
-                cellStyle: cellStyle)
-          else
-            _cell(
-              cells[i],
-              flex: flexes[i],
-              isHeader: isHeader,
-              headerStyle: headerStyle,
-              cellStyle: cellStyle,
-              textAlign: i == 0 ? TextAlign.center : TextAlign.left,
-            ),
-      ],
-    );
-  }
-
-  Widget _cell(String text,
-      {required int flex,
-      required bool isHeader,
-      required TextStyle headerStyle,
-      required TextStyle cellStyle,
-      TextAlign textAlign = TextAlign.left}) {
-    return Expanded(
-      flex: flex,
-      child: Text(text,
-          style: isHeader ? headerStyle : cellStyle,
-          overflow: TextOverflow.ellipsis,
-          textAlign: textAlign),
-    );
-  }
-
-  Widget _typeCell(String text,
-      {required int flex,
-      required bool isHeader,
-      required TextStyle headerStyle,
-      required TextStyle cellStyle}) {
-    if (isHeader) {
-      return _cell(text,
-          flex: flex,
-          isHeader: isHeader,
-          headerStyle: headerStyle,
-          cellStyle: cellStyle);
-    }
-    return Expanded(
-      flex: flex,
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-              color: const Color(0xFFE7F0FF),
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: const Color(0xFFB2C6FF))),
-          child: Text(text,
-              style: const TextStyle(
-                  color: Color(0xFF3B5EDB),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12)),
+    final cells = <Widget>[
+      Center(
+        child: Text(
+          '${index + 1}',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF4B5563),
+          ),
         ),
       ),
-    );
-  }
+      _ChangeTableTextCell(
+        request.displayId,
+        textAlign: TextAlign.center,
+        color: const Color(0xFF0EA5E9),
+        fontWeight: FontWeight.w700,
+      ),
+      _ChangeTableTextCell(
+        request.title,
+        fontWeight: FontWeight.w600,
+      ),
+      _ChangeTableTextCell(
+        request.impact,
+        textAlign: TextAlign.center,
+        fontWeight: FontWeight.w600,
+      ),
+      _ChangeTableTextCell(request.requester),
+      Center(
+        child: _StatusChip(
+            label: request.status, color: _statusColor(request.status)),
+      ),
+      Align(
+        alignment: Alignment.topCenter,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              tooltip: 'Edit request',
+              onPressed: onEdit,
+              icon: const Icon(
+                Icons.edit_outlined,
+                size: 18,
+                color: Color(0xFF111827),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Delete request',
+              icon: const Icon(
+                Icons.delete_outline,
+                size: 18,
+                color: Color(0xFFEF4444),
+              ),
+              onPressed: onDelete,
+            ),
+          ],
+        ),
+      ),
+    ];
 
-  Widget _statusCell(String text,
-      {required int flex,
-      required bool isHeader,
-      required TextStyle headerStyle,
-      required TextStyle cellStyle}) {
-    if (isHeader) {
-      return _cell(text,
-          flex: flex,
-          isHeader: isHeader,
-          headerStyle: headerStyle,
-          cellStyle: cellStyle);
-    }
-    return Expanded(
-      flex: flex,
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: _statusColor(text).withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(30),
-          ),
-          child: Text(
-            text,
-            style: TextStyle(
-                color: _statusColor(text),
-                fontWeight: FontWeight.w700,
-                fontSize: 12),
-          ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: List.generate(
+        cells.length,
+        (cellIndex) => SizedBox(
+          width: columns[cellIndex].width,
+          child: cells[cellIndex],
         ),
       ),
     );
@@ -1007,90 +725,51 @@ class _TableRow extends StatelessWidget {
         return const Color(0xFF2E7D32);
       case 'rejected':
         return const Color(0xFFC62828);
-      case 'pending':
+      case 'in review':
+        return const Color(0xFFF59E0B);
+      case 'submitted':
+        return const Color(0xFF2563EB);
       default:
         return const Color(0xFF8D6E00);
     }
   }
+}
 
-  Widget _actionsCell({
-    required int flex,
-    required BuildContext context,
-    required TextStyle headerStyle,
-    required TextStyle cellStyle,
-    required String text,
-    ChangeRequest? request,
-    void Function(ChangeRequest)? onEdit,
-  }) {
-    if (isHeader) {
-      return Expanded(
-        flex: flex,
-        child: Padding(
-          padding: const EdgeInsets.only(right: 24),
-          child: Text(text,
-              style: headerStyle,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center),
-        ),
-      );
-    }
+class _ChangeTableTextCell extends StatelessWidget {
+  const _ChangeTableTextCell(
+    this.text, {
+    this.textAlign = TextAlign.left,
+    this.color = const Color(0xFF111827),
+    this.fontWeight = FontWeight.w500,
+  });
 
-    return Expanded(
-      flex: flex,
-      child: Padding(
-        padding: const EdgeInsets.only(right: 24),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            IconButton(
-              tooltip: 'View request',
-              onPressed: request == null ? null : () => onEdit?.call(request),
-              icon: Icon(Icons.visibility_outlined,
-                  size: 18, color: Colors.grey[700]),
-            ),
-            IconButton(
-              tooltip: 'Delete request',
-              icon:
-                  const Icon(Icons.delete_outline, size: 18, color: Colors.red),
-              onPressed: request == null
-                  ? null
-                  : () async {
-                      final confirmed = await showDialog<bool>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Delete change request?'),
-                          content: const Text('This action cannot be undone.'),
-                          actions: [
-                            TextButton(
-                                onPressed: () => Navigator.of(ctx).pop(false),
-                                child: const Text('Cancel')),
-                            TextButton(
-                                onPressed: () => Navigator.of(ctx).pop(true),
-                                child: const Text('Delete',
-                                    style: TextStyle(color: Colors.red))),
-                          ],
-                        ),
-                      );
-                      if (confirmed != true) return;
-                      try {
-                        await ChangeRequestService.deleteChangeRequest(
-                            request.id);
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('Change request deleted')));
-                        }
-                      } catch (error) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Delete failed: $error')));
-                        }
-                      }
-                    },
-            ),
-          ],
+  final String text;
+  final TextAlign textAlign;
+  final Color color;
+  final FontWeight fontWeight;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: Text(
+        text,
+        textAlign: textAlign,
+        softWrap: true,
+        style: TextStyle(
+          fontSize: 13,
+          height: 1.4,
+          color: color,
+          fontWeight: fontWeight,
         ),
       ),
     );
   }
+}
+
+class _ChangeTableColumn {
+  const _ChangeTableColumn(this.label, this.width);
+
+  final String label;
+  final double width;
 }

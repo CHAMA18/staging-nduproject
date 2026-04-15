@@ -1675,7 +1675,11 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
                 onChanged: (value) =>
                     _updateMilestone(entry.copyWith(notes: value)),
               ),
-              _DeleteCell(onPressed: () => _deleteMilestone(entry.id)),
+              _DeleteCell(
+                onPressed: () => _deleteMilestone(entry.id),
+                itemName:
+                    'milestone "${entry.title.isEmpty ? 'Untitled' : entry.title}"',
+              ),
             ],
           ),
       ],
@@ -1750,7 +1754,11 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
                 onChanged: (value) =>
                     _updateResource(entry.copyWith(notes: value)),
               ),
-              _DeleteCell(onPressed: () => _deleteResource(entry.id)),
+              _DeleteCell(
+                onPressed: () => _deleteResource(entry.id),
+                itemName:
+                    'resource "${entry.role.isEmpty ? 'Untitled' : entry.role}"',
+              ),
             ],
           ),
       ],
@@ -1817,7 +1825,11 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
                 onChanged: (value) =>
                     _updateVendor(entry.copyWith(notes: value)),
               ),
-              _DeleteCell(onPressed: () => _deleteVendor(entry.id)),
+              _DeleteCell(
+                onPressed: () => _deleteVendor(entry.id),
+                itemName:
+                    'vendor "${entry.name.isEmpty ? 'Untitled' : entry.name}"',
+              ),
             ],
           ),
       ],
@@ -1881,7 +1893,11 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
                 hintText: 'Notes',
                 onChanged: (value) => _updateTool(entry.copyWith(notes: value)),
               ),
-              _DeleteCell(onPressed: () => _deleteTool(entry.id)),
+              _DeleteCell(
+                onPressed: () => _deleteTool(entry.id),
+                itemName:
+                    'tool "${entry.name.isEmpty ? 'Untitled' : entry.name}"',
+              ),
             ],
           ),
       ],
@@ -1966,7 +1982,11 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
                 hintText: 'Notes',
                 onChanged: (value) => _updateTask(entry.copyWith(notes: value)),
               ),
-              _DeleteCell(onPressed: () => _deleteTask(entry.id)),
+              _DeleteCell(
+                onPressed: () => _deleteTask(entry.id),
+                itemName:
+                    'task "${entry.title.isEmpty ? 'Untitled' : entry.title}"',
+              ),
             ],
           ),
       ],
@@ -2033,7 +2053,11 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
                 onChanged: (value) =>
                     _updateBudgetItem(entry.copyWith(notes: value)),
               ),
-              _DeleteCell(onPressed: () => _deleteBudgetItem(entry.id)),
+              _DeleteCell(
+                onPressed: () => _deleteBudgetItem(entry.id),
+                itemName:
+                    'budget item "${entry.category.isEmpty ? 'Untitled' : entry.category}"',
+              ),
             ],
           ),
       ],
@@ -2114,7 +2138,11 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
                 onChanged: (value) =>
                     _updateRisk(entry.copyWith(targetDate: value)),
               ),
-              _DeleteCell(onPressed: () => _deleteRisk(entry.id)),
+              _DeleteCell(
+                onPressed: () => _deleteRisk(entry.id),
+                itemName:
+                    'risk "${entry.title.isEmpty ? 'Untitled' : entry.title}"',
+              ),
             ],
           ),
       ],
@@ -2984,8 +3012,8 @@ class _ListEditor extends StatelessWidget {
                     const SizedBox(width: 8),
                     IconButton(
                       icon: const Icon(Icons.delete_outline,
-                          color: Color(0xFFEF4444)),
-                      onPressed: () => onDelete(item.id),
+                          color: Color(0xFF6B7280)),
+                      onPressed: () => _confirmDelete(context, item),
                     ),
                   ],
                 ),
@@ -2993,6 +3021,34 @@ class _ListEditor extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  void _confirmDelete(BuildContext context, _ListEntry item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Item'),
+        content: Text(
+            'Are you sure you want to delete "${item.text.isEmpty ? 'this item' : item.text}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      onDelete(item.id);
+    }
   }
 }
 
@@ -3316,19 +3372,48 @@ class _DropdownCell extends StatelessWidget {
 }
 
 class _DeleteCell extends StatelessWidget {
-  const _DeleteCell({required this.onPressed});
+  const _DeleteCell({required this.onPressed, this.itemName = 'this item'});
 
   final VoidCallback onPressed;
+  final String itemName;
 
   @override
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.center,
       child: IconButton(
-        icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
-        onPressed: onPressed,
+        icon: const Icon(Icons.delete_outline, color: Color(0xFF6B7280)),
+        onPressed: () => _showDeleteConfirmation(context, onPressed),
       ),
     );
+  }
+
+  void _showDeleteConfirmation(
+      BuildContext context, VoidCallback onConfirm) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Item'),
+        content: Text('Are you sure you want to delete $itemName?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      onConfirm();
+    }
   }
 }
 

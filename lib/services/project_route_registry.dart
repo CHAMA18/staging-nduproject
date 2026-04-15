@@ -17,7 +17,7 @@ import 'package:ndu_project/screens/design_planning_screen.dart';
 import 'package:ndu_project/screens/planning_technology_screen.dart';
 import 'package:ndu_project/screens/interface_management_screen.dart';
 import 'package:ndu_project/screens/risk_assessment_screen.dart';
-import 'package:ndu_project/screens/front_end_planning_contracts_screen.dart';
+import 'package:ndu_project/screens/planning_contracting_screen.dart';
 import 'package:ndu_project/screens/schedule_screen.dart';
 import 'package:ndu_project/screens/cost_estimate_screen.dart';
 import 'package:ndu_project/screens/scope_tracking_plan_screen.dart';
@@ -53,7 +53,7 @@ class ProjectRouteRegistry {
     'technology': () => const PlanningTechnologyScreen(),
     'interface_management': () => const InterfaceManagementScreen(),
     'risk_assessment': () => const RiskAssessmentScreen(),
-    'contracts': () => const FrontEndPlanningContractsScreen(),
+    'contracts': () => const PlanningContractingScreen(),
     'schedule': () => const ScheduleScreen(),
     'cost_estimate': () => const CostEstimateScreen(),
     'scope_tracking_plan': () => const ScopeTrackingPlanScreen(),

@@ -7,6 +7,9 @@ import 'package:ndu_project/widgets/draggable_sidebar.dart';
 import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/services/firebase_auth_service.dart';
+import 'package:ndu_project/services/user_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class FinalizeProjectScreen extends StatefulWidget {
   const FinalizeProjectScreen({super.key});
@@ -257,10 +260,10 @@ class _FinalizeProjectScreenState extends State<FinalizeProjectScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final double horizontalPadding = AppBreakpoints.isMobile(context) ? 20 : 32;
+    final double horizontalPadding = AppBreakpoints.isMobile(context) ? 20 : 40;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FB),
+      backgroundColor: const Color(0xFFF9FAFC),
       body: SafeArea(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -275,43 +278,50 @@ class _FinalizeProjectScreenState extends State<FinalizeProjectScreen> {
                 children: [
                   SingleChildScrollView(
                     padding: EdgeInsets.symmetric(
-                        horizontal: horizontalPadding, vertical: 28),
+                        horizontal: horizontalPadding, vertical: 32),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        _buildPremiumHeader(context),
+                        const SizedBox(height: 32),
+                        _buildSectionIntro(),
+                        const SizedBox(height: 28),
                         if (_isLoading)
-                          const LinearProgressIndicator(minHeight: 2),
-                        if (_isLoading) const SizedBox(height: 16),
-                        _buildFinalizeHero(context),
-                        const SizedBox(height: 24),
-                        _buildSnapshotSection(context),
-                        const SizedBox(height: 24),
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            final bool isWide = constraints.maxWidth >= 980;
-                            if (isWide) {
-                              return Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                          const Center(
+                              child: Padding(
+                            padding: EdgeInsets.all(32),
+                            child: CircularProgressIndicator(),
+                          ))
+                        else ...[
+                          _buildSnapshotSection(context),
+                          const SizedBox(height: 24),
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final bool isWide = constraints.maxWidth >= 980;
+                              if (isWide) {
+                                return Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(child: _buildFinalizeChecklist()),
+                                    const SizedBox(width: 20),
+                                    Expanded(child: _buildSignOffPanel()),
+                                  ],
+                                );
+                              }
+                              return Column(
                                 children: [
-                                  Expanded(child: _buildFinalizeChecklist()),
-                                  const SizedBox(width: 20),
-                                  Expanded(child: _buildSignOffPanel()),
+                                  _buildFinalizeChecklist(),
+                                  const SizedBox(height: 20),
+                                  _buildSignOffPanel(),
                                 ],
                               );
-                            }
-                            return Column(
-                              children: [
-                                _buildFinalizeChecklist(),
-                                const SizedBox(height: 20),
-                                _buildSignOffPanel(),
-                              ],
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 24),
-                        _buildClosureInsights(context),
-                        const SizedBox(height: 28),
-                        _buildActionBar(context),
+                            },
+                          ),
+                          const SizedBox(height: 24),
+                          _buildClosureInsights(context),
+                          const SizedBox(height: 28),
+                          _buildPremiumActionBar(context),
+                        ],
                         const SizedBox(height: 48),
                       ],
                     ),
@@ -326,120 +336,139 @@ class _FinalizeProjectScreenState extends State<FinalizeProjectScreen> {
     );
   }
 
-  Widget _buildFinalizeHero(BuildContext context) {
-    final isMobile = AppBreakpoints.isMobile(context);
+  Widget _buildPremiumHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(26),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF111827), Color(0xFF1F2937)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.16),
-              blurRadius: 30,
-              offset: const Offset(0, 18)),
+              color: Color(0x0F000000), blurRadius: 12, offset: Offset(0, 6)),
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFB020),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: const Text(
-                  'Finalization',
-                  style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1A1D1F)),
-                ),
-              ),
-              const Spacer(),
-              SizedBox(
-                width: 160,
-                child: DropdownButtonFormField<String>(
-                  initialValue: _finalizationStatus,
-                  decoration:
-                      _heroInputDecoration('Status', filledColor: Colors.white),
-                  items: _finalizationStatuses
-                      .map((status) =>
-                          DropdownMenuItem(value: status, child: Text(status)))
-                      .toList(),
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() => _finalizationStatus = value);
-                    _scheduleSave();
-                  },
+              _CircleIconButton(
+                  icon: Icons.arrow_back_ios_new_rounded, onTap: () => Navigator.of(context).pop()),
+              const SizedBox(width: 12),
+              _CircleIconButton(
+                  icon: Icons.arrow_forward_ios_rounded, onTap: null),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  'Finalize Project',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF111827),
+                  ),
                 ),
               ),
+              const SizedBox(width: 16),
+              const _CurrentUserProfileChip(),
             ],
           ),
-          const SizedBox(height: 18),
-          TextField(
-            controller: _summaryTitleController,
-            style: TextStyle(
-                fontSize: isMobile ? 22 : 28,
-                fontWeight: FontWeight.w700,
-                color: Colors.white),
-            decoration: const InputDecoration(
-              hintText: 'Finalize Project',
-              hintStyle: TextStyle(color: Color(0xFFE5E7EB)),
-              border: InputBorder.none,
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0FDF4),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFBBF7D0)),
             ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _summaryDescriptionController,
-            maxLines: 2,
-            style: const TextStyle(fontSize: 15, color: Color(0xFFE5E7EB)),
-            decoration: const InputDecoration(
-              hintText:
-                  'Lock scope, validate handoffs, and close out the project.',
-              hintStyle: TextStyle(color: Color(0xFFE5E7EB)),
-              border: InputBorder.none,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              _HeroStatField(
-                label: 'Readiness %',
-                controller: _readinessPercentController,
-              ),
-              _HeroStatField(
-                label: 'Closeout window',
-                controller: _closeoutWindowController,
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              for (final stat in _heroStats)
-                _HeroStatCard(
-                  item: stat,
-                  onChanged: (updated) => _updateHeroStat(updated),
-                  onDelete: () => _deleteHeroStat(stat.id),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF16A34A),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(Icons.rocket_launch_outlined,
+                      size: 14, color: Colors.white),
                 ),
-              _HeroStatAddButton(onAdd: _addHeroStat),
-            ],
+                const SizedBox(width: 10),
+                Text(
+                  _isLoading
+                      ? 'Execution Phase · Loading...'
+                      : 'Execution Phase',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF15803D),
+                  ),
+                ),
+                const Spacer(),
+                SizedBox(
+                  width: 160,
+                  child: DropdownButtonFormField<String>(
+                    initialValue: _finalizationStatus,
+                    decoration: _heroInputDecoration('Status', filledColor: const Color(0xFFF8FAFC)),
+                    items: _finalizationStatuses
+                        .map((status) =>
+                            DropdownMenuItem(value: status, child: Text(status, style: const TextStyle(fontSize: 12))))
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() => _finalizationStatus = value);
+                      _scheduleSave();
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSectionIntro() {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0FDF4),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(Icons.flag_rounded,
+              size: 22, color: Color(0xFF16A34A)),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Project Finalization',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Lock scope, validate handoffs, and close out the project with confidence.',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF6B7280),
+                  height: 1.6,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -464,17 +493,16 @@ class _FinalizeProjectScreenState extends State<FinalizeProjectScreen> {
           else
             ..._snapshotMetrics.map(_buildSnapshotRow),
           const SizedBox(height: 8),
-          TextButton.icon(
+          FilledButton.icon(
             onPressed: _addSnapshotMetric,
-            icon: const Icon(Icons.add, size: 18),
+            icon: const Icon(Icons.add, size: 16),
             label: const Text('Add snapshot metric'),
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF1F2937),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              backgroundColor: const Color(0xFFFFF3C4),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF0F172A),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
             ),
           ),
         ],
@@ -551,17 +579,16 @@ class _FinalizeProjectScreenState extends State<FinalizeProjectScreen> {
           else
             ..._checklist.map(_buildChecklistRow),
           const SizedBox(height: 8),
-          TextButton.icon(
+          FilledButton.icon(
             onPressed: _addChecklistItem,
-            icon: const Icon(Icons.add, size: 18),
+            icon: const Icon(Icons.add, size: 16),
             label: const Text('Add checklist item'),
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF1F2937),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              backgroundColor: const Color(0xFFFFF3C4),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF0F172A),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
             ),
           ),
         ],
@@ -655,17 +682,16 @@ class _FinalizeProjectScreenState extends State<FinalizeProjectScreen> {
           else
             ..._signOffs.map(_buildSignOffRow),
           const SizedBox(height: 8),
-          TextButton.icon(
+          FilledButton.icon(
             onPressed: _addSignOffItem,
-            icon: const Icon(Icons.add, size: 18),
+            icon: const Icon(Icons.add, size: 16),
             label: const Text('Add sign-off'),
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF1F2937),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              backgroundColor: const Color(0xFFFFF3C4),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF0F172A),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
             ),
           ),
         ],
@@ -786,17 +812,16 @@ class _FinalizeProjectScreenState extends State<FinalizeProjectScreen> {
               },
             ),
           const SizedBox(height: 16),
-          TextButton.icon(
+          FilledButton.icon(
             onPressed: _addInsight,
-            icon: const Icon(Icons.add, size: 18),
+            icon: const Icon(Icons.add, size: 16),
             label: const Text('Add insight'),
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF1F2937),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              backgroundColor: const Color(0xFFFFF3C4),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF0F172A),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
             ),
           ),
         ],
@@ -804,18 +829,16 @@ class _FinalizeProjectScreenState extends State<FinalizeProjectScreen> {
     );
   }
 
-  Widget _buildActionBar(BuildContext context) {
+  Widget _buildPremiumActionBar(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 18,
-              offset: const Offset(0, 12)),
+              color: Color(0x0A000000), blurRadius: 16, offset: Offset(0, 8)),
         ],
       ),
       child: Column(
@@ -939,25 +962,6 @@ class _FinalizeProjectScreenState extends State<FinalizeProjectScreen> {
     );
   }
 
-  void _addHeroStat() {
-    setState(() {
-      _heroStats.add(_HeroStatItem(id: _newId(), label: '', value: ''));
-    });
-    _scheduleSave();
-  }
-
-  void _updateHeroStat(_HeroStatItem item) {
-    final index = _heroStats.indexWhere((entry) => entry.id == item.id);
-    if (index == -1) return;
-    _heroStats[index] = item;
-    _scheduleSave();
-  }
-
-  void _deleteHeroStat(String id) {
-    setState(() => _heroStats.removeWhere((entry) => entry.id == id));
-    _scheduleSave();
-  }
-
   void _addSnapshotMetric() {
     setState(() {
       _snapshotMetrics.add(_SnapshotMetric(
@@ -1060,135 +1064,106 @@ class _FinalizeProjectScreenState extends State<FinalizeProjectScreen> {
   }
 }
 
-class _HeroStatField extends StatelessWidget {
-  const _HeroStatField({required this.label, required this.controller});
+class _CircleIconButton extends StatelessWidget {
+  const _CircleIconButton({required this.icon, this.onTap});
 
-  final String label;
-  final TextEditingController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-      ),
-      child: SizedBox(
-        width: 180,
-        child: TextField(
-          controller: controller,
-          style: const TextStyle(color: Colors.white, fontSize: 14),
-          decoration: InputDecoration(
-            labelText: label,
-            labelStyle: const TextStyle(color: Color(0xFFD1D5DB), fontSize: 12),
-            border: InputBorder.none,
-            isDense: true,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _HeroStatCard extends StatelessWidget {
-  const _HeroStatCard({
-    required this.item,
-    required this.onChanged,
-    required this.onDelete,
-  });
-
-  final _HeroStatItem item;
-  final ValueChanged<_HeroStatItem> onChanged;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-      ),
-      child: SizedBox(
-        width: 200,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextFormField(
-              key: ValueKey('hero-label-${item.id}'),
-              initialValue: item.label,
-              style: const TextStyle(color: Color(0xFFD1D5DB), fontSize: 12),
-              decoration: const InputDecoration(
-                hintText: 'Label',
-                hintStyle: TextStyle(color: Color(0xFFD1D5DB)),
-                border: InputBorder.none,
-                isDense: true,
-              ),
-              onChanged: (value) => onChanged(item.copyWith(label: value)),
-            ),
-            const SizedBox(height: 6),
-            TextFormField(
-              key: ValueKey('hero-value-${item.id}'),
-              initialValue: item.value,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700),
-              decoration: const InputDecoration(
-                hintText: 'Value',
-                hintStyle: TextStyle(color: Colors.white70),
-                border: InputBorder.none,
-                isDense: true,
-              ),
-              onChanged: (value) => onChanged(item.copyWith(value: value)),
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: IconButton(
-                icon: const Icon(Icons.delete_outline,
-                    size: 18, color: Colors.white70),
-                onPressed: onDelete,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _HeroStatAddButton extends StatelessWidget {
-  const _HeroStatAddButton({required this.onAdd});
-
-  final VoidCallback onAdd;
+  final IconData icon;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: onAdd,
-      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        width: 44,
+        height: 44,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+          color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: const Color(0xFFE5E7EB)),
         ),
-        child: const SizedBox(
-          width: 140,
+        child: Icon(icon, size: 18, color: const Color(0xFF6B7280)),
+      ),
+    );
+  }
+}
+
+class _CurrentUserProfileChip extends StatelessWidget {
+  const _CurrentUserProfileChip();
+
+  String _initials(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return 'U';
+    final parts = trimmed.split(RegExp(r"\s+"));
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return trimmed.substring(0, 1).toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final displayName =
+        FirebaseAuthService.displayNameOrEmail(fallback: 'User');
+    final photoUrl = user?.photoURL;
+    final email = user?.email ?? '';
+
+    return StreamBuilder<bool>(
+      stream: UserService.watchAdminStatus(),
+      builder: (context, snapshot) {
+        final isAdmin = snapshot.data ?? UserService.isAdminEmail(email);
+        final role = isAdmin ? 'Admin' : 'Member';
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+          ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.add, color: Colors.white70, size: 18),
-              SizedBox(width: 8),
-              Text('Add stat',
-                  style: TextStyle(color: Colors.white70, fontSize: 12)),
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: const Color(0xFFE5E7EB),
+                backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                    ? NetworkImage(photoUrl)
+                    : null,
+                child: (photoUrl == null || photoUrl.isEmpty)
+                    ? Text(
+                        _initials(displayName),
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF4B5563)),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    displayName,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF111827)),
+                  ),
+                  Text(
+                    role,
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF6B7280)),
+                  ),
+                ],
+              ),
             ],
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -1274,60 +1249,61 @@ class _SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 26),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFFFFFF), Color(0xFFF9FBFF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 20,
-              offset: const Offset(0, 14)),
+            color: Color(0x0A000000),
+            blurRadius: 16,
+            offset: Offset(0, 8),
+          ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF7ED),
-                  borderRadius: BorderRadius.circular(14),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon,
+                      size: 20, color: const Color(0xFF059669)),
                 ),
-                child: Icon(icon, color: const Color(0xFFF59E0B), size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title,
-                        style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF111827))),
-                    const SizedBox(height: 6),
-                    Text(subtitle,
-                        style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF6B7280))),
-                  ],
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title,
+                          style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF111827))),
+                      const SizedBox(height: 2),
+                      Text(subtitle,
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF6B7280))),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 22),
-          child,
+          const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: child,
+          ),
         ],
       ),
     );

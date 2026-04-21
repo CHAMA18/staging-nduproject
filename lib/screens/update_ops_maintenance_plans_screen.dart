@@ -7,11 +7,15 @@ import 'package:ndu_project/screens/stakeholder_alignment_screen.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/responsive.dart';
-import 'package:ndu_project/widgets/responsive_scaffold.dart';
+import 'package:ndu_project/widgets/draggable_sidebar.dart';
+import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/project_insights_service.dart';
-import 'package:ndu_project/widgets/launch_editable_section.dart';
+import 'package:ndu_project/services/firebase_auth_service.dart';
+import 'package:ndu_project/services/user_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
+import 'package:ndu_project/widgets/launch_editable_section.dart';
 
 class UpdateOpsMaintenancePlansScreen extends StatefulWidget {
   const UpdateOpsMaintenancePlansScreen({super.key});
@@ -319,184 +323,506 @@ class _UpdateOpsMaintenancePlansScreenState
 
   @override
   Widget build(BuildContext context) {
-    final isNarrow = MediaQuery.sizeOf(context).width < 980;
-    final padding = AppBreakpoints.pagePadding(context);
+    final isMobile = AppBreakpoints.isMobile(context);
+    final double hPad = isMobile ? 20 : 40;
     final provider = ProjectDataInherited.maybeOf(context);
     final projectId = provider?.projectData.projectId;
 
-    return ResponsiveScaffold(
-      activeItemLabel: 'Update Ops and Maintenance Plans',
-      backgroundColor: const Color(0xFFF5F7FB),
-      body: Stack(
+    return Scaffold(
+      backgroundColor: const Color(0xFFF9FAFC),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            if (isMobile)
+              _buildMobileLayout(hPad, projectId)
+            else
+              _buildDesktopLayout(hPad, projectId),
+            const KazAiChatBubble(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDesktopLayout(double hPad, String? projectId) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DraggableSidebar(
+          openWidth: AppBreakpoints.sidebarWidth(context),
+          child: const InitiationLikeSidebar(
+              activeItemLabel: 'Update Ops and Maintenance Plans'),
+        ),
+        Expanded(child: _buildScrollContent(hPad, projectId)),
+      ],
+    );
+  }
+
+  Widget _buildMobileLayout(double hPad, String? projectId) {
+    return _buildScrollContent(hPad, projectId);
+  }
+
+  Widget _buildScrollContent(double hPad, String? projectId) {
+    final isNarrow = MediaQuery.sizeOf(context).width < 980;
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SingleChildScrollView(
-            padding: EdgeInsets.all(padding),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_isLoading) const LinearProgressIndicator(minHeight: 2),
-                if (_isLoading) const SizedBox(height: 16),
-                _buildHeader(isNarrow),
-                const SizedBox(height: 16),
-                _buildFilterChips(),
-                const SizedBox(height: 20),
-                _buildStatsRow(isNarrow),
-                const SizedBox(height: 24),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildPlanRegister(projectId),
-                    const SizedBox(height: 20),
-                    _buildCoveragePanel(),
-                    const SizedBox(height: 20),
-                    _buildSignalsPanel(),
-                    const SizedBox(height: 20),
-                    _buildMaintenancePanel(),
-                  ],
+          _buildPremiumHeader(context, projectId),
+          const SizedBox(height: 32),
+          _buildSectionIntro(),
+          const SizedBox(height: 28),
+          if (_isLoading) ...[
+            const Center(
+                child: Padding(
+              padding: EdgeInsets.all(32),
+              child: CircularProgressIndicator(),
+            )),
+          ] else ...[
+            _buildStatsRow(isNarrow),
+            const SizedBox(height: 28),
+            _buildPlanRegister(projectId),
+            const SizedBox(height: 20),
+            _buildCoveragePanel(),
+            const SizedBox(height: 20),
+            _buildSignalsPanel(),
+            const SizedBox(height: 20),
+            _buildMaintenancePanel(),
+          ],
+          const SizedBox(height: 36),
+          _buildBottomActionBar(),
+          const SizedBox(height: 56),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPremiumHeader(BuildContext context, String? projectId) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x0F000000), blurRadius: 12, offset: Offset(0, 6)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              _CircleIconButton(
+                  icon: Icons.arrow_back_ios_new_rounded,
+                  onTap: () => StakeholderAlignmentScreen.open(context)),
+              const SizedBox(width: 12),
+              _CircleIconButton(
+                  icon: Icons.arrow_forward_ios_rounded,
+                  onTap: () => LaunchChecklistScreen.open(context)),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  'Update Ops & Maintenance Plans',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF111827),
+                  ),
                 ),
-                const SizedBox(height: 24),
-                LaunchPhaseNavigation(
-                  backLabel: 'Back: Stakeholder Alignment',
-                  nextLabel: 'Next: Start-up / Launch Checklist',
-                  onBack: () => StakeholderAlignmentScreen.open(context),
-                  onNext: () => LaunchChecklistScreen.open(context),
+              ),
+              const SizedBox(width: 16),
+              const _CurrentUserProfileChip(),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0FDF4),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFBBF7D0)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF16A34A),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(Icons.rocket_launch_outlined,
+                      size: 14, color: Colors.white),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  _isLoading
+                      ? 'Execution Phase · Loading...'
+                      : 'Execution Phase',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF15803D),
+                  ),
                 ),
               ],
             ),
           ),
-          const KazAiChatBubble(),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(bool isNarrow) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildSectionIntro() {
+    return Row(
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFC812),
-            borderRadius: BorderRadius.circular(6),
+            color: const Color(0xFFEEF2FF),
+            borderRadius: BorderRadius.circular(12),
           ),
-          child: const Text(
-            'OPS MAINTENANCE',
-            style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black),
+          child: const Icon(Icons.build_circle_outlined,
+              size: 22, color: Color(0xFF4338CA)),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Ops & Maintenance Plans',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Finalize operational playbooks, maintenance cadence, and training updates before launch.',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF6B7280),
+                  height: 1.6,
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    'Update Ops and Maintenance Plans',
-                    style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF111827)),
+      ],
+    );
+  }
+
+  Widget _buildBottomActionBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x0A000000), blurRadius: 16, offset: Offset(0, 8)),
+        ],
+      ),
+      child: LaunchPhaseNavigation(
+        backLabel: 'Back: Stakeholder Alignment',
+        nextLabel: 'Next: Start-up / Launch Checklist',
+        onBack: () => StakeholderAlignmentScreen.open(context),
+        onNext: () => LaunchChecklistScreen.open(context),
+      ),
+    );
+  }
+
+  // ─── Stats Row ────────────────────────────────────────────────────────────
+
+  Widget _buildStatsRow(bool isNarrow) {
+    if (isNarrow) {
+      return Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: _stats.map((stat) => _buildStatCard(stat)).toList(),
+      );
+    }
+
+    return Row(
+      children: _stats
+          .map((stat) => Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: _buildStatCard(stat),
+                ),
+              ))
+          .toList(),
+    );
+  }
+
+  Widget _buildStatCard(_StatCardData data) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: data.color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.analytics_outlined, size: 22, color: data.color),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextFormField(
+                  key: ValueKey('stat-value-${data.id}'),
+                  initialValue: data.value,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    border: InputBorder.none,
+                    hintText: 'Value',
+                    hintStyle: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
+                    contentPadding: EdgeInsets.zero,
                   ),
-                  SizedBox(height: 6),
+                  style: TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.w800, color: data.color),
+                  onChanged: (value) => _updateStat(data.copyWith(value: value)),
+                ),
+                const SizedBox(height: 2),
+                TextFormField(
+                  key: ValueKey('stat-label-${data.id}'),
+                  initialValue: data.label,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    border: InputBorder.none,
+                    hintText: 'Label',
+                    hintStyle: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF6B7280)),
+                  onChanged: (value) => _updateStat(data.copyWith(label: value)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Ops Plan Register ────────────────────────────────────────────────────
+
+  Widget _buildPlanRegister(String? projectId) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 16,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFECFDF5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.playlist_add_check_rounded,
+                      size: 20, color: Color(0xFF059669)),
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Ops Plan Register',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Maintenance and runbook updates',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildFilterChips(),
+                    const SizedBox(width: 12),
+                    FilledButton.icon(
+                      onPressed: projectId == null
+                          ? null
+                          : () => _openAddPlanDialog(projectId),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Add Plan'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF0F172A),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                        textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+          _buildPlanRegisterBody(projectId),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlanRegisterBody(String? projectId) {
+    if (projectId == null) {
+      return _premiumEmptyState(
+        icon: Icons.folder_open_outlined,
+        message: 'Select a project to manage ops plans.',
+      );
+    }
+    return StreamBuilder<List<OpsPlanItem>>(
+      stream: ProjectInsightsService.streamOpsPlans(projectId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.hasError) {
+          return _premiumEmptyState(
+            icon: Icons.error_outline_rounded,
+            message: 'Unable to load ops plans. ${snapshot.error}',
+          );
+        }
+        final plans = snapshot.data ?? [];
+        final filtered = plans.where((plan) {
+          if (_selectedFilters.contains('All plans')) return true;
+          return _selectedFilters.contains(plan.status);
+        }).toList();
+        if (filtered.isEmpty) {
+          return _premiumEmptyState(
+            icon: Icons.inbox_outlined,
+            message: 'No ops plans recorded yet.',
+            actionLabel: 'Add first plan',
+            onAction: () => _openAddPlanDialog(projectId),
+          );
+        }
+        return Column(
+          children: [
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              decoration: const BoxDecoration(color: Color(0xFFF8FAFC)),
+              child: const Row(
+                children: [
+                  Expanded(flex: 1, child: _HeaderCell('ID')),
+                  Expanded(flex: 3, child: _HeaderCell('Plan Item')),
+                  Expanded(flex: 2, child: _HeaderCell('Team')),
+                  Expanded(flex: 2, child: _HeaderCell('Status')),
+                  Expanded(flex: 2, child: _HeaderCell('Due')),
+                  Expanded(flex: 2, child: _HeaderCell('Owner')),
+                ],
+              ),
+            ),
+            ...List.generate(filtered.length, (i) {
+              final plan = filtered[i];
+              final isLast = i == filtered.length - 1;
+              return _PlanRow(plan: plan, isLast: isLast);
+            }),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(20),
+                  bottomRight: Radius.circular(20),
+                ),
+              ),
+              child: Row(
+                children: [
                   Text(
-                    'Finalize operational playbooks, maintenance cadence, and training updates before launch.',
-                    style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+                    '${filtered.length} plan${filtered.length == 1 ? '' : 's'}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                  const Spacer(),
+                  const Text(
+                    'Filtered view',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF6B7280),
+                    ),
                   ),
                 ],
               ),
             ),
-            if (!isNarrow) _buildHeaderActions(),
           ],
-        ),
-        if (isNarrow) ...[
-          const SizedBox(height: 12),
-          _buildHeaderActions(),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildHeaderActions() {
-    final projectId =
-        ProjectDataInherited.maybeOf(context)?.projectData.projectId;
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: [
-        _actionButton(Icons.add, 'Add plan update',
-            onPressed: projectId == null || projectId.isEmpty
-                ? null
-                : () => _openAddPlanDialog(projectId)),
-        _actionButton(Icons.upload_outlined, 'Upload runbook', onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text(
-                    'Runbook upload is queued. You can add plan updates now from this page.')),
-          );
-        }),
-        _actionButton(Icons.description_outlined, 'Export plan', onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text(
-                    'Plan export is queued while report templates are finalized.')),
-          );
-        }),
-        _primaryButton('Publish ops update'),
-      ],
-    );
-  }
-
-  Widget _actionButton(IconData icon, String label, {VoidCallback? onPressed}) {
-    return OutlinedButton.icon(
-      onPressed: onPressed ?? () {},
-      icon: Icon(icon, size: 18, color: const Color(0xFF64748B)),
-      label: Text(label,
-          style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF64748B))),
-      style: OutlinedButton.styleFrom(
-        side: const BorderSide(color: Color(0xFFE2E8F0)),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-
-  Widget _primaryButton(String label) {
-    return ElevatedButton.icon(
-      onPressed: () {
-        setState(() {
-          _selectedFilters
-            ..clear()
-            ..add('Ready');
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text(
-                  'Ops update published. Filter set to plans marked Ready.')),
         );
       },
-      icon: const Icon(Icons.play_arrow, size: 18),
-      label: Text(label,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF0EA5E9),
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
     );
   }
 
   Widget _buildFilterChips() {
     const filters = ['All plans', 'Ready', 'In review', 'Pending', 'Scheduled'];
     return Wrap(
-      spacing: 10,
-      runSpacing: 10,
+      spacing: 6,
+      runSpacing: 6,
       children: filters.map((filter) {
         final selected = _selectedFilters.contains(filter);
         return GestureDetector(
@@ -509,12 +835,16 @@ class _UpdateOpsMaintenancePlansScreenState
               }
             });
           },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
             decoration: BoxDecoration(
-              color: selected ? const Color(0xFF111827) : Colors.white,
+              color: selected ? const Color(0xFF0F172A) : Colors.white,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
+              border: Border.all(
+                  color: selected
+                      ? const Color(0xFF0F172A)
+                      : const Color(0xFFE5E7EB)),
             ),
             child: Text(
               filter,
@@ -530,172 +860,387 @@ class _UpdateOpsMaintenancePlansScreenState
     );
   }
 
-  Widget _buildStatsRow(bool isNarrow) {
-    if (isNarrow) {
-      return Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        children: _stats.map((stat) => _buildStatCard(stat)).toList(),
-      );
-    }
+  // ─── Coverage Panel ──────────────────────────────────────────────────────
 
-    return Row(
-      children: _stats
-          .map((stat) => Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: _buildStatCard(stat),
-                ),
-              ))
-          .toList(),
+  Widget _buildCoveragePanel() {
+    return _PremiumPanel(
+      icon: Icons.track_changes_outlined,
+      iconColor: const Color(0xFF6366F1),
+      iconBg: const Color(0xFFEEF2FF),
+      title: 'Readiness Coverage',
+      subtitle: 'Operational readiness by capability',
+      child: Column(
+        children: [
+          if (_coverage.isEmpty)
+            _premiumEmptyState(
+                icon: Icons.track_changes_outlined,
+                message: 'No coverage items yet.')
+          else
+            ..._coverage.map(_buildCoverageRow),
+          const SizedBox(height: 12),
+          _addEntryButton('Add coverage line', _addCoverageItem),
+        ],
+      ),
     );
   }
 
-  Widget _buildStatCard(_StatCardData data) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
+  Widget _buildCoverageRow(_CoverageItem item) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextFormField(
-            key: ValueKey('stat-value-${data.id}'),
-            initialValue: data.value,
-            decoration: _inlineDecoration('Value'),
-            style: TextStyle(
-                fontSize: 18, fontWeight: FontWeight.w700, color: data.color),
-            onChanged: (value) => _updateStat(data.copyWith(value: value)),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  key: ValueKey('coverage-label-${item.id}'),
+                  initialValue: item.label,
+                  decoration: _inlineFieldDecoration('Coverage label'),
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF111827)),
+                  onChanged: (value) =>
+                      _updateCoverage(item.copyWith(label: value)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 80,
+                child: TextFormField(
+                  key: ValueKey('coverage-progress-${item.id}'),
+                  initialValue: (item.progress * 100).round().toString(),
+                  decoration: _inlineFieldDecoration('%'),
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF111827)),
+                  onChanged: (value) {
+                    final parsed = double.tryParse(value) ?? 0;
+                    _updateCoverage(
+                        item.copyWith(progress: (parsed / 100).clamp(0.0, 1.0)));
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Material(
+                color: const Color(0xFFFEE2E2),
+                borderRadius: BorderRadius.circular(8),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => _deleteCoverage(item.id),
+                  child: const Padding(
+                    padding: EdgeInsets.all(6),
+                    child: Icon(Icons.delete_outline_rounded,
+                        size: 16, color: Color(0xFFDC2626)),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 6),
-          TextFormField(
-            key: ValueKey('stat-label-${data.id}'),
-            initialValue: data.label,
-            decoration: _inlineDecoration('Label'),
-            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-            onChanged: (value) => _updateStat(data.copyWith(label: value)),
-          ),
-          const SizedBox(height: 6),
-          TextFormField(
-            key: ValueKey('stat-support-${data.id}'),
-            initialValue: data.supporting,
-            decoration: _inlineDecoration('Supporting note'),
-            style: TextStyle(
-                fontSize: 12, fontWeight: FontWeight.w600, color: data.color),
-            onChanged: (value) => _updateStat(data.copyWith(supporting: value)),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: item.progress,
+              minHeight: 8,
+              backgroundColor: const Color(0xFFF1F5F9),
+              valueColor: AlwaysStoppedAnimation<Color>(item.color),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPlanRegister(String? projectId) {
-    return _PanelShell(
-      title: 'Ops plan register',
-      subtitle: 'Maintenance and runbook updates',
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+  // ─── Signals Panel ───────────────────────────────────────────────────────
+
+  Widget _buildSignalsPanel() {
+    return _PremiumPanel(
+      icon: Icons.notifications_active_outlined,
+      iconColor: const Color(0xFFD97706),
+      iconBg: const Color(0xFFFEF3C7),
+      title: 'Ops Signals',
+      subtitle: 'Items that need immediate attention',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _actionButton(Icons.add, 'Add',
-              onPressed: projectId == null
-                  ? null
-                  : () => _openAddPlanDialog(projectId)),
-          const SizedBox(width: 8),
-          _actionButton(Icons.filter_list, 'Filter'),
+          if (_signals.isEmpty)
+            _premiumEmptyState(
+                icon: Icons.notifications_active_outlined,
+                message: 'No ops signals yet.')
+          else
+            ..._signals.map(_buildSignalRow),
+          const SizedBox(height: 12),
+          _addEntryButton('Add ops signal', _addSignal),
         ],
       ),
-      child: projectId == null
-          ? _emptyPanelMessage('Select a project to manage ops plans.')
-          : StreamBuilder<List<OpsPlanItem>>(
-              stream: ProjectInsightsService.streamOpsPlans(projectId),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
-                if (snapshot.hasError) {
-                  return _emptyPanelMessage(
-                      'Unable to load ops plans. ${snapshot.error}');
-                }
-                final plans = snapshot.data ?? [];
-                final filtered = plans.where((plan) {
-                  if (_selectedFilters.contains('All plans')) return true;
-                  return _selectedFilters.contains(plan.status);
-                }).toList();
-                if (filtered.isEmpty) {
-                  return _emptyState(
-                    message: 'No ops plans recorded yet.',
-                    onAdd: () => _openAddPlanDialog(projectId),
-                  );
-                }
-                return LayoutBuilder(
-                  builder: (context, constraints) {
-                    return SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: ConstrainedBox(
-                        constraints:
-                            BoxConstraints(minWidth: constraints.maxWidth),
-                        child: DataTable(
-                          headingRowColor:
-                              WidgetStateProperty.all(const Color(0xFFF8FAFC)),
-                          columns: const [
-                            DataColumn(
-                                label: Text('ID',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600))),
-                            DataColumn(
-                                label: Text('Plan item',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600))),
-                            DataColumn(
-                                label: Text('Team',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600))),
-                            DataColumn(
-                                label: Text('Status',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600))),
-                            DataColumn(
-                                label: Text('Due',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600))),
-                            DataColumn(
-                                label: Text('Owner',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w600))),
-                          ],
-                          rows: filtered.map((plan) {
-                            return DataRow(cells: [
-                              DataCell(Text(plan.id,
-                                  style: const TextStyle(
-                                      fontSize: 12, color: Color(0xFF0EA5E9)))),
-                              DataCell(Text(plan.title,
-                                  style: const TextStyle(fontSize: 13))),
-                              DataCell(Text(plan.team,
-                                  style: const TextStyle(
-                                      fontSize: 12, color: Color(0xFF64748B)))),
-                              DataCell(_statusChip(plan.status)),
-                              DataCell(Text(plan.due,
-                                  style: const TextStyle(fontSize: 12))),
-                              DataCell(Text(plan.owner,
-                                  style: const TextStyle(
-                                      fontSize: 12, color: Color(0xFF64748B)))),
-                            ]);
-                          }).toList(),
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
     );
   }
+
+  Widget _buildSignalRow(_SignalItem signal) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF3C7),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.warning_amber_rounded,
+                size: 16, color: Color(0xFFD97706)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextFormField(
+                  key: ValueKey('signal-title-${signal.id}'),
+                  initialValue: signal.title,
+                  decoration: _inlineFieldDecoration('Signal title'),
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF111827)),
+                  onChanged: (value) =>
+                      _updateSignal(signal.copyWith(title: value)),
+                ),
+                const SizedBox(height: 6),
+                TextFormField(
+                  key: ValueKey('signal-sub-${signal.id}'),
+                  initialValue: signal.subtitle,
+                  decoration: _inlineFieldDecoration('Signal detail'),
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF64748B)),
+                  onChanged: (value) =>
+                      _updateSignal(signal.copyWith(subtitle: value)),
+                ),
+              ],
+            ),
+          ),
+          Material(
+            color: const Color(0xFFFEE2E2),
+            borderRadius: BorderRadius.circular(8),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => _deleteSignal(signal.id),
+              child: const Padding(
+                padding: EdgeInsets.all(6),
+                child: Icon(Icons.delete_outline_rounded,
+                    size: 16, color: Color(0xFFDC2626)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Maintenance Panel ───────────────────────────────────────────────────
+
+  Widget _buildMaintenancePanel() {
+    return _PremiumPanel(
+      icon: Icons.calendar_month_outlined,
+      iconColor: const Color(0xFF0EA5E9),
+      iconBg: const Color(0xFFE0F2FE),
+      title: 'Maintenance Windows',
+      subtitle: 'Upcoming maintenance schedule',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_maintenanceWindows.isEmpty)
+            _premiumEmptyState(
+                icon: Icons.calendar_month_outlined,
+                message: 'No maintenance windows yet.')
+          else
+            ..._maintenanceWindows.map(_buildMaintenanceRow),
+          const SizedBox(height: 12),
+          _addEntryButton('Add maintenance window', _addMaintenanceWindow),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMaintenanceRow(_MaintenanceWindowItem item) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE0F2FE),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.schedule_outlined,
+                size: 16, color: Color(0xFF0EA5E9)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextFormField(
+                  key: ValueKey('maintenance-title-${item.id}'),
+                  initialValue: item.title,
+                  decoration: _inlineFieldDecoration('Window'),
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF111827)),
+                  onChanged: (value) =>
+                      _updateMaintenance(item.copyWith(title: value)),
+                ),
+                const SizedBox(height: 4),
+                TextFormField(
+                  key: ValueKey('maintenance-time-${item.id}'),
+                  initialValue: item.time,
+                  decoration: _inlineFieldDecoration('Time window'),
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF64748B)),
+                  onChanged: (value) =>
+                      _updateMaintenance(item.copyWith(time: value)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 130,
+            child: TextFormField(
+              key: ValueKey('maintenance-status-${item.id}'),
+              initialValue: item.status,
+              decoration: _inlineFieldDecoration('Status'),
+              style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF64748B)),
+              onChanged: (value) =>
+                  _updateMaintenance(item.copyWith(status: value)),
+            ),
+          ),
+          Material(
+            color: const Color(0xFFFEE2E2),
+            borderRadius: BorderRadius.circular(8),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => _deleteMaintenance(item.id),
+              child: const Padding(
+                padding: EdgeInsets.all(6),
+                child: Icon(Icons.delete_outline_rounded,
+                    size: 16, color: Color(0xFFDC2626)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Shared Helpers ──────────────────────────────────────────────────────
+
+  Widget _premiumEmptyState({
+    required IconData icon,
+    required String message,
+    String? actionLabel,
+    VoidCallback? onAction,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Center(
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3F4F6),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: const Color(0xFF9CA3AF), size: 28),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              message,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF6B7280),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            if (actionLabel != null && onAction != null) ...[
+              const SizedBox(height: 14),
+              FilledButton.icon(
+                onPressed: onAction,
+                icon: const Icon(Icons.add, size: 16),
+                label: Text(actionLabel),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF0F172A),
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                  textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _addEntryButton(String label, VoidCallback onPressed) {
+    return FilledButton.icon(
+      onPressed: onPressed,
+      icon: const Icon(Icons.add, size: 16),
+      label: Text(label),
+      style: FilledButton.styleFrom(
+        backgroundColor: const Color(0xFF0F172A),
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+      ),
+    );
+  }
+
+  InputDecoration _inlineFieldDecoration(String hint) {
+    return const InputDecoration(
+      isDense: true,
+      border: InputBorder.none,
+      contentPadding: EdgeInsets.zero,
+    ).copyWith(
+      hintText: hint,
+      hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
+    );
+  }
+
+  // ─── Dialog ──────────────────────────────────────────────────────────────
 
   Future<void> _openAddPlanDialog(String projectId) async {
     final idController = TextEditingController();
@@ -715,11 +1260,11 @@ class _UpdateOpsMaintenancePlansScreenState
               insetPadding:
                   const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18)),
+                  borderRadius: BorderRadius.circular(20)),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 520),
                 child: Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(24),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -727,18 +1272,17 @@ class _UpdateOpsMaintenancePlansScreenState
                       Row(
                         children: [
                           Container(
-                            width: 40,
-                            height: 40,
+                            padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF8FAFC),
-                              borderRadius: BorderRadius.circular(12),
-                              border:
-                                  Border.all(color: const Color(0xFFE2E8F0)),
+                              color: const Color(0xFFECFDF5),
+                              borderRadius: BorderRadius.circular(14),
                             ),
-                            child: const Icon(Icons.playlist_add_check_rounded,
-                                color: Color(0xFF0EA5E9)),
+                            child: const Icon(
+                                Icons.playlist_add_check_rounded,
+                                color: Color(0xFF059669),
+                                size: 22),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 14),
                           const Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -764,7 +1308,7 @@ class _UpdateOpsMaintenancePlansScreenState
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
                       _dialogField('Plan ID',
                           controller: idController, hint: 'e.g. OP-301'),
                       const SizedBox(height: 12),
@@ -833,16 +1377,25 @@ class _UpdateOpsMaintenancePlansScreenState
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          TextButton(
+                          OutlinedButton(
                             onPressed: () => Navigator.of(dialogContext).pop(),
-                            child: const Text('Cancel'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF475569),
+                              side: const BorderSide(color: Color(0xFFE2E8F0)),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14)),
+                            ),
+                            child: const Text('Cancel',
+                                style: TextStyle(fontWeight: FontWeight.w700)),
                           ),
                           const SizedBox(width: 8),
-                          ElevatedButton(
+                          FilledButton.icon(
                             onPressed: () async {
                               if (idController.text.trim().isEmpty ||
                                   titleController.text.trim().isEmpty ||
@@ -875,15 +1428,17 @@ class _UpdateOpsMaintenancePlansScreenState
                               if (!mounted) return;
                               navigator.pop();
                             },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF0EA5E9),
+                            icon: const Icon(Icons.check, size: 18),
+                            label: const Text('Add plan'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF0F172A),
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 18, vertical: 12),
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10)),
+                                  borderRadius: BorderRadius.circular(14)),
+                              textStyle: const TextStyle(fontWeight: FontWeight.w800),
                             ),
-                            child: const Text('Add plan'),
                           ),
                         ],
                       ),
@@ -898,63 +1453,23 @@ class _UpdateOpsMaintenancePlansScreenState
     );
   }
 
-  Widget _emptyPanelMessage(String message) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Text(message, style: const TextStyle(color: Color(0xFF64748B))),
-    );
-  }
-
-  Widget _emptyState({required String message, required VoidCallback onAdd}) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        children: [
-          Text(message, style: const TextStyle(color: Color(0xFF64748B))),
-          const SizedBox(height: 12),
-          ElevatedButton.icon(
-            onPressed: onAdd,
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Add plan item'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0EA5E9),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   InputDecoration _dialogDecoration(String label, {String? hint}) {
     return InputDecoration(
       labelText: label,
       hintText: hint,
       filled: true,
       fillColor: const Color(0xFFF8FAFC),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
       enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
       focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF0EA5E9), width: 1.6)),
+          borderRadius: BorderRadius.circular(16),
+          borderSide:
+              const BorderSide(color: Color(0xFF0EA5E9), width: 1.5)),
     );
   }
 
@@ -966,297 +1481,7 @@ class _UpdateOpsMaintenancePlansScreenState
     );
   }
 
-  Widget _buildCoveragePanel() {
-    return _PanelShell(
-      title: 'Readiness coverage',
-      subtitle: 'Operational readiness by capability',
-      child: Column(
-        children: [
-          if (_coverage.isEmpty)
-            _emptyPanelMessage('No coverage items yet.')
-          else
-            ..._coverage.map(_buildCoverageRow),
-          const SizedBox(height: 8),
-          TextButton.icon(
-            onPressed: _addCoverageItem,
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Add coverage line'),
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF1F2937),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              backgroundColor: const Color(0xFFFFF3C4),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSignalsPanel() {
-    return _PanelShell(
-      title: 'Ops signals',
-      subtitle: 'Items that need immediate attention',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (_signals.isEmpty)
-            _emptyPanelMessage('No ops signals yet.')
-          else
-            ..._signals.map(_buildSignalRow),
-          const SizedBox(height: 8),
-          TextButton.icon(
-            onPressed: _addSignal,
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Add ops signal'),
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF1F2937),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              backgroundColor: const Color(0xFFFFF3C4),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMaintenancePanel() {
-    return _PanelShell(
-      title: 'Maintenance windows',
-      subtitle: 'Upcoming maintenance schedule',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (_maintenanceWindows.isEmpty)
-            _emptyPanelMessage('No maintenance windows yet.')
-          else
-            ..._maintenanceWindows.map(_buildMaintenanceRow),
-          const SizedBox(height: 8),
-          TextButton.icon(
-            onPressed: _addMaintenanceWindow,
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Add maintenance window'),
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF1F2937),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              backgroundColor: const Color(0xFFFFF3C4),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _statusChip(String label) {
-    Color color;
-    switch (label) {
-      case 'Ready':
-        color = const Color(0xFF10B981);
-        break;
-      case 'In review':
-        color = const Color(0xFF0EA5E9);
-        break;
-      case 'Pending':
-        color = const Color(0xFFF59E0B);
-        break;
-      default:
-        color = const Color(0xFF6366F1);
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 11, fontWeight: FontWeight.w600, color: color)),
-    );
-  }
-
-  Widget _buildCoverageRow(_CoverageItem item) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  key: ValueKey('coverage-label-${item.id}'),
-                  initialValue: item.label,
-                  decoration: _inlineDecoration('Coverage label'),
-                  style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w600),
-                  onChanged: (value) =>
-                      _updateCoverage(item.copyWith(label: value)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 80,
-                child: TextFormField(
-                  key: ValueKey('coverage-progress-${item.id}'),
-                  initialValue: (item.progress * 100).round().toString(),
-                  decoration: _inlineDecoration('%'),
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) {
-                    final parsed = double.tryParse(value) ?? 0;
-                    _updateCoverage(item.copyWith(
-                        progress: (parsed / 100).clamp(0.0, 1.0)));
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon:
-                    const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
-                onPressed: () => _deleteCoverage(item.id),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: item.progress,
-              minHeight: 8,
-              backgroundColor: const Color(0xFFE2E8F0),
-              valueColor: AlwaysStoppedAnimation<Color>(item.color),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSignalRow(_SignalItem signal) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextFormField(
-                  key: ValueKey('signal-title-${signal.id}'),
-                  initialValue: signal.title,
-                  decoration: _inlineDecoration('Signal title'),
-                  style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w600),
-                  onChanged: (value) =>
-                      _updateSignal(signal.copyWith(title: value)),
-                ),
-                const SizedBox(height: 6),
-                TextFormField(
-                  key: ValueKey('signal-sub-${signal.id}'),
-                  initialValue: signal.subtitle,
-                  decoration: _inlineDecoration('Signal detail'),
-                  style:
-                      const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                  onChanged: (value) =>
-                      _updateSignal(signal.copyWith(subtitle: value)),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
-            onPressed: () => _deleteSignal(signal.id),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMaintenanceRow(_MaintenanceWindowItem item) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          Container(
-              width: 8,
-              height: 8,
-              decoration: const BoxDecoration(
-                  color: Color(0xFF0EA5E9), shape: BoxShape.circle)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextFormField(
-                  key: ValueKey('maintenance-title-${item.id}'),
-                  initialValue: item.title,
-                  decoration: _inlineDecoration('Window'),
-                  style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w600),
-                  onChanged: (value) =>
-                      _updateMaintenance(item.copyWith(title: value)),
-                ),
-                TextFormField(
-                  key: ValueKey('maintenance-time-${item.id}'),
-                  initialValue: item.time,
-                  decoration: _inlineDecoration('Time window'),
-                  style:
-                      const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                  onChanged: (value) =>
-                      _updateMaintenance(item.copyWith(time: value)),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          SizedBox(
-            width: 140,
-            child: TextFormField(
-              key: ValueKey('maintenance-status-${item.id}'),
-              initialValue: item.status,
-              decoration: _inlineDecoration('Status'),
-              style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF64748B)),
-              onChanged: (value) =>
-                  _updateMaintenance(item.copyWith(status: value)),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
-            onPressed: () => _deleteMaintenance(item.id),
-          ),
-        ],
-      ),
-    );
-  }
-
-  InputDecoration _inlineDecoration(String hint) {
-    return const InputDecoration(
-      isDense: true,
-      border: InputBorder.none,
-      hintText: '',
-    ).copyWith(hintText: hint);
-  }
+  // ─── Data Mutations ──────────────────────────────────────────────────────
 
   void _updateStat(_StatCardData data) {
     final index = _stats.indexWhere((item) => item.id == data.id);
@@ -1269,10 +1494,7 @@ class _UpdateOpsMaintenancePlansScreenState
     setState(() {
       _coverage.add(
         _CoverageItem(
-            id: _newId(),
-            label: '',
-            progress: 0,
-            color: const Color(0xFF0EA5E9)),
+            id: _newId(), label: '', progress: 0.0, color: const Color(0xFF0EA5E9)),
       );
     });
     _scheduleSave();
@@ -1332,58 +1554,332 @@ class _UpdateOpsMaintenancePlansScreenState
   }
 }
 
-class _PanelShell extends StatelessWidget {
-  const _PanelShell({
+// ─── Shared Widgets ──────────────────────────────────────────────────────────
+
+class _CircleIconButton extends StatelessWidget {
+  const _CircleIconButton({required this.icon, this.onTap});
+
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Icon(icon, size: 18, color: const Color(0xFF6B7280)),
+      ),
+    );
+  }
+}
+
+class _CurrentUserProfileChip extends StatelessWidget {
+  const _CurrentUserProfileChip();
+
+  String _initials(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return 'U';
+    final parts = trimmed.split(RegExp(r"\s+"));
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return trimmed.substring(0, 1).toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final displayName =
+        FirebaseAuthService.displayNameOrEmail(fallback: 'User');
+    final photoUrl = user?.photoURL;
+    final email = user?.email ?? '';
+
+    return StreamBuilder<bool>(
+      stream: UserService.watchAdminStatus(),
+      builder: (context, snapshot) {
+        final isAdmin = snapshot.data ?? UserService.isAdminEmail(email);
+        final role = isAdmin ? 'Admin' : 'Member';
+
+        return Container(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: const Color(0xFFE5E7EB),
+                backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                    ? NetworkImage(photoUrl)
+                    : null,
+                child: (photoUrl == null || photoUrl.isEmpty)
+                    ? Text(
+                        _initials(displayName),
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF4B5563)),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    displayName,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF111827)),
+                  ),
+                  Text(
+                    role,
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF6B7280)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PremiumPanel extends StatelessWidget {
+  const _PremiumPanel({
+    required this.icon,
+    required this.iconColor,
+    required this.iconBg,
     required this.title,
     required this.subtitle,
     required this.child,
-    this.trailing,
   });
 
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBg;
   final String title;
   final String subtitle;
   final Widget child;
-  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 16,
+            offset: Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title,
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 4),
-                    Text(subtitle,
-                        style: const TextStyle(
-                            fontSize: 12, color: Color(0xFF64748B))),
-                  ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, size: 20, color: iconColor),
                 ),
-              ),
-              if (trailing != null) trailing!,
-            ],
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 16),
-          child,
+          const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: child,
+          ),
         ],
       ),
     );
   }
 }
+
+class _HeaderCell extends StatelessWidget {
+  const _HeaderCell(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      textAlign: TextAlign.center,
+      style: const TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: Color(0xFF64748B),
+        letterSpacing: 0.5,
+      ),
+    );
+  }
+}
+
+class _PlanRow extends StatelessWidget {
+  const _PlanRow({required this.plan, required this.isLast});
+
+  final OpsPlanItem plan;
+  final bool isLast;
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'Ready':
+        return const Color(0xFF059669);
+      case 'In review':
+        return const Color(0xFF2563EB);
+      case 'Pending':
+        return const Color(0xFFD97706);
+      default:
+        return const Color(0xFF6366F1);
+    }
+  }
+
+  Color _statusBg(String status) {
+    switch (status) {
+      case 'Ready':
+        return const Color(0xFFECFDF5);
+      case 'In review':
+        return const Color(0xFFEFF6FF);
+      case 'Pending':
+        return const Color(0xFFFEF3C7);
+      default:
+        return const Color(0xFFEEF2FF);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _statusColor(plan.status);
+    final bg = _statusBg(plan.status);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+      decoration: BoxDecoration(
+        border: isLast
+            ? null
+            : const Border(
+                bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 1,
+            child: Text(plan.id,
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF0EA5E9))),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(plan.title,
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF111827))),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(plan.team,
+                style: const TextStyle(
+                    fontSize: 12, color: Color(0xFF64748B))),
+          ),
+          Expanded(
+            flex: 2,
+            child: Center(
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: bg,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: color.withValues(alpha: 0.2)),
+                ),
+                child: Text(
+                  plan.status,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(plan.due,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF475569))),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(plan.owner,
+                style: const TextStyle(
+                    fontSize: 12, color: Color(0xFF64748B))),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Data Models ─────────────────────────────────────────────────────────────
 
 class _CoverageItem {
   const _CoverageItem({

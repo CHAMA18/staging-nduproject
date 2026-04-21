@@ -152,6 +152,9 @@ class SidebarNavigationService {
     SidebarItem(
         checkpoint: 'execution_plan_agile_delivery_plan',
         label: 'Agile Delivery Plan'),
+    SidebarItem(checkpoint: 'deliverables_roadmap_overview', label: 'Roadmap Overview'),
+    SidebarItem(checkpoint: 'deliverables_roadmap_detailed', label: 'Detailed Deliverables'),
+    SidebarItem(checkpoint: 'document_review_matrix', label: 'Document Review Matrix'),
     SidebarItem(checkpoint: 'design', label: 'Design Planning'),
     SidebarItem(checkpoint: 'technology', label: 'Technology Planning'),
     SidebarItem(
@@ -264,6 +267,12 @@ class SidebarNavigationService {
         label: 'Vendor Account Close Out'),
     SidebarItem(
         checkpoint: 'summarize_account_risks', label: 'Project Summary'),
+    SidebarItem(
+        checkpoint: 'commerce_viability',
+        label: 'Warranties & Operations Support'),
+    SidebarItem(
+        checkpoint: 'actual_vs_planned_gap_analysis',
+        label: 'Actual vs Planned Gap Analysis'),
     SidebarItem(checkpoint: 'project_close_out', label: 'Project Close Out'),
     SidebarItem(checkpoint: 'demobilize_team', label: 'Demobilize Team'),
   ];

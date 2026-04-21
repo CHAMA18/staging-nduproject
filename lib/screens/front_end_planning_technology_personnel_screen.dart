@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ndu_project/screens/front_end_planning_contracts_screen.dart';
+import 'package:ndu_project/screens/planning_contracting_screen.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/front_end_planning_header.dart';
@@ -70,7 +70,7 @@ class _FrontEndPlanningTechnologyPersonnelScreenState
             ],
           ),
           _BottomOverlay(
-              onSubmit: () => FrontEndPlanningContractsScreen.open(context)),
+              onSubmit: () => PlanningContractingScreen.open(context)),
           const KazAiChatBubble(),
         ],
       ),

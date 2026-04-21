@@ -13,7 +13,7 @@ import 'package:ndu_project/screens/design_planning_screen.dart';
 import 'package:ndu_project/screens/planning_technology_screen.dart';
 import 'package:ndu_project/screens/interface_management_screen.dart';
 import 'package:ndu_project/screens/risk_assessment_screen.dart';
-import 'package:ndu_project/screens/front_end_planning_contracts_screen.dart';
+import 'package:ndu_project/screens/planning_contracting_screen.dart';
 import 'package:ndu_project/screens/planning_procurement_screen.dart';
 import 'package:ndu_project/screens/schedule_screen.dart';
 import 'package:ndu_project/screens/cost_estimate_screen.dart';
@@ -25,6 +25,9 @@ import 'package:ndu_project/screens/startup_planning_screen.dart';
 import 'package:ndu_project/screens/startup_planning_subsections_screen.dart';
 import 'package:ndu_project/screens/deliverables_roadmap_screen.dart';
 import 'package:ndu_project/screens/deliverable_roadmap_subsections_screen.dart';
+import 'package:ndu_project/screens/deliverables_roadmap_overview_screen.dart';
+import 'package:ndu_project/screens/deliverables_roadmap_detailed_screen.dart';
+import 'package:ndu_project/screens/document_review_matrix_screen.dart';
 import 'package:ndu_project/screens/agile_project_baseline_screen.dart';
 import 'package:ndu_project/screens/project_plan_screen.dart';
 import 'package:ndu_project/screens/project_plan_subsections_screen.dart';
@@ -102,6 +105,21 @@ class PlanningPhaseNavigation {
       builder: (_) => const ExecutionPlanAgileDeliveryPlanScreen(),
     ),
     PlanningPage(
+      id: 'deliverables_roadmap_overview',
+      title: 'Roadmap Overview',
+      builder: (_) => const DeliverablesRoadmapOverviewScreen(),
+    ),
+    PlanningPage(
+      id: 'deliverables_roadmap_detailed',
+      title: 'Detailed Deliverables',
+      builder: (_) => const DeliverablesRoadmapDetailedScreen(),
+    ),
+    PlanningPage(
+      id: 'document_review_matrix',
+      title: 'Document Review Matrix',
+      builder: (_) => const DocumentReviewMatrixScreen(),
+    ),
+    PlanningPage(
       id: 'design',
       title: 'Design Planning',
       builder: (_) => const DesignPlanningScreen(),
@@ -123,8 +141,8 @@ class PlanningPhaseNavigation {
     ),
     PlanningPage(
       id: 'contracts',
-      title: 'Contract',
-      builder: (_) => const FrontEndPlanningContractsScreen(),
+      title: 'Contract Planning',
+      builder: (_) => const PlanningContractingScreen(),
     ),
     PlanningPage(
       id: 'procurement',

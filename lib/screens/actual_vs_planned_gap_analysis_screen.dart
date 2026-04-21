@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:ndu_project/models/launch_phase_models.dart';
 import 'package:ndu_project/screens/commerce_viability_screen.dart';
-import 'package:ndu_project/screens/gap_analysis_scope_reconcillation_screen.dart';
-import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
-import 'package:ndu_project/widgets/launch_editable_section.dart';
-import 'package:ndu_project/widgets/launch_phase_navigation.dart';
-import 'package:ndu_project/widgets/responsive.dart';
-import 'package:ndu_project/widgets/responsive_scaffold.dart';
-import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/screens/project_close_out_screen.dart';
+import 'package:ndu_project/services/launch_phase_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/widgets/execution_phase_ui.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
+import 'package:ndu_project/widgets/launch_data_table.dart';
+import 'package:ndu_project/widgets/launch_phase_navigation.dart';
+import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
 class ActualVsPlannedGapAnalysisScreen extends StatefulWidget {
   const ActualVsPlannedGapAnalysisScreen({super.key});
@@ -28,81 +29,61 @@ class ActualVsPlannedGapAnalysisScreen extends StatefulWidget {
 
 class _ActualVsPlannedGapAnalysisScreenState
     extends State<ActualVsPlannedGapAnalysisScreen> {
-  final List<LaunchEntry> _scheduleGaps = [];
-  final List<LaunchEntry> _costGaps = [];
-  final List<LaunchEntry> _scopeGaps = [];
-  final List<LaunchEntry> _benefitsAndCauses = [];
-  bool _loadedEntries = false;
-  bool _aiGenerated = false;
+  List<LaunchGapItem> _scopeGaps = [];
+  List<LaunchMilestoneVariance> _milestoneVariances = [];
+  List<LaunchBudgetVariance> _budgetVariances = [];
+  List<LaunchRootCauseItem> _rootCauses = [];
+  List<LaunchFollowUpItem> _followUpActions = [];
+
+  bool _isLoading = true;
   bool _isGenerating = false;
+  bool _hasLoaded = false;
+  bool _suspendSave = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadEntries();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
   }
+
+  String? get _projectId => ProjectDataHelper.getData(context).projectId;
 
   @override
   Widget build(BuildContext context) {
-    final bool isMobile = AppBreakpoints.isMobile(context);
-    final double horizontalPadding = isMobile ? 16 : 32;
+    final bool isMobile = MediaQuery.sizeOf(context).width < 980;
 
     return ResponsiveScaffold(
-      activeItemLabel: 'Project Financial Review',
+      activeItemLabel: 'Actual vs Planned Gap Analysis',
       backgroundColor: const Color(0xFFF5F7FB),
       floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(
-            horizontal: horizontalPadding, vertical: isMobile ? 16 : 28),
+          horizontal: isMobile ? 16 : 32,
+          vertical: isMobile ? 16 : 28,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildPageHeader(context, isMobile),
+            if (_isLoading) const LinearProgressIndicator(minHeight: 2),
+            _buildHeader(),
             const SizedBox(height: 20),
-            LaunchEditableSection(
-              title: 'Schedule gap analysis',
-              description:
-                  'Document the biggest timeline variances and what drove them.',
-              entries: _scheduleGaps,
-              onAdd: () => _addEntry(_scheduleGaps,
-                  includeStatus: true, titleLabel: 'Milestone'),
-              onRemove: (index) => _removeEntry(_scheduleGaps, index),
-            ),
-            LaunchEditableSection(
-              title: 'Cost & budget gaps',
-              description:
-                  'Capture where spend diverged from plan and the drivers.',
-              entries: _costGaps,
-              onAdd: () => _addEntry(_costGaps,
-                  includeStatus: true, titleLabel: 'Cost item'),
-              onRemove: (index) => _removeEntry(_costGaps, index),
-            ),
-            LaunchEditableSection(
-              title: 'Scope & quality gaps',
-              description:
-                  'Note any descoped items, quality issues, or additions.',
-              entries: _scopeGaps,
-              onAdd: () => _addEntry(_scopeGaps,
-                  includeStatus: true, titleLabel: 'Scope item'),
-              onRemove: (index) => _removeEntry(_scopeGaps, index),
-            ),
-            LaunchEditableSection(
-              title: 'Benefits & root causes',
-              description:
-                  'Summarize realized benefits and the root causes behind gaps.',
-              entries: _benefitsAndCauses,
-              onAdd: () => _addEntry(_benefitsAndCauses,
-                  includeStatus: true, titleLabel: 'Benefit or cause'),
-              onRemove: (index) => _removeEntry(_benefitsAndCauses, index),
-            ),
+            _buildMetricsRow(),
+            const SizedBox(height: 20),
+            _buildScopeGapsPanel(),
+            const SizedBox(height: 16),
+            _buildMilestoneVariancePanel(),
+            const SizedBox(height: 16),
+            _buildBudgetVariancePanel(),
+            const SizedBox(height: 16),
+            _buildRootCausesPanel(),
+            const SizedBox(height: 16),
+            _buildFollowUpPanel(),
             const SizedBox(height: 24),
             LaunchPhaseNavigation(
               backLabel: 'Back: Warranties & Operations Support',
-              nextLabel: 'Next: Scope Reconciliation',
+              nextLabel: 'Next: Project Close Out',
               onBack: () => CommerceViabilityScreen.open(context),
-              onNext: () => GapAnalysisScopeReconcillationScreen.open(context),
+              onNext: () => ProjectCloseOutScreen.open(context),
             ),
             const SizedBox(height: 48),
           ],
@@ -111,211 +92,545 @@ class _ActualVsPlannedGapAnalysisScreenState
     );
   }
 
-  Widget _buildPageHeader(BuildContext context, bool isMobile) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'ACTUAL VS PLANNED GAP ANALYSIS',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF6B7280),
-            letterSpacing: 0.5,
+  Widget _buildHeader() {
+    return ExecutionPageHeader(
+      badge: 'LAUNCH PHASE',
+      title: 'Actual vs Planned Gap Analysis',
+      description:
+          'Compare planned deliverables, milestones, and budgets against actual outcomes. Identify root causes and corrective actions.',
+      trailing: ExecutionActionBar(
+        actions: [
+          ExecutionActionItem(
+            label: _isGenerating ? 'Generating...' : 'AI Assist',
+            icon: Icons.auto_awesome_outlined,
+            tone: ExecutionActionTone.ai,
+            isLoading: _isGenerating,
+            onPressed: _isGenerating ? null : _populateFromAi,
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Compare what was promised vs. what was delivered',
-          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                fontSize: isMobile ? 22 : 28,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF111827),
-              ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Start with a blank slate; add schedule, budget, scope, and benefits data through the pop-ups below.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: const Color(0xFF4B5563),
-                fontWeight: FontWeight.w500,
-                height: 1.5,
-              ),
-        ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricsRow() {
+    final met = _scopeGaps.where((g) => g.gapStatus == 'Met').length;
+    final partial = _scopeGaps.where((g) => g.gapStatus == 'Partial').length;
+    final missed = _scopeGaps.where((g) => g.gapStatus == 'Missed').length;
+    final openActions =
+        _followUpActions.where((f) => f.status != 'Complete').length;
+
+    return ExecutionMetricsGrid(
+      metrics: [
+        ExecutionMetricData(
+            label: 'Met',
+            value: '$met',
+            icon: Icons.check_circle_outline,
+            emphasisColor: const Color(0xFF10B981)),
+        ExecutionMetricData(
+            label: 'Partial',
+            value: '$partial',
+            icon: Icons.indeterminate_check_box_outlined,
+            emphasisColor: const Color(0xFFF59E0B)),
+        ExecutionMetricData(
+            label: 'Missed',
+            value: '$missed',
+            icon: Icons.cancel_outlined,
+            emphasisColor:
+                missed > 0 ? const Color(0xFFEF4444) : const Color(0xFF10B981)),
+        ExecutionMetricData(
+            label: 'Open Actions',
+            value: '$openActions',
+            icon: Icons.pending_outlined,
+            emphasisColor: const Color(0xFF8B5CF6)),
       ],
     );
   }
 
-  Future<void> _addEntry(
-    List<LaunchEntry> targetList, {
-    String titleLabel = 'Title',
-    bool includeStatus = true,
-  }) async {
-    final entry = await showLaunchEntryDialog(
-      context,
-      titleLabel: titleLabel,
-      detailsLabel: 'Details',
-      includeStatus: includeStatus,
+  Widget _buildScopeGapsPanel() {
+    return LaunchDataTable(
+      title: 'Scope Gap Analysis',
+      subtitle: 'Compare planned deliverables vs actual outcomes.',
+      columns: const ['Planned', 'Actual', 'Gap', 'Status'],
+      rowCount: _scopeGaps.length,
+      onAdd: () {
+        setState(() => _scopeGaps.add(LaunchGapItem()));
+        _save();
+      },
+      emptyMessage: 'Add items to compare planned vs actual.',
+      cellBuilder: (context, i) {
+        final g = _scopeGaps[i];
+        return LaunchDataRow(
+          onDelete: () async {
+            final confirm =
+                await launchConfirmDelete(context, itemName: 'scope gap');
+            if (!confirm || !mounted) return;
+            setState(() => _scopeGaps.removeAt(i));
+            _save();
+          },
+          cells: [
+            LaunchEditableCell(
+              value: g.planned,
+              hint: 'Planned',
+              bold: true,
+              expand: true,
+              onChanged: (s) {
+                _scopeGaps[i] = g.copyWith(planned: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: g.actual,
+              hint: 'Actual',
+              expand: true,
+              onChanged: (s) {
+                _scopeGaps[i] = g.copyWith(actual: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: g.gapDescription,
+              hint: 'Gap',
+              expand: true,
+              onChanged: (s) {
+                _scopeGaps[i] = g.copyWith(gapDescription: s);
+                _save();
+              },
+            ),
+            LaunchStatusDropdown(
+              value: g.gapStatus,
+              items: LaunchGapItem.gapStatuses,
+              onChanged: (s) {
+                if (s == null) return;
+                _scopeGaps[i] = g.copyWith(gapStatus: s);
+                _save();
+                setState(() {});
+              },
+            ),
+          ],
+        );
+      },
     );
-    if (entry != null && mounted) {
-      setState(() => targetList.add(entry));
-      await _persistEntries();
-    }
   }
 
-  void _removeEntry(List<LaunchEntry> targetList, int index) {
-    setState(() => targetList.removeAt(index));
-    _persistEntries();
+  Widget _buildMilestoneVariancePanel() {
+    return LaunchDataTable(
+      title: 'Milestone Variance',
+      subtitle: 'Compare planned vs actual milestone dates.',
+      columns: const ['Milestone', 'Planned', 'Actual', 'Variance', 'Status'],
+      rowCount: _milestoneVariances.length,
+      onAdd: () {
+        setState(() => _milestoneVariances.add(LaunchMilestoneVariance()));
+        _save();
+      },
+      emptyMessage: 'Track planned vs actual milestone dates.',
+      cellBuilder: (context, i) {
+        final m = _milestoneVariances[i];
+        return LaunchDataRow(
+          onDelete: () async {
+            final confirm = await launchConfirmDelete(context,
+                itemName: 'milestone variance');
+            if (!confirm || !mounted) return;
+            setState(() => _milestoneVariances.removeAt(i));
+            _save();
+          },
+          cells: [
+            LaunchEditableCell(
+              value: m.milestone,
+              hint: 'Milestone',
+              bold: true,
+              expand: true,
+              onChanged: (s) {
+                _milestoneVariances[i] = m.copyWith(milestone: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: m.plannedDate,
+              hint: 'Planned',
+              expand: true,
+              onChanged: (s) {
+                _milestoneVariances[i] = m.copyWith(plannedDate: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: m.actualDate,
+              hint: 'Actual',
+              expand: true,
+              onChanged: (s) {
+                _milestoneVariances[i] = m.copyWith(actualDate: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: m.varianceDays,
+              hint: 'Days',
+              width: 70,
+              onChanged: (s) {
+                _milestoneVariances[i] = m.copyWith(varianceDays: s);
+                _save();
+              },
+            ),
+            LaunchStatusDropdown(
+              value: m.status,
+              items: const ['On Track', 'Delayed', 'Missed', 'Early'],
+              onChanged: (s) {
+                if (s == null) return;
+                _milestoneVariances[i] = m.copyWith(status: s);
+                _save();
+                setState(() {});
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
-  Future<void> _loadEntries() async {
-    if (_loadedEntries) return;
-    final provider = ProjectDataHelper.getProvider(context);
-    final projectId = provider.projectData.projectId;
-    if (projectId == null || projectId.isEmpty) return;
+  Widget _buildBudgetVariancePanel() {
+    return LaunchDataTable(
+      title: 'Budget Variance',
+      subtitle: 'Compare planned vs actual costs by category.',
+      columns: const ['Category', 'Planned', 'Actual', 'Variance', '%'],
+      rowCount: _budgetVariances.length,
+      onAdd: () {
+        setState(() => _budgetVariances.add(LaunchBudgetVariance()));
+        _save();
+      },
+      emptyMessage: 'Track planned vs actual budget by category.',
+      cellBuilder: (context, i) {
+        final b = _budgetVariances[i];
+        return LaunchDataRow(
+          onDelete: () async {
+            final confirm =
+                await launchConfirmDelete(context, itemName: 'budget variance');
+            if (!confirm || !mounted) return;
+            setState(() => _budgetVariances.removeAt(i));
+            _save();
+          },
+          cells: [
+            LaunchEditableCell(
+              value: b.category,
+              hint: 'Category',
+              bold: true,
+              expand: true,
+              onChanged: (s) {
+                _budgetVariances[i] = b.copyWith(category: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: b.plannedAmount,
+              hint: 'Planned',
+              width: 100,
+              onChanged: (s) {
+                _budgetVariances[i] = b.copyWith(plannedAmount: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: b.actualAmount,
+              hint: 'Actual',
+              width: 100,
+              onChanged: (s) {
+                _budgetVariances[i] = b.copyWith(actualAmount: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: b.variance,
+              hint: 'Variance',
+              width: 90,
+              onChanged: (s) {
+                _budgetVariances[i] = b.copyWith(variance: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: b.variancePercent,
+              hint: '%',
+              width: 60,
+              onChanged: (s) {
+                _budgetVariances[i] = b.copyWith(variancePercent: s);
+                _save();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 
+  Widget _buildRootCausesPanel() {
+    return LaunchDataTable(
+      title: 'Root Cause Analysis',
+      subtitle:
+          'For major gaps: identify root cause, impact, and corrective action.',
+      columns: const ['Gap', 'Root Cause', 'Impact', 'Action', 'Status'],
+      rowCount: _rootCauses.length,
+      onAdd: () {
+        setState(() => _rootCauses.add(LaunchRootCauseItem()));
+        _save();
+      },
+      emptyMessage: 'Analyze why major gaps occurred.',
+      cellBuilder: (context, i) {
+        final r = _rootCauses[i];
+        return LaunchDataRow(
+          onDelete: () async {
+            final confirm =
+                await launchConfirmDelete(context, itemName: 'root cause');
+            if (!confirm || !mounted) return;
+            setState(() => _rootCauses.removeAt(i));
+            _save();
+          },
+          cells: [
+            LaunchEditableCell(
+              value: r.gap,
+              hint: 'Gap',
+              bold: true,
+              expand: true,
+              onChanged: (s) {
+                _rootCauses[i] = r.copyWith(gap: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: r.rootCause,
+              hint: 'Cause',
+              expand: true,
+              onChanged: (s) {
+                _rootCauses[i] = r.copyWith(rootCause: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: r.impact,
+              hint: 'Impact',
+              expand: true,
+              onChanged: (s) {
+                _rootCauses[i] = r.copyWith(impact: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: r.correctiveAction,
+              hint: 'Action',
+              expand: true,
+              onChanged: (s) {
+                _rootCauses[i] = r.copyWith(correctiveAction: s);
+                _save();
+              },
+            ),
+            LaunchStatusDropdown(
+              value: r.status,
+              items: const ['Open', 'In Progress', 'Resolved'],
+              onChanged: (s) {
+                if (s == null) return;
+                _rootCauses[i] = r.copyWith(status: s);
+                _save();
+                setState(() {});
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildFollowUpPanel() {
+    return LaunchDataTable(
+      title: 'Follow-Up Actions',
+      subtitle: 'Items requiring post-project attention.',
+      columns: const ['Action', 'Details', 'Owner', 'Status'],
+      rowCount: _followUpActions.length,
+      onAdd: () {
+        setState(() => _followUpActions.add(LaunchFollowUpItem()));
+        _save();
+      },
+      emptyMessage: 'List items requiring attention after project closure.',
+      cellBuilder: (context, i) {
+        final f = _followUpActions[i];
+        return LaunchDataRow(
+          onDelete: () async {
+            final confirm = await launchConfirmDelete(context,
+                itemName: 'follow-up action');
+            if (!confirm || !mounted) return;
+            setState(() => _followUpActions.removeAt(i));
+            _save();
+          },
+          cells: [
+            LaunchEditableCell(
+              value: f.title,
+              hint: 'Action',
+              bold: true,
+              expand: true,
+              onChanged: (s) {
+                _followUpActions[i] = f.copyWith(title: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: f.details,
+              hint: 'Details',
+              expand: true,
+              onChanged: (s) {
+                _followUpActions[i] = f.copyWith(details: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: f.owner,
+              hint: 'Owner',
+              width: 100,
+              onChanged: (s) {
+                _followUpActions[i] = f.copyWith(owner: s);
+                _save();
+              },
+            ),
+            LaunchStatusDropdown(
+              value: f.status,
+              items: const ['Open', 'In Progress', 'Complete'],
+              onChanged: (s) {
+                if (s == null) return;
+                _followUpActions[i] = f.copyWith(status: s);
+                _save();
+                setState(() {});
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _save() {
+    if (_suspendSave || !_hasLoaded) return;
+    Future.microtask(() {
+      if (mounted) _persistData();
+    });
+  }
+
+  Future<void> _loadData() async {
+    if (_hasLoaded || _projectId == null) return;
+    _suspendSave = true;
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('projects')
-          .doc(projectId)
-          .collection('launch_phase')
-          .doc('actual_vs_planned_gap_analysis')
-          .get();
-      if (doc.exists) {
-        final data = doc.data() ?? {};
-        final schedule = (data['scheduleGaps'] as List?)
-                ?.whereType<Map>()
-                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
-                .toList() ??
-            [];
-        final cost = (data['costGaps'] as List?)
-                ?.whereType<Map>()
-                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
-                .toList() ??
-            [];
-        final scope = (data['scopeGaps'] as List?)
-                ?.whereType<Map>()
-                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
-                .toList() ??
-            [];
-        final benefits = (data['benefitsCauses'] as List?)
-                ?.whereType<Map>()
-                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
-                .toList() ??
-            [];
-        if (!mounted) return;
-        setState(() {
-          _scheduleGaps
-            ..clear()
-            ..addAll(schedule);
-          _costGaps
-            ..clear()
-            ..addAll(cost);
-          _scopeGaps
-            ..clear()
-            ..addAll(scope);
-          _benefitsAndCauses
-            ..clear()
-            ..addAll(benefits);
-        });
-      }
-      _loadedEntries = true;
-      if (_scheduleGaps.isEmpty &&
-          _costGaps.isEmpty &&
-          _scopeGaps.isEmpty &&
-          _benefitsAndCauses.isEmpty) {
+      final r =
+          await LaunchPhaseService.loadGapAnalysis(projectId: _projectId!);
+      if (!mounted) return;
+      setState(() {
+        _scopeGaps = r.scopeGaps;
+        _milestoneVariances = r.milestoneVariances;
+        _budgetVariances = r.budgetVariances;
+        _rootCauses = r.rootCauses;
+        _followUpActions = r.followUpActions;
+        _isLoading = false;
+        _hasLoaded = true;
+      });
+      if (_scopeGaps.isEmpty &&
+          _milestoneVariances.isEmpty &&
+          _budgetVariances.isEmpty &&
+          _rootCauses.isEmpty &&
+          _followUpActions.isEmpty) {
         await _populateFromAi();
       }
-    } catch (error) {
-      debugPrint('Failed to load actual vs planned entries: $error');
+    } catch (e) {
+      debugPrint('Gap analysis load error: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+    _suspendSave = false;
+  }
+
+  Future<void> _persistData() async {
+    if (_projectId == null) return;
+    try {
+      await LaunchPhaseService.saveGapAnalysis(
+          projectId: _projectId!,
+          scopeGaps: _scopeGaps,
+          milestoneVariances: _milestoneVariances,
+          budgetVariances: _budgetVariances,
+          rootCauses: _rootCauses,
+          followUpActions: _followUpActions);
+    } catch (e) {
+      debugPrint('Gap analysis save error: $e');
     }
   }
 
   Future<void> _populateFromAi() async {
-    if (_aiGenerated || _isGenerating) return;
-    final projectData = ProjectDataHelper.getData(context);
-    final contextText = ProjectDataHelper.buildFepContext(projectData,
+    if (_isGenerating) return;
+    final data = ProjectDataHelper.getData(context);
+    var ctx = ProjectDataHelper.buildExecutivePlanContext(data,
         sectionLabel: 'Actual vs Planned Gap Analysis');
-    if (contextText.trim().isEmpty) return;
-
-    setState(() => _isGenerating = true);
-    Map<String, List<Map<String, dynamic>>> generated = {};
-    try {
-      generated = await OpenAiServiceSecure().generateLaunchPhaseEntries(
-        context: contextText,
-        sections: const {
-          'schedule_gaps': 'Schedule gap analysis',
-          'cost_gaps': 'Cost & budget gaps',
-          'scope_gaps': 'Scope & quality gaps',
-          'benefits_causes': 'Benefits & root causes',
-        },
-        itemsPerSection: 2,
-      );
-    } catch (error) {
-      debugPrint('Actual vs planned AI call failed: $error');
+    if (ctx.trim().isEmpty) {
+      ctx = ProjectDataHelper.buildProjectContextScan(data,
+          sectionLabel: 'Actual vs Planned Gap Analysis');
     }
-
+    if (ctx.trim().isEmpty) return;
+    setState(() => _isGenerating = true);
+    Map<String, List<Map<String, dynamic>>> gen = {};
+    try {
+      gen = await OpenAiServiceSecure().generateLaunchPhaseEntries(
+        context: ctx,
+        sections: const {
+          'scope_gaps': 'Scope gaps: planned vs actual with gap status',
+          'milestone_variances':
+              'Milestone variances: planned date vs actual date with variance in days',
+          'budget_variances':
+              'Budget variances: planned amount vs actual with variance',
+          'root_causes': 'Root causes for major gaps with corrective actions',
+          'follow_up_actions':
+              'Follow-up actions requiring post-project attention',
+        },
+        itemsPerSection: 3,
+      );
+    } catch (e) {
+      debugPrint('Gap AI error: $e');
+    }
     if (!mounted) return;
-    if (_scheduleGaps.isNotEmpty ||
-        _costGaps.isNotEmpty ||
-        _scopeGaps.isNotEmpty ||
-        _benefitsAndCauses.isNotEmpty) {
+    final hasData = _scopeGaps.isNotEmpty ||
+        _milestoneVariances.isNotEmpty ||
+        _budgetVariances.isNotEmpty ||
+        _rootCauses.isNotEmpty;
+    if (hasData) {
       setState(() => _isGenerating = false);
-      _aiGenerated = true;
       return;
     }
-
     setState(() {
-      _scheduleGaps
-        ..clear()
-        ..addAll(_mapEntries(generated['schedule_gaps']));
-      _costGaps
-        ..clear()
-        ..addAll(_mapEntries(generated['cost_gaps']));
-      _scopeGaps
-        ..clear()
-        ..addAll(_mapEntries(generated['scope_gaps']));
-      _benefitsAndCauses
-        ..clear()
-        ..addAll(_mapEntries(generated['benefits_causes']));
+      _scopeGaps = (gen['scope_gaps'] ?? [])
+          .map((m) => LaunchGapItem(
+              planned: _s(m['title']),
+              actual: _s(m['details']),
+              gapStatus: _ns(m['status'], 'Met')))
+          .where((i) => i.planned.isNotEmpty)
+          .toList();
+      _milestoneVariances = (gen['milestone_variances'] ?? [])
+          .map((m) => LaunchMilestoneVariance(
+              milestone: _s(m['title']), status: _ns(m['status'], 'On Track')))
+          .where((i) => i.milestone.isNotEmpty)
+          .toList();
+      _budgetVariances = (gen['budget_variances'] ?? [])
+          .map((m) => LaunchBudgetVariance(
+              category: _s(m['title']), plannedAmount: _s(m['details'])))
+          .where((i) => i.category.isNotEmpty)
+          .toList();
+      _rootCauses = (gen['root_causes'] ?? [])
+          .map((m) => LaunchRootCauseItem(
+              gap: _s(m['title']),
+              rootCause: _s(m['details']),
+              status: _ns(m['status'], 'Open')))
+          .where((i) => i.gap.isNotEmpty)
+          .toList();
+      _followUpActions = (gen['follow_up_actions'] ?? [])
+          .map((m) => LaunchFollowUpItem(
+              title: _s(m['title']),
+              details: _s(m['details']),
+              status: _ns(m['status'], 'Open')))
+          .where((i) => i.title.isNotEmpty)
+          .toList();
       _isGenerating = false;
     });
-    _aiGenerated = true;
-    await _persistEntries();
+    await _persistData();
   }
 
-  List<LaunchEntry> _mapEntries(List<Map<String, dynamic>>? raw) {
-    if (raw == null) return [];
-    return raw
-        .map((item) => LaunchEntry(
-              title: (item['title'] ?? '').toString().trim(),
-              details: (item['details'] ?? '').toString().trim(),
-              status: (item['status'] ?? '').toString().trim().isEmpty
-                  ? null
-                  : item['status'].toString().trim(),
-            ))
-        .where((entry) => entry.title.isNotEmpty)
-        .toList();
-  }
-
-  Future<void> _persistEntries() async {
-    final provider = ProjectDataHelper.getProvider(context);
-    final projectId = provider.projectData.projectId;
-    if (projectId == null || projectId.isEmpty) return;
-
-    final payload = {
-      'scheduleGaps': _scheduleGaps.map((e) => e.toJson()).toList(),
-      'costGaps': _costGaps.map((e) => e.toJson()).toList(),
-      'scopeGaps': _scopeGaps.map((e) => e.toJson()).toList(),
-      'benefitsCauses': _benefitsAndCauses.map((e) => e.toJson()).toList(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
-
-    await FirebaseFirestore.instance
-        .collection('projects')
-        .doc(projectId)
-        .collection('launch_phase')
-        .doc('actual_vs_planned_gap_analysis')
-        .set(payload, SetOptions(merge: true));
-  }
+  String _s(dynamic v) => (v ?? '').toString().trim();
+  String _ns(dynamic v, String fb) => _s(v).isEmpty ? fb : _s(v);
 }

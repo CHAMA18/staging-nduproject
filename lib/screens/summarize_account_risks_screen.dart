@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:ndu_project/models/launch_phase_models.dart';
 import 'package:ndu_project/screens/commerce_viability_screen.dart';
 import 'package:ndu_project/screens/vendor_account_close_out_screen.dart';
-import 'package:ndu_project/widgets/draggable_sidebar.dart';
-import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
-import 'package:ndu_project/widgets/launch_editable_section.dart';
-import 'package:ndu_project/widgets/launch_phase_navigation.dart';
-import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
-import 'package:ndu_project/widgets/responsive.dart';
-import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/services/launch_phase_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/widgets/execution_phase_ui.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
+import 'package:ndu_project/widgets/launch_data_table.dart';
+import 'package:ndu_project/widgets/launch_phase_navigation.dart';
+import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
 class SummarizeAccountRisksScreen extends StatefulWidget {
   const SummarizeAccountRisksScreen({super.key});
@@ -22,305 +22,482 @@ class SummarizeAccountRisksScreen extends StatefulWidget {
   }
 
   @override
-  State<SummarizeAccountRisksScreen> createState() => _SummarizeAccountRisksScreenState();
+  State<SummarizeAccountRisksScreen> createState() =>
+      _SummarizeAccountRisksScreenState();
 }
 
-class _SummarizeAccountRisksScreenState extends State<SummarizeAccountRisksScreen> {
-  final List<LaunchEntry> _accountHealth = [];
-  final List<LaunchEntry> _highlights = [];
-  final List<LaunchEntry> _risks = [];
-  final List<LaunchEntry> _next90Days = [];
-  bool _loadedEntries = false;
-  bool _aiGenerated = false;
+class _SummarizeAccountRisksScreenState
+    extends State<SummarizeAccountRisksScreen> {
+  List<LaunchFinancialMetric> _metrics = [];
+  List<LaunchHighlightItem> _highlights = [];
+  List<LaunchFollowUpItem> _topRisks = [];
+  List<LaunchFollowUpItem> _next90Days = [];
+  LaunchClosureNotes _summary = LaunchClosureNotes();
+
+  bool _isLoading = true;
   bool _isGenerating = false;
+  bool _hasLoaded = false;
+  bool _suspendSave = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadEntries();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
   }
+
+  String? get _projectId => ProjectDataHelper.getData(context).projectId;
 
   @override
   Widget build(BuildContext context) {
-    final bool isMobile = AppBreakpoints.isMobile(context);
-    final double horizontalPadding = isMobile ? 18 : 32;
+    final bool isMobile = MediaQuery.sizeOf(context).width < 980;
 
-    return Scaffold(
+    return ResponsiveScaffold(
+      activeItemLabel: 'Project Summary',
       backgroundColor: const Color(0xFFF5F7FB),
-      body: SafeArea(
-        child: Row(
+      floatingActionButton: const KazAiChatBubble(positioned: false),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 16 : 32,
+          vertical: isMobile ? 16 : 28,
+        ),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            DraggableSidebar(
-              openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(activeItemLabel: 'Project Summary'),
+            if (_isLoading) const LinearProgressIndicator(minHeight: 2),
+            _buildHeader(),
+            const SizedBox(height: 20),
+            _buildMetricsRow(),
+            const SizedBox(height: 20),
+            _buildExecutiveSummaryPanel(),
+            const SizedBox(height: 16),
+            _buildHighlightsPanel(),
+            const SizedBox(height: 16),
+            _buildTopRisksPanel(),
+            const SizedBox(height: 16),
+            _buildNext90DaysPanel(),
+            const SizedBox(height: 24),
+            LaunchPhaseNavigation(
+              backLabel: 'Back: Vendor Account Close Out',
+              nextLabel: 'Next: Warranties & Operations Support',
+              onBack: () => VendorAccountCloseOutScreen.open(context),
+              onNext: () => CommerceViabilityScreen.open(context),
             ),
-            Expanded(
-              child: Stack(
-                children: [
-                  SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 28),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildPageHeader(context),
-                        const SizedBox(height: 20),
-                        LaunchEditableSection(
-                          title: 'Account health snapshot',
-                          description: 'Add your own health assessment and notes—nothing is pre-filled.',
-                          entries: _accountHealth,
-                          onAdd: () => _addEntry(_accountHealth, titleLabel: 'Health note', includeStatus: true),
-                          onRemove: (index) => _removeEntry(_accountHealth, index),
-                        ),
-                        LaunchEditableSection(
-                          title: 'Highlights / what went well',
-                          description: 'Capture strengths, wins, and positives from the account.',
-                          entries: _highlights,
-                          onAdd: () => _addEntry(_highlights, titleLabel: 'Highlight'),
-                          onRemove: (index) => _removeEntry(_highlights, index),
-                          showStatusChip: false,
-                        ),
-                        LaunchEditableSection(
-                          title: 'Key delivery risks & issues',
-                          description: 'Document risks, owners, and mitigation plans via the pop-up.',
-                          entries: _risks,
-                          onAdd: () => _addEntry(_risks, titleLabel: 'Risk or issue', includeStatus: true),
-                          onRemove: (index) => _removeEntry(_risks, index),
-                        ),
-                        LaunchEditableSection(
-                          title: 'Next 90 days focus',
-                          description: 'List the immediate follow-ups to keep the account healthy.',
-                          entries: _next90Days,
-                          onAdd: () => _addEntry(_next90Days, titleLabel: 'Follow-up', includeStatus: true),
-                          onRemove: (index) => _removeEntry(_next90Days, index),
-                        ),
-                        const SizedBox(height: 24),
-                        LaunchPhaseNavigation(
-                          backLabel: 'Back: Vendor Account Close Out',
-                          nextLabel: 'Next: Warranties & Operations Support',
-                          onBack: () => VendorAccountCloseOutScreen.open(context),
-                          onNext: () => CommerceViabilityScreen.open(context),
-                        ),
-                        const SizedBox(height: 48),
-                      ],
-                    ),
-                  ),
-                  const KazAiChatBubble(),
-                ],
-              ),
-            ),
+            const SizedBox(height: 48),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPageHeader(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFC812),
-            borderRadius: BorderRadius.circular(4),
+  Widget _buildHeader() {
+    return ExecutionPageHeader(
+      badge: 'LAUNCH PHASE',
+      title: 'Project Summary',
+      description:
+          'Executive one-page health summary showing budget, scope, timeline, risks, and next steps.',
+      trailing: ExecutionActionBar(
+        actions: [
+          ExecutionActionItem(
+            label: _isGenerating ? 'Generating…' : 'AI Assist',
+            icon: Icons.auto_awesome_outlined,
+            tone: ExecutionActionTone.ai,
+            isLoading: _isGenerating,
+            onPressed: _isGenerating ? null : _populateFromAi,
           ),
-          child: const Text(
-            'SUMMARIZE ACCOUNT & RISKS',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Colors.black,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          'One-page summary of where the account stands at launch',
-          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                fontSize: 26,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF111827),
-              ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'All sections are intentionally clear of default data. Use the add buttons to populate the summary via pop-ups.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: const Color(0xFF6B7280),
-                fontWeight: FontWeight.w400,
-                height: 1.5,
-                fontSize: 14,
-              ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Future<void> _addEntry(
-    List<LaunchEntry> targetList, {
-    String titleLabel = 'Title',
-    bool includeStatus = true,
-  }) async {
-    final entry = await showLaunchEntryDialog(
-      context,
-      titleLabel: titleLabel,
-      detailsLabel: 'Details',
-      includeStatus: includeStatus,
+  Widget _buildMetricsRow() {
+    return ExecutionMetricsGrid(
+      metrics: _metrics.isEmpty
+          ? [
+              ExecutionMetricData(
+                  label: 'Add metrics below',
+                  value: '—',
+                  icon: Icons.add_chart,
+                  emphasisColor: const Color(0xFF9CA3AF)),
+            ]
+          : _metrics
+              .take(4)
+              .map((m) => ExecutionMetricData(
+                    label: m.label,
+                    value: m.value.isEmpty ? '—' : m.value,
+                    icon: _iconForLabel(m.label),
+                    emphasisColor: _colorForLabel(m.label),
+                    helper: m.notes.isNotEmpty ? m.notes : null,
+                  ))
+              .toList(),
     );
-    if (entry != null && mounted) {
-      setState(() => targetList.add(entry));
-      await _persistEntries();
+  }
+
+  IconData _iconForLabel(String label) {
+    final l = label.toLowerCase();
+    if (l.contains('budget') || l.contains('cost')) {
+      return Icons.attach_money_outlined;
     }
+    if (l.contains('scope')) {
+      return Icons.check_circle_outline;
+    }
+    if (l.contains('timeline') || l.contains('schedule')) {
+      return Icons.schedule_outlined;
+    }
+    if (l.contains('risk')) {
+      return Icons.warning_amber_outlined;
+    }
+    if (l.contains('team')) return Icons.people_outline;
+    return Icons.insights_outlined;
   }
 
-  void _removeEntry(List<LaunchEntry> targetList, int index) {
-    setState(() => targetList.removeAt(index));
-    _persistEntries();
+  Color _colorForLabel(String label) {
+    final l = label.toLowerCase();
+    if (l.contains('budget') || l.contains('cost')) {
+      return const Color(0xFF10B981);
+    }
+    if (l.contains('scope')) {
+      return const Color(0xFF2563EB);
+    }
+    if (l.contains('timeline') || l.contains('schedule')) {
+      return const Color(0xFFF59E0B);
+    }
+    if (l.contains('risk')) {
+      return const Color(0xFFEF4444);
+    }
+    return const Color(0xFF8B5CF6);
   }
 
-  Future<void> _loadEntries() async {
-    if (_loadedEntries) return;
-    final provider = ProjectDataHelper.getProvider(context);
-    final projectId = provider.projectData.projectId;
-    if (projectId == null || projectId.isEmpty) return;
+  Widget _buildExecutiveSummaryPanel() {
+    return ExecutionPanelShell(
+      title: 'Executive Summary',
+      subtitle: 'Narrative overview of the project status at launch.',
+      child: TextFormField(
+        initialValue: _summary.notes,
+        maxLines: 6,
+        style: const TextStyle(fontSize: 13, height: 1.6),
+        decoration: InputDecoration(
+          hintText:
+              'Summarize the overall project health, key achievements, and outstanding concerns…',
+          hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
+          filled: true,
+          fillColor: const Color(0xFFF8FAFC),
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+          enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+          focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF2563EB))),
+        ),
+        onChanged: (v) {
+          _summary = LaunchClosureNotes(notes: v);
+          _save();
+        },
+      ),
+    );
+  }
 
+  Widget _buildHighlightsPanel() {
+    return LaunchDataTable(
+      title: 'Highlights & Wins',
+      subtitle: 'Key achievements and what went well.',
+      columns: const ['Highlight', 'Details'],
+      rowCount: _highlights.length,
+      onAdd: () {
+        setState(() => _highlights.add(LaunchHighlightItem()));
+        _save();
+      },
+      emptyMessage: 'Capture wins and achievements.',
+      cellBuilder: (context, i) {
+        final h = _highlights[i];
+        return LaunchDataRow(
+          onDelete: () async {
+            final confirm =
+                await launchConfirmDelete(context, itemName: 'highlight');
+            if (!confirm || !mounted) return;
+            setState(() => _highlights.removeAt(i));
+            _save();
+          },
+          cells: [
+            LaunchEditableCell(
+              value: h.title,
+              hint: 'Highlight',
+              bold: true,
+              expand: true,
+              onChanged: (s) {
+                _highlights[i] = h.copyWith(title: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: h.details,
+              hint: 'Details',
+              expand: true,
+              onChanged: (s) {
+                _highlights[i] = h.copyWith(details: s);
+                _save();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildTopRisksPanel() {
+    return LaunchDataTable(
+      title: 'Top Risks',
+      subtitle: 'Key risks that need attention or monitoring post-launch.',
+      columns: const ['Risk', 'Details', 'Owner', 'Status'],
+      rowCount: _topRisks.length,
+      onAdd: () {
+        setState(() => _topRisks.add(LaunchFollowUpItem()));
+        _save();
+      },
+      emptyMessage: 'Document key delivery risks and mitigation plans.',
+      cellBuilder: (context, i) {
+        final r = _topRisks[i];
+        return LaunchDataRow(
+          onDelete: () async {
+            final confirm =
+                await launchConfirmDelete(context, itemName: 'risk');
+            if (!confirm || !mounted) return;
+            setState(() => _topRisks.removeAt(i));
+            _save();
+          },
+          cells: [
+            LaunchEditableCell(
+              value: r.title,
+              hint: 'Risk',
+              bold: true,
+              expand: true,
+              onChanged: (s) {
+                _topRisks[i] = r.copyWith(title: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: r.details,
+              hint: 'Details',
+              expand: true,
+              onChanged: (s) {
+                _topRisks[i] = r.copyWith(details: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: r.owner,
+              hint: 'Owner',
+              width: 100,
+              onChanged: (s) {
+                _topRisks[i] = r.copyWith(owner: s);
+                _save();
+              },
+            ),
+            LaunchStatusDropdown(
+              value: r.status,
+              items: const ['Open', 'Mitigated', 'Closed'],
+              onChanged: (s) {
+                if (s == null) return;
+                _topRisks[i] = r.copyWith(status: s);
+                _save();
+                setState(() {});
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildNext90DaysPanel() {
+    return LaunchDataTable(
+      title: 'Next 90 Days Focus',
+      subtitle:
+          'Immediate priorities and follow-ups to keep the project on track post-launch.',
+      columns: const ['Priority', 'Details', 'Owner', 'Status'],
+      rowCount: _next90Days.length,
+      onAdd: () {
+        setState(() => _next90Days.add(LaunchFollowUpItem()));
+        _save();
+      },
+      emptyMessage: 'List immediate priorities for the next 90 days.',
+      cellBuilder: (context, i) {
+        final f = _next90Days[i];
+        return LaunchDataRow(
+          onDelete: () async {
+            final confirm =
+                await launchConfirmDelete(context, itemName: 'follow-up');
+            if (!confirm || !mounted) return;
+            setState(() => _next90Days.removeAt(i));
+            _save();
+          },
+          cells: [
+            LaunchEditableCell(
+              value: f.title,
+              hint: 'Priority',
+              bold: true,
+              expand: true,
+              onChanged: (s) {
+                _next90Days[i] = f.copyWith(title: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: f.details,
+              hint: 'Details',
+              expand: true,
+              onChanged: (s) {
+                _next90Days[i] = f.copyWith(details: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: f.owner,
+              hint: 'Owner',
+              width: 100,
+              onChanged: (s) {
+                _next90Days[i] = f.copyWith(owner: s);
+                _save();
+              },
+            ),
+            LaunchStatusDropdown(
+              value: f.status,
+              items: const ['Planned', 'In Progress', 'Complete'],
+              onChanged: (s) {
+                if (s == null) return;
+                _next90Days[i] = f.copyWith(status: s);
+                _save();
+                setState(() {});
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _save() {
+    if (_suspendSave || !_hasLoaded) return;
+    Future.microtask(() {
+      if (mounted) _persistData();
+    });
+  }
+
+  Future<void> _loadData() async {
+    if (_hasLoaded || _projectId == null) return;
+    _suspendSave = true;
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('projects')
-          .doc(projectId)
-          .collection('launch_phase')
-          .doc('summarize_account_risks')
-          .get();
-      if (doc.exists) {
-        final data = doc.data() ?? {};
-        final health = (data['accountHealth'] as List?)
-                ?.whereType<Map>()
-                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
-                .toList() ??
-            [];
-        final highlights = (data['highlights'] as List?)
-                ?.whereType<Map>()
-                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
-                .toList() ??
-            [];
-        final risks = (data['risks'] as List?)
-                ?.whereType<Map>()
-                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
-                .toList() ??
-            [];
-        final next = (data['next90Days'] as List?)
-                ?.whereType<Map>()
-                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
-                .toList() ??
-            [];
-        if (!mounted) return;
-        setState(() {
-          _accountHealth
-            ..clear()
-            ..addAll(health);
-          _highlights
-            ..clear()
-            ..addAll(highlights);
-          _risks
-            ..clear()
-            ..addAll(risks);
-          _next90Days
-            ..clear()
-            ..addAll(next);
-        });
-      }
-      _loadedEntries = true;
-      if (_accountHealth.isEmpty && _highlights.isEmpty && _risks.isEmpty && _next90Days.isEmpty) {
+      final r =
+          await LaunchPhaseService.loadProjectSummary(projectId: _projectId!);
+      if (!mounted) return;
+      setState(() {
+        _metrics = r.metrics;
+        _highlights = r.highlights;
+        _topRisks = r.topRisks;
+        _next90Days = r.next90Days;
+        _summary = r.summary;
+        _isLoading = false;
+        _hasLoaded = true;
+      });
+      if (_metrics.isEmpty &&
+          _highlights.isEmpty &&
+          _topRisks.isEmpty &&
+          _next90Days.isEmpty) {
         await _populateFromAi();
       }
-    } catch (error) {
-      debugPrint('Failed to load account risks entries: $error');
+    } catch (e) {
+      debugPrint('Summary load error: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+    _suspendSave = false;
+  }
+
+  Future<void> _persistData() async {
+    if (_projectId == null) return;
+    try {
+      await LaunchPhaseService.saveProjectSummary(
+          projectId: _projectId!,
+          metrics: _metrics,
+          highlights: _highlights,
+          topRisks: _topRisks,
+          next90Days: _next90Days,
+          summary: _summary);
+    } catch (e) {
+      debugPrint('Summary save error: $e');
     }
   }
 
   Future<void> _populateFromAi() async {
-    if (_aiGenerated || _isGenerating) return;
-    final projectData = ProjectDataHelper.getData(context);
-    final contextText = ProjectDataHelper.buildFepContext(projectData, sectionLabel: 'Project Summary');
-    if (contextText.trim().isEmpty) return;
-
-    setState(() => _isGenerating = true);
-    Map<String, List<Map<String, dynamic>>> generated = {};
-    try {
-      generated = await OpenAiServiceSecure().generateLaunchPhaseEntries(
-        context: contextText,
-        sections: const {
-          'account_health': 'Account health snapshot',
-          'highlights': 'Highlights / what went well',
-          'delivery_risks': 'Key delivery risks & issues',
-          'next_90_days': 'Next 90 days focus',
-        },
-        itemsPerSection: 2,
-      );
-    } catch (error) {
-      debugPrint('Account risks AI call failed: $error');
+    if (_isGenerating) return;
+    final data = ProjectDataHelper.getData(context);
+    var ctx = ProjectDataHelper.buildExecutivePlanContext(data,
+        sectionLabel: 'Project Summary');
+    if (ctx.trim().isEmpty) {
+      ctx = ProjectDataHelper.buildProjectContextScan(data,
+          sectionLabel: 'Project Summary');
     }
-
+    if (ctx.trim().isEmpty) return;
+    setState(() => _isGenerating = true);
+    Map<String, List<Map<String, dynamic>>> gen = {};
+    try {
+      gen = await OpenAiServiceSecure().generateLaunchPhaseEntries(
+        context: ctx,
+        sections: const {
+          'metrics':
+              'Executive metrics: budget status, scope %, timeline status, active risks, team size',
+          'highlights': 'Key achievements and wins from the project',
+          'risks': 'Top risks with owner and mitigation status',
+          'next_90_days': 'Immediate follow-up priorities for post-launch',
+        },
+        itemsPerSection: 3,
+      );
+    } catch (e) {
+      debugPrint('Summary AI error: $e');
+    }
     if (!mounted) return;
-    if (_accountHealth.isNotEmpty || _highlights.isNotEmpty || _risks.isNotEmpty || _next90Days.isNotEmpty) {
+    final hasData = _metrics.isNotEmpty ||
+        _highlights.isNotEmpty ||
+        _topRisks.isNotEmpty ||
+        _next90Days.isNotEmpty;
+    if (hasData) {
       setState(() => _isGenerating = false);
-      _aiGenerated = true;
       return;
     }
-
     setState(() {
-      _accountHealth
-        ..clear()
-        ..addAll(_mapEntries(generated['account_health']));
-      _highlights
-        ..clear()
-        ..addAll(_mapEntries(generated['highlights']));
-      _risks
-        ..clear()
-        ..addAll(_mapEntries(generated['delivery_risks']));
-      _next90Days
-        ..clear()
-        ..addAll(_mapEntries(generated['next_90_days']));
+      _metrics = (gen['metrics'] ?? [])
+          .map((m) => LaunchFinancialMetric(
+              label: _s(m['title']),
+              value: _s(m['details']),
+              notes: _s(m['status'])))
+          .where((i) => i.label.isNotEmpty)
+          .toList();
+      _highlights = (gen['highlights'] ?? [])
+          .map((m) => LaunchHighlightItem(
+              title: _s(m['title']), details: _s(m['details'])))
+          .where((i) => i.title.isNotEmpty)
+          .toList();
+      _topRisks = (gen['risks'] ?? [])
+          .map((m) => LaunchFollowUpItem(
+              title: _s(m['title']),
+              details: _s(m['details']),
+              status: _ns(m['status'], 'Open')))
+          .where((i) => i.title.isNotEmpty)
+          .toList();
+      _next90Days = (gen['next_90_days'] ?? [])
+          .map((m) => LaunchFollowUpItem(
+              title: _s(m['title']),
+              details: _s(m['details']),
+              status: _ns(m['status'], 'Planned')))
+          .where((i) => i.title.isNotEmpty)
+          .toList();
       _isGenerating = false;
     });
-    _aiGenerated = true;
-    await _persistEntries();
+    await _persistData();
   }
 
-  List<LaunchEntry> _mapEntries(List<Map<String, dynamic>>? raw) {
-    if (raw == null) return [];
-    return raw
-        .map((item) => LaunchEntry(
-              title: (item['title'] ?? '').toString().trim(),
-              details: (item['details'] ?? '').toString().trim(),
-              status: (item['status'] ?? '').toString().trim().isEmpty ? null : item['status'].toString().trim(),
-            ))
-        .where((entry) => entry.title.isNotEmpty)
-        .toList();
-  }
-
-  Future<void> _persistEntries() async {
-    final provider = ProjectDataHelper.getProvider(context);
-    final projectId = provider.projectData.projectId;
-    if (projectId == null || projectId.isEmpty) return;
-
-    final payload = {
-      'accountHealth': _accountHealth.map((e) => e.toJson()).toList(),
-      'highlights': _highlights.map((e) => e.toJson()).toList(),
-      'risks': _risks.map((e) => e.toJson()).toList(),
-      'next90Days': _next90Days.map((e) => e.toJson()).toList(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
-
-    await FirebaseFirestore.instance
-        .collection('projects')
-        .doc(projectId)
-        .collection('launch_phase')
-        .doc('summarize_account_risks')
-        .set(payload, SetOptions(merge: true));
-  }
+  String _s(dynamic v) => (v ?? '').toString().trim();
+  String _ns(dynamic v, String fb) => _s(v).isEmpty ? fb : _s(v);
 }

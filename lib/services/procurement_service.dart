@@ -219,8 +219,9 @@ class ProcurementService {
     );
   }
 
-  static Future<void> createRfq(RfqModel rfq) async {
-    await _rfqsCol(rfq.projectId).add(rfq.toMap());
+  static Future<String> createRfq(RfqModel rfq) async {
+    final ref = await _rfqsCol(rfq.projectId).add(rfq.toMap());
+    return ref.id;
   }
 
   static Future<bool> hasAnyRfqs(String projectId) async {
@@ -316,5 +317,171 @@ class ProcurementService {
   static Future<void> deleteContract(
       String projectId, String contractId) async {
     await _contractsCol(projectId).doc(contractId).delete();
+  }
+
+  // --- Approval Workflow Methods ---
+
+  /// Submit PO for approval
+  static Future<void> submitPoForApproval(
+    String projectId,
+    String poId,
+    String approverId,
+    String approverName,
+    int escalationDays,
+  ) async {
+    await _posCol(projectId).doc(poId).update({
+      'approvalStatus': 'pending',
+      'approverId': approverId,
+      'approverName': approverName,
+      'approvalDate': FieldValue.serverTimestamp(),
+      'escalationDays': escalationDays,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Approve a PO
+  static Future<void> approvePo(
+    String projectId,
+    String poId, {
+    String? comments,
+  }) async {
+    final updateData = <String, dynamic>{
+      'approvalStatus': 'approved',
+      'status': 'issued', // Also update PO status
+      'approverComments': comments ?? '',
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    // Update approval date only if not already set
+    await _posCol(projectId).doc(poId).update(updateData);
+  }
+
+  /// Reject a PO
+  static Future<void> rejectPo(
+    String projectId,
+    String poId,
+    String reason,
+  ) async {
+    await _posCol(projectId).doc(poId).update({
+      'approvalStatus': 'rejected',
+      'status': 'draft', // Reset to draft for revision
+      'rejectionReason': reason,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Escalate a PO that hasn't been approved
+  static Future<void> escalatePo(
+    String projectId,
+    String poId,
+    String escalationTargetId,
+  ) async {
+    await _posCol(projectId).doc(poId).update({
+      'approvalStatus': 'escalated',
+      'escalationTargetId': escalationTargetId,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Get POs pending approval
+  static Stream<List<PurchaseOrderModel>> streamPendingApprovals(
+    String projectId,
+  ) {
+    return _posCol(projectId)
+        .where('approvalStatus', isEqualTo: 'pending')
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => PurchaseOrderModel.fromDoc(doc))
+            .toList());
+  }
+
+  /// Get overdue POs (pending past escalation days)
+  static Future<List<PurchaseOrderModel>> getOverdueApprovals(
+    String projectId,
+  ) async {
+    final snap = await _posCol(projectId)
+        .where('approvalStatus', isEqualTo: 'pending')
+        .get();
+
+    final overdue = <PurchaseOrderModel>[];
+    for (final doc in snap.docs) {
+      try {
+        final po = PurchaseOrderModel.fromDoc(doc);
+        if (po.isPendingApproval) {
+          overdue.add(po);
+        }
+      } catch (e) {
+        debugPrint('Skipping malformed PO ${doc.id}: $e');
+      }
+    }
+    return overdue;
+  }
+
+  // --- Schedule Linkage Methods ---
+
+  /// Update item's schedule linkage
+  static Future<void> updateItemScheduleLink(
+    String projectId,
+    String itemId, {
+    String? wbsId,
+    String? milestoneId,
+    DateTime? requiredByDate,
+  }) async {
+    final data = <String, dynamic>{
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    if (wbsId != null) {
+      data['linkedWbsId'] = wbsId;
+    }
+    if (milestoneId != null) {
+      data['linkedMilestoneId'] = milestoneId;
+    }
+    if (requiredByDate != null) {
+      data['requiredByDate'] = Timestamp.fromDate(requiredByDate);
+    } else {
+      data['requiredByDate'] = FieldValue.delete();
+    }
+
+    await _itemsCol(projectId).doc(itemId).update(data);
+  }
+
+  /// Clear schedule linkage from an item
+  static Future<void> clearItemScheduleLink(
+    String projectId,
+    String itemId,
+  ) async {
+    await _itemsCol(projectId).doc(itemId).update({
+      'linkedWbsId': FieldValue.delete(),
+      'linkedMilestoneId': FieldValue.delete(),
+      'requiredByDate': FieldValue.delete(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Get items linked to a specific milestone
+  static Stream<List<ProcurementItemModel>> streamItemsByMilestone(
+    String projectId,
+    String milestoneId,
+  ) {
+    return _itemsCol(projectId)
+        .where('linkedMilestoneId', isEqualTo: milestoneId)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => ProcurementItemModel.fromDoc(doc))
+            .toList());
+  }
+
+  /// Get items linked to a specific WBS element
+  static Stream<List<ProcurementItemModel>> streamItemsByWbs(
+    String projectId,
+    String wbsId,
+  ) {
+    return _itemsCol(projectId)
+        .where('linkedWbsId', isEqualTo: wbsId)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => ProcurementItemModel.fromDoc(doc))
+            .toList());
   }
 }

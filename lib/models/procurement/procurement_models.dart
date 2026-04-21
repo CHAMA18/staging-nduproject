@@ -100,6 +100,15 @@ class ProcurementItemModel {
   final String projectPhase; // e.g. "Planning", "Execution"
   final String responsibleMember;
   final String comments;
+  final String currencyCode; // Multi-currency support
+
+  // Schedule linkage fields
+  final String? linkedWbsId; // Links to ScheduleActivity.wbsId
+  final String? linkedMilestoneId; // Links to ScheduleActivity.id
+  final DateTime? requiredByDate; // Derived from milestone, manual override
+
+  // Vendor comparison weighting
+  final VendorWeighting? vendorWeighting;
 
   const ProcurementItemModel({
     required this.id,
@@ -121,6 +130,11 @@ class ProcurementItemModel {
     this.projectPhase = 'Planning',
     this.responsibleMember = '',
     this.comments = '',
+    this.currencyCode = 'USD',
+    this.linkedWbsId,
+    this.linkedMilestoneId,
+    this.requiredByDate,
+    this.vendorWeighting,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -145,6 +159,11 @@ class ProcurementItemModel {
     String? projectPhase,
     String? responsibleMember,
     String? comments,
+    String? currencyCode,
+    String? linkedWbsId,
+    String? linkedMilestoneId,
+    DateTime? requiredByDate,
+    VendorWeighting? vendorWeighting,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -168,6 +187,11 @@ class ProcurementItemModel {
       projectPhase: projectPhase ?? this.projectPhase,
       responsibleMember: responsibleMember ?? this.responsibleMember,
       comments: comments ?? this.comments,
+      currencyCode: currencyCode ?? this.currencyCode,
+      linkedWbsId: linkedWbsId ?? this.linkedWbsId,
+      linkedMilestoneId: linkedMilestoneId ?? this.linkedMilestoneId,
+      requiredByDate: requiredByDate ?? this.requiredByDate,
+      vendorWeighting: vendorWeighting ?? this.vendorWeighting,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -195,6 +219,13 @@ class ProcurementItemModel {
         'projectPhase': projectPhase,
         'responsibleMember': responsibleMember,
         'comments': comments,
+        'currencyCode': currencyCode,
+        'linkedWbsId': linkedWbsId,
+        'linkedMilestoneId': linkedMilestoneId,
+        'requiredByDate': requiredByDate != null
+            ? Timestamp.fromDate(requiredByDate!)
+            : null,
+        'vendorWeighting': vendorWeighting?.toMap(),
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       };
@@ -240,10 +271,79 @@ class ProcurementItemModel {
       projectPhase: data['projectPhase'] ?? 'Planning',
       responsibleMember: data['responsibleMember'] ?? '',
       comments: data['comments'] ?? '',
+      currencyCode: data['currencyCode'] ?? 'USD',
+      linkedWbsId: data['linkedWbsId'],
+      linkedMilestoneId: data['linkedMilestoneId'],
+      requiredByDate: parseDate(data['requiredByDate']),
+      vendorWeighting: data['vendorWeighting'] != null
+          ? VendorWeighting.fromMap(
+              Map<String, dynamic>.from(data['vendorWeighting']))
+          : null,
       createdAt: guaranteedDate(data['createdAt']),
       updatedAt: guaranteedDate(data['updatedAt']),
     );
   }
+}
+
+/// Vendor weighting configuration for per-item comparison
+class VendorWeighting {
+  final double priceWeight; // Default 0.4
+  final double qualityWeight; // Default 0.3
+  final double deliveryWeight; // Default 0.2
+  final double serviceWeight; // Default 0.1
+
+  const VendorWeighting({
+    this.priceWeight = 0.4,
+    this.qualityWeight = 0.3,
+    this.deliveryWeight = 0.2,
+    this.serviceWeight = 0.1,
+  });
+
+  VendorWeighting copyWith({
+    double? priceWeight,
+    double? qualityWeight,
+    double? deliveryWeight,
+    double? serviceWeight,
+  }) {
+    return VendorWeighting(
+      priceWeight: priceWeight ?? this.priceWeight,
+      qualityWeight: qualityWeight ?? this.qualityWeight,
+      deliveryWeight: deliveryWeight ?? this.deliveryWeight,
+      serviceWeight: serviceWeight ?? this.serviceWeight,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'priceWeight': priceWeight,
+        'qualityWeight': qualityWeight,
+        'deliveryWeight': deliveryWeight,
+        'serviceWeight': serviceWeight,
+      };
+
+  factory VendorWeighting.fromMap(Map<String, dynamic> map) {
+    return VendorWeighting(
+      priceWeight: (map['priceWeight'] as num?)?.toDouble() ?? 0.4,
+      qualityWeight: (map['qualityWeight'] as num?)?.toDouble() ?? 0.3,
+      deliveryWeight: (map['deliveryWeight'] as num?)?.toDouble() ?? 0.2,
+      serviceWeight: (map['serviceWeight'] as num?)?.toDouble() ?? 0.1,
+    );
+  }
+
+  double calculateScore({
+    required double priceScore,
+    required double qualityScore,
+    required double deliveryScore,
+    required double serviceScore,
+  }) {
+    return (priceScore * priceWeight) +
+        (qualityScore * qualityWeight) +
+        (deliveryScore * deliveryWeight) +
+        (serviceScore * serviceWeight);
+  }
+
+  bool get isValid =>
+      (priceWeight + qualityWeight + deliveryWeight + serviceWeight)
+          .abs() <= 1.01;
 }
 
 /// Status of a contract
@@ -487,6 +587,17 @@ class PurchaseOrderModel {
   final double progress;
   final PurchaseOrderStatus status;
   final DateTime createdAt;
+  final String currencyCode; // Multi-currency support
+
+  // Approval workflow fields
+  final String? approverId;
+  final String? approverName;
+  final DateTime? approvalDate;
+  final String approvalStatus; // 'draft', 'pending', 'approved', 'rejected', 'escalated'
+  final String? rejectionReason;
+  final String? approverComments;
+  final int escalationDays; // Configurable per PO
+  final String? escalationTargetId;
 
   const PurchaseOrderModel({
     required this.id,
@@ -502,7 +613,66 @@ class PurchaseOrderModel {
     this.progress = 0.0,
     this.status = PurchaseOrderStatus.draft,
     required this.createdAt,
+    this.currencyCode = 'USD',
+    this.approverId,
+    this.approverName,
+    this.approvalDate,
+    this.approvalStatus = 'draft',
+    this.rejectionReason,
+    this.approverComments,
+    this.escalationDays = 3,
+    this.escalationTargetId,
   });
+
+  PurchaseOrderModel copyWith({
+    String? id,
+    String? poNumber,
+    String? projectId,
+    String? vendorName,
+    String? vendorId,
+    String? category,
+    String? owner,
+    DateTime? orderedDate,
+    DateTime? expectedDate,
+    double? amount,
+    double? progress,
+    PurchaseOrderStatus? status,
+    DateTime? createdAt,
+    String? currencyCode,
+    String? approverId,
+    String? approverName,
+    DateTime? approvalDate,
+    String? approvalStatus,
+    String? rejectionReason,
+    String? approverComments,
+    int? escalationDays,
+    String? escalationTargetId,
+  }) {
+    return PurchaseOrderModel(
+      id: id ?? this.id,
+      poNumber: poNumber ?? this.poNumber,
+      projectId: projectId ?? this.projectId,
+      vendorName: vendorName ?? this.vendorName,
+      vendorId: vendorId ?? this.vendorId,
+      category: category ?? this.category,
+      owner: owner ?? this.owner,
+      orderedDate: orderedDate ?? this.orderedDate,
+      expectedDate: expectedDate ?? this.expectedDate,
+      amount: amount ?? this.amount,
+      progress: progress ?? this.progress,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      currencyCode: currencyCode ?? this.currencyCode,
+      approverId: approverId ?? this.approverId,
+      approverName: approverName ?? this.approverName,
+      approvalDate: approvalDate ?? this.approvalDate,
+      approvalStatus: approvalStatus ?? this.approvalStatus,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
+      approverComments: approverComments ?? this.approverComments,
+      escalationDays: escalationDays ?? this.escalationDays,
+      escalationTargetId: escalationTargetId ?? this.escalationTargetId,
+    );
+  }
 
   Map<String, dynamic> toMap() => {
         'poNumber': poNumber,
@@ -516,6 +686,17 @@ class PurchaseOrderModel {
         'amount': amount,
         'progress': progress,
         'status': status.name,
+        'currencyCode': currencyCode,
+        'approverId': approverId,
+        'approverName': approverName,
+        'approvalDate': approvalDate != null
+            ? Timestamp.fromDate(approvalDate!)
+            : null,
+        'approvalStatus': approvalStatus,
+        'rejectionReason': rejectionReason,
+        'approverComments': approverComments,
+        'escalationDays': escalationDays,
+        'escalationTargetId': escalationTargetId,
         'createdAt': FieldValue.serverTimestamp(),
       };
 
@@ -554,6 +735,11 @@ class PurchaseOrderModel {
             isSeconds ? intValue * 1000 : intValue);
       }
       return DateTime.now();
+    }
+
+    DateTime? parseNullableDate(dynamic value) {
+      if (value == null) return null;
+      return parseDate(value);
     }
 
     double parseProgress(dynamic value) {
@@ -610,6 +796,123 @@ class PurchaseOrderModel {
       progress: parseProgress(data['progress']),
       status: parseStatus(data['status']),
       createdAt: parseDate(data['createdAt']),
+      currencyCode: parseString(data['currencyCode'], fallback: 'USD'),
+      approverId: parseString(data['approverId']),
+      approverName: parseString(data['approverName']),
+      approvalDate: parseNullableDate(data['approvalDate']),
+      approvalStatus: parseString(data['approvalStatus'], fallback: 'draft'),
+      rejectionReason: parseString(data['rejectionReason']),
+      approverComments: parseString(data['approverComments']),
+      escalationDays: (data['escalationDays'] as num?)?.toInt() ?? 3,
+      escalationTargetId: parseString(data['escalationTargetId']),
     );
+  }
+}
+
+/// Extensions for PurchaseOrderModel approval workflow
+extension PurchaseOrderApprovalExtension on PurchaseOrderModel {
+  /// Check if PO is overdue for approval
+  bool get isPendingApproval =>
+      approvalStatus == 'pending' &&
+      approvalDate != null &&
+      DateTime.now().isAfter(
+          approvalDate!.add(Duration(days: escalationDays)));
+
+  /// Check if PO has been escalated
+  bool get isEscalated => approvalStatus == 'escalated';
+
+  /// Get display-friendly approval status
+  String get approvalStatusDisplay {
+    if (isEscalated) return 'Escalated';
+    if (approvalStatus == 'pending' && isPendingApproval) return 'Overdue';
+    switch (approvalStatus) {
+      case 'approved':
+        return 'Approved';
+      case 'rejected':
+        return 'Rejected';
+      case 'pending':
+        return 'Pending';
+      case 'escalated':
+        return 'Escalated';
+      default:
+        return 'Draft';
+    }
+  }
+
+  /// Get days since approval request
+  int get daysSinceRequest {
+    if (approvalDate == null) return 0;
+    return DateTime.now().difference(approvalDate!).inDays;
+  }
+
+  /// Get days until escalation deadline
+  int? get daysUntilEscalation {
+    if (approvalDate == null || approvalStatus != 'pending') return null;
+    final deadline = approvalDate!.add(Duration(days: escalationDays));
+    final days = deadline.difference(DateTime.now()).inDays;
+    return days > 0 ? days : 0;
+  }
+}
+
+/// Extensions for ProcurementItemModel budget calculations
+extension ProcurementItemBudgetExtension on ProcurementItemModel {
+  /// Calculate committed amount from linked POs
+  double committedAmount(List<PurchaseOrderModel> allPos) {
+    return allPos
+        .where((po) =>
+            po.vendorId != null &&
+            po.status == PurchaseOrderStatus.issued &&
+            po.approvalStatus == 'approved')
+        .fold(0.0, (runningTotal, po) => runningTotal + po.amount);
+  }
+
+  /// Get remaining budget after committed and spent
+  double remainingBudget(List<PurchaseOrderModel> allPos) {
+    final committed = committedAmount(allPos);
+    return budget - spent - committed;
+  }
+
+  /// Get variance percentage (positive = over budget)
+  double variancePercent(List<PurchaseOrderModel> allPos) {
+    if (budget == 0) return 0.0;
+    final committed = committedAmount(allPos);
+    return ((spent + committed - budget) / budget * 100);
+  }
+
+  /// Get budget status category
+  String budgetStatus(List<PurchaseOrderModel> allPos) {
+    final variance = variancePercent(allPos);
+    if (variance > 10) return 'over';
+    if (variance > -10) return 'within';
+    return 'under';
+  }
+
+  /// Check if item is overdue based on requiredByDate
+  bool get isOverdue {
+    if (requiredByDate == null) return false;
+    return DateTime.now().isAfter(requiredByDate!) &&
+        status != ProcurementItemStatus.delivered;
+  }
+
+  /// Check if item is approaching deadline (within 7 days)
+  bool get isApproachingDeadline {
+    if (requiredByDate == null) return false;
+    final daysUntil = requiredByDate!.difference(DateTime.now()).inDays;
+    return daysUntil >= 0 && daysUntil <= 7 &&
+        status != ProcurementItemStatus.delivered;
+  }
+
+  /// Get WBS element name if linked
+  String get linkedWbsName => linkedWbsId ?? 'Not linked';
+
+  /// Get milestone name if linked
+  String get linkedMilestoneName => linkedMilestoneId ?? 'Not linked';
+}
+
+/// String extension for capitalizing first letter
+extension StringCapitalize on String {
+  String capitalize() {
+    if (isEmpty) return this;
+    return this[0].toUpperCase() + substring(1);
   }
 }

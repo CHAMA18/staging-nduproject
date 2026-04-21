@@ -31,9 +31,9 @@ import 'package:ndu_project/screens/front_end_planning_workspace_screen.dart';
 import 'package:ndu_project/screens/front_end_planning_requirements_screen.dart';
 import 'package:ndu_project/screens/front_end_planning_personnel_screen.dart';
 import 'package:ndu_project/screens/front_end_planning_procurement_screen.dart';
-import 'package:ndu_project/screens/front_end_planning_contracts_screen.dart';
 import 'package:ndu_project/screens/front_end_planning_contract_vendor_quotes_screen.dart';
 import 'package:ndu_project/screens/front_end_planning_infrastructure_screen.dart';
+import 'package:ndu_project/screens/planning_contracting_screen.dart';
 import 'package:ndu_project/screens/planning_technology_screen.dart';
 import 'package:ndu_project/screens/front_end_planning_technology_personnel_screen.dart';
 import 'package:ndu_project/screens/front_end_planning_risks_screen.dart';
@@ -451,7 +451,7 @@ class AppRouter {
       GoRoute(
           name: AppRoutes.fepContracts,
           path: '/${AppRoutes.fepContracts}',
-          builder: (c, s) => const FrontEndPlanningContractsScreen()),
+          builder: (c, s) => const PlanningContractingScreen()),
       GoRoute(
           name: AppRoutes.fepVendorQuotes,
           path: '/${AppRoutes.fepVendorQuotes}',

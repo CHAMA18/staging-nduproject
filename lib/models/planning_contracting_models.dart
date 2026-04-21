@@ -190,6 +190,46 @@ class EvaluationScore {
   }
 }
 
+class VendorTechnicalScreening {
+  final String vendorName;
+  final String status;
+  final String notes;
+
+  const VendorTechnicalScreening({
+    required this.vendorName,
+    this.status = 'Pending',
+    this.notes = '',
+  });
+
+  VendorTechnicalScreening copyWith({
+    String? vendorName,
+    String? status,
+    String? notes,
+  }) {
+    return VendorTechnicalScreening(
+      vendorName: vendorName ?? this.vendorName,
+      status: status ?? this.status,
+      notes: notes ?? this.notes,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'vendorName': vendorName,
+      'status': status,
+      'notes': notes,
+    };
+  }
+
+  static VendorTechnicalScreening fromMap(Map<String, dynamic> map) {
+    return VendorTechnicalScreening(
+      vendorName: (map['vendorName'] ?? '').toString(),
+      status: (map['status'] ?? 'Pending').toString(),
+      notes: (map['notes'] ?? '').toString(),
+    );
+  }
+}
+
 class NegotiationItem {
   final String id;
   final String item;

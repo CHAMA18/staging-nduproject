@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:ndu_project/models/planning_contracting_models.dart';
 
 String _normalizeStatusForStorage(String status) {
@@ -84,9 +85,37 @@ class ContractModel {
   final List<NegotiationItem>? negotiationItems;
   final String? linkedRfqId;
   final List<EvaluationScore>? evaluationScores;
+  final List<VendorTechnicalScreening>? technicalScreenings;
   final ContractBudgetBreakdown? budgetBreakdown;
   final String? performanceKpis;
   final String? awardStrategy;
+  final String? linkedFepScopeId;
+  final String? packageSummary;
+  final double? engineerEstimate;
+  final DateTime? targetAwardDate;
+  final DateTime? plannedExecutionStart;
+  final List<String>? linkedScheduleMilestoneIds;
+  final String? technicalGateStatus;
+  final String? technicalGateNotes;
+  final String? recommendedVendor;
+  final double? recommendedAwardValue;
+  final String? vendorComparisonSummary;
+  final String? pmReviewStatus;
+  final String? pmReviewNotes;
+  final DateTime? pmReviewDate;
+  final String? sponsorApprovalStatus;
+  final String? sponsorApprovalNotes;
+  final DateTime? sponsorApprovalDate;
+  final List<String>? complianceChecklist;
+  final String? retentionPlan;
+  final double? taxFeePlan;
+  final double? commitmentForecast;
+  final String? handoffStatus;
+  final String? handoffNotes;
+  final DateTime? handoffReadyAt;
+  final String? procurementHandoffStatus;
+  final DateTime? procurementIssuedAt;
+  final String? procurementRfqId;
 
   const ContractModel({
     required this.id,
@@ -123,9 +152,37 @@ class ContractModel {
     this.negotiationItems,
     this.linkedRfqId,
     this.evaluationScores,
+    this.technicalScreenings,
     this.budgetBreakdown,
     this.performanceKpis,
     this.awardStrategy,
+    this.linkedFepScopeId,
+    this.packageSummary,
+    this.engineerEstimate,
+    this.targetAwardDate,
+    this.plannedExecutionStart,
+    this.linkedScheduleMilestoneIds,
+    this.technicalGateStatus,
+    this.technicalGateNotes,
+    this.recommendedVendor,
+    this.recommendedAwardValue,
+    this.vendorComparisonSummary,
+    this.pmReviewStatus,
+    this.pmReviewNotes,
+    this.pmReviewDate,
+    this.sponsorApprovalStatus,
+    this.sponsorApprovalNotes,
+    this.sponsorApprovalDate,
+    this.complianceChecklist,
+    this.retentionPlan,
+    this.taxFeePlan,
+    this.commitmentForecast,
+    this.handoffStatus,
+    this.handoffNotes,
+    this.handoffReadyAt,
+    this.procurementHandoffStatus,
+    this.procurementIssuedAt,
+    this.procurementRfqId,
   });
 
   Map<String, dynamic> toMap() {
@@ -175,9 +232,50 @@ class ContractModel {
       if (linkedRfqId != null) 'linkedRfqId': linkedRfqId,
       if (evaluationScores != null)
         'evaluationScores': evaluationScores!.map((s) => s.toMap()).toList(),
+      if (technicalScreenings != null)
+        'technicalScreenings':
+            technicalScreenings!.map((item) => item.toMap()).toList(),
       if (budgetBreakdown != null) 'budgetBreakdown': budgetBreakdown!.toMap(),
       if (performanceKpis != null) 'performanceKpis': performanceKpis,
       if (awardStrategy != null) 'awardStrategy': awardStrategy,
+      if (linkedFepScopeId != null) 'linkedFepScopeId': linkedFepScopeId,
+      if (packageSummary != null) 'packageSummary': packageSummary,
+      if (engineerEstimate != null) 'engineerEstimate': engineerEstimate,
+      if (targetAwardDate != null)
+        'targetAwardDate': Timestamp.fromDate(targetAwardDate!),
+      if (plannedExecutionStart != null)
+        'plannedExecutionStart': Timestamp.fromDate(plannedExecutionStart!),
+      if (linkedScheduleMilestoneIds != null)
+        'linkedScheduleMilestoneIds': linkedScheduleMilestoneIds,
+      if (technicalGateStatus != null) 'technicalGateStatus': technicalGateStatus,
+      if (technicalGateNotes != null) 'technicalGateNotes': technicalGateNotes,
+      if (recommendedVendor != null) 'recommendedVendor': recommendedVendor,
+      if (recommendedAwardValue != null)
+        'recommendedAwardValue': recommendedAwardValue,
+      if (vendorComparisonSummary != null)
+        'vendorComparisonSummary': vendorComparisonSummary,
+      if (pmReviewStatus != null) 'pmReviewStatus': pmReviewStatus,
+      if (pmReviewNotes != null) 'pmReviewNotes': pmReviewNotes,
+      if (pmReviewDate != null) 'pmReviewDate': Timestamp.fromDate(pmReviewDate!),
+      if (sponsorApprovalStatus != null)
+        'sponsorApprovalStatus': sponsorApprovalStatus,
+      if (sponsorApprovalNotes != null)
+        'sponsorApprovalNotes': sponsorApprovalNotes,
+      if (sponsorApprovalDate != null)
+        'sponsorApprovalDate': Timestamp.fromDate(sponsorApprovalDate!),
+      if (complianceChecklist != null) 'complianceChecklist': complianceChecklist,
+      if (retentionPlan != null) 'retentionPlan': retentionPlan,
+      if (taxFeePlan != null) 'taxFeePlan': taxFeePlan,
+      if (commitmentForecast != null) 'commitmentForecast': commitmentForecast,
+      if (handoffStatus != null) 'handoffStatus': handoffStatus,
+      if (handoffNotes != null) 'handoffNotes': handoffNotes,
+      if (handoffReadyAt != null)
+        'handoffReadyAt': Timestamp.fromDate(handoffReadyAt!),
+      if (procurementHandoffStatus != null)
+        'procurementHandoffStatus': procurementHandoffStatus,
+      if (procurementIssuedAt != null)
+        'procurementIssuedAt': Timestamp.fromDate(procurementIssuedAt!),
+      if (procurementRfqId != null) 'procurementRfqId': procurementRfqId,
     };
   }
 
@@ -188,6 +286,7 @@ class ContractModel {
       if (v == null) return null;
       if (v is Timestamp) return v.toDate();
       if (v is DateTime) return v;
+      if (v is String) return DateTime.tryParse(v);
       return null;
     }
 
@@ -235,6 +334,22 @@ class ContractModel {
       return items.isEmpty ? null : items;
     }
 
+    List<VendorTechnicalScreening>? parseTechnicalScreenings(dynamic v) {
+      if (v is! List) return null;
+      final items = v
+          .whereType<Map>()
+          .map((e) => VendorTechnicalScreening.fromMap(
+              Map<String, dynamic>.from(e)))
+          .toList();
+      return items.isEmpty ? null : items;
+    }
+
+    List<String>? _sl(dynamic v) {
+      if (v is! List) return null;
+      final items = v.map((e) => e.toString()).toList();
+      return items.isEmpty ? null : items;
+    }
+
     final rawStatus = (data['statusLabel'] ?? data['status'] ?? '').toString();
     final displayStatus = _normalizeStatusForDisplay(rawStatus);
 
@@ -276,12 +391,40 @@ class ContractModel {
       negotiationItems: _ni(data['negotiationItems']),
       linkedRfqId: _ns(data['linkedRfqId']),
       evaluationScores: _es(data['evaluationScores']),
-      budgetBreakdown: data['budgetBreakdown'] != null
+      technicalScreenings: parseTechnicalScreenings(data['technicalScreenings']),
+      budgetBreakdown: data['budgetBreakdown'] is Map
           ? ContractBudgetBreakdown.fromMap(
               Map<String, dynamic>.from(data['budgetBreakdown'] as Map))
           : null,
       performanceKpis: _ns(data['performanceKpis']),
       awardStrategy: _ns(data['awardStrategy']),
+      linkedFepScopeId: _ns(data['linkedFepScopeId']),
+      packageSummary: _ns(data['packageSummary']),
+      engineerEstimate: _nd(data['engineerEstimate']),
+      targetAwardDate: parseTs(data['targetAwardDate']),
+      plannedExecutionStart: parseTs(data['plannedExecutionStart']),
+      linkedScheduleMilestoneIds: _sl(data['linkedScheduleMilestoneIds']),
+      technicalGateStatus: _ns(data['technicalGateStatus']),
+      technicalGateNotes: _ns(data['technicalGateNotes']),
+      recommendedVendor: _ns(data['recommendedVendor']),
+      recommendedAwardValue: _nd(data['recommendedAwardValue']),
+      vendorComparisonSummary: _ns(data['vendorComparisonSummary']),
+      pmReviewStatus: _ns(data['pmReviewStatus']),
+      pmReviewNotes: _ns(data['pmReviewNotes']),
+      pmReviewDate: parseTs(data['pmReviewDate']),
+      sponsorApprovalStatus: _ns(data['sponsorApprovalStatus']),
+      sponsorApprovalNotes: _ns(data['sponsorApprovalNotes']),
+      sponsorApprovalDate: parseTs(data['sponsorApprovalDate']),
+      complianceChecklist: _sl(data['complianceChecklist']),
+      retentionPlan: _ns(data['retentionPlan']),
+      taxFeePlan: _nd(data['taxFeePlan']),
+      commitmentForecast: _nd(data['commitmentForecast']),
+      handoffStatus: _ns(data['handoffStatus']),
+      handoffNotes: _ns(data['handoffNotes']),
+      handoffReadyAt: parseTs(data['handoffReadyAt']),
+      procurementHandoffStatus: _ns(data['procurementHandoffStatus']),
+      procurementIssuedAt: parseTs(data['procurementIssuedAt']),
+      procurementRfqId: _ns(data['procurementRfqId']),
     );
   }
 }
@@ -344,7 +487,17 @@ class ContractService {
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
-        .map((snap) => snap.docs.map(ContractModel.fromDoc).toList());
+        .map((snap) {
+      final contracts = <ContractModel>[];
+      for (final doc in snap.docs) {
+        try {
+          contracts.add(ContractModel.fromDoc(doc));
+        } catch (e) {
+          debugPrint('Skipping malformed contract ${doc.id}: $e');
+        }
+      }
+      return contracts;
+    });
   }
 
   /// Update an existing contract
@@ -420,9 +573,37 @@ class ContractService {
     List<NegotiationItem>? negotiationItems,
     String? linkedRfqId,
     List<EvaluationScore>? evaluationScores,
+    List<VendorTechnicalScreening>? technicalScreenings,
     ContractBudgetBreakdown? budgetBreakdown,
     String? performanceKpis,
     String? awardStrategy,
+    String? linkedFepScopeId,
+    String? packageSummary,
+    double? engineerEstimate,
+    DateTime? targetAwardDate,
+    DateTime? plannedExecutionStart,
+    List<String>? linkedScheduleMilestoneIds,
+    String? technicalGateStatus,
+    String? technicalGateNotes,
+    String? recommendedVendor,
+    double? recommendedAwardValue,
+    String? vendorComparisonSummary,
+    String? pmReviewStatus,
+    String? pmReviewNotes,
+    DateTime? pmReviewDate,
+    String? sponsorApprovalStatus,
+    String? sponsorApprovalNotes,
+    DateTime? sponsorApprovalDate,
+    List<String>? complianceChecklist,
+    String? retentionPlan,
+    double? taxFeePlan,
+    double? commitmentForecast,
+    String? handoffStatus,
+    String? handoffNotes,
+    DateTime? handoffReadyAt,
+    String? procurementHandoffStatus,
+    DateTime? procurementIssuedAt,
+    String? procurementRfqId,
   }) async {
     final updateData = <String, dynamic>{
       'updatedAt': FieldValue.serverTimestamp(),
@@ -472,6 +653,10 @@ class ContractService {
       updateData['evaluationScores'] =
           evaluationScores.map((s) => s.toMap()).toList();
     }
+    if (technicalScreenings != null) {
+      updateData['technicalScreenings'] =
+          technicalScreenings.map((item) => item.toMap()).toList();
+    }
     if (budgetBreakdown != null) {
       updateData['budgetBreakdown'] = budgetBreakdown.toMap();
     }
@@ -480,6 +665,89 @@ class ContractService {
     }
     if (awardStrategy != null) {
       updateData['awardStrategy'] = awardStrategy;
+    }
+    if (linkedFepScopeId != null) {
+      updateData['linkedFepScopeId'] = linkedFepScopeId;
+    }
+    if (packageSummary != null) {
+      updateData['packageSummary'] = packageSummary;
+    }
+    if (engineerEstimate != null) {
+      updateData['engineerEstimate'] = engineerEstimate;
+    }
+    if (targetAwardDate != null) {
+      updateData['targetAwardDate'] = Timestamp.fromDate(targetAwardDate);
+    }
+    if (plannedExecutionStart != null) {
+      updateData['plannedExecutionStart'] =
+          Timestamp.fromDate(plannedExecutionStart);
+    }
+    if (linkedScheduleMilestoneIds != null) {
+      updateData['linkedScheduleMilestoneIds'] = linkedScheduleMilestoneIds;
+    }
+    if (technicalGateStatus != null) {
+      updateData['technicalGateStatus'] = technicalGateStatus;
+    }
+    if (technicalGateNotes != null) {
+      updateData['technicalGateNotes'] = technicalGateNotes;
+    }
+    if (recommendedVendor != null) {
+      updateData['recommendedVendor'] = recommendedVendor;
+    }
+    if (recommendedAwardValue != null) {
+      updateData['recommendedAwardValue'] = recommendedAwardValue;
+    }
+    if (vendorComparisonSummary != null) {
+      updateData['vendorComparisonSummary'] = vendorComparisonSummary;
+    }
+    if (pmReviewStatus != null) {
+      updateData['pmReviewStatus'] = pmReviewStatus;
+    }
+    if (pmReviewNotes != null) {
+      updateData['pmReviewNotes'] = pmReviewNotes;
+    }
+    if (pmReviewDate != null) {
+      updateData['pmReviewDate'] = Timestamp.fromDate(pmReviewDate);
+    }
+    if (sponsorApprovalStatus != null) {
+      updateData['sponsorApprovalStatus'] = sponsorApprovalStatus;
+    }
+    if (sponsorApprovalNotes != null) {
+      updateData['sponsorApprovalNotes'] = sponsorApprovalNotes;
+    }
+    if (sponsorApprovalDate != null) {
+      updateData['sponsorApprovalDate'] =
+          Timestamp.fromDate(sponsorApprovalDate);
+    }
+    if (complianceChecklist != null) {
+      updateData['complianceChecklist'] = complianceChecklist;
+    }
+    if (retentionPlan != null) {
+      updateData['retentionPlan'] = retentionPlan;
+    }
+    if (taxFeePlan != null) {
+      updateData['taxFeePlan'] = taxFeePlan;
+    }
+    if (commitmentForecast != null) {
+      updateData['commitmentForecast'] = commitmentForecast;
+    }
+    if (handoffStatus != null) {
+      updateData['handoffStatus'] = handoffStatus;
+    }
+    if (handoffNotes != null) {
+      updateData['handoffNotes'] = handoffNotes;
+    }
+    if (handoffReadyAt != null) {
+      updateData['handoffReadyAt'] = Timestamp.fromDate(handoffReadyAt);
+    }
+    if (procurementHandoffStatus != null) {
+      updateData['procurementHandoffStatus'] = procurementHandoffStatus;
+    }
+    if (procurementIssuedAt != null) {
+      updateData['procurementIssuedAt'] = Timestamp.fromDate(procurementIssuedAt);
+    }
+    if (procurementRfqId != null) {
+      updateData['procurementRfqId'] = procurementRfqId;
     }
     await _contractsCol(projectId).doc(contractId).update(updateData);
   }
@@ -491,6 +759,11 @@ class ContractService {
   }) async {
     final doc = await _contractsCol(projectId).doc(contractId).get();
     if (!doc.exists) return null;
-    return ContractModel.fromDoc(doc);
+    try {
+      return ContractModel.fromDoc(doc);
+    } catch (e) {
+      debugPrint('Unable to parse contract $contractId: $e');
+      return null;
+    }
   }
 }

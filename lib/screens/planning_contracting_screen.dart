@@ -9,10 +9,14 @@ import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
 import 'package:ndu_project/widgets/ai_suggesting_textfield.dart';
+import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/services/contract_service.dart';
 import 'package:ndu_project/services/planning_contracting_service.dart';
+import 'package:ndu_project/services/procurement_service.dart';
 import 'package:ndu_project/models/planning_contracting_models.dart';
+import 'package:ndu_project/models/procurement/procurement_models.dart'
+    as procurement_models;
 import 'package:ndu_project/screens/planning_procurement_screen.dart';
 
 const Color _kFabYellow = Color(0xFFFBBF24);
@@ -22,6 +26,66 @@ String _formatCurrency(double value) {
   final rounded = value.round();
   final text = rounded.toString();
   return text.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',');
+}
+
+class _PlanningScopeOption {
+  const _PlanningScopeOption({
+    required this.id,
+    required this.label,
+    this.type = 'Scope',
+    this.value = 0,
+    this.status = 'Identified',
+  });
+
+  final String id;
+  final String label;
+  final String type;
+  final double value;
+  final String status;
+}
+
+List<_PlanningScopeOption> _planningScopeOptionsFromData(ProjectDataModel data) {
+  final options = <_PlanningScopeOption>[];
+  final seen = <String>{};
+
+  for (final item in data.withinScopeItems) {
+    final label = item.title.trim().isNotEmpty
+        ? item.title.trim()
+        : item.description.trim();
+    final description = item.description.trim();
+    if (label.isEmpty && description.isEmpty) continue;
+    final id = item.id.trim().isNotEmpty
+        ? item.id.trim()
+        : label.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+    if (!seen.add(id)) continue;
+    options.add(_PlanningScopeOption(
+      id: id,
+      label: label.isNotEmpty ? label : description,
+      type: 'Within Scope',
+      status: 'Identified',
+    ));
+  }
+
+  for (final contractor in data.contractors) {
+    final name = contractor.service.trim().isNotEmpty
+        ? contractor.service.trim()
+        : contractor.name.trim();
+    if (name.isEmpty) continue;
+    final id =
+        'contractor_${name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_')}';
+    if (!seen.add(id)) continue;
+    options.add(_PlanningScopeOption(
+      id: id,
+      label: name,
+      type: 'Contractor Scope',
+      value: contractor.estimatedCost,
+      status: contractor.status.trim().isNotEmpty
+          ? contractor.status.trim()
+          : 'Imported',
+    ));
+  }
+
+  return options;
 }
 
 class PlanningContractingScreen extends StatefulWidget {
@@ -43,12 +107,13 @@ class _PlanningContractingScreenState extends State<PlanningContractingScreen> {
 
   static const _tabLabels = [
     'Overview',
-    'RFPs',
+    'Packages',
+    'Tender Setup',
     'Evaluation',
-    'Payments',
-    'Admin',
     'Negotiation',
-    'Budget',
+    'Admin Controls',
+    'Commercial & Forecast',
+    'Handoff',
   ];
 
   @override
@@ -64,7 +129,9 @@ class _PlanningContractingScreenState extends State<PlanningContractingScreen> {
           children: [
             DraggableSidebar(
               openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(activeItemLabel: 'Contract'),
+              child: const InitiationLikeSidebar(
+                activeItemLabel: 'Contract Planning',
+              ),
             ),
             Expanded(
               child: Stack(
@@ -114,17 +181,19 @@ class _PlanningContractingScreenState extends State<PlanningContractingScreen> {
       case 0:
         return const _OverviewTab();
       case 1:
-        return const _RfpTab();
+        return const _PackagesTab();
       case 2:
-        return const _EvaluationTab();
+        return const _TenderSetupTab();
       case 3:
-        return const _PaymentsTab();
+        return const _EvaluationTab();
       case 4:
-        return const _AdminTab();
-      case 5:
         return const _NegotiationTab();
+      case 5:
+        return const _AdminTab();
       case 6:
-        return const _BudgetTab();
+        return const _CommercialForecastTab();
+      case 7:
+        return const _HandoffTab();
       default:
         return const SizedBox.shrink();
     }
@@ -151,7 +220,7 @@ class _BuildHeader extends StatelessWidget {
         const SizedBox(width: 10),
         const _CircleBtn(icon: Icons.arrow_forward_ios),
         const SizedBox(width: 20),
-        const Text('Contracting',
+        const Text('Contract Planning',
             style: TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.w600,
@@ -221,18 +290,33 @@ class _TabBar extends StatelessWidget {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final showAll = constraints.maxWidth >= labels.length * 110;
-          final visibleLabels = showAll
-              ? labels
-              : labels.sublist(0, labels.length > 4 ? 4 : labels.length);
+          final isCompact = constraints.maxWidth < labels.length * 130;
+          if (isCompact) {
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: List.generate(labels.length, (i) {
+                  final isSelected = i == selectedIndex;
+                  return Padding(
+                    padding: EdgeInsets.only(right: i == labels.length - 1 ? 0 : 4),
+                    child: _TabPill(
+                      label: labels[i],
+                      selected: isSelected,
+                      onTap: () => onSelected(i),
+                    ),
+                  );
+                }),
+              ),
+            );
+          }
 
           return Wrap(
             spacing: 4,
             runSpacing: 4,
-            children: List.generate(visibleLabels.length, (i) {
+            children: List.generate(labels.length, (i) {
               final isSelected = i == selectedIndex;
               return _TabPill(
-                label: visibleLabels[i],
+                label: labels[i],
                 selected: isSelected,
                 onTap: () => onSelected(i),
               );
@@ -523,8 +607,8 @@ class _OverviewTabState extends State<_OverviewTab> {
         ),
         const SizedBox(height: 20),
         _SectionCard(
-          title: 'Contracting Strategy',
-          subtitle: 'Define the contracting approach for this project',
+          title: 'Contract Planning Strategy',
+          subtitle: 'Define the package, award, and approval approach for this project',
           child: _StrategySection(
             awardStrategy: _awardStrategy,
             contractType: _contractType,
@@ -539,16 +623,16 @@ class _OverviewTabState extends State<_OverviewTab> {
           ),
         ),
         _SectionCard(
-          title: 'Contract Plan',
+          title: 'Contract Planning Narrative',
           subtitle:
-              'AI drafts a contract plan using your prior planning context. Edit it to match your strategy.',
+              'AI drafts the planning narrative using initiation inputs and planning context. Edit it to match your package strategy.',
           child: AiSuggestingTextField(
-            fieldLabel: 'Contract Plan',
+            fieldLabel: 'Contract Planning Narrative',
             hintText:
-                'Outline scope, delivery model, commercial terms, milestones, vendor roles, and approval gates.',
-            sectionLabel: 'Contract Plan',
+                'Outline package strategy, delivery model, commercial terms, evaluation approach, milestones, vendor roles, and approval gates.',
+            sectionLabel: 'Contract Planning Narrative',
             autoGenerate: true,
-            autoGenerateSection: 'Contract Plan',
+            autoGenerateSection: 'Contract Planning Narrative',
             initialText: projectData.planningNotes[_tabNoteKey],
             onChanged: (value) async {
               final trimmed = value.trim();
@@ -575,23 +659,10 @@ class _OverviewTabState extends State<_OverviewTab> {
           ),
         ),
         _SectionCard(
-          title: 'FEP Scopes Reference',
+          title: 'Approval Gates',
           subtitle:
-              'Contracting scopes identified in the Initiation (FEP) phase',
-          child: _FepScopesPreview(projectId: projectId),
-        ),
-        _SectionCard(
-          title: 'Contracts Preview',
-          subtitle: 'Pre-define contracts that will feed execution tracking',
-          trailing: TextButton.icon(
-            onPressed: () => _showCreateContractDialog(context, projectId),
-            icon: const Icon(Icons.add, size: 16),
-            label: const Text('Add Contract',
-                style: TextStyle(fontWeight: FontWeight.w600)),
-            style:
-                TextButton.styleFrom(foregroundColor: const Color(0xFF2563EB)),
-          ),
-          child: _ContractsPreview(projectId: projectId),
+              'Every package must complete PM review before sponsor approval and handoff.',
+          child: const _ApprovalGateSummary(),
         ),
       ],
     );
@@ -644,6 +715,72 @@ class _StrategySection extends StatelessWidget {
         return Row(
             crossAxisAlignment: CrossAxisAlignment.start, children: children);
       },
+    );
+  }
+}
+
+class _ApprovalGateSummary extends StatelessWidget {
+  const _ApprovalGateSummary();
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: const [
+        _InlineInfoCard(
+          title: 'PM Review',
+          detail: 'Required for every package before sponsor approval.',
+          color: Color(0xFF2563EB),
+        ),
+        _InlineInfoCard(
+          title: 'Sponsor Approval',
+          detail: 'Required for every package before execution handoff.',
+          color: Color(0xFF7C3AED),
+        ),
+        _InlineInfoCard(
+          title: 'Schedule Sync',
+          detail: 'Approved milestones should create schedule entries automatically.',
+          color: Color(0xFF059669),
+        ),
+      ],
+    );
+  }
+}
+
+class _InlineInfoCard extends StatelessWidget {
+  const _InlineInfoCard({
+    required this.title,
+    required this.detail,
+    required this.color,
+  });
+
+  final String title;
+  final String detail;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 260,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.22)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.w700, color: color)),
+          const SizedBox(height: 6),
+          Text(detail,
+              style:
+                  const TextStyle(fontSize: 12, color: Color(0xFF4B5563))),
+        ],
+      ),
     );
   }
 }
@@ -714,32 +851,21 @@ class _FepScopesPreview extends StatelessWidget {
     if (projectId == null || projectId!.isEmpty) {
       return const _EmptyPanel('No project selected.');
     }
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('projects')
-          .doc(projectId)
-          .collection('contracting_scopes')
-          .orderBy('createdAt', descending: true)
-          .limit(20)
-          .snapshots(),
-      builder: (context, snap) {
-        if (!snap.hasData || snap.data!.docs.isEmpty) {
-          return const _EmptyPanel(
-              'No FEP scopes found. Add contracting scopes in the Initiation phase.');
-        }
-        final docs = snap.data!.docs;
-        return Column(
-          children: docs.map((doc) {
-            final d = doc.data();
-            final name = (d['name'] ?? d['title'] ?? '').toString();
-            final type = (d['type'] ?? '').toString();
-            final value = d['estimatedValue'] ?? d['estimatedCost'] ?? 0;
-            final status = (d['status'] ?? '').toString();
-            return _FepScopeRow(
-                name: name, type: type, value: value, status: status);
-          }).toList(),
-        );
-      },
+    final scopeOptions =
+        _planningScopeOptionsFromData(ProjectDataHelper.getData(context));
+    if (scopeOptions.isEmpty) {
+      return const _EmptyPanel(
+          'No FEP scopes found. Add within-scope items or contractor scopes in Initiation.');
+    }
+    return Column(
+      children: scopeOptions
+          .map((scope) => _FepScopeRow(
+                name: scope.label,
+                type: scope.type,
+                value: scope.value,
+                status: scope.status,
+              ))
+          .toList(),
     );
   }
 }
@@ -807,51 +933,226 @@ class _ContractsPreview extends StatelessWidget {
               'No contracts yet. Click "Add Contract" to get started.');
         }
         return Column(
-          children: contracts.map((c) => _ContractRow(contract: c)).toList(),
+          children: contracts
+              .map((c) => _PackagePlanningCard(contract: c))
+              .toList(),
         );
       },
     );
   }
 }
 
-class _ContractRow extends StatelessWidget {
-  const _ContractRow({required this.contract});
+class _PackagePlanningCard extends StatelessWidget {
+  const _PackagePlanningCard({required this.contract});
   final ContractModel contract;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-              flex: 3,
-              child: Text(contract.name,
-                  style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w500))),
-          Expanded(
-              flex: 2,
-              child: Text(
-                  contract.contractorName.isEmpty
-                      ? 'TBD'
-                      : contract.contractorName,
-                  style:
-                      const TextStyle(fontSize: 12, color: Color(0xFF6B7280)))),
-          Expanded(
-              flex: 2,
-              child: Text('\$${_formatCurrency(contract.estimatedValue)}',
-                  style: const TextStyle(fontSize: 12))),
-          Expanded(
-            flex: 2,
-            child: _StatusChip(
-              label: contract.status,
-              color: _statusColor(contract.status),
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(contract.name,
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 4),
+                    Text(
+                      contract.packageSummary?.isNotEmpty == true
+                          ? contract.packageSummary!
+                          : (contract.description.isNotEmpty
+                              ? contract.description
+                              : 'No package summary yet.'),
+                      style: const TextStyle(
+                          fontSize: 12, color: Color(0xFF6B7280)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              TextButton.icon(
+                onPressed: () => _showEditPackageDialog(context, contract),
+                icon: const Icon(Icons.edit_outlined, size: 16),
+                label: const Text('Edit Package'),
+                style:
+                    TextButton.styleFrom(foregroundColor: const Color(0xFF2563EB)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _PackageMetricChip(
+                label: 'FEP Scope',
+                value: contract.linkedFepScopeId ?? 'Not linked',
+              ),
+              _PackageMetricChip(
+                label: 'Engineer Estimate',
+                value: contract.engineerEstimate != null
+                    ? '\$${_formatCurrency(contract.engineerEstimate!)}'
+                    : 'TBD',
+              ),
+              _PackageMetricChip(
+                label: 'Target Award',
+                value: _formatDateLabel(contract.targetAwardDate),
+              ),
+              _PackageMetricChip(
+                label: 'Execution Start',
+                value: _formatDateLabel(contract.plannedExecutionStart),
+              ),
+              _PackageMetricChip(
+                label: 'Award Strategy',
+                value: contract.awardStrategy ?? 'Not set',
+              ),
+              _PackageMetricChip(
+                label: 'Contract Type',
+                value: contract.contractType.isNotEmpty
+                    ? contract.contractType
+                    : 'Not set',
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Text('\$${_formatCurrency(contract.estimatedValue)}',
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF059669))),
+              ),
+              _StatusChip(
+                label: contract.status,
+                color: _statusColor(contract.status),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
+}
+
+class _PackageMetricChip extends StatelessWidget {
+  const _PackageMetricChip({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            TextSpan(
+              text: value,
+              style: const TextStyle(color: Color(0xFF111827)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _formatDateLabel(DateTime? date) {
+  if (date == null) return 'TBD';
+  return DateFormat('MMM dd, yyyy').format(date);
+}
+
+String _scheduleMilestoneId(String contractId, String suffix) =>
+    'cp_${contractId}_$suffix';
+
+String _dateToScheduleText(DateTime date) =>
+    DateTime(date.year, date.month, date.day).toIso8601String();
+
+ScheduleActivity _buildContractPlanningMilestone({
+  required String id,
+  required String title,
+  required DateTime date,
+  List<String> predecessorIds = const [],
+}) {
+  return ScheduleActivity(
+    id: id,
+    wbsId: id,
+    title: title,
+    durationDays: 0,
+    predecessorIds: predecessorIds,
+    isMilestone: true,
+    status: 'pending',
+    priority: 'high',
+    assignee: 'Contract Planning',
+    discipline: 'Contract Planning',
+    progress: 0,
+    startDate: _dateToScheduleText(date),
+    dueDate: _dateToScheduleText(date),
+    estimatedHours: 0,
+    milestone: title,
+  );
+}
+
+Future<void> _upsertScheduleMilestoneActivity({
+  required BuildContext context,
+  required String milestoneId,
+  required String title,
+  required DateTime? date,
+  List<String> predecessorIds = const [],
+}) async {
+  final data = ProjectDataHelper.getData(context);
+  final activities = List<ScheduleActivity>.from(data.scheduleActivities);
+  activities.removeWhere((activity) => activity.id == milestoneId);
+  if (date != null) {
+    activities.add(_buildContractPlanningMilestone(
+      id: milestoneId,
+      title: title,
+      date: date,
+      predecessorIds: predecessorIds,
+    ));
+  }
+
+  await ProjectDataHelper.updateAndSave(
+    context: context,
+    checkpoint: 'contracts',
+    dataUpdater: (project) => project.copyWith(scheduleActivities: activities),
+    showSnackbar: false,
+  );
+}
+
+List<String> _mergeMilestoneIds(
+  List<String>? existing,
+  Iterable<String> additions,
+) {
+  final merged = <String>{...(existing ?? const <String>[])};
+  merged.addAll(additions.where((id) => id.trim().isNotEmpty));
+  return merged.toList()..sort();
 }
 
 Color _statusColor(String status) {
@@ -1017,6 +1318,940 @@ void _showCreateContractDialog(BuildContext context, String? projectId) {
   );
 }
 
+Future<void> _showEditPackageDialog(
+    BuildContext context, ContractModel contract) async {
+  final projectData = ProjectDataHelper.getData(context);
+  final scopeOptions = _planningScopeOptionsFromData(projectData);
+  final summaryCtrl =
+      TextEditingController(text: contract.packageSummary ?? contract.description);
+  final engineerEstimateCtrl = TextEditingController(
+      text: contract.engineerEstimate?.toStringAsFixed(0) ?? '');
+  final plannedValueCtrl =
+      TextEditingController(text: contract.estimatedValue.toStringAsFixed(0));
+  String selectedAwardStrategy = contract.awardStrategy ?? 'Sole Source';
+  String selectedContractType =
+      contract.contractType.isNotEmpty ? contract.contractType : 'Not Sure';
+  String? selectedScopeId = contract.linkedFepScopeId;
+  DateTime? targetAwardDate = contract.targetAwardDate;
+  DateTime? plannedExecutionStart = contract.plannedExecutionStart;
+
+  Future<DateTime?> pickDate(DateTime? current) {
+    return showDatePicker(
+      context: context,
+      initialDate: current ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+  }
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (dialogContext, setDialog) {
+        final isNarrow = MediaQuery.of(dialogContext).size.width < 760;
+        return AlertDialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        title: Text('Edit Package: ${contract.name}'),
+        content: SizedBox(
+          width: MediaQuery.of(dialogContext).size.width > 720 ? 620 : double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DropdownButtonFormField<String?>(
+                  initialValue: scopeOptions.any((item) => item.id == selectedScopeId)
+                      ? selectedScopeId
+                      : null,
+                  isExpanded: true,
+                  items: <DropdownMenuItem<String?>>[
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('Not linked'),
+                    ),
+                    ...scopeOptions.map((scope) => DropdownMenuItem<String?>(
+                          value: scope.id,
+                          child:
+                              Text(scope.label, overflow: TextOverflow.ellipsis),
+                        )),
+                  ],
+                  onChanged: (value) => setDialog(() => selectedScopeId = value),
+                  decoration: const InputDecoration(
+                    labelText: 'Linked FEP Scope',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: summaryCtrl,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Package Summary',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                if (isNarrow)
+                  Column(
+                    children: [
+                      TextField(
+                        controller: engineerEstimateCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Engineer Estimate',
+                          prefixText: '\$',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: plannedValueCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Planned Award Value',
+                          prefixText: '\$',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: engineerEstimateCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Engineer Estimate',
+                            prefixText: '\$',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: plannedValueCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Planned Award Value',
+                            prefixText: '\$',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                const SizedBox(height: 14),
+                if (isNarrow)
+                  Column(
+                    children: [
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedAwardStrategy,
+                        isExpanded: true,
+                        items: const [
+                          DropdownMenuItem(
+                              value: 'Sole Source', child: Text('Sole Source')),
+                          DropdownMenuItem(
+                              value: 'Competitive Bidding',
+                              child: Text('Competitive Bidding')),
+                          DropdownMenuItem(
+                              value: 'Not Sure', child: Text('Not Sure')),
+                        ],
+                        onChanged: (value) => setDialog(
+                            () => selectedAwardStrategy = value ?? 'Not Sure'),
+                        decoration: const InputDecoration(
+                          labelText: 'Award Strategy',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedContractType,
+                        isExpanded: true,
+                        items: const [
+                          DropdownMenuItem(
+                              value: 'Not Sure', child: Text('Not Sure')),
+                          DropdownMenuItem(
+                              value: 'Lump Sum (Fixed Price)',
+                              child: Text('Lump Sum (Fixed Price)')),
+                          DropdownMenuItem(
+                              value: 'Reimbursable (Time & Materials)',
+                              child: Text('Reimbursable (Time & Materials)')),
+                        ],
+                        onChanged: (value) => setDialog(() =>
+                            selectedContractType = value ?? 'Not Sure'),
+                        decoration: const InputDecoration(
+                          labelText: 'Contract Type',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedAwardStrategy,
+                          isExpanded: true,
+                          items: const [
+                            DropdownMenuItem(
+                                value: 'Sole Source', child: Text('Sole Source')),
+                            DropdownMenuItem(
+                                value: 'Competitive Bidding',
+                                child: Text('Competitive Bidding')),
+                            DropdownMenuItem(
+                                value: 'Not Sure', child: Text('Not Sure')),
+                          ],
+                          onChanged: (value) => setDialog(
+                              () => selectedAwardStrategy = value ?? 'Not Sure'),
+                          decoration: const InputDecoration(
+                            labelText: 'Award Strategy',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedContractType,
+                          isExpanded: true,
+                          items: const [
+                            DropdownMenuItem(
+                                value: 'Not Sure', child: Text('Not Sure')),
+                            DropdownMenuItem(
+                                value: 'Lump Sum (Fixed Price)',
+                                child: Text('Lump Sum (Fixed Price)')),
+                            DropdownMenuItem(
+                                value: 'Reimbursable (Time & Materials)',
+                                child: Text('Reimbursable (Time & Materials)')),
+                          ],
+                          onChanged: (value) => setDialog(() =>
+                              selectedContractType = value ?? 'Not Sure'),
+                          decoration: const InputDecoration(
+                            labelText: 'Contract Type',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    SizedBox(
+                      width: isNarrow ? double.infinity : 280,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final picked = await pickDate(targetAwardDate);
+                          if (picked != null) {
+                            setDialog(() => targetAwardDate = picked);
+                          }
+                        },
+                        icon: const Icon(Icons.event_outlined, size: 16),
+                        label: Text(
+                            'Target Award: ${_formatDateLabel(targetAwardDate)}'),
+                      ),
+                    ),
+                    SizedBox(
+                      width: isNarrow ? double.infinity : 280,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final picked = await pickDate(plannedExecutionStart);
+                          if (picked != null) {
+                            setDialog(() => plannedExecutionStart = picked);
+                          }
+                        },
+                        icon: const Icon(Icons.calendar_month_outlined, size: 16),
+                        label: Text(
+                            'Execution Start: ${_formatDateLabel(plannedExecutionStart)}'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              await ContractService.updateContract(
+                projectId: contract.projectId,
+                contractId: contract.id,
+                contractType: selectedContractType,
+                estimatedValue: double.tryParse(plannedValueCtrl.text.trim()),
+              );
+              await ContractService.updatePlanningFields(
+                projectId: contract.projectId,
+                contractId: contract.id,
+                linkedFepScopeId: selectedScopeId ?? '',
+                packageSummary: summaryCtrl.text.trim(),
+                engineerEstimate:
+                    double.tryParse(engineerEstimateCtrl.text.trim()),
+                targetAwardDate: targetAwardDate,
+                plannedExecutionStart: plannedExecutionStart,
+                awardStrategy: selectedAwardStrategy,
+                linkedScheduleMilestoneIds: _mergeMilestoneIds(
+                  contract.linkedScheduleMilestoneIds,
+                  [
+                    _scheduleMilestoneId(contract.id, 'award'),
+                    _scheduleMilestoneId(contract.id, 'execution_start'),
+                  ],
+                ),
+              );
+              await _upsertScheduleMilestoneActivity(
+                context: context,
+                milestoneId: _scheduleMilestoneId(contract.id, 'award'),
+                title: '${contract.name} Award',
+                date: targetAwardDate,
+              );
+              await _upsertScheduleMilestoneActivity(
+                context: context,
+                milestoneId: _scheduleMilestoneId(contract.id, 'execution_start'),
+                title: '${contract.name} Execution Start',
+                date: plannedExecutionStart,
+                predecessorIds: targetAwardDate != null
+                    ? [_scheduleMilestoneId(contract.id, 'award')]
+                    : const [],
+              );
+              if (dialogContext.mounted) {
+                Navigator.of(dialogContext).pop();
+              }
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Saved package updates for ${contract.name}.'),
+                  backgroundColor: const Color(0xFF16A34A),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white),
+            child: const Text('Save Package'),
+          ),
+        ],
+      );
+      },
+    ),
+  );
+}
+
+class _PackagesTab extends StatelessWidget {
+  const _PackagesTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final projectId = ProjectDataHelper.getData(context).projectId;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionCard(
+          title: 'FEP Scope Inputs',
+          subtitle:
+              'Review initiation scopes that should become contract packages in planning.',
+          child: _FepScopesPreview(projectId: projectId),
+        ),
+        _SectionCard(
+          title: 'Contract Packages',
+          subtitle:
+              'Define package-level records that will feed evaluation, approvals, procurement, schedule, and execution handoff.',
+          trailing: TextButton.icon(
+            onPressed: () => _showCreateContractDialog(context, projectId),
+            icon: const Icon(Icons.add, size: 16),
+            label: const Text('Add Package',
+                style: TextStyle(fontWeight: FontWeight.w600)),
+            style:
+                TextButton.styleFrom(foregroundColor: const Color(0xFF2563EB)),
+          ),
+          child: _ContractsPreview(projectId: projectId),
+        ),
+      ],
+    );
+  }
+}
+
+class _TenderSetupTab extends StatelessWidget {
+  const _TenderSetupTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final initialText =
+        ProjectDataHelper.getData(context).planningNotes['planning_tender_setup'];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionCard(
+          title: 'Tender Setup Guidance',
+          subtitle:
+              'Prepare package-linked RFPs, invited bidders, bid dates, and evaluation setup before procurement takes over.',
+          child: AiSuggestingTextField(
+            fieldLabel: 'Tender Setup Guidance',
+            hintText:
+                'Describe bidder strategy, technical/commercial split, submission timelines, and clarification approach.',
+            sectionLabel: 'Tender Setup Guidance',
+            autoGenerate: true,
+            autoGenerateSection: 'Tender Setup Guidance',
+            initialText: initialText,
+            onChanged: (value) async {
+              final trimmed = value.trim();
+              await ProjectDataHelper.updateAndSave(
+                context: context,
+                checkpoint: 'contracts',
+                dataUpdater: (data) => data.copyWith(
+                  planningNotes: {
+                    ...data.planningNotes,
+                    'planning_tender_setup': trimmed,
+                  },
+                ),
+                showSnackbar: false,
+              );
+            },
+            onAutoGenerated: (value) async {
+              final trimmed = value.trim();
+              await ProjectDataHelper.updateAndSave(
+                context: context,
+                checkpoint: 'contracts',
+                dataUpdater: (data) => data.copyWith(
+                  planningNotes: {
+                    ...data.planningNotes,
+                    'planning_tender_setup': trimmed,
+                  },
+                ),
+                showSnackbar: false,
+              );
+            },
+          ),
+        ),
+        const _RfpTab(),
+      ],
+    );
+  }
+}
+
+class _CommercialForecastTab extends StatelessWidget {
+  const _CommercialForecastTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _PaymentsTab(),
+        _BudgetTab(),
+      ],
+    );
+  }
+}
+
+class _HandoffTab extends StatelessWidget {
+  const _HandoffTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final projectId = ProjectDataHelper.getData(context).projectId;
+    if (projectId == null || projectId.isEmpty) {
+      return const _EmptyPanel('No project selected.');
+    }
+
+    return StreamBuilder<List<ContractModel>>(
+      stream: ContractService.streamContracts(projectId),
+      builder: (context, snap) {
+        final contracts = snap.data ?? const [];
+        final packageCount = contracts.length;
+        final plannedValue =
+            contracts.fold<double>(0.0, (t, c) => t + c.estimatedValue);
+        final readyContracts = contracts
+            .where((contract) => _isReadyForExecutionHandoff(contract))
+            .toList();
+        final procurementIssuedContracts = contracts
+            .where((contract) =>
+                (contract.procurementHandoffStatus ?? '').toLowerCase() ==
+                'issued to procurement')
+            .toList();
+        final procurementIssuedValue = procurementIssuedContracts.fold<double>(
+            0.0,
+            (total, contract) =>
+                total + (contract.recommendedAwardValue ?? contract.estimatedValue));
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                _StatCard(
+                    value: packageCount.toString(),
+                    label: 'Packages',
+                    color: const Color(0xFF2563EB),
+                    supporting: 'Planning records prepared'),
+                _StatCard(
+                    value: packageCount == 0
+                        ? 'TBD'
+                        : '\$${_formatCurrency(plannedValue)}',
+                    label: 'Approved Value Target',
+                    color: const Color(0xFF059669),
+                    supporting: 'Will flow to execution'),
+                _StatCard(
+                    value: '${readyContracts.length}/$packageCount',
+                    label: 'Ready For Execution',
+                    color: const Color(0xFFF59E0B),
+                    supporting: 'Sponsor approval required'),
+                _StatCard(
+                    value: procurementIssuedContracts.isEmpty
+                        ? 'TBD'
+                        : '\$${_formatCurrency(procurementIssuedValue)}',
+                    label: 'Issued To Procurement',
+                    color: const Color(0xFF7C3AED),
+                    supporting: '${procurementIssuedContracts.length} packages'),
+              ],
+            ),
+            const SizedBox(height: 20),
+            const _SectionCard(
+              title: 'Execution Handoff Rules',
+              subtitle:
+                  'Contract planning hands off only approved packages with finalized commercial and administration settings.',
+              child: _HandoffChecklist(),
+            ),
+            const SizedBox(height: 20),
+            _SectionCard(
+              title: 'Package Handoff Readiness',
+              subtitle:
+                  'Each package must pass PM review and sponsor approval before it can feed execution.',
+              child: contracts.isEmpty
+                  ? const _EmptyPanel(
+                      'Add contract packages first to prepare execution handoff.')
+                  : Column(
+                      children: contracts
+                          .map((contract) =>
+                              _HandoffReadinessCard(contract: contract))
+                          .toList(),
+                    ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+bool _isReadyForExecutionHandoff(ContractModel contract) {
+  final sponsorApproved =
+      (contract.sponsorApprovalStatus ?? '').toLowerCase() == 'approved';
+  final pmApproved = (contract.pmReviewStatus ?? '').toLowerCase() == 'approved';
+  final hasVendor = (contract.recommendedVendor ?? '').trim().isNotEmpty;
+  final hasScope = (contract.linkedFepScopeId ?? '').trim().isNotEmpty;
+  final hasAwardValue =
+      (contract.recommendedAwardValue ?? contract.estimatedValue) > 0;
+  return sponsorApproved && pmApproved && hasVendor && hasScope && hasAwardValue;
+}
+
+bool _isReadyForProcurementHandoff(ContractModel contract) {
+  final sponsorApproved =
+      (contract.sponsorApprovalStatus ?? '').toLowerCase() == 'approved';
+  final pmApproved = (contract.pmReviewStatus ?? '').toLowerCase() == 'approved';
+  final hasLinkedTender = (contract.linkedRfqId ?? '').trim().isNotEmpty;
+  return sponsorApproved && pmApproved && hasLinkedTender;
+}
+
+procurement_models.RfqStatus _mapPlanningRfqStatusToProcurement(
+  String status,
+) {
+  final normalized = status.trim().toLowerCase();
+  switch (normalized) {
+    case 'published':
+      return procurement_models.RfqStatus.inMarket;
+    case 'evaluation':
+      return procurement_models.RfqStatus.evaluation;
+    case 'awarded':
+      return procurement_models.RfqStatus.awarded;
+    default:
+      return procurement_models.RfqStatus.draft;
+  }
+}
+
+Future<void> _issuePackageToProcurement(
+  BuildContext context,
+  ContractModel contract,
+) async {
+  final rfqs =
+      await PlanningContractingService.streamRfqs(contract.projectId).first;
+  PlanningRfq? planningRfq;
+  for (final rfq in rfqs) {
+    if (rfq.id == contract.linkedRfqId) {
+      planningRfq = rfq;
+      break;
+    }
+  }
+  planningRfq ??= rfqs.where((rfq) => rfq.linkedScopeId == contract.id).firstOrNull;
+  if (planningRfq == null) {
+    return;
+  }
+
+  final now = DateTime.now();
+  final procurementRfq = procurement_models.RfqModel(
+    id: contract.procurementRfqId ?? '',
+    projectId: contract.projectId,
+    title: planningRfq.title,
+    category: contract.discipline.isEmpty ? 'Contract Package' : contract.discipline,
+    owner: contract.contractManagerName ?? contract.owner,
+    dueDate: planningRfq.submissionDeadline ??
+        contract.targetAwardDate ??
+        now.add(const Duration(days: 14)),
+    invitedCount: planningRfq.invitedContractors.length,
+    responseCount: 0,
+    budget: contract.recommendedAwardValue ?? contract.estimatedValue,
+    status: _mapPlanningRfqStatusToProcurement(planningRfq.status),
+    priority: procurement_models.ProcurementPriority.high,
+    createdAt: now,
+  );
+
+  String procurementRfqId = contract.procurementRfqId ?? '';
+  if (procurementRfqId.isEmpty) {
+    procurementRfqId = await ProcurementService.createRfq(procurementRfq);
+  } else {
+    await ProcurementService.updateRfq(
+      contract.projectId,
+      procurementRfqId,
+      {
+        'title': procurementRfq.title,
+        'category': procurementRfq.category,
+        'owner': procurementRfq.owner,
+        'dueDate': Timestamp.fromDate(procurementRfq.dueDate),
+        'invitedCount': procurementRfq.invitedCount,
+        'budget': procurementRfq.budget,
+        'status': procurementRfq.status.name,
+        'priority': procurementRfq.priority.name,
+      },
+    );
+  }
+
+  await ContractService.updatePlanningFields(
+    projectId: contract.projectId,
+    contractId: contract.id,
+    procurementHandoffStatus: 'Issued to Procurement',
+    procurementIssuedAt: now,
+    procurementRfqId: procurementRfqId,
+  );
+}
+
+const List<String> _defaultComplianceChecklist = [
+  'Legal Registration',
+  'Tax Clearance',
+  'Insurance',
+  'Bond / Guarantee',
+  'Signed Forms',
+  'HSE Documentation',
+];
+
+class _HandoffChecklist extends StatelessWidget {
+  const _HandoffChecklist();
+
+  @override
+  Widget build(BuildContext context) {
+    const items = [
+      'Package linked to an initiation scope',
+      'Recommended vendor and award value captured',
+      'PM review completed',
+      'Sponsor approval completed',
+      'Commercial plan drafted with milestones, retention, taxes, and forecast',
+      'Administration controls defined',
+      'Schedule milestones generated automatically for key contract dates',
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: items
+          .map((item) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(top: 2),
+                      child: Icon(Icons.check_circle_outline,
+                          size: 16, color: Color(0xFF2563EB)),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(item,
+                          style: const TextStyle(
+                              fontSize: 13, color: Color(0xFF374151))),
+                    ),
+                  ],
+                ),
+              ))
+          .toList(),
+    );
+  }
+}
+
+class _HandoffReadinessCard extends StatelessWidget {
+  const _HandoffReadinessCard({required this.contract});
+
+  final ContractModel contract;
+
+  @override
+  Widget build(BuildContext context) {
+    final missingReasons = <String>[
+      if ((contract.linkedFepScopeId ?? '').trim().isEmpty)
+        'Link this package to an initiation/FEP scope.',
+      if ((contract.recommendedVendor ?? '').trim().isEmpty)
+        'Select a recommended vendor in Evaluation.',
+      if ((contract.recommendedAwardValue ?? contract.estimatedValue) <= 0)
+        'Enter a recommended award value.',
+      if ((contract.pmReviewStatus ?? '').toLowerCase() != 'approved')
+        'PM review must be approved.',
+      if ((contract.sponsorApprovalStatus ?? '').toLowerCase() != 'approved')
+        'Sponsor approval must be approved.',
+      if ((contract.linkedScheduleMilestoneIds ?? const []).isEmpty)
+        'Save package/evaluation dates to generate milestones.',
+    ];
+    final readinessChecks = <MapEntry<String, bool>>[
+      MapEntry('Initiation scope linked',
+          (contract.linkedFepScopeId ?? '').trim().isNotEmpty),
+      MapEntry('Recommended vendor selected',
+          (contract.recommendedVendor ?? '').trim().isNotEmpty),
+      MapEntry('Recommended award value captured',
+          (contract.recommendedAwardValue ?? contract.estimatedValue) > 0),
+      MapEntry('PM review approved',
+          (contract.pmReviewStatus ?? '').toLowerCase() == 'approved'),
+      MapEntry('Sponsor approval approved',
+          (contract.sponsorApprovalStatus ?? '').toLowerCase() == 'approved'),
+      MapEntry('Schedule milestones generated',
+          (contract.linkedScheduleMilestoneIds ?? const []).isNotEmpty),
+    ];
+    final ready = _isReadyForExecutionHandoff(contract);
+    final readyForProcurement = _isReadyForProcurementHandoff(contract);
+    final awardValue = contract.recommendedAwardValue ?? contract.estimatedValue;
+    final alreadySent =
+        (contract.handoffStatus ?? '').toLowerCase() == 'sent to execution';
+    final procurementIssued =
+        (contract.procurementHandoffStatus ?? '').toLowerCase() ==
+            'issued to procurement';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(contract.name,
+                        style: const TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 4),
+                    Text(
+                      ready
+                          ? 'Ready to hand off after sponsor approval.'
+                          : missingReasons.first,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: ready
+                            ? const Color(0xFF059669)
+                            : const Color(0xFF6B7280),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: ready
+                      ? const Color(0xFFDCFCE7)
+                      : const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  ready ? 'Ready for Execution' : 'Blocked',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: ready
+                        ? const Color(0xFF166534)
+                        : const Color(0xFF92400E),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _PackageMetricChip(
+                label: 'Vendor',
+                value: (contract.recommendedVendor ?? '').trim().isEmpty
+                    ? 'Pending'
+                    : contract.recommendedVendor!,
+              ),
+              _PackageMetricChip(
+                label: 'Award Value',
+                value: awardValue > 0
+                    ? '\$${_formatCurrency(awardValue)}'
+                    : 'Pending',
+              ),
+              _PackageMetricChip(
+                label: 'PM Review',
+                value: contract.pmReviewStatus ?? 'Pending',
+              ),
+              _PackageMetricChip(
+                label: 'Sponsor',
+                value: contract.sponsorApprovalStatus ?? 'Pending',
+              ),
+              _PackageMetricChip(
+                label: 'Procurement',
+                value: contract.procurementHandoffStatus ?? 'Not issued',
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (!ready)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFDE68A)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: missingReasons
+                    .map((reason) => Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Text(
+                            '• $reason',
+                            style: const TextStyle(
+                                fontSize: 12, color: Color(0xFF92400E)),
+                          ),
+                        ))
+                    .toList(),
+              ),
+            ),
+          Column(
+            children: readinessChecks
+                .map((check) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          Icon(
+                            check.value
+                                ? Icons.check_circle
+                                : Icons.radio_button_unchecked,
+                            size: 16,
+                            color: check.value
+                                ? const Color(0xFF059669)
+                                : const Color(0xFF9CA3AF),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              check.key,
+                              style: const TextStyle(
+                                  fontSize: 13, color: Color(0xFF374151)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ))
+                .toList(),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              if (!ready &&
+                  ((contract.linkedFepScopeId ?? '').trim().isEmpty))
+                TextButton(
+                  onPressed: () => _showEditPackageDialog(context, contract),
+                  child: const Text('Fix Package'),
+                ),
+              if (!ready &&
+                  (((contract.recommendedVendor ?? '').trim().isEmpty) ||
+                      (contract.pmReviewStatus ?? '').toLowerCase() !=
+                          'approved' ||
+                      (contract.sponsorApprovalStatus ?? '').toLowerCase() !=
+                          'approved'))
+                TextButton(
+                  onPressed: () async {
+                    final rfqs = await PlanningContractingService.streamRfqs(
+                      contract.projectId,
+                    ).first;
+                    if (!context.mounted) return;
+                    await _showEvaluationDialog(
+                      context,
+                      contract,
+                      rfqs.where((rfq) => rfq.linkedScopeId == contract.id).toList(),
+                    );
+                  },
+                  child: const Text('Open Evaluation'),
+                ),
+              OutlinedButton.icon(
+                onPressed: readyForProcurement
+                    ? () async {
+                        await _issuePackageToProcurement(context, contract);
+                      }
+                    : null,
+                icon: const Icon(Icons.assignment_turned_in_outlined, size: 16),
+                label: Text(
+                  procurementIssued
+                      ? 'Update Procurement Handoff'
+                      : 'Issue to Procurement',
+                ),
+              ),
+              const SizedBox(width: 10),
+              ElevatedButton.icon(
+                onPressed: ready && !alreadySent
+                    ? () async {
+                        await ContractService.updatePlanningFields(
+                          projectId: contract.projectId,
+                          contractId: contract.id,
+                          handoffStatus: 'Sent to Execution',
+                          handoffReadyAt: DateTime.now(),
+                        );
+                      }
+                    : null,
+                icon: const Icon(Icons.send_outlined, size: 16),
+                label:
+                    Text(alreadySent ? 'Sent to Execution' : 'Send to Execution'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: const Color(0xFFE5E7EB),
+                  disabledForegroundColor: const Color(0xFF9CA3AF),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ─── RFP TAB ─────────────────────────────────────────────────────────────────
 
 class _RfpTab extends StatefulWidget {
@@ -1060,21 +2295,33 @@ class _RfpTabState extends State<_RfpTab> {
           stream: PlanningContractingService.streamRfqs(projectId),
           builder: (context, snap) {
             final rfqs = snap.data ?? const [];
-            if (rfqs.isEmpty) {
-              return const _SectionCard(
-                title: 'Requests for Proposal',
-                subtitle:
-                    'Create RFPs linked to FEP scopes and invite contractors',
-                child: _EmptyPanel(
-                    'No RFPs created yet. Click "Create RFP" to start.'),
-              );
-            }
-            return _SectionCard(
-              title: 'Requests for Proposal',
-              subtitle: '${rfqs.length} RFP(s) created',
-              child: Column(
-                children: rfqs.map((rfq) => _RfqRow(rfq: rfq)).toList(),
-              ),
+            return StreamBuilder<List<ContractModel>>(
+              stream: ContractService.streamContracts(projectId),
+              builder: (context, packageSnap) {
+                final packages = packageSnap.data ?? const [];
+                if (rfqs.isEmpty) {
+                  return const _SectionCard(
+                    title: 'Requests for Proposal',
+                    subtitle:
+                        'Create RFPs linked to FEP scopes and invite contractors',
+                    child: _EmptyPanel(
+                        'No RFPs created yet. Click "Create RFP" to start.'),
+                  );
+                }
+                return _SectionCard(
+                  title: 'Requests for Proposal',
+                  subtitle: '${rfqs.length} RFP(s) created',
+                  child: Column(
+                    children: rfqs
+                        .map((rfq) => _RfqRow(
+                              rfq: rfq,
+                              projectId: projectId,
+                              packages: packages,
+                            ))
+                        .toList(),
+                  ),
+                );
+              },
             );
           },
         ),
@@ -1084,41 +2331,87 @@ class _RfpTabState extends State<_RfpTab> {
 }
 
 class _RfqRow extends StatelessWidget {
-  const _RfqRow({required this.rfq});
+  const _RfqRow({
+    required this.rfq,
+    required this.projectId,
+    required this.packages,
+  });
   final PlanningRfq rfq;
+  final String projectId;
+  final List<ContractModel> packages;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Expanded(
-              flex: 3,
-              child: Text(rfq.title,
-                  style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w500))),
-          Expanded(
-              flex: 2,
-              child: Text(
-                  rfq.submissionDeadline != null
-                      ? DateFormat('MMM dd, yyyy')
-                          .format(rfq.submissionDeadline!)
-                      : 'No deadline',
-                  style: const TextStyle(fontSize: 12))),
-          Expanded(
-              flex: 2,
-              child: Text('${rfq.invitedContractors.length} vendors',
-                  style:
-                      const TextStyle(fontSize: 12, color: Color(0xFF6B7280)))),
-          Expanded(
-            flex: 2,
-            child: _StatusChip(
-              label: rfq.status,
-              color: _rfqStatusColor(rfq.status),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                    child: Text(rfq.title,
+                        style: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w700))),
+                IconButton(
+                  onPressed: () =>
+                      _showRfpDialog(context, projectId, existingRfq: rfq),
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  tooltip: 'Edit RFP',
+                ),
+                _StatusChip(
+                  label: rfq.status,
+                  color: _rfqStatusColor(rfq.status),
+                ),
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            if (rfq.scopeOfWork.isNotEmpty)
+              Text(rfq.scopeOfWork,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _PackageMetricChip(
+                  label: 'Linked Package',
+                  value: _packageLabelForRfq(rfq, packages),
+                ),
+                _PackageMetricChip(
+                  label: 'Bid Due',
+                  value: rfq.submissionDeadline != null
+                      ? DateFormat('MMM dd, yyyy').format(rfq.submissionDeadline!)
+                      : 'No deadline',
+                ),
+                _PackageMetricChip(
+                  label: 'Pre-Bid',
+                  value: rfq.prebidMeetingDate != null
+                      ? DateFormat('MMM dd, yyyy').format(rfq.prebidMeetingDate!)
+                      : 'Not set',
+                ),
+                _PackageMetricChip(
+                  label: 'Bidders',
+                  value: '${rfq.invitedContractors.length}',
+                ),
+                _PackageMetricChip(
+                  label: 'Criteria',
+                  value: '${rfq.evaluationCriteria.length}',
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1134,67 +2427,290 @@ Color _rfqStatusColor(String s) {
   return const Color(0xFF64748B);
 }
 
-void _showRfpDialog(BuildContext context, String projectId) {
-  final titleCtrl = TextEditingController();
-  final scopeCtrl = TextEditingController();
-  final notesCtrl = TextEditingController();
+void _showRfpDialog(
+  BuildContext context,
+  String projectId, {
+  PlanningRfq? existingRfq,
+}) {
+  final titleCtrl = TextEditingController(text: existingRfq?.title ?? '');
+  final scopeCtrl =
+      TextEditingController(text: existingRfq?.scopeOfWork ?? '');
+  final notesCtrl = TextEditingController(text: existingRfq?.notes ?? '');
+  final vendorsCtrl = TextEditingController(
+      text: (existingRfq?.invitedContractors ?? const []).join(', '));
+  final criteriaCtrl = TextEditingController(
+      text: existingRfq != null
+          ? _formatCriteriaEditor(existingRfq.evaluationCriteria)
+          : 'Technical Compliance:40:Technical\nCommercial Offer:35:Commercial\nDelivery Plan:25:Commercial');
+  String linkedPackageId = existingRfq?.linkedScopeId ?? '';
+  String rfqStatus = existingRfq?.status ?? 'Draft';
+  DateTime? submissionDeadline = existingRfq?.submissionDeadline;
+  DateTime? preBidMeetingDate = existingRfq?.prebidMeetingDate;
 
   showDialog(
     context: context,
-    builder: (dCtx) => AlertDialog(
-      title: const Text('Create RFP'),
-      content: SizedBox(
-        width: MediaQuery.of(dCtx).size.width > 600 ? 520 : null,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                  controller: titleCtrl,
+    builder: (dCtx) => StatefulBuilder(
+      builder: (dCtx, setDialog) => AlertDialog(
+        title: Text(existingRfq == null ? 'Create RFP' : 'Edit RFP'),
+        content: SizedBox(
+          width: MediaQuery.of(dCtx).size.width > 600 ? 620 : null,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FutureBuilder<List<ContractModel>>(
+                  future: ContractService.streamContracts(projectId).first,
+                  builder: (context, snap) {
+                    final packages = snap.data ?? const [];
+                    return DropdownButtonFormField<String>(
+                      initialValue: linkedPackageId.isNotEmpty ? linkedPackageId : null,
+                      isExpanded: true,
+                      items: packages
+                          .map((pkg) => DropdownMenuItem(
+                              value: pkg.id, child: Text(pkg.name)))
+                          .toList(),
+                      onChanged: (value) => setDialog(() => linkedPackageId = value ?? ''),
+                      decoration: const InputDecoration(
+                        labelText: 'Linked Package',
+                        border: OutlineInputBorder(),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                    controller: titleCtrl,
+                    decoration: const InputDecoration(
+                        labelText: 'RFP Title *', border: OutlineInputBorder())),
+                const SizedBox(height: 14),
+                TextField(
+                    controller: scopeCtrl,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                        labelText: 'Scope of Work',
+                        border: OutlineInputBorder())),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  initialValue: rfqStatus,
+                  isExpanded: true,
+                  items: const [
+                    DropdownMenuItem(value: 'Draft', child: Text('Draft')),
+                    DropdownMenuItem(
+                        value: 'Published', child: Text('Published')),
+                    DropdownMenuItem(
+                        value: 'Evaluation', child: Text('Evaluation')),
+                    DropdownMenuItem(value: 'Awarded', child: Text('Awarded')),
+                  ],
+                  onChanged: (value) =>
+                      setDialog(() => rfqStatus = value ?? 'Draft'),
                   decoration: const InputDecoration(
-                      labelText: 'RFP Title *', border: OutlineInputBorder())),
-              const SizedBox(height: 14),
-              TextField(
-                  controller: scopeCtrl,
-                  maxLines: 4,
-                  decoration: const InputDecoration(
-                      labelText: 'Scope of Work',
-                      border: OutlineInputBorder())),
-              const SizedBox(height: 14),
-              TextField(
-                  controller: notesCtrl,
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                      labelText: 'Notes', border: OutlineInputBorder())),
-            ],
+                    labelText: 'RFP Status',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                    controller: vendorsCtrl,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                        labelText: 'Invited Bidders',
+                        hintText: 'Comma-separated vendor names',
+                        border: OutlineInputBorder())),
+                const SizedBox(height: 14),
+                TextField(
+                    controller: criteriaCtrl,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                        labelText: 'Evaluation Criteria',
+                        hintText: 'One per line. Format: Name:Weight:Category',
+                        border: OutlineInputBorder())),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: dCtx,
+                            initialDate: submissionDeadline ?? DateTime.now(),
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime(2100),
+                          );
+                          if (picked != null) {
+                            setDialog(() => submissionDeadline = picked);
+                          }
+                        },
+                        icon: const Icon(Icons.schedule_outlined, size: 16),
+                        label: Text(
+                          'Bid Due: ${_formatDateLabel(submissionDeadline)}',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: dCtx,
+                            initialDate: preBidMeetingDate ?? DateTime.now(),
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime(2100),
+                          );
+                          if (picked != null) {
+                            setDialog(() => preBidMeetingDate = picked);
+                          }
+                        },
+                        icon: const Icon(Icons.groups_outlined, size: 16),
+                        label: Text(
+                          'Pre-Bid: ${_formatDateLabel(preBidMeetingDate)}',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                    controller: notesCtrl,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                        labelText: 'Notes', border: OutlineInputBorder())),
+              ],
+            ),
           ),
         ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dCtx), child: const Text('Cancel')),
+          if (existingRfq != null)
+            TextButton(
+              onPressed: () async {
+                await PlanningContractingService.deleteRfq(
+                  projectId,
+                  existingRfq.id,
+                );
+                if (dCtx.mounted) Navigator.pop(dCtx);
+              },
+              child: const Text('Delete'),
+            ),
+          ElevatedButton(
+            onPressed: () async {
+              if (titleCtrl.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('RFP title is required.')),
+                );
+                return;
+              }
+              try {
+                final now = DateTime.now();
+                final invited = vendorsCtrl.text
+                    .split(',')
+                    .map((name) => name.trim())
+                    .where((name) => name.isNotEmpty)
+                    .toList();
+                final criteria = _parseCriteriaEditor(criteriaCtrl.text);
+
+                if (existingRfq == null) {
+                  await PlanningContractingService.createRfq(PlanningRfq(
+                    id: '',
+                    projectId: projectId,
+                    title: titleCtrl.text.trim(),
+                    scopeOfWork: scopeCtrl.text.trim(),
+                    linkedScopeId: linkedPackageId,
+                    invitedContractors: invited,
+                    evaluationCriteria: criteria,
+                    submissionDeadline: submissionDeadline,
+                    prebidMeetingDate: preBidMeetingDate,
+                    status: rfqStatus,
+                    notes: notesCtrl.text.trim(),
+                    createdAt: now,
+                    updatedAt: now,
+                  ));
+                } else {
+                  await PlanningContractingService.updateRfq(
+                    projectId,
+                    existingRfq.id,
+                    {
+                      'title': titleCtrl.text.trim(),
+                      'scopeOfWork': scopeCtrl.text.trim(),
+                      'linkedScopeId': linkedPackageId,
+                      'invitedContractors': invited,
+                      'evaluationCriteria':
+                          criteria.map((item) => item.toMap()).toList(),
+                      'submissionDeadline': submissionDeadline != null
+                          ? Timestamp.fromDate(submissionDeadline!)
+                          : null,
+                      'prebidMeetingDate': preBidMeetingDate != null
+                          ? Timestamp.fromDate(preBidMeetingDate!)
+                          : null,
+                      'status': rfqStatus,
+                      'notes': notesCtrl.text.trim(),
+                    },
+                  );
+                }
+                if (linkedPackageId.isNotEmpty) {
+                  final linkedContract = await ContractService.getContract(
+                    projectId: projectId,
+                    contractId: linkedPackageId,
+                  );
+                  await ContractService.updatePlanningFields(
+                    projectId: projectId,
+                    contractId: linkedPackageId,
+                    linkedScheduleMilestoneIds: _mergeMilestoneIds(
+                      linkedContract?.linkedScheduleMilestoneIds,
+                      [
+                        _scheduleMilestoneId(linkedPackageId, 'pre_bid_meeting'),
+                        _scheduleMilestoneId(linkedPackageId, 'bid_due'),
+                      ],
+                    ),
+                  );
+                  await _upsertScheduleMilestoneActivity(
+                    context: context,
+                    milestoneId:
+                        _scheduleMilestoneId(linkedPackageId, 'pre_bid_meeting'),
+                    title: '${titleCtrl.text.trim()} Pre-Bid Meeting',
+                    date: preBidMeetingDate,
+                  );
+                  await _upsertScheduleMilestoneActivity(
+                    context: context,
+                    milestoneId: _scheduleMilestoneId(linkedPackageId, 'bid_due'),
+                    title: '${titleCtrl.text.trim()} Bid Due',
+                    date: submissionDeadline,
+                    predecessorIds: preBidMeetingDate != null
+                        ? [
+                            _scheduleMilestoneId(
+                                linkedPackageId, 'pre_bid_meeting')
+                          ]
+                        : const [],
+                  );
+                }
+                if (dCtx.mounted) {
+                  Navigator.pop(dCtx);
+                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(existingRfq == null
+                        ? 'RFP created successfully.'
+                        : 'RFP updated successfully.'),
+                    backgroundColor: const Color(0xFF16A34A),
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Unable to save RFP: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white),
+            child: Text(existingRfq == null ? 'Create' : 'Save',
+                style: TextStyle(fontWeight: FontWeight.w600)),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-            onPressed: () => Navigator.pop(dCtx), child: const Text('Cancel')),
-        ElevatedButton(
-          onPressed: () async {
-            if (titleCtrl.text.trim().isEmpty) return;
-            final now = DateTime.now();
-            await PlanningContractingService.createRfq(PlanningRfq(
-              id: '',
-              projectId: projectId,
-              title: titleCtrl.text.trim(),
-              scopeOfWork: scopeCtrl.text.trim(),
-              notes: notesCtrl.text.trim(),
-              createdAt: now,
-              updatedAt: now,
-            ));
-            if (dCtx.mounted) Navigator.pop(dCtx);
-          },
-          style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2563EB),
-              foregroundColor: Colors.white),
-          child: const Text('Create',
-              style: TextStyle(fontWeight: FontWeight.w600)),
-        ),
-      ],
     ),
   );
 }
@@ -1216,8 +2732,8 @@ class _EvaluationTabState extends State<_EvaluationTab> {
     }
     return StreamBuilder<List<ContractModel>>(
       stream: ContractService.streamContracts(projectId),
-      builder: (context, snap) {
-        final contracts = snap.data ?? const [];
+      builder: (context, contractSnap) {
+        final contracts = contractSnap.data ?? const [];
         if (contracts.isEmpty) {
           return const _SectionCard(
             title: 'Bid Evaluation Matrix',
@@ -1225,28 +2741,164 @@ class _EvaluationTabState extends State<_EvaluationTab> {
             child: _EmptyPanel('Add contracts first to set up evaluations.'),
           );
         }
-        return _SectionCard(
-          title: 'Bid Evaluation Matrix',
-          subtitle:
-              'Score vendor responses against weighted criteria per contract',
-          child: Column(
-            children: contracts
-                .map((c) => _EvaluationContractRow(contract: c))
-                .toList(),
-          ),
+        return StreamBuilder<List<PlanningRfq>>(
+          stream: PlanningContractingService.streamRfqs(projectId),
+          builder: (context, rfqSnap) {
+            final rfqs = rfqSnap.data ?? const [];
+            return _SectionCard(
+              title: 'Bid Evaluation Matrix',
+              subtitle:
+                  'Score vendor responses against weighted criteria per contract',
+              child: Column(
+                children: contracts
+                    .map((c) => _EvaluationContractRow(
+                          contract: c,
+                          rfqs: rfqs
+                              .where((rfq) => rfq.linkedScopeId == c.id)
+                              .toList(),
+                        ))
+                    .toList(),
+              ),
+            );
+          },
         );
       },
     );
   }
 }
 
+PlanningRfq? _selectedRfqForContract(
+  ContractModel contract,
+  List<PlanningRfq> rfqs,
+) {
+  if (rfqs.isEmpty) return null;
+  final linkedRfqId = contract.linkedRfqId ?? '';
+  for (final rfq in rfqs) {
+    if (rfq.id == linkedRfqId) return rfq;
+  }
+  return rfqs.first;
+}
+
+String _packageLabelForRfq(PlanningRfq rfq, List<ContractModel> packages) {
+  if (rfq.linkedScopeId.isEmpty) return 'Not linked';
+  for (final package in packages) {
+    if (package.id == rfq.linkedScopeId) {
+      return package.name;
+    }
+  }
+  return rfq.linkedScopeId;
+}
+
+String _formatCriteriaEditor(List<EvaluationCriteria> criteria) {
+  return criteria
+      .map((item) => '${item.name}:${item.weight.toStringAsFixed(0)}:${item.category}')
+      .join('\n');
+}
+
+List<EvaluationCriteria> _parseCriteriaEditor(String rawText) {
+  return rawText
+      .split('\n')
+      .map((line) => line.trim())
+      .where((line) => line.isNotEmpty)
+      .map((line) {
+        final parts = line.split(':');
+        final name = parts[0].trim();
+        final weight =
+            parts.length > 1 ? double.tryParse(parts[1].trim()) ?? 0.0 : 0.0;
+        final category =
+            parts.length > 2 && parts[2].trim().isNotEmpty
+                ? parts[2].trim()
+                : 'Technical';
+        return EvaluationCriteria(
+          id: name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_'),
+          name: name,
+          weight: weight,
+          category: category,
+        );
+      })
+      .toList();
+}
+
+List<String> _vendorCandidatesForEvaluation(
+  ContractModel contract,
+  PlanningRfq? rfq,
+) {
+  final vendors = <String>{
+    ...?rfq?.invitedContractors,
+    ...(contract.evaluationScores ?? const [])
+        .map((score) => score.vendorName)
+        .where((name) => name.trim().isNotEmpty),
+    ...(contract.technicalScreenings ?? const [])
+        .map((item) => item.vendorName)
+        .where((name) => name.trim().isNotEmpty),
+    if ((contract.recommendedVendor ?? '').trim().isNotEmpty)
+      contract.recommendedVendor!.trim(),
+  };
+  final list = vendors.toList()..sort();
+  return list;
+}
+
+Map<String, VendorTechnicalScreening> _technicalScreeningMap(
+  ContractModel contract,
+) {
+  return {
+    for (final item in contract.technicalScreenings ?? const [])
+      item.vendorName: item,
+  };
+}
+
+double _weightedVendorScore(
+  String vendor,
+  List<EvaluationCriteria> criteria,
+  List<EvaluationScore> scores,
+) {
+  var total = 0.0;
+  for (final criterion in criteria) {
+    final matchingScore = scores.where((score) {
+      return score.vendorName == vendor && score.criteriaId == criterion.id;
+    }).toList();
+    if (matchingScore.isEmpty) continue;
+    total += matchingScore.last.score * (criterion.weight / 100);
+  }
+  return total;
+}
+
+List<MapEntry<String, double>> _rankVendors(
+  List<String> vendors,
+  List<EvaluationCriteria> criteria,
+  List<EvaluationScore> scores,
+) {
+  final ranking = vendors
+      .map((vendor) => MapEntry(
+            vendor,
+            _weightedVendorScore(vendor, criteria, scores),
+          ))
+      .toList();
+  ranking.sort((a, b) => b.value.compareTo(a.value));
+  return ranking;
+}
+
 class _EvaluationContractRow extends StatelessWidget {
-  const _EvaluationContractRow({required this.contract});
+  const _EvaluationContractRow({
+    required this.contract,
+    required this.rfqs,
+  });
   final ContractModel contract;
+  final List<PlanningRfq> rfqs;
 
   @override
   Widget build(BuildContext context) {
     final scores = contract.evaluationScores ?? [];
+    final selectedRfq = _selectedRfqForContract(contract, rfqs);
+    final criteria = selectedRfq?.evaluationCriteria ?? const <EvaluationCriteria>[];
+    final vendors = _vendorCandidatesForEvaluation(contract, selectedRfq);
+    final technicalScreenings = _technicalScreeningMap(contract);
+    final passedVendors = vendors
+        .where((vendor) =>
+            (technicalScreenings[vendor]?.status ?? 'Pending').toLowerCase() ==
+            'passed')
+        .toList();
+    final ranking = _rankVendors(passedVendors, criteria, scores);
     return ExpansionTile(
       tilePadding: EdgeInsets.zero,
       title: Row(
@@ -1262,24 +2914,487 @@ class _EvaluationContractRow extends StatelessWidget {
                 ? const Color(0xFF64748B)
                 : const Color(0xFF2563EB),
           ),
+          const SizedBox(width: 8),
+          TextButton.icon(
+            onPressed: () => _showEvaluationDialog(context, contract, rfqs),
+            icon: const Icon(Icons.tune, size: 16),
+            label: const Text('Edit'),
+            style:
+                TextButton.styleFrom(foregroundColor: const Color(0xFF2563EB)),
+          ),
         ],
       ),
       children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _PackageMetricChip(
+                label: 'Technical Gate',
+                value: contract.technicalGateStatus ?? 'Not set',
+              ),
+              _PackageMetricChip(
+                label: 'Linked RFP',
+                value: selectedRfq?.title ?? 'Not linked',
+              ),
+              _PackageMetricChip(
+                label: 'Criteria',
+                value: criteria.isEmpty ? '0' : '${criteria.length}',
+              ),
+              _PackageMetricChip(
+                label: 'Technically Passed',
+                value: '${passedVendors.length}',
+              ),
+              _PackageMetricChip(
+                label: 'Recommended Vendor',
+                value: contract.recommendedVendor ?? 'TBD',
+              ),
+              _PackageMetricChip(
+                label: 'Award Value',
+                value: contract.recommendedAwardValue != null
+                    ? '\$${_formatCurrency(contract.recommendedAwardValue!)}'
+                    : 'TBD',
+              ),
+              _PackageMetricChip(
+                label: 'PM Review',
+                value: contract.pmReviewStatus ?? 'Pending',
+              ),
+              _PackageMetricChip(
+                label: 'Sponsor Approval',
+                value: contract.sponsorApprovalStatus ?? 'Pending',
+              ),
+            ],
+          ),
+        ),
+        if (contract.vendorComparisonSummary?.isNotEmpty == true)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(contract.vendorComparisonSummary!,
+                  style: const TextStyle(
+                      fontSize: 12, color: Color(0xFF4B5563), height: 1.4)),
+            ),
+          ),
         if (scores.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
             child: Text('No evaluation scores recorded yet.',
                 style: TextStyle(fontSize: 13, color: Color(0xFF9CA3AF))),
           ),
-        if (scores.isNotEmpty) _ScoreTable(scores: scores),
+        if (scores.isNotEmpty && criteria.isNotEmpty && ranking.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _VendorComparisonTable(
+              ranking: ranking,
+              criteria: criteria,
+            ),
+          ),
+        if (scores.isNotEmpty)
+          _ScoreTable(
+            scores: scores,
+            criteria: criteria,
+          ),
       ],
     );
   }
 }
 
+Future<void> _showEvaluationDialog(
+  BuildContext context,
+  ContractModel contract,
+  List<PlanningRfq> rfqs,
+) async {
+  final vendorCtrl =
+      TextEditingController(text: contract.recommendedVendor ?? '');
+  final awardValueCtrl = TextEditingController(
+      text: contract.recommendedAwardValue?.toStringAsFixed(0) ?? '');
+  final comparisonCtrl =
+      TextEditingController(text: contract.vendorComparisonSummary ?? '');
+  final technicalNotesCtrl =
+      TextEditingController(text: contract.technicalGateNotes ?? '');
+  String selectedRfqId =
+      _selectedRfqForContract(contract, rfqs)?.id ?? '';
+  final initialCriteria = _selectedRfqForContract(contract, rfqs)?.evaluationCriteria ??
+      const <EvaluationCriteria>[];
+  final criteriaCtrl = TextEditingController(
+    text: _formatCriteriaEditor(initialCriteria),
+  );
+  final vendorListCtrl = TextEditingController(
+    text: _vendorCandidatesForEvaluation(
+      contract,
+      _selectedRfqForContract(contract, rfqs),
+    ).join(', '),
+  );
+  String technicalGate = contract.technicalGateStatus ?? 'Pending Technical';
+  String pmReview = contract.pmReviewStatus ?? 'Pending';
+  String sponsorApproval = contract.sponsorApprovalStatus ?? 'Pending';
+  final scoreMap = <String, String>{
+    for (final score in contract.evaluationScores ?? const [])
+      '${score.vendorName}::${score.criteriaId}': score.score == 0
+          ? ''
+          : score.score.toStringAsFixed(score.score % 1 == 0 ? 0 : 1),
+  };
+  final screeningMap = <String, VendorTechnicalScreening>{
+    for (final item in contract.technicalScreenings ?? const [])
+      item.vendorName: item,
+  };
+
+  PlanningRfq? selectedRfq() {
+    for (final rfq in rfqs) {
+      if (rfq.id == selectedRfqId) return rfq;
+    }
+    return null;
+  }
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (dialogContext, setDialog) => AlertDialog(
+        title: Text('Evaluation & Approvals: ${contract.name}'),
+        content: SizedBox(
+          width: MediaQuery.of(dialogContext).size.width > 720 ? 620 : null,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (rfqs.isNotEmpty)
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedRfqId.isNotEmpty ? selectedRfqId : null,
+                    items: rfqs
+                        .map((rfq) => DropdownMenuItem(
+                              value: rfq.id,
+                              child: Text(rfq.title),
+                            ))
+                        .toList(),
+                    onChanged: (value) {
+                      setDialog(() {
+                        selectedRfqId = value ?? '';
+                        final nextRfq = selectedRfq();
+                        criteriaCtrl.text = _formatCriteriaEditor(
+                          nextRfq?.evaluationCriteria ?? const [],
+                        );
+                        vendorListCtrl.text = _vendorCandidatesForEvaluation(
+                          contract,
+                          nextRfq,
+                        ).join(', ');
+                      });
+                    },
+                    decoration: const InputDecoration(
+                      labelText: 'Linked Tender / RFP',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                if (rfqs.isNotEmpty) const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: technicalGate,
+                        items: const [
+                          DropdownMenuItem(
+                              value: 'Pending Technical',
+                              child: Text('Pending Technical')),
+                          DropdownMenuItem(
+                              value: 'Passed Technical',
+                              child: Text('Passed Technical')),
+                          DropdownMenuItem(
+                              value: 'Failed Technical',
+                              child: Text('Failed Technical')),
+                        ],
+                        onChanged: (value) => setDialog(() =>
+                            technicalGate = value ?? 'Pending Technical'),
+                        decoration: const InputDecoration(
+                          labelText: 'Technical Gate',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: awardValueCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Recommended Award Value',
+                          prefixText: '\$',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: criteriaCtrl,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Weighted Criteria',
+                    hintText: 'One per line. Format: Name:Weight:Category',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: vendorListCtrl,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Vendors In Comparison',
+                    hintText: 'Comma-separated vendor names',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _EvaluationScoreEditor(
+                  criteria: _parseCriteriaEditor(criteriaCtrl.text),
+                  vendors: vendorListCtrl.text
+                      .split(',')
+                      .map((name) => name.trim())
+                      .where((name) => name.isNotEmpty)
+                      .toList(),
+                  screeningMap: screeningMap,
+                  scoreMap: scoreMap,
+                  enabled: technicalGate == 'Passed Technical',
+                  onScoreChanged: (key, value) {
+                    setDialog(() => scoreMap[key] = value);
+                  },
+                  onTechnicalChanged: (vendor, status, notes) {
+                    setDialog(() {
+                      screeningMap[vendor] = VendorTechnicalScreening(
+                        vendorName: vendor,
+                        status: status,
+                        notes: notes,
+                      );
+                    });
+                  },
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: vendorCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Recommended Vendor',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: comparisonCtrl,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Vendor Comparison Summary',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: technicalNotesCtrl,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Technical Notes',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: pmReview,
+                        items: const [
+                          DropdownMenuItem(
+                              value: 'Pending', child: Text('Pending')),
+                          DropdownMenuItem(
+                              value: 'Approved', child: Text('Approved')),
+                          DropdownMenuItem(
+                              value: 'Rejected', child: Text('Rejected')),
+                        ],
+                        onChanged: (value) =>
+                            setDialog(() => pmReview = value ?? 'Pending'),
+                        decoration: const InputDecoration(
+                          labelText: 'PM Review',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: sponsorApproval,
+                        items: const [
+                          DropdownMenuItem(
+                              value: 'Pending', child: Text('Pending')),
+                          DropdownMenuItem(
+                              value: 'Approved', child: Text('Approved')),
+                          DropdownMenuItem(
+                              value: 'Rejected', child: Text('Rejected')),
+                        ],
+                        onChanged: (value) => setDialog(() =>
+                            sponsorApproval = value ?? 'Pending'),
+                        decoration: const InputDecoration(
+                          labelText: 'Sponsor Approval',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final now = DateTime.now();
+              final parsedCriteria = _parseCriteriaEditor(criteriaCtrl.text);
+              final vendors = vendorListCtrl.text
+                  .split(',')
+                  .map((name) => name.trim())
+                  .where((name) => name.isNotEmpty)
+                  .toList();
+              final technicalScreenings = vendors
+                  .map((vendor) =>
+                      screeningMap[vendor] ??
+                      VendorTechnicalScreening(vendorName: vendor))
+                  .toList();
+              final passedVendors = technicalScreenings
+                  .where((item) => item.status.toLowerCase() == 'passed')
+                  .map((item) => item.vendorName)
+                  .toList();
+              final evaluationScores = <EvaluationScore>[
+                for (final vendor in vendors)
+                  if (passedVendors.contains(vendor))
+                  for (final criterion in parsedCriteria)
+                    if ((scoreMap['$vendor::${criterion.id}'] ?? '')
+                        .trim()
+                        .isNotEmpty)
+                      EvaluationScore(
+                        vendorName: vendor,
+                        criteriaId: criterion.id,
+                        score: double.tryParse(
+                              scoreMap['$vendor::${criterion.id}']!.trim(),
+                            ) ??
+                            0.0,
+                        notes: '',
+                      ),
+              ];
+              final ranking =
+                  _rankVendors(passedVendors, parsedCriteria, evaluationScores);
+              final autoRecommendedVendor = technicalGate == 'Passed Technical' &&
+                      vendorCtrl.text.trim().isEmpty &&
+                      ranking.isNotEmpty
+                  ? ranking.first.key
+                  : vendorCtrl.text.trim();
+              final autoComparison = technicalGate == 'Passed Technical' &&
+                      comparisonCtrl.text.trim().isEmpty &&
+                      ranking.isNotEmpty
+                  ? ranking
+                      .take(3)
+                      .map((entry) =>
+                          '${entry.key} ${entry.value.toStringAsFixed(1)}')
+                      .join(' | ')
+                  : comparisonCtrl.text.trim();
+              final normalizedPmReview =
+                  pmReview == 'Approved' && technicalGate != 'Passed Technical'
+                      ? 'Pending'
+                      : pmReview;
+              final normalizedSponsorApproval =
+                  sponsorApproval == 'Approved' &&
+                          (technicalGate != 'Passed Technical' ||
+                              normalizedPmReview != 'Approved')
+                      ? 'Pending'
+                      : sponsorApproval;
+
+              if (selectedRfqId.isNotEmpty) {
+                await PlanningContractingService.updateRfq(
+                  contract.projectId,
+                  selectedRfqId,
+                  {
+                    'evaluationCriteria':
+                        parsedCriteria.map((item) => item.toMap()).toList(),
+                  },
+                );
+              }
+              await ContractService.updatePlanningFields(
+                projectId: contract.projectId,
+                contractId: contract.id,
+                linkedRfqId: selectedRfqId,
+                evaluationScores: evaluationScores,
+                technicalScreenings: technicalScreenings,
+                technicalGateStatus: technicalGate,
+                technicalGateNotes: technicalNotesCtrl.text.trim(),
+                recommendedVendor: autoRecommendedVendor,
+                recommendedAwardValue:
+                    double.tryParse(awardValueCtrl.text.trim()),
+                vendorComparisonSummary: autoComparison,
+                pmReviewStatus: normalizedPmReview,
+                pmReviewDate: normalizedPmReview == 'Approved' ? now : null,
+                sponsorApprovalStatus: normalizedSponsorApproval,
+                sponsorApprovalDate:
+                    normalizedSponsorApproval == 'Approved' ? now : null,
+                handoffStatus: normalizedSponsorApproval == 'Approved'
+                    ? 'Ready for Handoff'
+                    : 'Draft',
+                handoffReadyAt:
+                    normalizedSponsorApproval == 'Approved' ? now : null,
+                linkedScheduleMilestoneIds: _mergeMilestoneIds(
+                  contract.linkedScheduleMilestoneIds,
+                  [
+                    _scheduleMilestoneId(contract.id, 'pm_review'),
+                    _scheduleMilestoneId(contract.id, 'sponsor_approval'),
+                  ],
+                ),
+              );
+              await _upsertScheduleMilestoneActivity(
+                context: context,
+                milestoneId: _scheduleMilestoneId(contract.id, 'pm_review'),
+                title: '${contract.name} PM Review',
+                date: normalizedPmReview == 'Approved' ? now : null,
+                predecessorIds: const [],
+              );
+              await _upsertScheduleMilestoneActivity(
+                context: context,
+                milestoneId:
+                    _scheduleMilestoneId(contract.id, 'sponsor_approval'),
+                title: '${contract.name} Sponsor Approval',
+                date: normalizedSponsorApproval == 'Approved' ? now : null,
+                predecessorIds: normalizedPmReview == 'Approved'
+                    ? [_scheduleMilestoneId(contract.id, 'pm_review')]
+                    : const [],
+              );
+              if (dialogContext.mounted) {
+                Navigator.of(dialogContext).pop();
+              }
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Saved evaluation updates for ${contract.name}.'),
+                  backgroundColor: const Color(0xFF16A34A),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white),
+            child: const Text('Save Evaluation'),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 class _ScoreTable extends StatelessWidget {
-  const _ScoreTable({required this.scores});
+  const _ScoreTable({
+    required this.scores,
+    required this.criteria,
+  });
   final List<EvaluationScore> scores;
+  final List<EvaluationCriteria> criteria;
 
   @override
   Widget build(BuildContext context) {
@@ -1304,7 +3419,14 @@ class _ScoreTable extends StatelessWidget {
               _TableCell(
                   Text(s.vendorName, style: const TextStyle(fontSize: 12))),
               _TableCell(
-                  Text(s.criteriaId, style: const TextStyle(fontSize: 12))),
+                  Text(
+                    criteria
+                            .where((criterion) => criterion.id == s.criteriaId)
+                            .map((criterion) => criterion.name)
+                            .firstOrNull ??
+                        s.criteriaId,
+                    style: const TextStyle(fontSize: 12),
+                  )),
               _TableCell(Text(s.score.toStringAsFixed(1),
                   style: const TextStyle(
                       fontSize: 12, fontWeight: FontWeight.w600))),
@@ -1312,6 +3434,251 @@ class _ScoreTable extends StatelessWidget {
                   style:
                       const TextStyle(fontSize: 12, color: Color(0xFF6B7280)))),
             ])),
+      ],
+    );
+  }
+}
+
+class _VendorComparisonTable extends StatelessWidget {
+  const _VendorComparisonTable({
+    required this.ranking,
+    required this.criteria,
+  });
+
+  final List<MapEntry<String, double>> ranking;
+  final List<EvaluationCriteria> criteria;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Vendor Comparison Sheet',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Weighted against ${criteria.length} criteria.',
+            style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+          ),
+          const SizedBox(height: 10),
+          Table(
+            columnWidths: const {
+              0: FlexColumnWidth(2),
+              1: FlexColumnWidth(1),
+            },
+            children: [
+              TableRow(
+                decoration: BoxDecoration(color: Colors.grey[100]),
+                children: const [
+                  _TableHeaderCell('Vendor'),
+                  _TableHeaderCell('Weighted Score'),
+                ],
+              ),
+              ...ranking.map((entry) => TableRow(children: [
+                    _TableCell(Text(entry.key,
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w600))),
+                    _TableCell(Text(entry.value.toStringAsFixed(1),
+                        style: const TextStyle(fontSize: 12))),
+                  ])),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EvaluationScoreEditor extends StatelessWidget {
+  const _EvaluationScoreEditor({
+    required this.criteria,
+    required this.vendors,
+    required this.screeningMap,
+    required this.scoreMap,
+    required this.enabled,
+    required this.onScoreChanged,
+    required this.onTechnicalChanged,
+  });
+
+  final List<EvaluationCriteria> criteria;
+  final List<String> vendors;
+  final Map<String, VendorTechnicalScreening> screeningMap;
+  final Map<String, String> scoreMap;
+  final bool enabled;
+  final void Function(String key, String value) onScoreChanged;
+  final void Function(String vendor, String status, String notes)
+      onTechnicalChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    if (criteria.isEmpty || vendors.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF9FAFB),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: const Text(
+          'Add weighted criteria and vendors to capture a comparison sheet.',
+          style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text(
+              'Technical Screening And Weighted Score Matrix',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(width: 8),
+            if (!enabled)
+              const Expanded(
+                child: Text(
+                  'Commercial comparison is locked until technical review passes.',
+                  style: TextStyle(fontSize: 12, color: Color(0xFFF59E0B)),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        ...vendors.map((vendor) {
+          final screening =
+              screeningMap[vendor] ?? VendorTechnicalScreening(vendorName: vendor);
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        vendor,
+                        style: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 170,
+                      child: DropdownButtonFormField<String>(
+                        initialValue: screening.status,
+                        items: const [
+                          DropdownMenuItem(
+                              value: 'Pending', child: Text('Pending')),
+                          DropdownMenuItem(
+                              value: 'Passed', child: Text('Passed')),
+                          DropdownMenuItem(
+                              value: 'Failed', child: Text('Failed')),
+                        ],
+                        onChanged: (value) => onTechnicalChanged(
+                          vendor,
+                          value ?? 'Pending',
+                          screening.notes,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Technical Status',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  initialValue: screening.notes,
+                  onChanged: (value) =>
+                      onTechnicalChanged(vendor, screening.status, value),
+                  decoration: const InputDecoration(
+                    labelText: 'Technical Notes',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+        ...criteria.map((criterion) => Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${criterion.name} (${criterion.weight.toStringAsFixed(0)}%)',
+                    style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    criterion.category,
+                    style:
+                        const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                  ),
+                  const SizedBox(height: 10),
+                  ...vendors.map((vendor) {
+                    final key = '$vendor::${criterion.id}';
+                    final technicalStatus =
+                        screeningMap[vendor]?.status ?? 'Pending';
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(vendor,
+                                style: const TextStyle(fontSize: 12)),
+                          ),
+                          const SizedBox(width: 12),
+                          SizedBox(
+                            width: 120,
+                            child: TextFormField(
+                              initialValue: scoreMap[key] ?? '',
+                              enabled: enabled &&
+                                  technicalStatus.toLowerCase() == 'passed',
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(decimal: true),
+                              decoration: const InputDecoration(
+                                labelText: 'Score',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                              onChanged: (value) => onScoreChanged(key, value),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            )),
       ],
     );
   }
@@ -1560,6 +3927,8 @@ class _AdminContractCardState extends State<_AdminContractCard> {
   @override
   Widget build(BuildContext context) {
     final c = widget.contract;
+    final completedCompliance =
+        Set<String>.from(c.complianceChecklist ?? const <String>[]);
     return _SectionCard(
       title: c.name,
       subtitle: c.contractorName.isEmpty
@@ -1601,6 +3970,42 @@ class _AdminContractCardState extends State<_AdminContractCard> {
             options: const ['Weekly', 'Bi-weekly', 'Monthly', 'Not Set'],
             onChanged: (v) => _updateField(reportingFrequency: v),
           ),
+          const SizedBox(height: 18),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Pre-Award Compliance Checklist',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: _defaultComplianceChecklist
+                .map(
+                  (item) => _ComplianceToggle(
+                    label: item,
+                    checked: completedCompliance.contains(item),
+                    onChanged: (checked) async {
+                      final next = {...completedCompliance};
+                      if (checked) {
+                        next.add(item);
+                      } else {
+                        next.remove(item);
+                      }
+                      await _updateField(
+                        complianceChecklist: next.toList()..sort(),
+                      );
+                    },
+                  ),
+                )
+                .toList(),
+          ),
         ],
       ),
     );
@@ -1611,6 +4016,7 @@ class _AdminContractCardState extends State<_AdminContractCard> {
     String? changeOrderProcedure,
     String? disputeResolution,
     String? reportingFrequency,
+    List<String>? complianceChecklist,
   }) async {
     final projectId = ProjectDataHelper.getData(context).projectId;
     if (projectId == null) return;
@@ -1621,6 +4027,57 @@ class _AdminContractCardState extends State<_AdminContractCard> {
       changeOrderProcedure: changeOrderProcedure,
       disputeResolution: disputeResolution,
       reportingFrequency: reportingFrequency,
+      complianceChecklist: complianceChecklist,
+    );
+  }
+}
+
+class _ComplianceToggle extends StatelessWidget {
+  const _ComplianceToggle({
+    required this.label,
+    required this.checked,
+    required this.onChanged,
+  });
+
+  final String label;
+  final bool checked;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => onChanged(!checked),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: checked ? const Color(0xFFECFDF5) : const Color(0xFFF9FAFB),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: checked ? const Color(0xFF10B981) : const Color(0xFFE5E7EB),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              checked ? Icons.check_circle : Icons.radio_button_unchecked,
+              size: 16,
+              color:
+                  checked ? const Color(0xFF059669) : const Color(0xFF9CA3AF),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF374151),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1727,6 +4184,14 @@ class _NegotiationContractCard extends StatelessWidget {
       title: contract.name,
       subtitle:
           'Status: ${contract.negotiationStatus ?? "Not Started"} | Authority: ${contract.negotiationAuthority ?? "Not Set"}',
+      trailing: TextButton.icon(
+        onPressed: () => _showNegotiationDialog(context, contract),
+        icon: const Icon(Icons.edit_outlined, size: 16),
+        label: Text(items.isEmpty ? 'Add Plan' : 'Edit Plan'),
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFF2563EB),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1748,7 +4213,8 @@ class _NegotiationContractCard extends StatelessWidget {
               ),
             ),
           if (items.isEmpty)
-            const Text('No negotiation items tracked.',
+            const Text(
+                'No negotiation items tracked. Use "Add Plan" to capture objectives, positions, and status.',
                 style: TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)))
           else
             Table(
@@ -1794,6 +4260,162 @@ Color _negoStatusColor(String s) {
   if (l == 'compromised') return const Color(0xFFF59E0B);
   if (l == 'conceded') return const Color(0xFFEF4444);
   return const Color(0xFF64748B);
+}
+
+Future<void> _showNegotiationDialog(
+  BuildContext context,
+  ContractModel contract,
+) async {
+  final objectivesCtrl =
+      TextEditingController(text: contract.negotiationObjectives ?? '');
+  final itemsCtrl = TextEditingController(
+    text: (contract.negotiationItems ?? const [])
+        .map((item) =>
+            '${item.item}|${item.ourPosition}|${item.theirPosition}|${item.status}')
+        .join('\n'),
+  );
+  String authority = contract.negotiationAuthority ?? 'Not Set';
+  String status = contract.negotiationStatus ?? 'Not Started';
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (dialogContext, setDialog) => AlertDialog(
+        title: Text('Negotiation Plan: ${contract.name}'),
+        content: SizedBox(
+          width: MediaQuery.of(dialogContext).size.width > 720 ? 620 : double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: objectivesCtrl,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Negotiation Objectives',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: authority,
+                        items: const [
+                          DropdownMenuItem(value: 'Not Set', child: Text('Not Set')),
+                          DropdownMenuItem(
+                              value: 'PM Approval', child: Text('PM Approval')),
+                          DropdownMenuItem(
+                              value: 'Sponsor Approval',
+                              child: Text('Sponsor Approval')),
+                          DropdownMenuItem(
+                              value: 'Contracts Lead',
+                              child: Text('Contracts Lead')),
+                        ],
+                        onChanged: (value) =>
+                            setDialog(() => authority = value ?? 'Not Set'),
+                        decoration: const InputDecoration(
+                          labelText: 'Authority',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: status,
+                        items: const [
+                          DropdownMenuItem(
+                              value: 'Not Started', child: Text('Not Started')),
+                          DropdownMenuItem(
+                              value: 'In Progress', child: Text('In Progress')),
+                          DropdownMenuItem(value: 'Agreed', child: Text('Agreed')),
+                          DropdownMenuItem(value: 'Closed', child: Text('Closed')),
+                        ],
+                        onChanged: (value) =>
+                            setDialog(() => status = value ?? 'Not Started'),
+                        decoration: const InputDecoration(
+                          labelText: 'Negotiation Status',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: itemsCtrl,
+                  maxLines: 8,
+                  decoration: const InputDecoration(
+                    labelText: 'Negotiation Items',
+                    hintText:
+                        'One per line. Format: Item|Our Position|Their Position|Status',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final items = itemsCtrl.text
+                  .split('\n')
+                  .map((line) => line.trim())
+                  .where((line) => line.isNotEmpty)
+                  .map((line) {
+                final parts = line.split('|');
+                final item = parts.isNotEmpty ? parts[0].trim() : '';
+                final ourPosition = parts.length > 1 ? parts[1].trim() : '';
+                final theirPosition = parts.length > 2 ? parts[2].trim() : '';
+                final itemStatus =
+                    parts.length > 3 && parts[3].trim().isNotEmpty
+                        ? parts[3].trim()
+                        : 'Open';
+                return NegotiationItem(
+                  id: item.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_'),
+                  item: item,
+                  ourPosition: ourPosition,
+                  theirPosition: theirPosition,
+                  status: itemStatus,
+                );
+              }).where((item) => item.item.trim().isNotEmpty).toList();
+
+              await ContractService.updatePlanningFields(
+                projectId: contract.projectId,
+                contractId: contract.id,
+                negotiationObjectives: objectivesCtrl.text.trim(),
+                negotiationAuthority: authority,
+                negotiationStatus: status,
+                negotiationItems: items,
+              );
+              if (dialogContext.mounted) {
+                Navigator.of(dialogContext).pop();
+              }
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content:
+                      Text('Saved negotiation plan for ${contract.name}.'),
+                  backgroundColor: const Color(0xFF16A34A),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Save Negotiation'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 // ─── BUDGET TAB ──────────────────────────────────────────────────────────────

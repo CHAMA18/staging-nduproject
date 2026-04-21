@@ -27,7 +27,7 @@ import 'package:ndu_project/screens/ssher_stacked_screen.dart';
 import 'package:ndu_project/screens/execution_plan_screen.dart';
 import 'package:ndu_project/screens/planning_technology_screen.dart';
 import 'package:ndu_project/screens/team_management_screen.dart';
-import 'package:ndu_project/screens/front_end_planning_contracts_screen.dart';
+import 'package:ndu_project/screens/planning_contracting_screen.dart';
 import 'package:ndu_project/screens/change_management_screen.dart';
 import 'package:ndu_project/screens/project_plan_screen.dart';
 import 'package:ndu_project/screens/project_framework_next_screen.dart';
@@ -772,8 +772,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
   }
 
   void _openContract() {
-    _navigateWithCheckpoint(
-        'contracts', const FrontEndPlanningContractsScreen());
+    _navigateWithCheckpoint('contracts', const PlanningContractingScreen());
   }
 
   void _openSchedule() {
@@ -1858,9 +1857,9 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
         _buildSubMenuItem('Risk Assessment',
             onTap: _openRiskAssessment,
             isActive: widget.activeItemLabel == 'Risk Assessment'),
-        _buildSubMenuItem('Contract',
+        _buildSubMenuItem('Contract Planning',
             onTap: _openContract,
-            isActive: widget.activeItemLabel == 'Contract'),
+            isActive: widget.activeItemLabel == 'Contract Planning'),
         _buildSubMenuItem('Procurement',
             onTap: _openPlanningProcurement,
             isActive: widget.activeItemLabel == 'Planning Procurement'),

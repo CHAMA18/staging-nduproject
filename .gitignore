@@ -6,3 +6,5 @@ build/
 .flutter-plugins-dependencies
 .DS_Store
 .firebase/
+.zed/
+.codex/

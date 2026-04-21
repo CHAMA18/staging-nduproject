@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:ndu_project/models/launch_phase_models.dart';
 import 'package:ndu_project/screens/contract_close_out_screen.dart';
 import 'package:ndu_project/screens/summarize_account_risks_screen.dart';
-import 'package:ndu_project/widgets/draggable_sidebar.dart';
-import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
-import 'package:ndu_project/widgets/launch_editable_section.dart';
-import 'package:ndu_project/widgets/launch_phase_navigation.dart';
-import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
-import 'package:ndu_project/widgets/responsive.dart';
-import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/services/launch_phase_service.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
+import 'package:ndu_project/utils/project_data_helper.dart';
+import 'package:ndu_project/widgets/execution_phase_ui.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
+import 'package:ndu_project/widgets/launch_data_table.dart';
+import 'package:ndu_project/widgets/launch_phase_navigation.dart';
+import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
 class VendorAccountCloseOutScreen extends StatefulWidget {
   const VendorAccountCloseOutScreen({super.key});
@@ -22,286 +22,590 @@ class VendorAccountCloseOutScreen extends StatefulWidget {
   }
 
   @override
-  State<VendorAccountCloseOutScreen> createState() => _VendorAccountCloseOutScreenState();
+  State<VendorAccountCloseOutScreen> createState() =>
+      _VendorAccountCloseOutScreenState();
 }
 
-class _VendorAccountCloseOutScreenState extends State<VendorAccountCloseOutScreen> {
-  final List<LaunchEntry> _snapshot = [];
-  final List<LaunchEntry> _steps = [];
-  final List<LaunchEntry> _vendors = [];
-  final List<LaunchEntry> _signOffs = [];
-  bool _loadedEntries = false;
-  bool _aiGenerated = false;
+class _VendorAccountCloseOutScreenState
+    extends State<VendorAccountCloseOutScreen> {
+  List<LaunchVendorItem> _vendors = [];
+  List<LaunchAccessItem> _accessItems = [];
+  List<LaunchFollowUpItem> _obligations = [];
+  List<LaunchFollowUpItem> _closureChecklist = [];
+
+  bool _isLoading = true;
   bool _isGenerating = false;
+  bool _hasLoaded = false;
+  bool _suspendSave = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadEntries();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
   }
+
+  String? get _projectId => ProjectDataHelper.getData(context).projectId;
 
   @override
   Widget build(BuildContext context) {
-    final bool isMobile = AppBreakpoints.isMobile(context);
-    final double horizontalPadding = isMobile ? 18 : 32;
+    final bool isMobile = MediaQuery.sizeOf(context).width < 980;
 
-    return Scaffold(
+    return ResponsiveScaffold(
+      activeItemLabel: 'Vendor Account Close Out',
       backgroundColor: const Color(0xFFF5F7FB),
-      body: SafeArea(
-        child: Row(
+      floatingActionButton: const KazAiChatBubble(positioned: false),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 16 : 32,
+          vertical: isMobile ? 16 : 28,
+        ),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            DraggableSidebar(
-              openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(activeItemLabel: 'Vendor Account Close Out'),
+            if (_isLoading) const LinearProgressIndicator(minHeight: 2),
+            _buildHeader(),
+            const SizedBox(height: 20),
+            _buildMetricsRow(),
+            const SizedBox(height: 20),
+            _buildVendorsPanel(),
+            const SizedBox(height: 16),
+            _buildAccessPanel(),
+            const SizedBox(height: 16),
+            _buildObligationsPanel(),
+            const SizedBox(height: 16),
+            _buildClosureChecklistPanel(),
+            const SizedBox(height: 24),
+            LaunchPhaseNavigation(
+              backLabel: 'Back: Contract Close Out',
+              nextLabel: 'Next: Project Summary',
+              onBack: () => ContractCloseOutScreen.open(context),
+              onNext: () => SummarizeAccountRisksScreen.open(context),
             ),
-            Expanded(
-              child: Stack(
-                children: [
-                  SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 28),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildPageHeader(context),
-                        const SizedBox(height: 20),
-                        LaunchEditableSection(
-                          title: 'Vendor close-out snapshot',
-                          description: 'Add counts, notes, or status items that matter to your vendor close-out.',
-                          entries: _snapshot,
-                          onAdd: () => _addEntry(_snapshot, titleLabel: 'Snapshot item', includeStatus: true),
-                          onRemove: (index) => _removeEntry(_snapshot, index),
-                        ),
-                        LaunchEditableSection(
-                          title: 'Guided steps',
-                          description: 'Capture the sequence you will run to close vendor accounts.',
-                          entries: _steps,
-                          onAdd: () => _addEntry(_steps, titleLabel: 'Step', includeStatus: true),
-                          onRemove: (index) => _removeEntry(_steps, index),
-                        ),
-                        LaunchEditableSection(
-                          title: 'Vendors requiring attention',
-                          description: 'List vendors with outstanding actions or risks.',
-                          entries: _vendors,
-                          onAdd: () => _addEntry(_vendors, titleLabel: 'Vendor', includeStatus: true),
-                          onRemove: (index) => _removeEntry(_vendors, index),
-                        ),
-                        LaunchEditableSection(
-                          title: 'Access & sign-off',
-                          description: 'Track access removals, ownership, and required approvals.',
-                          entries: _signOffs,
-                          onAdd: () => _addEntry(_signOffs, titleLabel: 'Approver or action', includeStatus: true),
-                          onRemove: (index) => _removeEntry(_signOffs, index),
-                        ),
-                        const SizedBox(height: 24),
-                        LaunchPhaseNavigation(
-                          backLabel: 'Back: Contract Close Out',
-                          nextLabel: 'Next: Project Summary',
-                          onBack: () => ContractCloseOutScreen.open(context),
-                          onNext: () => SummarizeAccountRisksScreen.open(context),
-                        ),
-                        const SizedBox(height: 48),
-                      ],
-                    ),
-                  ),
-                  const KazAiChatBubble(),
-                ],
-              ),
-            ),
+            const SizedBox(height: 48),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPageHeader(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Vendor Account Close Out · Guided flow',
-          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF111827),
-              ),
+  Widget _buildHeader() {
+    return ExecutionPageHeader(
+      badge: 'LAUNCH PHASE',
+      title: 'Vendor Account Close Out',
+      description:
+          'Close vendor accounts, revoke access, settle obligations, and confirm all outstanding items.',
+      trailing: ExecutionActionBar(
+        actions: [
+          ExecutionActionItem(
+            label: 'Import Vendors',
+            icon: Icons.download_outlined,
+            tone: ExecutionActionTone.secondary,
+            onPressed: _importVendors,
+          ),
+          ExecutionActionItem(
+            label: _isGenerating ? 'Generating…' : 'AI Assist',
+            icon: Icons.auto_awesome_outlined,
+            tone: ExecutionActionTone.ai,
+            isLoading: _isGenerating,
+            onPressed: _isGenerating ? null : _populateFromAi,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricsRow() {
+    final active = _vendors.where((v) => v.accountStatus == 'Active').length;
+    final closed = _vendors.where((v) => v.accountStatus == 'Closed').length;
+    final pendingAccess =
+        _accessItems.where((a) => a.status != 'Revoked').length;
+    final openObligations =
+        _obligations.where((o) => o.status != 'Complete').length;
+
+    return ExecutionMetricsGrid(
+      metrics: [
+        ExecutionMetricData(
+          label: 'Vendors',
+          value: '${_vendors.length}',
+          icon: Icons.business_outlined,
+          emphasisColor: const Color(0xFF2563EB),
+          helper: '$active active, $closed closed',
         ),
-        const SizedBox(height: 10),
-        Text(
-          'The sections below now start empty. Use the pop-ups to add vendors, steps, and approvals as you work.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: const Color(0xFF4B5563),
-                fontWeight: FontWeight.w500,
-                height: 1.5,
-              ),
+        ExecutionMetricData(
+          label: 'Access Items',
+          value: '$pendingAccess',
+          icon: Icons.vpn_key_outlined,
+          emphasisColor: pendingAccess > 0
+              ? const Color(0xFFF59E0B)
+              : const Color(0xFF10B981),
+          helper: 'pending revocation',
+        ),
+        ExecutionMetricData(
+          label: 'Open Obligations',
+          value: '$openObligations',
+          icon: Icons.pending_actions_outlined,
+          emphasisColor: openObligations > 0
+              ? const Color(0xFFEF4444)
+              : const Color(0xFF10B981),
+        ),
+        ExecutionMetricData(
+          label: 'Closure Tasks',
+          value:
+              '${_closureChecklist.where((c) => c.status == 'Complete').length} / ${_closureChecklist.length}',
+          icon: Icons.checklist_outlined,
+          emphasisColor: const Color(0xFF8B5CF6),
         ),
       ],
     );
   }
 
-  Future<void> _addEntry(
-    List<LaunchEntry> targetList, {
-    String titleLabel = 'Title',
-    bool includeStatus = true,
-  }) async {
-    final entry = await showLaunchEntryDialog(
-      context,
-      titleLabel: titleLabel,
-      detailsLabel: 'Details',
-      includeStatus: includeStatus,
+  Widget _buildVendorsPanel() {
+    return LaunchDataTable(
+      title: 'Vendor Close-Out Table',
+      subtitle: 'Track each vendor\'s account status and outstanding items.',
+      columns: const [
+        'Vendor',
+        'Contract Ref',
+        'Status',
+        'Outstanding',
+        'Notes'
+      ],
+      rowCount: _vendors.length,
+      onAdd: () {
+        setState(() => _vendors.add(LaunchVendorItem()));
+        _save();
+      },
+      importLabel: 'Import Vendors',
+      onImport: _importVendors,
+      emptyMessage:
+          'No vendors yet. Import vendors from execution or add manually.',
+      cellBuilder: (context, i) {
+        final v = _vendors[i];
+        return LaunchDataRow(
+          onDelete: () async {
+            final confirmed = await launchConfirmDelete(context,
+                itemName: 'vendor ${v.vendorName}');
+            if (!confirmed || !mounted) return;
+            setState(() => _vendors.removeAt(i));
+            _save();
+          },
+          cells: [
+            LaunchEditableCell(
+              value: v.vendorName,
+              hint: 'Vendor',
+              bold: true,
+              expand: true,
+              onChanged: (s) {
+                _vendors[i] = v.copyWith(vendorName: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: v.contractRef,
+              hint: 'Ref',
+              width: 120,
+              onChanged: (s) {
+                _vendors[i] = v.copyWith(contractRef: s);
+                _save();
+              },
+            ),
+            LaunchStatusDropdown(
+              value: v.accountStatus,
+              items: const ['Active', 'Closing', 'Closed'],
+              width: 110,
+              onChanged: (s) {
+                if (s == null) return;
+                _vendors[i] = v.copyWith(accountStatus: s);
+                _save();
+                setState(() {});
+              },
+            ),
+            LaunchEditableCell(
+              value: v.outstandingItems,
+              hint: 'Items',
+              width: 120,
+              onChanged: (s) {
+                _vendors[i] = v.copyWith(outstandingItems: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: v.notes,
+              hint: 'Notes',
+              expand: true,
+              onChanged: (s) {
+                _vendors[i] = v.copyWith(notes: s);
+                _save();
+              },
+            ),
+          ],
+        );
+      },
     );
-    if (entry != null && mounted) {
-      setState(() => targetList.add(entry));
-      await _persistEntries();
-    }
   }
 
-  void _removeEntry(List<LaunchEntry> targetList, int index) {
-    setState(() => targetList.removeAt(index));
-    _persistEntries();
+  Widget _buildAccessPanel() {
+    return LaunchDataTable(
+      title: 'Access Revocation',
+      subtitle:
+          'Track system/tool access that needs to be revoked for each vendor.',
+      columns: const [
+        'System',
+        'Vendor',
+        'Access Level',
+        'Revoked Date',
+        'Status',
+      ],
+      rowCount: _accessItems.length,
+      onAdd: () {
+        setState(() => _accessItems.add(LaunchAccessItem()));
+        _save();
+      },
+      emptyMessage:
+          'No access items. Track vendor access that needs revocation.',
+      cellBuilder: (context, i) {
+        final a = _accessItems[i];
+        return LaunchDataRow(
+          onDelete: () async {
+            final confirmed = await launchConfirmDelete(context,
+                itemName: 'access item ${a.system}');
+            if (!confirmed || !mounted) return;
+            setState(() => _accessItems.removeAt(i));
+            _save();
+          },
+          cells: [
+            LaunchEditableCell(
+              value: a.system,
+              hint: 'System',
+              bold: true,
+              expand: true,
+              onChanged: (s) {
+                _accessItems[i] = a.copyWith(system: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: a.vendor,
+              hint: 'Vendor',
+              expand: true,
+              onChanged: (s) {
+                _accessItems[i] = a.copyWith(vendor: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: a.accessLevel,
+              hint: 'Level',
+              width: 120,
+              onChanged: (s) {
+                _accessItems[i] = a.copyWith(accessLevel: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: a.revokedDate,
+              hint: 'Date',
+              width: 120,
+              onChanged: (s) {
+                _accessItems[i] = a.copyWith(revokedDate: s);
+                _save();
+              },
+            ),
+            LaunchStatusDropdown(
+              value: a.status,
+              items: const ['Pending', 'Revoked', 'Confirmed'],
+              width: 120,
+              onChanged: (s) {
+                if (s == null) return;
+                _accessItems[i] = a.copyWith(status: s);
+                _save();
+                setState(() {});
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
-  Future<void> _loadEntries() async {
-    if (_loadedEntries) return;
-    final provider = ProjectDataHelper.getProvider(context);
-    final projectId = provider.projectData.projectId;
-    if (projectId == null || projectId.isEmpty) return;
+  Widget _buildObligationsPanel() {
+    return LaunchDataTable(
+      title: 'Outstanding Obligations',
+      subtitle:
+          'Pending payments, deliverables, SLAs, or warranties requiring resolution.',
+      columns: const ['Obligation', 'Details', 'Owner', 'Status'],
+      rowCount: _obligations.length,
+      onAdd: () {
+        setState(() => _obligations.add(LaunchFollowUpItem()));
+        _save();
+      },
+      emptyMessage: 'No obligations. Track pending vendor obligations.',
+      cellBuilder: (context, i) {
+        final o = _obligations[i];
+        return LaunchDataRow(
+          onDelete: () async {
+            final confirmed = await launchConfirmDelete(context,
+                itemName: 'obligation ${o.title}');
+            if (!confirmed || !mounted) return;
+            setState(() => _obligations.removeAt(i));
+            _save();
+          },
+          cells: [
+            LaunchEditableCell(
+              value: o.title,
+              hint: 'Title',
+              bold: true,
+              expand: true,
+              onChanged: (s) {
+                _obligations[i] = o.copyWith(title: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: o.details,
+              hint: 'Details',
+              expand: true,
+              onChanged: (s) {
+                _obligations[i] = o.copyWith(details: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: o.owner,
+              hint: 'Owner',
+              width: 120,
+              onChanged: (s) {
+                _obligations[i] = o.copyWith(owner: s);
+                _save();
+              },
+            ),
+            LaunchStatusDropdown(
+              value: o.status,
+              items: const ['Open', 'In Progress', 'Complete'],
+              width: 120,
+              onChanged: (s) {
+                if (s == null) return;
+                _obligations[i] = o.copyWith(status: s);
+                _save();
+                setState(() {});
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('projects')
-          .doc(projectId)
-          .collection('launch_phase')
-          .doc('vendor_account_close_out')
-          .get();
-      if (doc.exists) {
-        final data = doc.data() ?? {};
-        final snapshot = (data['snapshot'] as List?)
-                ?.whereType<Map>()
-                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
-                .toList() ??
-            [];
-        final steps = (data['steps'] as List?)
-                ?.whereType<Map>()
-                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
-                .toList() ??
-            [];
-        final vendors = (data['vendors'] as List?)
-                ?.whereType<Map>()
-                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
-                .toList() ??
-            [];
-        final signoffs = (data['signOffs'] as List?)
-                ?.whereType<Map>()
-                .map((e) => LaunchEntry.fromJson(Map<String, dynamic>.from(e)))
-                .toList() ??
-            [];
-        if (!mounted) return;
-        setState(() {
-          _snapshot
-            ..clear()
-            ..addAll(snapshot);
-          _steps
-            ..clear()
-            ..addAll(steps);
-          _vendors
-            ..clear()
-            ..addAll(vendors);
-          _signOffs
-            ..clear()
-            ..addAll(signoffs);
-        });
+  Widget _buildClosureChecklistPanel() {
+    return LaunchDataTable(
+      title: 'Account Closure Checklist',
+      subtitle:
+          'Standardized steps to verify each vendor account is fully closed.',
+      columns: const ['Task', 'Details', 'Owner', 'Status'],
+      rowCount: _closureChecklist.length,
+      onAdd: () {
+        setState(() => _closureChecklist.add(LaunchFollowUpItem()));
+        _save();
+      },
+      emptyMessage: 'No checklist items. Add closure verification tasks.',
+      cellBuilder: (context, i) {
+        final c = _closureChecklist[i];
+        return LaunchDataRow(
+          onDelete: () async {
+            final confirmed = await launchConfirmDelete(context,
+                itemName: 'checklist task ${c.title}');
+            if (!confirmed || !mounted) return;
+            setState(() => _closureChecklist.removeAt(i));
+            _save();
+          },
+          cells: [
+            LaunchEditableCell(
+              value: c.title,
+              hint: 'Task',
+              bold: true,
+              expand: true,
+              onChanged: (s) {
+                _closureChecklist[i] = c.copyWith(title: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: c.details,
+              hint: 'Details',
+              expand: true,
+              onChanged: (s) {
+                _closureChecklist[i] = c.copyWith(details: s);
+                _save();
+              },
+            ),
+            LaunchEditableCell(
+              value: c.owner,
+              hint: 'Owner',
+              width: 120,
+              onChanged: (s) {
+                _closureChecklist[i] = c.copyWith(owner: s);
+                _save();
+              },
+            ),
+            LaunchStatusDropdown(
+              value: c.status,
+              items: const ['Pending', 'In Progress', 'Complete'],
+              width: 120,
+              onChanged: (s) {
+                if (s == null) return;
+                _closureChecklist[i] = c.copyWith(status: s);
+                _save();
+                setState(() {});
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _importVendors() async {
+    if (_projectId == null) return;
+    final imported = await LaunchPhaseService.loadExecutionVendors(_projectId!);
+    if (imported.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No vendors found to import.')));
       }
-      _loadedEntries = true;
-      if (_snapshot.isEmpty && _steps.isEmpty && _vendors.isEmpty && _signOffs.isEmpty) {
+      return;
+    }
+    setState(() {
+      final existing = _vendors.map((v) => v.vendorName).toSet();
+      for (final v in imported) {
+        if (!existing.contains(v.vendorName)) _vendors.add(v);
+      }
+    });
+    _save();
+  }
+
+  void _save() {
+    if (_suspendSave || !_hasLoaded) return;
+    Future.microtask(() {
+      if (mounted) _persistData();
+    });
+  }
+
+  Future<void> _loadData() async {
+    if (_hasLoaded || _projectId == null) return;
+    _suspendSave = true;
+    try {
+      final r = await LaunchPhaseService.loadVendorAccountCloseOut(
+          projectId: _projectId!);
+      if (!mounted) return;
+      setState(() {
+        _vendors = r.vendors;
+        _accessItems = r.accessItems;
+        _obligations = r.obligations;
+        _closureChecklist = r.closureChecklist;
+        _isLoading = false;
+        _hasLoaded = true;
+      });
+      if (_vendors.isEmpty) {
+        await _importVendors();
+      }
+      if (_vendors.isEmpty &&
+          _accessItems.isEmpty &&
+          _obligations.isEmpty &&
+          _closureChecklist.isEmpty) {
         await _populateFromAi();
       }
-    } catch (error) {
-      debugPrint('Failed to load vendor close-out entries: $error');
+    } catch (e) {
+      debugPrint('Vendor close-out load error: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+    _suspendSave = false;
+  }
+
+  Future<void> _persistData() async {
+    if (_projectId == null) return;
+    try {
+      await LaunchPhaseService.saveVendorAccountCloseOut(
+          projectId: _projectId!,
+          vendors: _vendors,
+          accessItems: _accessItems,
+          obligations: _obligations,
+          closureChecklist: _closureChecklist);
+    } catch (e) {
+      debugPrint('Vendor close-out save error: $e');
     }
   }
 
   Future<void> _populateFromAi() async {
-    if (_aiGenerated || _isGenerating) return;
-    final projectData = ProjectDataHelper.getData(context);
-    final contextText = ProjectDataHelper.buildFepContext(projectData, sectionLabel: 'Vendor Account Close Out');
-    if (contextText.trim().isEmpty) return;
-
-    setState(() => _isGenerating = true);
-    Map<String, List<Map<String, dynamic>>> generated = {};
-    try {
-      generated = await OpenAiServiceSecure().generateLaunchPhaseEntries(
-        context: contextText,
-        sections: const {
-          'vendor_snapshot': 'Vendor close-out snapshot',
-          'guided_steps': 'Guided steps',
-          'vendors_attention': 'Vendors requiring attention',
-          'access_signoff': 'Access & sign-off',
-        },
-        itemsPerSection: 2,
-      );
-    } catch (error) {
-      debugPrint('Vendor close-out AI call failed: $error');
+    if (_isGenerating) return;
+    final data = ProjectDataHelper.getData(context);
+    var ctx = ProjectDataHelper.buildExecutivePlanContext(data,
+        sectionLabel: 'Vendor Account Close Out');
+    if (ctx.trim().isEmpty) {
+      ctx = ProjectDataHelper.buildProjectContextScan(data);
     }
-
+    if (ctx.trim().isEmpty) return;
+    setState(() => _isGenerating = true);
+    Map<String, List<Map<String, dynamic>>> gen = {};
+    try {
+      gen = await OpenAiServiceSecure().generateLaunchPhaseEntries(
+        context: ctx,
+        sections: const {
+          'vendors':
+              'Vendors with name, contract reference, outstanding items, status',
+          'access_items':
+              'System access items with system, vendor, access level, status',
+          'obligations':
+              'Outstanding obligations: payments, deliverables, SLAs',
+          'closure_checklist': 'Closure verification tasks with status',
+        },
+        itemsPerSection: 3,
+      );
+    } catch (e) {
+      debugPrint('Vendor AI error: $e');
+    }
     if (!mounted) return;
-    if (_snapshot.isNotEmpty || _steps.isNotEmpty || _vendors.isNotEmpty || _signOffs.isNotEmpty) {
+    final hasData = _vendors.isNotEmpty ||
+        _accessItems.isNotEmpty ||
+        _obligations.isNotEmpty ||
+        _closureChecklist.isNotEmpty;
+    if (hasData) {
       setState(() => _isGenerating = false);
-      _aiGenerated = true;
       return;
     }
-
     setState(() {
-      _snapshot
-        ..clear()
-        ..addAll(_mapEntries(generated['vendor_snapshot']));
-      _steps
-        ..clear()
-        ..addAll(_mapEntries(generated['guided_steps']));
-      _vendors
-        ..clear()
-        ..addAll(_mapEntries(generated['vendors_attention']));
-      _signOffs
-        ..clear()
-        ..addAll(_mapEntries(generated['access_signoff']));
+      _vendors = (gen['vendors'] ?? [])
+          .map((m) => LaunchVendorItem(
+              vendorName: _s(m['title']),
+              outstandingItems: _s(m['details']),
+              accountStatus: _ns(m['status'], 'Active')))
+          .where((i) => i.vendorName.isNotEmpty)
+          .toList();
+      _accessItems = (gen['access_items'] ?? [])
+          .map((m) => LaunchAccessItem(
+              system: _s(m['title']),
+              vendor: _s(m['details']),
+              status: _ns(m['status'], 'Pending')))
+          .where((i) => i.system.isNotEmpty)
+          .toList();
+      _obligations = (gen['obligations'] ?? [])
+          .map((m) => LaunchFollowUpItem(
+              title: _s(m['title']),
+              details: _s(m['details']),
+              status: _ns(m['status'], 'Open')))
+          .where((i) => i.title.isNotEmpty)
+          .toList();
+      _closureChecklist = (gen['closure_checklist'] ?? [])
+          .map((m) => LaunchFollowUpItem(
+              title: _s(m['title']),
+              details: _s(m['details']),
+              status: _ns(m['status'], 'Pending')))
+          .where((i) => i.title.isNotEmpty)
+          .toList();
       _isGenerating = false;
     });
-    _aiGenerated = true;
-    await _persistEntries();
+    await _persistData();
   }
 
-  List<LaunchEntry> _mapEntries(List<Map<String, dynamic>>? raw) {
-    if (raw == null) return [];
-    return raw
-        .map((item) => LaunchEntry(
-              title: (item['title'] ?? '').toString().trim(),
-              details: (item['details'] ?? '').toString().trim(),
-              status: (item['status'] ?? '').toString().trim().isEmpty ? null : item['status'].toString().trim(),
-            ))
-        .where((entry) => entry.title.isNotEmpty)
-        .toList();
-  }
-
-  Future<void> _persistEntries() async {
-    final provider = ProjectDataHelper.getProvider(context);
-    final projectId = provider.projectData.projectId;
-    if (projectId == null || projectId.isEmpty) return;
-
-    final payload = {
-      'snapshot': _snapshot.map((e) => e.toJson()).toList(),
-      'steps': _steps.map((e) => e.toJson()).toList(),
-      'vendors': _vendors.map((e) => e.toJson()).toList(),
-      'signOffs': _signOffs.map((e) => e.toJson()).toList(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
-
-    await FirebaseFirestore.instance
-        .collection('projects')
-        .doc(projectId)
-        .collection('launch_phase')
-        .doc('vendor_account_close_out')
-        .set(payload, SetOptions(merge: true));
-  }
+  String _s(dynamic v) => (v ?? '').toString().trim();
+  String _ns(dynamic v, String fb) => _s(v).isEmpty ? fb : _s(v);
 }

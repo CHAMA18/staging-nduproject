@@ -40,6 +40,9 @@ import 'package:ndu_project/screens/startup_planning_screen.dart';
 import 'package:ndu_project/screens/startup_planning_subsections_screen.dart';
 import 'package:ndu_project/screens/deliverables_roadmap_screen.dart';
 import 'package:ndu_project/screens/deliverable_roadmap_subsections_screen.dart';
+import 'package:ndu_project/screens/deliverables_roadmap_overview_screen.dart';
+import 'package:ndu_project/screens/deliverables_roadmap_detailed_screen.dart';
+import 'package:ndu_project/screens/document_review_matrix_screen.dart';
 import 'package:ndu_project/screens/project_baseline_screen.dart';
 import 'package:ndu_project/screens/agile_project_baseline_screen.dart';
 import 'package:ndu_project/screens/project_plan_subsections_screen.dart';
@@ -319,6 +322,12 @@ class NavigationRouteResolver {
         return const ExecutionPlanInfrastructurePlanScreen();
       case 'execution_plan_agile_delivery_plan':
         return const ExecutionPlanAgileDeliveryPlanScreen();
+      case 'deliverables_roadmap_overview':
+        return const DeliverablesRoadmapOverviewScreen();
+      case 'deliverables_roadmap_detailed':
+        return const DeliverablesRoadmapDetailedScreen();
+      case 'document_review_matrix':
+        return const DocumentReviewMatrixScreen();
       case 'execution_plan_interface_management':
         return const ExecutionPlanInterfaceManagementScreen();
       case 'execution_plan_communication_plan':
@@ -438,10 +447,6 @@ class NavigationRouteResolver {
         return const IdentifyStaffOpsTeamScreen();
       case 'salvage_disposal_team':
         return const SalvageDisposalTeamScreen();
-      case 'actual_vs_planned_gap_analysis':
-        return const ActualVsPlannedGapAnalysisScreen();
-      case 'commerce_viability':
-        return const CommerceViabilityScreen();
       case 'finalize_project':
         return const FinalizeProjectScreen();
 
@@ -456,6 +461,10 @@ class NavigationRouteResolver {
         return const VendorAccountCloseOutScreen();
       case 'summarize_account_risks':
         return const SummarizeAccountRisksScreen();
+      case 'commerce_viability':
+        return const CommerceViabilityScreen();
+      case 'actual_vs_planned_gap_analysis':
+        return const ActualVsPlannedGapAnalysisScreen();
       case 'project_close_out':
         return const ProjectCloseOutScreen();
       case 'demobilize_team':

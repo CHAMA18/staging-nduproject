@@ -329,7 +329,7 @@ class _UpdateOpsMaintenancePlansScreenState
     final projectId = provider?.projectData.projectId;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFC),
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Stack(
           children: [
@@ -594,36 +594,18 @@ class _UpdateOpsMaintenancePlansScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextFormField(
-                  key: ValueKey('stat-value-${data.id}'),
-                  initialValue: data.value,
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    border: InputBorder.none,
-                    hintText: 'Value',
-                    hintStyle: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
-                    contentPadding: EdgeInsets.zero,
-                  ),
+                Text(
+                  data.value.isEmpty ? 'TBD' : data.value,
                   style: TextStyle(
                       fontSize: 18, fontWeight: FontWeight.w800, color: data.color),
-                  onChanged: (value) => _updateStat(data.copyWith(value: value)),
                 ),
                 const SizedBox(height: 2),
-                TextFormField(
-                  key: ValueKey('stat-label-${data.id}'),
-                  initialValue: data.label,
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    border: InputBorder.none,
-                    hintText: 'Label',
-                    hintStyle: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
-                    contentPadding: EdgeInsets.zero,
-                  ),
+                Text(
+                  data.label,
                   style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF6B7280)),
-                  onChanged: (value) => _updateStat(data.copyWith(label: value)),
                 ),
               ],
             ),
@@ -876,7 +858,7 @@ class _UpdateOpsMaintenancePlansScreenState
                 icon: Icons.track_changes_outlined,
                 message: 'No coverage items yet.')
           else
-            ..._coverage.map(_buildCoverageRow),
+            ..._coverage.map((item) => _buildCoverageRow(item)),
           const SizedBox(height: 12),
           _addEntryButton('Add coverage line', _addCoverageItem),
         ],
@@ -885,67 +867,64 @@ class _UpdateOpsMaintenancePlansScreenState
   }
 
   Widget _buildCoverageRow(_CoverageItem item) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x04000000),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Expanded(
-                child: TextFormField(
-                  key: ValueKey('coverage-label-${item.id}'),
-                  initialValue: item.label,
-                  decoration: _inlineFieldDecoration('Coverage label'),
+                child: Text(
+                  item.label.isEmpty ? 'Coverage label' : item.label,
                   style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF111827)),
-                  onChanged: (value) =>
-                      _updateCoverage(item.copyWith(label: value)),
                 ),
               ),
               const SizedBox(width: 12),
-              SizedBox(
-                width: 80,
-                child: TextFormField(
-                  key: ValueKey('coverage-progress-${item.id}'),
-                  initialValue: (item.progress * 100).round().toString(),
-                  decoration: _inlineFieldDecoration('%'),
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF111827)),
-                  onChanged: (value) {
-                    final parsed = double.tryParse(value) ?? 0;
-                    _updateCoverage(
-                        item.copyWith(progress: (parsed / 100).clamp(0.0, 1.0)));
-                  },
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                decoration: BoxDecoration(
+                  color: item.color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: item.color.withValues(alpha: 0.25)),
+                ),
+                child: Text(
+                  '${(item.progress * 100).round()}%',
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: item.color,
+                      letterSpacing: 0.5),
                 ),
               ),
+              const SizedBox(width: 12),
+              _buildEditButton(() => _editCoverageItem(item)),
               const SizedBox(width: 8),
-              Material(
-                color: const Color(0xFFFEE2E2),
-                borderRadius: BorderRadius.circular(8),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(8),
-                  onTap: () => _deleteCoverage(item.id),
-                  child: const Padding(
-                    padding: EdgeInsets.all(6),
-                    child: Icon(Icons.delete_outline_rounded,
-                        size: 16, color: Color(0xFFDC2626)),
-                  ),
-                ),
-              ),
+              _buildDeleteButton(() => _deleteCoverage(item.id)),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
           ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
               value: item.progress,
-              minHeight: 8,
+              minHeight: 10,
               backgroundColor: const Color(0xFFF1F5F9),
               valueColor: AlwaysStoppedAnimation<Color>(item.color),
             ),
@@ -972,7 +951,7 @@ class _UpdateOpsMaintenancePlansScreenState
                 icon: Icons.notifications_active_outlined,
                 message: 'No ops signals yet.')
           else
-            ..._signals.map(_buildSignalRow),
+            ..._signals.map((signal) => _buildSignalRow(signal)),
           const SizedBox(height: 12),
           _addEntryButton('Add ops signal', _addSignal),
         ],
@@ -983,69 +962,58 @@ class _UpdateOpsMaintenancePlansScreenState
   Widget _buildSignalRow(_SignalItem signal) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x04000000),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: const Color(0xFFFEF3C7),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(Icons.warning_amber_rounded,
-                size: 16, color: Color(0xFFD97706)),
+                size: 18, color: Color(0xFFD97706)),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextFormField(
-                  key: ValueKey('signal-title-${signal.id}'),
-                  initialValue: signal.title,
-                  decoration: _inlineFieldDecoration('Signal title'),
+                Text(
+                  signal.title.isEmpty ? 'Signal title' : signal.title,
                   style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF111827)),
-                  onChanged: (value) =>
-                      _updateSignal(signal.copyWith(title: value)),
                 ),
                 const SizedBox(height: 6),
-                TextFormField(
-                  key: ValueKey('signal-sub-${signal.id}'),
-                  initialValue: signal.subtitle,
-                  decoration: _inlineFieldDecoration('Signal detail'),
+                Text(
+                  signal.subtitle.isEmpty ? 'Signal detail' : signal.subtitle,
                   style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
                       color: Color(0xFF64748B)),
-                  onChanged: (value) =>
-                      _updateSignal(signal.copyWith(subtitle: value)),
                 ),
               ],
             ),
           ),
-          Material(
-            color: const Color(0xFFFEE2E2),
-            borderRadius: BorderRadius.circular(8),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: () => _deleteSignal(signal.id),
-              child: const Padding(
-                padding: EdgeInsets.all(6),
-                child: Icon(Icons.delete_outline_rounded,
-                    size: 16, color: Color(0xFFDC2626)),
-              ),
-            ),
-          ),
+          const SizedBox(width: 12),
+          _buildEditButton(() => _editSignalItem(signal)),
+          const SizedBox(width: 8),
+          _buildDeleteButton(() => _deleteSignal(signal.id)),
         ],
       ),
     );
@@ -1069,14 +1037,28 @@ class _UpdateOpsMaintenancePlansScreenState
                 message: 'No maintenance windows yet.')
           else
             ..._maintenanceWindows.map(_buildMaintenanceRow),
-          const SizedBox(height: 12),
-          _addEntryButton('Add maintenance window', _addMaintenanceWindow),
         ],
       ),
     );
   }
 
   Widget _buildMaintenanceRow(_MaintenanceWindowItem item) {
+    Color getStatusColor(String status) {
+      switch (status.toLowerCase()) {
+        case 'scheduled':
+          return const Color(0xFF6366F1);
+        case 'completed':
+          return const Color(0xFF10B981);
+        case 'in progress':
+          return const Color(0xFF0EA5E9);
+        case 'pending':
+          return const Color(0xFFF59E0B);
+        default:
+          return const Color(0xFF6B7280);
+      }
+    }
+
+    final statusColor = getStatusColor(item.status.isEmpty ? 'Scheduled' : item.status);
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -1101,58 +1083,38 @@ class _UpdateOpsMaintenancePlansScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextFormField(
-                  key: ValueKey('maintenance-title-${item.id}'),
-                  initialValue: item.title,
-                  decoration: _inlineFieldDecoration('Window'),
+                Text(
+                  item.title.isEmpty ? 'Window' : item.title,
                   style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF111827)),
-                  onChanged: (value) =>
-                      _updateMaintenance(item.copyWith(title: value)),
                 ),
                 const SizedBox(height: 4),
-                TextFormField(
-                  key: ValueKey('maintenance-time-${item.id}'),
-                  initialValue: item.time,
-                  decoration: _inlineFieldDecoration('Time window'),
+                Text(
+                  item.time.isEmpty ? 'Time window' : item.time,
                   style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                       color: Color(0xFF64748B)),
-                  onChanged: (value) =>
-                      _updateMaintenance(item.copyWith(time: value)),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 12),
-          SizedBox(
-            width: 130,
-            child: TextFormField(
-              key: ValueKey('maintenance-status-${item.id}'),
-              initialValue: item.status,
-              decoration: _inlineFieldDecoration('Status'),
-              style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF64748B)),
-              onChanged: (value) =>
-                  _updateMaintenance(item.copyWith(status: value)),
-            ),
-          ),
-          Material(
-            color: const Color(0xFFFEE2E2),
-            borderRadius: BorderRadius.circular(8),
-            child: InkWell(
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(8),
-              onTap: () => _deleteMaintenance(item.id),
-              child: const Padding(
-                padding: EdgeInsets.all(6),
-                child: Icon(Icons.delete_outline_rounded,
-                    size: 16, color: Color(0xFFDC2626)),
-              ),
+              border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+            ),
+            child: Text(
+              item.status.isEmpty ? 'Scheduled' : item.status,
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: statusColor),
             ),
           ),
         ],
@@ -1226,6 +1188,272 @@ class _UpdateOpsMaintenancePlansScreenState
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
       ),
+    );
+  }
+
+  Widget _buildEditButton(VoidCallback onTap) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEEF2FF),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFC7D2FE)),
+          ),
+          child: const Icon(Icons.edit_outlined, size: 16, color: Color(0xFF6366F1)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeleteButton(VoidCallback onTap) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFEE2E2),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFFECACA)),
+          ),
+          child: const Icon(Icons.delete_outline_rounded, size: 16, color: Color(0xFFDC2626)),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _editCoverageItem(_CoverageItem item) async {
+    final labelController = TextEditingController(text: item.label);
+    final progressController = TextEditingController(
+      text: (item.progress * 100).round().toString(),
+    );
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEEF2FF),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(Icons.track_changes_outlined,
+                            color: Color(0xFF6366F1), size: 22),
+                      ),
+                      const SizedBox(width: 14),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Edit coverage item',
+                                style: TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.w700)),
+                            SizedBox(height: 4),
+                            Text('Update readiness coverage details.',
+                                style: TextStyle(
+                                    fontSize: 12, color: Color(0xFF64748B))),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Close',
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: labelController,
+                    decoration: _dialogDecoration('Coverage label'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: progressController,
+                    decoration: _dialogDecoration('Progress (%)',
+                        hint: '0-100'),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      OutlinedButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF475569),
+                          side: const BorderSide(color: Color(0xFFE2E8F0)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: const Text('Cancel',
+                            style: TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed: () {
+                          final parsed = double.tryParse(progressController.text) ?? 0;
+                          _updateCoverage(item.copyWith(
+                            label: labelController.text.trim(),
+                            progress: (parsed / 100).clamp(0.0, 1.0),
+                          ));
+                          Navigator.of(dialogContext).pop();
+                        },
+                        icon: const Icon(Icons.check, size: 18),
+                        label: const Text('Save changes'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF6366F1),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 18, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                          textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _editSignalItem(_SignalItem signal) async {
+    final titleController = TextEditingController(text: signal.title);
+    final subtitleController = TextEditingController(text: signal.subtitle);
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF3C7),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(Icons.notifications_active_outlined,
+                            color: Color(0xFFD97706), size: 22),
+                      ),
+                      const SizedBox(width: 14),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Edit ops signal',
+                                style: TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.w700)),
+                            SizedBox(height: 4),
+                            Text('Update signal details for attention tracking.',
+                                style: TextStyle(
+                                    fontSize: 12, color: Color(0xFF64748B))),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Close',
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: titleController,
+                    decoration: _dialogDecoration('Signal title',
+                        hint: 'e.g. Database latency spike'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: subtitleController,
+                    decoration: _dialogDecoration('Signal detail',
+                        hint: 'Additional context or notes'),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      OutlinedButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF475569),
+                          side: const BorderSide(color: Color(0xFFE2E8F0)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: const Text('Cancel',
+                            style: TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed: () {
+                          _updateSignal(signal.copyWith(
+                            title: titleController.text.trim(),
+                            subtitle: subtitleController.text.trim(),
+                          ));
+                          Navigator.of(dialogContext).pop();
+                        },
+                        icon: const Icon(Icons.check, size: 18),
+                        label: const Text('Save changes'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFFD97706),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 18, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                          textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

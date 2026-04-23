@@ -382,90 +382,95 @@ class _TechnicalDebtManagementScreenState
           label: const Text('Auto-populate (AI)'),
         ),
       ]),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
-          columns: const [
-            DataColumn(
-                label:
-                    Text('ID', style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(
-                label: Text('Item',
-                    style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(
-                label: Text('Area',
-                    style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(
-                label: Text('Owner',
-                    style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(
-                label: Text('Severity',
-                    style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(
-                label: Text('Status',
-                    style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(
-                label: Text('Target',
-                    style: TextStyle(fontWeight: FontWeight.w600))),
-            DataColumn(
-                label: Text('Actions',
-                    style: TextStyle(fontWeight: FontWeight.w600))),
-          ],
-          rows: _debtItems.isEmpty
-              ? const [
-                  DataRow(cells: [
-                    DataCell(Text(
-                        'No debt items yet. Use + Add debt item to get started.',
-                        style: TextStyle(
-                            color: Color(0xFF64748B),
-                            fontStyle: FontStyle.italic))),
-                    DataCell(SizedBox()),
-                    DataCell(SizedBox()),
-                    DataCell(SizedBox()),
-                    DataCell(SizedBox()),
-                    DataCell(SizedBox()),
-                    DataCell(SizedBox()),
-                    DataCell(SizedBox()),
-                  ]),
-                ]
-              : _debtItems.map((item) {
-                  return DataRow(cells: [
-                    DataCell(Text(item.id,
-                        style: const TextStyle(
-                            fontSize: 12, color: Color(0xFF0EA5E9)))),
-                    DataCell(
-                        Text(item.title, style: const TextStyle(fontSize: 13))),
-                    DataCell(_chip(item.area)),
-                    DataCell(Text(item.owner,
-                        style: const TextStyle(
-                            fontSize: 13, color: Color(0xFF64748B)))),
-                    DataCell(_severityChip(item.severity)),
-                    DataCell(_statusChip(item.status)),
-                    DataCell(Text(item.target,
-                        style: const TextStyle(fontSize: 12))),
-                    DataCell(
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            onPressed: () => _showEditDebtItemDialog(item),
-                            icon: const Icon(Icons.edit, size: 16),
-                            color: const Color(0xFF64748B),
-                            tooltip: 'Edit',
-                          ),
-                          IconButton(
-                            onPressed: () => _deleteDebtItem(item),
-                            icon: const Icon(Icons.delete_outline, size: 16),
-                            color: const Color(0xFFEF4444),
-                            tooltip: 'Delete',
-                          ),
-                        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final availableWidth = constraints.maxWidth;
+          final isNarrow = availableWidth < 800;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header row
+              Container(
+                padding: EdgeInsets.all(isNarrow ? 10 : 12),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF8FAFC),
+                  border: Border(
+                    bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    _TableHeaderCell('ID', flex: isNarrow ? 0.6 : 0.5),
+                    _TableHeaderCell('Item', flex: 2.0),
+                    _TableHeaderCell('Area', flex: 1.0),
+                    _TableHeaderCell('Owner', flex: 1.2),
+                    _TableHeaderCell('Severity', flex: 1.0),
+                    _TableHeaderCell('Status', flex: 1.1),
+                    _TableHeaderCell('Target', flex: 1.0),
+                    _TableHeaderCell('Actions', flex: 0.8),
+                  ],
+                ),
+              ),
+              // Data rows
+              if (_debtItems.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  child: const Text(
+                    'No debt items yet. Use + Add debt item to get started.',
+                    style: TextStyle(
+                      color: Color(0xFF64748B),
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                )
+              else
+                ..._debtItems.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final item = entry.value;
+                  return Container(
+                    padding: EdgeInsets.all(isNarrow ? 10 : 12),
+                    decoration: BoxDecoration(
+                      color: index % 2 == 0 ? Colors.white : const Color(0xFFFAFAFA),
+                      border: const Border(
+                        bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1),
                       ),
                     ),
-                  ]);
-                }).toList(),
-        ),
+                    child: Row(
+                      children: [
+                        _TableCell(item.id,
+                            flex: isNarrow ? 0.6 : 0.5,
+                            textStyle: const TextStyle(
+                                fontSize: 12, color: Color(0xFF0EA5E9))),
+                        _TableCell(item.title,
+                            flex: 2.0,
+                            textStyle: const TextStyle(fontSize: 13)),
+                        _TableCell(item.area,
+                            flex: 1.0, isChip: true),
+                        _TableCell(item.owner,
+                            flex: 1.2,
+                            textStyle: const TextStyle(
+                                fontSize: 13, color: Color(0xFF64748B))),
+                        _TableCell(item.severity,
+                            flex: 1.0,
+                            isSeverityChip: true),
+                        _TableCell(item.status,
+                            flex: 1.1, isStatusChip: true),
+                        _TableCell(item.target,
+                            flex: 1.0,
+                            textStyle: const TextStyle(fontSize: 12)),
+                        _ActionsCell(
+                          flex: 0.8,
+                          onEdit: () => _showEditDebtItemDialog(item),
+                          onDelete: () => _deleteDebtItem(item),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+            ],
+          );
+        },
       ),
     );
   }
@@ -975,6 +980,76 @@ class _TechnicalDebtManagementScreenState
       child: Text(label,
           style: TextStyle(
               fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+    );
+  }
+
+  Widget _TableHeaderCell(String text, {required double flex}) {
+    return Expanded(
+      flex: (flex * 10).round(),
+      child: Text(
+        text,
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
+  Widget _TableCell(
+    String text, {
+    required double flex,
+    TextStyle? textStyle,
+    bool isChip = false,
+    bool isSeverityChip = false,
+    bool isStatusChip = false,
+  }) {
+    Widget? child;
+    if (isChip) {
+      child = _chip(text);
+    } else if (isSeverityChip) {
+      child = _severityChip(text);
+    } else if (isStatusChip) {
+      child = _statusChip(text);
+    } else {
+      child = Text(
+        text,
+        style: textStyle ?? const TextStyle(fontSize: 13),
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+    return Expanded(
+      flex: (flex * 10).round(),
+      child: child,
+    );
+  }
+
+  Widget _ActionsCell({
+    required double flex,
+    required VoidCallback onEdit,
+    required VoidCallback onDelete,
+  }) {
+    return Expanded(
+      flex: (flex * 10).round(),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            onPressed: onEdit,
+            icon: const Icon(Icons.edit, size: 16),
+            color: const Color(0xFF64748B),
+            tooltip: 'Edit',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+          IconButton(
+            onPressed: onDelete,
+            icon: const Icon(Icons.delete_outline, size: 16),
+            color: const Color(0xFFEF4444),
+            tooltip: 'Delete',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -914,12 +914,15 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
                   constraints: BoxConstraints(minWidth: constraints.maxWidth),
                   child: DataTable(
                     headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
+                    headingRowHeight: 36,
+                    dataRowMinHeight: 32,
+                    dataRowMaxHeight: 40,
                     headingTextStyle: const TextStyle(
                       fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569), letterSpacing: 0.4,
                     ),
-                    dataTextStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF1E293B)),
-                    columnSpacing: 20,
-                    horizontalMargin: 16,
+                    dataTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF1E293B)),
+                    columnSpacing: 16,
+                    horizontalMargin: 12,
                     columns: const [
                       DataColumn(label: Text('Category')),
                       DataColumn(label: Text('Open'), numeric: true),
@@ -1077,12 +1080,15 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
                   constraints: BoxConstraints(minWidth: constraints.maxWidth),
                   child: DataTable(
                     headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
+                    headingRowHeight: 36,
+                    dataRowMinHeight: 32,
+                    dataRowMaxHeight: 40,
                     headingTextStyle: const TextStyle(
                       fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569), letterSpacing: 0.4,
                     ),
-                    dataTextStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF1E293B)),
-                    columnSpacing: 20,
-                    horizontalMargin: 16,
+                    dataTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF1E293B)),
+                    columnSpacing: 16,
+                    horizontalMargin: 12,
                     columns: const [
                       DataColumn(label: Text('Workstream')),
                       DataColumn(label: Text('Open'), numeric: true),

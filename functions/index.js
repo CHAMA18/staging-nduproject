@@ -8,6 +8,8 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
+const DEFAULT_OPENAI_WORKFLOW_ID = 'wf_69f1f5acc7ec819082fb76bbbf79b64d088ea0e514080150';
+
 // Lazy-load config to avoid deployment timeouts
 function getRuntimeConfig() {
   try {
@@ -87,6 +89,132 @@ function setCorsHeaders(req, res) {
   res.set('Vary', 'Origin');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+}
+
+function getConfiguredOpenAiWorkflowId(req) {
+  const explicitWorkflowId =
+    req.body?.workflow_id ||
+    req.body?.workflowId ||
+    req.body?.payload?.workflow_id ||
+    req.body?.payload?.workflowId ||
+    process.env.OPENAI_WORKFLOW_ID ||
+    DEFAULT_OPENAI_WORKFLOW_ID;
+
+  const workflowId = String(explicitWorkflowId || '').trim();
+  return workflowId.startsWith('wf_') ? workflowId : '';
+}
+
+function stripWorkflowFields(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return payload;
+  }
+  const { workflow_id, workflowId, ...rest } = payload;
+  return rest;
+}
+
+function normalizeWorkflowInput(payload) {
+  if (payload && Array.isArray(payload.input)) {
+    return payload.input;
+  }
+
+  if (payload && Array.isArray(payload.messages)) {
+    return payload.messages.map((message) => {
+      const role = message?.role || 'user';
+      const content = message?.content;
+      if (Array.isArray(content)) {
+        return { role, content };
+      }
+      return {
+        role,
+        content: [
+          {
+            type: role === 'assistant' ? 'output_text' : 'input_text',
+            text: String(content || '')
+          }
+        ]
+      };
+    });
+  }
+
+  return [
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'input_text',
+          text: typeof payload === 'string' ? payload : JSON.stringify(payload || {})
+        }
+      ]
+    }
+  ];
+}
+
+function extractWorkflowText(value) {
+  if (typeof value === 'string') return value;
+  if (!value || typeof value !== 'object') return '';
+
+  const preferredKeys = ['output_text', 'final_output', 'text', 'content'];
+  for (const key of preferredKeys) {
+    const candidate = value[key];
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate;
+    }
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = extractWorkflowText(item);
+      if (found.trim()) return found;
+    }
+    return '';
+  }
+
+  for (const nested of Object.values(value)) {
+    const found = extractWorkflowText(nested);
+    if (found.trim()) return found;
+  }
+
+  return '';
+}
+
+function normalizeWorkflowResponse(data, endpoint, workflowId) {
+  const text = extractWorkflowText(data);
+  if (endpoint === '/responses') {
+    return {
+      id: data?.id || data?.workflow_run?.id || `resp-${workflowId}`,
+      object: 'response',
+      output: [
+        {
+          type: 'message',
+          role: 'assistant',
+          content: [
+            {
+              type: 'output_text',
+              text
+            }
+          ]
+        }
+      ],
+      workflow_run: data?.workflow_run || data
+    };
+  }
+
+  return {
+    id: data?.id || data?.workflow_run?.id || `chatcmpl-${workflowId}`,
+    object: 'chat.completion',
+    model: `openai-workflow-${workflowId}`,
+    choices: [
+      {
+        index: 0,
+        message: {
+          role: 'assistant',
+          content: text
+        },
+        finish_reason: 'stop'
+      }
+    ],
+    workflow_run: data?.workflow_run || data
+  };
 }
 
 function getRequestOrigin(req) {
@@ -271,6 +399,8 @@ exports.openaiProxy = functions
         return;
       }
       
+      const workflowId = getConfiguredOpenAiWorkflowId(req);
+
       // Determine endpoint path from request payload
       // If client provides explicit endpoint, use it. Otherwise, infer:
       // - Presence of `input` usually means Responses API
@@ -283,7 +413,21 @@ exports.openaiProxy = functions
           endpoint = '/chat/completions';
         }
       }
-      const openaiUrl = `https://api.openai.com/v1${endpoint}`;
+      const requestPayload = stripWorkflowFields(req.body.payload || req.body);
+      const openaiUrl = workflowId
+        ? `https://api.openai.com/v1/workflows/${workflowId}/run`
+        : `https://api.openai.com/v1${endpoint}`;
+      const openaiPayload = workflowId
+        ? {
+            input_data: {
+              input: normalizeWorkflowInput(requestPayload)
+            },
+            state_values: [],
+            session: true,
+            tracing: { enabled: true },
+            stream: false
+          }
+        : requestPayload;
       
       // Forward the request to OpenAI
       const openaiResponse = await fetch(openaiUrl, {
@@ -292,13 +436,17 @@ exports.openaiProxy = functions
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`
         },
-        body: JSON.stringify(req.body.payload || req.body)
+        body: JSON.stringify(openaiPayload)
       });
       
       const data = await openaiResponse.json();
       
       // Return OpenAI's response to the client
-      res.status(openaiResponse.status).json(data);
+      res.status(openaiResponse.status).json(
+        workflowId && openaiResponse.ok
+          ? normalizeWorkflowResponse(data, endpoint, workflowId)
+          : data
+      );
       
     } catch (error) {
       console.error('OpenAI proxy error:', error);

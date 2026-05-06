@@ -62,6 +62,9 @@ import 'package:ndu_project/screens/risk_assessment_screen.dart';
 import 'package:ndu_project/screens/staff_team_screen.dart';
 import 'package:ndu_project/screens/team_meetings_screen.dart';
 import 'package:ndu_project/screens/progress_tracking_screen.dart';
+import 'package:ndu_project/screens/deliverable_status_updates_screen.dart';
+import 'package:ndu_project/screens/recurring_deliverables_screen.dart';
+import 'package:ndu_project/screens/status_reports_screen.dart';
 import 'package:ndu_project/screens/gap_analysis_scope_reconcillation_screen.dart';
 import 'package:ndu_project/screens/execution_plan_interface_management_overview_screen.dart';
 import 'package:ndu_project/screens/project_decision_summary_screen.dart';
@@ -1182,6 +1185,21 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
   void _openProgressTracking() {
     _navigateWithCheckpoint(
         'progress_tracking', const ProgressTrackingScreen());
+  }
+
+  void _openDeliverableStatusUpdates() {
+    _navigateWithCheckpoint(
+        'deliverable_status_updates', const DeliverableStatusUpdatesScreen());
+  }
+
+  void _openRecurringDeliverables() {
+    _navigateWithCheckpoint(
+        'recurring_deliverables', const RecurringDeliverablesScreen());
+  }
+
+  void _openStatusReports() {
+    _navigateWithCheckpoint(
+        'status_reports', const StatusReportsScreen());
   }
 
   void _openGapAnalysisAndScopeReconcillation() {
@@ -2521,13 +2539,13 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
         ),
         if (_progressTrackingExpanded) ...[
           _buildSubSubMenuItem('Deliverable Status Updates',
-              onTap: _openProgressTracking,
+              onTap: _openDeliverableStatusUpdates,
               isActive: widget.activeItemLabel == 'Deliverable Status Updates'),
           _buildSubSubMenuItem('Recurring Deliverables',
-              onTap: _openProgressTracking,
+              onTap: _openRecurringDeliverables,
               isActive: widget.activeItemLabel == 'Recurring Deliverables'),
           _buildSubSubMenuItem('Status Reports',
-              onTap: _openProgressTracking,
+              onTap: _openStatusReports,
               isActive: widget.activeItemLabel == 'Status Reports'),
         ],
         _buildSubMenuItem('Contracts Tracking',
@@ -3219,6 +3237,26 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
           Icons.track_changes_outlined, 'Progress Tracking',
           onTap: _openProgressTracking,
           isActive: widget.activeItemLabel == 'Progress Tracking'));
+    }
+    if ('deliverable status updates'.contains(query) ||
+        'deliverable updates'.contains(query)) {
+      results.add(_buildMenuItem(
+          Icons.inventory_2_outlined, 'Deliverable Status Updates',
+          onTap: _openDeliverableStatusUpdates,
+          isActive: widget.activeItemLabel == 'Deliverable Status Updates'));
+    }
+    if ('recurring deliverables'.contains(query) ||
+        'recurring'.contains(query)) {
+      results.add(_buildMenuItem(
+          Icons.repeat_outlined, 'Recurring Deliverables',
+          onTap: _openRecurringDeliverables,
+          isActive: widget.activeItemLabel == 'Recurring Deliverables'));
+    }
+    if ('status reports'.contains(query) || 'reports'.contains(query)) {
+      results.add(_buildMenuItem(
+          Icons.description_outlined, 'Status Reports',
+          onTap: _openStatusReports,
+          isActive: widget.activeItemLabel == 'Status Reports'));
     }
     if ('gap analysis'.contains(query) ||
         'scope reconciliation'.contains(query) ||

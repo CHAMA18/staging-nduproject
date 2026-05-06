@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
-import 'package:ndu_project/screens/progress_tracking_screen.dart';
+import 'package:ndu_project/screens/status_reports_screen.dart';
 import 'package:ndu_project/screens/vendor_tracking_screen.dart';
 import 'package:ndu_project/services/contract_service.dart';
 import 'package:ndu_project/services/execution_phase_service.dart';
@@ -45,19 +45,14 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
   List<_RenewalLaneData> _renewalLanes = [];
   List<_RiskSignalData> _riskSignals = [];
   List<_ApprovalCheckpointData> _approvalCheckpoints = [];
+  String? _contractsStreamProjectId;
+  Stream<List<ContractModel>>? _contractsStream;
 
   static const List<String> _riskStatusOptions = [
     'On track',
     'At risk',
     'Needs review',
     'Blocked',
-  ];
-
-  static const List<String> _approvalStatusOptions = [
-    'Pending',
-    'In review',
-    'Complete',
-    'Scheduled',
   ];
 
   String? get _projectId {
@@ -175,12 +170,13 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
             .map(
               (entry) => _ApprovalCheckpointData(
                 id: _newId(),
-                title: entry.title,
+                gate: entry.title,
+                description: entry.details,
                 status: entry.status?.isNotEmpty == true
                     ? entry.status!
                     : 'Pending',
-                owner: 'Legal',
-                dueDate: 'TBD',
+                approver: 'Legal',
+                targetDate: 'TBD',
               ),
             )
             .toList();
@@ -214,25 +210,68 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
   }
 
   List<_RenewalLaneData> _defaultRenewalLanes() {
+    final now = DateTime.now();
     return [
       _RenewalLaneData(
-          id: _newId(),
-          label: '30 days',
-          count: '0',
-          note: 'Immediate renewals',
-          color: const Color(0xFFF97316)),
+        id: _newId(),
+        contractName: 'Cloud Infrastructure Services',
+        contractType: 'Service Level Agreement',
+        expiryDate: DateFormat('MMM d, yyyy').format(now.add(const Duration(days: 18))),
+        daysUntilExpiry: 18,
+        renewalAction: 'Renegotiate',
+        owner: 'IT Director',
+        status: 'In Negotiation',
+        committedValue: '\$2.4M',
+        notes: 'SLA uptime requirement increasing to 99.95%; bandwidth upgrade needed',
+      ),
       _RenewalLaneData(
-          id: _newId(),
-          label: '60 days',
-          count: '0',
-          note: 'Prepare negotiation pack',
-          color: const Color(0xFF6366F1)),
+        id: _newId(),
+        contractName: 'Project Management Platform',
+        contractType: 'Software License',
+        expiryDate: DateFormat('MMM d, yyyy').format(now.add(const Duration(days: 42))),
+        daysUntilExpiry: 42,
+        renewalAction: 'Renew',
+        owner: 'PMO Lead',
+        status: 'Draft Ready',
+        committedValue: '\$180K',
+        notes: 'Multi-year discount available if renewed before expiry',
+      ),
       _RenewalLaneData(
-          id: _newId(),
-          label: '90 days',
-          count: '0',
-          note: 'Pipeline planning',
-          color: const Color(0xFF10B981)),
+        id: _newId(),
+        contractName: 'Site Security & Surveillance',
+        contractType: 'Service Level Agreement',
+        expiryDate: DateFormat('MMM d, yyyy').format(now.add(const Duration(days: 67))),
+        daysUntilExpiry: 67,
+        renewalAction: 'Renew',
+        owner: 'Operations Manager',
+        status: 'Not Started',
+        committedValue: '\$560K',
+        notes: 'Annual physical security review required before renewal approval',
+      ),
+      _RenewalLaneData(
+        id: _newId(),
+        contractName: 'Environmental Compliance Audit',
+        contractType: 'Consulting Agreement',
+        expiryDate: DateFormat('MMM d, yyyy').format(now.add(const Duration(days: 89))),
+        daysUntilExpiry: 89,
+        renewalAction: 'Extend',
+        owner: 'HSE Manager',
+        status: 'Not Started',
+        committedValue: '\$95K',
+        notes: 'Regulatory audit scope expansion pending; hold renewal until scope confirmed',
+      ),
+      _RenewalLaneData(
+        id: _newId(),
+        contractName: 'Heavy Equipment Lease',
+        contractType: 'Procurement',
+        expiryDate: DateFormat('MMM d, yyyy').format(now.add(const Duration(days: 125))),
+        daysUntilExpiry: 125,
+        renewalAction: 'Renegotiate',
+        owner: 'Procurement Lead',
+        status: 'Not Started',
+        committedValue: '\$3.1M',
+        notes: 'Market rate review needed; competitor quotes due by next quarter',
+      ),
     ];
   }
 
@@ -250,21 +289,79 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
   List<_ApprovalCheckpointData> _defaultApprovalCheckpoints() {
     return [
       _ApprovalCheckpointData(
-          id: _newId(),
-          title: 'Legal review queue',
-          status: 'Pending',
-          owner: 'Legal',
-          dueDate: 'TBD'),
+        id: _newId(),
+        gate: 'Legal Review & Compliance',
+        description: 'Verify contract terms against regulatory requirements, liability clauses, and IP provisions',
+        approver: 'General Counsel',
+        department: 'Legal',
+        priority: 'Critical',
+        status: 'In Review',
+        targetDate: 'TBD',
+      ),
       _ApprovalCheckpointData(
-          id: _newId(),
-          title: 'Finance sign-off',
-          status: 'Complete',
-          owner: 'Finance',
-          dueDate: 'TBD'),
+        id: _newId(),
+        gate: 'Financial Authorization',
+        description: 'Confirm budget allocation, payment schedule, and fiscal compliance for committed value',
+        approver: 'CFO / Finance Director',
+        department: 'Finance',
+        priority: 'Critical',
+        status: 'Pending',
+        targetDate: 'TBD',
+      ),
+      _ApprovalCheckpointData(
+        id: _newId(),
+        gate: 'Scope & Deliverable Alignment',
+        description: 'Validate that contracted scope matches approved project scope and WBS deliverables',
+        approver: 'Project Manager',
+        department: 'Project Office',
+        priority: 'High',
+        status: 'Pending',
+        targetDate: 'TBD',
+      ),
+      _ApprovalCheckpointData(
+        id: _newId(),
+        gate: 'Technical Feasibility Sign-off',
+        description: 'Confirm vendor capability and technical approach meet acceptance criteria and SLA targets',
+        approver: 'Technical Lead',
+        department: 'Engineering',
+        priority: 'High',
+        status: 'Not Started',
+        targetDate: 'TBD',
+      ),
+      _ApprovalCheckpointData(
+        id: _newId(),
+        gate: 'Executive Authorization',
+        description: 'Final approval from executive sponsor for contract execution and vendor onboarding',
+        approver: 'Executive Sponsor',
+        department: 'Executive',
+        priority: 'High',
+        status: 'Not Started',
+        targetDate: 'TBD',
+      ),
+      _ApprovalCheckpointData(
+        id: _newId(),
+        gate: 'Insurance & Indemnity Verification',
+        description: 'Confirm vendor insurance certificates, indemnity provisions, and risk transfer mechanisms',
+        approver: 'Risk Manager',
+        department: 'Risk',
+        priority: 'Medium',
+        status: 'Not Started',
+        targetDate: 'TBD',
+      ),
     ];
   }
 
   String _newId() => DateTime.now().microsecondsSinceEpoch.toString();
+
+  Stream<List<ContractModel>>? _contractStreamForProject() {
+    final projectId = _projectId;
+    if (projectId == null || projectId.isEmpty) return null;
+    if (_contractsStreamProjectId != projectId || _contractsStream == null) {
+      _contractsStreamProjectId = projectId;
+      _contractsStream = ContractService.streamContracts(projectId);
+    }
+    return _contractsStream;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -288,6 +385,8 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                 _buildFilterChips(),
                 const SizedBox(height: 20),
                 _buildStatsRow(isNarrow),
+                const SizedBox(height: 20),
+                _buildContractManagementGuide(),
                 const SizedBox(height: 24),
                 Column(
                   children: [
@@ -302,9 +401,9 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
                 ),
                 const SizedBox(height: 24),
                 LaunchPhaseNavigation(
-                  backLabel: 'Back: Progress Tracking',
+                  backLabel: 'Back: Status Reports',
                   nextLabel: 'Next: Vendor Tracking',
-                  onBack: () => ProgressTrackingScreen.open(context),
+                  onBack: () => StatusReportsScreen.open(context),
                   onNext: () => VendorTrackingScreen.open(context),
                 ),
               ],
@@ -333,34 +432,50 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
           ),
         ),
         const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: Column(
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = isNarrow || constraints.maxWidth < 1040;
+            final titleBlock = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  'Contracts Tracking',
+                  style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF111827)),
+                ),
+                SizedBox(height: 6),
+                Text(
+                  'Track renewals, approvals, risk signals, and compliance milestones for critical vendor contracts. '
+                  'Aligned with PMI PMBOK Conduct Procurements and Control Procurements processes, '
+                  'this register ensures contract scope, value, and obligations remain visible and actionable throughout execution.',
+                  style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+                ),
+              ],
+            );
+
+            if (compact) {
+              return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    'Contracts Tracking',
-                    style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF111827)),
-                  ),
-                  SizedBox(height: 6),
-                  Text(
-                    'Track renewals, approvals, and compliance milestones for critical vendor contracts.',
-                    style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
-                  ),
+                children: [
+                  titleBlock,
+                  const SizedBox(height: 12),
+                  _buildHeaderActions(),
                 ],
-              ),
-            ),
-            if (!isNarrow) _buildHeaderActions(),
-          ],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: titleBlock),
+                const SizedBox(width: 20),
+                Flexible(child: _buildHeaderActions()),
+              ],
+            );
+          },
         ),
-        if (isNarrow) ...[
-          const SizedBox(height: 12),
-          _buildHeaderActions(),
-        ],
       ],
     );
   }
@@ -489,12 +604,13 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
   }
 
   Widget _buildStatsRow(bool isNarrow) {
-    if (_projectId == null) {
+    final contractsStream = _contractStreamForProject();
+    if (contractsStream == null) {
       return const SizedBox.shrink();
     }
 
     return StreamBuilder<List<ContractModel>>(
-      stream: ContractService.streamContracts(_projectId!),
+      stream: contractsStream,
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const SizedBox.shrink();
@@ -530,23 +646,12 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
               const Color(0xFF6366F1)),
         ];
 
-        if (isNarrow) {
-          return Column(
-            children: [
-              for (int i = 0; i < stats.length; i++) ...[
-                SizedBox(
-                    width: double.infinity, child: _buildStatCard(stats[i])),
-                if (i < stats.length - 1) const SizedBox(height: 12),
-              ],
-            ],
-          );
-        }
-
-        return Row(
+        return Column(
           children: [
             for (int i = 0; i < stats.length; i++) ...[
-              Expanded(child: _buildStatCard(stats[i])),
-              if (i < stats.length - 1) const SizedBox(width: 12),
+              SizedBox(
+                  width: double.infinity, child: _buildStatCard(stats[i])),
+              if (i < stats.length - 1) const SizedBox(height: 12),
             ],
           ],
         );
@@ -584,8 +689,134 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
     );
   }
 
+  Widget _buildContractManagementGuide() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Contract control framework',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Grounded in PMI PMBOK Conduct Procurements (12.2) and Control Procurements (12.3), '
+            'FIDIC contract conditions, and PRINCE2 procurement conventions. Effective contract '
+            'tracking ensures that scope, value, timelines, and compliance obligations remain '
+            'visible and actionable throughout the project lifecycle.',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF6B7280), height: 1.5),
+          ),
+          const SizedBox(height: 18),
+          Column(
+            children: [
+              _buildGuideCard(
+                Icons.gavel_outlined,
+                'Contract Lifecycle',
+                'Draft → Legal Review → Signed → Active → Renewal/Expiry. '
+                    'Each contract should be tracked from initiation through close-out. '
+                    'Set renewal alerts at 90/60/30-day intervals to avoid lapses.',
+                const Color(0xFF2563EB),
+              ),
+              const SizedBox(height: 12),
+              _buildGuideCard(
+                Icons.assignment_turned_in_outlined,
+                'Scope & SLA Compliance',
+                'Monitor vendor performance against contracted deliverables and service '
+                    'level agreements. Document scope changes through the Change Control '
+                    'process before amending contract terms.',
+                const Color(0xFF10B981),
+              ),
+              const SizedBox(height: 12),
+              _buildGuideCard(
+                Icons.attach_money_outlined,
+                'Financial Controls',
+                'Track committed value against actuals. Tie contract payments to verified '
+                    'milestones and deliverable acceptance. Maintain audit-ready records of '
+                    'all amendments, change orders, and payment approvals.',
+                const Color(0xFFF59E0B),
+              ),
+              const SizedBox(height: 12),
+              _buildGuideCard(
+                Icons.warning_amber_outlined,
+                'Risk & Renewal Signals',
+                'Flag contracts approaching expiry, those with unresolved disputes, or '
+                    'vendors failing SLA targets. Escalate risk signals to the project board '
+                    'when they exceed threshold tolerance levels.',
+                const Color(0xFFEF4444),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuideCard(IconData icon, String title, String description, Color color) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 16, color: color),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            description,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF4B5563),
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildContractRegister() {
-    if (_projectId == null) {
+    final contractsStream = _contractStreamForProject();
+    if (contractsStream == null) {
       return _PanelShell(
         title: 'Contract register',
         subtitle: 'Track scope, owners, and renewal milestones',
@@ -604,7 +835,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
       subtitle: 'Track scope, owners, and renewal milestones',
       trailing: _actionButton(Icons.filter_list, 'Filter'),
       child: StreamBuilder<List<ContractModel>>(
-        stream: ContractService.streamContracts(_projectId!),
+        stream: contractsStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
@@ -692,23 +923,146 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
     if (_projectId == null) {
       return _PanelShell(
         title: 'Renewal pipeline',
-        subtitle: 'Contracts rolling into renewal windows',
+        subtitle:
+            'Contract renewal tracker aligned with PMI PMBOK Control Procurements. '
+            'Monitor contracts approaching expiry, assign renewal owners, and track '
+            'renegotiation progress across urgency windows.',
         child: const SizedBox.shrink(),
       );
     }
 
-    return _PanelShell(
-      title: 'Renewal pipeline',
-      subtitle: 'Contracts rolling into renewal windows',
-      trailing: TextButton.icon(
-        onPressed: _addRenewalLane,
-        icon: const Icon(Icons.add, size: 18),
-        label: const Text('Add lane'),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
-        children: _renewalLanes.map(_buildRenewalLane).toList(),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Renewal pipeline',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Contract renewal tracker aligned with PMI PMBOK Control '
+                        'Procurements. Monitor contracts approaching expiry, assign '
+                        'renewal owners, and track renegotiation progress across urgency windows.',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF6B7280),
+                          height: 1.45,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                OutlinedButton.icon(
+                  onPressed: _showRenewalEntryEditor,
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('Add contract',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF475569),
+                    side: const BorderSide(color: Color(0xFFE2E8F0)),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+          if (_renewalLanes.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(32),
+              child: Center(
+                child: Column(
+                  children: [
+                    const Icon(Icons.autorenew_outlined, color: Color(0xFF9CA3AF), size: 32),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'No contracts in the renewal pipeline. Add contracts to start tracking renewals.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else ...[
+            // Table header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: const BoxDecoration(color: Color(0xFFF8FAFC)),
+              child: const Row(
+                children: [
+                  Expanded(flex: 4, child: Text('CONTRACT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                  SizedBox(width: 100, child: Text('TYPE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                  SizedBox(width: 100, child: Text('EXPIRY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                  SizedBox(width: 110, child: Text('URGENCY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                  SizedBox(width: 100, child: Text('ACTION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                  SizedBox(width: 100, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                  Expanded(flex: 2, child: Text('OWNER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                  SizedBox(width: 90, child: Text('VALUE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                  SizedBox(width: 60, child: Text('', style: TextStyle(fontSize: 10))),
+                ],
+              ),
+            ),
+            // Table rows sorted by urgency (soonest expiry first)
+            ...List.generate(
+              _sortedRenewalLanes.length,
+              (index) {
+                final lane = _sortedRenewalLanes[index];
+                final isLast = index == _sortedRenewalLanes.length - 1;
+                return _RenewalEntryRow(
+                  entry: lane,
+                  onEdit: () => _showRenewalEntryEditor(entry: lane),
+                  onDelete: () => _confirmDeleteRenewalEntry(lane),
+                  showDivider: !isLast,
+                );
+              },
+            ),
+          ],
+        ],
       ),
     );
+  }
+
+  List<_RenewalLaneData> get _sortedRenewalLanes {
+    final sorted = List<_RenewalLaneData>.from(_renewalLanes);
+    sorted.sort((a, b) {
+      final aDays = a.daysUntilExpiry ?? 9999;
+      final bDays = b.daysUntilExpiry ?? 9999;
+      return aDays.compareTo(bDays);
+    });
+    return sorted;
   }
 
   Widget _buildSignalsPanel() {
@@ -724,7 +1078,7 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
       title: 'Risk signals',
       subtitle: 'Items that need attention this week',
       trailing: TextButton.icon(
-        onPressed: _addRiskSignal,
+        onPressed: () => _showRiskSignalEditor(),
         icon: const Icon(Icons.add, size: 18),
         label: const Text('Add signal'),
       ),
@@ -743,17 +1097,134 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
   }
 
   Widget _buildApprovalsPanel() {
-    return _PanelShell(
-      title: 'Approval readiness',
-      subtitle: 'Legal and finance checkpoints',
-      trailing: TextButton.icon(
-        onPressed: _addApprovalCheckpoint,
-        icon: const Icon(Icons.add, size: 18),
-        label: const Text('Add checkpoint'),
+    if (_projectId == null) {
+      return _PanelShell(
+        title: 'Approval readiness',
+        subtitle:
+            'Contract approval gates aligned with PMI PMBOK Close Procurements '
+            'and organizational authority matrices. Each gate must be cleared '
+            'before the contract advances to the next stage.',
+        child: const SizedBox.shrink(),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: _approvalCheckpoints.map(_buildApprovalCheckpoint).toList(),
+        children: [
+          // Panel header
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Approval readiness',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Contract approval gates aligned with PMI PMBOK Close Procurements '
+                        'and organizational authority matrices. Each gate must be cleared '
+                        'before the contract advances to the next stage.',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF6B7280),
+                          height: 1.45,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                OutlinedButton.icon(
+                  onPressed: _showApprovalCheckpointEditor,
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('Add gate',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF475569),
+                    side: const BorderSide(color: Color(0xFFE2E8F0)),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+          // Table
+          if (_approvalCheckpoints.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(32),
+              child: Center(
+                child: Column(
+                  children: [
+                    const Icon(Icons.verified_outlined, color: Color(0xFF9CA3AF), size: 32),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'No approval gates defined. Add gates to set up the approval workflow.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else ...[
+            // Table header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: const BoxDecoration(color: Color(0xFFF8FAFC)),
+              child: const Row(
+                children: [
+                  Expanded(flex: 5, child: Text('APPROVAL GATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                  Expanded(flex: 3, child: Text('APPROVER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8))),
+                  SizedBox(width: 100, child: Text('DEPT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                  SizedBox(width: 90, child: Text('PRIORITY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                  SizedBox(width: 110, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                  SizedBox(width: 100, child: Text('TARGET', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                  SizedBox(width: 60, child: Text('ACTION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF6B7280), letterSpacing: 0.8), textAlign: TextAlign.center)),
+                ],
+              ),
+            ),
+            // Table rows
+            ...List.generate(_approvalCheckpoints.length, (index) {
+              final checkpoint = _approvalCheckpoints[index];
+              final isLast = index == _approvalCheckpoints.length - 1;
+              return _ApprovalGateRow(
+                checkpoint: checkpoint,
+                onEdit: () => _showApprovalCheckpointEditor(checkpoint: checkpoint),
+                onDelete: () => _confirmDeleteApprovalCheckpoint(checkpoint),
+                showDivider: !isLast,
+              );
+            }),
+          ],
+        ],
       ),
     );
   }
@@ -852,118 +1323,103 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
     }
   }
 
-  Widget _buildRenewalLane(_RenewalLaneData lane) {
+  Widget _buildRiskSignal(_RiskSignalData signal) {
+    final statusColor = _riskStatusColor(signal.status);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration:
-                BoxDecoration(color: lane.color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextFormField(
-              initialValue: lane.label,
-              decoration: _inlineDecoration('Lane label'),
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              onChanged: (value) =>
-                  _updateRenewalLane(lane.copyWith(label: value)),
-            ),
-          ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 70,
-            child: TextFormField(
-              initialValue: lane.count,
-              decoration: _inlineDecoration('Count'),
-              keyboardType: TextInputType.number,
-              onChanged: (value) =>
-                  _updateRenewalLane(lane.copyWith(count: value)),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextFormField(
-              initialValue: lane.note,
-              decoration: _inlineDecoration('Note'),
-              onChanged: (value) =>
-                  _updateRenewalLane(lane.copyWith(note: value)),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
-            onPressed: () => _deleteRenewalLane(lane.id),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRiskSignal(_RiskSignalData signal) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextFormField(
-            initialValue: signal.title,
-            decoration: _inlineDecoration('Signal title'),
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-            onChanged: (value) =>
-                _updateRiskSignal(signal.copyWith(title: value)),
+          Container(
+            width: 10,
+            height: 10,
+            margin: const EdgeInsets.only(top: 5),
+            decoration: BoxDecoration(
+              color: statusColor,
+              shape: BoxShape.circle,
+            ),
           ),
-          const SizedBox(height: 6),
-          TextFormField(
-            initialValue: signal.detail,
-            decoration: _inlineDecoration('Detail'),
-            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-            onChanged: (value) =>
-                _updateRiskSignal(signal.copyWith(detail: value)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  signal.title.trim().isEmpty
+                      ? 'Untitled signal'
+                      : signal.title,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                if (signal.detail.trim().isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    signal.detail,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      height: 1.45,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _RiskSignalPill(
+                      icon: Icons.person_outline,
+                      label: signal.owner.trim().isEmpty
+                          ? 'Owner unassigned'
+                          : signal.owner,
+                    ),
+                    _RiskSignalPill(
+                      icon: Icons.flag_outlined,
+                      label: signal.status,
+                      color: statusColor,
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  initialValue: signal.owner,
-                  decoration: _inlineDecoration('Owner'),
-                  onChanged: (value) =>
-                      _updateRiskSignal(signal.copyWith(owner: value)),
+          const SizedBox(width: 8),
+          PopupMenuButton<String>(
+            tooltip: 'Risk signal actions',
+            icon: const Icon(Icons.more_horiz, color: Color(0xFF64748B)),
+            onSelected: (action) {
+              if (action == 'edit') {
+                _showRiskSignalEditor(signal: signal);
+              } else if (action == 'delete') {
+                _confirmDeleteRiskSignal(signal);
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: 'edit',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.edit_outlined),
+                  title: Text('Edit signal'),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  initialValue: _riskStatusOptions.contains(signal.status)
-                      ? signal.status
-                      : _riskStatusOptions.first,
-                  decoration: _inlineDecoration('Status'),
-                  items: _riskStatusOptions
-                      .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                      .toList(),
-                  onChanged: (value) => _updateRiskSignal(signal.copyWith(
-                      status: value ?? _riskStatusOptions.first)),
+              PopupMenuItem(
+                value: 'delete',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
+                  title: Text('Delete signal'),
                 ),
-              ),
-              IconButton(
-                icon:
-                    const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
-                onPressed: () => _deleteRiskSignal(signal.id),
               ),
             ],
           ),
@@ -972,111 +1428,420 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
     );
   }
 
-  Widget _buildApprovalCheckpoint(_ApprovalCheckpointData checkpoint) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextFormField(
-              initialValue: checkpoint.title,
-              decoration: _inlineDecoration('Checkpoint'),
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              onChanged: (value) =>
-                  _updateApprovalCheckpoint(checkpoint.copyWith(title: value)),
-            ),
+  Color _riskStatusColor(String status) {
+    switch (status.trim().toLowerCase()) {
+      case 'blocked':
+        return const Color(0xFFDC2626);
+      case 'at risk':
+      case 'needs review':
+        return const Color(0xFFF59E0B);
+      case 'on track':
+        return const Color(0xFF10B981);
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
+  static const List<String> _contractTypeOptions = [
+    'Service Level Agreement',
+    'Software License',
+    'Procurement',
+    'Consulting Agreement',
+    'NDA',
+    'Employment',
+    'Lease',
+  ];
+
+  static const List<String> _renewalActionOptions = [
+    'Renew',
+    'Renegotiate',
+    'Extend',
+    'Terminate',
+  ];
+
+  static const List<String> _renewalStatusOptions = [
+    'Not Started',
+    'In Negotiation',
+    'Draft Ready',
+    'Pending Signature',
+    'Completed',
+  ];
+
+  Future<void> _showRenewalEntryEditor({_RenewalLaneData? entry}) async {
+    final isEdit = entry != null;
+    final nameController = TextEditingController(text: entry?.contractName ?? '');
+    var selectedType = _contractTypeOptions.contains(entry?.contractType)
+        ? entry!.contractType
+        : _contractTypeOptions.first;
+    final expiryController = TextEditingController(text: entry?.expiryDate ?? '');
+    final daysController = TextEditingController(
+        text: entry?.daysUntilExpiry?.toString() ?? '');
+    var selectedAction = _renewalActionOptions.contains(entry?.renewalAction)
+        ? (entry?.renewalAction ?? 'Renew')
+        : 'Renew';
+    var selectedStatus = _renewalStatusOptions.contains(entry?.status)
+        ? (entry?.status ?? 'Not Started')
+        : 'Not Started';
+    final ownerController = TextEditingController(text: entry?.owner ?? '');
+    final valueController = TextEditingController(text: entry?.committedValue ?? '');
+    final notesController = TextEditingController(text: entry?.notes ?? '');
+
+    final saved = await showDialog<_RenewalLaneData>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(isEdit ? 'Edit renewal entry' : 'Add contract to pipeline'),
+              content: SizedBox(
+                width: 580,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Contract / Vendor name *',
+                          hintText: 'e.g. Cloud Infrastructure Services',
+                          isDense: true,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              initialValue: selectedType,
+                              decoration: const InputDecoration(
+                                labelText: 'Contract type',
+                                isDense: true,
+                              ),
+                              items: _contractTypeOptions
+                                  .map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 12))))
+                                  .toList(),
+                              onChanged: (value) {
+                                if (value == null) return;
+                                setDialogState(() => selectedType = value);
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              initialValue: selectedAction,
+                              decoration: const InputDecoration(
+                                labelText: 'Renewal action',
+                                isDense: true,
+                              ),
+                              items: _renewalActionOptions
+                                  .map((a) => DropdownMenuItem(value: a, child: Text(a, style: const TextStyle(fontSize: 12))))
+                                  .toList(),
+                              onChanged: (value) {
+                                if (value == null) return;
+                                setDialogState(() => selectedAction = value);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: expiryController,
+                              decoration: const InputDecoration(
+                                labelText: 'Expiry date',
+                                hintText: 'e.g. Mar 15, 2025',
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          SizedBox(
+                            width: 120,
+                            child: TextField(
+                              controller: daysController,
+                              decoration: const InputDecoration(
+                                labelText: 'Days left',
+                                hintText: 'e.g. 42',
+                                isDense: true,
+                              ),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: ownerController,
+                              decoration: const InputDecoration(
+                                labelText: 'Renewal owner',
+                                hintText: 'e.g. IT Director',
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: valueController,
+                              decoration: const InputDecoration(
+                                labelText: 'Committed value',
+                                hintText: 'e.g. \$2.4M',
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedStatus,
+                        decoration: const InputDecoration(
+                          labelText: 'Renewal status',
+                          isDense: true,
+                        ),
+                        items: _renewalStatusOptions
+                            .map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 12))))
+                            .toList(),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setDialogState(() => selectedStatus = value);
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: notesController,
+                        decoration: const InputDecoration(
+                          labelText: 'Notes',
+                          hintText: 'Renegotiation context, key terms, or blockers',
+                          isDense: true,
+                        ),
+                        maxLines: 3,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    if (nameController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Contract name is required.')),
+                      );
+                      return;
+                    }
+                    Navigator.of(dialogContext).pop(
+                      _RenewalLaneData(
+                        id: entry?.id ?? _newId(),
+                        contractName: nameController.text.trim(),
+                        contractType: selectedType,
+                        expiryDate: expiryController.text.trim(),
+                        daysUntilExpiry: int.tryParse(daysController.text.trim()),
+                        renewalAction: selectedAction,
+                        owner: ownerController.text.trim(),
+                        status: selectedStatus,
+                        committedValue: valueController.text.trim(),
+                        notes: notesController.text.trim(),
+                      ),
+                    );
+                  },
+                  child: Text(isEdit ? 'Save changes' : 'Add to pipeline'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    nameController.dispose();
+    expiryController.dispose();
+    daysController.dispose();
+    ownerController.dispose();
+    valueController.dispose();
+    notesController.dispose();
+
+    if (saved == null) return;
+    final index = _renewalLanes.indexWhere((item) => item.id == saved.id);
+    setState(() {
+      if (index == -1) {
+        _renewalLanes.add(saved);
+      } else {
+        _renewalLanes[index] = saved;
+      }
+    });
+    _scheduleSave();
+  }
+
+  Future<void> _confirmDeleteRenewalEntry(_RenewalLaneData entry) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Remove from pipeline?'),
+        content: Text(
+          'Remove "${entry.contractName}" from the renewal pipeline.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
           ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 120,
-            child: DropdownButtonFormField<String>(
-              initialValue: _approvalStatusOptions.contains(checkpoint.status)
-                  ? checkpoint.status
-                  : _approvalStatusOptions.first,
-              decoration: _inlineDecoration('Status'),
-              items: _approvalStatusOptions
-                  .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                  .toList(),
-              onChanged: (value) => _updateApprovalCheckpoint(checkpoint
-                  .copyWith(status: value ?? _approvalStatusOptions.first)),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextFormField(
-              initialValue: checkpoint.owner,
-              decoration: _inlineDecoration('Owner'),
-              onChanged: (value) =>
-                  _updateApprovalCheckpoint(checkpoint.copyWith(owner: value)),
-            ),
-          ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 120,
-            child: TextFormField(
-              initialValue: checkpoint.dueDate,
-              decoration: _inlineDecoration('Due date'),
-              onChanged: (value) => _updateApprovalCheckpoint(
-                  checkpoint.copyWith(dueDate: value)),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
-            onPressed: () => _deleteApprovalCheckpoint(checkpoint.id),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Remove'),
           ),
         ],
       ),
     );
+
+    if (confirmed == true) {
+      setState(() => _renewalLanes.removeWhere((item) => item.id == entry.id));
+      _scheduleSave();
+    }
   }
 
-  void _addRenewalLane() {
+  Future<void> _showRiskSignalEditor({_RiskSignalData? signal}) async {
+    final formKey = GlobalKey<FormState>();
+    final titleController = TextEditingController(text: signal?.title ?? '');
+    final detailController = TextEditingController(text: signal?.detail ?? '');
+    final ownerController = TextEditingController(text: signal?.owner ?? '');
+    var selectedStatus = _riskStatusOptions.contains(signal?.status)
+        ? signal!.status
+        : _riskStatusOptions.first;
+
+    final saved = await showDialog<_RiskSignalData>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title:
+                  Text(signal == null ? 'Add risk signal' : 'Edit risk signal'),
+              content: SizedBox(
+                width: 520,
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextFormField(
+                        controller: titleController,
+                        decoration: const InputDecoration(
+                          labelText: 'Signal title',
+                          hintText: 'e.g. Renewal risk flagged',
+                        ),
+                        validator: (value) {
+                          if ((value ?? '').trim().isEmpty) {
+                            return 'Add a clear signal title';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: detailController,
+                        decoration: const InputDecoration(
+                          labelText: 'Why it matters',
+                          hintText:
+                              'Describe the contract risk or follow-up needed',
+                        ),
+                        minLines: 2,
+                        maxLines: 4,
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: ownerController,
+                              decoration: const InputDecoration(
+                                labelText: 'Owner',
+                                hintText: 'e.g. Legal',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              initialValue: selectedStatus,
+                              decoration: const InputDecoration(
+                                labelText: 'Status',
+                              ),
+                              items: _riskStatusOptions
+                                  .map((status) => DropdownMenuItem(
+                                        value: status,
+                                        child: Text(status),
+                                      ))
+                                  .toList(),
+                              onChanged: (value) {
+                                if (value == null) return;
+                                setDialogState(() => selectedStatus = value);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    if (!(formKey.currentState?.validate() ?? false)) return;
+                    Navigator.of(dialogContext).pop(
+                      _RiskSignalData(
+                        id: signal?.id ?? _newId(),
+                        title: titleController.text.trim(),
+                        detail: detailController.text.trim(),
+                        owner: ownerController.text.trim(),
+                        status: selectedStatus,
+                      ),
+                    );
+                  },
+                  child: Text(signal == null ? 'Add signal' : 'Save changes'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    titleController.dispose();
+    detailController.dispose();
+    ownerController.dispose();
+
+    if (saved == null) return;
+    final index = _riskSignals.indexWhere((item) => item.id == saved.id);
     setState(() {
-      _renewalLanes.add(_RenewalLaneData(
-        id: _newId(),
-        label: '',
-        count: '',
-        note: '',
-        color: const Color(0xFFF97316),
-      ));
+      if (index == -1) {
+        _riskSignals.add(saved);
+      } else {
+        _riskSignals[index] = saved;
+      }
     });
-    _scheduleSave();
-  }
-
-  void _updateRenewalLane(_RenewalLaneData lane) {
-    final index = _renewalLanes.indexWhere((item) => item.id == lane.id);
-    if (index == -1) return;
-    setState(() => _renewalLanes[index] = lane);
-    _scheduleSave();
-  }
-
-  void _deleteRenewalLane(String id) {
-    setState(() => _renewalLanes.removeWhere((item) => item.id == id));
-    _scheduleSave();
-  }
-
-  void _addRiskSignal() {
-    setState(() {
-      _riskSignals.add(_RiskSignalData(
-        id: _newId(),
-        title: '',
-        detail: '',
-        owner: '',
-        status: _riskStatusOptions.first,
-      ));
-    });
-    _scheduleSave();
-  }
-
-  void _updateRiskSignal(_RiskSignalData signal) {
-    final index = _riskSignals.indexWhere((item) => item.id == signal.id);
-    if (index == -1) return;
-    setState(() => _riskSignals[index] = signal);
     _scheduleSave();
   }
 
@@ -1085,52 +1850,301 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
     _scheduleSave();
   }
 
-  void _addApprovalCheckpoint() {
+  Future<void> _confirmDeleteRiskSignal(_RiskSignalData signal) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete risk signal?'),
+        content: Text(
+          'This will remove "${signal.title}" from the contract risk signals.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      _deleteRiskSignal(signal.id);
+    }
+  }
+
+  static const List<String> _approvalPriorityOptions = [
+    'Critical',
+    'High',
+    'Medium',
+    'Low',
+  ];
+
+  static const List<String> _approvalDepartmentOptions = [
+    'Legal',
+    'Finance',
+    'Executive',
+    'Project Office',
+    'Engineering',
+    'Risk',
+    'Compliance',
+    'Operations',
+  ];
+
+  static const List<String> _gateStatusOptions = [
+    'Not Started',
+    'In Review',
+    'Pending',
+    'Approved',
+    'Rejected',
+    'Waived',
+  ];
+
+  Future<void> _showApprovalCheckpointEditor(
+      {_ApprovalCheckpointData? checkpoint}) async {
+    final isEdit = checkpoint != null;
+    final gateController = TextEditingController(text: checkpoint?.gate ?? '');
+    final descController =
+        TextEditingController(text: checkpoint?.description ?? '');
+    final approverController =
+        TextEditingController(text: checkpoint?.approver ?? '');
+    var selectedDepartment =
+        _approvalDepartmentOptions.contains(checkpoint?.department)
+            ? checkpoint!.department
+            : _approvalDepartmentOptions.first;
+    var selectedPriority = _approvalPriorityOptions.contains(checkpoint?.priority)
+        ? checkpoint!.priority
+        : _approvalPriorityOptions[2];
+    var selectedStatus = _gateStatusOptions.contains(checkpoint?.status)
+        ? checkpoint!.status
+        : _gateStatusOptions.first;
+    final targetDateController =
+        TextEditingController(text: checkpoint?.targetDate ?? '');
+    final notesController = TextEditingController(text: checkpoint?.notes ?? '');
+
+    final saved = await showDialog<_ApprovalCheckpointData>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(isEdit ? 'Edit approval gate' : 'Add approval gate'),
+              content: SizedBox(
+                width: 600,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: gateController,
+                        decoration: const InputDecoration(
+                          labelText: 'Approval gate name *',
+                          hintText:
+                              'e.g. Legal Review & Compliance',
+                          isDense: true,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: descController,
+                        decoration: const InputDecoration(
+                          labelText: 'Description',
+                          hintText:
+                              'What this approval covers and why it matters',
+                          isDense: true,
+                        ),
+                        minLines: 2,
+                        maxLines: 4,
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: approverController,
+                              decoration: const InputDecoration(
+                                labelText: 'Approver *',
+                                hintText: 'e.g. General Counsel',
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              initialValue: selectedDepartment,
+                              decoration: const InputDecoration(
+                                labelText: 'Department',
+                                isDense: true,
+                              ),
+                              items: _approvalDepartmentOptions
+                                  .map((d) => DropdownMenuItem(
+                                      value: d, child: Text(d, style: const TextStyle(fontSize: 13))))
+                                  .toList(),
+                              onChanged: (value) {
+                                if (value == null) return;
+                                setDialogState(() => selectedDepartment = value);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              initialValue: selectedPriority,
+                              decoration: const InputDecoration(
+                                labelText: 'Priority',
+                                isDense: true,
+                              ),
+                              items: _approvalPriorityOptions
+                                  .map((p) => DropdownMenuItem(
+                                      value: p, child: Text(p, style: const TextStyle(fontSize: 13))))
+                                  .toList(),
+                              onChanged: (value) {
+                                if (value == null) return;
+                                setDialogState(() => selectedPriority = value);
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              initialValue: selectedStatus,
+                              decoration: const InputDecoration(
+                                labelText: 'Status',
+                                isDense: true,
+                              ),
+                              items: _gateStatusOptions
+                                  .map((s) => DropdownMenuItem(
+                                      value: s, child: Text(s, style: const TextStyle(fontSize: 13))))
+                                  .toList(),
+                              onChanged: (value) {
+                                if (value == null) return;
+                                setDialogState(() => selectedStatus = value);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: targetDateController,
+                        decoration: const InputDecoration(
+                          labelText: 'Target date',
+                          hintText: 'e.g. 2025-03-15 or Before signing',
+                          isDense: true,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: notesController,
+                        decoration: const InputDecoration(
+                          labelText: 'Notes',
+                          hintText: 'Additional context or prerequisites',
+                          isDense: true,
+                        ),
+                        maxLines: 2,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    if (gateController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Approval gate name is required.')),
+                      );
+                      return;
+                    }
+                    Navigator.of(dialogContext).pop(
+                      _ApprovalCheckpointData(
+                        id: checkpoint?.id ?? _newId(),
+                        gate: gateController.text.trim(),
+                        description: descController.text.trim(),
+                        approver: approverController.text.trim(),
+                        department: selectedDepartment,
+                        priority: selectedPriority,
+                        status: selectedStatus,
+                        targetDate: targetDateController.text.trim(),
+                        notes: notesController.text.trim(),
+                      ),
+                    );
+                  },
+                  child: Text(isEdit ? 'Save changes' : 'Add gate'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    gateController.dispose();
+    descController.dispose();
+    approverController.dispose();
+    targetDateController.dispose();
+    notesController.dispose();
+
+    if (saved == null) return;
+    final index = _approvalCheckpoints.indexWhere((item) => item.id == saved.id);
     setState(() {
-      _approvalCheckpoints.add(_ApprovalCheckpointData(
-        id: _newId(),
-        title: '',
-        status: _approvalStatusOptions.first,
-        owner: '',
-        dueDate: '',
-      ));
+      if (index == -1) {
+        _approvalCheckpoints.add(saved);
+      } else {
+        _approvalCheckpoints[index] = saved;
+      }
     });
     _scheduleSave();
   }
 
-  void _updateApprovalCheckpoint(_ApprovalCheckpointData checkpoint) {
-    final index =
-        _approvalCheckpoints.indexWhere((item) => item.id == checkpoint.id);
-    if (index == -1) return;
-    setState(() => _approvalCheckpoints[index] = checkpoint);
-    _scheduleSave();
-  }
-
-  void _deleteApprovalCheckpoint(String id) {
-    setState(() => _approvalCheckpoints.removeWhere((item) => item.id == id));
-    _scheduleSave();
-  }
-
-  InputDecoration _inlineDecoration(String hint) {
-    return InputDecoration(
-      isDense: true,
-      hintText: hint,
-      filled: true,
-      fillColor: const Color(0xFFF8FAFC),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Color(0xFF0EA5E9)),
+  Future<void> _confirmDeleteApprovalCheckpoint(
+      _ApprovalCheckpointData checkpoint) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete approval gate?'),
+        content: Text(
+          'This will remove "${checkpoint.gate}" from the approval readiness tracker.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
       ),
     );
+
+    if (confirmed == true) {
+      setState(() => _approvalCheckpoints.removeWhere((item) => item.id == checkpoint.id));
+      _scheduleSave();
+    }
   }
 
   void _showAddContractDialog(BuildContext context) {
@@ -1596,53 +2610,788 @@ class _PanelShell extends StatelessWidget {
   }
 }
 
+class _ApprovalGateRow extends StatefulWidget {
+  const _ApprovalGateRow({
+    required this.checkpoint,
+    required this.onEdit,
+    required this.onDelete,
+    required this.showDivider,
+  });
+
+  final _ApprovalCheckpointData checkpoint;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final bool showDivider;
+
+  @override
+  State<_ApprovalGateRow> createState() => _ApprovalGateRowState();
+}
+
+class _ApprovalGateRowState extends State<_ApprovalGateRow> {
+  bool _isHovering = false;
+
+  Color _priorityColor(String priority) {
+    switch (priority) {
+      case 'Critical':
+        return const Color(0xFFDC2626);
+      case 'High':
+        return const Color(0xFFF59E0B);
+      case 'Medium':
+        return const Color(0xFF2563EB);
+      case 'Low':
+        return const Color(0xFF6B7280);
+      default:
+        return const Color(0xFF6B7280);
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'Approved':
+        return const Color(0xFF10B981);
+      case 'In Review':
+        return const Color(0xFF2563EB);
+      case 'Pending':
+        return const Color(0xFFF59E0B);
+      case 'Rejected':
+        return const Color(0xFFEF4444);
+      case 'Waived':
+        return const Color(0xFF8B5CF6);
+      case 'Not Started':
+        return const Color(0xFF9CA3AF);
+      default:
+        return const Color(0xFF9CA3AF);
+    }
+  }
+
+  IconData _statusIcon(String status) {
+    switch (status) {
+      case 'Approved':
+        return Icons.check_circle_outline;
+      case 'In Review':
+        return Icons.sync_outlined;
+      case 'Pending':
+        return Icons.schedule_outlined;
+      case 'Rejected':
+        return Icons.cancel_outlined;
+      case 'Waived':
+        return Icons.skip_next_outlined;
+      case 'Not Started':
+        return Icons.radio_button_unchecked;
+      default:
+        return Icons.radio_button_unchecked;
+    }
+  }
+
+  Color _deptColor(String dept) {
+    switch (dept) {
+      case 'Legal':
+        return const Color(0xFF7C3AED);
+      case 'Finance':
+        return const Color(0xFF059669);
+      case 'Executive':
+        return const Color(0xFFDC2626);
+      case 'Engineering':
+        return const Color(0xFF2563EB);
+      case 'Risk':
+        return const Color(0xFFEA580C);
+      case 'Compliance':
+        return const Color(0xFF0D9488);
+      case 'Project Office':
+        return const Color(0xFF4F46E5);
+      case 'Operations':
+        return const Color(0xFF64748B);
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.checkpoint;
+    final statusColor = _statusColor(c.status);
+    final priorityColor = _priorityColor(c.priority);
+    final deptColor = _deptColor(c.department);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      child: Column(
+        children: [
+          Container(
+            color: _isHovering ? const Color(0xFFF9FAFB) : Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Gate name + description
+                Expanded(
+                  flex: 5,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        c.gate.trim().isEmpty ? 'Untitled gate' : c.gate,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                      if (c.description.trim().isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          c.description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF6B7280),
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                // Approver
+                Expanded(
+                  flex: 3,
+                  child: Center(
+                    child: Text(
+                      c.approver.trim().isEmpty ? 'Unassigned' : c.approver,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: c.approver.trim().isEmpty
+                            ? const Color(0xFF9CA3AF)
+                            : const Color(0xFF334155),
+                      ),
+                    ),
+                  ),
+                ),
+                // Department
+                SizedBox(
+                  width: 100,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: deptColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: deptColor.withValues(alpha: 0.18)),
+                      ),
+                      child: Text(
+                        c.department,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: deptColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Priority
+                SizedBox(
+                  width: 90,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: priorityColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: priorityColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            c.priority,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: priorityColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Status
+                SizedBox(
+                  width: 110,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(_statusIcon(c.status), size: 13, color: statusColor),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              c.status,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: statusColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Target date
+                SizedBox(
+                  width: 100,
+                  child: Center(
+                    child: Text(
+                      c.targetDate.trim().isEmpty ? '—' : c.targetDate,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
+                  ),
+                ),
+                // Actions
+                SizedBox(
+                  width: 60,
+                  child: _isHovering
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, size: 15, color: Color(0xFF64748B)),
+                              onPressed: widget.onEdit,
+                              tooltip: 'Edit',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, size: 15, color: Color(0xFFEF4444)),
+                              onPressed: widget.onDelete,
+                              tooltip: 'Delete',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                            ),
+                          ],
+                        )
+                      : const SizedBox(width: 56),
+                ),
+              ],
+            ),
+          ),
+          if (widget.showDivider)
+            const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+        ],
+      ),
+    );
+  }
+}
+
+class _RenewalEntryRow extends StatefulWidget {
+  const _RenewalEntryRow({
+    required this.entry,
+    required this.onEdit,
+    required this.onDelete,
+    required this.showDivider,
+  });
+
+  final _RenewalLaneData entry;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final bool showDivider;
+
+  @override
+  State<_RenewalEntryRow> createState() => _RenewalEntryRowState();
+}
+
+class _RenewalEntryRowState extends State<_RenewalEntryRow> {
+  bool _isHovering = false;
+
+  Color _typeColor(String type) {
+    switch (type) {
+      case 'SLA':
+        return const Color(0xFF2563EB);
+      case 'NDA':
+        return const Color(0xFF7C3AED);
+      case 'MSA':
+        return const Color(0xFF059669);
+      case 'License':
+        return const Color(0xFFEA580C);
+      case 'Lease':
+        return const Color(0xFF0D9488);
+      case 'Insurance':
+        return const Color(0xFFDC2626);
+      case 'Warranty':
+        return const Color(0xFF8B5CF6);
+      case 'Subscription':
+        return const Color(0xFF4F46E5);
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
+  Color _actionColor(String action) {
+    switch (action) {
+      case 'Renew':
+        return const Color(0xFF10B981);
+      case 'Renegotiate':
+        return const Color(0xFFF59E0B);
+      case 'Terminate':
+        return const Color(0xFFEF4444);
+      case 'Extend':
+        return const Color(0xFF2563EB);
+      case 'Consolidate':
+        return const Color(0xFF8B5CF6);
+      case 'Transfer':
+        return const Color(0xFF0D9488);
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
+  Color _renewalStatusColor(String status) {
+    switch (status) {
+      case 'On Track':
+        return const Color(0xFF10B981);
+      case 'In Progress':
+        return const Color(0xFF2563EB);
+      case 'At Risk':
+        return const Color(0xFFF59E0B);
+      case 'Overdue':
+        return const Color(0xFFEF4444);
+      case 'Completed':
+        return const Color(0xFF059669);
+      case 'Not Started':
+        return const Color(0xFF9CA3AF);
+      default:
+        return const Color(0xFF9CA3AF);
+    }
+  }
+
+  IconData _renewalStatusIcon(String status) {
+    switch (status) {
+      case 'On Track':
+        return Icons.check_circle_outline;
+      case 'In Progress':
+        return Icons.sync_outlined;
+      case 'At Risk':
+        return Icons.warning_amber_outlined;
+      case 'Overdue':
+        return Icons.error_outline;
+      case 'Completed':
+        return Icons.task_alt_outlined;
+      case 'Not Started':
+        return Icons.radio_button_unchecked;
+      default:
+        return Icons.radio_button_unchecked;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final e = widget.entry;
+    final urgencyColor = e.urgencyColor;
+    final typeColor = _typeColor(e.contractType);
+    final actionColor = _actionColor(e.renewalAction);
+    final statusColor = _renewalStatusColor(e.status);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      child: Column(
+        children: [
+          Container(
+            color: _isHovering ? const Color(0xFFF9FAFB) : Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Contract name + value
+                Expanded(
+                  flex: 4,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        e.contractName.trim().isEmpty
+                            ? 'Unnamed contract'
+                            : e.contractName,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                      if (e.committedValue.trim().isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          e.committedValue,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF059669),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                // Type
+                SizedBox(
+                  width: 80,
+                  child: Center(
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: typeColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                        border:
+                            Border.all(color: typeColor.withValues(alpha: 0.18)),
+                      ),
+                      child: Text(
+                        e.contractType,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: typeColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Expiry date
+                SizedBox(
+                  width: 90,
+                  child: Center(
+                    child: Text(
+                      e.expiryDate.trim().isEmpty ? '—' : e.expiryDate,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
+                  ),
+                ),
+                // Urgency window
+                SizedBox(
+                  width: 100,
+                  child: Center(
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: urgencyColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: urgencyColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              e.urgencyWindow,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: urgencyColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Action
+                SizedBox(
+                  width: 100,
+                  child: Center(
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: actionColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        e.renewalAction,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: actionColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Status
+                SizedBox(
+                  width: 100,
+                  child: Center(
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(_renewalStatusIcon(e.status),
+                              size: 13, color: statusColor),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              e.status,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: statusColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Owner
+                SizedBox(
+                  width: 90,
+                  child: Center(
+                    child: Text(
+                      e.owner.trim().isEmpty ? 'Unassigned' : e.owner,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: e.owner.trim().isEmpty
+                            ? const Color(0xFF9CA3AF)
+                            : const Color(0xFF334155),
+                      ),
+                    ),
+                  ),
+                ),
+                // Actions
+                SizedBox(
+                  width: 60,
+                  child: _isHovering
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined,
+                                  size: 15, color: Color(0xFF64748B)),
+                              onPressed: widget.onEdit,
+                              tooltip: 'Edit',
+                              padding: EdgeInsets.zero,
+                              constraints:
+                                  const BoxConstraints(minWidth: 28, minHeight: 28),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline,
+                                  size: 15, color: Color(0xFFEF4444)),
+                              onPressed: widget.onDelete,
+                              tooltip: 'Delete',
+                              padding: EdgeInsets.zero,
+                              constraints:
+                                  const BoxConstraints(minWidth: 28, minHeight: 28),
+                            ),
+                          ],
+                        )
+                      : const SizedBox(width: 56),
+                ),
+              ],
+            ),
+          ),
+          if (widget.showDivider)
+            const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+        ],
+      ),
+    );
+  }
+}
+
+class _RiskSignalPill extends StatelessWidget {
+  const _RiskSignalPill({
+    required this.icon,
+    required this.label,
+    this.color = const Color(0xFF64748B),
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _RenewalLaneData {
   const _RenewalLaneData({
     required this.id,
-    required this.label,
-    required this.count,
-    required this.note,
-    required this.color,
+    required this.contractName,
+    this.contractType = 'SLA',
+    this.expiryDate = '',
+    this.daysUntilExpiry,
+    this.renewalAction = 'Renew',
+    this.owner = '',
+    this.status = 'Not Started',
+    this.committedValue = '',
+    this.notes = '',
   });
 
   final String id;
-  final String label;
-  final String count;
-  final String note;
-  final Color color;
+  final String contractName;
+  final String contractType;
+  final String expiryDate;
+  final int? daysUntilExpiry;
+  final String renewalAction;
+  final String owner;
+  final String status;
+  final String committedValue;
+  final String notes;
 
-  _RenewalLaneData copyWith(
-      {String? label, String? count, String? note, Color? color}) {
+  String get urgencyWindow {
+    final days = daysUntilExpiry;
+    if (days == null) return 'No date';
+    if (days <= 0) return 'Expired';
+    if (days <= 30) return 'Immediate';
+    if (days <= 60) return 'Approaching';
+    if (days <= 90) return 'Planning';
+    return 'Stable';
+  }
+
+  Color get urgencyColor {
+    final days = daysUntilExpiry;
+    if (days == null) return const Color(0xFF9CA3AF);
+    if (days <= 0) return const Color(0xFFDC2626);
+    if (days <= 30) return const Color(0xFFEF4444);
+    if (days <= 60) return const Color(0xFFF97316);
+    if (days <= 90) return const Color(0xFF2563EB);
+    return const Color(0xFF10B981);
+  }
+
+  _RenewalLaneData copyWith({
+    String? contractName,
+    String? contractType,
+    String? expiryDate,
+    int? daysUntilExpiry,
+    String? renewalAction,
+    String? owner,
+    String? status,
+    String? committedValue,
+    String? notes,
+  }) {
     return _RenewalLaneData(
       id: id,
-      label: label ?? this.label,
-      count: count ?? this.count,
-      note: note ?? this.note,
-      color: color ?? this.color,
+      contractName: contractName ?? this.contractName,
+      contractType: contractType ?? this.contractType,
+      expiryDate: expiryDate ?? this.expiryDate,
+      daysUntilExpiry: daysUntilExpiry ?? this.daysUntilExpiry,
+      renewalAction: renewalAction ?? this.renewalAction,
+      owner: owner ?? this.owner,
+      status: status ?? this.status,
+      committedValue: committedValue ?? this.committedValue,
+      notes: notes ?? this.notes,
     );
   }
 
   Map<String, dynamic> toMap() => {
         'id': id,
-        'label': label,
-        'count': count,
-        'note': note,
-        'color': color.toARGB32(),
+        'contractName': contractName,
+        'contractType': contractType,
+        'expiryDate': expiryDate,
+        'daysUntilExpiry': daysUntilExpiry,
+        'renewalAction': renewalAction,
+        'owner': owner,
+        'status': status,
+        'committedValue': committedValue,
+        'notes': notes,
       };
 
   static List<_RenewalLaneData> fromList(dynamic data) {
     if (data is! List) return [];
     return data.map((item) {
       final map = Map<String, dynamic>.from(item as Map? ?? {});
+      // Backward-compat: migrate old label/count/note/color fields
+      final oldLabel = map['label']?.toString() ?? '';
       return _RenewalLaneData(
         id: map['id']?.toString() ??
             DateTime.now().microsecondsSinceEpoch.toString(),
-        label: map['label']?.toString() ?? '',
-        count: map['count']?.toString() ?? '',
-        note: map['note']?.toString() ?? '',
-        color: Color(map['color'] is int
-            ? map['color'] as int
-            : const Color(0xFFF97316).toARGB32()),
+        contractName: map['contractName']?.toString() ??
+            (oldLabel.isNotEmpty ? oldLabel : ''),
+        contractType: map['contractType']?.toString() ?? 'SLA',
+        expiryDate: map['expiryDate']?.toString() ?? '',
+        daysUntilExpiry: map['daysUntilExpiry'] is int
+            ? map['daysUntilExpiry'] as int
+            : null,
+        renewalAction: map['renewalAction']?.toString() ?? 'Renew',
+        owner: map['owner']?.toString() ?? '',
+        status: map['status']?.toString() ?? 'Not Started',
+        committedValue: map['committedValue']?.toString() ?? '',
+        notes: map['notes']?.toString() ?? map['note']?.toString() ?? '',
       );
     }).toList();
   }
@@ -1701,35 +3450,59 @@ class _RiskSignalData {
 class _ApprovalCheckpointData {
   const _ApprovalCheckpointData({
     required this.id,
-    required this.title,
-    required this.status,
-    required this.owner,
-    required this.dueDate,
+    required this.gate,
+    this.description = '',
+    this.approver = '',
+    this.department = 'Legal',
+    this.priority = 'Medium',
+    this.status = 'Pending',
+    this.targetDate = '',
+    this.notes = '',
   });
 
   final String id;
-  final String title;
+  final String gate;
+  final String description;
+  final String approver;
+  final String department;
+  final String priority;
   final String status;
-  final String owner;
-  final String dueDate;
+  final String targetDate;
+  final String notes;
 
-  _ApprovalCheckpointData copyWith(
-      {String? title, String? status, String? owner, String? dueDate}) {
+  _ApprovalCheckpointData copyWith({
+    String? gate,
+    String? description,
+    String? approver,
+    String? department,
+    String? priority,
+    String? status,
+    String? targetDate,
+    String? notes,
+  }) {
     return _ApprovalCheckpointData(
       id: id,
-      title: title ?? this.title,
+      gate: gate ?? this.gate,
+      description: description ?? this.description,
+      approver: approver ?? this.approver,
+      department: department ?? this.department,
+      priority: priority ?? this.priority,
       status: status ?? this.status,
-      owner: owner ?? this.owner,
-      dueDate: dueDate ?? this.dueDate,
+      targetDate: targetDate ?? this.targetDate,
+      notes: notes ?? this.notes,
     );
   }
 
   Map<String, dynamic> toMap() => {
         'id': id,
-        'title': title,
+        'gate': gate,
+        'description': description,
+        'approver': approver,
+        'department': department,
+        'priority': priority,
         'status': status,
-        'owner': owner,
-        'dueDate': dueDate,
+        'targetDate': targetDate,
+        'notes': notes,
       };
 
   static List<_ApprovalCheckpointData> fromList(dynamic data) {
@@ -1739,10 +3512,14 @@ class _ApprovalCheckpointData {
       return _ApprovalCheckpointData(
         id: map['id']?.toString() ??
             DateTime.now().microsecondsSinceEpoch.toString(),
-        title: map['title']?.toString() ?? '',
+        gate: map['gate']?.toString() ?? map['title']?.toString() ?? '',
+        description: map['description']?.toString() ?? '',
+        approver: map['approver']?.toString() ?? map['owner']?.toString() ?? '',
+        department: map['department']?.toString() ?? 'Legal',
+        priority: map['priority']?.toString() ?? 'Medium',
         status: map['status']?.toString() ?? 'Pending',
-        owner: map['owner']?.toString() ?? '',
-        dueDate: map['dueDate']?.toString() ?? '',
+        targetDate: map['targetDate']?.toString() ?? map['dueDate']?.toString() ?? '',
+        notes: map['notes']?.toString() ?? '',
       );
     }).toList();
   }

@@ -39,6 +39,9 @@ class OpenAiConfig {
   /// Model used for light-weight autocomplete suggestions.
   static String get model => SecureAPIConfig.model;
 
+  /// OpenAI Agent Builder workflow used by the Firebase proxy.
+  static String get workflowId => SecureAPIConfig.workflowId;
+
   // Consider configured if using a proxy endpoint (no client API key needed)
   static bool get isConfigured => _isProxyEndpoint || apiKeyValue.isNotEmpty;
 
@@ -433,7 +436,7 @@ Generate a diagram that demonstrates STRATEGIC REASONING for executing this plan
         ],
       );
     }
-    
+
     // Strategy related sections
     if (sectionLower.contains('strategy')) {
       return const DiagramModel(
@@ -452,7 +455,7 @@ Generate a diagram that demonstrates STRATEGIC REASONING for executing this plan
         ],
       );
     }
-    
+
     // Default reasoning-based fallback
     return DiagramModel(
       nodes: [

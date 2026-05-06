@@ -10,14 +10,15 @@ import 'package:ndu_project/services/user_preferences_service.dart';
 import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/providers/app_content_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart';
 import 'package:ndu_project/routing/app_router.dart';
 import 'package:ndu_project/platform/webview_platform_setup.dart';
+import 'package:ndu_project/utils/browser_route_normalizer.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   configureWebWebViewPlatform();
+  normalizeBrowserHashRoute();
 
   // Suppress specific framework warnings and inspector errors
   final previousHandler = FlutterError.onError;
@@ -93,12 +94,17 @@ void main() async {
     );
   };
 
-  // Firebase initialization - non-blocking for web
-  Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  ).catchError((e) {
-    debugPrint('Firebase init error (non-blocking): $e');
-  });
+  // Firebase must be ready before widgets touch Auth or Firestore. Letting the
+  // app continue while initialization is still pending can crash Flutter web
+  // with a FirebaseException/JavaScriptObject interop type error.
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (error, stack) {
+    debugPrint('Firebase init error: $error');
+    debugPrint(stack.toString());
+  }
 
   // Initialize OpenAI API key from environment (if provided)
   ApiKeyManager.initializeApiKey();
@@ -106,12 +112,7 @@ void main() async {
   unawaited(UserPreferencesService.warmUp());
   unawaited(ProjectNavigationService.instance.warmUp());
 
-  runZonedGuarded(() {
-    runApp(const MyApp());
-  }, (error, stack) {
-    debugPrint('Uncaught zone error: $error');
-    debugPrint(stack.toString());
-  });
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {

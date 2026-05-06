@@ -14,11 +14,17 @@ class VendorsTableWidget extends StatelessWidget {
     required this.vendors,
     required this.onUpdated,
     required this.onDeleted,
+    this.canEdit = true,
+    this.canDelete = true,
+    this.canUseAi = true,
   });
 
   final List<VendorModel> vendors;
   final ValueChanged<VendorModel> onUpdated;
   final ValueChanged<VendorModel> onDeleted;
+  final bool canEdit;
+  final bool canDelete;
+  final bool canUseAi;
 
   @override
   Widget build(BuildContext context) {
@@ -119,6 +125,9 @@ class VendorsTableWidget extends StatelessWidget {
                         onUpdated: onUpdated,
                         onDeleted: onDeleted,
                         column: 'name',
+                        canEdit: canEdit,
+                        canDelete: canDelete,
+                        canUseAi: canUseAi,
                       ),
                     ),
                     DataCell(
@@ -127,6 +136,9 @@ class VendorsTableWidget extends StatelessWidget {
                         onUpdated: onUpdated,
                         onDeleted: onDeleted,
                         column: 'category',
+                        canEdit: canEdit,
+                        canDelete: canDelete,
+                        canUseAi: canUseAi,
                       ),
                     ),
                     DataCell(
@@ -135,6 +147,9 @@ class VendorsTableWidget extends StatelessWidget {
                         onUpdated: onUpdated,
                         onDeleted: onDeleted,
                         column: 'criticality',
+                        canEdit: canEdit,
+                        canDelete: canDelete,
+                        canUseAi: canUseAi,
                       ),
                     ),
                     DataCell(
@@ -143,6 +158,9 @@ class VendorsTableWidget extends StatelessWidget {
                         onUpdated: onUpdated,
                         onDeleted: onDeleted,
                         column: 'sla',
+                        canEdit: canEdit,
+                        canDelete: canDelete,
+                        canUseAi: canUseAi,
                       ),
                     ),
                     DataCell(
@@ -151,6 +169,9 @@ class VendorsTableWidget extends StatelessWidget {
                         onUpdated: onUpdated,
                         onDeleted: onDeleted,
                         column: 'leadTime',
+                        canEdit: canEdit,
+                        canDelete: canDelete,
+                        canUseAi: canUseAi,
                       ),
                     ),
                     DataCell(
@@ -159,6 +180,9 @@ class VendorsTableWidget extends StatelessWidget {
                         onUpdated: onUpdated,
                         onDeleted: onDeleted,
                         column: 'actions',
+                        canEdit: canEdit,
+                        canDelete: canDelete,
+                        canUseAi: canUseAi,
                       ),
                     ),
                   ],
@@ -178,6 +202,9 @@ class _VendorRowWidget extends StatefulWidget {
     required this.onUpdated,
     required this.onDeleted,
     required this.column,
+    required this.canEdit,
+    required this.canDelete,
+    required this.canUseAi,
   });
 
   final VendorModel vendor;
@@ -185,6 +212,9 @@ class _VendorRowWidget extends StatefulWidget {
   final ValueChanged<VendorModel> onDeleted;
   final String
       column; // 'name', 'category', 'criticality', 'sla', 'leadTime', 'actions'
+  final bool canEdit;
+  final bool canDelete;
+  final bool canUseAi;
 
   @override
   State<_VendorRowWidget> createState() => _VendorRowWidgetState();
@@ -451,6 +481,15 @@ class _VendorRowWidgetState extends State<_VendorRowWidget> {
   Widget build(BuildContext context) {
     switch (widget.column) {
       case 'name':
+        if (!widget.canEdit) {
+          return Center(
+            child: Text(
+              _vendor.name,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 11, color: Color(0xFF111827)),
+            ),
+          );
+        }
         return InlineEditableText(
           value: _vendor.name,
           isListField: false,
@@ -459,6 +498,15 @@ class _VendorRowWidgetState extends State<_VendorRowWidget> {
           textAlign: TextAlign.center,
         );
       case 'category':
+        if (!widget.canEdit) {
+          return Center(
+            child: Text(
+              _vendor.category,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 11, color: Color(0xFF111827)),
+            ),
+          );
+        }
         return Center(
           child: DropdownButton<String>(
             value: _vendor.category,
@@ -484,6 +532,25 @@ class _VendorRowWidgetState extends State<_VendorRowWidget> {
           ),
         );
       case 'criticality':
+        if (!widget.canEdit) {
+          return Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: _getCriticalityColor(_vendor.criticality)
+                    .withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                _vendor.criticality,
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: _getCriticalityColor(_vendor.criticality)),
+              ),
+            ),
+          );
+        }
         return Center(
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -532,6 +599,15 @@ class _VendorRowWidgetState extends State<_VendorRowWidget> {
           ),
         );
       case 'leadTime':
+        if (!widget.canEdit) {
+          return Center(
+            child: Text(
+              _vendor.leadTime,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 11, color: Color(0xFF111827)),
+            ),
+          );
+        }
         return Center(
           child: InlineEditableText(
             value: _vendor.leadTime,
@@ -562,33 +638,45 @@ class _VendorRowWidgetState extends State<_VendorRowWidget> {
                           constraints:
                               const BoxConstraints(minWidth: 32, minHeight: 32),
                         ),
-                      IconButton(
-                        icon: _isRegenerating
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Color(0xFF7C3AED),
-                                ),
-                              )
-                            : const Icon(Icons.auto_awesome,
-                                size: 16, color: Color(0xFF7C3AED)),
-                        onPressed: _isRegenerating ? null : _regenerateSLATerms,
-                        tooltip: 'Regenerate SLA Terms',
-                        padding: EdgeInsets.zero,
-                        constraints:
-                            const BoxConstraints(minWidth: 32, minHeight: 32),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline,
-                            size: 16, color: Color(0xFF9CA3AF)),
-                        onPressed: _deleteVendor,
-                        tooltip: 'Delete',
-                        padding: EdgeInsets.zero,
-                        constraints:
-                            const BoxConstraints(minWidth: 32, minHeight: 32),
-                      ),
+                      if (widget.canUseAi)
+                        IconButton(
+                          icon: _isRegenerating
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFF7C3AED),
+                                  ),
+                                )
+                              : const Icon(Icons.auto_awesome,
+                                  size: 16, color: Color(0xFF7C3AED)),
+                          onPressed:
+                              _isRegenerating ? null : _regenerateSLATerms,
+                          tooltip: 'Regenerate SLA Terms',
+                          padding: EdgeInsets.zero,
+                          constraints:
+                              const BoxConstraints(minWidth: 32, minHeight: 32),
+                        ),
+                      if (widget.canDelete)
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline,
+                              size: 16, color: Color(0xFF9CA3AF)),
+                          onPressed: _deleteVendor,
+                          tooltip: 'Delete',
+                          padding: EdgeInsets.zero,
+                          constraints:
+                              const BoxConstraints(minWidth: 32, minHeight: 32),
+                        ),
+                      if (!widget.canUseAi && !widget.canDelete)
+                        const Tooltip(
+                          message: 'Read-only access',
+                          child: Icon(
+                            Icons.lock_outline,
+                            size: 16,
+                            color: Color(0xFF94A3B8),
+                          ),
+                        ),
                     ],
                   )
                 : const SizedBox(width: 40),

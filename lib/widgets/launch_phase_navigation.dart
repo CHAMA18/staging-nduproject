@@ -35,13 +35,12 @@ class LaunchPhaseNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.sizeOf(context).width < 720;
-
     final backButton = OutlinedButton.icon(
       onPressed: onBack,
       icon: const Icon(Icons.arrow_back, size: 18, color: _kAccentColor),
       label: Text(
         backLabel,
+        overflow: TextOverflow.ellipsis,
         style:
             const TextStyle(fontWeight: FontWeight.w600, color: _kAccentColor),
       ),
@@ -59,6 +58,7 @@ class LaunchPhaseNavigation extends StatelessWidget {
       icon: const Icon(Icons.arrow_forward, size: 18),
       label: Text(
         nextLabel,
+        overflow: TextOverflow.ellipsis,
         style: const TextStyle(fontWeight: FontWeight.w600),
       ),
       style: ElevatedButton.styleFrom(
@@ -70,23 +70,29 @@ class LaunchPhaseNavigation extends StatelessWidget {
       ),
     );
 
-    if (isMobile) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          backButton,
-          const SizedBox(height: 12),
-          Align(alignment: Alignment.centerRight, child: nextButton),
-        ],
-      );
-    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 760;
+        if (compact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              backButton,
+              const SizedBox(height: 12),
+              Align(alignment: Alignment.centerRight, child: nextButton),
+            ],
+          );
+        }
 
-    return Row(
-      children: [
-        backButton,
-        const Spacer(),
-        nextButton,
-      ],
+        return Row(
+          children: [
+            Flexible(child: backButton),
+            const SizedBox(width: 16),
+            const Spacer(),
+            Flexible(child: nextButton),
+          ],
+        );
+      },
     );
   }
 }

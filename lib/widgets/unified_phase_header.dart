@@ -171,81 +171,86 @@ class UnifiedProfileMenu extends StatelessWidget {
       adminStatusStream = Stream<bool>.value(UserService.isAdminEmail(email));
     }
 
+    final avatar = photoUrl != null && photoUrl.isNotEmpty
+        ? CircleAvatar(
+            radius: compact ? 16 : 20,
+            backgroundImage: NetworkImage(photoUrl),
+            backgroundColor: Colors.blue,
+          )
+        : Container(
+            width: compact ? 32 : 40,
+            height: compact ? 32 : 40,
+            decoration: const BoxDecoration(
+              color: Colors.blue,
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              avatarInitial,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: compact ? 13 : 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          );
+
     final label = Material(
       color: Colors.transparent,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          photoUrl != null && photoUrl.isNotEmpty
-              ? CircleAvatar(
-                  radius: compact ? 16 : 20,
-                  backgroundImage: NetworkImage(photoUrl),
-                  backgroundColor: Colors.blue,
-                )
-              : Container(
-                  width: compact ? 32 : 40,
-                  height: compact ? 32 : 40,
-                  decoration: const BoxDecoration(
-                    color: Colors.blue,
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    avatarInitial,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: compact ? 13 : 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+      child: compact
+          ? avatar
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                avatar,
+                const SizedBox(width: 10),
+                StreamBuilder<bool>(
+                  stream: adminStatusStream,
+                  builder: (context, snapshot) {
+                    final isAdmin =
+                        snapshot.data ?? UserService.isAdminEmail(email);
+                    final role = isAdmin ? 'Admin' : 'Member';
+                    return ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 220),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            displayName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black,
+                            ),
+                          ),
+                          Text(
+                            email.isEmpty ? 'No email' : email,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          Text(
+                            role,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
-          const SizedBox(width: 10),
-          StreamBuilder<bool>(
-            stream: adminStatusStream,
-            builder: (context, snapshot) {
-              final isAdmin = snapshot.data ?? UserService.isAdminEmail(email);
-              final role = isAdmin ? 'Admin' : 'Member';
-              return ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: compact ? 130 : 220),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      displayName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: compact ? 12 : 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black,
-                      ),
-                    ),
-                    Text(
-                      email.isEmpty ? 'No email' : email,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: compact ? 10 : 11,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    Text(
-                      role,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: compact ? 10 : 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
-      ),
+              ],
+            ),
     );
 
     return PopupMenuButton<String>(

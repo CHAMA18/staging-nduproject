@@ -33,6 +33,7 @@ dependencies:
   webview_flutter: ^4.7.0
   webview_flutter_web: ^0.2.3+4
   webview_flutter_platform_interface: ^2.6.0
+  web: ^1.1.1
   flutter_native_splash: ^2.3.0
   smooth_page_indicator: ^1.1.0
 

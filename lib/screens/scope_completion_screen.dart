@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:ndu_project/routing/app_router.dart';
 import 'package:ndu_project/screens/gap_analysis_scope_reconcillation_screen.dart';
 import 'package:ndu_project/screens/risk_tracking_workspace_screen.dart';
+import 'package:ndu_project/theme.dart';
 import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/draggable_sidebar.dart';
@@ -55,8 +56,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
       TextEditingController();
   final TextEditingController _unapprovedChangesController =
       TextEditingController();
-  final TextEditingController _openRequestsController =
-      TextEditingController();
+  final TextEditingController _openRequestsController = TextEditingController();
 
   final List<_WorkPackageItem> _workPackages = [];
   final List<_CheckpointItem> _acceptanceCheckpoints = [];
@@ -181,12 +181,9 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
 
       _suspendSave = true;
       _overviewController.text = data['overview']?.toString() ?? '';
-      _statusSummaryController.text =
-          data['statusSummary']?.toString() ?? '';
-      _sponsorSummaryController.text =
-          data['sponsorSummary']?.toString() ?? '';
-      _changeSummaryController.text =
-          data['changeSummary']?.toString() ?? '';
+      _statusSummaryController.text = data['statusSummary']?.toString() ?? '';
+      _sponsorSummaryController.text = data['sponsorSummary']?.toString() ?? '';
+      _changeSummaryController.text = data['changeSummary']?.toString() ?? '';
       _deliveredPercentController.text =
           metrics['deliveredPercent']?.toString() ?? '';
       _deliveredStatusController.text =
@@ -203,8 +200,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
           metrics['approvedChanges']?.toString() ?? '';
       _unapprovedChangesController.text =
           metrics['unapprovedChanges']?.toString() ?? '';
-      _openRequestsController.text =
-          metrics['openRequests']?.toString() ?? '';
+      _openRequestsController.text = metrics['openRequests']?.toString() ?? '';
       _suspendSave = false;
 
       if (!mounted) return;
@@ -319,23 +315,19 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
     final metricsEntries = generated['metrics'] ?? [];
     final deliveredOverride =
         _parseNumber(_findMetric(metricsEntries, 'deliver'));
-    final deferredOverride =
-        _parseNumber(_findMetric(metricsEntries, 'defer'));
+    final deferredOverride = _parseNumber(_findMetric(metricsEntries, 'defer'));
     final criticalOverride =
         _parseNumber(_findMetric(metricsEntries, 'critical'));
 
     _suspendSave = true;
-    _overviewController.text = _entryText(generated['overview']) ??
-        _overviewController.text.trim();
-    _statusSummaryController.text =
-        _entryText(generated['status_summary']) ??
-            _statusSummaryController.text.trim();
-    _sponsorSummaryController.text =
-        _entryText(generated['sponsor_summary']) ??
-            _sponsorSummaryController.text.trim();
-    _changeSummaryController.text =
-        _entryText(generated['change_summary']) ??
-            _changeSummaryController.text.trim();
+    _overviewController.text =
+        _entryText(generated['overview']) ?? _overviewController.text.trim();
+    _statusSummaryController.text = _entryText(generated['status_summary']) ??
+        _statusSummaryController.text.trim();
+    _sponsorSummaryController.text = _entryText(generated['sponsor_summary']) ??
+        _sponsorSummaryController.text.trim();
+    _changeSummaryController.text = _entryText(generated['change_summary']) ??
+        _changeSummaryController.text.trim();
 
     _deliveredPercentController.text =
         deliveredOverride?.toString() ?? deliveredPercent.toString();
@@ -351,10 +343,8 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
         criticalGaps == 0 ? 'No critical gaps' : 'Open gaps';
     _approvedChangesController.text =
         (changes.length - 1).clamp(0, 99).toString();
-    _unapprovedChangesController.text =
-        (changes.length > 1 ? 1 : 0).toString();
-    _openRequestsController.text =
-        (changes.length > 2 ? 2 : 0).toString();
+    _unapprovedChangesController.text = (changes.length > 1 ? 1 : 0).toString();
+    _openRequestsController.text = (changes.length > 2 ? 2 : 0).toString();
 
     setState(() {
       _workPackages
@@ -387,8 +377,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
   }
 
   String _extractField(String text, String key) {
-    final match = RegExp('$key\\s*[:=-]\\s*([^|;\\n]+)',
-            caseSensitive: false)
+    final match = RegExp('$key\\s*[:=-]\\s*([^|;\\n]+)', caseSensitive: false)
         .firstMatch(text);
     return match?.group(1)?.trim() ?? '';
   }
@@ -410,54 +399,63 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
 
   List<_WorkPackageItem> _mapWorkPackages(List<LaunchEntry>? entries) {
     if (entries == null) return [];
-    return entries.map((entry) {
-      final details = entry.details;
-      final owner = _extractField(details, 'Owner');
-      final milestone = _extractField(details, 'Milestone');
-      final impact = _extractField(details, 'Impact');
-      final status = entry.status?.trim().isNotEmpty == true
-          ? entry.status!.trim()
-          : _workStatuses.first;
-      return _WorkPackageItem(
-        id: _newId(),
-        title: entry.title.trim(),
-        owner: owner,
-        milestone: milestone,
-        status: status,
-        impact: impact.isNotEmpty ? impact : _impactLevels.first,
-      );
-    }).where((item) => item.title.isNotEmpty).toList();
+    return entries
+        .map((entry) {
+          final details = entry.details;
+          final owner = _extractField(details, 'Owner');
+          final milestone = _extractField(details, 'Milestone');
+          final impact = _extractField(details, 'Impact');
+          final status = entry.status?.trim().isNotEmpty == true
+              ? entry.status!.trim()
+              : _workStatuses.first;
+          return _WorkPackageItem(
+            id: _newId(),
+            title: entry.title.trim(),
+            owner: owner,
+            milestone: milestone,
+            status: status,
+            impact: impact.isNotEmpty ? impact : _impactLevels.first,
+          );
+        })
+        .where((item) => item.title.isNotEmpty)
+        .toList();
   }
 
   List<_CheckpointItem> _mapCheckpoints(List<LaunchEntry>? entries) {
     if (entries == null) return [];
-    return entries.map((entry) {
-      final details = entry.details;
-      final owner = _extractField(details, 'Owner');
-      final status = entry.status?.trim().isNotEmpty == true
-          ? entry.status!.trim()
-          : _checkpointStatuses.first;
-      return _CheckpointItem(
-        id: _newId(),
-        title: entry.title.trim(),
-        owner: owner,
-        status: status,
-      );
-    }).where((item) => item.title.isNotEmpty).toList();
+    return entries
+        .map((entry) {
+          final details = entry.details;
+          final owner = _extractField(details, 'Owner');
+          final status = entry.status?.trim().isNotEmpty == true
+              ? entry.status!.trim()
+              : _checkpointStatuses.first;
+          return _CheckpointItem(
+            id: _newId(),
+            title: entry.title.trim(),
+            owner: owner,
+            status: status,
+          );
+        })
+        .where((item) => item.title.isNotEmpty)
+        .toList();
   }
 
   List<_AcceptanceTagItem> _mapAcceptanceTags(List<LaunchEntry>? entries) {
     if (entries == null) return [];
-    return entries.map((entry) {
-      final status = entry.status?.trim().isNotEmpty == true
-          ? entry.status!.trim()
-          : _checkpointStatuses.first;
-      return _AcceptanceTagItem(
-        id: _newId(),
-        label: entry.title.trim(),
-        status: status,
-      );
-    }).where((item) => item.label.isNotEmpty).toList();
+    return entries
+        .map((entry) {
+          final status = entry.status?.trim().isNotEmpty == true
+              ? entry.status!.trim()
+              : _checkpointStatuses.first;
+          return _AcceptanceTagItem(
+            id: _newId(),
+            label: entry.title.trim(),
+            status: status,
+          );
+        })
+        .where((item) => item.label.isNotEmpty)
+        .toList();
   }
 
   List<_ScopeChangeItem> _mapScopeChanges(List<LaunchEntry>? entries) {
@@ -475,55 +473,76 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
   Widget build(BuildContext context) {
     final bool isMobile = AppBreakpoints.isMobile(context);
     final double horizontalPadding = isMobile ? 18 : 32;
+    final theme = Theme.of(context);
+    final textTheme = theme.textTheme.apply(fontFamily: appFontFamily);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FB),
-      body: SafeArea(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            DraggableSidebar(
-              openWidth: AppBreakpoints.sidebarWidth(context),
-              child: const InitiationLikeSidebar(activeItemLabel: 'Scope Completion'),
-            ),
-            Expanded(
-              child: Stack(
-                children: [
-                  SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 28),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (_isLoading) const LinearProgressIndicator(minHeight: 2),
-                        if (_isLoading) const SizedBox(height: 16),
-                        _buildPageHeader(context),
-                        const SizedBox(height: 20),
-                        _buildFilterChips(context),
-                        const SizedBox(height: 24),
-                        _buildOverviewCard(context),
-                        const SizedBox(height: 20),
-                        _buildMainContentRow(context, isMobile),
-                        const SizedBox(height: 24),
-                        _buildFooterNavigation(context),
-                        const SizedBox(height: 12),
-                        _buildTipRow(context),
-                        const SizedBox(height: 24),
-                        LaunchPhaseNavigation(
-                          backLabel: 'Back: Risk Tracking',
-                          nextLabel: 'Next: Gap Analysis & Scope Reconciliation',
-                          onBack: () => RiskTrackingWorkspaceScreen.open(context),
-                          onNext: () => GapAnalysisScopeReconcillationScreen.open(context),
+    return Theme(
+      data: theme.copyWith(
+        textTheme: textTheme,
+        primaryTextTheme: theme.primaryTextTheme.apply(
+          fontFamily: appFontFamily,
+        ),
+      ),
+      child: DefaultTextStyle.merge(
+        style:
+            textTheme.bodyMedium ?? const TextStyle(fontFamily: appFontFamily),
+        child: Scaffold(
+          backgroundColor: const Color(0xFFF5F7FB),
+          body: SafeArea(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                DraggableSidebar(
+                  openWidth: AppBreakpoints.sidebarWidth(context),
+                  child: const InitiationLikeSidebar(
+                      activeItemLabel: 'Scope Completion'),
+                ),
+                Expanded(
+                  child: Stack(
+                    children: [
+                      SingleChildScrollView(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: horizontalPadding, vertical: 28),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (_isLoading)
+                              const LinearProgressIndicator(minHeight: 2),
+                            if (_isLoading) const SizedBox(height: 16),
+                            _buildPageHeader(context),
+                            const SizedBox(height: 20),
+                            _buildFilterChips(context),
+                            const SizedBox(height: 24),
+                            _buildOverviewCard(context),
+                            const SizedBox(height: 20),
+                            _buildMainContentRow(context, isMobile),
+                            const SizedBox(height: 24),
+                            _buildFooterNavigation(context),
+                            const SizedBox(height: 12),
+                            _buildTipRow(context),
+                            const SizedBox(height: 24),
+                            LaunchPhaseNavigation(
+                              backLabel: 'Back: Risk Tracking',
+                              nextLabel:
+                                  'Next: Gap Analysis & Scope Reconciliation',
+                              onBack: () =>
+                                  RiskTrackingWorkspaceScreen.open(context),
+                              onNext: () =>
+                                  GapAnalysisScopeReconcillationScreen.open(
+                                      context),
+                            ),
+                            const SizedBox(height: 48),
+                          ],
                         ),
-                        const SizedBox(height: 48),
-                      ],
-                    ),
+                      ),
+                      const _AiHelperButton(),
+                      const KazAiChatBubble(),
+                    ],
                   ),
-                  const _AiHelperButton(),
-                  const KazAiChatBubble(),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -531,7 +550,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
 
   Widget _buildPageHeader(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -552,21 +571,23 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
         const SizedBox(height: 12),
         Text(
           'Scope Completion',
+          textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-            fontSize: 26,
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF111827),
-          ),
+                fontSize: 26,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF111827),
+              ),
         ),
         const SizedBox(height: 8),
         Text(
           'Confirm what was delivered, what changed, and that sponsors agree the project scope is formally complete.',
+          textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: const Color(0xFF6B7280),
-            fontWeight: FontWeight.w400,
-            height: 1.5,
-            fontSize: 14,
-          ),
+                color: const Color(0xFF6B7280),
+                fontWeight: FontWeight.w400,
+                height: 1.5,
+                fontSize: 14,
+              ),
         ),
       ],
     );
@@ -579,37 +600,40 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
       'Ready for handover',
     ];
 
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: filters.map((label) {
-        final isSelected = _selectedFilters.contains(label);
-        return GestureDetector(
-          onTap: () => setState(() {
-            if (isSelected) {
-              _selectedFilters.remove(label);
-            } else {
-              _selectedFilters.add(label);
-            }
-          }),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFF1F2937) : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
-            ),
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: isSelected ? Colors.white : const Color(0xFF374151),
+    return Center(
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 10,
+        runSpacing: 10,
+        children: filters.map((label) {
+          final isSelected = _selectedFilters.contains(label);
+          return GestureDetector(
+            onTap: () => setState(() {
+              if (isSelected) {
+                _selectedFilters.remove(label);
+              } else {
+                _selectedFilters.add(label);
+              }
+            }),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF1F2937) : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? Colors.white : const Color(0xFF374151),
+                ),
               ),
             ),
-          ),
-        );
-      }).toList(),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -618,11 +642,8 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Overview',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
-          ),
-          const SizedBox(height: 8),
+          _buildSectionHeader('Overview'),
+          const SizedBox(height: 16),
           _buildLabeledField(
             label: 'Scope completion overview',
             controller: _overviewController,
@@ -665,28 +686,11 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Scope completion status',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
-                ),
-                child: const Text(
-                  'Execution summary',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF374151)),
-                ),
-              ),
-            ],
+          _buildSectionHeader(
+            'Scope Completion Status',
+            badge: 'Execution summary',
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           _buildLabeledField(
             label: 'Completion narrative',
             controller: _statusSummaryController,
@@ -697,23 +701,38 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
           const SizedBox(height: 16),
           _buildMetricsRow(context),
           const SizedBox(height: 20),
-          const Text(
-            'Key work packages',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF6B7280)),
-          ),
-          const SizedBox(height: 12),
-          _buildTableHeader(
-            const ['Work package', 'Owner', 'Milestone', 'Status', 'Impact', ''],
-            columnWidths: const [3, 2, 2, 2, 2, 1],
-          ),
+          _buildReadinessSummary(),
+          const SizedBox(height: 20),
+          _buildTableTitle('Key Work Packages Register'),
           const SizedBox(height: 10),
-          if (_workPackages.isEmpty)
-            const _InlineEmptyState(
-              title: 'No work packages yet',
-              message: 'Add work packages to summarize delivered scope.',
-            )
-          else
-            ..._workPackages.map(_buildWorkPackageRow),
+          _buildResponsiveTable(
+            minWidth: 920,
+            child: Column(
+              children: [
+                _buildTableHeader(
+                  const [
+                    'Work Package',
+                    'Owner',
+                    'Milestone',
+                    'Status',
+                    'Impact',
+                    ''
+                  ],
+                  columnWidths: const [3, 2, 2, 2, 2, 1],
+                ),
+                const SizedBox(height: 8),
+                if (_workPackages.isEmpty)
+                  const _InlineEmptyState(
+                    title: 'No work packages yet',
+                    message: 'Add work packages to summarize delivered scope.',
+                  )
+                else
+                  ..._workPackages.asMap().entries.map(
+                        (entry) => _buildWorkPackageRow(entry.value, entry.key),
+                      ),
+              ],
+            ),
+          ),
           const SizedBox(height: 8),
           TextButton.icon(
             onPressed: _addWorkPackage,
@@ -723,7 +742,8 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
               foregroundColor: const Color(0xFF1F2937),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               backgroundColor: const Color(0xFFFFF3C4),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
           ),
         ],
@@ -732,32 +752,45 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
   }
 
   Widget _buildMetricsRow(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildMetricBox(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 760;
+        final cards = [
+          _buildMetricBox(
             label: 'Original scope delivered',
             valueController: _deliveredPercentController,
             statusController: _deliveredStatusController,
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildMetricBox(
+          _buildMetricBox(
             label: 'Items deferred',
             valueController: _deferredCountController,
             statusController: _deferredStatusController,
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildMetricBox(
+          _buildMetricBox(
             label: 'Critical gaps',
             valueController: _criticalGapCountController,
             statusController: _criticalGapStatusController,
           ),
-        ),
-      ],
+        ];
+        if (compact) {
+          return Column(
+            children: [
+              for (final card in cards) ...[
+                card,
+                if (card != cards.last) const SizedBox(height: 12),
+              ],
+            ],
+          );
+        }
+        return Row(
+          children: [
+            for (final card in cards) ...[
+              Expanded(child: card),
+              if (card != cards.last) const SizedBox(width: 12),
+            ],
+          ],
+        );
+      },
     );
   }
 
@@ -779,7 +812,11 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
           TextField(
             controller: valueController,
             keyboardType: TextInputType.number,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111827)),
             decoration: const InputDecoration(
               hintText: '0',
               border: InputBorder.none,
@@ -794,7 +831,11 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
           const SizedBox(height: 8),
           TextField(
             controller: statusController,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF6B7280)),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF6B7280)),
             decoration: const InputDecoration(
               hintText: 'Status note',
               border: InputBorder.none,
@@ -806,9 +847,12 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
     );
   }
 
-  Widget _buildWorkPackageRow(_WorkPackageItem item) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+  Widget _buildWorkPackageRow(_WorkPackageItem item, int index) {
+    final statusItems = _dropdownItems(_workStatuses, item.status);
+    final impactItems = _dropdownItems(_impactLevels, item.impact);
+
+    return _TableRowShell(
+      isEven: index.isEven,
       child: Row(
         children: [
           Expanded(
@@ -848,9 +892,9 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
           Expanded(
             flex: 2,
             child: DropdownButtonFormField<String>(
-              initialValue: item.status,
+              initialValue: _dropdownValue(statusItems, item.status),
               decoration: _inputDecoration('Status', dense: true),
-              items: _workStatuses
+              items: statusItems
                   .map((status) =>
                       DropdownMenuItem(value: status, child: Text(status)))
                   .toList(),
@@ -864,9 +908,9 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
           Expanded(
             flex: 2,
             child: DropdownButtonFormField<String>(
-              initialValue: item.impact,
+              initialValue: _dropdownValue(impactItems, item.impact),
               decoration: _inputDecoration('Impact', dense: true),
-              items: _impactLevels
+              items: impactItems
                   .map((impact) =>
                       DropdownMenuItem(value: impact, child: Text(impact)))
                   .toList(),
@@ -891,28 +935,11 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Sponsor acceptance',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
-                ),
-                child: const Text(
-                  'Sign-off readiness',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF374151)),
-                ),
-              ),
-            ],
+          _buildSectionHeader(
+            'Sponsor Acceptance',
+            badge: 'Sign-off readiness',
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           _buildLabeledField(
             label: 'Acceptance summary',
             controller: _sponsorSummaryController,
@@ -921,23 +948,30 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
             maxLines: 3,
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Acceptance checkpoints',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF6B7280)),
-          ),
+          _buildTableTitle('Formal Acceptance Checkpoints'),
           const SizedBox(height: 10),
-          _buildTableHeader(
-            const ['Checkpoint', 'Owner', 'Status', ''],
-            columnWidths: const [4, 2, 2, 1],
+          _buildResponsiveTable(
+            minWidth: 760,
+            child: Column(
+              children: [
+                _buildTableHeader(
+                  const ['Checkpoint', 'Owner', 'Status', ''],
+                  columnWidths: const [4, 2, 2, 1],
+                ),
+                const SizedBox(height: 8),
+                if (_acceptanceCheckpoints.isEmpty)
+                  const _InlineEmptyState(
+                    title: 'No checkpoints yet',
+                    message:
+                        'List the acceptance checkpoints for sponsor sign-off.',
+                  )
+                else
+                  ..._acceptanceCheckpoints.asMap().entries.map(
+                        (entry) => _buildCheckpointRow(entry.value, entry.key),
+                      ),
+              ],
+            ),
           ),
-          const SizedBox(height: 8),
-          if (_acceptanceCheckpoints.isEmpty)
-            const _InlineEmptyState(
-              title: 'No checkpoints yet',
-              message: 'List the acceptance checkpoints for sponsor sign-off.',
-            )
-          else
-            ..._acceptanceCheckpoints.map(_buildCheckpointRow),
           const SizedBox(height: 14),
           TextButton.icon(
             onPressed: _addCheckpoint,
@@ -947,14 +981,12 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
               foregroundColor: const Color(0xFF1F2937),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               backgroundColor: const Color(0xFFFFF3C4),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Acceptance signals',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF6B7280)),
-          ),
+          _buildTableTitle('Acceptance Signals and Readiness Tags'),
           const SizedBox(height: 8),
           if (_acceptanceTags.isEmpty)
             const _InlineEmptyState(
@@ -978,7 +1010,8 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
               foregroundColor: const Color(0xFF1F2937),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               backgroundColor: const Color(0xFFFFF3C4),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
           ),
         ],
@@ -986,9 +1019,11 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
     );
   }
 
-  Widget _buildCheckpointRow(_CheckpointItem item) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+  Widget _buildCheckpointRow(_CheckpointItem item, int index) {
+    final statusItems = _dropdownItems(_checkpointStatuses, item.status);
+
+    return _TableRowShell(
+      isEven: index.isEven,
       child: Row(
         children: [
           Expanded(
@@ -1017,9 +1052,9 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
           Expanded(
             flex: 2,
             child: DropdownButtonFormField<String>(
-              initialValue: item.status,
+              initialValue: _dropdownValue(statusItems, item.status),
               decoration: _inputDecoration('Status', dense: true),
-              items: _checkpointStatuses
+              items: statusItems
                   .map((status) =>
                       DropdownMenuItem(value: status, child: Text(status)))
                   .toList(),
@@ -1040,6 +1075,8 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
   }
 
   Widget _buildAcceptanceTag(_AcceptanceTagItem tag) {
+    final statusItems = _dropdownItems(_checkpointStatuses, tag.status);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -1069,13 +1106,13 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
           ),
           const SizedBox(width: 6),
           DropdownButton<String>(
-            value: tag.status,
+            value: _dropdownValue(statusItems, tag.status),
             underline: const SizedBox(),
             onChanged: (value) {
               if (value == null) return;
               _updateAcceptanceTag(tag.copyWith(status: value), notify: true);
             },
-            items: _checkpointStatuses
+            items: statusItems
                 .map((status) =>
                     DropdownMenuItem(value: status, child: Text(status)))
                 .toList(),
@@ -1090,33 +1127,41 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
     );
   }
 
+  List<String> _dropdownItems(Iterable<String> options, String currentValue) {
+    final seen = <String>{};
+    final normalized = <String>[];
+
+    void add(String value) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty || !seen.add(trimmed)) return;
+      normalized.add(trimmed);
+    }
+
+    for (final option in options) {
+      add(option);
+    }
+    add(currentValue);
+
+    return normalized;
+  }
+
+  String? _dropdownValue(List<String> items, String value) {
+    if (items.isEmpty) return null;
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return items.first;
+    return items.contains(trimmed) ? trimmed : items.first;
+  }
+
   Widget _buildScopeChangeSummaryCard(BuildContext context) {
     return _ContentCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Scope change summary',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF111827)),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
-                ),
-                child: const Text(
-                  'Change log',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF374151)),
-                ),
-              ),
-            ],
+          _buildSectionHeader(
+            'Scope Change Summary',
+            badge: 'Change log',
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           _buildLabeledField(
             label: 'Change summary',
             controller: _changeSummaryController,
@@ -1125,18 +1170,29 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
             maxLines: 3,
           ),
           const SizedBox(height: 14),
-          const Text(
-            'Most impactful changes:',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF6B7280)),
-          ),
+          _buildTableTitle('Most Impactful Scope Changes'),
           const SizedBox(height: 8),
-          if (_scopeChanges.isEmpty)
-            const _InlineEmptyState(
-              title: 'No scope changes yet',
-              message: 'Add the most impactful scope changes.',
-            )
-          else
-            ..._scopeChanges.map(_buildScopeChangeRow),
+          _buildResponsiveTable(
+            minWidth: 760,
+            child: Column(
+              children: [
+                _buildTableHeader(
+                  const ['Change Detail', ''],
+                  columnWidths: const [8, 1],
+                ),
+                const SizedBox(height: 8),
+                if (_scopeChanges.isEmpty)
+                  const _InlineEmptyState(
+                    title: 'No scope changes yet',
+                    message: 'Add the most impactful scope changes.',
+                  )
+                else
+                  ..._scopeChanges.asMap().entries.map(
+                        (entry) => _buildScopeChangeRow(entry.value, entry.key),
+                      ),
+              ],
+            ),
+          ),
           const SizedBox(height: 10),
           TextButton.icon(
             onPressed: _addScopeChange,
@@ -1146,10 +1202,13 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
               foregroundColor: const Color(0xFF1F2937),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               backgroundColor: const Color(0xFFFFF3C4),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
           ),
           const SizedBox(height: 14),
+          _buildTableTitle('Change Control Metrics'),
+          const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 6,
@@ -1173,9 +1232,9 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
     );
   }
 
-  Widget _buildScopeChangeRow(_ScopeChangeItem item) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+  Widget _buildScopeChangeRow(_ScopeChangeItem item, int index) {
+    return _TableRowShell(
+      isEven: index.isEven,
       child: Row(
         children: [
           Expanded(
@@ -1224,6 +1283,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
             child: TextField(
               controller: controller,
               keyboardType: TextInputType.number,
+              textAlign: TextAlign.right,
               style: const TextStyle(fontSize: 12, color: Color(0xFF111827)),
               decoration: const InputDecoration(
                 hintText: '0',
@@ -1263,6 +1323,158 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
     );
   }
 
+  Widget _buildSectionHeader(String title, {String? badge}) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF111827),
+            ),
+          ),
+          if (badge != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: Text(
+                badge,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF374151),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTableTitle(String title) {
+    return Center(
+      child: Text(
+        title,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+          color: Color(0xFF374151),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResponsiveTable({
+    required double minWidth,
+    required Widget child,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tableWidth =
+            constraints.maxWidth < minWidth ? minWidth : constraints.maxWidth;
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: tableWidth,
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildReadinessSummary() {
+    final delivered = _parseNumber(_deliveredPercentController.text) ?? 0;
+    final deferred = _parseNumber(_deferredCountController.text) ?? 0;
+    final critical = _parseNumber(_criticalGapCountController.text) ?? 0;
+    final approved = _parseNumber(_approvedChangesController.text) ?? 0;
+    final unapproved = _parseNumber(_unapprovedChangesController.text) ?? 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTableTitle('Closeout Readiness Snapshot'),
+        const SizedBox(height: 10),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 820;
+            final cards = [
+              _ReadinessCard(
+                title: 'Deliverables accepted',
+                value: delivered >= 85 ? 'Ready' : 'Review',
+                detail: '$delivered% of original scope recorded',
+                icon: Icons.inventory_2_outlined,
+                tone: delivered >= 85
+                    ? _ReadinessTone.success
+                    : _ReadinessTone.warning,
+              ),
+              _ReadinessCard(
+                title: 'Open deferrals',
+                value: deferred.toString(),
+                detail: deferred == 0
+                    ? 'No deferred work logged'
+                    : 'Confirm owner and target date',
+                icon: Icons.event_note_outlined,
+                tone: deferred == 0
+                    ? _ReadinessTone.success
+                    : _ReadinessTone.warning,
+              ),
+              _ReadinessCard(
+                title: 'Critical gaps',
+                value: critical.toString(),
+                detail: critical == 0
+                    ? 'No critical gaps logged'
+                    : 'Resolve before formal sign-off',
+                icon: Icons.report_problem_outlined,
+                tone: critical == 0
+                    ? _ReadinessTone.success
+                    : _ReadinessTone.danger,
+              ),
+              _ReadinessCard(
+                title: 'Change control',
+                value: '$approved/$unapproved',
+                detail: 'Approved / unapproved changes',
+                icon: Icons.rule_folder_outlined,
+                tone: unapproved == 0
+                    ? _ReadinessTone.success
+                    : _ReadinessTone.warning,
+              ),
+            ];
+            if (compact) {
+              return Column(
+                children: [
+                  for (final card in cards) ...[
+                    card,
+                    if (card != cards.last) const SizedBox(height: 10),
+                  ],
+                ],
+              );
+            }
+            return Row(
+              children: [
+                for (final card in cards) ...[
+                  Expanded(child: card),
+                  if (card != cards.last) const SizedBox(width: 10),
+                ],
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
   InputDecoration _inputDecoration(String hintText, {bool dense = false}) {
     return InputDecoration(
       hintText: hintText,
@@ -1288,24 +1500,34 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
     );
   }
 
-  Widget _buildTableHeader(List<String> labels,
-      {List<int>? columnWidths}) {
+  Widget _buildTableHeader(List<String> labels, {List<int>? columnWidths}) {
     final widths =
         columnWidths ?? List<int>.filled(labels.length, 1, growable: false);
-    return Row(
-      children: List.generate(labels.length, (index) {
-        return Expanded(
-          flex: widths[index],
-          child: Text(
-            labels[index],
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF6B7280),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEEF2F7),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFDDE3EA)),
+      ),
+      child: Row(
+        children: List.generate(labels.length, (index) {
+          return Expanded(
+            flex: widths[index],
+            child: Text(
+              labels[index],
+              textAlign:
+                  labels[index].isEmpty ? TextAlign.center : TextAlign.left,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF374151),
+                letterSpacing: 0.1,
+              ),
             ),
-          ),
-        );
-      }),
+          );
+        }),
+      ),
     );
   }
 
@@ -1422,23 +1644,28 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
-      child: Row(
-        children: [
-          TextButton.icon(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 820;
+          final backButton = TextButton.icon(
             onPressed: () => context.pop(),
-            icon: const Icon(Icons.arrow_back, size: 18, color: Color(0xFF374151)),
+            icon: const Icon(Icons.arrow_back,
+                size: 18, color: Color(0xFF374151)),
             label: const Text(
               'Back to risk tracking',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF374151)),
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF374151)),
             ),
-          ),
-          const SizedBox(width: 12),
-          Text(
+          );
+          final scopeLabel = const Text(
             'Execution wrap-up · Scope view',
-            style: TextStyle(fontSize: 13, color: const Color(0xFF9CA3AF)),
-          ),
-          const Spacer(),
-          OutlinedButton.icon(
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
+          );
+          final downloadButton = OutlinedButton.icon(
             onPressed: () {},
             icon: const Icon(Icons.description_outlined, size: 18),
             label: const Text('Download scope report'),
@@ -1447,9 +1674,8 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
               side: const BorderSide(color: Color(0xFFE5E7EB)),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
-          ),
-          const SizedBox(width: 12),
-          FilledButton.icon(
+          );
+          final finalizeButton = FilledButton.icon(
             onPressed: () {},
             icon: const Icon(Icons.check_circle_outline, size: 18),
             label: const Text('Finalize execution scope'),
@@ -1458,8 +1684,42 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
               foregroundColor: Colors.black,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             ),
-          ),
-        ],
+          );
+
+          if (compact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Flexible(child: backButton),
+                    const SizedBox(width: 8),
+                    Flexible(child: scopeLabel),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [downloadButton, finalizeButton],
+                ),
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              backButton,
+              const SizedBox(width: 12),
+              Flexible(child: scopeLabel),
+              const Spacer(),
+              downloadButton,
+              const SizedBox(width: 12),
+              finalizeButton,
+            ],
+          );
+        },
       ),
     );
   }
@@ -1472,7 +1732,10 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
         Expanded(
           child: Text(
             'If someone reads only this page, can they quickly see what was delivered, what moved, and that the right people have agreed?',
-            style: TextStyle(fontSize: 13, color: const Color(0xFF9CA3AF), fontStyle: FontStyle.italic),
+            style: TextStyle(
+                fontSize: 13,
+                color: const Color(0xFF9CA3AF),
+                fontStyle: FontStyle.italic),
           ),
         ),
       ],
@@ -1538,11 +1801,126 @@ class _AiHelperButton extends StatelessWidget {
                   ),
                 ),
                 SizedBox(width: 6),
-                Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF374151)),
+                Icon(Icons.arrow_forward_ios,
+                    size: 14, color: Color(0xFF374151)),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _TableRowShell extends StatelessWidget {
+  const _TableRowShell({
+    required this.isEven,
+    required this.child,
+  });
+
+  final bool isEven;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: isEven ? Colors.white : const Color(0xFFFAFBFD),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: child,
+    );
+  }
+}
+
+enum _ReadinessTone { success, warning, danger }
+
+class _ReadinessCard extends StatelessWidget {
+  const _ReadinessCard({
+    required this.title,
+    required this.value,
+    required this.detail,
+    required this.icon,
+    required this.tone,
+  });
+
+  final String title;
+  final String value;
+  final String detail;
+  final IconData icon;
+  final _ReadinessTone tone;
+
+  Color get _accent {
+    switch (tone) {
+      case _ReadinessTone.success:
+        return const Color(0xFF059669);
+      case _ReadinessTone.warning:
+        return const Color(0xFFD97706);
+      case _ReadinessTone.danger:
+        return const Color(0xFFDC2626);
+    }
+  }
+
+  Color get _background {
+    switch (tone) {
+      case _ReadinessTone.success:
+        return const Color(0xFFECFDF5);
+      case _ReadinessTone.warning:
+        return const Color(0xFFFFFBEB);
+      case _ReadinessTone.danger:
+        return const Color(0xFFFEF2F2);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _accent.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: _accent),
+              const Spacer(),
+              Text(
+                value,
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: _accent,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            detail,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF6B7280),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1765,7 +2143,8 @@ class _ScopeChangeItem {
 }
 
 class _Debouncer {
-  _Debouncer({Duration? delay}) : delay = delay ?? const Duration(milliseconds: 600);
+  _Debouncer({Duration? delay})
+      : delay = delay ?? const Duration(milliseconds: 600);
 
   final Duration delay;
   Timer? _timer;

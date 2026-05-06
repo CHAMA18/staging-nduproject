@@ -147,6 +147,8 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
   List<_PunchlistInsight> _closureItems = [];
   List<_DistributionRow> _distributionRows = [];
   List<_ActionVelocityRow> _velocityRows = [];
+  List<_CapacityHealthRow> _capacityHealthRows = [];
+  List<_ShiftCoverageRow> _shiftCoverageRows = [];
 
   bool _isLoading = false;
   bool _autoGenerationTriggered = false;
@@ -163,6 +165,8 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
     _closureItems = _defaultClosureItems();
     _distributionRows = _defaultDistributionRows();
     _velocityRows = _defaultVelocityRows();
+    _capacityHealthRows = _defaultCapacityHealthRows();
+    _shiftCoverageRows = _defaultShiftCoverageRows();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadFromFirestore());
   }
 
@@ -281,6 +285,15 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
       if (velData != null && velData is List && velData.isNotEmpty) {
         _velocityRows = velData.map((e) => _ActionVelocityRow.fromMap(e as Map<String, dynamic>)).toList();
       }
+      // Load capacity health and shift coverage table data
+      final capData = data['capacityHealthRows'];
+      final shiftData = data['shiftCoverageRows'];
+      if (capData != null && capData is List && capData.isNotEmpty) {
+        _capacityHealthRows = capData.map((e) => _CapacityHealthRow.fromMap(e as Map<String, dynamic>)).toList();
+      }
+      if (shiftData != null && shiftData is List && shiftData.isNotEmpty) {
+        _shiftCoverageRows = shiftData.map((e) => _ShiftCoverageRow.fromMap(e as Map<String, dynamic>)).toList();
+      }
       if (!hasContent) {
         await _autoPopulateFromAi();
       }
@@ -305,6 +318,8 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
         'closureItems': _closureItems.map((e) => e.toMap()).toList(),
         'distributionRows': _distributionRows.map((e) => e.toMap()).toList(),
         'velocityRows': _velocityRows.map((e) => e.toMap()).toList(),
+        'capacityHealthRows': _capacityHealthRows.map((e) => e.toMap()).toList(),
+        'shiftCoverageRows': _shiftCoverageRows.map((e) => e.toMap()).toList(),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } catch (error) {
@@ -570,8 +585,8 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
       _buildCompletionCard(),
       _buildDistributionCard(),
       _buildActionVelocityCard(),
-      _buildResolutionCard(),
-      _buildAcceptanceCard(),
+      _buildCapacityHealthCard(),
+      _buildShiftCoverageCard(),
     ];
 
     return _buildPanelGrid(cards, horizontalSpacing: 20, verticalSpacing: 20);
@@ -761,6 +776,24 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
     const _ActionVelocityRow(workstream: 'Safety', openItems: 12, closedThisSprint: 9, velocity: 78, throughput: 4.5, delta: '+11.0%', avgCycleTime: 1.8, period: 'Sprint 41-42', owner: 'Safety Officer', status: 'On Track'),
   ];
 
+  List<_CapacityHealthRow> _defaultCapacityHealthRows() => [
+    const _CapacityHealthRow(team: 'Field Execution', allocatedFte: 12.0, availableFte: 10.5, utilization: 87, overallocated: 1.5, burnRate: 92, overtimeHrs: 18, skillGap: 2, riskLevel: 'Medium', owner: 'Field Ops Mgr', status: 'Active', lastUpdated: '2 hrs ago'),
+    const _CapacityHealthRow(team: 'QA & Verification', allocatedFte: 8.0, availableFte: 7.0, utilization: 94, overallocated: 1.0, burnRate: 88, overtimeHrs: 12, skillGap: 1, riskLevel: 'High', owner: 'QA Lead', status: 'At Risk', lastUpdated: '4 hrs ago'),
+    const _CapacityHealthRow(team: 'Systems Integration', allocatedFte: 10.0, availableFte: 9.0, utilization: 78, overallocated: 0.0, burnRate: 75, overtimeHrs: 6, skillGap: 3, riskLevel: 'Low', owner: 'Integration Lead', status: 'On Track', lastUpdated: '1 day ago'),
+    const _CapacityHealthRow(team: 'Safety & Compliance', allocatedFte: 6.0, availableFte: 5.5, utilization: 91, overallocated: 0.5, burnRate: 85, overtimeHrs: 8, skillGap: 1, riskLevel: 'Medium', owner: 'Safety Officer', status: 'Active', lastUpdated: '3 hrs ago'),
+    const _CapacityHealthRow(team: 'Technical Debt', allocatedFte: 5.0, availableFte: 4.0, utilization: 68, overallocated: 0.0, burnRate: 62, overtimeHrs: 4, skillGap: 4, riskLevel: 'High', owner: 'Platform Lead', status: 'Under Review', lastUpdated: '6 hrs ago'),
+    const _CapacityHealthRow(team: 'Remediation Ops', allocatedFte: 7.0, availableFte: 6.5, utilization: 82, overallocated: 0.5, burnRate: 79, overtimeHrs: 10, skillGap: 1, riskLevel: 'Low', owner: 'Operations Mgr', status: 'On Track', lastUpdated: '5 hrs ago'),
+  ];
+
+  List<_ShiftCoverageRow> _defaultShiftCoverageRows() => [
+    const _ShiftCoverageRow(shift: 'Day Shift (06:00-14:00)', requiredHeadcount: 24, actualHeadcount: 22, coveragePercent: 92, gap: 2, shiftPattern: '4 on / 3 off', overtimeHrs: 16, contractorFill: 1, nextRotation: 'May 10', owner: 'Shift Supervisor A', status: 'Covered', lastUpdated: '1 hr ago'),
+    const _ShiftCoverageRow(shift: 'Swing Shift (14:00-22:00)', requiredHeadcount: 20, actualHeadcount: 18, coveragePercent: 90, gap: 2, shiftPattern: '4 on / 3 off', overtimeHrs: 14, contractorFill: 0, nextRotation: 'May 12', owner: 'Shift Supervisor B', status: 'Covered', lastUpdated: '3 hrs ago'),
+    const _ShiftCoverageRow(shift: 'Night Shift (22:00-06:00)', requiredHeadcount: 16, actualHeadcount: 12, coveragePercent: 75, gap: 4, shiftPattern: '3 on / 4 off', overtimeHrs: 22, contractorFill: 2, nextRotation: 'May 8', owner: 'Night Lead', status: 'Understaffed', lastUpdated: '30 min ago'),
+    const _ShiftCoverageRow(shift: 'Weekend Coverage (Sat-Sun)', requiredHeadcount: 12, actualHeadcount: 10, coveragePercent: 83, gap: 2, shiftPattern: 'Alternate weekends', overtimeHrs: 8, contractorFill: 1, nextRotation: 'May 11', owner: 'Weekend Lead', status: 'Covered', lastUpdated: '2 hrs ago'),
+    const _ShiftCoverageRow(shift: 'Emergency Response On-Call', requiredHeadcount: 6, actualHeadcount: 6, coveragePercent: 100, gap: 0, shiftPattern: 'Rotating standby', overtimeHrs: 4, contractorFill: 0, nextRotation: 'May 9', owner: 'Safety Officer', status: 'Full', lastUpdated: '4 hrs ago'),
+    const _ShiftCoverageRow(shift: 'QA Inspection Team', requiredHeadcount: 8, actualHeadcount: 6, coveragePercent: 75, gap: 2, shiftPattern: '5 on / 2 off', overtimeHrs: 10, contractorFill: 1, nextRotation: 'May 13', owner: 'QA Lead', status: 'Understaffed', lastUpdated: '5 hrs ago'),
+  ];
+
   Widget _wrapInsightCards(List<Widget> cards) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -915,13 +948,13 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
                   child: DataTable(
                     headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
                     headingRowHeight: 36,
-                    dataRowMinHeight: 32,
-                    dataRowMaxHeight: 40,
+                    dataRowMinHeight: 28,
+                    dataRowMaxHeight: 34,
                     headingTextStyle: const TextStyle(
                       fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569), letterSpacing: 0.4,
                     ),
                     dataTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF1E293B)),
-                    columnSpacing: 16,
+                    columnSpacing: 12,
                     horizontalMargin: 12,
                     columns: const [
                       DataColumn(label: Text('Category')),
@@ -1081,13 +1114,13 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
                   child: DataTable(
                     headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
                     headingRowHeight: 36,
-                    dataRowMinHeight: 32,
-                    dataRowMaxHeight: 40,
+                    dataRowMinHeight: 28,
+                    dataRowMaxHeight: 34,
                     headingTextStyle: const TextStyle(
                       fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569), letterSpacing: 0.4,
                     ),
                     dataTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF1E293B)),
-                    columnSpacing: 16,
+                    columnSpacing: 12,
                     horizontalMargin: 12,
                     columns: const [
                       DataColumn(label: Text('Workstream')),
@@ -1192,67 +1225,319 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
     );
   }
 
-  Widget _buildResolutionCard() {
+  Widget _buildCapacityHealthCard() {
+    final totalAllocated = _capacityHealthRows.fold<double>(0.0, (sum, r) => sum + r.allocatedFte);
+    final totalAvailable = _capacityHealthRows.fold<double>(0.0, (sum, r) => sum + r.availableFte);
+    final avgUtilization = _capacityHealthRows.isNotEmpty
+        ? _capacityHealthRows.fold<int>(0, (sum, r) => sum + r.utilization) / _capacityHealthRows.length
+        : 0.0;
+    final totalOvertime = _capacityHealthRows.fold<int>(0, (sum, r) => sum + r.overtimeHrs);
+    final highRiskCount = _capacityHealthRows.where((r) => r.riskLevel == 'High').length;
     return _panel(
-      title: 'Resolution velocity',
-      subtitle: 'Avg. resolution and reopening cadence.',
+      title: 'Capacity Health',
+      subtitle: 'Workforce FTE allocation, utilization burn rate, and skill gap risk assessment across project teams.',
       child: Column(
-        children: const [
-          _MetricPill(
-              label: 'Median resolution',
-              value: '3.4 days',
-              color: Color(0xFF2563EB)),
-          SizedBox(height: 14),
-          _MetricPill(
-              label: 'Reopen rate', value: '6%', color: Color(0xFF10B981)),
-          SizedBox(height: 14),
-          _MetricPill(
-              label: 'QA backlog aging',
-              value: '4.6 days',
-              color: Color(0xFFF59E0B)),
-          SizedBox(height: 18),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Escalations trending down 2.1% week over week.',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF16A34A),
-              ),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Summary bar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
+            child: Row(
+              children: [
+                _summaryMetric(label: 'Allocated FTE', value: totalAllocated.toStringAsFixed(1), color: const Color(0xFF1E293B)),
+                const SizedBox(width: 28),
+                _summaryMetric(label: 'Available FTE', value: totalAvailable.toStringAsFixed(1), color: const Color(0xFF22C55E)),
+                const SizedBox(width: 28),
+                _summaryMetric(label: 'Avg Utilization', value: '${avgUtilization.toStringAsFixed(0)}%', color: const Color(0xFF2563EB)),
+                const SizedBox(width: 28),
+                _summaryMetric(label: 'High Risk', value: '$highRiskCount', color: const Color(0xFFEF4444)),
+                const Spacer(),
+                FilledButton.icon(
+                  onPressed: () => _showCapacityHealthDialog(context),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Add Team'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    backgroundColor: const Color(0xFF2563EB),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Full-width table
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                  child: DataTable(
+                    headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
+                    headingRowHeight: 36,
+                    dataRowMinHeight: 28,
+                    dataRowMaxHeight: 34,
+                    headingTextStyle: const TextStyle(
+                      fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569), letterSpacing: 0.4,
+                    ),
+                    dataTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF1E293B)),
+                    columnSpacing: 12,
+                    horizontalMargin: 12,
+                    columns: const [
+                      DataColumn(label: Text('Team')),
+                      DataColumn(label: Text('Alloc. FTE'), numeric: true),
+                      DataColumn(label: Text('Avail. FTE'), numeric: true),
+                      DataColumn(label: Text('Utilization %'), numeric: true),
+                      DataColumn(label: Text('Overalloc.'), numeric: true),
+                      DataColumn(label: Text('Burn Rate'), numeric: true),
+                      DataColumn(label: Text('OT Hours'), numeric: true),
+                      DataColumn(label: Text('Skill Gap'), numeric: true),
+                      DataColumn(label: Text('Risk Level')),
+                      DataColumn(label: Text('Owner')),
+                      DataColumn(label: Text('Status')),
+                      DataColumn(label: Text('Updated')),
+                      DataColumn(label: Text('Actions')),
+                    ],
+                    rows: _capacityHealthRows.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final row = entry.value;
+                      return DataRow(cells: [
+                        DataCell(Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(width: 10, height: 10, decoration: BoxDecoration(
+                              color: row.riskLevel == 'High' ? const Color(0xFFEF4444) : row.riskLevel == 'Medium' ? const Color(0xFFF59E0B) : const Color(0xFF22C55E),
+                              shape: BoxShape.circle,
+                            )),
+                            const SizedBox(width: 8),
+                            Text(row.team, style: const TextStyle(fontWeight: FontWeight.w700)),
+                          ],
+                        )),
+                        DataCell(_numberCell(row.allocatedFte.toStringAsFixed(1), const Color(0xFF1E293B))),
+                        DataCell(_numberCell(row.availableFte.toStringAsFixed(1), const Color(0xFF22C55E))),
+                        DataCell(Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 60,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: row.utilization / 100,
+                                  backgroundColor: const Color(0xFFE2E8F0),
+                                  valueColor: AlwaysStoppedAnimation(
+                                    row.utilization >= 90 ? const Color(0xFFEF4444) : row.utilization >= 75 ? const Color(0xFFF59E0B) : const Color(0xFF22C55E),
+                                  ),
+                                  minHeight: 6,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text('${row.utilization}%', style: TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 12,
+                              color: row.utilization >= 90 ? const Color(0xFFDC2626) : row.utilization >= 75 ? const Color(0xFFD97706) : const Color(0xFF16A34A),
+                              fontFeatures: const [FontFeature.tabularFigures()],
+                            )),
+                          ],
+                        )),
+                        DataCell(_numberCell(row.overallocated.toStringAsFixed(1), row.overallocated > 0 ? const Color(0xFFEF4444) : const Color(0xFF94A3B8))),
+                        DataCell(Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: row.burnRate >= 90 ? const Color(0xFFFEF2F2) : row.burnRate >= 75 ? const Color(0xFFFFFBEB) : const Color(0xFFF0FDF4),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text('${row.burnRate}%', style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                            color: row.burnRate >= 90 ? const Color(0xFFDC2626) : row.burnRate >= 75 ? const Color(0xFFD97706) : const Color(0xFF16A34A),
+                          )),
+                        )),
+                        DataCell(_numberCell('${row.overtimeHrs}h', row.overtimeHrs > 15 ? const Color(0xFFEF4444) : const Color(0xFF475569))),
+                        DataCell(_numberCell('${row.skillGap}', row.skillGap >= 3 ? const Color(0xFFEF4444) : row.skillGap >= 1 ? const Color(0xFFF59E0B) : const Color(0xFF22C55E))),
+                        DataCell(_buildRiskChip(row.riskLevel)),
+                        DataCell(Text(row.owner, style: const TextStyle(fontSize: 12))),
+                        DataCell(_buildStatusChip(row.status)),
+                        DataCell(Text(row.lastUpdated.isNotEmpty ? row.lastUpdated : '-', style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)))),
+                        DataCell(Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF3B82F6)), onPressed: () => _showCapacityHealthDialog(context, editIndex: idx), splashRadius: 18, tooltip: 'Edit'),
+                            IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)), onPressed: () => _deleteCapacityHealthRow(idx), splashRadius: 18, tooltip: 'Delete'),
+                          ],
+                        )),
+                      ]);
+                    }).toList(),
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAcceptanceCard() {
+  Widget _buildShiftCoverageCard() {
+    final totalRequired = _shiftCoverageRows.fold<int>(0, (sum, r) => sum + r.requiredHeadcount);
+    final totalActual = _shiftCoverageRows.fold<int>(0, (sum, r) => sum + r.actualHeadcount);
+    final avgCoverage = _shiftCoverageRows.isNotEmpty
+        ? _shiftCoverageRows.fold<int>(0, (sum, r) => sum + r.coveragePercent) / _shiftCoverageRows.length
+        : 0.0;
+    final totalGap = _shiftCoverageRows.fold<int>(0, (sum, r) => sum + r.gap);
+    final understaffedCount = _shiftCoverageRows.where((r) => r.status == 'Understaffed').length;
     return _panel(
-      title: 'Final acceptance readiness',
-      subtitle: 'Cross-team sign-offs leading to launch gate.',
+      title: 'Shift Coverage',
+      subtitle: 'Shift scheduling headcount compliance, coverage gaps, and rotation planning with contractor fill tracking.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          _ChecklistRow(
-              label: 'Operations playbooks updated',
-              status: 'On track',
-              color: Color(0xFF22C55E)),
-          SizedBox(height: 12),
-          _ChecklistRow(
-              label: 'Stakeholder walkthroughs',
-              status: '3 / 5 complete',
-              color: Color(0xFFF97316)),
-          SizedBox(height: 12),
-          _ChecklistRow(
-              label: 'Critical defects resolved',
-              status: '2 pending',
-              color: Color(0xFFEF4444)),
-          SizedBox(height: 12),
-          _ChecklistRow(
-              label: 'Acceptance documentation',
-              status: 'Draft sent',
-              color: Color(0xFF6366F1)),
+        children: [
+          // Summary bar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              children: [
+                _summaryMetric(label: 'Required', value: '$totalRequired', color: const Color(0xFF1E293B)),
+                const SizedBox(width: 28),
+                _summaryMetric(label: 'Actual', value: '$totalActual', color: const Color(0xFF22C55E)),
+                const SizedBox(width: 28),
+                _summaryMetric(label: 'Avg Coverage', value: '${avgCoverage.toStringAsFixed(0)}%', color: const Color(0xFF2563EB)),
+                const SizedBox(width: 28),
+                _summaryMetric(label: 'Total Gap', value: '$totalGap', color: const Color(0xFFEF4444)),
+                const Spacer(),
+                FilledButton.icon(
+                  onPressed: () => _showShiftCoverageDialog(context),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Add Shift'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    backgroundColor: const Color(0xFF2563EB),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Full-width table
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                  child: DataTable(
+                    headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
+                    headingRowHeight: 36,
+                    dataRowMinHeight: 28,
+                    dataRowMaxHeight: 34,
+                    headingTextStyle: const TextStyle(
+                      fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569), letterSpacing: 0.4,
+                    ),
+                    dataTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF1E293B)),
+                    columnSpacing: 12,
+                    horizontalMargin: 12,
+                    columns: const [
+                      DataColumn(label: Text('Shift')),
+                      DataColumn(label: Text('Required'), numeric: true),
+                      DataColumn(label: Text('Actual'), numeric: true),
+                      DataColumn(label: Text('Coverage %'), numeric: true),
+                      DataColumn(label: Text('Gap'), numeric: true),
+                      DataColumn(label: Text('Pattern')),
+                      DataColumn(label: Text('OT Hours'), numeric: true),
+                      DataColumn(label: Text('Contractor'), numeric: true),
+                      DataColumn(label: Text('Next Rotation')),
+                      DataColumn(label: Text('Owner')),
+                      DataColumn(label: Text('Status')),
+                      DataColumn(label: Text('Updated')),
+                      DataColumn(label: Text('Actions')),
+                    ],
+                    rows: _shiftCoverageRows.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final row = entry.value;
+                      return DataRow(cells: [
+                        DataCell(Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(width: 10, height: 10, decoration: BoxDecoration(
+                              color: row.coveragePercent >= 95 ? const Color(0xFF22C55E) : row.coveragePercent >= 80 ? const Color(0xFFF59E0B) : const Color(0xFFEF4444),
+                              shape: BoxShape.circle,
+                            )),
+                            const SizedBox(width: 8),
+                            Text(row.shift, style: const TextStyle(fontWeight: FontWeight.w700)),
+                          ],
+                        )),
+                        DataCell(_numberCell('${row.requiredHeadcount}', const Color(0xFF1E293B))),
+                        DataCell(_numberCell('${row.actualHeadcount}', row.actualHeadcount >= row.requiredHeadcount ? const Color(0xFF22C55E) : const Color(0xFFEF4444))),
+                        DataCell(Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 60,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: row.coveragePercent / 100,
+                                  backgroundColor: const Color(0xFFE2E8F0),
+                                  valueColor: AlwaysStoppedAnimation(
+                                    row.coveragePercent >= 95 ? const Color(0xFF22C55E) : row.coveragePercent >= 80 ? const Color(0xFFF59E0B) : const Color(0xFFEF4444),
+                                  ),
+                                  minHeight: 6,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text('${row.coveragePercent}%', style: TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 12,
+                              color: row.coveragePercent >= 95 ? const Color(0xFF16A34A) : row.coveragePercent >= 80 ? const Color(0xFFD97706) : const Color(0xFFDC2626),
+                              fontFeatures: const [FontFeature.tabularFigures()],
+                            )),
+                          ],
+                        )),
+                        DataCell(Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: row.gap == 0 ? const Color(0xFFF0FDF4) : row.gap <= 2 ? const Color(0xFFFFFBEB) : const Color(0xFFFEF2F2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text('${row.gap}', style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                            color: row.gap == 0 ? const Color(0xFF16A34A) : row.gap <= 2 ? const Color(0xFFD97706) : const Color(0xFFDC2626),
+                          )),
+                        )),
+                        DataCell(Text(row.shiftPattern, style: const TextStyle(fontSize: 12))),
+                        DataCell(_numberCell('${row.overtimeHrs}h', row.overtimeHrs > 15 ? const Color(0xFFEF4444) : const Color(0xFF475569))),
+                        DataCell(_numberCell('${row.contractorFill}', row.contractorFill > 0 ? const Color(0xFF7C3AED) : const Color(0xFF94A3B8))),
+                        DataCell(Text(row.nextRotation, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+                        DataCell(Text(row.owner, style: const TextStyle(fontSize: 12))),
+                        DataCell(_buildShiftStatusChip(row.status)),
+                        DataCell(Text(row.lastUpdated.isNotEmpty ? row.lastUpdated : '-', style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)))),
+                        DataCell(Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF3B82F6)), onPressed: () => _showShiftCoverageDialog(context, editIndex: idx), splashRadius: 18, tooltip: 'Edit'),
+                            IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)), onPressed: () => _deleteShiftCoverageRow(idx), splashRadius: 18, tooltip: 'Delete'),
+                          ],
+                        )),
+                      ]);
+                    }).toList(),
+                  ),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -1339,6 +1624,48 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
         bg = const Color(0xFFFEF2F2); fg = const Color(0xFFDC2626); break;
       case 'under review':
       case 'monitoring':
+        bg = const Color(0xFFFFFBEB); fg = const Color(0xFFD97706); break;
+      default:
+        bg = const Color(0xFFF1F5F9); fg = const Color(0xFF475569);
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+      child: Text(status, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: fg)),
+    );
+  }
+
+  Widget _buildRiskChip(String riskLevel) {
+    Color bg;
+    Color fg;
+    switch (riskLevel.toLowerCase()) {
+      case 'high':
+        bg = const Color(0xFFFEF2F2); fg = const Color(0xFFDC2626); break;
+      case 'medium':
+        bg = const Color(0xFFFFFBEB); fg = const Color(0xFFD97706); break;
+      case 'low':
+        bg = const Color(0xFFF0FDF4); fg = const Color(0xFF16A34A); break;
+      default:
+        bg = const Color(0xFFF1F5F9); fg = const Color(0xFF475569);
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+      child: Text(riskLevel, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: fg)),
+    );
+  }
+
+  Widget _buildShiftStatusChip(String status) {
+    Color bg;
+    Color fg;
+    switch (status.toLowerCase()) {
+      case 'full':
+        bg = const Color(0xFFF0FDF4); fg = const Color(0xFF16A34A); break;
+      case 'covered':
+        bg = const Color(0xFFEFF6FF); fg = const Color(0xFF2563EB); break;
+      case 'understaffed':
+        bg = const Color(0xFFFEF2F2); fg = const Color(0xFFDC2626); break;
+      case 'partial':
         bg = const Color(0xFFFFFBEB); fg = const Color(0xFFD97706); break;
       default:
         bg = const Color(0xFFF1F5F9); fg = const Color(0xFF475569);
@@ -1582,6 +1909,279 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
               _saveToFirestore();
               Navigator.pop(ctx);
               _showActionSnack('Workstream deleted.');
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Capacity Health CRUD ──────────────────────────────────────────────
+
+  void _showCapacityHealthDialog(BuildContext context, {int? editIndex}) {
+    final isEdit = editIndex != null;
+    final existing = isEdit ? _capacityHealthRows[editIndex] : null;
+    final teamCtrl = TextEditingController(text: existing?.team ?? '');
+    final allocatedFteCtrl = TextEditingController(text: existing != null ? '${existing.allocatedFte}' : '0.0');
+    final availableFteCtrl = TextEditingController(text: existing != null ? '${existing.availableFte}' : '0.0');
+    final utilizationCtrl = TextEditingController(text: existing != null ? '${existing.utilization}' : '0');
+    final overallocatedCtrl = TextEditingController(text: existing != null ? '${existing.overallocated}' : '0.0');
+    final burnRateCtrl = TextEditingController(text: existing != null ? '${existing.burnRate}' : '0');
+    final overtimeHrsCtrl = TextEditingController(text: existing != null ? '${existing.overtimeHrs}' : '0');
+    final skillGapCtrl = TextEditingController(text: existing != null ? '${existing.skillGap}' : '0');
+    final ownerCtrl = TextEditingController(text: existing?.owner ?? '');
+    final lastUpdatedCtrl = TextEditingController(text: existing?.lastUpdated ?? 'Just now');
+    String riskLevel = existing?.riskLevel ?? 'Medium';
+    String status = existing?.status ?? 'Active';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(isEdit ? 'Edit Team' : 'Add Team'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: SizedBox(
+            width: 480,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: teamCtrl, decoration: const InputDecoration(labelText: 'Team Name', border: OutlineInputBorder()),),
+                  const SizedBox(height: 14),
+                  Row(children: [
+                    Expanded(child: TextField(controller: allocatedFteCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Allocated FTE', border: OutlineInputBorder()),)),
+                    const SizedBox(width: 10),
+                    Expanded(child: TextField(controller: availableFteCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Available FTE', border: OutlineInputBorder()),)),
+                  ]),
+                  const SizedBox(height: 14),
+                  Row(children: [
+                    Expanded(child: TextField(controller: utilizationCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Utilization %', border: OutlineInputBorder()),)),
+                    const SizedBox(width: 10),
+                    Expanded(child: TextField(controller: overallocatedCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Overallocated FTE', border: OutlineInputBorder()),)),
+                  ]),
+                  const SizedBox(height: 14),
+                  Row(children: [
+                    Expanded(child: TextField(controller: burnRateCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Burn Rate %', border: OutlineInputBorder()),)),
+                    const SizedBox(width: 10),
+                    Expanded(child: TextField(controller: overtimeHrsCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Overtime Hours', border: OutlineInputBorder()),)),
+                  ]),
+                  const SizedBox(height: 14),
+                  Row(children: [
+                    Expanded(child: TextField(controller: skillGapCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Skill Gap Count', border: OutlineInputBorder()),)),
+                    const SizedBox(width: 10),
+                    Expanded(child: TextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()),)),
+                  ]),
+                  const SizedBox(height: 14),
+                  Row(children: [
+                    Expanded(child: TextField(controller: lastUpdatedCtrl, decoration: const InputDecoration(labelText: 'Last Updated', border: OutlineInputBorder()),)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: riskLevel,
+                        decoration: const InputDecoration(labelText: 'Risk Level', border: OutlineInputBorder()),
+                        items: ['High', 'Medium', 'Low'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                        onChanged: (v) => setDialogState(() => riskLevel = v ?? 'Medium'),
+                      ),
+                    ),
+                  ]),
+                  const SizedBox(height: 14),
+                  DropdownButtonFormField<String>(
+                    value: status,
+                    decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
+                    items: ['Active', 'On Track', 'Under Review', 'At Risk', 'Monitoring'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                    onChanged: (v) => setDialogState(() => status = v ?? 'Active'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                final row = _CapacityHealthRow(
+                  team: teamCtrl.text.trim(),
+                  allocatedFte: double.tryParse(allocatedFteCtrl.text) ?? 0.0,
+                  availableFte: double.tryParse(availableFteCtrl.text) ?? 0.0,
+                  utilization: int.tryParse(utilizationCtrl.text) ?? 0,
+                  overallocated: double.tryParse(overallocatedCtrl.text) ?? 0.0,
+                  burnRate: int.tryParse(burnRateCtrl.text) ?? 0,
+                  overtimeHrs: int.tryParse(overtimeHrsCtrl.text) ?? 0,
+                  skillGap: int.tryParse(skillGapCtrl.text) ?? 0,
+                  riskLevel: riskLevel,
+                  owner: ownerCtrl.text.trim(),
+                  status: status,
+                  lastUpdated: lastUpdatedCtrl.text.trim().isNotEmpty ? lastUpdatedCtrl.text.trim() : 'Just now',
+                );
+                setState(() {
+                  if (isEdit) {
+                    _capacityHealthRows[editIndex] = row;
+                  } else {
+                    _capacityHealthRows.add(row);
+                  }
+                });
+                _saveToFirestore();
+                Navigator.pop(ctx);
+                _showActionSnack(isEdit ? 'Team updated successfully.' : 'Team added successfully.');
+              },
+              child: Text(isEdit ? 'Update' : 'Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _deleteCapacityHealthRow(int index) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Team'),
+        content: Text('Are you sure you want to delete "${_capacityHealthRows[index].team}"? This action cannot be undone.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+            onPressed: () {
+              setState(() => _capacityHealthRows.removeAt(index));
+              _saveToFirestore();
+              Navigator.pop(ctx);
+              _showActionSnack('Team deleted.');
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Shift Coverage CRUD ───────────────────────────────────────────────
+
+  void _showShiftCoverageDialog(BuildContext context, {int? editIndex}) {
+    final isEdit = editIndex != null;
+    final existing = isEdit ? _shiftCoverageRows[editIndex] : null;
+    final shiftCtrl = TextEditingController(text: existing?.shift ?? '');
+    final requiredHeadcountCtrl = TextEditingController(text: existing != null ? '${existing.requiredHeadcount}' : '0');
+    final actualHeadcountCtrl = TextEditingController(text: existing != null ? '${existing.actualHeadcount}' : '0');
+    final coveragePercentCtrl = TextEditingController(text: existing != null ? '${existing.coveragePercent}' : '0');
+    final gapCtrl = TextEditingController(text: existing != null ? '${existing.gap}' : '0');
+    final shiftPatternCtrl = TextEditingController(text: existing?.shiftPattern ?? '');
+    final overtimeHrsCtrl = TextEditingController(text: existing != null ? '${existing.overtimeHrs}' : '0');
+    final contractorFillCtrl = TextEditingController(text: existing != null ? '${existing.contractorFill}' : '0');
+    final nextRotationCtrl = TextEditingController(text: existing?.nextRotation ?? '');
+    final ownerCtrl = TextEditingController(text: existing?.owner ?? '');
+    final lastUpdatedCtrl = TextEditingController(text: existing?.lastUpdated ?? 'Just now');
+    String status = existing?.status ?? 'Covered';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(isEdit ? 'Edit Shift' : 'Add Shift'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: SizedBox(
+            width: 480,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: shiftCtrl, decoration: const InputDecoration(labelText: 'Shift Name', border: OutlineInputBorder()),),
+                  const SizedBox(height: 14),
+                  Row(children: [
+                    Expanded(child: TextField(controller: requiredHeadcountCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Required Headcount', border: OutlineInputBorder()),)),
+                    const SizedBox(width: 10),
+                    Expanded(child: TextField(controller: actualHeadcountCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Actual Headcount', border: OutlineInputBorder()),)),
+                  ]),
+                  const SizedBox(height: 14),
+                  Row(children: [
+                    Expanded(child: TextField(controller: coveragePercentCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Coverage %', border: OutlineInputBorder()),)),
+                    const SizedBox(width: 10),
+                    Expanded(child: TextField(controller: gapCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Gap', border: OutlineInputBorder()),)),
+                  ]),
+                  const SizedBox(height: 14),
+                  Row(children: [
+                    Expanded(child: TextField(controller: shiftPatternCtrl, decoration: const InputDecoration(labelText: 'Shift Pattern', border: OutlineInputBorder()),)),
+                    const SizedBox(width: 10),
+                    Expanded(child: TextField(controller: overtimeHrsCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Overtime Hours', border: OutlineInputBorder()),)),
+                  ]),
+                  const SizedBox(height: 14),
+                  Row(children: [
+                    Expanded(child: TextField(controller: contractorFillCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Contractor Fill', border: OutlineInputBorder()),)),
+                    const SizedBox(width: 10),
+                    Expanded(child: TextField(controller: nextRotationCtrl, decoration: const InputDecoration(labelText: 'Next Rotation', border: OutlineInputBorder()),)),
+                  ]),
+                  const SizedBox(height: 14),
+                  Row(children: [
+                    Expanded(child: TextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()),)),
+                    const SizedBox(width: 10),
+                    Expanded(child: TextField(controller: lastUpdatedCtrl, decoration: const InputDecoration(labelText: 'Last Updated', border: OutlineInputBorder()),)),
+                  ]),
+                  const SizedBox(height: 14),
+                  DropdownButtonFormField<String>(
+                    value: status,
+                    decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
+                    items: ['Full', 'Covered', 'Partial', 'Understaffed'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                    onChanged: (v) => setDialogState(() => status = v ?? 'Covered'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                final row = _ShiftCoverageRow(
+                  shift: shiftCtrl.text.trim(),
+                  requiredHeadcount: int.tryParse(requiredHeadcountCtrl.text) ?? 0,
+                  actualHeadcount: int.tryParse(actualHeadcountCtrl.text) ?? 0,
+                  coveragePercent: int.tryParse(coveragePercentCtrl.text) ?? 0,
+                  gap: int.tryParse(gapCtrl.text) ?? 0,
+                  shiftPattern: shiftPatternCtrl.text.trim(),
+                  overtimeHrs: int.tryParse(overtimeHrsCtrl.text) ?? 0,
+                  contractorFill: int.tryParse(contractorFillCtrl.text) ?? 0,
+                  nextRotation: nextRotationCtrl.text.trim(),
+                  owner: ownerCtrl.text.trim(),
+                  status: status,
+                  lastUpdated: lastUpdatedCtrl.text.trim().isNotEmpty ? lastUpdatedCtrl.text.trim() : 'Just now',
+                );
+                setState(() {
+                  if (isEdit) {
+                    _shiftCoverageRows[editIndex] = row;
+                  } else {
+                    _shiftCoverageRows.add(row);
+                  }
+                });
+                _saveToFirestore();
+                Navigator.pop(ctx);
+                _showActionSnack(isEdit ? 'Shift updated successfully.' : 'Shift added successfully.');
+              },
+              child: Text(isEdit ? 'Update' : 'Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _deleteShiftCoverageRow(int index) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Shift'),
+        content: Text('Are you sure you want to delete "${_shiftCoverageRows[index].shift}"? This action cannot be undone.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+            onPressed: () {
+              setState(() => _shiftCoverageRows.removeAt(index));
+              _saveToFirestore();
+              Navigator.pop(ctx);
+              _showActionSnack('Shift deleted.');
             },
             child: const Text('Delete'),
           ),
@@ -1977,6 +2577,126 @@ class _ActionVelocityRow {
     period: map['period']?.toString() ?? '',
     owner: map['owner']?.toString() ?? '',
     status: map['status']?.toString() ?? 'On Track',
+  );
+}
+
+class _CapacityHealthRow {
+  const _CapacityHealthRow({
+    required this.team,
+    required this.allocatedFte,
+    required this.availableFte,
+    required this.utilization,
+    required this.overallocated,
+    required this.burnRate,
+    required this.overtimeHrs,
+    required this.skillGap,
+    required this.riskLevel,
+    required this.owner,
+    required this.status,
+    this.lastUpdated = '',
+  });
+
+  final String team;
+  final double allocatedFte;
+  final double availableFte;
+  final int utilization;
+  final double overallocated;
+  final int burnRate;
+  final int overtimeHrs;
+  final int skillGap;
+  final String riskLevel;
+  final String owner;
+  final String status;
+  final String lastUpdated;
+
+  Map<String, dynamic> toMap() => {
+    'team': team,
+    'allocatedFte': allocatedFte,
+    'availableFte': availableFte,
+    'utilization': utilization,
+    'overallocated': overallocated,
+    'burnRate': burnRate,
+    'overtimeHrs': overtimeHrs,
+    'skillGap': skillGap,
+    'riskLevel': riskLevel,
+    'owner': owner,
+    'status': status,
+    'lastUpdated': lastUpdated,
+  };
+
+  static _CapacityHealthRow fromMap(Map<String, dynamic> map) => _CapacityHealthRow(
+    team: map['team']?.toString() ?? '',
+    allocatedFte: (map['allocatedFte'] is num) ? (map['allocatedFte'] as num).toDouble() : double.tryParse(map['allocatedFte'].toString()) ?? 0.0,
+    availableFte: (map['availableFte'] is num) ? (map['availableFte'] as num).toDouble() : double.tryParse(map['availableFte'].toString()) ?? 0.0,
+    utilization: (map['utilization'] is int) ? map['utilization'] as int : int.tryParse(map['utilization'].toString()) ?? 0,
+    overallocated: (map['overallocated'] is num) ? (map['overallocated'] as num).toDouble() : double.tryParse(map['overallocated'].toString()) ?? 0.0,
+    burnRate: (map['burnRate'] is int) ? map['burnRate'] as int : int.tryParse(map['burnRate'].toString()) ?? 0,
+    overtimeHrs: (map['overtimeHrs'] is int) ? map['overtimeHrs'] as int : int.tryParse(map['overtimeHrs'].toString()) ?? 0,
+    skillGap: (map['skillGap'] is int) ? map['skillGap'] as int : int.tryParse(map['skillGap'].toString()) ?? 0,
+    riskLevel: map['riskLevel']?.toString() ?? 'Medium',
+    owner: map['owner']?.toString() ?? '',
+    status: map['status']?.toString() ?? 'Active',
+    lastUpdated: map['lastUpdated']?.toString() ?? '',
+  );
+}
+
+class _ShiftCoverageRow {
+  const _ShiftCoverageRow({
+    required this.shift,
+    required this.requiredHeadcount,
+    required this.actualHeadcount,
+    required this.coveragePercent,
+    required this.gap,
+    required this.shiftPattern,
+    required this.overtimeHrs,
+    required this.contractorFill,
+    required this.nextRotation,
+    required this.owner,
+    required this.status,
+    this.lastUpdated = '',
+  });
+
+  final String shift;
+  final int requiredHeadcount;
+  final int actualHeadcount;
+  final int coveragePercent;
+  final int gap;
+  final String shiftPattern;
+  final int overtimeHrs;
+  final int contractorFill;
+  final String nextRotation;
+  final String owner;
+  final String status;
+  final String lastUpdated;
+
+  Map<String, dynamic> toMap() => {
+    'shift': shift,
+    'requiredHeadcount': requiredHeadcount,
+    'actualHeadcount': actualHeadcount,
+    'coveragePercent': coveragePercent,
+    'gap': gap,
+    'shiftPattern': shiftPattern,
+    'overtimeHrs': overtimeHrs,
+    'contractorFill': contractorFill,
+    'nextRotation': nextRotation,
+    'owner': owner,
+    'status': status,
+    'lastUpdated': lastUpdated,
+  };
+
+  static _ShiftCoverageRow fromMap(Map<String, dynamic> map) => _ShiftCoverageRow(
+    shift: map['shift']?.toString() ?? '',
+    requiredHeadcount: (map['requiredHeadcount'] is int) ? map['requiredHeadcount'] as int : int.tryParse(map['requiredHeadcount'].toString()) ?? 0,
+    actualHeadcount: (map['actualHeadcount'] is int) ? map['actualHeadcount'] as int : int.tryParse(map['actualHeadcount'].toString()) ?? 0,
+    coveragePercent: (map['coveragePercent'] is int) ? map['coveragePercent'] as int : int.tryParse(map['coveragePercent'].toString()) ?? 0,
+    gap: (map['gap'] is int) ? map['gap'] as int : int.tryParse(map['gap'].toString()) ?? 0,
+    shiftPattern: map['shiftPattern']?.toString() ?? '',
+    overtimeHrs: (map['overtimeHrs'] is int) ? map['overtimeHrs'] as int : int.tryParse(map['overtimeHrs'].toString()) ?? 0,
+    contractorFill: (map['contractorFill'] is int) ? map['contractorFill'] as int : int.tryParse(map['contractorFill'].toString()) ?? 0,
+    nextRotation: map['nextRotation']?.toString() ?? '',
+    owner: map['owner']?.toString() ?? '',
+    status: map['status']?.toString() ?? 'Covered',
+    lastUpdated: map['lastUpdated']?.toString() ?? '',
   );
 }
 

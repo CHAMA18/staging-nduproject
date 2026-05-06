@@ -26,7 +26,7 @@ class PunchlistActionsScreen extends StatefulWidget {
 }
 
 class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
-  static const double _panelMinHeight = 360;
+  static const double _panelMinHeight = 200;
 
   /*
   final List<_PunchlistInsight> _priorityItems = const [
@@ -145,6 +145,8 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
   List<_PunchlistInsight> _fieldExecutionItems = [];
   List<_PunchlistInsight> _techDebtItems = [];
   List<_PunchlistInsight> _closureItems = [];
+  List<_DistributionRow> _distributionRows = [];
+  List<_ActionVelocityRow> _velocityRows = [];
 
   bool _isLoading = false;
   bool _autoGenerationTriggered = false;
@@ -159,6 +161,8 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
     _fieldExecutionItems = _defaultFieldExecutionItems();
     _techDebtItems = _defaultTechDebtItems();
     _closureItems = _defaultClosureItems();
+    _distributionRows = _defaultDistributionRows();
+    _velocityRows = _defaultVelocityRows();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadFromFirestore());
   }
 
@@ -268,6 +272,15 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
         _closureItems =
             closure.isNotEmpty ? closure : _defaultClosureItems();
       });
+      // Load distribution and velocity table data
+      final distData = data['distributionRows'];
+      final velData = data['velocityRows'];
+      if (distData != null && distData is List && distData.isNotEmpty) {
+        _distributionRows = distData.map((e) => _DistributionRow.fromMap(e as Map<String, dynamic>)).toList();
+      }
+      if (velData != null && velData is List && velData.isNotEmpty) {
+        _velocityRows = velData.map((e) => _ActionVelocityRow.fromMap(e as Map<String, dynamic>)).toList();
+      }
       if (!hasContent) {
         await _autoPopulateFromAi();
       }
@@ -290,6 +303,8 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
             _fieldExecutionItems.map((e) => e.toMap()).toList(),
         'techDebtItems': _techDebtItems.map((e) => e.toMap()).toList(),
         'closureItems': _closureItems.map((e) => e.toMap()).toList(),
+        'distributionRows': _distributionRows.map((e) => e.toMap()).toList(),
+        'velocityRows': _velocityRows.map((e) => e.toMap()).toList(),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } catch (error) {
@@ -727,6 +742,22 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
         ),
       ];
 
+  List<_DistributionRow> _defaultDistributionRows() => [
+    const _DistributionRow(category: 'Systems', critical: 18, medium: 24, low: 26, owner: 'Systems Team', status: 'Active'),
+    const _DistributionRow(category: 'Facilities', critical: 10, medium: 14, low: 20, owner: 'Facilities Mgmt', status: 'Active'),
+    const _DistributionRow(category: 'QA', critical: 4, medium: 11, low: 17, owner: 'QA Lead', status: 'Under Review'),
+    const _DistributionRow(category: 'Integration', critical: 7, medium: 15, low: 22, owner: 'Integration Lead', status: 'Active'),
+    const _DistributionRow(category: 'Field Ops', critical: 12, medium: 9, low: 14, owner: 'Field Ops Manager', status: 'Monitoring'),
+  ];
+
+  List<_ActionVelocityRow> _defaultVelocityRows() => [
+    const _ActionVelocityRow(workstream: 'Field execution', velocity: 72, delta: '+8.2%', period: 'Sprint 41-42', owner: 'Field Ops', status: 'On Track'),
+    const _ActionVelocityRow(workstream: 'QA verification', velocity: 58, delta: '+5.6%', period: 'Sprint 41-42', owner: 'QA Lead', status: 'Improving'),
+    const _ActionVelocityRow(workstream: 'Technical debt', velocity: 41, delta: '-3.4%', period: 'Sprint 41-42', owner: 'Platform Team', status: 'At Risk'),
+    const _ActionVelocityRow(workstream: 'Remediation', velocity: 65, delta: '+2.1%', period: 'Sprint 41-42', owner: 'Operations', status: 'On Track'),
+    const _ActionVelocityRow(workstream: 'Closure items', velocity: 53, delta: '+4.8%', period: 'Sprint 41-42', owner: 'PMO', status: 'Stable'),
+  ];
+
   Widget _wrapInsightCards(List<Widget> cards) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -831,23 +862,78 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
   Widget _buildDistributionCard() {
     return _panel(
       title: 'Item distribution',
-      subtitle: 'Tracked across systems, facilities, and QA ownership.',
+      subtitle: 'Punchlist item severity breakdown by workstream category with ownership tracking.',
       child: Column(
-        children: const [
-          _DistributionRow(
-              title: 'Systems',
-              count: '68',
-              indicators: ['18 critical', '24 medium', '26 low']),
-          SizedBox(height: 14),
-          _DistributionRow(
-              title: 'Facilities',
-              count: '44',
-              indicators: ['10 critical', '14 medium', '20 low']),
-          SizedBox(height: 14),
-          _DistributionRow(
-              title: 'QA',
-              count: '32',
-              indicators: ['4 critical', '11 medium', '17 low']),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: () => _showDistributionDialog(context),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add Category'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                backgroundColor: const Color(0xFF2563EB),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
+              headingTextStyle: const TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF475569), letterSpacing: 0.3,
+              ),
+              dataTextStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF1E293B)),
+              columnSpacing: 24,
+              horizontalMargin: 16,
+              columns: const [
+                DataColumn(label: Text('Category')),
+                DataColumn(label: Text('Critical'), numeric: true),
+                DataColumn(label: Text('Medium'), numeric: true),
+                DataColumn(label: Text('Low'), numeric: true),
+                DataColumn(label: Text('Total'), numeric: true),
+                DataColumn(label: Text('Owner')),
+                DataColumn(label: Text('Status')),
+                DataColumn(label: Text('Actions')),
+              ],
+              rows: _distributionRows.asMap().entries.map((entry) {
+                final idx = entry.key;
+                final row = entry.value;
+                final total = row.critical + row.medium + row.low;
+                return DataRow(cells: [
+                  DataCell(Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(width: 10, height: 10, decoration: const BoxDecoration(color: Color(0xFF3B82F6), shape: BoxShape.circle)),
+                      const SizedBox(width: 8),
+                      Text(row.category, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    ],
+                  )),
+                  DataCell(Text('${row.critical}', style: TextStyle(color: row.critical > 0 ? const Color(0xFFDC2626) : const Color(0xFF94A3B8), fontWeight: FontWeight.w700))),
+                  DataCell(Text('${row.medium}', style: const TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.w600))),
+                  DataCell(Text('${row.low}', style: const TextStyle(color: Color(0xFF22C55E), fontWeight: FontWeight.w600))),
+                  DataCell(Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(10)),
+                    child: Text('$total', style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF1D4ED8))),
+                  )),
+                  DataCell(Text(row.owner)),
+                  DataCell(_buildStatusChip(row.status)),
+                  DataCell(Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF3B82F6)), onPressed: () => _showDistributionDialog(context, editIndex: idx), splashRadius: 18, tooltip: 'Edit'),
+                      IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)), onPressed: () => _deleteDistributionRow(idx), splashRadius: 18, tooltip: 'Delete'),
+                    ],
+                  )),
+                ]);
+              }).toList(),
+            ),
+          ),
         ],
       ),
     );
@@ -856,14 +942,102 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
   Widget _buildActionVelocityCard() {
     return _panel(
       title: 'Action velocity',
-      subtitle: 'Workstream momentum across last two sprints.',
+      subtitle: 'Workstream throughput momentum measured across sprint boundaries with trend indicators.',
       child: Column(
-        children: const [
-          _VelocityRow(label: 'Field execution', trend: 0.72, delta: '+8.2%'),
-          SizedBox(height: 12),
-          _VelocityRow(label: 'QA verification', trend: 0.58, delta: '+5.6%'),
-          SizedBox(height: 12),
-          _VelocityRow(label: 'Technical debt', trend: 0.41, delta: '-3.4%'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: () => _showVelocityDialog(context),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add Workstream'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                backgroundColor: const Color(0xFF2563EB),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              headingRowColor: WidgetStateProperty.all(const Color(0xFFF1F5F9)),
+              headingTextStyle: const TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF475569), letterSpacing: 0.3,
+              ),
+              dataTextStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF1E293B)),
+              columnSpacing: 24,
+              horizontalMargin: 16,
+              columns: const [
+                DataColumn(label: Text('Workstream')),
+                DataColumn(label: Text('Velocity %'), numeric: true),
+                DataColumn(label: Text('Trend')),
+                DataColumn(label: Text('Period')),
+                DataColumn(label: Text('Owner')),
+                DataColumn(label: Text('Status')),
+                DataColumn(label: Text('Actions')),
+              ],
+              rows: _velocityRows.asMap().entries.map((entry) {
+                final idx = entry.key;
+                final row = entry.value;
+                final isPositive = row.delta.startsWith('+');
+                return DataRow(cells: [
+                  DataCell(Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(width: 10, height: 10, decoration: BoxDecoration(color: isPositive ? const Color(0xFF22C55E) : const Color(0xFFEF4444), shape: BoxShape.circle)),
+                      const SizedBox(width: 8),
+                      Text(row.workstream, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    ],
+                  )),
+                  DataCell(Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 80,
+                        child: ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: LinearProgressIndicator(
+                          value: row.velocity / 100,
+                          backgroundColor: const Color(0xFFE2E8F0),
+                          valueColor: AlwaysStoppedAnimation(
+                            row.velocity >= 60 ? const Color(0xFF2563EB) : row.velocity >= 40 ? const Color(0xFFF59E0B) : const Color(0xFFEF4444),
+                          ),
+                          minHeight: 8,
+                        ),
+                      )),
+                      const SizedBox(width: 10),
+                      Text('${row.velocity}%', style: const TextStyle(fontWeight: FontWeight.w700)),
+                    ],
+                  )),
+                  DataCell(Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isPositive ? const Color(0xFFF0FDF4) : const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(isPositive ? Icons.trending_up : Icons.trending_down, size: 16, color: isPositive ? const Color(0xFF16A34A) : const Color(0xFFDC2626)),
+                      const SizedBox(width: 4),
+                      Text(row.delta, style: TextStyle(fontWeight: FontWeight.w700, color: isPositive ? const Color(0xFF16A34A) : const Color(0xFFDC2626))),
+                    ]),
+                  )),
+                  DataCell(Text(row.period)),
+                  DataCell(Text(row.owner)),
+                  DataCell(_buildStatusChip(row.status)),
+                  DataCell(Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF3B82F6)), onPressed: () => _showVelocityDialog(context, editIndex: idx), splashRadius: 18, tooltip: 'Edit'),
+                      IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)), onPressed: () => _deleteVelocityRow(idx), splashRadius: 18, tooltip: 'Delete'),
+                    ],
+                  )),
+                ]);
+              }).toList(),
+            ),
+          ),
         ],
       ),
     );
@@ -997,6 +1171,225 @@ class _PunchlistActionsScreenState extends State<PunchlistActionsScreen> {
           ),
           const SizedBox(height: 20),
           child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusChip(String status) {
+    Color bg;
+    Color fg;
+    switch (status.toLowerCase()) {
+      case 'active':
+      case 'on track':
+        bg = const Color(0xFFF0FDF4); fg = const Color(0xFF16A34A); break;
+      case 'improving':
+      case 'stable':
+        bg = const Color(0xFFEFF6FF); fg = const Color(0xFF2563EB); break;
+      case 'at risk':
+        bg = const Color(0xFFFEF2F2); fg = const Color(0xFFDC2626); break;
+      case 'under review':
+      case 'monitoring':
+        bg = const Color(0xFFFFFBEB); fg = const Color(0xFFD97706); break;
+      default:
+        bg = const Color(0xFFF1F5F9); fg = const Color(0xFF475569);
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+      child: Text(status, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: fg)),
+    );
+  }
+
+  void _showDistributionDialog(BuildContext context, {int? editIndex}) {
+    final isEdit = editIndex != null;
+    final existing = isEdit ? _distributionRows[editIndex] : null;
+    final categoryCtrl = TextEditingController(text: existing?.category ?? '');
+    final criticalCtrl = TextEditingController(text: existing != null ? '${existing.critical}' : '0');
+    final mediumCtrl = TextEditingController(text: existing != null ? '${existing.medium}' : '0');
+    final lowCtrl = TextEditingController(text: existing != null ? '${existing.low}' : '0');
+    final ownerCtrl = TextEditingController(text: existing?.owner ?? '');
+    String status = existing?.status ?? 'Active';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(isEdit ? 'Edit Category' : 'Add Category'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: categoryCtrl, decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),),
+                const SizedBox(height: 14),
+                Row(children: [
+                  Expanded(child: TextField(controller: criticalCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Critical', border: OutlineInputBorder()),)),
+                  const SizedBox(width: 10),
+                  Expanded(child: TextField(controller: mediumCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Medium', border: OutlineInputBorder()),)),
+                  const SizedBox(width: 10),
+                  Expanded(child: TextField(controller: lowCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Low', border: OutlineInputBorder()),)),
+                ]),
+                const SizedBox(height: 14),
+                TextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()),),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  value: status,
+                  decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
+                  items: ['Active', 'Under Review', 'Monitoring', 'At Risk'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                  onChanged: (v) => setDialogState(() => status = v ?? 'Active'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                final row = _DistributionRow(
+                  category: categoryCtrl.text.trim(),
+                  critical: int.tryParse(criticalCtrl.text) ?? 0,
+                  medium: int.tryParse(mediumCtrl.text) ?? 0,
+                  low: int.tryParse(lowCtrl.text) ?? 0,
+                  owner: ownerCtrl.text.trim(),
+                  status: status,
+                );
+                setState(() {
+                  if (isEdit) {
+                    _distributionRows[editIndex] = row;
+                  } else {
+                    _distributionRows.add(row);
+                  }
+                });
+                _saveToFirestore();
+                Navigator.pop(ctx);
+                _showActionSnack(isEdit ? 'Category updated successfully.' : 'Category added successfully.');
+              },
+              child: Text(isEdit ? 'Update' : 'Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showVelocityDialog(BuildContext context, {int? editIndex}) {
+    final isEdit = editIndex != null;
+    final existing = isEdit ? _velocityRows[editIndex] : null;
+    final workstreamCtrl = TextEditingController(text: existing?.workstream ?? '');
+    final velocityCtrl = TextEditingController(text: existing != null ? '${existing.velocity}' : '50');
+    final deltaCtrl = TextEditingController(text: existing?.delta ?? '+0.0%');
+    final periodCtrl = TextEditingController(text: existing?.period ?? 'Sprint 41-42');
+    final ownerCtrl = TextEditingController(text: existing?.owner ?? '');
+    String status = existing?.status ?? 'On Track';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(isEdit ? 'Edit Workstream' : 'Add Workstream'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: workstreamCtrl, decoration: const InputDecoration(labelText: 'Workstream', border: OutlineInputBorder()),),
+                const SizedBox(height: 14),
+                Row(children: [
+                  Expanded(child: TextField(controller: velocityCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Velocity %', border: OutlineInputBorder()),)),
+                  const SizedBox(width: 10),
+                  Expanded(child: TextField(controller: deltaCtrl, decoration: const InputDecoration(labelText: 'Delta (e.g. +8.2%)', border: OutlineInputBorder()),)),
+                ]),
+                const SizedBox(height: 14),
+                TextField(controller: periodCtrl, decoration: const InputDecoration(labelText: 'Period', border: OutlineInputBorder()),),
+                const SizedBox(height: 14),
+                TextField(controller: ownerCtrl, decoration: const InputDecoration(labelText: 'Owner', border: OutlineInputBorder()),),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  value: status,
+                  decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
+                  items: ['On Track', 'Improving', 'Stable', 'At Risk'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                  onChanged: (v) => setDialogState(() => status = v ?? 'On Track'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                final row = _ActionVelocityRow(
+                  workstream: workstreamCtrl.text.trim(),
+                  velocity: int.tryParse(velocityCtrl.text) ?? 0,
+                  delta: deltaCtrl.text.trim(),
+                  period: periodCtrl.text.trim(),
+                  owner: ownerCtrl.text.trim(),
+                  status: status,
+                );
+                setState(() {
+                  if (isEdit) {
+                    _velocityRows[editIndex] = row;
+                  } else {
+                    _velocityRows.add(row);
+                  }
+                });
+                _saveToFirestore();
+                Navigator.pop(ctx);
+                _showActionSnack(isEdit ? 'Workstream updated successfully.' : 'Workstream added successfully.');
+              },
+              child: Text(isEdit ? 'Update' : 'Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _deleteDistributionRow(int index) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Category'),
+        content: Text('Are you sure you want to delete "${_distributionRows[index].category}"? This action cannot be undone.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+            onPressed: () {
+              setState(() => _distributionRows.removeAt(index));
+              _saveToFirestore();
+              Navigator.pop(ctx);
+              _showActionSnack('Category deleted.');
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteVelocityRow(int index) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Workstream'),
+        content: Text('Are you sure you want to delete "${_velocityRows[index].workstream}"? This action cannot be undone.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+            onPressed: () {
+              setState(() => _velocityRows.removeAt(index));
+              _saveToFirestore();
+              Navigator.pop(ctx);
+              _showActionSnack('Workstream deleted.');
+            },
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -1285,127 +1678,78 @@ class _LegendRow extends StatelessWidget {
   }
 }
 
-class _DistributionRow extends StatelessWidget {
-  const _DistributionRow(
-      {required this.title, required this.count, required this.indicators});
+class _DistributionRow {
+  const _DistributionRow({
+    required this.category,
+    required this.critical,
+    required this.medium,
+    required this.low,
+    required this.owner,
+    required this.status,
+  });
 
-  final String title;
-  final String count;
-  final List<String> indicators;
+  final String category;
+  final int critical;
+  final int medium;
+  final int low;
+  final String owner;
+  final String status;
 
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1E293B),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: indicators
-                    .map(
-                      (text) => Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Text(
-                          text,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF475569),
-                          ),
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 12),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFFE0F2FE),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Text(
-            count,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF0C4A6E),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  int get total => critical + medium + low;
+
+  Map<String, dynamic> toMap() => {
+    'category': category,
+    'critical': critical,
+    'medium': medium,
+    'low': low,
+    'owner': owner,
+    'status': status,
+  };
+
+  static _DistributionRow fromMap(Map<String, dynamic> map) => _DistributionRow(
+    category: map['category']?.toString() ?? '',
+    critical: (map['critical'] is int) ? map['critical'] as int : int.tryParse(map['critical'].toString()) ?? 0,
+    medium: (map['medium'] is int) ? map['medium'] as int : int.tryParse(map['medium'].toString()) ?? 0,
+    low: (map['low'] is int) ? map['low'] as int : int.tryParse(map['low'].toString()) ?? 0,
+    owner: map['owner']?.toString() ?? '',
+    status: map['status']?.toString() ?? 'Active',
+  );
 }
 
-class _VelocityRow extends StatelessWidget {
-  const _VelocityRow(
-      {required this.label, required this.trend, required this.delta});
+class _ActionVelocityRow {
+  const _ActionVelocityRow({
+    required this.workstream,
+    required this.velocity,
+    required this.delta,
+    required this.period,
+    required this.owner,
+    required this.status,
+  });
 
-  final String label;
-  final double trend;
+  final String workstream;
+  final int velocity;
   final String delta;
+  final String period;
+  final String owner;
+  final String status;
 
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1F2937),
-              ),
-            ),
-            Text(
-              delta,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF16A34A),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            value: trend,
-            minHeight: 10,
-            backgroundColor: const Color(0xFFE2E8F0),
-            valueColor: const AlwaysStoppedAnimation(Color(0xFF6366F1)),
-          ),
-        ),
-      ],
-    );
-  }
+  Map<String, dynamic> toMap() => {
+    'workstream': workstream,
+    'velocity': velocity,
+    'delta': delta,
+    'period': period,
+    'owner': owner,
+    'status': status,
+  };
+
+  static _ActionVelocityRow fromMap(Map<String, dynamic> map) => _ActionVelocityRow(
+    workstream: map['workstream']?.toString() ?? '',
+    velocity: (map['velocity'] is int) ? map['velocity'] as int : int.tryParse(map['velocity'].toString()) ?? 0,
+    delta: map['delta']?.toString() ?? '+0.0%',
+    period: map['period']?.toString() ?? '',
+    owner: map['owner']?.toString() ?? '',
+    status: map['status']?.toString() ?? 'On Track',
+  );
 }
 
 class _MetricPill extends StatelessWidget {

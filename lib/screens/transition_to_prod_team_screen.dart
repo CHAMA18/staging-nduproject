@@ -195,10 +195,9 @@ class _TransitionToProdTeamScreenState
                 _scheduleSave();
               },
             ),
-            LaunchEditableCell(
+            LaunchDateCell(
               value: item.startDate,
               hint: 'Start',
-              expand: true,
               onChanged: (v) {
                 _teamRoster[idx] = item.copyWith(startDate: v);
                 _scheduleSave();
@@ -264,10 +263,9 @@ class _TransitionToProdTeamScreenState
                 _scheduleSave();
               },
             ),
-            LaunchEditableCell(
+            LaunchDateCell(
               value: item.dueDate,
               hint: 'Due',
-              expand: true,
               onChanged: (v) {
                 _handoverChecklist[idx] = item.copyWith(dueDate: v);
                 _scheduleSave();
@@ -399,10 +397,9 @@ class _TransitionToProdTeamScreenState
                 setState(() {});
               },
             ),
-            LaunchEditableCell(
+            LaunchDateCell(
               value: item.date,
               hint: 'Date',
-              expand: true,
               onChanged: (v) {
                 _signOffs[idx] = item.copyWith(date: v);
                 _scheduleSave();
@@ -585,18 +582,30 @@ class _TransitionToProdTeamScreenState
     }
     if (contextText.trim().isEmpty) return;
 
+    if (_projectId != null) {
+      final staff = await LaunchPhaseService.loadExecutionStaffing(_projectId!);
+      if (mounted) {
+        final staffingSummary = staff.isEmpty ? 'No staffing data.' : staff.map((s) => '- ${s.name} (${s.role}, status: ${s.releaseStatus})').take(8).join('\n');
+        contextText = ProjectDataHelper.buildLaunchPhaseContext(
+          baseContext: contextText,
+          sectionLabel: 'Transition to Production Team',
+          staffingSummary: staffingSummary,
+        );
+      }
+    }
+
     setState(() => _isGenerating = true);
     Map<String, List<Map<String, dynamic>>> generated = {};
     try {
       generated = await OpenAiServiceSecure().generateLaunchPhaseEntries(
         context: contextText,
         sections: const {
-          'team_roster': 'Production team members with name, role, contact',
+          'team_roster': 'Production team members with "name", "role", "contact", "release_status"',
           'handover_checklist':
-              'Handover items with category, item description, owner, status',
+              'Handover items with "category", "item", "owner", "due_date", "status"',
           'knowledge_transfer':
-              'Knowledge transfer topics with from-person, to-person, method, status',
-          'signoffs': 'Sign-off approvers with name, role, status',
+              'Knowledge transfer topics with "topic", "from_person", "to_person", "method", "status"',
+          'signoffs': 'Sign-off approvers with "stakeholder", "role", "status"',
         },
         itemsPerSection: 3,
       );

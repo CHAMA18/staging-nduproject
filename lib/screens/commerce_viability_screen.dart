@@ -150,7 +150,11 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
     return LaunchDataTable(
       title: 'Financial Metrics',
       subtitle: 'ROI, payback period, total investment, and projected returns.',
-      columns: const ['Metric', 'Value', 'Notes'],
+      columns: const [
+        LaunchColumn(label: 'Metric', flexible: true),
+        LaunchColumn(label: 'Value', width: 120),
+        LaunchColumn(label: 'Notes', flexible: true),
+      ],
       rowCount: _financialMetrics.length,
       onAdd: () {
         setState(() => _financialMetrics.add(LaunchFinancialMetric()));
@@ -208,7 +212,14 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
       title: 'Warranty Tracker',
       subtitle:
           'Track warranty coverage for deliverables, equipment, and services.',
-      columns: const ['Item', 'Vendor', 'Type', 'Start', 'Expiry', 'Status'],
+      columns: const [
+        LaunchColumn(label: 'Item', flexible: true),
+        LaunchColumn(label: 'Vendor', width: 110),
+        LaunchColumn(label: 'Type', width: 100),
+        LaunchColumn(label: 'Start', width: 100),
+        LaunchColumn(label: 'Expiry', width: 100),
+        LaunchColumn(label: 'Status', width: 120),
+      ],
       rowCount: _warranties.length,
       onAdd: () {
         setState(() => _warranties.add(LaunchWarrantyItem()));
@@ -254,7 +265,7 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
                 _save();
               },
             ),
-            LaunchEditableCell(
+            LaunchDateCell(
               value: w.startDate,
               hint: 'Start',
               width: 100,
@@ -263,7 +274,7 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
                 _save();
               },
             ),
-            LaunchEditableCell(
+            LaunchDateCell(
               value: w.expiryDate,
               hint: 'Expiry',
               width: 100,
@@ -293,7 +304,12 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
     return LaunchDataTable(
       title: 'Operations Cost Projection',
       subtitle: 'Monthly and annual ongoing costs post-launch.',
-      columns: const ['Category', 'Monthly', 'Annual', 'Notes'],
+      columns: const [
+        LaunchColumn(label: 'Category', flexible: true),
+        LaunchColumn(label: 'Monthly', width: 100),
+        LaunchColumn(label: 'Annual', width: 100),
+        LaunchColumn(label: 'Notes', flexible: true),
+      ],
       rowCount: _opsCosts.length,
       onAdd: () {
         setState(() => _opsCosts.add(LaunchOpsCostItem()));
@@ -391,7 +407,11 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
     return LaunchDataTable(
       title: 'Recommendations',
       subtitle: 'Key actions for commercial sustainability.',
-      columns: const ['Recommendation', 'Details', 'Status'],
+      columns: const [
+        LaunchColumn(label: 'Recommendation', flexible: true),
+        LaunchColumn(label: 'Details', flexible: true),
+        LaunchColumn(label: 'Status', width: 120),
+      ],
       rowCount: _recommendations.length,
       onAdd: () {
         setState(() => _recommendations.add(LaunchFollowUpItem()));
@@ -472,6 +492,12 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
           _opsCosts.isEmpty &&
           _financialMetrics.isEmpty &&
           _recommendations.isEmpty) {
+        await _autoPopulateFromPriorPhases();
+      }
+      if (_warranties.isEmpty &&
+          _opsCosts.isEmpty &&
+          _financialMetrics.isEmpty &&
+          _recommendations.isEmpty) {
         await _populateFromAi();
       }
     } catch (e) {
@@ -496,6 +522,134 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
     }
   }
 
+  Future<void> _autoPopulateFromPriorPhases() async {
+    if (_projectId == null) return;
+    try {
+      final contracts = await LaunchPhaseService.loadExecutionContracts(_projectId!);
+      final budgetRows = await LaunchPhaseService.loadBudgetRows(_projectId!);
+      final staff = await LaunchPhaseService.loadExecutionStaffing(_projectId!);
+      final riskSnapshot = await LaunchPhaseService.loadRiskTrackingSnapshot(_projectId!);
+
+      if (!mounted) return;
+
+      final warrantyExisting = _warranties.map((w) => w.item).toSet();
+      final newWarranties = <LaunchWarrantyItem>[];
+      for (final c in contracts) {
+        if (c.contractName.isNotEmpty && !warrantyExisting.contains(c.contractName)) {
+          newWarranties.add(LaunchWarrantyItem(
+            item: c.contractName,
+            vendor: c.vendor,
+            warrantyType: 'Standard',
+            status: 'Active',
+          ));
+        }
+      }
+      if (newWarranties.isNotEmpty) {
+        setState(() => _warranties.addAll(newWarranties));
+      }
+
+      final opsCostExisting = _opsCosts.map((c) => c.category).toSet();
+      final newOpsCosts = <LaunchOpsCostItem>[];
+      for (final s in staff) {
+        if (s.name.isNotEmpty && !opsCostExisting.contains(s.name)) {
+          newOpsCosts.add(LaunchOpsCostItem(
+            category: 'Staff: ${s.name}',
+            notes: s.role,
+          ));
+        }
+      }
+      for (final br in budgetRows) {
+        final cat = br['category']?.toString() ?? '';
+        if (cat.isNotEmpty && !opsCostExisting.contains(cat)) {
+          final planned = br['plannedAmount']?.toString() ?? '';
+          if (planned.isNotEmpty) {
+            final numVal = double.tryParse(planned.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+            newOpsCosts.add(LaunchOpsCostItem(
+              category: cat,
+              monthlyCost: planned,
+              annualCost: (numVal * 12).toStringAsFixed(0),
+            ));
+          }
+        }
+      }
+      if (newOpsCosts.isNotEmpty) {
+        setState(() => _opsCosts.addAll(newOpsCosts));
+      }
+
+      final metricExisting = _financialMetrics.map((m) => m.label).toSet();
+      final newMetrics = <LaunchFinancialMetric>[];
+
+      double totalPlanned = 0;
+      double totalActual = 0;
+      for (final br in budgetRows) {
+        final planned = double.tryParse((br['plannedAmount'] ?? '').toString().replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+        final actual = double.tryParse((br['actualAmount'] ?? '').toString().replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+        totalPlanned += planned;
+        totalActual += actual;
+      }
+      if (totalPlanned > 0 && !metricExisting.contains('Total Planned Budget')) {
+        newMetrics.add(LaunchFinancialMetric(
+          label: 'Total Planned Budget',
+          value: '\$${totalPlanned.toStringAsFixed(0)}',
+        ));
+      }
+      if (totalActual > 0 && !metricExisting.contains('Total Actual Spend')) {
+        newMetrics.add(LaunchFinancialMetric(
+          label: 'Total Actual Spend',
+          value: '\$${totalActual.toStringAsFixed(0)}',
+        ));
+      }
+      if (totalPlanned > 0 && !metricExisting.contains('Budget Variance')) {
+        final variance = totalPlanned - totalActual;
+        newMetrics.add(LaunchFinancialMetric(
+          label: 'Budget Variance',
+          value: '\$${variance.toStringAsFixed(0)}',
+          notes: variance >= 0 ? 'Under budget' : 'Over budget',
+        ));
+      }
+
+      double totalContractValue = 0;
+      for (final c in contracts) {
+        totalContractValue += double.tryParse(c.value.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+      }
+      if (totalContractValue > 0 && !metricExisting.contains('Total Contract Value')) {
+        newMetrics.add(LaunchFinancialMetric(
+          label: 'Total Contract Value',
+          value: '\$${totalContractValue.toStringAsFixed(0)}',
+        ));
+      }
+      if (newMetrics.isNotEmpty) {
+        setState(() => _financialMetrics.addAll(newMetrics));
+      }
+
+      final recExisting = _recommendations.map((r) => r.title).toSet();
+      final newRecs = <LaunchFollowUpItem>[];
+      final mitigationPlans = riskSnapshot['mitigationPlans'];
+      if (mitigationPlans is List) {
+        for (final mp in mitigationPlans.whereType<Map>()) {
+          final m = Map<String, dynamic>.from(mp);
+          final title = m['title']?.toString() ?? m['action']?.toString() ?? '';
+          if (title.isNotEmpty && !recExisting.contains(title)) {
+            newRecs.add(LaunchFollowUpItem(
+              title: title,
+              details: m['description']?.toString() ?? m['details']?.toString() ?? '',
+              status: 'Open',
+            ));
+          }
+        }
+      }
+      if (newRecs.isNotEmpty) {
+        setState(() => _recommendations.addAll(newRecs));
+      }
+
+      if (newWarranties.isNotEmpty || newOpsCosts.isNotEmpty || newMetrics.isNotEmpty || newRecs.isNotEmpty) {
+        await _persistData();
+      }
+    } catch (e) {
+      debugPrint('Commerce auto-populate error: $e');
+    }
+  }
+
   Future<void> _populateFromAi() async {
     if (_isGenerating) return;
     final data = ProjectDataHelper.getData(context);
@@ -506,6 +660,28 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
           sectionLabel: 'Commerce Viability');
     }
     if (ctx.trim().isEmpty) return;
+
+    if (_projectId != null) {
+      final contracts = await LaunchPhaseService.loadExecutionContracts(_projectId!);
+      final budgetRows = await LaunchPhaseService.loadBudgetRows(_projectId!);
+      final staff = await LaunchPhaseService.loadExecutionStaffing(_projectId!);
+      final riskSnapshot = await LaunchPhaseService.loadRiskTrackingSnapshot(_projectId!);
+      if (mounted) {
+        final contractsSummary = contracts.isEmpty ? 'No contract data.' : contracts.map((c) => '- ${c.contractName} (vendor: ${c.vendor}, value: ${c.value})').take(8).join('\n');
+        final budgetSummary = budgetRows.isEmpty ? 'No budget data.' : budgetRows.map((b) => '- ${b['category'] ?? 'Unknown'}: planned ${b['plannedAmount'] ?? '0'}, actual ${b['actualAmount'] ?? '0'}').take(8).join('\n');
+        final staffingSummary = staff.isEmpty ? 'No staffing data.' : staff.map((s) => '- ${s.name} (${s.role})').take(8).join('\n');
+        final riskItems = riskSnapshot['riskItems'] is List ? (riskSnapshot['riskItems'] as List).whereType<Map>().take(6).map((r) => '- ${r['title'] ?? r['risk'] ?? 'Unknown'} (status: ${r['status'] ?? 'Unknown'})').join('\n') : 'No risk tracking data.';
+        ctx = ProjectDataHelper.buildLaunchPhaseContext(
+          baseContext: ctx,
+          sectionLabel: 'Commerce Viability',
+          contractsSummary: contractsSummary,
+          budgetSummary: budgetSummary,
+          staffingSummary: staffingSummary,
+          riskTrackingSummary: riskItems,
+        );
+      }
+    }
+
     setState(() => _isGenerating = true);
     Map<String, List<Map<String, dynamic>>> gen = {};
     try {
@@ -513,12 +689,12 @@ class _CommerceViabilityScreenState extends State<CommerceViabilityScreen> {
         context: ctx,
         sections: const {
           'financial_metrics':
-              'ROI metrics: total investment, projected annual return, payback period',
+              'ROI metrics with "label", "value", "notes"',
           'warranties':
-              'Warranty items with vendor, type, start and expiry dates',
+              'Warranty items with "item", "vendor", "warranty_type", "start_date", "expiry_date", "status"',
           'ops_costs':
-              'Post-launch operational costs: infrastructure, licenses, support',
-          'recommendations': 'Recommendations for commercial sustainability',
+              'Post-launch operational costs with "category", "monthly_cost", "annual_cost", "notes"',
+          'recommendations': 'Recommendations with "title", "details", "status"',
         },
         itemsPerSection: 3,
       );

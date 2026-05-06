@@ -94,12 +94,16 @@ class EvaluationCriteria {
   final String category;
   final double weight;
 
-  const EvaluationCriteria({
-    required this.id,
+  EvaluationCriteria({
+    String? id,
     required this.name,
     this.category = 'Technical',
     this.weight = 0.0,
-  });
+  }) : id = id ?? _generateId(name);
+
+  static String _generateId(String name) {
+    return name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+  }
 
   EvaluationCriteria copyWith({
     String? id,

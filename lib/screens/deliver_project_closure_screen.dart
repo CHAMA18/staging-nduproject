@@ -204,7 +204,7 @@ class _DeliverProjectClosureScreenState
               setState(() {});
             },
           ),
-          LaunchEditableCell(
+          LaunchDateCell(
             value: _scopeItems[i].acceptanceDate,
             hint: 'Date',
             width: 100,
@@ -241,19 +241,17 @@ class _DeliverProjectClosureScreenState
               _scheduleSave();
             },
           ),
-          LaunchEditableCell(
+          LaunchDateCell(
             value: _milestones[i].plannedDate,
             hint: 'Planned date',
-            expand: true,
             onChanged: (v) {
               _milestones[i] = _milestones[i].copyWith(plannedDate: v);
               _scheduleSave();
             },
           ),
-          LaunchEditableCell(
+          LaunchDateCell(
             value: _milestones[i].actualDate,
             hint: 'Actual date',
-            expand: true,
             onChanged: (v) {
               _milestones[i] = _milestones[i].copyWith(actualDate: v);
               _scheduleSave();
@@ -561,6 +559,24 @@ class _DeliverProjectClosureScreenState
     }
     if (contextText.trim().isEmpty) return;
 
+    if (_projectId != null) {
+      final scopeTracking = await LaunchPhaseService.loadScopeTrackingItems(_projectId!);
+      final deliverableRows = await LaunchPhaseService.loadDeliverableRows(_projectId!);
+      final riskSnapshot = await LaunchPhaseService.loadRiskTrackingSnapshot(_projectId!);
+      if (mounted) {
+        final scopeSummary = scopeTracking.isEmpty ? 'No scope tracking data.' : scopeTracking.map((s) => '- ${s.deliverable} (status: ${s.status})').take(8).join('\n');
+        final deliverableSummary = deliverableRows.isEmpty ? 'No deliverable data.' : deliverableRows.map((d) => '- ${d['title'] ?? 'Untitled'} (status: ${d['status'] ?? 'Unknown'})').take(8).join('\n');
+        final riskItems = riskSnapshot['riskItems'] is List ? (riskSnapshot['riskItems'] as List).whereType<Map>().take(6).map((r) => '- ${r['title'] ?? r['risk'] ?? 'Unknown'} (status: ${r['status'] ?? 'Unknown'})').join('\n') : 'No risk tracking data.';
+        contextText = ProjectDataHelper.buildLaunchPhaseContext(
+          baseContext: contextText,
+          sectionLabel: 'Deliver Project Closure',
+          scopeTrackingSummary: scopeSummary,
+          deliverablesSummary: deliverableSummary,
+          riskTrackingSummary: riskItems,
+        );
+      }
+    }
+
     setState(() => _isGenerating = true);
 
     Map<String, List<Map<String, dynamic>>> generated = {};
@@ -569,11 +585,11 @@ class _DeliverProjectClosureScreenState
         context: contextText,
         sections: const {
           'scope_acceptance':
-              'Scope acceptance items with deliverable, criteria, status',
+              'Scope acceptance items with "deliverable", "acceptance_criteria", "status"',
           'milestones':
-              'Delivery milestones with title, planned date, actual date, status',
-          'outstanding': 'Outstanding items needing resolution before handover',
-          'risk_followups': 'Post-delivery risks to monitor',
+              'Delivery milestones with "title", "planned_date", "actual_date", "status"',
+          'outstanding': 'Outstanding items with "title", "details", "owner", "status"',
+          'risk_followups': 'Post-delivery risks with "title", "details", "owner", "status"',
         },
         itemsPerSection: 3,
       );

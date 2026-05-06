@@ -302,7 +302,7 @@ class _VendorAccountCloseOutScreenState
                 _save();
               },
             ),
-            LaunchEditableCell(
+            LaunchDateCell(
               value: a.revokedDate,
               hint: 'Date',
               width: 120,
@@ -541,9 +541,26 @@ class _VendorAccountCloseOutScreenState
     var ctx = ProjectDataHelper.buildExecutivePlanContext(data,
         sectionLabel: 'Vendor Account Close Out');
     if (ctx.trim().isEmpty) {
-      ctx = ProjectDataHelper.buildProjectContextScan(data);
+      ctx = ProjectDataHelper.buildProjectContextScan(data,
+          sectionLabel: 'Vendor Account Close Out');
     }
     if (ctx.trim().isEmpty) return;
+
+    if (_projectId != null) {
+      final vendors = await LaunchPhaseService.loadExecutionVendors(_projectId!);
+      final contracts = await LaunchPhaseService.loadExecutionContracts(_projectId!);
+      if (mounted) {
+        final vendorsSummary = vendors.isEmpty ? 'No vendor data.' : vendors.map((v) => '- ${v.vendorName} (status: ${v.accountStatus})').take(8).join('\n');
+        final contractsSummary = contracts.isEmpty ? 'No contract data.' : contracts.map((c) => '- ${c.contractName} (vendor: ${c.vendor})').take(8).join('\n');
+        ctx = ProjectDataHelper.buildLaunchPhaseContext(
+          baseContext: ctx,
+          sectionLabel: 'Vendor Account Close Out',
+          vendorsSummary: vendorsSummary,
+          contractsSummary: contractsSummary,
+        );
+      }
+    }
+
     setState(() => _isGenerating = true);
     Map<String, List<Map<String, dynamic>>> gen = {};
     try {
@@ -551,12 +568,12 @@ class _VendorAccountCloseOutScreenState
         context: ctx,
         sections: const {
           'vendors':
-              'Vendors with name, contract reference, outstanding items, status',
+              'Vendors with "vendor_name", "contract_ref", "outstanding_items", "status"',
           'access_items':
-              'System access items with system, vendor, access level, status',
+              'System access items with "system", "vendor", "access_level", "revoked_date", "status"',
           'obligations':
-              'Outstanding obligations: payments, deliverables, SLAs',
-          'closure_checklist': 'Closure verification tasks with status',
+              'Outstanding obligations with "title", "details", "owner", "status"',
+          'closure_checklist': 'Closure verification tasks with "title", "details", "status"',
         },
         itemsPerSection: 3,
       );

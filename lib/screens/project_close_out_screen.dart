@@ -316,7 +316,7 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
                 setState(() {});
               },
             ),
-            LaunchEditableCell(
+            LaunchDateCell(
               value: a.date,
               hint: 'Date',
               width: 100,
@@ -571,6 +571,11 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
       if (_closeOutChecklist.isEmpty &&
           _approvals.isEmpty &&
           _archive.isEmpty) {
+        await _autoPopulateFromPriorPhases();
+      }
+      if (_closeOutChecklist.isEmpty &&
+          _approvals.isEmpty &&
+          _archive.isEmpty) {
         await _populateFromAi();
       }
     } catch (e) {
@@ -594,6 +599,122 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
     }
   }
 
+  Future<void> _autoPopulateFromPriorPhases() async {
+    if (_projectId == null) return;
+    try {
+      final contracts = await LaunchPhaseService.loadExecutionContracts(_projectId!);
+      final vendors = await LaunchPhaseService.loadExecutionVendors(_projectId!);
+      final deliverableRows = await LaunchPhaseService.loadDeliverableRows(_projectId!);
+      final staff = await LaunchPhaseService.loadExecutionStaffing(_projectId!);
+      final stakeholders = await LaunchPhaseService.loadCoreStakeholders(_projectId!);
+      final planningDeliverables = await LaunchPhaseService.loadPlanningDeliverables(_projectId!);
+
+      if (!mounted) return;
+
+      final checklistExisting = _closeOutChecklist.map((c) => c.item).toSet();
+      final newChecklistItems = <LaunchCloseOutCheckItem>[];
+
+      for (final d in deliverableRows) {
+        final title = d['title']?.toString() ?? '';
+        if (title.isNotEmpty && !checklistExisting.contains(title)) {
+          newChecklistItems.add(LaunchCloseOutCheckItem(
+            category: 'Deliverables',
+            item: title,
+            status: d['status']?.toString() ?? 'Pending',
+            notes: '',
+          ));
+        }
+      }
+
+      for (final c in contracts) {
+        if (!checklistExisting.contains(c.contractName)) {
+          newChecklistItems.add(LaunchCloseOutCheckItem(
+            category: 'Contracts',
+            item: c.contractName,
+            status: c.closeOutStatus == 'Closed' ? 'Complete' : 'Pending',
+            notes: '',
+          ));
+        }
+      }
+
+      for (final v in vendors) {
+        if (!checklistExisting.contains(v.vendorName)) {
+          newChecklistItems.add(LaunchCloseOutCheckItem(
+            category: 'Vendors',
+            item: v.vendorName,
+            status: v.accountStatus == 'Inactive' ? 'Complete' : 'Pending',
+            notes: '',
+          ));
+        }
+      }
+
+      for (final s in staff) {
+        if (!checklistExisting.contains(s.name)) {
+          newChecklistItems.add(LaunchCloseOutCheckItem(
+            category: 'Team',
+            item: s.name,
+            status: s.releaseStatus == 'Released' ? 'Complete' : 'Pending',
+            notes: '',
+          ));
+        }
+      }
+
+      for (final pd in planningDeliverables) {
+        final title = pd['title']?.toString() ?? '';
+        if (title.isNotEmpty && !checklistExisting.contains(title)) {
+          newChecklistItems.add(LaunchCloseOutCheckItem(
+            category: 'Documentation',
+            item: title,
+            status: 'Pending',
+            notes: '',
+          ));
+        }
+      }
+
+      if (newChecklistItems.isNotEmpty) {
+        setState(() => _closeOutChecklist.addAll(newChecklistItems));
+      }
+
+      final approvalsExisting = _approvals.map((a) => a.stakeholder).toSet();
+      final newApprovals = <LaunchApproval>[];
+      for (final sh in stakeholders) {
+        final name = sh['name'] ?? sh['stakeholder'] ?? '';
+        if (name.isNotEmpty && !approvalsExisting.contains(name)) {
+          newApprovals.add(LaunchApproval(
+            stakeholder: name,
+            role: sh['role'] ?? '',
+            status: 'Pending',
+          ));
+        }
+      }
+      if (newApprovals.isNotEmpty) {
+        setState(() => _approvals.addAll(newApprovals));
+      }
+
+      final archiveExisting = _archive.map((a) => a.repository).toSet();
+      final newArchiveItems = <LaunchArchiveItem>[];
+      for (final pd in planningDeliverables) {
+        final title = pd['title']?.toString() ?? '';
+        if (title.isNotEmpty && !archiveExisting.contains(title)) {
+          newArchiveItems.add(LaunchArchiveItem(
+            repository: title,
+            documentType: pd['type']?.toString() ?? 'Deliverable',
+            status: 'Pending',
+          ));
+        }
+      }
+      if (newArchiveItems.isNotEmpty) {
+        setState(() => _archive.addAll(newArchiveItems));
+      }
+
+      if (newChecklistItems.isNotEmpty || newApprovals.isNotEmpty || newArchiveItems.isNotEmpty) {
+        await _persistData();
+      }
+    } catch (e) {
+      debugPrint('Close-out auto-populate error: $e');
+    }
+  }
+
   Future<void> _populateFromAi() async {
     if (_isGenerating) return;
     final data = ProjectDataHelper.getData(context);
@@ -604,6 +725,28 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
           sectionLabel: 'Project Close Out');
     }
     if (ctx.trim().isEmpty) return;
+
+    if (_projectId != null) {
+      final contracts = await LaunchPhaseService.loadExecutionContracts(_projectId!);
+      final vendors = await LaunchPhaseService.loadExecutionVendors(_projectId!);
+      final deliverableRows = await LaunchPhaseService.loadDeliverableRows(_projectId!);
+      final staff = await LaunchPhaseService.loadExecutionStaffing(_projectId!);
+      if (mounted) {
+        final contractsSummary = contracts.isEmpty ? 'No contract data.' : contracts.map((c) => '- ${c.contractName} (vendor: ${c.vendor}, value: ${c.value}, status: ${c.closeOutStatus})').take(8).join('\n');
+        final vendorsSummary = vendors.isEmpty ? 'No vendor data.' : vendors.map((v) => '- ${v.vendorName} (status: ${v.accountStatus})').take(8).join('\n');
+        final deliverableSummary = deliverableRows.isEmpty ? 'No deliverable data.' : deliverableRows.map((d) => '- ${d['title'] ?? 'Untitled'} (status: ${d['status'] ?? 'Unknown'})').take(8).join('\n');
+        final staffingSummary = staff.isEmpty ? 'No staffing data.' : staff.map((s) => '- ${s.name} (${s.role})').take(8).join('\n');
+        ctx = ProjectDataHelper.buildLaunchPhaseContext(
+          baseContext: ctx,
+          sectionLabel: 'Project Close Out',
+          contractsSummary: contractsSummary,
+          vendorsSummary: vendorsSummary,
+          deliverablesSummary: deliverableSummary,
+          staffingSummary: staffingSummary,
+        );
+      }
+    }
+
     setState(() => _isGenerating = true);
     Map<String, List<Map<String, dynamic>>> gen = {};
     try {
@@ -611,10 +754,10 @@ class _ProjectCloseOutScreenState extends State<ProjectCloseOutScreen> {
         context: ctx,
         sections: const {
           'checklist':
-              'Close-out checklist items by category: Deliverables, Contracts, Vendors, Team, Documentation, Finance',
-          'approvals': 'Final approvers with role and status',
+              'Close-out checklist items with "category", "item", "status", "notes"',
+          'approvals': 'Final approvers with "stakeholder", "role", "status"',
           'archive':
-              'Archive items: repositories, document types, retention periods',
+              'Archive items with "repository", "document_type", "retention_period", "status"',
         },
         itemsPerSection: 3,
       );

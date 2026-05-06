@@ -408,7 +408,7 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
                 setState(() {});
               },
             ),
-            LaunchEditableCell(
+            LaunchDateCell(
               value: item.date,
               hint: 'Date',
               width: 90,
@@ -517,6 +517,22 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
           sectionLabel: 'Contract Close Out');
     }
     if (ctx.trim().isEmpty) return;
+
+    if (_projectId != null) {
+      final contracts = await LaunchPhaseService.loadExecutionContracts(_projectId!);
+      final budgetRows = await LaunchPhaseService.loadBudgetRows(_projectId!);
+      if (mounted) {
+        final contractsSummary = contracts.isEmpty ? 'No contract data.' : contracts.map((c) => '- ${c.contractName} (vendor: ${c.vendor}, value: ${c.value}, status: ${c.closeOutStatus})').take(8).join('\n');
+        final budgetSummary = budgetRows.isEmpty ? 'No budget data.' : budgetRows.map((b) => '- ${b['category'] ?? 'Unknown'}: planned ${b['plannedAmount'] ?? '0'}, actual ${b['actualAmount'] ?? '0'}').take(8).join('\n');
+        ctx = ProjectDataHelper.buildLaunchPhaseContext(
+          baseContext: ctx,
+          sectionLabel: 'Contract Close Out',
+          contractsSummary: contractsSummary,
+          budgetSummary: budgetSummary,
+        );
+      }
+    }
+
     setState(() => _isGenerating = true);
     Map<String, List<Map<String, dynamic>>> gen = {};
     try {
@@ -524,10 +540,10 @@ class _ContractCloseOutScreenState extends State<ContractCloseOutScreen> {
         context: ctx,
         sections: const {
           'financial_summary':
-              'Financial metrics: total value, paid, pending, disputed',
-          'contracts': 'Contracts with name, vendor, value, close-out status',
-          'closeout_steps': 'Close-out verification steps with status',
-          'signoffs': 'Finance and compliance approvers with status',
+              'Financial metrics with "label", "value", "notes"',
+          'contracts': 'Contracts with "contract_name", "vendor", "value", "close_out_status"',
+          'closeout_steps': 'Close-out verification steps with "step", "status", "notes"',
+          'signoffs': 'Finance and compliance approvers with "stakeholder", "role", "status"',
         },
         itemsPerSection: 3,
       );

@@ -98,6 +98,7 @@ class _PoApprovalDialogState extends State<PoApprovalDialog> {
               ),
               maxLines: 3,
               textInputAction: TextInputAction.newline,
+              onChanged: (_) => setState(() {}),
             ),
           ],
         ),

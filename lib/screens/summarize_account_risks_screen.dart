@@ -406,6 +406,12 @@ class _SummarizeAccountRisksScreenState
           _highlights.isEmpty &&
           _topRisks.isEmpty &&
           _next90Days.isEmpty) {
+        await _autoPopulateFromPriorPhases();
+      }
+      if (_metrics.isEmpty &&
+          _highlights.isEmpty &&
+          _topRisks.isEmpty &&
+          _next90Days.isEmpty) {
         await _populateFromAi();
       }
     } catch (e) {
@@ -430,6 +436,188 @@ class _SummarizeAccountRisksScreenState
     }
   }
 
+  Future<void> _autoPopulateFromPriorPhases() async {
+    if (_projectId == null) return;
+    try {
+      final budgetRows = await LaunchPhaseService.loadBudgetRows(_projectId!);
+      final contracts = await LaunchPhaseService.loadExecutionContracts(_projectId!);
+      final deliverableRows = await LaunchPhaseService.loadDeliverableRows(_projectId!);
+      final scopeTracking = await LaunchPhaseService.loadScopeTrackingItems(_projectId!);
+      final riskSnapshot = await LaunchPhaseService.loadRiskTrackingSnapshot(_projectId!);
+
+      if (!mounted) return;
+
+      final metricExisting = _metrics.map((m) => m.label).toSet();
+      final newMetrics = <LaunchFinancialMetric>[];
+
+      double totalPlanned = 0;
+      double totalActual = 0;
+      for (final br in budgetRows) {
+        final planned = double.tryParse((br['plannedAmount'] ?? '').toString().replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+        final actual = double.tryParse((br['actualAmount'] ?? '').toString().replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+        totalPlanned += planned;
+        totalActual += actual;
+      }
+      if (totalPlanned > 0 && !metricExisting.contains('Total Budget')) {
+        newMetrics.add(LaunchFinancialMetric(
+          label: 'Total Budget',
+          value: '\$${totalPlanned.toStringAsFixed(0)}',
+          notes: 'Planned',
+        ));
+      }
+      if (totalActual > 0 && !metricExisting.contains('Actual Spend')) {
+        newMetrics.add(LaunchFinancialMetric(
+          label: 'Actual Spend',
+          value: '\$${totalActual.toStringAsFixed(0)}',
+          notes: 'Actual',
+        ));
+      }
+      if (totalPlanned > 0 && !metricExisting.contains('Budget Variance')) {
+        final variance = totalPlanned - totalActual;
+        newMetrics.add(LaunchFinancialMetric(
+          label: 'Budget Variance',
+          value: '\$${variance.toStringAsFixed(0)}',
+          notes: variance >= 0 ? 'Under budget' : 'Over budget',
+        ));
+      }
+
+      double totalContractValue = 0;
+      for (final c in contracts) {
+        totalContractValue += double.tryParse(c.value.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+      }
+      if (totalContractValue > 0 && !metricExisting.contains('Total Contract Value')) {
+        newMetrics.add(LaunchFinancialMetric(
+          label: 'Total Contract Value',
+          value: '\$${totalContractValue.toStringAsFixed(0)}',
+        ));
+      }
+
+      final completedDeliverables = deliverableRows.where((d) {
+        final status = d['status']?.toString().toLowerCase() ?? '';
+        return status == 'completed' || status == 'done' || status == 'verified';
+      }).toList();
+      final completedScope = scopeTracking.where((s) {
+        final status = s.status.toLowerCase();
+        return status == 'verified' || status == 'completed' || status == 'done';
+      }).toList();
+
+      if (!metricExisting.contains('Scope Completion')) {
+        final total = deliverableRows.length + scopeTracking.length;
+        final done = completedDeliverables.length + completedScope.length;
+        if (total > 0) {
+          newMetrics.add(LaunchFinancialMetric(
+            label: 'Scope Completion',
+            value: '$done / $total',
+            notes: '${(done / total * 100).round()}%',
+          ));
+        }
+      }
+
+      final riskItems = riskSnapshot['riskItems'];
+      if (riskItems is List) {
+        final openRisks = riskItems.whereType<Map>().where((r) {
+          final status = r['status']?.toString().toLowerCase() ?? '';
+          return status != 'closed' && status != 'resolved' && status != 'mitigated';
+        }).length;
+        if (openRisks > 0 && !metricExisting.contains('Active Risks')) {
+          newMetrics.add(LaunchFinancialMetric(
+            label: 'Active Risks',
+            value: '$openRisks',
+            notes: 'Requires monitoring',
+          ));
+        }
+      }
+      if (newMetrics.isNotEmpty) {
+        setState(() => _metrics.addAll(newMetrics));
+      }
+
+      final highlightExisting = _highlights.map((h) => h.title).toSet();
+      final newHighlights = <LaunchHighlightItem>[];
+      for (final d in completedDeliverables) {
+        final title = d['title']?.toString() ?? '';
+        if (title.isNotEmpty && !highlightExisting.contains(title)) {
+          newHighlights.add(LaunchHighlightItem(
+            title: title,
+            details: 'Deliverable completed successfully',
+            category: 'Win',
+          ));
+        }
+      }
+      for (final s in completedScope) {
+        if (s.deliverable.isNotEmpty && !highlightExisting.contains(s.deliverable)) {
+          newHighlights.add(LaunchHighlightItem(
+            title: s.deliverable,
+            details: 'Scope item verified',
+            category: 'Win',
+          ));
+        }
+      }
+      if (newHighlights.isNotEmpty) {
+        setState(() => _highlights.addAll(newHighlights));
+      }
+
+      final riskExisting = _topRisks.map((r) => r.title).toSet();
+      final newRisks = <LaunchFollowUpItem>[];
+      if (riskItems is List) {
+        for (final ri in riskItems.whereType<Map>()) {
+          final m = Map<String, dynamic>.from(ri);
+          final title = m['title']?.toString() ?? m['risk']?.toString() ?? '';
+          if (title.isNotEmpty && !riskExisting.contains(title)) {
+            newRisks.add(LaunchFollowUpItem(
+              title: title,
+              details: m['description']?.toString() ?? m['details']?.toString() ?? '',
+              owner: m['owner']?.toString() ?? '',
+              status: m['status']?.toString() ?? 'Open',
+            ));
+          }
+        }
+      }
+      if (newRisks.isNotEmpty) {
+        setState(() => _topRisks.addAll(newRisks));
+      }
+
+      final next90Existing = _next90Days.map((f) => f.title).toSet();
+      final newNext90 = <LaunchFollowUpItem>[];
+      final incompleteDeliverables = deliverableRows.where((d) {
+        final status = d['status']?.toString().toLowerCase() ?? '';
+        return status != 'completed' && status != 'done' && status != 'verified';
+      }).toList();
+      for (final d in incompleteDeliverables) {
+        final title = d['title']?.toString() ?? '';
+        if (title.isNotEmpty && !next90Existing.contains('Complete: $title')) {
+          newNext90.add(LaunchFollowUpItem(
+            title: 'Complete: $title',
+            details: 'Deliverable pending completion',
+            status: 'Planned',
+          ));
+        }
+      }
+      if (riskItems is List) {
+        for (final mp in riskSnapshot['mitigationPlans']?.whereType<Map>() ?? []) {
+          final m = Map<String, dynamic>.from(mp);
+          final title = m['title']?.toString() ?? m['action']?.toString() ?? '';
+          if (title.isNotEmpty && !next90Existing.contains(title)) {
+            newNext90.add(LaunchFollowUpItem(
+              title: title,
+              details: m['description']?.toString() ?? m['details']?.toString() ?? '',
+              owner: m['owner']?.toString() ?? '',
+              status: 'In Progress',
+            ));
+          }
+        }
+      }
+      if (newNext90.isNotEmpty) {
+        setState(() => _next90Days.addAll(newNext90));
+      }
+
+      if (newMetrics.isNotEmpty || newHighlights.isNotEmpty || newRisks.isNotEmpty || newNext90.isNotEmpty) {
+        await _persistData();
+      }
+    } catch (e) {
+      debugPrint('Summary auto-populate error: $e');
+    }
+  }
+
   Future<void> _populateFromAi() async {
     if (_isGenerating) return;
     final data = ProjectDataHelper.getData(context);
@@ -440,6 +628,28 @@ class _SummarizeAccountRisksScreenState
           sectionLabel: 'Project Summary');
     }
     if (ctx.trim().isEmpty) return;
+
+    if (_projectId != null) {
+      final budgetRows = await LaunchPhaseService.loadBudgetRows(_projectId!);
+      final deliverableRows = await LaunchPhaseService.loadDeliverableRows(_projectId!);
+      final riskSnapshot = await LaunchPhaseService.loadRiskTrackingSnapshot(_projectId!);
+      final contracts = await LaunchPhaseService.loadExecutionContracts(_projectId!);
+      if (mounted) {
+        final budgetSummary = budgetRows.isEmpty ? 'No budget data.' : budgetRows.map((b) => '- ${b['category'] ?? 'Unknown'}: planned ${b['plannedAmount'] ?? '0'}, actual ${b['actualAmount'] ?? '0'}').take(8).join('\n');
+        final deliverableSummary = deliverableRows.isEmpty ? 'No deliverable data.' : deliverableRows.map((d) => '- ${d['title'] ?? 'Untitled'} (status: ${d['status'] ?? 'Unknown'})').take(8).join('\n');
+        final riskItems = riskSnapshot['riskItems'] is List ? (riskSnapshot['riskItems'] as List).whereType<Map>().take(6).map((r) => '- ${r['title'] ?? r['risk'] ?? 'Unknown'} (status: ${r['status'] ?? 'Unknown'})').join('\n') : 'No risk tracking data.';
+        final contractsSummary = contracts.isEmpty ? 'No contract data.' : contracts.map((c) => '- ${c.contractName} (vendor: ${c.vendor}, value: ${c.value})').take(8).join('\n');
+        ctx = ProjectDataHelper.buildLaunchPhaseContext(
+          baseContext: ctx,
+          sectionLabel: 'Project Summary',
+          budgetSummary: budgetSummary,
+          deliverablesSummary: deliverableSummary,
+          riskTrackingSummary: riskItems,
+          contractsSummary: contractsSummary,
+        );
+      }
+    }
+
     setState(() => _isGenerating = true);
     Map<String, List<Map<String, dynamic>>> gen = {};
     try {
@@ -447,10 +657,10 @@ class _SummarizeAccountRisksScreenState
         context: ctx,
         sections: const {
           'metrics':
-              'Executive metrics: budget status, scope %, timeline status, active risks, team size',
-          'highlights': 'Key achievements and wins from the project',
-          'risks': 'Top risks with owner and mitigation status',
-          'next_90_days': 'Immediate follow-up priorities for post-launch',
+              'Executive metrics with "label", "value", "notes"',
+          'highlights': 'Key achievements with "title", "details"',
+          'risks': 'Top risks with "title", "details", "owner", "status"',
+          'next_90_days': 'Immediate follow-up priorities with "title", "details", "owner", "status"',
         },
         itemsPerSection: 3,
       );

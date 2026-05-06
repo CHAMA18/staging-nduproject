@@ -647,7 +647,7 @@ class _PlanningProcurementV2ScreenState
                               value: activity.wbsId,
                               child: Text(
                                 activity.title.trim().isNotEmpty
-                                    ? '${activity.wbsId} • ${activity.title}'
+                                    ? activity.title
                                     : activity.wbsId,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -1064,7 +1064,7 @@ class _PlanningProcurementV2ScreenState
     return _SectionCard(
       title: 'Reports',
       subtitle:
-          'This tab is intentionally ungated in planning mode, matching the implementation plan.',
+          '',
       child: Wrap(
         spacing: 12,
         runSpacing: 12,

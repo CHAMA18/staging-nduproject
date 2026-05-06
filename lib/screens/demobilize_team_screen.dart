@@ -425,10 +425,9 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
                 _save();
               },
             ),
-            LaunchEditableCell(
+            LaunchDateCell(
               value: c.sendDate,
               hint: 'Date',
-              expand: true,
               onChanged: (s) {
                 _communications[i] = c.copyWith(sendDate: s);
                 _save();
@@ -572,18 +571,34 @@ class _DemobilizeTeamScreenState extends State<DemobilizeTeamScreen> {
           sectionLabel: 'Demobilize Team');
     }
     if (ctx.trim().isEmpty) return;
+
+    if (_projectId != null) {
+      final staff = await LaunchPhaseService.loadExecutionStaffing(_projectId!);
+      final vendors = await LaunchPhaseService.loadExecutionVendors(_projectId!);
+      if (mounted) {
+        final staffingSummary = staff.isEmpty ? 'No staffing data.' : staff.map((s) => '- ${s.name} (${s.role}, status: ${s.releaseStatus})').take(8).join('\n');
+        final vendorsSummary = vendors.isEmpty ? 'No vendor data.' : vendors.map((v) => '- ${v.vendorName} (status: ${v.accountStatus})').take(8).join('\n');
+        ctx = ProjectDataHelper.buildLaunchPhaseContext(
+          baseContext: ctx,
+          sectionLabel: 'Demobilize Team',
+          staffingSummary: staffingSummary,
+          vendorsSummary: vendorsSummary,
+        );
+      }
+    }
+
     setState(() => _isGenerating = true);
     Map<String, List<Map<String, dynamic>>> gen = {};
     try {
       gen = await OpenAiServiceSecure().generateLaunchPhaseEntries(
         context: ctx,
         sections: const {
-          'team_roster': 'Team members with name, role, release status',
+          'team_roster': 'Team members with "name", "role", "release_status"',
           'knowledge_transfer':
-              'Knowledge transfer sessions with topic, from-person, to-person, status',
-          'vendor_offboarding': 'Vendor offboarding tasks with status',
+              'Knowledge transfer sessions with "topic", "from_person", "to_person", "method", "status"',
+          'vendor_offboarding': 'Vendor offboarding tasks with "title", "details", "status"',
           'communications':
-              'Communications to team and stakeholders with audience, message, channel',
+              'Communications with "audience", "message", "channel", "send_date", "status"',
         },
         itemsPerSection: 3,
       );

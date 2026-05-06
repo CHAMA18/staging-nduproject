@@ -1,11 +1,14 @@
 import 'dart:async';
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import 'package:ndu_project/models/project_data_model.dart';
 import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/theme.dart';
+import 'package:ndu_project/utils/design_planning_document.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/admin_edit_toggle.dart';
@@ -14,6 +17,11 @@ import 'package:ndu_project/widgets/initiation_like_sidebar.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
+import 'package:ndu_project/widgets/s_curve_chart.dart';
+import 'package:ndu_project/widgets/schedule_master_view.dart';
+import 'package:ndu_project/widgets/schedule_gantt_enhanced.dart';
+import 'package:ndu_project/widgets/work_package_dialog.dart';
+import 'package:ndu_project/widgets/work_package_detail.dart';
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
@@ -46,7 +54,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   String _timelineView = 'Months';
   String? _selectedTaskId;
   String? _hoveredTaskId;
-  int _selectedWorkspaceSection = 1;
+  int _selectedMainTab = 0; // 0: Master Schedule, 1: Gantt Chart, 2: List View, 3: Board View, 4: Work Packages, 5: Procurement Timeline, 6: Cost vs Schedule
 
   @override
   void initState() {
@@ -427,8 +435,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     if (draft == null || !mounted) return;
 
     setState(() {
-      _selectedWorkspaceSection = 1;
-      _selectedTab = 1;
       _activityRows.add(_ScheduleRow(
         id: _nextTaskId(),
         wbsId: draft.wbsId,
@@ -894,6 +900,279 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     _handleActivityChanged();
   }
 
+  Future<void> _createWorkPackage() async {
+    final data = ProjectDataHelper.getData(context);
+    final wbsLevel2Ids = <Map<String, String>>[];
+    for (final item in data.wbsTree) {
+      for (final child in item.children) {
+        wbsLevel2Ids.add({'id': child.id, 'title': child.title});
+      }
+    }
+
+    final result = await showDialog<WorkPackage>(
+      context: context,
+      builder: (context) => WorkPackageDialog(
+        wbsLevel2Options: wbsLevel2Ids,
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        data.workPackages.add(result);
+      });
+      _saveWorkPackages(data.workPackages);
+      _showInfo('Work package created.');
+    }
+  }
+
+  Future<void> _editWorkPackage(WorkPackage wp) async {
+    final data = ProjectDataHelper.getData(context);
+    final wbsLevel2Ids = <Map<String, String>>[];
+    for (final item in data.wbsTree) {
+      for (final child in item.children) {
+        wbsLevel2Ids.add({'id': child.id, 'title': child.title});
+      }
+    }
+
+    final result = await showDialog<WorkPackage>(
+      context: context,
+      builder: (context) => WorkPackageDialog(
+        initialWorkPackage: wp,
+        wbsLevel2Options: wbsLevel2Ids,
+      ),
+    );
+
+    if (result != null && mounted) {
+      final index = data.workPackages.indexWhere((item) => item.id == wp.id);
+      if (index != -1) {
+        setState(() {
+          data.workPackages[index] = result;
+        });
+        _saveWorkPackages(data.workPackages);
+        _showInfo('Work package updated.');
+      }
+    }
+  }
+
+  Future<void> _deleteWorkPackage(String wpId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Work Package'),
+        content: const Text('Are you sure you want to delete this work package?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      final data = ProjectDataHelper.getData(context);
+      setState(() {
+        data.workPackages.removeWhere((wp) => wp.id == wpId);
+      });
+      _saveWorkPackages(data.workPackages);
+      _showInfo('Work package deleted.');
+    }
+  }
+
+  Future<void> _showWorkPackageDetail(WorkPackage wp) async {
+    final data = ProjectDataHelper.getData(context);
+    final activities = data.scheduleActivities
+        .where((a) => a.workPackageId == wp.id)
+        .toList();
+
+    await showDialog(
+      context: context,
+      builder: (context) => WorkPackageDetailView(
+        workPackage: wp,
+        activities: activities,
+        onEdit: () {
+          Navigator.of(context).pop();
+          _editWorkPackage(wp);
+        },
+      ),
+    );
+  }
+
+  Future<void> _saveWorkPackages(List<WorkPackage> workPackages) async {
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'planning_schedule',
+      dataUpdater: (data) => data.copyWith(
+        workPackages: workPackages,
+      ),
+      showSnackbar: false,
+    );
+  }
+
+  Future<void> _importWorkPackagesFromDesignAndExecution() async {
+    final data = ProjectDataHelper.getData(context);
+    final newPackages = <WorkPackage>[];
+
+    // Import from Design Planning Document
+    try {
+      final doc = DesignPlanningDocument.fromProjectData(data);
+      for (final item in [...doc.modules, ...doc.journeys, ...doc.interfaces, ...doc.integrations]) {
+        if (item.name.trim().isEmpty) continue;
+        newPackages.add(WorkPackage(
+          title: item.name,
+          description: item.purpose,
+          type: 'design',
+          phase: 'design',
+          status: 'planned',
+          owner: item.owner,
+          wbsLevel2Title: item.name,
+        ));
+      }
+    } catch (e) {
+      debugPrint('Failed to load design planning document: $e');
+    }
+
+    // Import from Execution Plan
+    if (data.executionPhaseData != null && !data.executionPhaseData!.isEmpty) {
+      final execData = data.executionPhaseData!;
+      execData.sectionData.forEach((section, entries) {
+        for (final entry in entries) {
+          if (entry.title.trim().isEmpty) continue;
+          String type = 'execution';
+          if (section.toLowerCase().contains('construction')) {
+            type = 'construction';
+          } else if (section.toLowerCase().contains('agile')) {
+            type = 'agile';
+          }
+          newPackages.add(WorkPackage(
+            title: entry.title,
+            description: entry.details,
+            type: type,
+            phase: 'execution',
+            status: entry.status.toLowerCase() == 'complete' ? 'complete' : 'planned',
+            wbsLevel2Title: entry.title,
+          ));
+        }
+      });
+    }
+
+    if (newPackages.isEmpty) {
+      _showInfo('No items found in Design or Execution plans.');
+      return;
+    }
+
+    final shouldImport = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Import Work Packages'),
+        content: Text(
+          'Found ${newPackages.length} work items from Design and Execution plans. '
+          'Import them as Work Packages?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Import'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldImport != true) return;
+
+    final updatedPackages = [...data.workPackages, ...newPackages];
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'planning_schedule',
+      dataUpdater: (data) => data.copyWith(workPackages: updatedPackages),
+      showSnackbar: false,
+    );
+
+    setState(() {});
+    _showInfo('Imported ${newPackages.length} Work Packages.');
+  }
+
+  Future<void> _calculateScheduleCostImpact() async {
+    final data = ProjectDataHelper.getData(context);
+    if (data.scheduleActivities.isEmpty) {
+      _showInfo('No schedule activities to analyze.');
+      return;
+    }
+
+    int delayedCount = 0;
+    double totalImpact = 0;
+    final now = DateTime.now();
+
+    final updatedActivities = <ScheduleActivity>[];
+
+    for (final activity in data.scheduleActivities) {
+      final dueDate = _parseDate(activity.dueDate) ?? now;
+      final plannedEnd = _parseDate(activity.dueDate) ?? now;
+      final actualEnd = _parseDate(activity.dueDate) ?? now;
+
+      // Calculate delay
+      final baseline = data.scheduleBaselineActivities.firstWhere(
+        (baseline) => baseline.id == activity.id,
+        orElse: () => activity,
+      );
+
+      final baselineEnd = _parseDate(baseline.dueDate);
+      if (baselineEnd == null) continue;
+
+      final delayDays = dueDate.difference(baselineEnd).inDays;
+      if (delayDays <= 0) {
+        updatedActivities.add(activity);
+        continue;
+      }
+
+      delayedCount++;
+      final dailyRate = activity.budgetedCost / (activity.durationDays > 0 ? activity.durationDays : 1);
+      final delayPenalty = dailyRate * delayDays * 1.2; // 1.2x multiplier for penalties
+      totalImpact += delayPenalty;
+
+      // Update activity with cost impact info
+      updatedActivities.add(activity);
+    }
+
+    // Update work packages with actual costs
+    final updatedPackages = <WorkPackage>[];
+    for (final wp in data.workPackages) {
+      double wpActualCost = 0;
+      for (final activityId in wp.scheduleActivityIds) {
+        final activity = data.scheduleActivities.firstWhere(
+          (a) => a.id == activityId,
+          orElse: () => ScheduleActivity(id: activityId),
+        );
+        wpActualCost += activity.budgetedCost;
+      }
+      updatedPackages.add(wp.copyWith(actualCost: wpActualCost));
+    }
+
+    await ProjectDataHelper.updateAndSave(
+      context: context,
+      checkpoint: 'planning_schedule',
+      dataUpdater: (data) => data.copyWith(
+        scheduleActivities: updatedActivities,
+        workPackages: updatedPackages.isNotEmpty ? updatedPackages : data.workPackages,
+      ),
+      showSnackbar: false,
+    );
+
+    setState(() {});
+    _showInfo(
+      'Analysis complete: $delayedCount delayed activities, '
+      'estimated cost impact: \$${totalImpact.toStringAsFixed(0)}',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
@@ -914,6 +1193,16 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       _activityRows,
       _scheduleStartDate ?? DateTime.now(),
     );
+
+    const mainTabs = [
+      'Master Schedule',
+      'Gantt Chart',
+      'List View',
+      'Board View',
+      'Work Packages',
+      'Procurement',
+      'Cost vs Schedule',
+    ];
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FB),
@@ -976,37 +1265,22 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           onAddTask: _addTask,
                           onValidate: _validateSchedule,
                           onApproveBaseline: _setBaseline,
+                          onCalculateCostImpact: _calculateScheduleCostImpact,
                         ),
                         const SizedBox(height: 16),
-                        _WorkspaceSectionTabs(
-                          selectedSection: _selectedWorkspaceSection,
+                        _MainTabs(
+                          tabs: mainTabs,
+                          selectedIndex: _selectedMainTab,
                           onChanged: (index) {
-                            setState(() => _selectedWorkspaceSection = index);
+                            setState(() => _selectedMainTab = index);
                           },
                         ),
-                        const SizedBox(height: 12),
-                        if (_selectedWorkspaceSection == 0)
-                          _WbsAndSummaryCard(
-                            rows: _activityRows,
-                            wbsTree: data.wbsTree,
-                          )
-                        else
-                          _TimelineWorkspaceCard(
-                            selectedTab: _selectedTab,
-                            onTabChanged: (index) {
-                              setState(() => _selectedTab = index);
-                            },
-                            timelineView: _timelineView,
-                            onTimelineViewChanged: (value) {
-                              if (value != null) {
-                                setState(() => _timelineView = value);
-                              }
-                            },
-                            onPickStartDate: _pickStartDate,
-                            startDate: _scheduleStartDate,
-                            onValidate: _validateSchedule,
-                            child: _buildTimelineContent(computed),
-                          ),
+                        const SizedBox(height: 16),
+                        _buildMainContent(
+                          context,
+                          data,
+                          computed,
+                        ),
                       ],
                     ),
                   ),
@@ -1021,307 +1295,101 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  Widget _buildTimelineContent(_ComputedSchedule computed) {
-    if (_activityRows.isEmpty) {
-      return const _SectionEmpty(
-        title: 'No schedule items yet',
-        message:
-            'Import from WBS or add tasks to view Gantt, list, and board views.',
-      );
+  Widget _buildMainContent(
+    BuildContext context,
+    ProjectDataModel data,
+    _ComputedSchedule computed,
+  ) {
+    switch (_selectedMainTab) {
+      case 0:
+        return ScheduleMasterView(
+          workPackages: data.workPackages,
+          scheduleActivities: data.scheduleActivities,
+          onWorkPackageTap: (wp) {
+            // Navigate to work package detail
+          },
+          onActivityTap: (activity) {
+            _editTask(activity.id);
+          },
+        );
+      case 1:
+        return ScheduleGanttEnhanced(
+          scheduleActivities: data.scheduleActivities,
+          workPackages: data.workPackages,
+          onActivityTap: (activity) {
+            _editTask(activity.id);
+          },
+          selectedActivityId: _selectedTaskId,
+          hoveredActivityId: _hoveredTaskId,
+        );
+      case 2:
+        return _TimelineWorkspaceCard(
+          selectedTab: 0, // Force List view
+          onTabChanged: (_) {},
+          timelineView: _timelineView,
+          onTimelineViewChanged: (value) {
+            if (value != null) {
+              setState(() => _timelineView = value);
+            }
+          },
+          onPickStartDate: _pickStartDate,
+          startDate: _scheduleStartDate,
+          onValidate: _validateSchedule,
+          child: _TimelineList(
+            rows: _activityRows,
+            computed: computed,
+            onChanged: _handleActivityChanged,
+            onDelete: _deleteTask,
+            onPickDate: _pickRowDate,
+          ),
+        );
+      case 3:
+        return _TimelineWorkspaceCard(
+          selectedTab: 1, // Force Board view
+          onTabChanged: (_) {},
+          timelineView: _timelineView,
+          onTimelineViewChanged: (value) {
+            if (value != null) {
+              setState(() => _timelineView = value);
+            }
+          },
+          onPickStartDate: _pickStartDate,
+          startDate: _scheduleStartDate,
+          onValidate: _validateSchedule,
+          child: _TimelineBoard(
+            rows: _activityRows,
+            computed: computed,
+            onMoveTaskToStatus: _moveTaskToStatus,
+            onEditTask: _editTask,
+            onDeleteTask: _deleteTask,
+          ),
+        );
+      case 4:
+        return _WorkPackagesTab(
+          workPackages: data.workPackages,
+          scheduleActivities: data.scheduleActivities,
+          onWorkPackageTap: (wp) => _showWorkPackageDetail(wp),
+          onImportFromPlans: _importWorkPackagesFromDesignAndExecution,
+          onAddWorkPackage: _createWorkPackage,
+          onEditWorkPackage: _editWorkPackage,
+          onDeleteWorkPackage: _deleteWorkPackage,
+        );
+      case 5:
+        return _ProcurementTimelineTab(
+          workPackages: data.workPackages,
+          scheduleActivities: data.scheduleActivities,
+        );
+      case 6:
+        return _CostVsScheduleTab(
+          workPackages: data.workPackages,
+          scheduleActivities: data.scheduleActivities,
+          costEstimateItems: data.costEstimateItems,
+          startDate: _scheduleStartDate ?? DateTime.now(),
+          endDate: (_scheduleStartDate ?? DateTime.now()).add(const Duration(days: 365)),
+        );
+      default:
+        return const SizedBox.shrink();
     }
-
-    if (_selectedTab == 0) {
-      return _TimelineGantt(
-        computed: computed,
-        selectedTaskId: _selectedTaskId,
-        hoveredTaskId: _hoveredTaskId,
-        onTaskTap: (taskId) {
-          setState(() => _selectedTaskId = taskId);
-        },
-        onTaskHover: (taskId) {
-          setState(() => _hoveredTaskId = taskId);
-        },
-      );
-    }
-
-    if (_selectedTab == 1) {
-      return _TimelineList(
-        rows: _activityRows,
-        computed: computed,
-        onChanged: _handleActivityChanged,
-        onDelete: _deleteTask,
-        onPickDate: _pickRowDate,
-      );
-    }
-
-    return _TimelineBoard(
-      rows: _activityRows,
-      computed: computed,
-      onMoveTaskToStatus: _moveTaskToStatus,
-      onEditTask: _editTask,
-      onDeleteTask: _deleteTask,
-    );
-  }
-}
-
-class _WorkspaceSectionTabs extends StatelessWidget {
-  const _WorkspaceSectionTabs({
-    required this.selectedSection,
-    required this.onChanged,
-  });
-
-  final int selectedSection;
-  final ValueChanged<int> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    const labels = ['WBS', 'Project Timeline'];
-
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppSemanticColors.border),
-      ),
-      child: Wrap(
-        spacing: 8,
-        children: List.generate(labels.length, (index) {
-          return ChoiceChip(
-            label: Text(labels[index]),
-            selected: selectedSection == index,
-            onSelected: (_) => onChanged(index),
-            selectedColor: const Color(0xFFF59E0B),
-            labelStyle: TextStyle(
-              color: selectedSection == index
-                  ? const Color(0xFF111827)
-                  : const Color(0xFF4B5563),
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
-            ),
-          );
-        }),
-      ),
-    );
-  }
-}
-
-class _NotesCard extends StatelessWidget {
-  const _NotesCard({
-    required this.controller,
-    required this.savedAt,
-    required this.expanded,
-    required this.onToggleExpanded,
-  });
-
-  final TextEditingController controller;
-  final DateTime? savedAt;
-  final bool expanded;
-  final VoidCallback onToggleExpanded;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppSemanticColors.border),
-      ),
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text(
-                'Notes',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF111827),
-                ),
-              ),
-              const Spacer(),
-              TextButton(
-                onPressed: onToggleExpanded,
-                child: Text(expanded ? 'Collapse' : 'Expand'),
-              ),
-            ],
-          ),
-          TextField(
-            controller: controller,
-            minLines: expanded ? 5 : 2,
-            maxLines: expanded ? 8 : 3,
-            decoration: const InputDecoration(
-              hintText: 'Input your notes here...',
-              border: InputBorder.none,
-              isDense: true,
-            ),
-          ),
-          if (savedAt != null)
-            Text(
-              'Saved ${TimeOfDay.fromDateTime(savedAt!).format(context)}',
-              style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ScheduleTopBar extends StatelessWidget {
-  const _ScheduleTopBar({
-    required this.methodology,
-    required this.onMethodologyChanged,
-    required this.isGeneratingAi,
-    required this.baselineDate,
-    required this.onImportFromWbs,
-    required this.onGenerateAi,
-    required this.onAddTask,
-    required this.onValidate,
-    required this.onApproveBaseline,
-  });
-
-  final String methodology;
-  final ValueChanged<String?> onMethodologyChanged;
-  final bool isGeneratingAi;
-  final DateTime? baselineDate;
-  final VoidCallback onImportFromWbs;
-  final VoidCallback onGenerateAi;
-  final VoidCallback onAddTask;
-  final VoidCallback onValidate;
-  final VoidCallback onApproveBaseline;
-
-  @override
-  Widget build(BuildContext context) {
-    final isCompact = MediaQuery.sizeOf(context).width < 1180;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppSemanticColors.border),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              const Text(
-                'Schedule Management',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF111827),
-                ),
-              ),
-              _MethodologyDropdown(
-                value: methodology,
-                onChanged: onMethodologyChanged,
-              ),
-              OutlinedButton.icon(
-                onPressed: onValidate,
-                icon: const Icon(Icons.verified_outlined, size: 18),
-                label: const Text('Validate'),
-              ),
-              ElevatedButton.icon(
-                onPressed: onImportFromWbs,
-                icon: const Icon(Icons.file_download_outlined, size: 18),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF22C55E),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                ),
-                label: const Text('Import'),
-              ),
-              ElevatedButton.icon(
-                onPressed: onAddTask,
-                icon: const Icon(Icons.add_rounded, size: 18),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF59E0B),
-                  foregroundColor: const Color(0xFF111827),
-                  elevation: 0,
-                ),
-                label: const Text('New Task'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              TextButton.icon(
-                onPressed: isGeneratingAi ? null : onGenerateAi,
-                icon: isGeneratingAi
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.auto_awesome_outlined, size: 16),
-                label: const Text('Generate from AI'),
-              ),
-              OutlinedButton.icon(
-                onPressed: onApproveBaseline,
-                icon: const Icon(Icons.check_circle_outline, size: 16),
-                label: const Text('Approve Baseline'),
-              ),
-              if (baselineDate != null)
-                Padding(
-                  padding: EdgeInsets.only(left: isCompact ? 0 : 8, top: 2),
-                  child: Text(
-                    'Baseline: ${_formatDate(baselineDate!)}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF6B7280),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MethodologyDropdown extends StatelessWidget {
-  const _MethodologyDropdown({required this.value, required this.onChanged});
-
-  final String value;
-  final ValueChanged<String?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    const options = ['Waterfall', 'Agile', 'Hybrid'];
-    final safeValue = options.contains(value) ? value : options.first;
-
-    return Container(
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppSemanticColors.border),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: safeValue,
-          items: const [
-            DropdownMenuItem(value: 'Waterfall', child: Text('Waterfall')),
-            DropdownMenuItem(value: 'Agile', child: Text('Agile')),
-            DropdownMenuItem(value: 'Hybrid', child: Text('Hybrid')),
-          ],
-          onChanged: onChanged,
-        ),
-      ),
-    );
   }
 }
 
@@ -3128,4 +3196,1163 @@ String _normalizeSchedulePriority(String raw) {
   final value = raw.trim().toLowerCase();
   const allowed = {'low', 'medium', 'high', 'critical'};
   return allowed.contains(value) ? value : 'medium';
+}
+
+class _MainTabs extends StatelessWidget {
+  const _MainTabs({
+    required this.tabs,
+    required this.selectedIndex,
+    required this.onChanged,
+  });
+
+  final List<String> tabs;
+  final int selectedIndex;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final isCompact = MediaQuery.sizeOf(context).width < 1100;
+
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppSemanticColors.border),
+      ),
+      child: isCompact
+          ? SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _buildChips(),
+              ),
+            )
+          : Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _buildChips(),
+            ),
+    );
+  }
+
+  List<Widget> _buildChips() {
+    return List.generate(tabs.length, (index) {
+      return ChoiceChip(
+        label: Text(tabs[index]),
+        selected: selectedIndex == index,
+        onSelected: (_) => onChanged(index),
+        selectedColor: const Color(0xFFF59E0B),
+        labelStyle: TextStyle(
+          color: selectedIndex == index
+              ? const Color(0xFF111827)
+              : const Color(0xFF4B5563),
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
+        ),
+      );
+    });
+  }
+}
+
+class _WorkPackagesTab extends StatelessWidget {
+  const _WorkPackagesTab({
+    required this.workPackages,
+    required this.scheduleActivities,
+    this.onWorkPackageTap,
+    this.onImportFromPlans,
+    this.onAddWorkPackage,
+    this.onEditWorkPackage,
+    this.onDeleteWorkPackage,
+  });
+
+  final List<WorkPackage> workPackages;
+  final List<ScheduleActivity> scheduleActivities;
+  final ValueChanged<WorkPackage>? onWorkPackageTap;
+  final VoidCallback? onImportFromPlans;
+  final VoidCallback? onAddWorkPackage;
+  final ValueChanged<WorkPackage>? onEditWorkPackage;
+  final ValueChanged<String>? onDeleteWorkPackage;
+
+  @override
+  Widget build(BuildContext context) {
+    if (workPackages.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppSemanticColors.border),
+        ),
+        child: Column(
+          children: [
+            const Icon(
+              Icons.work_outline,
+              size: 48,
+              color: Color(0xFF9CA3AF),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'No Work Packages',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF374151),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Create work packages to organize schedule activities.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Color(0xFF6B7280),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            if (onImportFromPlans != null) ...[
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: onImportFromPlans,
+                icon: const Icon(Icons.download_outlined, size: 16),
+                label: const Text('Import from Plans'),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    final activitiesByWp = <String, List<ScheduleActivity>>{};
+    for (final activity in scheduleActivities) {
+      if (activity.workPackageId.isNotEmpty) {
+        activitiesByWp
+            .putIfAbsent(activity.workPackageId, () => [])
+            .add(activity);
+      }
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppSemanticColors.border),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                'Work Packages',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF111827),
+                ),
+              ),
+              const Spacer(),
+              if (onImportFromPlans != null)
+                OutlinedButton.icon(
+                  onPressed: onImportFromPlans,
+                  icon: const Icon(Icons.download_outlined, size: 16),
+                  label: const Text('Import from Plans'),
+                ),
+              const SizedBox(width: 8),
+              if (onAddWorkPackage != null)
+                FilledButton.icon(
+                  onPressed: onAddWorkPackage,
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('Add Work Package'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...workPackages.map((wp) {
+            final activities = activitiesByWp[wp.id] ?? [];
+            return _WorkPackageCard(
+              workPackage: wp,
+              activities: activities,
+              onTap: () => onWorkPackageTap?.call(wp),
+              onEdit: onEditWorkPackage != null
+                  ? () => onEditWorkPackage!(wp)
+                  : null,
+              onDelete: onDeleteWorkPackage != null
+                  ? () => onDeleteWorkPackage!(wp.id)
+                  : null,
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+class _WorkPackageCard extends StatelessWidget {
+  const _WorkPackageCard({
+    required this.workPackage,
+    required this.activities,
+    this.onTap,
+    this.onEdit,
+    this.onDelete,
+  });
+
+  final WorkPackage workPackage;
+  final List<ScheduleActivity> activities;
+  final VoidCallback? onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = workPackage.budgetedCost > 0
+        ? (workPackage.actualCost / workPackage.budgetedCost).clamp(0.0, 1.0)
+        : 0.0;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF9FAFB),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppSemanticColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    workPackage.title.isNotEmpty
+                        ? workPackage.title
+                        : 'Untitled Work Package',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _statusColor(workPackage.status),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    workPackage.status.toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                if (onEdit != null) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    onPressed: onEdit,
+                    tooltip: 'Edit',
+                  ),
+                ],
+                if (onDelete != null)
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 18,
+                        color: Color(0xFFEF4444)),
+                    onPressed: onDelete,
+                    tooltip: 'Delete',
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (workPackage.description.isNotEmpty) ...[
+              Text(
+                workPackage.description,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF6B7280),
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+            ],
+            Row(
+              children: [
+                const Icon(Icons.person_outline, size: 14, color: Color(0xFF6B7280)),
+                const SizedBox(width: 4),
+                Text(
+                  workPackage.owner.isNotEmpty ? workPackage.owner : 'Unassigned',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                ),
+                const SizedBox(width: 16),
+                const Icon(Icons.category_outlined,
+                    size: 14, color: Color(0xFF6B7280)),
+                const SizedBox(width: 4),
+                Text(
+                  workPackage.type.isNotEmpty
+                      ? workPackage.type.toUpperCase()
+                      : 'N/A',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF6B7280),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '\$${workPackage.budgetedCost.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF111827),
+                  ),
+                ),
+              ],
+            ),
+            if (activities.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Activities (${activities.length}):',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF6B7280),
+                ),
+              ),
+              const SizedBox(height: 6),
+              ...activities.take(3).map((activity) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppSemanticColors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      if (activity.isCriticalPath)
+                        Container(
+                          margin: const EdgeInsets.only(right: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEE2E2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'CP',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFFB91C1C),
+                            ),
+                          ),
+                        ),
+                      Expanded(
+                        child: Text(
+                          activity.title.isNotEmpty
+                              ? activity.title
+                              : 'Untitled Activity',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF374151),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${(activity.progress * 100).round()}%',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              if (activities.length > 3)
+                Text(
+                  '+ ${activities.length - 3} more...',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Color(0xFF6B7280),
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+            ],
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 6,
+                backgroundColor: const Color(0xFFE5E7EB),
+                valueColor:
+                    const AlwaysStoppedAnimation<Color>(Color(0xFF3B82F6)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'in_progress':
+        return const Color(0xFF3B82F6);
+      case 'complete':
+        return const Color(0xFF10B981);
+      case 'blocked':
+      case 'on_hold':
+        return const Color(0xFFEF4444);
+      default:
+        return const Color(0xFFF59E0B);
+    }
+  }
+}
+
+class _ProcurementTimelineTab extends StatelessWidget {
+  const _ProcurementTimelineTab({
+    required this.workPackages,
+    required this.scheduleActivities,
+  });
+
+  final List<WorkPackage> workPackages;
+  final List<ScheduleActivity> scheduleActivities;
+
+  @override
+  Widget build(BuildContext context) {
+    final procurementActivities = scheduleActivities
+        .where((a) => a.workPackageType == 'procurement')
+        .toList();
+
+    if (procurementActivities.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppSemanticColors.border),
+        ),
+        child: Column(
+          children: [
+            const Icon(
+              Icons.shopping_cart_outlined,
+              size: 48,
+              color: Color(0xFF9CA3AF),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'No Procurement Activities',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF374151),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Procurement timeline will show here when activities are linked to procurement work packages.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Color(0xFF6B7280),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppSemanticColors.border),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Procurement Timeline',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...procurementActivities.map((activity) {
+            return _ProcurementActivityCard(activity: activity);
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProcurementActivityCard extends StatelessWidget {
+  const _ProcurementActivityCard({required this.activity});
+
+  final ScheduleActivity activity;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppSemanticColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  activity.title.isNotEmpty
+                      ? activity.title
+                      : 'Untitled Procurement Activity',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF111827),
+                  ),
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _procurementStatusColor(activity.procurementStatus),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  activity.procurementStatus.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              if (activity.startDate.isNotEmpty)
+                Row(
+                  children: [
+                    const Icon(Icons.event_outlined,
+                        size: 14, color: Color(0xFF6B7280)),
+                    const SizedBox(width: 4),
+                    Text(
+                      activity.startDate,
+                      style: const TextStyle(
+                          fontSize: 11, color: Color(0xFF6B7280)),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                ),
+              if (activity.dueDate.isNotEmpty)
+                Row(
+                  children: [
+                    const Icon(Icons.event_available_outlined,
+                        size: 14, color: Color(0xFF6B7280)),
+                    const SizedBox(width: 4),
+                    Text(
+                      activity.dueDate,
+                      style: const TextStyle(
+                          fontSize: 11, color: Color(0xFF6B7280)),
+                    ),
+                  ],
+                ),
+              const Spacer(),
+              if (activity.vendorId.isNotEmpty)
+                Row(
+                  children: [
+                    const Icon(Icons.business_outlined,
+                        size: 14, color: Color(0xFF6B7280)),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Vendor: ${activity.vendorId}',
+                      style: const TextStyle(
+                          fontSize: 11, color: Color(0xFF6B7280)),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: activity.progress,
+              minHeight: 6,
+              backgroundColor: const Color(0xFFE5E7EB),
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(Color(0xFF3B82F6)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _procurementStatusColor(String status) {
+    switch (status) {
+      case 'rfq':
+        return const Color(0xFFF59E0B);
+      case 'evaluating':
+        return const Color(0xFF3B82F6);
+      case 'awarded':
+        return const Color(0xFF8B5CF6);
+      case 'contracted':
+        return const Color(0xFF10B981);
+      default:
+        return const Color(0xFF9CA3AF);
+    }
+  }
+}
+
+class _CostVsScheduleTab extends StatelessWidget {
+  const _CostVsScheduleTab({
+    required this.workPackages,
+    required this.scheduleActivities,
+    required this.costEstimateItems,
+    this.startDate,
+    this.endDate,
+  });
+
+  final List<WorkPackage> workPackages;
+  final List<ScheduleActivity> scheduleActivities;
+  final List<CostEstimateItem> costEstimateItems;
+  final DateTime? startDate;
+  final DateTime? endDate;
+
+  List<SCurveDataPoint> _generatePlannedCurve() {
+    if (workPackages.isEmpty || startDate == null || endDate == null) return [];
+
+    final points = <SCurveDataPoint>[];
+    double cumulative = 0;
+    final sorted = [...workPackages]
+      ..sort((a, b) {
+        final aDate = a.plannedStart != null
+            ? DateTime.tryParse(a.plannedStart!)
+            : null;
+        final bDate = b.plannedStart != null
+            ? DateTime.tryParse(b.plannedStart!)
+            : null;
+        if (aDate == null && bDate == null) return 0;
+        if (aDate == null) return 1;
+        if (bDate == null) return -1;
+        return aDate.compareTo(bDate);
+      });
+
+    for (final wp in sorted) {
+      final date = wp.plannedStart != null
+          ? DateTime.tryParse(wp.plannedStart!)
+          : null;
+      if (date != null) {
+        cumulative += wp.budgetedCost;
+        points.add(SCurveDataPoint(date: date, cumulativeCost: cumulative));
+      }
+    }
+
+    return points;
+  }
+
+  List<SCurveDataPoint> _generateActualCurve() {
+    if (workPackages.isEmpty || startDate == null || endDate == null) return [];
+
+    final points = <SCurveDataPoint>[];
+    double cumulative = 0;
+    final sorted = [...workPackages]
+      ..sort((a, b) {
+        final aDate = a.actualStart != null
+            ? DateTime.tryParse(a.actualStart!)
+            : null;
+        final bDate = b.actualStart != null
+            ? DateTime.tryParse(b.actualStart!)
+            : null;
+        if (aDate == null && bDate == null) return 0;
+        if (aDate == null) return 1;
+        if (bDate == null) return -1;
+        return aDate.compareTo(bDate);
+      });
+
+    for (final wp in sorted) {
+      final date = wp.actualStart != null
+          ? DateTime.tryParse(wp.actualStart!)
+          : null;
+      if (date != null) {
+        cumulative += wp.actualCost > 0 ? wp.actualCost : wp.budgetedCost;
+        points.add(SCurveDataPoint(date: date, cumulativeCost: cumulative));
+      }
+    }
+
+    return points;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final totalBudget = workPackages.fold<double>(
+      0,
+      (sum, wp) => sum + wp.budgetedCost,
+    );
+    final totalActual = workPackages.fold<double>(
+      0,
+      (sum, wp) => sum + wp.actualCost,
+    );
+    final totalEstimate = costEstimateItems.fold<double>(
+      0,
+      (sum, item) => sum + item.amount,
+    );
+
+    final variance = totalBudget - totalActual;
+    final variancePercent = totalBudget > 0
+        ? (variance / totalBudget * 100).abs()
+        : 0.0;
+
+    final plannedCurve = _generatePlannedCurve();
+    final actualCurve = _generateActualCurve();
+
+    final chartStart = startDate ?? DateTime.now();
+    final chartEnd = endDate ?? DateTime.now().add(const Duration(days: 365));
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppSemanticColors.border),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Cost vs Schedule',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _CostStatCard(
+                title: 'Total Budget',
+                amount: totalBudget,
+                color: const Color(0xFF3B82F6),
+              ),
+              const SizedBox(width: 12),
+              _CostStatCard(
+                title: 'Total Actual',
+                amount: totalActual,
+                color: const Color(0xFFF59E0B),
+              ),
+              const SizedBox(width: 12),
+              _CostStatCard(
+                title: 'Cost Estimates',
+                amount: totalEstimate,
+                color: const Color(0xFF8B5CF6),
+              ),
+              const SizedBox(width: 12),
+              _CostStatCard(
+                title: 'Variance',
+                amount: variance,
+                color: variance >= 0
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFFEF4444),
+                subtitle: '${variancePercent.toStringAsFixed(1)}%',
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'S-Curve: Cumulative Cost Over Time',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SCurveChart(
+            plannedData: plannedCurve,
+            actualData: actualCurve,
+            startDate: chartStart,
+            endDate: chartEnd,
+            height: 300,
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Work Packages by Cost',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (workPackages.isEmpty)
+            const Text(
+              'No work packages to display.',
+              style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+            )
+          else
+            ...workPackages.map((wp) {
+              final wpActual = wp.actualCost;
+              final wpBudget = wp.budgetedCost;
+              final utilization = wpBudget > 0
+                  ? (wpActual / wpBudget).clamp(0.0, 1.0)
+                  : 0.0;
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppSemanticColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            wp.title.isNotEmpty
+                                ? wp.title
+                                : 'Untitled Work Package',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF111827),
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '\$${wpActual.toStringAsFixed(0)} / \$${wpBudget.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        value: utilization,
+                        minHeight: 8,
+                        backgroundColor: const Color(0xFFE5E7EB),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          utilization > 1.0
+                              ? const Color(0xFFEF4444)
+                              : const Color(0xFF10B981),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+}
+
+class _CostStatCard extends StatelessWidget {
+  const _CostStatCard({
+    required this.title,
+    required this.amount,
+    required this.color,
+    this.subtitle,
+  });
+
+  final String title;
+  final double amount;
+  final Color color;
+  final String? subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF9FAFB),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppSemanticColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF6B7280),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '\$${amount.toStringAsFixed(0)}',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                subtitle!,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFF6B7280),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NotesCard extends StatelessWidget {
+  const _NotesCard({
+    required this.controller,
+    required this.savedAt,
+    required this.expanded,
+    required this.onToggleExpanded,
+  });
+
+  final TextEditingController controller;
+  final DateTime? savedAt;
+  final bool expanded;
+  final VoidCallback onToggleExpanded;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppSemanticColors.border),
+      ),
+      child: ExpansionTile(
+        initiallyExpanded: expanded,
+        onExpansionChanged: (_) => onToggleExpanded(),
+        title: const Text(
+          'Schedule Notes',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF111827),
+          ),
+        ),
+        trailing: savedAt != null
+            ? Text(
+                'Saved ${_formatTime(savedAt!)}',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFF6B7280),
+                ),
+              )
+            : null,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: TextField(
+              controller: controller,
+              maxLines: 6,
+              decoration: const InputDecoration(
+                hintText: 'Add notes about the project schedule...',
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.all(12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScheduleTopBar extends StatelessWidget {
+  const _ScheduleTopBar({
+    required this.methodology,
+    required this.onMethodologyChanged,
+    required this.isGeneratingAi,
+    required this.baselineDate,
+    required this.onImportFromWbs,
+    required this.onGenerateAi,
+    required this.onAddTask,
+    required this.onValidate,
+    required this.onApproveBaseline,
+    this.onCalculateCostImpact,
+  });
+
+  final String methodology;
+  final ValueChanged<String?> onMethodologyChanged;
+  final bool isGeneratingAi;
+  final DateTime? baselineDate;
+  final VoidCallback onImportFromWbs;
+  final VoidCallback onGenerateAi;
+  final VoidCallback onAddTask;
+  final VoidCallback onValidate;
+  final VoidCallback onApproveBaseline;
+  final VoidCallback? onCalculateCostImpact;
+
+  @override
+  Widget build(BuildContext context) {
+    final isCompact = MediaQuery.sizeOf(context).width < 768;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppSemanticColors.border),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    const Text(
+                      'Methodology:',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF374151),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: methodology,
+                        onChanged: onMethodologyChanged,
+                        items: const [
+                          DropdownMenuItem(
+                              value: 'Waterfall', child: Text('Waterfall')),
+                          DropdownMenuItem(
+                              value: 'Agile', child: Text('Agile')),
+                          DropdownMenuItem(
+                              value: 'Hybrid', child: Text('Hybrid')),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (baselineDate != null)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFECFDF5),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'Baseline Set',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF059669),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: onImportFromWbs,
+                icon: const Icon(Icons.download_outlined, size: 16),
+                label: const Text('Import from WBS'),
+              ),
+              FilledButton.icon(
+                onPressed: isGeneratingAi ? null : onGenerateAi,
+                icon: isGeneratingAi
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.auto_awesome, size: 16),
+                label: Text(isGeneratingAi ? 'Generating...' : 'AI Generate'),
+              ),
+              FilledButton.icon(
+                onPressed: onAddTask,
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Add Task'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFF59E0B),
+                  foregroundColor: const Color(0xFF111827),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: onValidate,
+                icon: const Icon(Icons.check_circle_outline, size: 16),
+                label: const Text('Validate'),
+              ),
+              OutlinedButton.icon(
+                onPressed: onApproveBaseline,
+                icon: const Icon(Icons.lock_outline, size: 16),
+                label: const Text('Set Baseline'),
+              ),
+              if (onCalculateCostImpact != null)
+                OutlinedButton.icon(
+                  onPressed: onCalculateCostImpact,
+                  icon: const Icon(Icons.calculate_outlined, size: 16),
+                  label: const Text('Calculate Cost Impact'),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _formatTime(DateTime dt) {
+  final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
+  final minute = dt.minute.toString().padLeft(2, '0');
+  final period = dt.hour >= 12 ? 'PM' : 'AM';
+  return '$hour:$minute $period';
 }

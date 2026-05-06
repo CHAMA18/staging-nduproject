@@ -332,8 +332,8 @@ class _DeliverablesRoadmapDetailedScreenState
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _kCardBorder),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
       child: Column(
         children: [
@@ -349,26 +349,26 @@ class _DeliverablesRoadmapDetailedScreenState
 
   Widget _buildTableHeader() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.05),
+        color: const Color(0xFFF3F4F6),
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(12),
-          topRight: Radius.circular(12),
+          topLeft: Radius.circular(18),
+          topRight: Radius.circular(18),
         ),
       ),
       child: const Row(
         children: [
-          SizedBox(width: 40, child: Center(child: Text(''))),
-          Expanded(flex: 2, child: Text('Deliverable', style: _headerStyle)),
-          Expanded(child: Text('Category', style: _headerStyle)),
-          Expanded(child: Text('Phase', style: _headerStyle)),
-          Expanded(child: Text('Status', style: _headerStyle)),
-          Expanded(child: Text('Priority', style: _headerStyle)),
-          Expanded(child: Text('Assignee', style: _headerStyle)),
-          Expanded(child: Text('Due Date', style: _headerStyle)),
-          Expanded(child: Text('Source', style: _headerStyle)),
-          SizedBox(width: 80, child: Center(child: Text('Actions'))),
+          SizedBox(width: 50, child: Center(child: Text('#', style: _headerStyle))),
+          Expanded(flex: 2, child: Center(child: Text('DELIVERABLE', style: _headerStyle))),
+          Expanded(child: Center(child: Text('CATEGORY', style: _headerStyle))),
+          Expanded(child: Center(child: Text('PHASE', style: _headerStyle))),
+          Expanded(child: Center(child: Text('STATUS', style: _headerStyle))),
+          Expanded(child: Center(child: Text('PRIORITY', style: _headerStyle))),
+          Expanded(child: Center(child: Text('ASSIGNEE', style: _headerStyle))),
+          Expanded(child: Center(child: Text('DUE DATE', style: _headerStyle))),
+          Expanded(child: Center(child: Text('SOURCE', style: _headerStyle))),
+          SizedBox(width: 80, child: Center(child: Text('ACTIONS', style: _headerStyle))),
         ],
       ),
     );
@@ -412,21 +412,32 @@ class _DeliverablesRoadmapDetailedScreenState
   }
 
   Widget _buildTableRow(AggregatedDeliverable deliverable, int index) {
+    final isEven = index.isEven;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
+        color: isEven ? Colors.white : const Color(0xFFF9FAFB),
         border: Border(
-          bottom: BorderSide(
-            color: _kCardBorder,
-            width: index < _filteredDeliverables.length - 1 ? 1 : 0,
+          top: BorderSide(
+            color: const Color(0xFFE5E7EB),
+            width: index == 0 ? 1 : 0.5,
           ),
         ),
       ),
       child: Row(
         children: [
           SizedBox(
-            width: 40,
-            child: Center(child: _buildStatusIcon(deliverable.status)),
+            width: 50,
+            child: Center(
+              child: Text(
+                '${index + 1}',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF9CA3AF),
+                ),
+              ),
+            ),
           ),
           Expanded(
             flex: 2,
@@ -457,7 +468,6 @@ class _DeliverablesRoadmapDetailedScreenState
               ],
             ),
           ),
-          Expanded(child: Text(deliverable.categoryLabel, style: _cellStyle)),
           Expanded(child: _buildPhaseChip(deliverable.phase)),
           Expanded(child: _buildStatusChip(deliverable.status)),
           Expanded(child: _buildPriorityChip(deliverable.priority)),
@@ -783,6 +793,7 @@ class _DeliverablesRoadmapDetailedScreenState
   static const TextStyle _headerStyle = TextStyle(
     fontSize: 12,
     fontWeight: FontWeight.w600,
+    letterSpacing: 0.8,
     color: Color(0xFF6B7280),
   );
 

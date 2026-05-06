@@ -559,4 +559,129 @@ class LaunchPhaseService {
     final staff = await loadExecutionStaffing(projectId);
     return staff;
   }
+
+  static Future<List<Map<String, dynamic>>> loadBudgetRows(String projectId) async {
+    try {
+      final doc = await _firestore
+          .collection('projects')
+          .doc(projectId)
+          .collection('execution_phase_entries')
+          .doc('progress_tracking')
+          .get();
+      if (!doc.exists) return [];
+      final data = doc.data() ?? {};
+      final rows = data['budgetRows'];
+      if (rows is! List) return [];
+      return rows
+          .whereType<Map>()
+          .map((r) => Map<String, dynamic>.from(r))
+          .toList();
+    } catch (e) {
+      debugPrint('LaunchPhaseService.loadBudgetRows error: $e');
+      return [];
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> loadDeliverableRows(String projectId) async {
+    try {
+      final doc = await _firestore
+          .collection('projects')
+          .doc(projectId)
+          .collection('execution_phase_entries')
+          .doc('progress_tracking')
+          .get();
+      if (!doc.exists) return [];
+      final data = doc.data() ?? {};
+      final rows = data['deliverableRows'];
+      if (rows is! List) return [];
+      return rows
+          .whereType<Map>()
+          .map((r) => Map<String, dynamic>.from(r))
+          .toList();
+    } catch (e) {
+      debugPrint('LaunchPhaseService.loadDeliverableRows error: $e');
+      return [];
+    }
+  }
+
+  static Future<Map<String, dynamic>> loadRiskTrackingSnapshot(String projectId) async {
+    try {
+      final doc = await _firestore
+          .collection('projects')
+          .doc(projectId)
+          .collection('execution_phase_entries')
+          .doc('risk_tracking')
+          .get();
+      if (!doc.exists) return {};
+      final data = doc.data() ?? {};
+      return data;
+    } catch (e) {
+      debugPrint('LaunchPhaseService.loadRiskTrackingSnapshot error: $e');
+      return {};
+    }
+  }
+
+  static Future<List<Map<String, String>>> loadCoreStakeholders(String projectId) async {
+    try {
+      final doc = await _firestore
+          .collection('projects')
+          .doc(projectId)
+          .get();
+      if (!doc.exists) return [];
+      final data = doc.data() ?? {};
+      final raw = data['coreStakeholdersData'];
+      if (raw is! List) return [];
+      return raw
+          .whereType<Map>()
+          .map((r) => r.map((k, v) => MapEntry(k.toString(), v.toString())))
+          .toList();
+    } catch (e) {
+      debugPrint('LaunchPhaseService.loadCoreStakeholders error: $e');
+      return [];
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> loadPlanningDeliverables(String projectId) async {
+    try {
+      final doc = await _firestore
+          .collection('projects')
+          .doc(projectId)
+          .collection('planning_phase_entries')
+          .doc('deliverables_roadmap')
+          .get();
+      if (!doc.exists) return [];
+      final data = doc.data() ?? {};
+      final rows = data['deliverables'];
+      if (rows is! List) return [];
+      return rows
+          .whereType<Map>()
+          .map((r) => Map<String, dynamic>.from(r))
+          .toList();
+    } catch (e) {
+      debugPrint('LaunchPhaseService.loadPlanningDeliverables error: $e');
+      return [];
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> loadPlanningSprints(String projectId) async {
+    try {
+      final doc = await _firestore
+          .collection('projects')
+          .doc(projectId)
+          .collection('planning_phase_entries')
+          .doc('deliverables_roadmap')
+          .get();
+      if (!doc.exists) return [];
+      final data = doc.data() ?? {};
+      final rows = data['sprints'];
+      if (rows is! List) return [];
+      return rows
+          .whereType<Map>()
+          .map((r) => Map<String, dynamic>.from(r))
+          .toList();
+    } catch (e) {
+      debugPrint('LaunchPhaseService.loadPlanningSprints error: $e');
+      return [];
+    }
+  }
 }

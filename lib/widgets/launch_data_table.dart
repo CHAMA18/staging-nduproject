@@ -1,10 +1,53 @@
 import 'package:flutter/material.dart';
 
+const double _defaultColumnWidth = 160;
+const double _tableHorizontalPadding = 20;
+const double _columnGap = 2;
+const double _actionColumnWidth = 40;
+
+class _TableLayoutInherited extends InheritedWidget {
+  final double tableWidth;
+  final List<LaunchColumn> columns;
+  final bool hasRowActions;
+
+  const _TableLayoutInherited({
+    required this.tableWidth,
+    required this.columns,
+    required this.hasRowActions,
+    required super.child,
+  });
+
+  static _TableLayoutInherited? of(BuildContext context) {
+    final inherited =
+        context.dependOnInheritedWidgetOfExactType<_TableLayoutInherited>();
+    return inherited;
+  }
+
+  @override
+  bool updateShouldNotify(_TableLayoutInherited oldWidget) =>
+      tableWidth != oldWidget.tableWidth ||
+      columns != oldWidget.columns ||
+      hasRowActions != oldWidget.hasRowActions;
+}
+
+class LaunchColumn {
+  final String label;
+  final double? width;
+  final bool flexible;
+
+  const LaunchColumn({
+    required this.label,
+    this.width,
+    this.flexible = false,
+  }) : assert(
+            width != null || flexible, 'Either width or flexible must be set');
+}
+
 class LaunchDataTable extends StatelessWidget {
-  const LaunchDataTable({
+  LaunchDataTable({
     super.key,
     required this.title,
-    required this.columns,
+    required List<dynamic> columns,
     required this.rowCount,
     required this.cellBuilder,
     this.subtitle,
@@ -13,11 +56,15 @@ class LaunchDataTable extends StatelessWidget {
     this.importLabel,
     this.onImport,
     this.emptyMessage = 'No entries yet. Add details to get started.',
-  });
+  }) : _columns = columns is List<LaunchColumn>
+            ? columns
+            : columns
+                .map((c) => LaunchColumn(label: c.toString(), flexible: true))
+                .toList();
 
   final String title;
   final String? subtitle;
-  final List<String> columns;
+  final List<LaunchColumn> _columns;
   final int rowCount;
   final Widget Function(BuildContext context, int rowIdx) cellBuilder;
   final VoidCallback? onAdd;
@@ -25,6 +72,8 @@ class LaunchDataTable extends StatelessWidget {
   final String? importLabel;
   final VoidCallback? onImport;
   final String emptyMessage;
+
+  List<LaunchColumn> get columns => _columns;
 
   @override
   Widget build(BuildContext context) {
@@ -140,44 +189,134 @@ class LaunchDataTable extends StatelessWidget {
   }
 
   Widget _buildRows(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildColumnHeaders(),
-        ...List.generate(rowCount, (i) => cellBuilder(context, i)),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final rows = List.generate(rowCount, (i) => cellBuilder(context, i));
+        final effectiveColumns = _resolveColumns(rows);
+        final hasRowActions = rows.any(
+          (row) => row is LaunchDataRow && row.onDelete != null,
+        );
+        final minTableWidth = _minTableWidth(effectiveColumns, hasRowActions);
+        final tableWidth = constraints.maxWidth > minTableWidth
+            ? constraints.maxWidth
+            : minTableWidth;
+
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: _TableLayoutInherited(
+            tableWidth: tableWidth,
+            columns: effectiveColumns,
+            hasRowActions: hasRowActions,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildColumnHeaders(
+                    tableWidth, effectiveColumns, hasRowActions),
+                ...rows,
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildColumnHeaders() {
+  List<LaunchColumn> _resolveColumns(List<Widget> rows) {
+    return List.generate(columns.length, (index) {
+      final column = columns[index];
+      if (!column.flexible) return column;
+
+      final widths = rows
+          .whereType<LaunchDataRow>()
+          .map((row) => index < row.cells.length ? row.cells[index] : null)
+          .map(_fixedWidthForCell)
+          .whereType<double>()
+          .toList();
+
+      if (widths.isEmpty) return column;
+
+      return LaunchColumn(
+        label: column.label,
+        width: widths.reduce((a, b) => a > b ? a : b),
+      );
+    });
+  }
+
+  double? _fixedWidthForCell(Widget? cell) {
+    if (cell is LaunchEditableCell && cell.width != null && !cell.expand) {
+      return cell.width;
+    }
+    if (cell is LaunchDateCell) return cell.width;
+    if (cell is LaunchStatusDropdown) return cell.width;
+    return null;
+  }
+
+  double _minTableWidth(List<LaunchColumn> columns, bool hasRowActions) {
+    final columnWidths = columns.fold<double>(0, (sum, col) {
+      if (col.flexible) return sum + _defaultColumnWidth;
+      return sum + (col.width ?? _defaultColumnWidth);
+    });
+    final gapWidth = columns.isEmpty ? 0 : _columnGap * (columns.length - 1);
+    final rowPadding = _tableHorizontalPadding * 2;
+    final actionWidth = hasRowActions ? _actionColumnWidth : 0.0;
+    return columnWidths + gapWidth + rowPadding + actionWidth;
+  }
+
+  Widget _buildColumnHeaders(
+    double tableWidth,
+    List<LaunchColumn> columns,
+    bool hasRowActions,
+  ) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      width: tableWidth,
+      padding: const EdgeInsets.symmetric(
+        horizontal: _tableHorizontalPadding,
+        vertical: 12,
+      ),
       decoration: const BoxDecoration(
         color: Color(0xFFF8FAFC),
       ),
       child: Row(
         children: [
-          ...columns.map(
-            (c) => Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Text(
-                c,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF6B7280),
-                  letterSpacing: 0.3,
-                ),
+          ..._buildColumnSlots(
+            columns,
+            (col, _) => Text(
+              col.label,
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF6B7280),
+                letterSpacing: 0.3,
               ),
             ),
           ),
-          const Spacer(),
-          const SizedBox(width: 40),
+          if (hasRowActions) const SizedBox(width: _actionColumnWidth),
         ],
       ),
     );
   }
+}
+
+List<Widget> _buildColumnSlots(
+  List<LaunchColumn> columns,
+  Widget Function(LaunchColumn column, int index) builder,
+) {
+  final slots = <Widget>[];
+  for (var i = 0; i < columns.length; i++) {
+    final column = columns[i];
+    final child = builder(column, i);
+    slots.add(
+      column.flexible
+          ? Expanded(child: child)
+          : SizedBox(width: column.width, child: child),
+    );
+    if (i < columns.length - 1) {
+      slots.add(const SizedBox(width: _columnGap));
+    }
+  }
+  return slots;
 }
 
 class LaunchDataRow extends StatefulWidget {
@@ -201,30 +340,46 @@ class _LaunchDataRowState extends State<LaunchDataRow> {
 
   @override
   Widget build(BuildContext context) {
+    final tableLayout = _TableLayoutInherited.of(context);
+    final columns = tableLayout?.columns;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovering = true),
       onExit: (_) => setState(() => _hovering = false),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
-            width: double.infinity,
+            width: tableLayout?.tableWidth,
             color: _hovering ? const Color(0xFFF9FAFB) : Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            padding: const EdgeInsets.symmetric(
+              horizontal: _tableHorizontalPadding,
+              vertical: 10,
+            ),
             child: Row(
               children: [
-                ...widget.cells,
-                SizedBox(
-                  width: 40,
-                  child: _hovering && widget.onDelete != null
-                      ? IconButton(
-                          icon: const Icon(Icons.delete_outline,
-                              size: 18, color: Color(0xFF9CA3AF)),
-                          onPressed: widget.onDelete,
-                          tooltip: 'Delete',
-                        )
-                      : null,
-                ),
+                if (columns == null)
+                  ...widget.cells
+                else
+                  ..._buildColumnSlots(
+                    columns,
+                    (_, index) {
+                      if (index >= widget.cells.length) {
+                        return const SizedBox.shrink();
+                      }
+                      return _CellSlot(child: widget.cells[index]);
+                    },
+                  ),
+                if (tableLayout?.hasRowActions ?? false)
+                  SizedBox(
+                    width: _actionColumnWidth,
+                    child: _hovering && widget.onDelete != null
+                        ? IconButton(
+                            icon: const Icon(Icons.delete_outline,
+                                size: 18, color: Color(0xFF9CA3AF)),
+                            onPressed: widget.onDelete,
+                            tooltip: 'Delete',
+                          )
+                        : null,
+                  ),
               ],
             ),
           ),
@@ -236,7 +391,24 @@ class _LaunchDataRowState extends State<LaunchDataRow> {
   }
 }
 
-class LaunchEditableCell extends StatelessWidget {
+class _CellSlot extends StatelessWidget {
+  const _CellSlot({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 34,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: child,
+      ),
+    );
+  }
+}
+
+class LaunchEditableCell extends StatefulWidget {
   const LaunchEditableCell({
     super.key,
     required this.value,
@@ -255,29 +427,179 @@ class LaunchEditableCell extends StatelessWidget {
   final bool expand;
 
   @override
+  State<LaunchEditableCell> createState() => _LaunchEditableCellState();
+}
+
+class _LaunchEditableCellState extends State<LaunchEditableCell> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value);
+  }
+
+  @override
+  void didUpdateWidget(covariant LaunchEditableCell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value == _controller.text) return;
+
+    _controller.value = TextEditingValue(
+      text: widget.value,
+      selection: TextSelection.collapsed(offset: widget.value.length),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final inTable = _TableLayoutInherited.of(context) != null;
     final child = TextField(
-      controller: TextEditingController(text: value)
-        ..selection = TextSelection.collapsed(offset: value.length),
-      onChanged: onChanged,
+      controller: _controller,
+      onChanged: widget.onChanged,
       style: TextStyle(
         fontSize: 12,
         color: const Color(0xFF111827),
-        fontWeight: bold ? FontWeight.w600 : FontWeight.normal,
+        fontWeight: widget.bold ? FontWeight.w600 : FontWeight.normal,
       ),
       decoration: InputDecoration(
-        hintText: hint,
+        hintText: widget.hint,
         hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
         border: InputBorder.none,
         contentPadding: const EdgeInsets.symmetric(vertical: 8),
         isDense: true,
       ),
     );
-    if (width != null) {
-      return SizedBox(width: width, child: child);
+    if (inTable) return child;
+    if (widget.width != null) {
+      return SizedBox(width: widget.width, child: child);
     }
-    if (expand) return Expanded(child: child);
+    if (widget.expand) return Expanded(child: child);
     return child;
+  }
+}
+
+class LaunchDateCell extends StatefulWidget {
+  const LaunchDateCell({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    this.hint = 'Date',
+    this.width = 120,
+  });
+
+  final String value;
+  final ValueChanged<String> onChanged;
+  final String hint;
+  final double width;
+
+  @override
+  State<LaunchDateCell> createState() => _LaunchDateCellState();
+}
+
+class _LaunchDateCellState extends State<LaunchDateCell> {
+  late String _displayValue;
+
+  @override
+  void initState() {
+    super.initState();
+    _displayValue = widget.value;
+  }
+
+  @override
+  void didUpdateWidget(covariant LaunchDateCell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value != _displayValue) {
+      _displayValue = widget.value;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = _displayValue.trim();
+    final isEmpty = text.isEmpty;
+
+    return SizedBox(
+      width: widget.width,
+      height: 34,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: () => _pickDate(context),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  isEmpty ? widget.hint : text,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: isEmpty
+                        ? const Color(0xFF9CA3AF)
+                        : const Color(0xFF111827),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Icon(
+                Icons.calendar_today_outlined,
+                size: 14,
+                color: Color(0xFF6B7280),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickDate(BuildContext context) async {
+    final now = DateTime.now();
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: _parseDate(_displayValue) ?? now,
+      firstDate: DateTime(now.year - 20),
+      lastDate: DateTime(now.year + 20),
+    );
+
+    if (selected == null) return;
+
+    final formatted = _formatDate(selected);
+    setState(() => _displayValue = formatted);
+    widget.onChanged(formatted);
+  }
+
+  DateTime? _parseDate(String raw) {
+    final text = raw.trim();
+    if (text.isEmpty) return null;
+
+    final parsed = DateTime.tryParse(text);
+    if (parsed != null) return parsed;
+
+    final parts = text.split(RegExp(r'[-/]'));
+    if (parts.length != 3) return null;
+
+    final first = int.tryParse(parts[0]);
+    final second = int.tryParse(parts[1]);
+    final third = int.tryParse(parts[2]);
+    if (first == null || second == null || third == null) return null;
+
+    if (parts[0].length == 4) return DateTime(first, second, third);
+    if (parts[2].length == 4) return DateTime(third, second, first);
+    return null;
+  }
+
+  String _formatDate(DateTime date) {
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '${date.year}-$month-$day';
   }
 }
 
@@ -299,6 +621,7 @@ class LaunchStatusDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     final menuItems = _normalizedItems();
     final effective = _effectiveValue(menuItems);
+    final statusColor = _statusColor(effective ?? '');
 
     if (menuItems.isEmpty || effective == null) {
       return SizedBox(
@@ -324,30 +647,36 @@ class LaunchStatusDropdown extends StatelessWidget {
 
     return SizedBox(
       width: width,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      height: 28,
+      child: DecoratedBox(
         decoration: BoxDecoration(
-          color: _statusColor(effective).withValues(alpha: 0.1),
+          color: statusColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(6),
         ),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: effective,
-            isDense: true,
-            isExpanded: true,
-            iconSize: 14,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: _statusColor(effective),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: effective,
+              isDense: true,
+              isExpanded: true,
+              iconSize: 14,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: statusColor,
+              ),
+              items: items
+                  .map((s) => DropdownMenuItem(
+                        value: s,
+                        child: Text(
+                          s,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ))
+                  .toList(),
+              onChanged: onChanged,
             ),
-            items: menuItems
-                .map((s) => DropdownMenuItem(
-                      value: s,
-                      child: Text(s),
-                    ))
-                .toList(),
-            onChanged: onChanged,
           ),
         ),
       ),

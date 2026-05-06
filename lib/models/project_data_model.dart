@@ -97,6 +97,8 @@ class ProjectDataModel {
   List<ScheduleActivity> scheduleActivities;
   List<ScheduleActivity> scheduleBaselineActivities;
   String scheduleBaselineDate;
+  // Work Packages
+  List<WorkPackage> workPackages;
   // Planning Requirements Data
   List<PlanningRequirementItem> planningRequirementItems;
   String planningRequirementsNotes;
@@ -250,6 +252,7 @@ class ProjectDataModel {
     List<LaunchChecklistItem>? launchChecklistItems,
     this.costAnalysisData,
     List<CostEstimateItem>? costEstimateItems,
+    List<WorkPackage>? workPackages,
     this.itConsiderationsData,
     this.infrastructureConsiderationsData,
     this.coreStakeholdersData,
@@ -309,6 +312,7 @@ class ProjectDataModel {
         teamMembers = teamMembers ?? [],
         launchChecklistItems = launchChecklistItems ?? [],
         costEstimateItems = costEstimateItems ?? [],
+        workPackages = workPackages ?? [],
         designDeliverablesData =
             designDeliverablesData ?? DesignDeliverablesData(),
         projectRoles = projectRoles ?? [],
@@ -435,6 +439,7 @@ class ProjectDataModel {
     List<ScheduleActivity>? scheduleActivities,
     List<ScheduleActivity>? scheduleBaselineActivities,
     String? scheduleBaselineDate,
+    List<WorkPackage>? workPackages,
   }) {
     List<PlanningDashboardItem> resolveDashboardItems({
       required List<PlanningDashboardItem>? explicitItems,
@@ -498,6 +503,7 @@ class ProjectDataModel {
       scheduleBaselineActivities:
           scheduleBaselineActivities ?? this.scheduleBaselineActivities,
       scheduleBaselineDate: scheduleBaselineDate ?? this.scheduleBaselineDate,
+      workPackages: workPackages ?? this.workPackages,
       planningRequirementItems:
           planningRequirementItems ?? this.planningRequirementItems,
       planningRequirementsNotes:
@@ -689,6 +695,7 @@ class ProjectDataModel {
       'qualityManagementData': qualityManagementData?.toJson(),
       'designManagementData': designManagementData?.toJson(),
       'executionPhaseData': executionPhaseData?.toJson(),
+      'workPackages': workPackages.map((wp) => wp.toJson()).toList(),
 
       // New Structured Data persistence
       'withinScopeItems': withinScopeItems.map((x) => x.toJson()).toList(),
@@ -991,6 +998,7 @@ class ProjectDataModel {
       qualityManagementData: json['qualityManagementData'] != null
           ? QualityManagementData.fromJson(json['qualityManagementData'])
           : null,
+      workPackages: safeParseList('workPackages', WorkPackage.fromJson),
 
       // Load New Structured Data
       withinScopeItems: parseDashboardItems('withinScopeItems'),
@@ -1386,6 +1394,30 @@ class ScheduleActivity {
   String dueDate;
   double estimatedHours;
   String milestone;
+  // Work package linkage
+  String workPackageId;
+  String workPackageTitle;
+  String workPackageType; // 'design' | 'construction' | 'execution' | 'agile' | 'procurement' | 'delivery'
+  String phase; // 'design' | 'execution' | 'launch'
+  // WBS Level 2 parent for rollup
+  String wbsLevel2Id;
+  String wbsLevel2Title;
+  // Procurement linkage
+  String contractId;
+  String vendorId;
+  String procurementStatus; // 'not_started' | 'rfq' | 'evaluating' | 'awarded' | 'contracted'
+  String? procurementRfqDate;
+  String? procurementAwardDate;
+  String? contractStartDate;
+  String? contractEndDate;
+  // Cost integration
+  double budgetedCost;
+  double actualCost;
+  String estimatingBasis;
+  // Dependency & scheduling
+  List<String> dependencyIds; // Multiple dependencies
+  bool isCriticalPath;
+  int totalFloat;
 
   ScheduleActivity({
     String? id,
@@ -1403,8 +1435,28 @@ class ScheduleActivity {
     this.dueDate = '',
     this.estimatedHours = 0,
     this.milestone = '',
+    this.workPackageId = '',
+    this.workPackageTitle = '',
+    this.workPackageType = '',
+    this.phase = '',
+    this.wbsLevel2Id = '',
+    this.wbsLevel2Title = '',
+    this.contractId = '',
+    this.vendorId = '',
+    this.procurementStatus = 'not_started',
+    this.procurementRfqDate,
+    this.procurementAwardDate,
+    this.contractStartDate,
+    this.contractEndDate,
+    this.budgetedCost = 0,
+    this.actualCost = 0,
+    this.estimatingBasis = '',
+    List<String>? dependencyIds,
+    this.isCriticalPath = false,
+    this.totalFloat = 0,
   })  : id = id ?? DateTime.now().microsecondsSinceEpoch.toString(),
-        predecessorIds = predecessorIds ?? [];
+        predecessorIds = predecessorIds ?? [],
+        dependencyIds = dependencyIds ?? [];
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -1422,6 +1474,25 @@ class ScheduleActivity {
         'dueDate': dueDate,
         'estimatedHours': estimatedHours,
         'milestone': milestone,
+        'workPackageId': workPackageId,
+        'workPackageTitle': workPackageTitle,
+        'workPackageType': workPackageType,
+        'phase': phase,
+        'wbsLevel2Id': wbsLevel2Id,
+        'wbsLevel2Title': wbsLevel2Title,
+        'contractId': contractId,
+        'vendorId': vendorId,
+        'procurementStatus': procurementStatus,
+        'procurementRfqDate': procurementRfqDate,
+        'procurementAwardDate': procurementAwardDate,
+        'contractStartDate': contractStartDate,
+        'contractEndDate': contractEndDate,
+        'budgetedCost': budgetedCost,
+        'actualCost': actualCost,
+        'estimatingBasis': estimatingBasis,
+        'dependencyIds': dependencyIds,
+        'isCriticalPath': isCriticalPath,
+        'totalFloat': totalFloat,
       };
 
   factory ScheduleActivity.fromJson(Map<String, dynamic> json) {
@@ -1454,6 +1525,34 @@ class ScheduleActivity {
           ? (json['estimatedHours'] as num).toDouble()
           : double.tryParse(json['estimatedHours']?.toString() ?? '') ?? 0,
       milestone: json['milestone']?.toString() ?? '',
+      workPackageId: json['workPackageId']?.toString() ?? '',
+      workPackageTitle: json['workPackageTitle']?.toString() ?? '',
+      workPackageType: json['workPackageType']?.toString() ?? '',
+      phase: json['phase']?.toString() ?? '',
+      wbsLevel2Id: json['wbsLevel2Id']?.toString() ?? '',
+      wbsLevel2Title: json['wbsLevel2Title']?.toString() ?? '',
+      contractId: json['contractId']?.toString() ?? '',
+      vendorId: json['vendorId']?.toString() ?? '',
+      procurementStatus: json['procurementStatus']?.toString() ?? 'not_started',
+      procurementRfqDate: json['procurementRfqDate']?.toString(),
+      procurementAwardDate: json['procurementAwardDate']?.toString(),
+      contractStartDate: json['contractStartDate']?.toString(),
+      contractEndDate: json['contractEndDate']?.toString(),
+      budgetedCost: json['budgetedCost'] is num
+          ? (json['budgetedCost'] as num).toDouble()
+          : double.tryParse(json['budgetedCost']?.toString() ?? '') ?? 0,
+      actualCost: json['actualCost'] is num
+          ? (json['actualCost'] as num).toDouble()
+          : double.tryParse(json['actualCost']?.toString() ?? '') ?? 0,
+      estimatingBasis: json['estimatingBasis']?.toString() ?? '',
+      dependencyIds: (json['dependencyIds'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      isCriticalPath: json['isCriticalPath'] == true,
+      totalFloat: json['totalFloat'] is num
+          ? (json['totalFloat'] as num).round()
+          : int.tryParse(json['totalFloat']?.toString() ?? '') ?? 0,
     );
   }
 }
@@ -2690,6 +2789,24 @@ class CostEstimateItem {
   String costType;
   String source;
   bool isBaseline;
+  // Schedule & work package linkage
+  String scheduleActivityId;
+  String wbsItemId;
+  String workPackageId;
+  String workPackageTitle;
+  String phase; // 'design' | 'execution' | 'launch'
+  // Estimating method fields
+  String estimatingMethod; // 'bottoms_up' | 'top_down' | 'unit_rate' | 'analogous'
+  String estimatingBasis;
+  double unitRate;
+  int quantity;
+  String unitOfMeasure;
+  // Contingency
+  double contingencyPercent;
+  double contingencyAmount;
+  // Contract linkage
+  String contractId;
+  String quoteReference;
 
   CostEstimateItem({
     String? id,
@@ -2699,6 +2816,20 @@ class CostEstimateItem {
     this.costType = 'direct',
     this.source = 'manual',
     this.isBaseline = false,
+    this.scheduleActivityId = '',
+    this.wbsItemId = '',
+    this.workPackageId = '',
+    this.workPackageTitle = '',
+    this.phase = '',
+    this.estimatingMethod = 'manual',
+    this.estimatingBasis = '',
+    this.unitRate = 0,
+    this.quantity = 0,
+    this.unitOfMeasure = '',
+    this.contingencyPercent = 0,
+    this.contingencyAmount = 0,
+    this.contractId = '',
+    this.quoteReference = '',
   }) : id = id ?? _generateId();
 
   Map<String, dynamic> toJson() => {
@@ -2709,6 +2840,20 @@ class CostEstimateItem {
         'costType': costType,
         'source': source,
         'isBaseline': isBaseline,
+        'scheduleActivityId': scheduleActivityId,
+        'wbsItemId': wbsItemId,
+        'workPackageId': workPackageId,
+        'workPackageTitle': workPackageTitle,
+        'phase': phase,
+        'estimatingMethod': estimatingMethod,
+        'estimatingBasis': estimatingBasis,
+        'unitRate': unitRate,
+        'quantity': quantity,
+        'unitOfMeasure': unitOfMeasure,
+        'contingencyPercent': contingencyPercent,
+        'contingencyAmount': contingencyAmount,
+        'contractId': contractId,
+        'quoteReference': quoteReference,
       };
 
   factory CostEstimateItem.fromJson(Map<String, dynamic> json) {
@@ -2721,11 +2866,226 @@ class CostEstimateItem {
       costType: json['costType']?.toString() ?? 'direct',
       source: json['source']?.toString() ?? 'manual',
       isBaseline: json['isBaseline'] == true,
+      scheduleActivityId: json['scheduleActivityId']?.toString() ?? '',
+      wbsItemId: json['wbsItemId']?.toString() ?? '',
+      workPackageId: json['workPackageId']?.toString() ?? '',
+      workPackageTitle: json['workPackageTitle']?.toString() ?? '',
+      phase: json['phase']?.toString() ?? '',
+      estimatingMethod: json['estimatingMethod']?.toString() ?? 'manual',
+      estimatingBasis: json['estimatingBasis']?.toString() ?? '',
+      unitRate: json['unitRate'] is num
+          ? (json['unitRate'] as num).toDouble()
+          : double.tryParse(json['unitRate']?.toString() ?? '') ?? 0,
+      quantity: json['quantity'] is num
+          ? (json['quantity'] as num).round()
+          : int.tryParse(json['quantity']?.toString() ?? '') ?? 0,
+      unitOfMeasure: json['unitOfMeasure']?.toString() ?? '',
+      contingencyPercent: json['contingencyPercent'] is num
+          ? (json['contingencyPercent'] as num).toDouble()
+          : double.tryParse(json['contingencyPercent']?.toString() ?? '') ?? 0,
+      contingencyAmount: json['contingencyAmount'] is num
+          ? (json['contingencyAmount'] as num).toDouble()
+          : double.tryParse(json['contingencyAmount']?.toString() ?? '') ?? 0,
+      contractId: json['contractId']?.toString() ?? '',
+      quoteReference: json['quoteReference']?.toString() ?? '',
     );
   }
 
   static String _generateId() =>
       DateTime.now().microsecondsSinceEpoch.toString();
+}
+
+class WorkPackage {
+  String id;
+  String wbsItemId;
+  String wbsLevel2Id;
+  String wbsLevel2Title;
+  String title;
+  String description;
+  String type; // 'design' | 'construction' | 'execution' | 'agile' | 'procurement' | 'delivery'
+  String phase; // 'design' | 'execution' | 'launch'
+  String status; // 'planned' | 'in_progress' | 'complete' | 'blocked' | 'on_hold'
+  String owner;
+  String discipline;
+  String? plannedStart;
+  String? plannedEnd;
+  String? actualStart;
+  String? actualEnd;
+  double budgetedCost;
+  double actualCost;
+  List<String> scheduleActivityIds;
+  List<String> contractIds;
+  List<String> vendorIds;
+  List<String> requirementIds;
+  String acceptingCriteria;
+  String designPackageId;
+  List<String> procurementItemIds;
+  String notes;
+
+  WorkPackage({
+    String? id,
+    this.wbsItemId = '',
+    this.wbsLevel2Id = '',
+    this.wbsLevel2Title = '',
+    this.title = '',
+    this.description = '',
+    this.type = '',
+    this.phase = '',
+    this.status = 'planned',
+    this.owner = '',
+    this.discipline = '',
+    this.plannedStart,
+    this.plannedEnd,
+    this.actualStart,
+    this.actualEnd,
+    this.budgetedCost = 0,
+    this.actualCost = 0,
+    List<String>? scheduleActivityIds,
+    List<String>? contractIds,
+    List<String>? vendorIds,
+    List<String>? requirementIds,
+    this.acceptingCriteria = '',
+    this.designPackageId = '',
+    List<String>? procurementItemIds,
+    this.notes = '',
+  })  : id = id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        scheduleActivityIds = scheduleActivityIds ?? [],
+        contractIds = contractIds ?? [],
+        vendorIds = vendorIds ?? [],
+        requirementIds = requirementIds ?? [],
+        procurementItemIds = procurementItemIds ?? [];
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'wbsItemId': wbsItemId,
+        'wbsLevel2Id': wbsLevel2Id,
+        'wbsLevel2Title': wbsLevel2Title,
+        'title': title,
+        'description': description,
+        'type': type,
+        'phase': phase,
+        'status': status,
+        'owner': owner,
+        'discipline': discipline,
+        'plannedStart': plannedStart,
+        'plannedEnd': plannedEnd,
+        'actualStart': actualStart,
+        'actualEnd': actualEnd,
+        'budgetedCost': budgetedCost,
+        'actualCost': actualCost,
+        'scheduleActivityIds': scheduleActivityIds,
+        'contractIds': contractIds,
+        'vendorIds': vendorIds,
+        'requirementIds': requirementIds,
+        'acceptingCriteria': acceptingCriteria,
+        'designPackageId': designPackageId,
+        'procurementItemIds': procurementItemIds,
+        'notes': notes,
+      };
+
+  factory WorkPackage.fromJson(Map<String, dynamic> json) {
+    return WorkPackage(
+      id: json['id']?.toString(),
+      wbsItemId: json['wbsItemId']?.toString() ?? '',
+      wbsLevel2Id: json['wbsLevel2Id']?.toString() ?? '',
+      wbsLevel2Title: json['wbsLevel2Title']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      type: json['type']?.toString() ?? '',
+      phase: json['phase']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'planned',
+      owner: json['owner']?.toString() ?? '',
+      discipline: json['discipline']?.toString() ?? '',
+      plannedStart: json['plannedStart']?.toString(),
+      plannedEnd: json['plannedEnd']?.toString(),
+      actualStart: json['actualStart']?.toString(),
+      actualEnd: json['actualEnd']?.toString(),
+      budgetedCost: json['budgetedCost'] is num
+          ? (json['budgetedCost'] as num).toDouble()
+          : double.tryParse(json['budgetedCost']?.toString() ?? '') ?? 0,
+      actualCost: json['actualCost'] is num
+          ? (json['actualCost'] as num).toDouble()
+          : double.tryParse(json['actualCost']?.toString() ?? '') ?? 0,
+      scheduleActivityIds: (json['scheduleActivityIds'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      contractIds: (json['contractIds'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      vendorIds: (json['vendorIds'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      requirementIds: (json['requirementIds'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      acceptingCriteria: json['acceptingCriteria']?.toString() ?? '',
+      designPackageId: json['designPackageId']?.toString() ?? '',
+      procurementItemIds: (json['procurementItemIds'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      notes: json['notes']?.toString() ?? '',
+    );
+  }
+
+  WorkPackage copyWith({
+    String? wbsItemId,
+    String? wbsLevel2Id,
+    String? wbsLevel2Title,
+    String? title,
+    String? description,
+    String? type,
+    String? phase,
+    String? status,
+    String? owner,
+    String? discipline,
+    String? plannedStart,
+    String? plannedEnd,
+    String? actualStart,
+    String? actualEnd,
+    double? budgetedCost,
+    double? actualCost,
+    List<String>? scheduleActivityIds,
+    List<String>? contractIds,
+    List<String>? vendorIds,
+    List<String>? requirementIds,
+    String? acceptingCriteria,
+    String? designPackageId,
+    List<String>? procurementItemIds,
+    String? notes,
+  }) {
+    return WorkPackage(
+      id: id,
+      wbsItemId: wbsItemId ?? this.wbsItemId,
+      wbsLevel2Id: wbsLevel2Id ?? this.wbsLevel2Id,
+      wbsLevel2Title: wbsLevel2Title ?? this.wbsLevel2Title,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      type: type ?? this.type,
+      phase: phase ?? this.phase,
+      status: status ?? this.status,
+      owner: owner ?? this.owner,
+      discipline: discipline ?? this.discipline,
+      plannedStart: plannedStart ?? this.plannedStart,
+      plannedEnd: plannedEnd ?? this.plannedEnd,
+      actualStart: actualStart ?? this.actualStart,
+      actualEnd: actualEnd ?? this.actualEnd,
+      budgetedCost: budgetedCost ?? this.budgetedCost,
+      actualCost: actualCost ?? this.actualCost,
+      scheduleActivityIds: scheduleActivityIds ?? this.scheduleActivityIds,
+      contractIds: contractIds ?? this.contractIds,
+      vendorIds: vendorIds ?? this.vendorIds,
+      requirementIds: requirementIds ?? this.requirementIds,
+      acceptingCriteria: acceptingCriteria ?? this.acceptingCriteria,
+      designPackageId: designPackageId ?? this.designPackageId,
+      procurementItemIds: procurementItemIds ?? this.procurementItemIds,
+      notes: notes ?? this.notes,
+    );
+  }
 }
 
 class CostAnalysisData {

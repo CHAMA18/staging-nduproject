@@ -370,8 +370,8 @@ class _DocumentReviewMatrixScreenState extends State<DocumentReviewMatrixScreen>
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _kCardBorder),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
       child: Column(
         children: [
@@ -387,26 +387,26 @@ class _DocumentReviewMatrixScreenState extends State<DocumentReviewMatrixScreen>
 
   Widget _buildTableHeader() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.05),
+        color: const Color(0xFFF3F4F6),
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(12),
-          topRight: Radius.circular(12),
+          topLeft: Radius.circular(18),
+          topRight: Radius.circular(18),
         ),
       ),
       child: const Row(
         children: [
-          SizedBox(width: 40, child: Center(child: Text(''))),
-          Expanded(flex: 2, child: Text('Document', style: _headerStyle)),
-          Expanded(child: Text('Phase', style: _headerStyle)),
-          Expanded(child: Text('Category', style: _headerStyle)),
-          Expanded(child: Text('Status', style: _headerStyle)),
-          Expanded(child: Text('Reviewer', style: _headerStyle)),
-          Expanded(child: Text('Approver', style: _headerStyle)),
-          Expanded(child: Text('Due Date', style: _headerStyle)),
-          Expanded(child: Text('Version', style: _headerStyle)),
-          SizedBox(width: 60, child: Center(child: Text('Actions'))),
+          SizedBox(width: 50, child: Center(child: Text('#', style: _headerStyle))),
+          Expanded(flex: 2, child: Center(child: Text('DOCUMENT', style: _headerStyle))),
+          Expanded(child: Center(child: Text('PHASE', style: _headerStyle))),
+          Expanded(child: Center(child: Text('CATEGORY', style: _headerStyle))),
+          Expanded(child: Center(child: Text('STATUS', style: _headerStyle))),
+          Expanded(child: Center(child: Text('REVIEWER', style: _headerStyle))),
+          Expanded(child: Center(child: Text('APPROVER', style: _headerStyle))),
+          Expanded(child: Center(child: Text('DUE DATE', style: _headerStyle))),
+          Expanded(child: Center(child: Text('VERSION', style: _headerStyle))),
+          SizedBox(width: 60, child: Center(child: Text('ACTIONS', style: _headerStyle))),
         ],
       ),
     );
@@ -451,25 +451,35 @@ class _DocumentReviewMatrixScreenState extends State<DocumentReviewMatrixScreen>
   }
 
   Widget _buildTableRow(DocumentReviewItem doc, int index) {
+    final isEven = index.isEven;
     return InkWell(
       onTap: () => _showDocumentPreview(doc),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: doc.isOverdue ? Colors.red.withOpacity(0.05) : null,
+          color: doc.isOverdue
+              ? Colors.red.withOpacity(0.05)
+              : (isEven ? Colors.white : const Color(0xFFF9FAFB)),
           border: Border(
-            bottom: BorderSide(
-              color: _kCardBorder,
-              width: index < _filteredDocuments.length - 1 ? 1 : 0,
+            top: BorderSide(
+              color: const Color(0xFFE5E7EB),
+              width: index == 0 ? 1 : 0.5,
             ),
           ),
         ),
         child: Row(
           children: [
             SizedBox(
-              width: 40,
+              width: 50,
               child: Center(
-                child: _buildStatusIcon(doc.status),
+                child: Text(
+                  '${index + 1}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF9CA3AF),
+                  ),
+                ),
               ),
             ),
             Expanded(
@@ -875,6 +885,7 @@ class _DocumentReviewMatrixScreenState extends State<DocumentReviewMatrixScreen>
   static const TextStyle _headerStyle = TextStyle(
     fontSize: 12,
     fontWeight: FontWeight.w600,
+    letterSpacing: 0.8,
     color: Color(0xFF6B7280),
   );
 

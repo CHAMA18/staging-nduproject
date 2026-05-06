@@ -720,6 +720,85 @@ class ProjectDataHelper {
     return buf.toString().trim();
   }
 
+  /// Build launch-phase context by appending execution data summaries
+  /// to the base context from buildExecutivePlanContext.
+  /// All parameters are optional summaries pre-loaded from Firestore.
+  static String buildLaunchPhaseContext({
+    required String baseContext,
+    String? sectionLabel,
+    String? staffingSummary,
+    String? contractsSummary,
+    String? vendorsSummary,
+    String? deliverablesSummary,
+    String? budgetSummary,
+    String? scopeTrackingSummary,
+    String? riskTrackingSummary,
+    String? sprintsSummary,
+  }) {
+    final buf = StringBuffer();
+    buf.write(baseContext);
+    buf.writeln();
+    buf.writeln();
+
+    buf.writeln('Execution Phase Data');
+    buf.writeln('=====================');
+
+    if (staffingSummary != null && staffingSummary.trim().isNotEmpty) {
+      buf.writeln();
+      buf.writeln('Staffing:');
+      buf.writeln(staffingSummary.trim());
+    }
+
+    if (contractsSummary != null && contractsSummary.trim().isNotEmpty) {
+      buf.writeln();
+      buf.writeln('Contracts:');
+      buf.writeln(contractsSummary.trim());
+    }
+
+    if (vendorsSummary != null && vendorsSummary.trim().isNotEmpty) {
+      buf.writeln();
+      buf.writeln('Vendors:');
+      buf.writeln(vendorsSummary.trim());
+    }
+
+    if (deliverablesSummary != null && deliverablesSummary.trim().isNotEmpty) {
+      buf.writeln();
+      buf.writeln('Deliverables:');
+      buf.writeln(deliverablesSummary.trim());
+    }
+
+    if (budgetSummary != null && budgetSummary.trim().isNotEmpty) {
+      buf.writeln();
+      buf.writeln('Budget:');
+      buf.writeln(budgetSummary.trim());
+    }
+
+    if (scopeTrackingSummary != null && scopeTrackingSummary.trim().isNotEmpty) {
+      buf.writeln();
+      buf.writeln('Scope Tracking:');
+      buf.writeln(scopeTrackingSummary.trim());
+    }
+
+    if (riskTrackingSummary != null && riskTrackingSummary.trim().isNotEmpty) {
+      buf.writeln();
+      buf.writeln('Risk Tracking:');
+      buf.writeln(riskTrackingSummary.trim());
+    }
+
+    if (sprintsSummary != null && sprintsSummary.trim().isNotEmpty) {
+      buf.writeln();
+      buf.writeln('Sprints/Milestones:');
+      buf.writeln(sprintsSummary.trim());
+    }
+
+    if ((sectionLabel ?? '').trim().isNotEmpty) {
+      buf.writeln();
+      buf.writeln('Target Section: ${sectionLabel!.trim()}');
+    }
+
+    return buf.toString().trim();
+  }
+
   /// Get project data from context (non-listening by default, safe for event handlers)
   static ProjectDataModel getData(BuildContext context, {bool listen = false}) {
     return Provider.of<ProjectDataProvider>(context, listen: listen)

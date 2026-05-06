@@ -4,7 +4,6 @@ import 'package:ndu_project/models/launch_phase_models.dart';
 import 'package:ndu_project/screens/commerce_viability_screen.dart';
 import 'package:ndu_project/screens/project_close_out_screen.dart';
 import 'package:ndu_project/services/launch_phase_service.dart';
-import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/execution_phase_ui.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
@@ -36,7 +35,6 @@ class _ActualVsPlannedGapAnalysisScreenState
   List<LaunchFollowUpItem> _followUpActions = [];
 
   bool _isLoading = true;
-  bool _isGenerating = false;
   bool _hasLoaded = false;
   bool _suspendSave = false;
 
@@ -97,15 +95,14 @@ class _ActualVsPlannedGapAnalysisScreenState
       badge: 'LAUNCH PHASE',
       title: 'Actual vs Planned Gap Analysis',
       description:
-          'Compare planned deliverables, milestones, and budgets against actual outcomes. Identify root causes and corrective actions.',
+          'Compare planned deliverables, milestones, and budgets against actual outcomes. Data is auto-populated from execution phase records.',
       trailing: ExecutionActionBar(
         actions: [
           ExecutionActionItem(
-            label: _isGenerating ? 'Generating...' : 'AI Assist',
-            icon: Icons.auto_awesome_outlined,
-            tone: ExecutionActionTone.ai,
-            isLoading: _isGenerating,
-            onPressed: _isGenerating ? null : _populateFromAi,
+            label: 'Auto-Populate',
+            icon: Icons.autorenew_outlined,
+            tone: ExecutionActionTone.secondary,
+            onPressed: _autoPopulateFromPriorPhases,
           ),
         ],
       ),
@@ -244,19 +241,17 @@ class _ActualVsPlannedGapAnalysisScreenState
                 _save();
               },
             ),
-            LaunchEditableCell(
+            LaunchDateCell(
               value: m.plannedDate,
               hint: 'Planned',
-              expand: true,
               onChanged: (s) {
                 _milestoneVariances[i] = m.copyWith(plannedDate: s);
                 _save();
               },
             ),
-            LaunchEditableCell(
+            LaunchDateCell(
               value: m.actualDate,
               hint: 'Actual',
-              expand: true,
               onChanged: (s) {
                 _milestoneVariances[i] = m.copyWith(actualDate: s);
                 _save();
@@ -531,7 +526,7 @@ class _ActualVsPlannedGapAnalysisScreenState
           _budgetVariances.isEmpty &&
           _rootCauses.isEmpty &&
           _followUpActions.isEmpty) {
-        await _populateFromAi();
+        await _autoPopulateFromPriorPhases();
       }
     } catch (e) {
       debugPrint('Gap analysis load error: $e');
@@ -555,82 +550,147 @@ class _ActualVsPlannedGapAnalysisScreenState
     }
   }
 
-  Future<void> _populateFromAi() async {
-    if (_isGenerating) return;
-    final data = ProjectDataHelper.getData(context);
-    var ctx = ProjectDataHelper.buildExecutivePlanContext(data,
-        sectionLabel: 'Actual vs Planned Gap Analysis');
-    if (ctx.trim().isEmpty) {
-      ctx = ProjectDataHelper.buildProjectContextScan(data,
-          sectionLabel: 'Actual vs Planned Gap Analysis');
-    }
-    if (ctx.trim().isEmpty) return;
-    setState(() => _isGenerating = true);
-    Map<String, List<Map<String, dynamic>>> gen = {};
+  Future<void> _autoPopulateFromPriorPhases() async {
+    if (_projectId == null) return;
     try {
-      gen = await OpenAiServiceSecure().generateLaunchPhaseEntries(
-        context: ctx,
-        sections: const {
-          'scope_gaps': 'Scope gaps: planned vs actual with gap status',
-          'milestone_variances':
-              'Milestone variances: planned date vs actual date with variance in days',
-          'budget_variances':
-              'Budget variances: planned amount vs actual with variance',
-          'root_causes': 'Root causes for major gaps with corrective actions',
-          'follow_up_actions':
-              'Follow-up actions requiring post-project attention',
-        },
-        itemsPerSection: 3,
-      );
+      final scopeTracking = await LaunchPhaseService.loadScopeTrackingItems(_projectId!);
+      final budgetRows = await LaunchPhaseService.loadBudgetRows(_projectId!);
+      final sprints = await LaunchPhaseService.loadPlanningSprints(_projectId!);
+      final riskSnapshot = await LaunchPhaseService.loadRiskTrackingSnapshot(_projectId!);
+
+      if (!mounted) return;
+
+      final scopeGapExisting = _scopeGaps.map((g) => g.planned).toSet();
+      final newScopeGaps = <LaunchGapItem>[];
+      for (final st in scopeTracking) {
+        if (st.deliverable.isNotEmpty && !scopeGapExisting.contains(st.deliverable)) {
+          final status = st.status.toLowerCase();
+          String gapStatus;
+          if (status == 'verified' || status == 'completed' || status == 'done') {
+            gapStatus = 'Met';
+          } else if (status == 'in progress') {
+            gapStatus = 'Partial';
+          } else {
+            gapStatus = 'Missed';
+          }
+          newScopeGaps.add(LaunchGapItem(
+            planned: st.deliverable,
+            actual: st.status,
+            gapStatus: gapStatus,
+            notes: st.notes,
+          ));
+        }
+      }
+      if (newScopeGaps.isNotEmpty) {
+        setState(() => _scopeGaps.addAll(newScopeGaps));
+      }
+
+      final milestoneExisting = _milestoneVariances.map((m) => m.milestone).toSet();
+      final newMilestones = <LaunchMilestoneVariance>[];
+      for (final sp in sprints) {
+        final title = sp['title']?.toString() ?? sp['name']?.toString() ?? '';
+        if (title.isNotEmpty && !milestoneExisting.contains(title)) {
+          newMilestones.add(LaunchMilestoneVariance(
+            milestone: title,
+            plannedDate: sp['startDate']?.toString() ?? sp['plannedDate']?.toString() ?? '',
+            actualDate: sp['endDate']?.toString() ?? sp['actualDate']?.toString() ?? '',
+            status: 'On Track',
+          ));
+        }
+      }
+      if (newMilestones.isNotEmpty) {
+        setState(() => _milestoneVariances.addAll(newMilestones));
+      }
+
+      final budgetExisting = _budgetVariances.map((b) => b.category).toSet();
+      final newBudgetVariances = <LaunchBudgetVariance>[];
+      for (final br in budgetRows) {
+        final cat = br['category']?.toString() ?? '';
+        if (cat.isNotEmpty && !budgetExisting.contains(cat)) {
+          final planned = br['plannedAmount']?.toString() ?? '';
+          final actual = br['actualAmount']?.toString() ?? '';
+          final plannedNum = double.tryParse(planned.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+          final actualNum = double.tryParse(actual.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
+          final variance = plannedNum - actualNum;
+          final variancePct = plannedNum > 0 ? ((variance / plannedNum) * 100).toStringAsFixed(1) : '';
+          newBudgetVariances.add(LaunchBudgetVariance(
+            category: cat,
+            plannedAmount: planned,
+            actualAmount: actual,
+            variance: variance.toStringAsFixed(0),
+            variancePercent: variancePct.isNotEmpty ? '$variancePct%' : '',
+          ));
+        }
+      }
+      if (newBudgetVariances.isNotEmpty) {
+        setState(() => _budgetVariances.addAll(newBudgetVariances));
+      }
+
+      final rootCauseExisting = _rootCauses.map((r) => r.gap).toSet();
+      final newRootCauses = <LaunchRootCauseItem>[];
+      final riskItems = riskSnapshot['riskItems'];
+      if (riskItems is List) {
+        for (final ri in riskItems.whereType<Map>()) {
+          final m = Map<String, dynamic>.from(ri);
+          final title = m['title']?.toString() ?? m['risk']?.toString() ?? '';
+          if (title.isNotEmpty && !rootCauseExisting.contains(title)) {
+            newRootCauses.add(LaunchRootCauseItem(
+              gap: title,
+              rootCause: m['cause']?.toString() ?? m['rootCause']?.toString() ?? '',
+              impact: m['impact']?.toString() ?? '',
+              status: 'Open',
+            ));
+          }
+        }
+      }
+      if (newRootCauses.isNotEmpty) {
+        setState(() => _rootCauses.addAll(newRootCauses));
+      }
+
+      final followUpExisting = _followUpActions.map((f) => f.title).toSet();
+      final newFollowUps = <LaunchFollowUpItem>[];
+      if (riskItems is List) {
+        for (final ri in riskItems.whereType<Map>()) {
+          final m = Map<String, dynamic>.from(ri);
+          final status = m['status']?.toString() ?? '';
+          if (status.toLowerCase() != 'closed' && status.toLowerCase() != 'resolved' && status.toLowerCase() != 'mitigated') {
+            final title = m['title']?.toString() ?? m['risk']?.toString() ?? '';
+            if (title.isNotEmpty && !followUpExisting.contains(title)) {
+              newFollowUps.add(LaunchFollowUpItem(
+                title: 'Monitor: $title',
+                details: m['description']?.toString() ?? m['details']?.toString() ?? '',
+                owner: m['owner']?.toString() ?? '',
+                status: 'Open',
+              ));
+            }
+          }
+        }
+      }
+      final mitigationPlans = riskSnapshot['mitigationPlans'];
+      if (mitigationPlans is List) {
+        for (final mp in mitigationPlans.whereType<Map>()) {
+          final m = Map<String, dynamic>.from(mp);
+          final title = m['title']?.toString() ?? m['action']?.toString() ?? '';
+          if (title.isNotEmpty && !followUpExisting.contains(title)) {
+            newFollowUps.add(LaunchFollowUpItem(
+              title: title,
+              details: m['description']?.toString() ?? m['details']?.toString() ?? '',
+              owner: m['owner']?.toString() ?? '',
+              status: 'Open',
+            ));
+          }
+        }
+      }
+      if (newFollowUps.isNotEmpty) {
+        setState(() => _followUpActions.addAll(newFollowUps));
+      }
+
+      if (newScopeGaps.isNotEmpty || newMilestones.isNotEmpty || newBudgetVariances.isNotEmpty || newRootCauses.isNotEmpty || newFollowUps.isNotEmpty) {
+        await _persistData();
+      }
     } catch (e) {
-      debugPrint('Gap AI error: $e');
+      debugPrint('Gap analysis auto-populate error: $e');
     }
-    if (!mounted) return;
-    final hasData = _scopeGaps.isNotEmpty ||
-        _milestoneVariances.isNotEmpty ||
-        _budgetVariances.isNotEmpty ||
-        _rootCauses.isNotEmpty;
-    if (hasData) {
-      setState(() => _isGenerating = false);
-      return;
-    }
-    setState(() {
-      _scopeGaps = (gen['scope_gaps'] ?? [])
-          .map((m) => LaunchGapItem(
-              planned: _s(m['title']),
-              actual: _s(m['details']),
-              gapStatus: _ns(m['status'], 'Met')))
-          .where((i) => i.planned.isNotEmpty)
-          .toList();
-      _milestoneVariances = (gen['milestone_variances'] ?? [])
-          .map((m) => LaunchMilestoneVariance(
-              milestone: _s(m['title']), status: _ns(m['status'], 'On Track')))
-          .where((i) => i.milestone.isNotEmpty)
-          .toList();
-      _budgetVariances = (gen['budget_variances'] ?? [])
-          .map((m) => LaunchBudgetVariance(
-              category: _s(m['title']), plannedAmount: _s(m['details'])))
-          .where((i) => i.category.isNotEmpty)
-          .toList();
-      _rootCauses = (gen['root_causes'] ?? [])
-          .map((m) => LaunchRootCauseItem(
-              gap: _s(m['title']),
-              rootCause: _s(m['details']),
-              status: _ns(m['status'], 'Open')))
-          .where((i) => i.gap.isNotEmpty)
-          .toList();
-      _followUpActions = (gen['follow_up_actions'] ?? [])
-          .map((m) => LaunchFollowUpItem(
-              title: _s(m['title']),
-              details: _s(m['details']),
-              status: _ns(m['status'], 'Open')))
-          .where((i) => i.title.isNotEmpty)
-          .toList();
-      _isGenerating = false;
-    });
-    await _persistData();
   }
 
-  String _s(dynamic v) => (v ?? '').toString().trim();
-  String _ns(dynamic v, String fb) => _s(v).isEmpty ? fb : _s(v);
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -69,6 +70,8 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
   bool _isLoading = false;
   bool _hasLoaded = false;
   String? _filterStatus;
+  bool _isSaving = false;
+  Timer? _saveDebounce;
 
   String? get _projectId {
     try {
@@ -90,6 +93,12 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
     if (!_hasLoaded) {
       _loadData();
     }
+  }
+
+  @override
+  void dispose() {
+    _saveDebounce?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -123,22 +132,6 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
     }
   }
 
-  Future<void> _saveAll() async {
-    final projectId = _projectId;
-    if (projectId == null) return;
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    try {
-      await RoadmapService.saveAll(
-        projectId: projectId,
-        sprints: _sprints,
-        deliverables: _deliverables,
-        userId: uid,
-      );
-    } catch (e) {
-      debugPrint('Error saving roadmap: $e');
-    }
-  }
-
   List<RoadmapDeliverable> _filteredForSprint(String sprintId) {
     var items = _deliverables.where((d) => d.sprintId == sprintId).toList();
     if (_filterStatus != null) {
@@ -161,6 +154,47 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
           d.status == RoadmapDeliverableStatus.blocked)
       .length;
 
+  void _scheduleSave() {
+    _saveDebounce?.cancel();
+    _saveDebounce = Timer(const Duration(milliseconds: 500), () {
+      _saveAll();
+    });
+  }
+
+  Future<void> _saveAll() async {
+    if (_isSaving) return;
+    final projectId = _projectId;
+    if (projectId == null) return;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    try {
+      setState(() => _isSaving = true);
+      await RoadmapService.saveAll(
+        projectId: projectId,
+        sprints: _sprints,
+        deliverables: _deliverables,
+        userId: uid,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Roadmap saved'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error saving roadmap: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to save: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
   void _handleAddSprint() async {
     final result = await _showSprintDialog(context);
     if (result == null) return;
@@ -174,9 +208,28 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
         createdById: FirebaseAuth.instance.currentUser?.uid ?? '',
         createdByEmail: FirebaseAuth.instance.currentUser?.email ?? '',
         createdByName: FirebaseAuth.instance.currentUser?.displayName ?? '',
-      ));
+));
     });
-    await _saveAll();
+    _scheduleSave();
+  }
+
+  void _handleDeleteDeliverable(int index) async {
+    final item = _deliverables[index];
+    final confirmed = await _showConfirmDialog(
+      'Delete Deliverable',
+      'Delete "${item.title}"?',
+    );
+    if (confirmed != true) return;
+    setState(() => _deliverables.removeAt(index));
+    _scheduleSave();
+  }
+
+  void _handleMoveDeliverable(int deliverableIndex, String newSprintId) async {
+    setState(() {
+      _deliverables[deliverableIndex] =
+          _deliverables[deliverableIndex].copyWith(sprintId: newSprintId);
+    });
+    _scheduleSave();
   }
 
   void _handleEditSprint(int index) async {
@@ -192,7 +245,7 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
         goal: result['goal'],
       );
     });
-    await _saveAll();
+    _scheduleSave();
   }
 
   void _handleDeleteSprint(int index) async {
@@ -216,7 +269,7 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
         _sprints[i] = _sprints[i].copyWith(order: i);
       }
     });
-    await _saveAll();
+    _scheduleSave();
   }
 
   void _handleAddDeliverable(String sprintId) async {
@@ -249,7 +302,7 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
         createdByName: FirebaseAuth.instance.currentUser?.displayName ?? '',
       ));
     });
-    await _saveAll();
+    _scheduleSave();
   }
 
   void _handleEditDeliverable(int index) async {
@@ -279,26 +332,7 @@ class _DeliverablesRoadmapBodyState extends State<_DeliverablesRoadmapBody> {
         notes: result['notes'],
       );
     });
-    await _saveAll();
-  }
-
-  void _handleDeleteDeliverable(int index) async {
-    final item = _deliverables[index];
-    final confirmed = await _showConfirmDialog(
-      'Delete Deliverable',
-      'Delete "${item.title}"?',
-    );
-    if (confirmed != true) return;
-    setState(() => _deliverables.removeAt(index));
-    await _saveAll();
-  }
-
-  void _handleMoveDeliverable(int deliverableIndex, String newSprintId) async {
-    setState(() {
-      _deliverables[deliverableIndex] =
-          _deliverables[deliverableIndex].copyWith(sprintId: newSprintId);
-    });
-    await _saveAll();
+    _scheduleSave();
   }
 
   @override

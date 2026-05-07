@@ -705,47 +705,7 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
           const SizedBox(height: 20),
           _buildTableTitle('Key Work Packages Register'),
           const SizedBox(height: 10),
-          _buildResponsiveTable(
-            minWidth: 920,
-            child: Column(
-              children: [
-                _buildTableHeader(
-                  const [
-                    'Work Package',
-                    'Owner',
-                    'Milestone',
-                    'Status',
-                    'Impact',
-                    ''
-                  ],
-                  columnWidths: const [3, 2, 2, 2, 2, 1],
-                ),
-                const SizedBox(height: 8),
-                if (_workPackages.isEmpty)
-                  const _InlineEmptyState(
-                    title: 'No work packages yet',
-                    message: 'Add work packages to summarize delivered scope.',
-                  )
-                else
-                  ..._workPackages.asMap().entries.map(
-                        (entry) => _buildWorkPackageRow(entry.value, entry.key),
-                      ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextButton.icon(
-            onPressed: _addWorkPackage,
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Add work package'),
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF1F2937),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              backgroundColor: const Color(0xFFFFF3C4),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-          ),
+          _buildWorkPackagesTable(context),
         ],
       ),
     );
@@ -847,83 +807,675 @@ class _ScopeCompletionScreenState extends State<ScopeCompletionScreen> {
     );
   }
 
-  Widget _buildWorkPackageRow(_WorkPackageItem item, int index) {
-    final statusItems = _dropdownItems(_workStatuses, item.status);
-    final impactItems = _dropdownItems(_impactLevels, item.impact);
+  Widget _buildWorkPackagesTable(BuildContext context) {
+    return _buildResponsiveTable(
+      minWidth: 1100,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Table header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1F2937),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Row(
+              children: [
+                Expanded(flex: 1, child: Text('WBS', style: _headerStyle)),
+                Expanded(flex: 3, child: Text('Work Package', style: _headerStyle)),
+                Expanded(flex: 2, child: Text('Owner', style: _headerStyle)),
+                Expanded(flex: 2, child: Text('Baseline', style: _headerStyle)),
+                Expanded(flex: 2, child: Text('Actual', style: _headerStyle)),
+                Expanded(flex: 1, child: Text('% Comp.', style: _headerStyle)),
+                Expanded(flex: 2, child: Text('Status', style: _headerStyle)),
+                Expanded(flex: 1, child: Text('Impact', style: _headerStyle)),
+                Expanded(flex: 1, child: Text('', style: _headerStyle)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          if (_workPackages.isEmpty)
+            _InlineEmptyState(
+              title: 'No work packages yet',
+              message: 'Add work packages to track delivered scope against baseline.',
+              icon: Icons.inventory_2_outlined,
+            )
+          else
+            ..._workPackages.asMap().entries.map(
+                  (entry) => _buildWorkPackageDisplayRow(entry.value, entry.key),
+                ),
+          const SizedBox(height: 10),
+          // CRUD action bar
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: _addWorkPackage,
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Add work package'),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF1F2937),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  backgroundColor: const Color(0xFFFFF3C4),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              if (_workPackages.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: () => _duplicateAllWorkPackages(),
+                  icon: const Icon(Icons.content_copy_rounded, size: 16),
+                  label: const Text('Duplicate all'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF6B7280),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${_workPackages.length} package${_workPackages.length != 1 ? 's' : ''}',
+                  style: const TextStyle(
+                      fontSize: 12, color: Color(0xFF9CA3AF)),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
-    return _TableRowShell(
-      isEven: index.isEven,
+  static const _headerStyle = TextStyle(
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    color: Color(0xFFE5E7EB),
+    letterSpacing: 0.5,
+  );
+
+  Widget _buildWorkPackageDisplayRow(_WorkPackageItem item, int index) {
+    final statusColor = _statusColor(item.status);
+    final impactColor = _impactColor(item.impact);
+    final progressColor = _progressColor(item.percentComplete);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: index.isEven ? Colors.white : const Color(0xFFFAFBFD),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFF3F4F6)),
+      ),
       child: Row(
         children: [
+          // WBS Code
+          Expanded(
+            flex: 1,
+            child: Text(
+              item.wbsCode.isNotEmpty ? item.wbsCode : '—',
+              style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF6B7280),
+                  fontFamily: 'monospace'),
+            ),
+          ),
+          // Work Package
           Expanded(
             flex: 3,
-            child: TextFormField(
-              key: ValueKey('package-title-${item.id}'),
-              initialValue: item.title,
-              decoration: _inputDecoration('Work package'),
+            child: Text(
+              item.title.isNotEmpty ? item.title : 'Untitled',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: item.title.isNotEmpty
+                    ? const Color(0xFF111827)
+                    : const Color(0xFF9CA3AF),
+              ),
               maxLines: 2,
-              onChanged: (value) =>
-                  _updateWorkPackage(item.copyWith(title: value)),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          const SizedBox(width: 12),
+          // Owner
           Expanded(
             flex: 2,
-            child: TextFormField(
-              key: ValueKey('package-owner-${item.id}'),
-              initialValue: item.owner,
-              decoration: _inputDecoration('Owner'),
-              onChanged: (value) =>
-                  _updateWorkPackage(item.copyWith(owner: value)),
+            child: Text(
+              item.owner.isNotEmpty ? item.owner : '—',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF374151)),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          const SizedBox(width: 12),
+          // Baseline Date
           Expanded(
             flex: 2,
-            child: TextFormField(
-              key: ValueKey('package-milestone-${item.id}'),
-              initialValue: item.milestone,
-              decoration: _inputDecoration('Milestone'),
-              onChanged: (value) =>
-                  _updateWorkPackage(item.copyWith(milestone: value)),
+            child: Text(
+              item.baselineDate != null
+                  ? _formatDate(item.baselineDate!)
+                  : '—',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF374151)),
             ),
           ),
-          const SizedBox(width: 12),
+          // Actual Date
           Expanded(
             flex: 2,
-            child: DropdownButtonFormField<String>(
-              initialValue: _dropdownValue(statusItems, item.status),
-              decoration: _inputDecoration('Status', dense: true),
-              items: statusItems
-                  .map((status) =>
-                      DropdownMenuItem(value: status, child: Text(status)))
-                  .toList(),
-              onChanged: (value) {
-                if (value == null) return;
-                _updateWorkPackage(item.copyWith(status: value), notify: true);
+            child: Text(
+              item.actualDate != null ? _formatDate(item.actualDate!) : '—',
+              style: TextStyle(
+                fontSize: 12,
+                color: _isOverdue(item) ? const Color(0xFFEF4444) : const Color(0xFF374151),
+                fontWeight: _isOverdue(item) ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ),
+          // % Complete
+          Expanded(
+            flex: 1,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${item.percentComplete}%',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: progressColor,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: LinearProgressIndicator(
+                    value: item.percentComplete / 100,
+                    backgroundColor: const Color(0xFFE5E7EB),
+                    valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+                    minHeight: 4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Status chip
+          Expanded(
+            flex: 2,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                item.status,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: statusColor,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+          // Impact chip
+          Expanded(
+            flex: 1,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              decoration: BoxDecoration(
+                color: impactColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                item.impact,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: impactColor,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+          // Actions
+          Expanded(
+            flex: 1,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _actionIconButton(
+                  icon: Icons.edit_outlined,
+                  tooltip: 'Edit',
+                  onPressed: () => _showWorkPackageDialog(item),
+                ),
+                _actionIconButton(
+                  icon: Icons.content_copy,
+                  tooltip: 'Duplicate',
+                  onPressed: () => _duplicateWorkPackage(item),
+                ),
+                _actionIconButton(
+                  icon: Icons.delete_outline,
+                  tooltip: 'Delete',
+                  color: const Color(0xFFEF4444),
+                  onPressed: () => _confirmDeleteWorkPackage(item),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _actionIconButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+    Color color = const Color(0xFF6B7280),
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(6),
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: Icon(icon, size: 16, color: color),
+        ),
+      ),
+    );
+  }
+
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'delivered':
+        return const Color(0xFF059669);
+      case 'partially delivered':
+        return const Color(0xFFD97706);
+      case 'deferred':
+        return const Color(0xFFDC2626);
+      case 'not started':
+        return const Color(0xFF9CA3AF);
+      default:
+        return const Color(0xFF6B7280);
+    }
+  }
+
+  Color _impactColor(String impact) {
+    switch (impact.toLowerCase()) {
+      case 'critical':
+        return const Color(0xFFDC2626);
+      case 'high':
+        return const Color(0xFFEA580C);
+      case 'medium':
+        return const Color(0xFFD97706);
+      case 'low':
+        return const Color(0xFF059669);
+      default:
+        return const Color(0xFF6B7280);
+    }
+  }
+
+  Color _progressColor(int pct) {
+    if (pct >= 80) return const Color(0xFF059669);
+    if (pct >= 50) return const Color(0xFFD97706);
+    return const Color(0xFFDC2626);
+  }
+
+  bool _isOverdue(_WorkPackageItem item) {
+    if (item.baselineDate == null || item.actualDate == null) return false;
+    return item.actualDate!.isAfter(item.baselineDate!);
+  }
+
+  String _formatDate(DateTime dt) {
+    const months = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${dt.day} ${months[dt.month]} ${dt.year}';
+  }
+
+  void _showWorkPackageDialog([_WorkPackageItem? existing]) {
+    final isEdit = existing != null;
+    final titleCtl = TextEditingController(text: existing?.title ?? '');
+    final ownerCtl = TextEditingController(text: existing?.owner ?? '');
+    final milestoneCtl = TextEditingController(text: existing?.milestone ?? '');
+    final wbsCtl = TextEditingController(text: existing?.wbsCode ?? '');
+    final notesCtl = TextEditingController(text: existing?.notes ?? '');
+    final pctCtl = TextEditingController(
+        text: (existing?.percentComplete ?? 0).toString());
+    String status = existing?.status ?? _workStatuses.first;
+    String impact = existing?.impact ?? _impactLevels[2]; // Medium
+    DateTime? baselineDate = existing?.baselineDate;
+    DateTime? actualDate = existing?.actualDate;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(isEdit ? Icons.edit_outlined : Icons.add_circle_outline,
+                  size: 22, color: const Color(0xFF4154F1)),
+              const SizedBox(width: 10),
+              Text(isEdit ? 'Edit Work Package' : 'Add Work Package',
+                  style: const TextStyle(fontSize: 18)),
+            ],
+          ),
+          content: SizedBox(
+            width: 560,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // WBS Code
+                  const _DialogLabel('WBS Code'),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: wbsCtl,
+                    decoration: const InputDecoration(
+                      hintText: 'e.g. 1.2.3',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                    style: const TextStyle(fontFamily: 'monospace'),
+                  ),
+                  const SizedBox(height: 14),
+                  // Title
+                  const _DialogLabel('Work Package Title *'),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: titleCtl,
+                    decoration: const InputDecoration(
+                      hintText: 'Describe the deliverable',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 14),
+                  // Owner & Milestone
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const _DialogLabel('Owner'),
+                            const SizedBox(height: 4),
+                            TextField(
+                              controller: ownerCtl,
+                              decoration: const InputDecoration(
+                                hintText: 'Responsible person',
+                                isDense: true,
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const _DialogLabel('Milestone'),
+                            const SizedBox(height: 4),
+                            TextField(
+                              controller: milestoneCtl,
+                              decoration: const InputDecoration(
+                                hintText: 'Target milestone',
+                                isDense: true,
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // Dates
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const _DialogLabel('Baseline Date'),
+                            const SizedBox(height: 4),
+                            _DateField(
+                              initialDate: baselineDate,
+                              onPicked: (d) =>
+                                  setDialogState(() => baselineDate = d),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const _DialogLabel('Actual Date'),
+                            const SizedBox(height: 4),
+                            _DateField(
+                              initialDate: actualDate,
+                              onPicked: (d) =>
+                                  setDialogState(() => actualDate = d),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // % Complete + Status + Impact
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const _DialogLabel('% Complete'),
+                            const SizedBox(height: 4),
+                            TextField(
+                              controller: pctCtl,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                hintText: '0–100',
+                                isDense: true,
+                                border: OutlineInputBorder(),
+                                suffixText: '%',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const _DialogLabel('Status'),
+                            const SizedBox(height: 4),
+                            DropdownButtonFormField<String>(
+                              value: status,
+                              decoration: const InputDecoration(
+                                isDense: true,
+                                border: OutlineInputBorder(),
+                              ),
+                              items: _workStatuses
+                                  .map((s) => DropdownMenuItem(
+                                      value: s, child: Text(s)))
+                                  .toList(),
+                              onChanged: (v) {
+                                if (v != null) {
+                                  setDialogState(() => status = v);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const _DialogLabel('Impact'),
+                            const SizedBox(height: 4),
+                            DropdownButtonFormField<String>(
+                              value: impact,
+                              decoration: const InputDecoration(
+                                isDense: true,
+                                border: OutlineInputBorder(),
+                              ),
+                              items: _impactLevels
+                                  .map((s) => DropdownMenuItem(
+                                      value: s, child: Text(s)))
+                                  .toList(),
+                              onChanged: (v) {
+                                if (v != null) {
+                                  setDialogState(() => impact = v);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // Notes
+                  const _DialogLabel('Notes'),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: notesCtl,
+                    decoration: const InputDecoration(
+                      hintText: 'Additional context or remarks',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final pct =
+                    (int.tryParse(pctCtl.text.trim()) ?? 0).clamp(0, 100);
+                final newItem = _WorkPackageItem(
+                  id: existing?.id ?? _newId(),
+                  title: titleCtl.text.trim(),
+                  owner: ownerCtl.text.trim(),
+                  milestone: milestoneCtl.text.trim(),
+                  status: status,
+                  impact: impact,
+                  wbsCode: wbsCtl.text.trim(),
+                  baselineDate: baselineDate,
+                  actualDate: actualDate,
+                  percentComplete: pct,
+                  notes: notesCtl.text.trim(),
+                );
+                if (isEdit) {
+                  _updateWorkPackage(newItem, notify: true);
+                } else {
+                  setState(() => _workPackages.add(newItem));
+                  _scheduleSave();
+                }
+                Navigator.of(ctx).pop();
               },
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF4154F1),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              child: Text(isEdit ? 'Save Changes' : 'Add Package'),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _duplicateWorkPackage(_WorkPackageItem item) {
+    setState(() {
+      _workPackages.add(_WorkPackageItem(
+        id: _newId(),
+        title: '${item.title} (copy)',
+        owner: item.owner,
+        milestone: item.milestone,
+        status: item.status,
+        impact: item.impact,
+        wbsCode: item.wbsCode,
+        baselineDate: item.baselineDate,
+        actualDate: item.actualDate,
+        percentComplete: item.percentComplete,
+        notes: item.notes,
+      ));
+    });
+    _scheduleSave();
+  }
+
+  void _duplicateAllWorkPackages() {
+    setState(() {
+      for (final item in List.of(_workPackages)) {
+        _workPackages.add(_WorkPackageItem(
+          id: _newId(),
+          title: '${item.title} (copy)',
+          owner: item.owner,
+          milestone: item.milestone,
+          status: item.status,
+          impact: item.impact,
+          wbsCode: item.wbsCode,
+          baselineDate: item.baselineDate,
+          actualDate: item.actualDate,
+          percentComplete: item.percentComplete,
+          notes: item.notes,
+        ));
+      }
+    });
+    _scheduleSave();
+  }
+
+  void _confirmDeleteWorkPackage(_WorkPackageItem item) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444)),
+            SizedBox(width: 10),
+            Text('Delete Work Package'),
+          ],
+        ),
+        content: Text(
+            'Are you sure you want to delete "${item.title.isNotEmpty ? item.title : 'this package'}"? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            flex: 2,
-            child: DropdownButtonFormField<String>(
-              initialValue: _dropdownValue(impactItems, item.impact),
-              decoration: _inputDecoration('Impact', dense: true),
-              items: impactItems
-                  .map((impact) =>
-                      DropdownMenuItem(value: impact, child: Text(impact)))
-                  .toList(),
-              onChanged: (value) {
-                if (value == null) return;
-                _updateWorkPackage(item.copyWith(impact: value), notify: true);
-              },
+          FilledButton(
+            onPressed: () {
+              _deleteWorkPackage(item.id);
+              Navigator.of(ctx).pop();
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
             ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
-            onPressed: () => _deleteWorkPackage(item.id),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -1927,10 +2479,15 @@ class _ReadinessCard extends StatelessWidget {
 }
 
 class _InlineEmptyState extends StatelessWidget {
-  const _InlineEmptyState({required this.title, required this.message});
+  const _InlineEmptyState({
+    required this.title,
+    required this.message,
+    this.icon = Icons.info_outline,
+  });
 
   final String title;
   final String message;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -1943,7 +2500,7 @@ class _InlineEmptyState extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline, size: 18, color: Color(0xFF9CA3AF)),
+          Icon(icon, size: 18, color: const Color(0xFF9CA3AF)),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -1979,6 +2536,11 @@ class _WorkPackageItem {
     required this.milestone,
     required this.status,
     required this.impact,
+    this.wbsCode = '',
+    this.baselineDate,
+    this.actualDate,
+    this.percentComplete = 0,
+    this.notes = '',
   });
 
   final String id;
@@ -1987,6 +2549,11 @@ class _WorkPackageItem {
   final String milestone;
   final String status;
   final String impact;
+  final String wbsCode;
+  final DateTime? baselineDate;
+  final DateTime? actualDate;
+  final int percentComplete;
+  final String notes;
 
   _WorkPackageItem copyWith({
     String? title,
@@ -1994,6 +2561,11 @@ class _WorkPackageItem {
     String? milestone,
     String? status,
     String? impact,
+    String? wbsCode,
+    DateTime? baselineDate,
+    DateTime? actualDate,
+    int? percentComplete,
+    String? notes,
   }) {
     return _WorkPackageItem(
       id: id,
@@ -2002,6 +2574,11 @@ class _WorkPackageItem {
       milestone: milestone ?? this.milestone,
       status: status ?? this.status,
       impact: impact ?? this.impact,
+      wbsCode: wbsCode ?? this.wbsCode,
+      baselineDate: baselineDate ?? this.baselineDate,
+      actualDate: actualDate ?? this.actualDate,
+      percentComplete: percentComplete ?? this.percentComplete,
+      notes: notes ?? this.notes,
     );
   }
 
@@ -2012,6 +2589,11 @@ class _WorkPackageItem {
         'milestone': milestone,
         'status': status,
         'impact': impact,
+        'wbsCode': wbsCode,
+        'baselineDate': baselineDate?.toIso8601String(),
+        'actualDate': actualDate?.toIso8601String(),
+        'percentComplete': percentComplete,
+        'notes': notes,
       };
 
   static List<_WorkPackageItem> fromList(dynamic data) {
@@ -2026,8 +2608,23 @@ class _WorkPackageItem {
         milestone: map['milestone']?.toString() ?? '',
         status: map['status']?.toString() ?? 'Delivered',
         impact: map['impact']?.toString() ?? 'Medium',
+        wbsCode: map['wbsCode']?.toString() ?? '',
+        baselineDate: _parseDate(map['baselineDate']),
+        actualDate: _parseDate(map['actualDate']),
+        percentComplete: _parseInt(map['percentComplete']),
+        notes: map['notes']?.toString() ?? '',
       );
     }).toList();
+  }
+
+  static DateTime? _parseDate(dynamic v) {
+    if (v == null) return null;
+    return DateTime.tryParse(v.toString());
+  }
+
+  static int _parseInt(dynamic v) {
+    if (v == null) return 0;
+    return int.tryParse(v.toString()) ?? 0;
   }
 }
 
@@ -2156,5 +2753,63 @@ class _Debouncer {
 
   void dispose() {
     _timer?.cancel();
+  }
+}
+
+class _DialogLabel extends StatelessWidget {
+  const _DialogLabel(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: Color(0xFF374151),
+      ),
+    );
+  }
+}
+
+class _DateField extends StatelessWidget {
+  const _DateField({required this.onPicked, this.initialDate});
+  final DateTime? initialDate;
+  final ValueChanged<DateTime?> onPicked;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = TextEditingController(
+      text: initialDate != null ? _formatDateShort(initialDate!) : '',
+    );
+
+    return TextField(
+      controller: controller,
+      readOnly: true,
+      decoration: InputDecoration(
+        hintText: 'Select date',
+        isDense: true,
+        border: const OutlineInputBorder(),
+        suffixIcon: const Icon(Icons.calendar_today_outlined, size: 16),
+      ),
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: initialDate ?? DateTime.now(),
+          firstDate: DateTime(2020),
+          lastDate: DateTime(2040),
+        );
+        onPicked(picked);
+      },
+    );
+  }
+
+  static String _formatDateShort(DateTime dt) {
+    const months = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${dt.day} ${months[dt.month]} ${dt.year}';
   }
 }

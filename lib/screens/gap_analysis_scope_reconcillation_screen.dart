@@ -14,6 +14,8 @@ import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/launch_editable_section.dart';
 import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/providers/project_data_provider.dart';
+import 'package:ndu_project/app_strings.dart';
 
 class GapAnalysisScopeReconcillationScreen extends StatefulWidget {
   const GapAnalysisScopeReconcillationScreen({
@@ -531,15 +533,78 @@ class _InfoStrip extends StatelessWidget {
 
   final bool isMobile;
 
+  /// Maps a [currentCheckpoint] string to a human-readable delivery stage.
+  static String _resolveDeliveryStage(String checkpoint) {
+    final token = checkpoint.toLowerCase();
+    if (token.isEmpty) return 'Initiation';
+    if (token.startsWith('fep_')) return 'Front End Planning';
+    if (token.contains('launch') || token.contains('go_live')) return 'Launch';
+    if (token.contains('execution') ||
+        token.contains('progress_tracking') ||
+        token.contains('vendor_tracking') ||
+        token.contains('contracts_tracking')) {
+      return 'Execution';
+    }
+    if (token.startsWith('design_') || token == 'design') return 'Design';
+    if (token.contains('close_out') ||
+        token.contains('closure') ||
+        token.contains('finalize')) {
+      return 'Close-out';
+    }
+    if (token.contains('project_') ||
+        token.contains('schedule') ||
+        token.contains('wbs') ||
+        token.contains('scope_tracking') ||
+        token.contains('cost_estimate')) {
+      return 'Planning';
+    }
+    if (token.contains('business_case') ||
+        token.contains('potential_solutions') ||
+        token.contains('preferred_solution') ||
+        token.contains('charter')) {
+      return 'Initiation';
+    }
+    if (token.contains('planning') || token.contains('procurement')) {
+      return 'Planning';
+    }
+    return 'Initiation';
+  }
+
+  /// Resolves the project track from [overallFramework].
+  static String _resolveTrack(String? overallFramework) {
+    if (overallFramework == null || overallFramework.isEmpty) {
+      return 'Project delivery & execution';
+    }
+    final fw = overallFramework.toLowerCase();
+    if (fw.contains('agile')) return 'Agile delivery';
+    if (fw.contains('waterfall')) return 'Waterfall delivery';
+    if (fw.contains('hybrid')) return 'Hybrid delivery';
+    return overallFramework;
+  }
+
   @override
   Widget build(BuildContext context) {
-    const chips = [
-      _InfoChipData(
-          label: 'Project', value: 'AI path capacity uplift – Inception'),
-      _InfoChipData(label: 'Track', value: 'Product launch alignment'),
-      _InfoChipData(label: 'Delivery stage', value: 'Ready-to-build review'),
-      _InfoChipData(
-          label: 'Refresh cadence', value: 'Weekly · Next sync Thu, 10:00 AM'),
+    final provider = ProjectDataInherited.maybeOf(context);
+    final projectData = provider?.projectData;
+
+    final projectName =
+        projectData?.projectName.isNotEmpty == true
+            ? projectData!.projectName
+            : AppStrings.appName;
+    final track = _resolveTrack(projectData?.overallFramework);
+    final deliveryStage = _resolveDeliveryStage(
+        projectData?.currentCheckpoint ?? 'initiation');
+
+    final lastUpdated = projectData?.updatedAt;
+    final cadenceValue = lastUpdated != null
+        ? 'Last updated ${_formatRelative(lastUpdated)}'
+        : 'Real-time sync';
+
+    final chips = [
+      _InfoChipData(label: 'Project', value: projectName),
+      _InfoChipData(label: 'Track', value: track),
+      _InfoChipData(label: 'Delivery stage', value: deliveryStage),
+      _InfoChipData(label: 'Sync status', value: cadenceValue),
     ];
 
     return Wrap(
@@ -554,6 +619,22 @@ class _InfoStrip extends StatelessWidget {
           .toList(),
     );
   }
+
+  /// Formats a [DateTime] as a relative time string.
+  static String _formatRelative(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return '${dt.day} ${_monthAbbr(dt.month)} ${dt.year}';
+  }
+
+  static String _monthAbbr(int m) => const [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ][m - 1];
 }
 
 

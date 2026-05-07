@@ -53,6 +53,11 @@ class _FrontEndPlanningOpportunitiesScreenState
   bool _isSyncReady = false;
   bool _hasAttemptedInitialAutofill = false;
 
+  static const String _kOpportunitiesInitializedNoteKey =
+      'fep_opportunities_initialized';
+  static const String _kOpportunitiesUserTouchedNoteKey =
+      'fep_opportunities_user_touched';
+
   // Backing rows for the table; built from incoming requirements (if any).
   late List<OpportunityItem> _rows;
   bool _isGeneratingOpportunities = false;
@@ -78,13 +83,27 @@ class _FrontEndPlanningOpportunitiesScreenState
 
       // Load saved opportunities
       _loadSavedOpportunities(projectData);
-      _syncOpportunitiesToProvider();
-      if (_shouldAutofillInitialOpportunities()) {
+      _syncOpportunitiesToProvider(markInitialized: true, markTouched: false);
+      final opportunitiesInitialized = _asPlanningFlag(
+        projectData.planningNotes,
+        _kOpportunitiesInitializedNoteKey,
+      );
+      final opportunitiesTouched = _asPlanningFlag(
+        projectData.planningNotes,
+        _kOpportunitiesUserTouchedNoteKey,
+      );
+      if (!opportunitiesInitialized &&
+          !opportunitiesTouched &&
+          _shouldAutofillInitialOpportunities()) {
         _hasAttemptedInitialAutofill = true;
         _generateOpportunitiesFromContext(autoTriggered: true);
       }
       if (mounted) setState(() {});
     });
+  }
+
+  bool _asPlanningFlag(Map<String, String> notes, String key) {
+    return (notes[key] ?? '').trim().toLowerCase() == 'true';
   }
 
   bool _shouldAutofillInitialOpportunities() {
@@ -129,8 +148,9 @@ class _FrontEndPlanningOpportunitiesScreenState
               status: 'Identified',
             ));
           }).toList();
-          // Initial sync to persist migration
-          _syncOpportunitiesToProvider();
+          // Initial sync to persist migration without marking user edits
+          _syncOpportunitiesToProvider(
+              markInitialized: true, markTouched: false);
         }
       }
     }
@@ -227,7 +247,7 @@ class _FrontEndPlanningOpportunitiesScreenState
               )))
           .toList();
     });
-    _syncOpportunitiesToProvider();
+    _syncOpportunitiesToProvider(markInitialized: true, markTouched: false);
   }
 
   OpportunityItem _normalizeOpportunityItem(OpportunityItem item,
@@ -311,7 +331,10 @@ class _FrontEndPlanningOpportunitiesScreenState
     super.dispose();
   }
 
-  void _syncOpportunitiesToProvider() {
+  void _syncOpportunitiesToProvider({
+    bool markTouched = true,
+    bool markInitialized = true,
+  }) {
     if (!mounted || !_isSyncReady) return;
 
     // Legacy string format
@@ -334,7 +357,15 @@ class _FrontEndPlanningOpportunitiesScreenState
     final provider = ProjectDataHelper.getProvider(context);
     provider.updateField(
       (data) {
+        final nextNotes = Map<String, String>.from(data.planningNotes);
+        if (markInitialized) {
+          nextNotes[_kOpportunitiesInitializedNoteKey] = 'true';
+        }
+        if (markTouched) {
+          nextNotes[_kOpportunitiesUserTouchedNoteKey] = 'true';
+        }
         final updated = data.copyWith(
+          planningNotes: nextNotes,
           frontEndPlanning: ProjectDataHelper.updateFEPField(
             current: data.frontEndPlanning,
             opportunities: oppText, // Legacy
@@ -438,7 +469,10 @@ Opportunity generation constraints:
                   _normalizeOpportunityItem(entry.value, index: entry.key))
               .toList();
         });
-        _syncOpportunitiesToProvider();
+        _syncOpportunitiesToProvider(
+          markInitialized: true,
+          markTouched: !autoTriggered,
+        );
         await ProjectDataHelper.getProvider(context)
             .saveToFirebase(checkpoint: 'fep_opportunities');
       } else {
@@ -676,7 +710,7 @@ Opportunity generation constraints:
     setState(() {
       _rows[index] = normalized;
     });
-    _syncOpportunitiesToProvider();
+    _syncOpportunitiesToProvider(markTouched: true, markInitialized: true);
   }
 
   void _recordOpportunityFieldHistory({
@@ -772,7 +806,7 @@ Opportunity generation constraints:
     setState(() {
       _rows[index] = reverted;
     });
-    _syncOpportunitiesToProvider();
+    _syncOpportunitiesToProvider(markTouched: true, markInitialized: true);
   }
 
   Future<void> _confirmDeleteOpportunity(String id) async {
@@ -790,7 +824,7 @@ Opportunity generation constraints:
     setState(() {
       _rows.removeAt(index);
     });
-    _syncOpportunitiesToProvider();
+    _syncOpportunitiesToProvider(markTouched: true, markInitialized: true);
   }
 
   Future<void> _submitOpportunities() async {
@@ -1242,7 +1276,8 @@ Opportunity generation constraints:
           setState(() {
             _rows.add(_normalizeOpportunityItem(val, index: _rows.length));
           });
-          _syncOpportunitiesToProvider();
+          _syncOpportunitiesToProvider(
+              markTouched: true, markInitialized: true);
         }
       }
     });

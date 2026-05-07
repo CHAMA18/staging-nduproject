@@ -50,6 +50,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   bool _autoImportAttempted = false;
   bool _notesExpanded = false;
 
+  static const String _kScheduleInitializedNoteKey =
+      'planning_schedule_initialized';
+  static const String _kScheduleUserTouchedNoteKey =
+      'planning_schedule_user_touched';
+
+  bool _asPlanningFlag(Map<String, String> notes, String key) {
+    return (notes[key] ?? '').trim().toLowerCase() == 'true';
+  }
+
   String _timelineView = 'Months';
   String? _selectedTaskId;
   String? _hoveredTaskId;
@@ -107,20 +116,25 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     });
   }
 
-  Future<void> _persistSchedule() async {
+  Future<void> _persistSchedule({bool markTouched = true}) async {
     final success = await ProjectDataHelper.updateAndSave(
       context: context,
       checkpoint: 'planning_schedule',
-      dataUpdater: (data) => data.copyWith(
-        planningNotes: {
-          ...data.planningNotes,
-          'planning_schedule_notes': _notesController.text.trim(),
-          'planning_schedule_methodology': _selectedMethodology,
-          'planning_schedule_start_date':
-              _scheduleStartDate?.toIso8601String() ?? '',
-        },
-        scheduleActivities: _buildScheduleActivities(),
-      ),
+      dataUpdater: (data) {
+        final nextNotes = Map<String, String>.from(data.planningNotes)
+          ..['planning_schedule_notes'] = _notesController.text.trim()
+          ..['planning_schedule_methodology'] = _selectedMethodology
+          ..['planning_schedule_start_date'] =
+              _scheduleStartDate?.toIso8601String() ?? ''
+          ..[_kScheduleInitializedNoteKey] = 'true';
+        if (markTouched) {
+          nextNotes[_kScheduleUserTouchedNoteKey] = 'true';
+        }
+        return data.copyWith(
+          planningNotes: nextNotes,
+          scheduleActivities: _buildScheduleActivities(),
+        );
+      },
       showSnackbar: false,
     );
     if (mounted && success) {
@@ -208,8 +222,16 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         );
       }));
 
-    if (_activityRows.isEmpty && data.wbsTree.isNotEmpty) {
-      _importFromWbs(showConfirm: false);
+    final scheduleInitialized =
+        _asPlanningFlag(data.planningNotes, _kScheduleInitializedNoteKey);
+    final scheduleUserTouched =
+        _asPlanningFlag(data.planningNotes, _kScheduleUserTouchedNoteKey);
+    if (_activityRows.isEmpty &&
+        data.wbsTree.isNotEmpty &&
+        !scheduleInitialized &&
+        !scheduleUserTouched) {
+      _autoImportAttempted = true;
+      _importFromWbs(showConfirm: false, markTouched: false);
     }
   }
 
@@ -361,7 +383,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     return result;
   }
 
-  Future<void> _importFromWbs({bool showConfirm = true}) async {
+  Future<void> _importFromWbs({
+    bool showConfirm = true,
+    bool markTouched = true,
+  }) async {
     final data = ProjectDataHelper.getData(context);
     if (data.wbsTree.isEmpty) {
       _showInfo('No WBS items found.');
@@ -464,7 +489,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         }));
     });
 
-    _handleActivityChanged();
+    if (markTouched) {
+      _handleActivityChanged();
+    } else {
+      await _persistSchedule(markTouched: false);
+      if (mounted) setState(() {});
+    }
     _showInfo('Imported ${_activityRows.length} activities from WBS.');
   }
 
@@ -2034,10 +2064,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     if (!_autoImportAttempted &&
         _activityRows.isEmpty &&
-        data.wbsTree.isNotEmpty) {
+        data.wbsTree.isNotEmpty &&
+        !_asPlanningFlag(data.planningNotes, _kScheduleInitializedNoteKey) &&
+        !_asPlanningFlag(data.planningNotes, _kScheduleUserTouchedNoteKey)) {
       _autoImportAttempted = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _importFromWbs(showConfirm: false);
+        if (mounted) {
+          _importFromWbs(showConfirm: false, markTouched: false);
+        }
       });
     }
 
@@ -3069,20 +3103,23 @@ class _TimelineList extends StatelessWidget {
         child: Table(
           defaultVerticalAlignment: TableCellVerticalAlignment.middle,
           columnWidths: const {
-            0: FixedColumnWidth(180),
-            1: FixedColumnWidth(100),
-            2: FixedColumnWidth(95),
-            3: FixedColumnWidth(170),
-            4: FixedColumnWidth(120),
-            5: FixedColumnWidth(110),
-            6: FixedColumnWidth(150),
-            7: FixedColumnWidth(120),
-            8: FixedColumnWidth(120),
-            9: FixedColumnWidth(120),
-            10: FixedColumnWidth(120),
-            11: FixedColumnWidth(110),
-            12: FixedColumnWidth(170),
-            13: FixedColumnWidth(48),
+            0: FixedColumnWidth(160),
+            1: FixedColumnWidth(90),
+            2: FixedColumnWidth(85),
+            3: FixedColumnWidth(160),
+            4: FixedColumnWidth(110),
+            5: FixedColumnWidth(100),
+            6: FixedColumnWidth(130),
+            7: FixedColumnWidth(110),
+            8: FixedColumnWidth(110),
+            9: FixedColumnWidth(110),
+            10: FixedColumnWidth(110),
+            11: FixedColumnWidth(100),
+            12: FixedColumnWidth(160),
+            13: FixedColumnWidth(110),
+            14: FixedColumnWidth(110),
+            15: FixedColumnWidth(110),
+            16: FixedColumnWidth(48),
           },
           border: const TableBorder(
             horizontalInside: BorderSide(color: AppSemanticColors.border),
@@ -3332,6 +3369,44 @@ class _TimelineList extends StatelessWidget {
                     ),
                   ),
                   _cell(
+                    Text(
+                      '\$${row.budgetedCost.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF111827),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  _cell(
+                    Text(
+                      '\$${row.actualCost.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF111827),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  _cell(
+                    Builder(
+                      builder: (context) {
+                        final variance = row.budgetedCost - row.actualCost;
+                        final varianceColor = variance >= 0
+                            ? const Color(0xFF10B981)
+                            : const Color(0xFFEF4444);
+                        return Text(
+                          '${variance >= 0 ? '+' : '-'}\$${variance.abs().toStringAsFixed(0)}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: varianceColor,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  _cell(
                     IconButton(
                       onPressed: () => onDelete(row.id),
                       icon: const Icon(Icons.delete_outline, size: 18),
@@ -3375,6 +3450,9 @@ class _TimelineList extends StatelessWidget {
         label('Est. Hours'),
         label('Estimate Basis'),
         label('Milestone'),
+        label('Budgeted Cost'),
+        label('Actual Cost'),
+        label('Cost Variance'),
         label(''),
       ],
     );
@@ -3767,6 +3845,8 @@ class _ScheduleRow {
     this.wbsLevel2Id = '',
     this.wbsLevel2Title = '',
     this.contractId = '',
+    this.budgetedCost = 0,
+    this.actualCost = 0,
     this.onChanged,
   })  : status = _normalizeScheduleStatus(status),
         priority = _normalizeSchedulePriority(priority),
@@ -3826,6 +3906,8 @@ class _ScheduleRow {
   String wbsLevel2Id;
   String wbsLevel2Title;
   String contractId;
+  double budgetedCost;
+  double actualCost;
   final VoidCallback? onChanged;
 
   factory _ScheduleRow.fromActivity(
@@ -3864,6 +3946,8 @@ class _ScheduleRow {
       wbsLevel2Id: activity.wbsLevel2Id,
       wbsLevel2Title: activity.wbsLevel2Title,
       contractId: activity.contractId,
+      budgetedCost: activity.budgetedCost,
+      actualCost: activity.actualCost,
       onChanged: onChanged,
     );
   }
@@ -5215,6 +5299,34 @@ class _ProcurementActivityCard extends StatelessWidget {
   }
 }
 
+class _EVMData {
+  const _EVMData({
+    required this.plannedValue,
+    required this.earnedValue,
+    required this.actualCost,
+    required this.scheduleVariance,
+    required this.costVariance,
+    required this.schedulePerformanceIndex,
+    required this.costPerformanceIndex,
+    required this.budgetAtCompletion,
+    required this.estimateAtCompletion,
+    required this.estimateToComplete,
+    required this.varianceAtCompletion,
+  });
+
+  final double plannedValue; // PV
+  final double earnedValue; // EV
+  final double actualCost; // AC
+  final double scheduleVariance; // SV = EV - PV
+  final double costVariance; // CV = EV - AC
+  final double schedulePerformanceIndex; // SPI = EV / PV
+  final double costPerformanceIndex; // CPI = EV / AC
+  final double budgetAtCompletion; // BAC
+  final double estimateAtCompletion; // EAC
+  final double estimateToComplete; // ETC
+  final double varianceAtCompletion; // VAC = BAC - EAC
+}
+
 class _CostVsScheduleTab extends StatelessWidget {
   const _CostVsScheduleTab({
     required this.workPackages,
@@ -5286,6 +5398,106 @@ class _CostVsScheduleTab extends StatelessWidget {
     return points;
   }
 
+  /// Calculate progress percentage for a work package based on linked activities
+  double _getWorkPackageProgress(WorkPackage wp) {
+    if (wp.scheduleActivityIds.isEmpty) {
+      // Fallback to status-based progress
+      switch (wp.status) {
+        case 'complete':
+          return 1.0;
+        case 'in_progress':
+          return 0.5;
+        default:
+          return 0.0;
+      }
+    }
+
+    final linkedActivities = scheduleActivities
+        .where((a) => wp.scheduleActivityIds.contains(a.id))
+        .toList();
+
+    if (linkedActivities.isEmpty) return 0.0;
+
+    final totalProgress = linkedActivities.fold<double>(
+      0,
+      (sum, act) => sum + act.progress.clamp(0.0, 1.0),
+    );
+
+    return totalProgress / linkedActivities.length;
+  }
+
+  /// Calculate Earned Value Management (EVM) metrics
+  _EVMData _calculateEVM() {
+    final now = DateTime.now();
+
+    // Planned Value (PV): Sum of budgeted costs for work scheduled to be completed by now
+    double plannedValue = 0;
+    for (final wp in workPackages) {
+      if (wp.plannedEnd != null) {
+        final endDate = DateTime.tryParse(wp.plannedEnd!);
+        if (endDate != null && !endDate.isAfter(now)) {
+          plannedValue += wp.budgetedCost;
+        }
+      }
+    }
+
+    // Earned Value (EV): Sum of budgeted costs for work actually completed
+    double earnedValue = 0;
+    for (final wp in workPackages) {
+      final progress = _getWorkPackageProgress(wp);
+      earnedValue += wp.budgetedCost * progress;
+    }
+
+    // Actual Cost (AC): Sum of actual costs incurred
+    double actualCost = workPackages.fold<double>(
+      0,
+      (sum, wp) => sum + wp.actualCost,
+    );
+
+    // Schedule Variance (SV) = EV - PV
+    final scheduleVariance = earnedValue - plannedValue;
+
+    // Cost Variance (CV) = EV - AC
+    final costVariance = earnedValue - actualCost;
+
+    // Schedule Performance Index (SPI) = EV / PV
+    final schedulePerformanceIndex =
+        plannedValue > 0 ? earnedValue / plannedValue : 0.0;
+
+    // Cost Performance Index (CPI) = EV / AC
+    final costPerformanceIndex =
+        actualCost > 0 ? earnedValue / actualCost : 0.0;
+
+    // Estimate at Completion (EAC) = BAC / CPI
+    final budgetAtCompletion = workPackages.fold<double>(
+      0,
+      (sum, wp) => sum + wp.budgetedCost,
+    );
+    final estimateAtCompletion = costPerformanceIndex > 0
+        ? budgetAtCompletion / costPerformanceIndex
+        : budgetAtCompletion;
+
+    // Estimate to Complete (ETC) = EAC - AC
+    final estimateToComplete = estimateAtCompletion - actualCost;
+
+    // Variance at Completion (VAC) = BAC - EAC
+    final varianceAtCompletion = budgetAtCompletion - estimateAtCompletion;
+
+    return _EVMData(
+      plannedValue: plannedValue,
+      earnedValue: earnedValue,
+      actualCost: actualCost,
+      scheduleVariance: scheduleVariance,
+      costVariance: costVariance,
+      schedulePerformanceIndex: schedulePerformanceIndex,
+      costPerformanceIndex: costPerformanceIndex,
+      budgetAtCompletion: budgetAtCompletion,
+      estimateAtCompletion: estimateAtCompletion,
+      estimateToComplete: estimateToComplete,
+      varianceAtCompletion: varianceAtCompletion,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final totalBudget = workPackages.fold<double>(
@@ -5306,6 +5518,7 @@ class _CostVsScheduleTab extends StatelessWidget {
     final variancePercent =
         totalBudget > 0 ? (variance / totalBudget * 100).abs() : 0.0;
 
+    final evmData = _calculateEVM();
     final plannedCurve = _generatePlannedCurve();
     final actualCurve = _generateActualCurve();
 
@@ -5358,6 +5571,85 @@ class _CostVsScheduleTab extends StatelessWidget {
                     ? const Color(0xFF10B981)
                     : const Color(0xFFEF4444),
                 subtitle: '${variancePercent.toStringAsFixed(1)}%',
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // EVM Metrics Section
+          const Text(
+            'Earned Value Management (EVM) Metrics',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _EVMStatCard(
+                title: 'Planned Value (PV)',
+                value: '\$${evmData.plannedValue.toStringAsFixed(0)}',
+                color: const Color(0xFF3B82F6),
+              ),
+              _EVMStatCard(
+                title: 'Earned Value (EV)',
+                value: '\$${evmData.earnedValue.toStringAsFixed(0)}',
+                color: const Color(0xFF10B981),
+              ),
+              _EVMStatCard(
+                title: 'Actual Cost (AC)',
+                value: '\$${evmData.actualCost.toStringAsFixed(0)}',
+                color: const Color(0xFFF59E0B),
+              ),
+              _EVMStatCard(
+                title: 'Schedule Variance (SV)',
+                value: '\$${evmData.scheduleVariance.toStringAsFixed(0)}',
+                color: evmData.scheduleVariance >= 0
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFFEF4444),
+              ),
+              _EVMStatCard(
+                title: 'Cost Variance (CV)',
+                value: '\$${evmData.costVariance.toStringAsFixed(0)}',
+                color: evmData.costVariance >= 0
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFFEF4444),
+              ),
+              _EVMStatCard(
+                title: 'SPI',
+                value: evmData.schedulePerformanceIndex.toStringAsFixed(2),
+                color: evmData.schedulePerformanceIndex >= 1.0
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFFF59E0B),
+                subtitle: 'Schedule Performance',
+              ),
+              _EVMStatCard(
+                title: 'CPI',
+                value: evmData.costPerformanceIndex.toStringAsFixed(2),
+                color: evmData.costPerformanceIndex >= 1.0
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFFF59E0B),
+                subtitle: 'Cost Performance',
+              ),
+              _EVMStatCard(
+                title: 'Estimate at Completion (EAC)',
+                value: '\$${evmData.estimateAtCompletion.toStringAsFixed(0)}',
+                color: const Color(0xFF8B5CF6),
+              ),
+              _EVMStatCard(
+                title: 'Estimate to Complete (ETC)',
+                value: '\$${evmData.estimateToComplete.toStringAsFixed(0)}',
+                color: const Color(0xFF6366F1),
+              ),
+              _EVMStatCard(
+                title: 'Variance at Completion (VAC)',
+                value: '\$${evmData.varianceAtCompletion.toStringAsFixed(0)}',
+                color: evmData.varianceAtCompletion >= 0
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFFEF4444),
               ),
             ],
           ),
@@ -5514,6 +5806,67 @@ class _CostStatCard extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _EVMStatCard extends StatelessWidget {
+  const _EVMStatCard({
+    required this.title,
+    required this.value,
+    required this.color,
+    this.subtitle,
+  });
+
+  final String title;
+  final String value;
+  final Color color;
+  final String? subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 140,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppSemanticColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF6B7280),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              subtitle!,
+              style: const TextStyle(
+                fontSize: 9,
+                color: Color(0xFF6B7280),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

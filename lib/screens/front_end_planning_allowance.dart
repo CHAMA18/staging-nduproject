@@ -51,6 +51,15 @@ class _FrontEndPlanningAllowanceScreenState
   bool _isGenerating = false;
   late final OpenAiServiceSecure _openAi;
 
+  static const String _kAllowanceInitializedNoteKey =
+      'fep_allowance_initialized';
+  static const String _kAllowanceUserTouchedNoteKey =
+      'fep_allowance_user_touched';
+
+  bool _asPlanningFlag(Map<String, String> notes, String key) {
+    return (notes[key] ?? '').trim().toLowerCase() == 'true';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -70,9 +79,20 @@ class _FrontEndPlanningAllowanceScreenState
 
       _notes.addListener(_syncNotesToProvider);
       _isSyncReady = true;
-      _syncItemsToProvider();
-      if (_allowanceItems.isEmpty) {
-        Future<void>(() async => _generateDefaultAllowances());
+      _syncItemsToProvider(markInitialized: true, markTouched: false);
+      final allowanceInitialized = _asPlanningFlag(
+        data.planningNotes,
+        _kAllowanceInitializedNoteKey,
+      );
+      final allowanceTouched = _asPlanningFlag(
+        data.planningNotes,
+        _kAllowanceUserTouchedNoteKey,
+      );
+      if (_allowanceItems.isEmpty &&
+          !allowanceInitialized &&
+          !allowanceTouched) {
+        Future<void>(
+            () async => _generateDefaultAllowances(autoTriggered: true));
       }
       setState(() {});
     });
@@ -89,22 +109,39 @@ class _FrontEndPlanningAllowanceScreenState
     if (!mounted || !_isSyncReady) return;
     final provider = ProjectDataHelper.getProvider(context);
     provider.updateField(
-      (data) => data.copyWith(
-        frontEndPlanning: ProjectDataHelper.updateFEPField(
-          current: data.frontEndPlanning,
-          allowance: _notes.text, // Sync general notes
-        ),
-      ),
+      (data) {
+        final nextNotes = Map<String, String>.from(data.planningNotes)
+          ..[_kAllowanceInitializedNoteKey] = 'true'
+          ..[_kAllowanceUserTouchedNoteKey] = 'true';
+        return data.copyWith(
+          planningNotes: nextNotes,
+          frontEndPlanning: ProjectDataHelper.updateFEPField(
+            current: data.frontEndPlanning,
+            allowance: _notes.text, // Sync general notes
+          ),
+        );
+      },
     );
     provider.saveToFirebase(checkpoint: 'fep_allowance');
   }
 
-  void _syncItemsToProvider() {
+  void _syncItemsToProvider({
+    bool markTouched = true,
+    bool markInitialized = true,
+  }) {
     if (!mounted || !_isSyncReady) return;
     final provider = ProjectDataHelper.getProvider(context);
     provider.updateField(
       (data) {
+        final nextNotes = Map<String, String>.from(data.planningNotes);
+        if (markInitialized) {
+          nextNotes[_kAllowanceInitializedNoteKey] = 'true';
+        }
+        if (markTouched) {
+          nextNotes[_kAllowanceUserTouchedNoteKey] = 'true';
+        }
         final updated = data.copyWith(
+          planningNotes: nextNotes,
           frontEndPlanning: ProjectDataHelper.updateFEPField(
             current: data.frontEndPlanning,
             allowanceItems: _allowanceItems,
@@ -116,7 +153,7 @@ class _FrontEndPlanningAllowanceScreenState
     provider.saveToFirebase(checkpoint: 'fep_allowance');
   }
 
-  Future<void> _generateDefaultAllowances() async {
+  Future<void> _generateDefaultAllowances({bool autoTriggered = false}) async {
     if (_isGenerating) return;
     setState(() => _isGenerating = true);
 
@@ -153,7 +190,10 @@ class _FrontEndPlanningAllowanceScreenState
         setState(() {
           _allowanceItems.addAll(newItems);
         });
-        _syncItemsToProvider();
+        _syncItemsToProvider(
+          markInitialized: true,
+          markTouched: !autoTriggered,
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -194,7 +234,7 @@ class _FrontEndPlanningAllowanceScreenState
     setState(() {
       _allowanceItems.removeWhere((item) => item.id == id);
     });
-    _syncItemsToProvider();
+    _syncItemsToProvider(markTouched: true, markInitialized: true);
   }
 
   String _nextFlowDestinationLabel() {
@@ -536,7 +576,7 @@ class _FrontEndPlanningAllowanceScreenState
           _allowanceItems.add(newItem);
         }
       });
-      _syncItemsToProvider();
+      _syncItemsToProvider(markTouched: true, markInitialized: true);
     }
   }
 

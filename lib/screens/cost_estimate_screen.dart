@@ -390,7 +390,18 @@ class _CostEstimateScreenState extends State<CostEstimateScreen> {
           rows: _buildContingencyRiskRows(projectData),
         );
       case _CostWorkspaceTab.costVsSchedule:
-        return _CostVsScheduleWorkspace(projectData: projectData);
+        return _CostVsScheduleWorkspace(
+          projectData: projectData,
+          onLinkEstimateItem: (item) => _showEditItem(context, item),
+          onAddLinkedEstimate: (
+              {String? workPackageId, String? scheduleActivityId}) {
+            return _showAddItem(
+              context,
+              initialWorkPackageId: workPackageId,
+              initialScheduleActivityId: scheduleActivityId,
+            );
+          },
+        );
     }
   }
 
@@ -611,13 +622,19 @@ Current Cost Items: ${pd.costEstimateItems.map((e) => "${e.title} (${e.costType}
     }
   }
 
-  Future<void> _showAddItem(BuildContext context) async {
+  Future<void> _showAddItem(
+    BuildContext context, {
+    String? initialWorkPackageId,
+    String? initialScheduleActivityId,
+  }) async {
     final provider = ProjectDataHelper.getProvider(context);
     final selected = await showDialog<CostEstimateItem>(
       context: context,
       builder: (dialogContext) => _AddCostItemDialog(
         initialView: _activeView,
         projectData: provider.projectData,
+        initialWorkPackageId: initialWorkPackageId,
+        initialScheduleActivityId: initialScheduleActivityId,
       ),
     );
 
@@ -3358,16 +3375,97 @@ class _SourceDetailList extends StatelessWidget {
 }
 
 class _CostVsScheduleWorkspace extends StatelessWidget {
-  const _CostVsScheduleWorkspace({required this.projectData});
+  const _CostVsScheduleWorkspace({
+    required this.projectData,
+    required this.onLinkEstimateItem,
+    required this.onAddLinkedEstimate,
+  });
 
   final ProjectDataModel projectData;
+  final Future<void> Function(CostEstimateItem item) onLinkEstimateItem;
+  final Future<void> Function({
+    String? workPackageId,
+    String? scheduleActivityId,
+  }) onAddLinkedEstimate;
+
+  double _sumEstimateItems(Iterable<CostEstimateItem> items) {
+    return items.fold<double>(0, (total, item) => total + item.amount);
+  }
+
+  double _workPackageProgress(WorkPackage workPackage) {
+    if (workPackage.scheduleActivityIds.isEmpty) {
+      switch (workPackage.status) {
+        case 'complete':
+          return 1.0;
+        case 'in_progress':
+          return 0.5;
+        default:
+          return 0.0;
+      }
+    }
+
+    final linkedActivities = projectData.scheduleActivities
+        .where(
+            (activity) => workPackage.scheduleActivityIds.contains(activity.id))
+        .toList();
+    if (linkedActivities.isEmpty) return 0.0;
+
+    final totalProgress = linkedActivities.fold<double>(
+      0,
+      (total, activity) => total + activity.progress.clamp(0.0, 1.0),
+    );
+    return totalProgress / linkedActivities.length;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final linkedCount = projectData.costEstimateItems.where((item) {
+    final linkedItems = projectData.costEstimateItems.where((item) {
       return item.workPackageId.trim().isNotEmpty ||
           item.scheduleActivityId.trim().isNotEmpty;
-    }).length;
+    }).toList();
+    final unlinkedItems = projectData.costEstimateItems.where((item) {
+      return item.workPackageId.trim().isEmpty &&
+          item.scheduleActivityId.trim().isEmpty;
+    }).toList();
+    final forecastItems = projectData.costEstimateItems
+        .where((item) => item.costState == 'forecast')
+        .toList();
+    final committedItems = projectData.costEstimateItems
+        .where((item) => item.costState == 'committed')
+        .toList();
+    final actualItems = projectData.costEstimateItems
+        .where((item) => item.costState == 'actual')
+        .toList();
+
+    final linkedCount = linkedItems.length;
+    final unlinkedCount = unlinkedItems.length;
+    final workPackagesWithoutLinkedEstimate =
+        projectData.workPackages.where((wp) {
+      return !projectData.costEstimateItems.any(
+        (item) => item.workPackageId.trim() == wp.id.trim(),
+      );
+    }).toList();
+    final activitiesWithoutLinkedEstimate =
+        projectData.scheduleActivities.where((activity) {
+      return !projectData.costEstimateItems.any(
+        (item) => item.scheduleActivityId.trim() == activity.id.trim(),
+      );
+    }).toList();
+
+    final forecastTotal = _sumEstimateItems(forecastItems);
+    final committedTotal = _sumEstimateItems(committedItems);
+    final actualTotal = _sumEstimateItems(actualItems);
+    final workPackageBudgetTotal = projectData.workPackages.fold<double>(
+      0,
+      (total, wp) => total + wp.budgetedCost,
+    );
+    final workPackageActualTotal = projectData.workPackages.fold<double>(
+      0,
+      (total, wp) => total + wp.actualCost,
+    );
+    final estimateVsBudgetVariance = forecastTotal - workPackageBudgetTotal;
+    final actualVsBudgetVariance = actualTotal - workPackageBudgetTotal;
+
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
@@ -3388,44 +3486,544 @@ class _CostVsScheduleWorkspace extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            '$linkedCount estimate line(s) are linked to work packages or schedule activities.',
+            '$linkedCount estimate line(s) are linked to work packages or schedule activities. $unlinkedCount estimate line(s) still need schedule linkage.',
             style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
           ),
           const SizedBox(height: 18),
-          ...projectData.workPackages.take(8).map(
-                (workPackage) => Padding(
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _CostVsScheduleMetricCard(
+                label: 'Forecast total',
+                value: formatCurrency(forecastTotal),
+                tone: const Color(0xFF2563EB),
+              ),
+              _CostVsScheduleMetricCard(
+                label: 'Committed total',
+                value: formatCurrency(committedTotal),
+                tone: const Color(0xFF7C3AED),
+              ),
+              _CostVsScheduleMetricCard(
+                label: 'Actual total',
+                value: formatCurrency(actualTotal),
+                tone: const Color(0xFFF59E0B),
+              ),
+              _CostVsScheduleMetricCard(
+                label: 'WP budget total',
+                value: formatCurrency(workPackageBudgetTotal),
+                tone: const Color(0xFF0F172A),
+              ),
+              _CostVsScheduleMetricCard(
+                label: 'Estimate vs budget',
+                value: formatCurrency(estimateVsBudgetVariance),
+                tone: estimateVsBudgetVariance <= 0
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFFEF4444),
+              ),
+              _CostVsScheduleMetricCard(
+                label: 'Actual vs budget',
+                value: formatCurrency(actualVsBudgetVariance),
+                tone: actualVsBudgetVariance <= 0
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFFEF4444),
+              ),
+            ],
+          ),
+          const SizedBox(height: 22),
+          _CostVsScheduleInsightPanel(
+            title: 'Linkage gaps',
+            subtitle:
+                'These counts show where cost and schedule data still need stronger reconciliation.',
+            children: [
+              _CostVsScheduleBullet(
+                label: 'Unlinked estimate lines',
+                value: '$unlinkedCount',
+                tone: unlinkedCount == 0
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFFF59E0B),
+              ),
+              _CostVsScheduleBullet(
+                label: 'Work packages without linked estimates',
+                value: '${workPackagesWithoutLinkedEstimate.length}',
+                tone: workPackagesWithoutLinkedEstimate.isEmpty
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFFF59E0B),
+              ),
+              _CostVsScheduleBullet(
+                label: 'Schedule activities without linked estimates',
+                value: '${activitiesWithoutLinkedEstimate.length}',
+                tone: activitiesWithoutLinkedEstimate.isEmpty
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFFF59E0B),
+              ),
+              _CostVsScheduleBullet(
+                label: 'Work package actual total',
+                value: formatCurrency(workPackageActualTotal),
+                tone: const Color(0xFFF59E0B),
+              ),
+            ],
+          ),
+          if (unlinkedItems.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            _CostVsScheduleInsightPanel(
+              title: 'Unlinked estimate lines',
+              subtitle:
+                  'Use these actions to quickly connect estimate lines back to schedule entities.',
+              children: unlinkedItems.take(8).map((item) {
+                return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: Text(
-                          workPackage.title.trim().isEmpty
-                              ? 'Untitled Work Package'
-                              : workPackage.title.trim(),
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF111827),
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.title.trim().isEmpty
+                                  ? 'Untitled estimate line'
+                                  : item.title.trim(),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF111827),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${formatCurrency(item.amount)} • ${item.costState}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      Text(
-                        formatCurrency(workPackage.budgetedCost),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
+                      const SizedBox(width: 10),
+                      TextButton(
+                        onPressed: () => onLinkEstimateItem(item),
+                        child: const Text('Link'),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+          if (workPackagesWithoutLinkedEstimate.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            _CostVsScheduleInsightPanel(
+              title: 'Work packages missing estimate lines',
+              subtitle:
+                  'Create a linked estimate directly from a work package context.',
+              children: workPackagesWithoutLinkedEstimate.take(8).map((wp) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              wp.title.trim().isEmpty
+                                  ? 'Untitled Work Package'
+                                  : wp.title.trim(),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF111827),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Budget ${formatCurrency(wp.budgetedCost)} • ${wp.scheduleActivityIds.length} linked activities',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      TextButton(
+                        onPressed: () => onAddLinkedEstimate(
+                          workPackageId: wp.id,
+                        ),
+                        child: const Text('Add linked estimate'),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+          if (activitiesWithoutLinkedEstimate.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            _CostVsScheduleInsightPanel(
+              title: 'Schedule activities missing estimate lines',
+              subtitle:
+                  'Create estimate lines directly from uncovered schedule activities.',
+              children: activitiesWithoutLinkedEstimate.take(8).map((activity) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              activity.title.trim().isEmpty
+                                  ? 'Untitled Activity'
+                                  : activity.title.trim(),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF111827),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Budget ${formatCurrency(activity.budgetedCost)} • Progress ${(activity.progress * 100).round()}%',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      TextButton(
+                        onPressed: () => onAddLinkedEstimate(
+                          scheduleActivityId: activity.id,
+                        ),
+                        child: const Text('Add linked estimate'),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+          const SizedBox(height: 22),
+          const Text(
+            'Work Package Reconciliation',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Compare schedule package budgets, linked estimate lines, actuals, and delivery progress.',
+            style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+          ),
+          const SizedBox(height: 16),
+          if (projectData.workPackages.isEmpty)
+            const Text(
+              'No work packages available yet for cost/schedule mapping.',
+              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+            )
+          else
+            ...projectData.workPackages.take(12).map((workPackage) {
+              final linkedEstimateItems = projectData.costEstimateItems.where(
+                (item) => item.workPackageId.trim() == workPackage.id.trim(),
+              );
+              final linkedEstimateTotal =
+                  _sumEstimateItems(linkedEstimateItems);
+              final variance = linkedEstimateTotal - workPackage.budgetedCost;
+              final progress = _workPackageProgress(workPackage);
+              final varianceTone = variance <= 0
+                  ? const Color(0xFF10B981)
+                  : const Color(0xFFEF4444);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              workPackage.title.trim().isEmpty
+                                  ? 'Untitled Work Package'
+                                  : workPackage.title.trim(),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF111827),
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: varianceTone.withValues(alpha: 0.10),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              variance <= 0 ? 'Within budget' : 'Over budget',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: varianceTone,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 14,
+                        runSpacing: 8,
+                        children: [
+                          _CostVsScheduleMiniMetric(
+                            label: 'Budget',
+                            value: formatCurrency(workPackage.budgetedCost),
+                          ),
+                          _CostVsScheduleMiniMetric(
+                            label: 'Linked estimate',
+                            value: formatCurrency(linkedEstimateTotal),
+                          ),
+                          _CostVsScheduleMiniMetric(
+                            label: 'Actual',
+                            value: formatCurrency(workPackage.actualCost),
+                          ),
+                          _CostVsScheduleMiniMetric(
+                            label: 'Variance',
+                            value: formatCurrency(variance),
+                            valueColor: varianceTone,
+                          ),
+                          _CostVsScheduleMiniMetric(
+                            label: 'Progress',
+                            value: '${(progress * 100).round()}%',
+                          ),
+                          _CostVsScheduleMiniMetric(
+                            label: 'Linked activities',
+                            value: '${workPackage.scheduleActivityIds.length}',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(999),
+                        child: LinearProgressIndicator(
+                          value: progress.clamp(0.0, 1.0),
+                          minHeight: 8,
+                          backgroundColor: const Color(0xFFE5E7EB),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Color(0xFF2563EB),
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
+              );
+            }),
+          if (projectData.workPackages.length > 12)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                '+ ${projectData.workPackages.length - 12} more work package(s) not shown',
+                style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
               ),
-          if (projectData.workPackages.isEmpty)
-            const Text(
-              'No work packages available yet for cost/schedule mapping.',
-              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
             ),
         ],
       ),
+    );
+  }
+}
+
+class _CostVsScheduleMetricCard extends StatelessWidget {
+  const _CostVsScheduleMetricCard({
+    required this.label,
+    required this.value,
+    required this.tone,
+  });
+
+  final String label;
+  final String value;
+  final Color tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 170,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: tone,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CostVsScheduleInsightPanel extends StatelessWidget {
+  const _CostVsScheduleInsightPanel({
+    required this.title,
+    required this.subtitle,
+    required this.children,
+  });
+
+  final String title;
+  final String subtitle;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+          ),
+          const SizedBox(height: 12),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _CostVsScheduleBullet extends StatelessWidget {
+  const _CostVsScheduleBullet({
+    required this.label,
+    required this.value,
+    required this.tone,
+  });
+
+  final String label;
+  final String value;
+  final Color tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: tone, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF111827),
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: tone,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CostVsScheduleMiniMetric extends StatelessWidget {
+  const _CostVsScheduleMiniMetric({
+    required this.label,
+    required this.value,
+    this.valueColor = const Color(0xFF111827),
+  });
+
+  final String label;
+  final String value;
+  final Color valueColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF64748B),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: valueColor,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -4296,11 +4894,15 @@ class _AddCostItemDialog extends StatefulWidget {
     required this.initialView,
     required this.projectData,
     this.existingItem,
+    this.initialWorkPackageId,
+    this.initialScheduleActivityId,
   });
 
   final _CostView initialView;
   final ProjectDataModel projectData;
   final CostEstimateItem? existingItem;
+  final String? initialWorkPackageId;
+  final String? initialScheduleActivityId;
 
   @override
   State<_AddCostItemDialog> createState() => _AddCostItemDialogState();
@@ -4364,11 +4966,15 @@ class _AddCostItemDialogState extends State<_AddCostItemDialog> {
             : 'manual';
     _selectedWorkPackageId = existing?.workPackageId.trim().isNotEmpty == true
         ? existing!.workPackageId
-        : null;
+        : (widget.initialWorkPackageId?.trim().isNotEmpty == true
+            ? widget.initialWorkPackageId
+            : null);
     _selectedScheduleActivityId =
         existing?.scheduleActivityId.trim().isNotEmpty == true
             ? existing!.scheduleActivityId
-            : null;
+            : (widget.initialScheduleActivityId?.trim().isNotEmpty == true
+                ? widget.initialScheduleActivityId
+                : null);
   }
 
   @override

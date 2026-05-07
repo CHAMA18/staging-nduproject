@@ -26,11 +26,6 @@ import 'package:ndu_project/screens/project_charter_screen.dart';
 import 'package:ndu_project/screens/ssher_stacked_screen.dart';
 import 'package:ndu_project/screens/execution_plan_screen.dart';
 import 'package:ndu_project/screens/planning_technology_screen.dart';
-import 'package:ndu_project/screens/technology_inventory_screen.dart';
-import 'package:ndu_project/screens/ai_integrations_screen.dart';
-import 'package:ndu_project/screens/external_integrations_screen.dart';
-import 'package:ndu_project/screens/technology_definitions_screen.dart';
-import 'package:ndu_project/screens/ai_recommendations_screen.dart';
 import 'package:ndu_project/screens/team_management_screen.dart';
 import 'package:ndu_project/screens/planning_contracting_screen.dart';
 import 'package:ndu_project/screens/change_management_screen.dart';
@@ -180,12 +175,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
   };
 
   static const Set<String> _technologyPlanningLabels = {
-    'Technology Planning',
-    'Technology Inventory',
-    'AI Integrations',
-    'External Integrations',
-    'Technology Definitions',
-    'AI Recommendations',
+    'Technology Planning Overview',
   };
 
   static const Set<String> _costEstimateLabels = {
@@ -1005,38 +995,6 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
 
   void _openTechnology() {
     _navigateWithCheckpoint('technology', const PlanningTechnologyScreen());
-  }
-
-  void _openTechnologyInventory() {
-    _navigateWithCheckpoint(
-      'technology_inventory',
-      const TechnologyInventoryScreen(),
-    );
-  }
-
-  void _openAiIntegrations() {
-    _navigateWithCheckpoint('ai_integrations', const AiIntegrationsScreen());
-  }
-
-  void _openExternalIntegrations() {
-    _navigateWithCheckpoint(
-      'external_integrations',
-      const ExternalIntegrationsScreen(),
-    );
-  }
-
-  void _openTechnologyDefinitions() {
-    _navigateWithCheckpoint(
-      'technology_definitions',
-      const TechnologyDefinitionsScreen(),
-    );
-  }
-
-  void _openAiRecommendations() {
-    _navigateWithCheckpoint(
-      'ai_recommendations',
-      const AiRecommendationsScreen(),
-    );
   }
 
   void _openInterfaceManagement() {
@@ -2235,31 +2193,6 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
             'Technology Planning Overview',
             onTap: _openTechnology,
             isActive: widget.activeItemLabel == 'Technology Planning',
-          ),
-          _buildSubSubMenuItem(
-            'Technology Inventory',
-            onTap: _openTechnologyInventory,
-            isActive: widget.activeItemLabel == 'Technology Inventory',
-          ),
-          _buildSubSubMenuItem(
-            'AI Integrations',
-            onTap: _openAiIntegrations,
-            isActive: widget.activeItemLabel == 'AI Integrations',
-          ),
-          _buildSubSubMenuItem(
-            'External Integrations',
-            onTap: _openExternalIntegrations,
-            isActive: widget.activeItemLabel == 'External Integrations',
-          ),
-          _buildSubSubMenuItem(
-            'Technology Definitions',
-            onTap: _openTechnologyDefinitions,
-            isActive: widget.activeItemLabel == 'Technology Definitions',
-          ),
-          _buildSubSubMenuItem(
-            'AI Recommendations',
-            onTap: _openAiRecommendations,
-            isActive: widget.activeItemLabel == 'AI Recommendations',
           ),
         ],
         _buildSubMenuItem(

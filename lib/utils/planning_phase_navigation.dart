@@ -89,6 +89,40 @@ class PlanningPhaseNavigation {
       title: 'Quality',
       builder: (_) => const QualityManagementScreen(),
     ),
+    // Execution Planning screens
+    PlanningPage(
+      id: 'execution_plan',
+      title: 'Execution Plan Outline',
+      builder: (_) => const ExecutionPlanScreen(),
+    ),
+    PlanningPage(
+      id: 'execution_plan_strategy',
+      title: 'Execution Plan Solutions',
+      builder: (_) => const ExecutionPlanSolutionsScreen(),
+    ),
+    PlanningPage(
+      id: 'execution_plan_details',
+      title: 'Execution Plan Details',
+      builder: (_) => const ExecutionPlanDetailsScreen(
+        activeItemLabel: 'Execution Plan Details',
+        showPlanDetails: true,
+        showEarlyWorks: false,
+      ),
+    ),
+    PlanningPage(
+      id: 'execution_early_works',
+      title: 'Execution Early Works',
+      builder: (_) => const ExecutionPlanDetailsScreen(
+        activeItemLabel: 'Execution Early Works',
+        showPlanDetails: false,
+        showEarlyWorks: true,
+      ),
+    ),
+    PlanningPage(
+      id: 'execution_enabling_work_plan',
+      title: 'Enabling Work Plan',
+      builder: (_) => const ExecutionEnablingWorkPlanScreen(),
+    ),
     PlanningPage(
       id: 'execution_plan_construction_plan',
       title: 'Construction Plan',
@@ -104,6 +138,42 @@ class PlanningPhaseNavigation {
       title: 'Agile Delivery Plan',
       builder: (_) => const ExecutionPlanAgileDeliveryPlanScreen(),
     ),
+    PlanningPage(
+      id: 'execution_issue_management',
+      title: 'Execution Issue Management',
+      builder: (_) => const ExecutionIssueManagementScreen(),
+    ),
+    PlanningPage(
+      id: 'execution_plan_lessons_learned',
+      title: 'Execution Lessons Learned',
+      builder: (_) => const ExecutionPlanLessonsLearnedScreen(),
+    ),
+    PlanningPage(
+      id: 'execution_plan_best_practices',
+      title: 'Execution Best Practices',
+      builder: (_) => const ExecutionPlanBestPracticesScreen(),
+    ),
+    PlanningPage(
+      id: 'execution_plan_stakeholder_identification',
+      title: 'Execution Stakeholder Identification',
+      builder: (_) => const ExecutionPlanStakeholderIdentificationScreen(),
+    ),
+    PlanningPage(
+      id: 'execution_plan_communication_plan',
+      title: 'Execution Communication Plan',
+      builder: (_) => const ExecutionPlanCommunicationPlanScreen(),
+    ),
+    PlanningPage(
+      id: 'execution_plan_interface_management',
+      title: 'Execution Interface Management',
+      builder: (_) => const ExecutionPlanInterfaceManagementScreen(),
+    ),
+    PlanningPage(
+      id: 'execution_plan_interface_management_plan',
+      title: 'Execution Interface Management Plan',
+      builder: (_) => const ExecutionPlanInterfaceManagementPlanScreen(),
+    ),
+    // Roadmap Planning screens
     PlanningPage(
       id: 'deliverables_roadmap_overview',
       title: 'Roadmap Overview',
@@ -126,7 +196,7 @@ class PlanningPhaseNavigation {
     ),
     PlanningPage(
       id: 'technology',
-      title: 'Technology Planning',
+      title: 'Technology Planning Overview',
       builder: (_) => const PlanningTechnologyScreen(),
     ),
     PlanningPage(

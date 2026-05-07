@@ -82,6 +82,19 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
   bool _suspendOverviewSave = false;
   bool _suspendBudgetSave = false;
 
+  static const String _kOverviewInitialized =
+      'project_plan_overview_initialized';
+  static const String _kResourcesInitialized =
+      'project_plan_resources_initialized';
+  static const String _kTasksInitialized = 'project_plan_tasks_initialized';
+  static const String _kBudgetInitialized = 'project_plan_budget_initialized';
+  static const String _kRisksInitialized = 'project_plan_risks_initialized';
+
+  bool _isSectionInitialized(Map<String, dynamic> data, String key) {
+    final value = data[key];
+    return value == true || value?.toString().toLowerCase() == 'true';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1211,7 +1224,7 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
           scope.isEmpty &&
           assumptions.isEmpty &&
           milestones.isEmpty;
-      if (allEmpty) {
+      if (allEmpty && !_isSectionInitialized(data, _kOverviewInitialized)) {
         _importOverview();
       }
     } catch (error) {
@@ -1248,7 +1261,10 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
           ..clear()
           ..addAll(tools);
       });
-      if (resources.isEmpty && vendors.isEmpty && tools.isEmpty) {
+      if (resources.isEmpty &&
+          vendors.isEmpty &&
+          tools.isEmpty &&
+          !_isSectionInitialized(data, _kResourcesInitialized)) {
         _importResources();
       }
     } catch (error) {
@@ -1277,7 +1293,7 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
           ..clear()
           ..addAll(tasks);
       });
-      if (tasks.isEmpty) {
+      if (tasks.isEmpty && !_isSectionInitialized(data, _kTasksInitialized)) {
         _importTasks();
       }
     } catch (error) {
@@ -1318,7 +1334,9 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
           ..clear()
           ..addAll(breakdown);
       });
-      if (breakdown.isEmpty && totalBudget.isEmpty) {
+      if (breakdown.isEmpty &&
+          totalBudget.isEmpty &&
+          !_isSectionInitialized(data, _kBudgetInitialized)) {
         _importBudget();
       }
     } catch (error) {
@@ -1347,7 +1365,7 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
           ..clear()
           ..addAll(risks);
       });
-      if (risks.isEmpty) {
+      if (risks.isEmpty && !_isSectionInitialized(data, _kRisksInitialized)) {
         _importRisks();
       }
     } catch (error) {
@@ -1366,6 +1384,7 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
       'scope': _overviewScope.map((item) => item.toJson()).toList(),
       'assumptions': _overviewAssumptions.map((item) => item.toJson()).toList(),
       'milestones': _overviewMilestones.map((item) => item.toJson()).toList(),
+      _kOverviewInitialized: true,
       'updatedAt': FieldValue.serverTimestamp(),
     };
     await FirebaseFirestore.instance
@@ -1383,6 +1402,7 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
       'resourcePlan': _resourcePlan.map((item) => item.toJson()).toList(),
       'vendors': _vendors.map((item) => item.toJson()).toList(),
       'tools': _tools.map((item) => item.toJson()).toList(),
+      _kResourcesInitialized: true,
       'updatedAt': FieldValue.serverTimestamp(),
     };
     await FirebaseFirestore.instance
@@ -1398,6 +1418,7 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
     if (projectId == null || projectId.isEmpty) return;
     final payload = {
       'tasks': _tasks.map((item) => item.toJson()).toList(),
+      _kTasksInitialized: true,
       'updatedAt': FieldValue.serverTimestamp(),
     };
     await FirebaseFirestore.instance
@@ -1417,6 +1438,7 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
       'approvedBy': _budgetApprovedByController.text.trim(),
       'currency': _budgetCurrency,
       'breakdown': _budgetBreakdown.map((item) => item.toJson()).toList(),
+      _kBudgetInitialized: true,
       'updatedAt': FieldValue.serverTimestamp(),
     };
     await FirebaseFirestore.instance
@@ -1432,6 +1454,7 @@ class _ProjectPlanScreenState extends State<ProjectPlanScreen>
     if (projectId == null || projectId.isEmpty) return;
     final payload = {
       'risks': _risks.map((item) => item.toJson()).toList(),
+      _kRisksInitialized: true,
       'updatedAt': FieldValue.serverTimestamp(),
     };
     await FirebaseFirestore.instance

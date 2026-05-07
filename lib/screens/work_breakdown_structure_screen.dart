@@ -114,10 +114,55 @@ class _WorkBreakdownStructureBodyState
   bool _contextExpanded = false;
   Map<String, dynamic>? _contextSnapshot;
   DateTime? _contextCapturedAt;
+  bool _isPersistingWbs = false;
 
-  void _syncWbsToProvider() {
+  static const String _kWbsInitializedNoteKey = 'planning_wbs_initialized';
+  static const String _kWbsUserTouchedNoteKey = 'planning_wbs_user_touched';
+
+  bool _asPlanningFlag(Map<String, String> notes, String key) {
+    return (notes[key] ?? '').trim().toLowerCase() == 'true';
+  }
+
+  void _syncWbsToProvider(
+      {bool markTouched = false, bool markInitialized = true}) {
     if (!mounted) return;
-    ProjectDataHelper.getProvider(context).updateWBSData(wbsTree: _wbsItems);
+    final provider = ProjectDataHelper.getProvider(context);
+    provider.updateField((data) {
+      final nextNotes = Map<String, String>.from(data.planningNotes);
+      if (markInitialized) {
+        nextNotes[_kWbsInitializedNoteKey] = 'true';
+      }
+      if (markTouched) {
+        nextNotes[_kWbsUserTouchedNoteKey] = 'true';
+      }
+      return data.copyWith(
+        planningNotes: nextNotes,
+        wbsTree: _wbsItems,
+      );
+    });
+  }
+
+  Future<void> _persistWbsChanges({bool markTouched = false}) async {
+    if (!mounted || _isPersistingWbs) return;
+    _isPersistingWbs = true;
+    final provider = ProjectDataHelper.getProvider(context);
+    final currentData = provider.projectData;
+    final nextNotes = Map<String, String>.from(currentData.planningNotes)
+      ..[_kWbsInitializedNoteKey] = 'true';
+    if (markTouched) {
+      nextNotes[_kWbsUserTouchedNoteKey] = 'true';
+    }
+    provider.updateField(
+      (data) => data.copyWith(
+        planningNotes: nextNotes,
+        wbsTree: _wbsItems,
+      ),
+    );
+    try {
+      await provider.saveToFirebase(checkpoint: 'work_breakdown_structure');
+    } finally {
+      _isPersistingWbs = false;
+    }
   }
 
   @override
@@ -131,10 +176,17 @@ class _WorkBreakdownStructureBodyState
       _syncGoalContext(projectData);
 
       _wbsItems = projectData.wbsTree;
+      final wbsInitialized =
+          _asPlanningFlag(projectData.planningNotes, _kWbsInitializedNoteKey);
+      final wbsUserTouched =
+          _asPlanningFlag(projectData.planningNotes, _kWbsUserTouchedNoteKey);
       if (_wbsItems.isEmpty &&
+          !wbsInitialized &&
+          !wbsUserTouched &&
           projectData.goalWorkItems.any((list) => list.isNotEmpty)) {
         _migrateFromGoalsToTree(projectData.goalWorkItems);
-        _syncWbsToProvider();
+        _syncWbsToProvider(markInitialized: true);
+        _persistWbsChanges();
       }
       _syncGoalFrameworks(projectData);
       _applyOverallFrameworkRules(projectData);
@@ -182,7 +234,8 @@ class _WorkBreakdownStructureBodyState
         _collapsedNodeIds.remove(parent.id);
       }
     });
-    _syncWbsToProvider();
+    _syncWbsToProvider(markTouched: true);
+    _persistWbsChanges(markTouched: true);
   }
 
   Future<WorkItem?> _openAddNodeDialog(
@@ -346,7 +399,8 @@ class _WorkBreakdownStructureBodyState
     final updated = await _openAddNodeDialog(existingNode: node);
     if (updated != null) {
       setState(() {});
-      _syncWbsToProvider();
+      _syncWbsToProvider(markTouched: true);
+      _persistWbsChanges(markTouched: true);
     }
   }
 
@@ -359,7 +413,8 @@ class _WorkBreakdownStructureBodyState
       }
       _removeCollapsedIds(node);
     });
-    _syncWbsToProvider();
+    _syncWbsToProvider(markTouched: true);
+    _persistWbsChanges(markTouched: true);
   }
 
   void _removeNodeFromChildren(List<WorkItem> items, WorkItem nodeToRemove) {

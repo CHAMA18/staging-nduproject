@@ -39,11 +39,6 @@ class GapAnalysisScopeReconcillationScreen extends StatefulWidget {
 
 class _GapAnalysisScopeReconcillationScreenState
     extends State<GapAnalysisScopeReconcillationScreen> {
-  final Set<String> _selectedFocusFilters = {'Gap register'};
-  final Set<String> _selectedVisibilityFilters = {
-    'Scope baseline',
-    'Mitigation backlog'
-  };
   final List<_GapEntry> _gapEntries = [];
   final List<_RootCauseItem> _rootCauseThemes = [];
   final List<_RootCauseItem> _mitigationConfidence = [];
@@ -99,29 +94,6 @@ class _GapAnalysisScopeReconcillationScreenState
                         const SizedBox(height: 20),
                         _InfoStrip(isMobile: isMobile),
                         const SizedBox(height: 24),
-                        _FilterToolbar(
-                          selectedFocusFilters: _selectedFocusFilters,
-                          selectedVisibilityFilters: _selectedVisibilityFilters,
-                          onFocusFilterChanged: (label) {
-                            setState(() {
-                              if (_selectedFocusFilters.contains(label)) {
-                                _selectedFocusFilters.remove(label);
-                              } else {
-                                _selectedFocusFilters.add(label);
-                              }
-                            });
-                          },
-                          onVisibilityFilterChanged: (label) {
-                            setState(() {
-                              if (_selectedVisibilityFilters.contains(label)) {
-                                _selectedVisibilityFilters.remove(label);
-                              } else {
-                                _selectedVisibilityFilters.add(label);
-                              }
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 28),
                         _PrimarySections(
                           gapEntries: _gapEntries,
                           rootCauseThemes: _rootCauseThemes,
@@ -584,141 +556,6 @@ class _InfoStrip extends StatelessWidget {
   }
 }
 
-class _FilterToolbar extends StatelessWidget {
-  const _FilterToolbar({
-    required this.selectedFocusFilters,
-    required this.selectedVisibilityFilters,
-    required this.onFocusFilterChanged,
-    required this.onVisibilityFilterChanged,
-  });
-
-  final Set<String> selectedFocusFilters;
-  final Set<String> selectedVisibilityFilters;
-  final ValueChanged<String> onFocusFilterChanged;
-  final ValueChanged<String> onVisibilityFilterChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    const focusOptions = [
-      'Gap register',
-      'Scope baseline',
-      'Impacts',
-      'Stakeholders',
-      'Mitigation backlog',
-    ];
-    const visibilityOptions = [
-      'Show riskiest gaps',
-      'Show closed gaps',
-      'Surface dependencies',
-    ];
-
-    final theme = Theme.of(context);
-    final primary = theme.colorScheme.primary;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 18,
-              offset: const Offset(0, 10)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text(
-                'Focus',
-                style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1F2937)),
-              ),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.video_call_outlined, size: 20),
-                label: const Text('Schedule reconciliation meeting'),
-                style: TextButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  backgroundColor: const Color(0xFF4154F1),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: focusOptions
-                .map(
-                  (option) => ChoiceChip(
-                    label: Text(option),
-                    selected: selectedFocusFilters.contains(option),
-                    onSelected: (_) => onFocusFilterChanged(option),
-                    showCheckmark: false,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                    selectedColor: primary.withValues(alpha: 0.12),
-                    labelStyle: TextStyle(
-                      color: selectedFocusFilters.contains(option)
-                          ? primary
-                          : const Color(0xFF374151),
-                      fontWeight: selectedFocusFilters.contains(option)
-                          ? FontWeight.w600
-                          : FontWeight.w500,
-                    ),
-                    backgroundColor: const Color(0xFFF3F4F6),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
-                  ),
-                )
-                .toList(),
-          ),
-          const SizedBox(height: 18),
-          const Divider(height: 1, color: Color(0xFFE5E7EB)),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: visibilityOptions
-                .map(
-                  (option) => FilterChip(
-                    label: Text(option),
-                    selected: selectedVisibilityFilters.contains(option),
-                    onSelected: (_) => onVisibilityFilterChanged(option),
-                    showCheckmark: false,
-                    selectedColor: const Color(0xFFEEF2FF),
-                    labelStyle: TextStyle(
-                      color: selectedVisibilityFilters.contains(option)
-                          ? const Color(0xFF3730A3)
-                          : const Color(0xFF4B5563),
-                      fontWeight: FontWeight.w600,
-                    ),
-                    backgroundColor: const Color(0xFFF9FAFB),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                  ),
-                )
-                .toList(),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ignore: unused_element
 class _SummaryGrid extends StatelessWidget {

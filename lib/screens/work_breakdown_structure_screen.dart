@@ -158,7 +158,7 @@ class _WorkBreakdownStructureBodyState
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final projectData = ProjectDataHelper.getProvider(context).projectData;
       _selectedCriteriaA = projectData.wbsCriteriaA;

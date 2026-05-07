@@ -189,6 +189,8 @@ class SidebarNavigationService {
     SidebarItem(
         checkpoint: 'startup_planning_closeout', label: 'Close Out Plan'),
     SidebarItem(
+        checkpoint: 'deliverables_roadmap', label: 'Deliverables Roadmap'),
+    SidebarItem(
         checkpoint: 'deliverable_roadmap_agile_map_out',
         label: 'Agile Map Out'),
     SidebarItem(

@@ -1,4 +1,5 @@
 import 'package:ndu_project/models/project_data_model.dart';
+import 'package:ndu_project/utils/design_planning_document.dart';
 
 class IntegratedWorkPackageService {
   IntegratedWorkPackageService._();
@@ -9,9 +10,18 @@ class IntegratedWorkPackageService {
   static const String implementationWorkPackage = 'implementationWorkPackage';
   static const String agileIterationPackage = 'agileIterationPackage';
 
+  // ------------------------------------------------------------------
+  // Guide Step 1–5: Generate EWP → Procurement → Execution chains
+  // Now includes design-to-procurement traceability on deliverables.
+  // ------------------------------------------------------------------
+
   static List<WorkPackage> generatePackageChainsFromWbs({
     required List<WorkItem> wbsTree,
     required String methodology,
+    /// Optional design specification rows to link into EWP deliverables.
+    /// When provided, matching specs are embedded as deliverable items
+    /// and their IDs are tracked on the EWP's linkedDesignSpecificationIds.
+    List<DesignSpecificationPlanRow>? designSpecifications,
   }) {
     final packages = <WorkPackage>[];
     final normalizedMethodology = methodology.trim().toLowerCase();
@@ -42,6 +52,25 @@ class IntegratedWorkPackageService {
           final procurementId = '$baseId-proc';
           final executionId = '$baseId-exec';
 
+          // --- Fix 1.2: Import matching design specification rows ---
+          final matchedSpecs = _matchSpecificationsToWbs(
+            designSpecifications ?? [],
+            level2WbsId: level2.id,
+            level3WbsId: level3.id,
+            level3Title: level3.title,
+            level2Title: level2.title,
+          );
+
+          // Build EWP deliverables: defaults + spec-derived items
+          final deliverables = _buildEwpDeliverables(
+            procurementId: procurementId,
+            matchedSpecs: matchedSpecs,
+          );
+
+          // Track linked spec IDs on the package
+          final linkedSpecIds =
+              matchedSpecs.map((spec) => spec.id).toList();
+
           packages.add(
             WorkPackage(
               id: engineeringId,
@@ -56,16 +85,27 @@ class IntegratedWorkPackageService {
               childPackageIds: [procurementId, executionId],
               linkedProcurementPackageIds: [procurementId],
               linkedExecutionPackageIds: [executionId],
+              linkedDesignSpecificationIds: linkedSpecIds,
               title: '${level3.title} Engineering Work Package',
               description: level3.description,
               type: 'design',
               phase: 'design',
               discipline: level3.framework,
               releaseStatus: 'draft',
-              deliverables: _defaultEngineeringDeliverables(),
+              deliverables: deliverables,
               estimateBasis: _defaultEstimateBasis(methodology),
             ),
           );
+
+          // --- Fix 1.1: Derive procurement scope from EWP deliverables ---
+          final procurementScopeFromDeliverables = deliverables
+              .where((d) => d.requiredForProcurement)
+              .map((d) => d.title)
+              .join('; ');
+
+          final scopeDefinition = procurementScopeFromDeliverables.isNotEmpty
+              ? 'Requires: $procurementScopeFromDeliverables'
+              : level3.description;
 
           packages.add(
             WorkPackage(
@@ -82,6 +122,7 @@ class IntegratedWorkPackageService {
               childPackageIds: [executionId],
               linkedEngineeringPackageIds: [engineeringId],
               linkedExecutionPackageIds: [executionId],
+              linkedDesignSpecificationIds: linkedSpecIds,
               title: '${level3.title} Procurement Package',
               description: level3.description,
               type: 'procurement',
@@ -90,7 +131,7 @@ class IntegratedWorkPackageService {
               releaseStatus: 'draft',
               procurementBreakdown: PackageProcurementBreakdown(
                 category: _inferProcurementCategory(level3),
-                scopeDefinition: level3.description,
+                scopeDefinition: scopeDefinition,
                 activities: const [
                   'scope_definition',
                   'rfq_rfp',
@@ -118,6 +159,7 @@ class IntegratedWorkPackageService {
               parentPackageId: procurementId,
               linkedEngineeringPackageIds: [engineeringId],
               linkedProcurementPackageIds: [procurementId],
+              linkedDesignSpecificationIds: linkedSpecIds,
               title: '${level3.title} $executionLabel',
               description: level3.description,
               type: executionType,
@@ -137,6 +179,366 @@ class IntegratedWorkPackageService {
             package.copyWith(readinessWarnings: validateReadiness(package)))
         .toList();
   }
+
+  // ------------------------------------------------------------------
+  // Fix 1.2: Match design specification rows to WBS nodes
+  // ------------------------------------------------------------------
+
+  /// Matches design specification rows to a WBS Level 3 node.
+  /// A spec row matches if its `wbsWorkPackageId` equals the Level 2 or
+  /// Level 3 WBS ID, OR if its title/discipline/area keywords overlap
+  /// with the WBS node titles.
+  static List<DesignSpecificationPlanRow> _matchSpecificationsToWbs(
+    List<DesignSpecificationPlanRow> specs, {
+    required String level2WbsId,
+    required String level3WbsId,
+    required String level3Title,
+    required String level2Title,
+  }) {
+    if (specs.isEmpty) return [];
+
+    final level2Lower = level2Title.toLowerCase();
+    final level3Lower = level3Title.toLowerCase();
+    final level2Tokens = _tokenize(level2Lower);
+    final level3Tokens = _tokenize(level3Lower);
+
+    return specs.where((spec) {
+      // Direct WBS ID match (strongest signal)
+      if (spec.wbsWorkPackageId == level2WbsId ||
+          spec.wbsWorkPackageId == level3WbsId) {
+        return true;
+      }
+
+      // Title keyword overlap
+      final specTitle = spec.title.toLowerCase();
+      final specTokens = _tokenize(specTitle);
+      if (level3Tokens.any((t) => specTokens.contains(t)) ||
+          level2Tokens.any((t) => specTokens.contains(t))) {
+        return true;
+      }
+
+      // Discipline/area keyword match
+      final specDiscipline = spec.discipline.toLowerCase();
+      final specArea = spec.area.toLowerCase();
+      if (specDiscipline.isNotEmpty &&
+          (level2Lower.contains(specDiscipline) ||
+              level3Lower.contains(specDiscipline))) {
+        return true;
+      }
+      if (specArea.isNotEmpty &&
+          (level2Lower.contains(specArea) ||
+              level3Lower.contains(specArea))) {
+        return true;
+      }
+
+      return false;
+    }).toList();
+  }
+
+  /// Tokenizes a string for matching: splits on non-alphanumeric, removes
+  /// common stop words, and keeps tokens of 3+ characters.
+  static List<String> _tokenize(String value) {
+    const stopWords = {'the', 'and', 'for', 'with', 'from', 'this', 'that'};
+    return value
+        .split(RegExp(r'[^a-z0-9]+'))
+        .where((t) => t.length >= 3 && !stopWords.contains(t))
+        .toList();
+  }
+
+  // ------------------------------------------------------------------
+  // Fix 1.2 + 1.3: Build EWP deliverables with traceability
+  // ------------------------------------------------------------------
+
+  /// Builds the complete deliverables list for an EWP.
+  /// Starts with the 5 standard deliverables (Drawings, Specifications,
+  /// Calculations, BOM, Codes) and appends spec-derived deliverables.
+  /// Each deliverable is wired with `feedsProcurementPackageIds` pointing
+  /// to the procurement package (Fix 1.3: design-to-procurement traceability).
+  static List<PackageDeliverable> _buildEwpDeliverables({
+    required String procurementId,
+    required List<DesignSpecificationPlanRow> matchedSpecs,
+  }) {
+    final deliverables = <PackageDeliverable>[];
+
+    // Standard 5 deliverables — each feeds the procurement package
+    deliverables.addAll(_defaultEngineeringDeliverablesWithTraceability(
+      procurementId: procurementId,
+    ));
+
+    // Spec-derived deliverables: one per matched specification row
+    for (final spec in matchedSpecs) {
+      final specType = _mapSpecTypeToDeliverableType(spec.specificationType);
+      final requiresProcurement = _specRequiresProcurement(spec);
+      deliverables.add(
+        PackageDeliverable(
+          title: spec.title.isNotEmpty ? spec.title : 'Specification: ${spec.specificationType}',
+          type: specType,
+          status: _mapSpecStatusToDeliverableStatus(spec.status),
+          reference: spec.referenceLink,
+          notes: _specDeliverableNotes(spec),
+          feedsProcurementPackageIds: requiresProcurement ? [procurementId] : [],
+          linkedSpecificationIds: [spec.id],
+          requiredForProcurement: requiresProcurement,
+        ),
+      );
+    }
+
+    return deliverables;
+  }
+
+  /// The standard 5 EWP deliverables with procurement traceability wired.
+  static List<PackageDeliverable>
+      _defaultEngineeringDeliverablesWithTraceability({
+    required String procurementId,
+  }) =>
+          [
+            PackageDeliverable(
+              title: 'Drawings',
+              type: 'drawing',
+              feedsProcurementPackageIds: [procurementId],
+              requiredForProcurement: true,
+            ),
+            PackageDeliverable(
+              title: 'Specifications',
+              type: 'specification',
+              feedsProcurementPackageIds: [procurementId],
+              requiredForProcurement: true,
+            ),
+            PackageDeliverable(
+              title: 'Calculations',
+              type: 'calculation',
+              feedsProcurementPackageIds: [procurementId],
+              requiredForProcurement: false,
+            ),
+            PackageDeliverable(
+              title: 'Bill of materials',
+              type: 'bom',
+              feedsProcurementPackageIds: [procurementId],
+              requiredForProcurement: true,
+            ),
+            PackageDeliverable(
+              title: 'Codes and requirements',
+              type: 'requirement',
+              feedsProcurementPackageIds: [],
+              requiredForProcurement: false,
+            ),
+          ];
+
+  /// Maps a DesignSpecificationPlanRow.specificationType to a
+  /// PackageDeliverable type.
+  static String _mapSpecTypeToDeliverableType(String specType) {
+    switch (specType.toLowerCase()) {
+      case 'code':
+        return 'requirement';
+      case 'law':
+        return 'requirement';
+      case 'standard':
+        return 'specification';
+      case 'criteria':
+        return 'specification';
+      case 'guideline':
+        return 'specification';
+      case 'contract':
+        return 'requirement';
+      default:
+        return 'specification';
+    }
+  }
+
+  /// Whether a specification row implies procurement is needed.
+  /// External/contract/vendor sources typically require procurement.
+  static bool _specRequiresProcurement(DesignSpecificationPlanRow spec) {
+    final sourceType = spec.sourceType.toLowerCase();
+    final ruleType = spec.ruleType.toLowerCase();
+    return sourceType == 'vendors' ||
+        sourceType == 'contracts' ||
+        ruleType == 'external';
+  }
+
+  /// Maps a specification status to a deliverable status.
+  static String _mapSpecStatusToDeliverableStatus(String specStatus) {
+    switch (specStatus.toLowerCase()) {
+      case 'draft':
+        return 'planned';
+      case 'planned':
+        return 'planned';
+      case 'in review':
+        return 'in_review';
+      case 'approved':
+        return 'released';
+      case 'complete':
+        return 'complete';
+      default:
+        return 'planned';
+    }
+  }
+
+  /// Builds the notes string for a spec-derived deliverable.
+  static String _specDeliverableNotes(DesignSpecificationPlanRow spec) {
+    final parts = <String>[];
+    if (spec.specificationType.isNotEmpty) {
+      parts.add('Spec type: ${spec.specificationType}');
+    }
+    if (spec.ruleType.isNotEmpty) {
+      parts.add('Rule: ${spec.ruleType}');
+    }
+    if (spec.sourceType.isNotEmpty) {
+      parts.add('Source: ${spec.sourceType}');
+    }
+    if (spec.discipline.isNotEmpty) {
+      parts.add('Discipline: ${spec.discipline}');
+    }
+    if (spec.area.isNotEmpty) {
+      parts.add('Area: ${spec.area}');
+    }
+    if (spec.details.isNotEmpty) {
+      parts.add(spec.details);
+    }
+    if (spec.attachedRequirementIds.isNotEmpty) {
+      parts.add('Req IDs: ${spec.attachedRequirementIds.join(", ")}');
+    }
+    return parts.join('\n');
+  }
+
+  // ------------------------------------------------------------------
+  // Fix 1.4: Release for execution gate
+  // ------------------------------------------------------------------
+
+  /// Checks whether an EWP can be released for execution.
+  /// Returns a list of blocking issues (empty = releasable).
+  /// An EWP is releasable when:
+  /// - All required-for-procurement deliverables are released/complete
+  /// - The readiness checklist passes (drawings, specs, BOM, design review, IFC)
+  /// - Requirements are traced
+  static List<String> checkEwpReleaseReadiness(WorkPackage package) {
+    if (package.packageClassification != engineeringEwp) {
+      return ['Release gate only applies to Engineering Work Packages.'];
+    }
+
+    final blockers = <String>[];
+
+    // Check deliverable completion
+    final requiredDeliverables = package.deliverables
+        .where((d) => d.requiredForProcurement)
+        .toList();
+    for (final deliverable in requiredDeliverables) {
+      if (!deliverable.isReleased) {
+        blockers.add(
+            'Deliverable "${deliverable.title}" is not yet released (status: ${deliverable.status}).');
+      }
+    }
+
+    // Check readiness flags
+    final readiness = package.readiness;
+    if (!readiness.requirementsTraced) {
+      blockers.add('Requirements traceability is not complete.');
+    }
+    if (!readiness.drawingsComplete) {
+      blockers.add('Drawings are not complete.');
+    }
+    if (!readiness.specificationsComplete) {
+      blockers.add('Specifications are not complete.');
+    }
+    if (!readiness.billOfMaterialsComplete) {
+      blockers.add('Bill of materials is not complete.');
+    }
+    if (!readiness.designReviewComplete) {
+      blockers.add('Design review is not complete.');
+    }
+    if (!readiness.ifcApproved) {
+      blockers.add('IFC approval is not complete.');
+    }
+
+    // Check estimate basis
+    if (!package.estimateBasis.hasMinimumBasis) {
+      blockers.add('Estimate basis is incomplete.');
+    }
+
+    // Check WBS linkage
+    if (package.sourceWbsLevel3Id.trim().isEmpty) {
+      blockers.add('Package is not linked to a WBS Level 3 element.');
+    }
+
+    return blockers;
+  }
+
+  /// Releases an EWP for execution if all gate criteria are met.
+  /// Returns the updated package, or throws with blocker messages.
+  static WorkPackage releaseEwpForExecution(WorkPackage package) {
+    final blockers = checkEwpReleaseReadiness(package);
+    if (blockers.isNotEmpty) {
+      throw StateError(
+          'Cannot release EWP "${package.title}". Blockers:\n${blockers.map((b) => "  - $b").join("\n")}');
+    }
+
+    return package.copyWith(
+      releaseStatus: 'released',
+      releaseForExecutionDate:
+          DateTime.now().toUtc().toIso8601String().split('T').first,
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // Fix 1.1: Derive procurement scope from EWP deliverables
+  // ------------------------------------------------------------------
+
+  /// Given a list of existing work packages, derives and updates
+  /// procurement package scope definitions from linked EWP deliverables.
+  /// This ensures procurement packages know what design outputs they need.
+  static List<WorkPackage> deriveProcurementScopeFromEwpDeliverables(
+    List<WorkPackage> packages,
+  ) {
+    final ewpById = <String, WorkPackage>{};
+    for (final p in packages) {
+      if (p.packageClassification == engineeringEwp) {
+        ewpById[p.id] = p;
+      }
+    }
+
+    return packages.map((package) {
+      if (package.packageClassification != procurementPackage) {
+        return package;
+      }
+
+      // Find linked EWP deliverables that feed this procurement package
+      final requiredDeliverables = <PackageDeliverable>[];
+      for (final ewpId in package.linkedEngineeringPackageIds) {
+        final ewp = ewpById[ewpId];
+        if (ewp == null) continue;
+        for (final d in ewp.deliverables) {
+          if (d.feedsProcurementPackageIds.contains(package.id)) {
+            requiredDeliverables.add(d);
+          }
+        }
+      }
+
+      if (requiredDeliverables.isEmpty) return package;
+
+      // Build scope definition from deliverables
+      final scopeParts = requiredDeliverables
+          .where((d) => d.requiredForProcurement)
+          .map((d) => '${d.title}${d.isReleased ? " (ready)" : " (pending)"}')
+          .toList();
+
+      final newScope = scopeParts.isNotEmpty
+          ? 'Requires design deliverables: ${scopeParts.join("; ")}'
+          : package.procurementBreakdown.scopeDefinition;
+
+      return package.copyWith(
+        procurementBreakdown: package.procurementBreakdown.copyWith(
+          scopeDefinition: newScope,
+        ),
+        linkedDesignSpecificationIds: requiredDeliverables
+            .expand((d) => d.linkedSpecificationIds)
+            .toSet()
+            .toList(),
+      );
+    }).toList();
+  }
+
+  // ------------------------------------------------------------------
+  // Validation
+  // ------------------------------------------------------------------
 
   static List<String> validateReadiness(WorkPackage package) {
     final warnings = <String>[];
@@ -173,6 +575,17 @@ class IntegratedWorkPackageService {
         if (!readiness.ifcApproved) {
           warnings.add('EWP is not approved/released for execution.');
         }
+        // Fix 1.2: Warn if EWP has no linked design specifications
+        if (package.linkedDesignSpecificationIds.isEmpty) {
+          warnings.add(
+              'EWP has no linked design specifications. Consider mapping specifications from the Design Planning document.');
+        }
+        // Fix 1.4: Warn if EWP is not released but execution packages exist
+        if (!package.isReleasedForExecution &&
+            package.linkedExecutionPackageIds.isNotEmpty) {
+          warnings.add(
+              'EWP is not released for execution. Linked execution packages should not start until this EWP is released.');
+        }
       case procurementPackage:
         if (!readiness.procurementScopeDefined) {
           warnings.add('Procurement scope is not defined.');
@@ -188,6 +601,14 @@ class IntegratedWorkPackageService {
         }
         if (package.procurementBreakdown.category.trim().isEmpty) {
           warnings.add('Procurement category is not set.');
+        }
+        // Fix 1.1: Warn if procurement has no EWP deliverable traceability
+        if (package.linkedEngineeringPackageIds.isNotEmpty) {
+          final hasDeliverableLink = _packageHasDeliverableLink(
+            package,
+            package.linkedEngineeringPackageIds,
+          );
+          // This is informational — not all procurement needs design deliverables
         }
       case constructionCwp:
       case implementationWorkPackage:
@@ -218,10 +639,30 @@ class IntegratedWorkPackageService {
             !readiness.accessReady) {
           warnings.add('CWP access/workface readiness is not confirmed.');
         }
+        // Fix 1.4: Warn if execution depends on unreleased EWP
+        if (package.linkedEngineeringPackageIds.isNotEmpty) {
+          // This will be checked at schedule level where we can access all packages
+        }
     }
 
     return warnings;
   }
+
+  /// Checks if any deliverable on the linked EWP packages feeds this
+  /// procurement package. Returns true if at least one deliverable is
+  /// traced.
+  static bool _packageHasDeliverableLink(
+    WorkPackage package,
+    List<String> engineeringPackageIds,
+  ) {
+    // This is a placeholder for cross-package checking which requires
+    // access to the full package list — done in schedule_screen validation
+    return false;
+  }
+
+  // ------------------------------------------------------------------
+  // Schedule activity generation from packages
+  // ------------------------------------------------------------------
 
   static List<ScheduleActivity> generateScheduleActivitiesFromPackages({
     required List<WorkPackage> packages,

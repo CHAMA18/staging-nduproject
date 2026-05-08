@@ -9,11 +9,14 @@ class WorkPackageDetailView extends StatelessWidget {
     required this.workPackage,
     required this.activities,
     this.onEdit,
+    this.onReleaseForExecution,
   });
 
   final WorkPackage workPackage;
   final List<ScheduleActivity> activities;
   final VoidCallback? onEdit;
+  /// Called when user wants to release this EWP for execution.
+  final VoidCallback? onReleaseForExecution;
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +85,9 @@ class WorkPackageDetailView extends StatelessWidget {
                           : 'Not set'),
                   _DetailItem(
                       label: 'Release Status',
-                      value: _titleCase(workPackage.releaseStatus)),
+                      value: workPackage.releaseStatus == 'released'
+                          ? 'Released${workPackage.releaseForExecutionDate != null ? " on ${workPackage.releaseForExecutionDate}" : ""}'
+                          : _titleCase(workPackage.releaseStatus)),
                   _DetailItem(
                       label: 'Phase', value: _titleCase(workPackage.phase)),
                   _DetailItem(
@@ -204,21 +209,62 @@ class WorkPackageDetailView extends StatelessWidget {
                   ),
                 ),
               ],
+              // Fix 1.4: EWP Release Gate
+              if (workPackage.packageClassification ==
+                  IntegratedWorkPackageService.engineeringEwp) ...[
+                const SizedBox(height: 16),
+                _EwpReleaseGate(
+                  workPackage: workPackage,
+                  onRelease: onReleaseForExecution,
+                ),
+              ],
               if (workPackage.deliverables.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 _PackageSection(
                   title: 'Package Deliverables',
                   child: Column(
                     children: workPackage.deliverables
-                        .map((item) => _InlineRow(
-                              label: item.title,
-                              value: [
-                                item.type,
-                                item.status,
-                                item.reference,
-                              ].where((v) => v.trim().isNotEmpty).join(' | '),
-                            ))
+                        .map((item) => _DeliverableRow(deliverable: item))
                         .toList(),
+                  ),
+                ),
+              ],
+              // Fix 1.2: Design Specification Traceability
+              if (workPackage.linkedDesignSpecificationIds.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                _PackageSection(
+                  title: 'Linked Design Specifications',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${workPackage.linkedDesignSpecificationIds.length} specification(s) linked to this package.',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      ...workPackage.linkedDesignSpecificationIds.map(
+                        (id) => Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.link, size: 12, color: Color(0xFF6B7280)),
+                              const SizedBox(width: 4),
+                              Text(
+                                id,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontFamily: 'monospace',
+                                  color: Color(0xFF374151),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -676,4 +722,298 @@ class _DetailItem {
   final String value;
 
   _DetailItem({required this.label, required this.value});
+}
+
+/// Fix 1.4: EWP Release Gate widget.
+/// Shows the release status of an EWP and provides a button to
+/// release it for execution if all gate criteria are met.
+class _EwpReleaseGate extends StatelessWidget {
+  const _EwpReleaseGate({
+    required this.workPackage,
+    this.onRelease,
+  });
+
+  final WorkPackage workPackage;
+  final VoidCallback? onRelease;
+
+  @override
+  Widget build(BuildContext context) {
+    final isReleased = workPackage.isReleasedForExecution;
+    final blockers =
+        IntegratedWorkPackageService.checkEwpReleaseReadiness(workPackage);
+    final canRelease = blockers.isEmpty && !isReleased;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isReleased
+            ? const Color(0xFFECFDF5)
+            : (blockers.isEmpty
+                ? const Color(0xFFEFF6FF)
+                : const Color(0xFFFFF7ED)),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isReleased
+              ? const Color(0xFF10B981)
+              : (blockers.isEmpty
+                  ? const Color(0xFF3B82F6)
+                  : const Color(0xFFF97316)),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isReleased
+                    ? Icons.check_circle
+                    : (blockers.isEmpty
+                        ? Icons.lock_open
+                        : Icons.lock),
+                size: 18,
+                color: isReleased
+                    ? const Color(0xFF047857)
+                    : (blockers.isEmpty
+                        ? const Color(0xFF1D4ED8)
+                        : const Color(0xFF9A3412)),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                isReleased
+                    ? 'Released for Execution'
+                    : (blockers.isEmpty
+                        ? 'Ready to Release'
+                        : '${blockers.length} Blocker(s) Before Release'),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: isReleased
+                      ? const Color(0xFF047857)
+                      : (blockers.isEmpty
+                          ? const Color(0xFF1D4ED8)
+                          : const Color(0xFF9A3412)),
+                ),
+              ),
+            ],
+          ),
+          if (workPackage.releaseForExecutionDate != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Released on: ${workPackage.releaseForExecutionDate}',
+              style: const TextStyle(
+                fontSize: 11,
+                color: Color(0xFF6B7280),
+              ),
+            ),
+          ],
+          if (blockers.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ...blockers.take(4).map(
+                  (blocker) => Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: Text(
+                      '- $blocker',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF7C2D12),
+                      ),
+                    ),
+                  ),
+                ),
+            if (blockers.length > 4)
+              Text(
+                '... and ${blockers.length - 4} more',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFF7C2D12),
+                ),
+              ),
+          ],
+          if (canRelease && onRelease != null) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: onRelease,
+                icon: const Icon(Icons.lock_open, size: 16),
+                label: const Text('Release for Execution'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF1D4ED8),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Enhanced deliverable row showing traceability information
+/// (Fix 1.3: feedsProcurementPackageIds, Fix 1.2: linkedSpecificationIds).
+class _DeliverableRow extends StatelessWidget {
+  const _DeliverableRow({required this.deliverable});
+
+  final PackageDeliverable deliverable;
+
+  @override
+  Widget build(BuildContext context) {
+    final isReleased = deliverable.isReleased;
+    final hasSpecLink = deliverable.linkedSpecificationIds.isNotEmpty;
+    final hasProcurementLink =
+        deliverable.feedsProcurementPackageIds.isNotEmpty;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: isReleased
+            ? const Color(0xFFECFDF5)
+            : const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: isReleased
+              ? const Color(0xFF10B981)
+              : AppSemanticColors.border,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isReleased ? Icons.check_circle : Icons.circle_outlined,
+                size: 14,
+                color: isReleased
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFF9CA3AF),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  deliverable.title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isReleased
+                        ? const Color(0xFF047857)
+                        : const Color(0xFF111827),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: _statusColor(deliverable.status).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  deliverable.status,
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: _statusColor(deliverable.status),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (deliverable.type.isNotEmpty ||
+              hasProcurementLink ||
+              hasSpecLink ||
+              deliverable.requiredForProcurement) ...[
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                if (deliverable.type.isNotEmpty)
+                  _traceChip(
+                    icon: Icons.category,
+                    label: deliverable.type,
+                    color: const Color(0xFF6B7280),
+                  ),
+                if (deliverable.requiredForProcurement)
+                  const _traceChip(
+                    icon: Icons.local_shipping,
+                    label: 'Required for Procurement',
+                    color: Color(0xFFD97706),
+                  ),
+                if (hasProcurementLink)
+                  _traceChip(
+                    icon: Icons.arrow_forward,
+                    label:
+                        'Feeds ${deliverable.feedsProcurementPackageIds.length} procurement pkg(s)',
+                    color: const Color(0xFF2563EB),
+                  ),
+                if (hasSpecLink)
+                  _traceChip(
+                    icon: Icons.link,
+                    label:
+                        '${deliverable.linkedSpecificationIds.length} spec(s)',
+                    color: const Color(0xFF7C3AED),
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'released':
+      case 'complete':
+        return const Color(0xFF10B981);
+      case 'in_review':
+        return const Color(0xFF3B82F6);
+      case 'planned':
+        return const Color(0xFF9CA3AF);
+      default:
+        return const Color(0xFF6B7280);
+    }
+  }
+}
+
+class _traceChip extends StatelessWidget {
+  const _traceChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 10, color: color),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

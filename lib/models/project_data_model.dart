@@ -3366,11 +3366,25 @@ class WorkPackage {
   String areaOrSystem;
   String contractorOrCrew;
   String releaseStatus;
+  /// Date when the EWP was released for execution (Guide Step 2 / Fix 1.4).
+  /// Null means not yet released. Only set when releaseStatus is 'released'.
+  String? releaseForExecutionDate;
+  /// IDs of design specification rows from DesignPlanningDocument
+  /// that are linked to this package (Guide Step 2 / Fix 1.2).
+  /// For EWPs, these are the specs this package must produce deliverables for.
+  /// For procurement packages, these are specs whose deliverables feed this package.
+  List<String> linkedDesignSpecificationIds;
   PackageReadinessChecklist readiness;
   PackageEstimateBasis estimateBasis;
   PackageProcurementBreakdown procurementBreakdown;
   List<String> readinessWarnings;
   String notes;
+
+  /// Whether this EWP has been released for execution.
+  /// An EWP is releasable when all required deliverables are complete
+  /// and readiness checks pass (Guide Step 2).
+  bool get isReleasedForExecution =>
+      releaseStatus == 'released' || releaseStatus == 'complete';
 
   WorkPackage({
     String? id,
@@ -3411,6 +3425,8 @@ class WorkPackage {
     this.areaOrSystem = '',
     this.contractorOrCrew = '',
     this.releaseStatus = 'draft',
+    this.releaseForExecutionDate,
+    List<String>? linkedDesignSpecificationIds,
     PackageReadinessChecklist? readiness,
     PackageEstimateBasis? estimateBasis,
     PackageProcurementBreakdown? procurementBreakdown,
@@ -3427,6 +3443,8 @@ class WorkPackage {
         requirementIds = requirementIds ?? [],
         deliverables = deliverables ?? [],
         procurementItemIds = procurementItemIds ?? [],
+        linkedDesignSpecificationIds =
+            linkedDesignSpecificationIds ?? [],
         readiness = readiness ?? PackageReadinessChecklist(),
         estimateBasis = estimateBasis ?? PackageEstimateBasis(),
         procurementBreakdown =
@@ -3472,6 +3490,8 @@ class WorkPackage {
         'areaOrSystem': areaOrSystem,
         'contractorOrCrew': contractorOrCrew,
         'releaseStatus': releaseStatus,
+        'releaseForExecutionDate': releaseForExecutionDate,
+        'linkedDesignSpecificationIds': linkedDesignSpecificationIds,
         'readiness': readiness.toJson(),
         'estimateBasis': estimateBasis.toJson(),
         'procurementBreakdown': procurementBreakdown.toJson(),
@@ -3556,6 +3576,13 @@ class WorkPackage {
       areaOrSystem: json['areaOrSystem']?.toString() ?? '',
       contractorOrCrew: json['contractorOrCrew']?.toString() ?? '',
       releaseStatus: json['releaseStatus']?.toString() ?? 'draft',
+      releaseForExecutionDate:
+          json['releaseForExecutionDate']?.toString(),
+      linkedDesignSpecificationIds:
+          (json['linkedDesignSpecificationIds'] as List?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              [],
       readiness: json['readiness'] is Map
           ? PackageReadinessChecklist.fromJson(
               Map<String, dynamic>.from(json['readiness'] as Map),
@@ -3617,6 +3644,8 @@ class WorkPackage {
     String? areaOrSystem,
     String? contractorOrCrew,
     String? releaseStatus,
+    String? releaseForExecutionDate,
+    List<String>? linkedDesignSpecificationIds,
     PackageReadinessChecklist? readiness,
     PackageEstimateBasis? estimateBasis,
     PackageProcurementBreakdown? procurementBreakdown,
@@ -3666,6 +3695,11 @@ class WorkPackage {
       areaOrSystem: areaOrSystem ?? this.areaOrSystem,
       contractorOrCrew: contractorOrCrew ?? this.contractorOrCrew,
       releaseStatus: releaseStatus ?? this.releaseStatus,
+      releaseForExecutionDate:
+          releaseForExecutionDate ?? this.releaseForExecutionDate,
+      linkedDesignSpecificationIds:
+          linkedDesignSpecificationIds ??
+              this.linkedDesignSpecificationIds,
       readiness: readiness ?? this.readiness,
       estimateBasis: estimateBasis ?? this.estimateBasis,
       procurementBreakdown: procurementBreakdown ?? this.procurementBreakdown,
@@ -3682,6 +3716,19 @@ class PackageDeliverable {
   String status;
   String reference;
   String notes;
+  /// IDs of procurement packages that this deliverable feeds into.
+  /// Enables design-to-procurement traceability (Guide Step 3):
+  /// each EWP output that must be purchased or contracted links
+  /// directly to the procurement package it triggers.
+  List<String> feedsProcurementPackageIds;
+  /// IDs of design specification rows from DesignPlanningDocument
+  /// that this deliverable fulfills. Provides traceability from
+  /// design specifications → EWP deliverables.
+  List<String> linkedSpecificationIds;
+  /// Whether this deliverable is required for procurement.
+  /// When true, the linked procurement package cannot start
+  /// until this deliverable reaches 'released' status.
+  bool requiredForProcurement;
 
   PackageDeliverable({
     String? id,
@@ -3690,7 +3737,15 @@ class PackageDeliverable {
     this.status = 'planned',
     this.reference = '',
     this.notes = '',
-  }) : id = id ?? DateTime.now().microsecondsSinceEpoch.toString();
+    List<String>? feedsProcurementPackageIds,
+    List<String>? linkedSpecificationIds,
+    this.requiredForProcurement = false,
+  })  : id = id ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        feedsProcurementPackageIds = feedsProcurementPackageIds ?? [],
+        linkedSpecificationIds = linkedSpecificationIds ?? [];
+
+  /// Whether this deliverable has been released for execution.
+  bool get isReleased => status == 'released' || status == 'complete';
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -3699,6 +3754,9 @@ class PackageDeliverable {
         'status': status,
         'reference': reference,
         'notes': notes,
+        'feedsProcurementPackageIds': feedsProcurementPackageIds,
+        'linkedSpecificationIds': linkedSpecificationIds,
+        'requiredForProcurement': requiredForProcurement,
       };
 
   factory PackageDeliverable.fromJson(Map<String, dynamic> json) {
@@ -3709,6 +3767,16 @@ class PackageDeliverable {
       status: json['status']?.toString() ?? 'planned',
       reference: json['reference']?.toString() ?? '',
       notes: json['notes']?.toString() ?? '',
+      feedsProcurementPackageIds:
+          (json['feedsProcurementPackageIds'] as List?)
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              [],
+      linkedSpecificationIds: (json['linkedSpecificationIds'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      requiredForProcurement: json['requiredForProcurement'] == true,
     );
   }
 }
@@ -3928,6 +3996,30 @@ class PackageProcurementBreakdown {
       activities:
           (json['activities'] as List?)?.map((e) => e.toString()).toList() ??
               [],
+    );
+  }
+
+  PackageProcurementBreakdown copyWith({
+    String? category,
+    String? scopeDefinition,
+    int? leadTimeDays,
+    String? rfqDate,
+    String? awardDate,
+    String? deliveryDate,
+    String? requiredByMilestoneId,
+    String? vendorScope,
+    List<String>? activities,
+  }) {
+    return PackageProcurementBreakdown(
+      category: category ?? this.category,
+      scopeDefinition: scopeDefinition ?? this.scopeDefinition,
+      leadTimeDays: leadTimeDays ?? this.leadTimeDays,
+      rfqDate: rfqDate ?? this.rfqDate,
+      awardDate: awardDate ?? this.awardDate,
+      deliveryDate: deliveryDate ?? this.deliveryDate,
+      requiredByMilestoneId: requiredByMilestoneId ?? this.requiredByMilestoneId,
+      vendorScope: vendorScope ?? this.vendorScope,
+      activities: activities ?? this.activities,
     );
   }
 }

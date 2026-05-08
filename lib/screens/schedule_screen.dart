@@ -1167,6 +1167,17 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       final doc = DesignPlanningDocument.fromProjectData(data);
       if (doc.specifications.isEmpty) return warnings;
 
+      // Collect all spec IDs that are already linked via
+      // WorkPackage.linkedDesignSpecificationIds or
+      // PackageDeliverable.linkedSpecificationIds
+      final linkedSpecIds = <String>{};
+      for (final wp in workPackages) {
+        linkedSpecIds.addAll(wp.linkedDesignSpecificationIds);
+        for (final d in wp.deliverables) {
+          linkedSpecIds.addAll(d.linkedSpecificationIds);
+        }
+      }
+
       final wpIds = workPackages.map((wp) => wp.id.trim()).toSet();
       final wpTitles = workPackages
           .map((wp) => wp.title.trim().toLowerCase())
@@ -1176,19 +1187,51 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         final specTitle = spec.title.trim();
         if (specTitle.isEmpty) continue;
 
+        // Check if spec is linked via the new traceability fields
+        final hasDirectLink = linkedSpecIds.contains(spec.id);
         final hasLinkedWp = spec.wbsWorkPackageId.trim().isNotEmpty &&
             wpIds.contains(spec.wbsWorkPackageId.trim());
         final hasMatchingTitle =
             wpTitles.contains(specTitle.toLowerCase());
 
-        if (!hasLinkedWp && !hasMatchingTitle) {
+        if (!hasDirectLink && !hasLinkedWp && !hasMatchingTitle) {
           warnings.add(_SpecCoverageWarning(
             title: specTitle,
             detail:
                 'Design specification has no linked work package. '
                 '${spec.discipline.isNotEmpty ? "Discipline: ${spec.discipline}." : ""} '
-                'Consider importing design specs via the Work Packages tab.',
+                'Consider regenerating package chains to auto-link specs.',
           ));
+        }
+      }
+
+      // Fix 1.4: Check for EWPs that are not released but have
+      // execution packages waiting on them.
+      final ewpById = <String, WorkPackage>{};
+      for (final wp in workPackages) {
+        if (wp.packageClassification == IntegratedWorkPackageService.engineeringEwp) {
+          ewpById[wp.id] = wp;
+        }
+      }
+      for (final wp in workPackages) {
+        if (wp.packageClassification != IntegratedWorkPackageService.constructionCwp &&
+            wp.packageClassification != IntegratedWorkPackageService.implementationWorkPackage &&
+            wp.packageClassification != IntegratedWorkPackageService.agileIterationPackage) {
+          continue;
+        }
+        for (final ewpId in wp.linkedEngineeringPackageIds) {
+          final ewp = ewpById[ewpId];
+          if (ewp != null && !ewp.isReleasedForExecution) {
+            final blockers = IntegratedWorkPackageService.checkEwpReleaseReadiness(ewp);
+            if (blockers.isNotEmpty) {
+              warnings.add(_SpecCoverageWarning(
+                title: 'EWP not released: ${ewp.title}',
+                detail: 'Execution package "${wp.title}" depends on an unreleased EWP. '
+                    '${blockers.length} blocker(s): ${blockers.take(3).join("; ")}'
+                    '${blockers.length > 3 ? "..." : ""}',
+              ));
+            }
+          }
         }
       }
     } catch (_) {
@@ -1567,6 +1610,33 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           Navigator.of(context).pop();
           _editWorkPackage(wp);
         },
+        // Fix 1.4: Release EWP for execution gate
+        onReleaseForExecution: () async {
+          try {
+            final released =
+                IntegratedWorkPackageService.releaseEwpForExecution(wp);
+            Navigator.of(context).pop(); // Close detail dialog
+            await _saveWorkPackages(
+              data.workPackages
+                  .map((p) => p.id == wp.id ? released : p)
+                  .toList(),
+            );
+            setState(() {});
+            if (mounted) {
+              _showInfo('EWP "${wp.title}" released for execution.');
+            }
+          } on StateError catch (e) {
+            Navigator.of(context).pop();
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(e.message),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          }
+        },
       ),
     );
   }
@@ -1711,10 +1781,22 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       return;
     }
 
-    final generated = IntegratedWorkPackageService.generatePackageChainsFromWbs(
+    // Fix 1.2: Extract design specification rows from DesignPlanningDocument
+    // so they can be linked into EWP deliverables with traceability.
+    final designDoc = DesignPlanningDocument.fromProjectData(data);
+    final designSpecs = designDoc.specifications;
+
+    var generated = IntegratedWorkPackageService.generatePackageChainsFromWbs(
       wbsTree: data.wbsTree,
       methodology: _selectedMethodology,
+      designSpecifications: designSpecs,
     );
+
+    // Fix 1.1: Derive procurement scope from EWP deliverables
+    // so procurement packages know what design outputs they need.
+    generated = IntegratedWorkPackageService
+        .deriveProcurementScopeFromEwpDeliverables(generated);
+
     if (generated.isEmpty) {
       _showInfo('No WBS Level 3 package candidates found.');
       return;
@@ -1728,13 +1810,22 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       return;
     }
 
+    // Count spec-linked deliverables for user info
+    final specLinkedCount = newPackages
+        .where((wp) => wp.packageClassification == IntegratedWorkPackageService.engineeringEwp)
+        .expand((wp) => wp.deliverables)
+        .where((d) => d.linkedSpecificationIds.isNotEmpty)
+        .length;
+
     final shouldImport = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Generate Integrated Package Chains'),
         content: Text(
           'Found ${newPackages.length} new EWP, procurement, and execution '
-          'packages from WBS Level 3 candidates. Generate them now?',
+          'packages from WBS Level 3 candidates.'
+          '${specLinkedCount > 0 ? "\n\n$specLinkedCount deliverable(s) linked to design specifications." : ""}'
+          '\n\nGenerate them now?',
         ),
         actions: [
           TextButton(
@@ -1760,7 +1851,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
 
     setState(() {});
-    _showInfo('Generated ${newPackages.length} integrated work packages.');
+    _showInfo('Generated ${newPackages.length} integrated work packages'
+        '${specLinkedCount > 0 ? " with $specLinkedCount spec-linked deliverables" : ""}.');
   }
 
   Future<void> _generateScheduleNetworkFromPackages() async {

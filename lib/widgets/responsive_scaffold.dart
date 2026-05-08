@@ -98,7 +98,12 @@ class _MobileScaffold extends StatelessWidget {
         child: Stack(
           children: [
             body,
-            if (floatingActionButton != null) floatingActionButton!,
+            if (floatingActionButton != null)
+              Positioned(
+                bottom: 24,
+                right: 24,
+                child: floatingActionButton!,
+              ),
           ],
         ),
       ),
@@ -138,7 +143,12 @@ class _DesktopScaffold extends StatelessWidget {
               child: Stack(
                 children: [
                   body,
-                  if (floatingActionButton != null) floatingActionButton!,
+                  if (floatingActionButton != null)
+                    Positioned(
+                      bottom: 24,
+                      right: 24,
+                      child: floatingActionButton!,
+                    ),
                 ],
               ),
             ),

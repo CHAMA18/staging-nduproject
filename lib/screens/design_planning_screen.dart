@@ -1688,7 +1688,7 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'Design Planning',
       backgroundColor: _kPageBg,
-      floatingActionButton: const KazAiChatBubble(),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: Column(
         children: [
           PlanningPhaseHeader(

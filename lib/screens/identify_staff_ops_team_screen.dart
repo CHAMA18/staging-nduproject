@@ -58,41 +58,37 @@ class _IdentifyStaffOpsTeamScreenState
     return ResponsiveScaffold(
       activeItemLabel: 'Identify and Staff Ops Team',
       backgroundColor: const Color(0xFFF5F7FB),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: EdgeInsets.all(padding),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      floatingActionButton: const KazAiChatBubble(positioned: false),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(padding),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(isNarrow),
+            const SizedBox(height: 18),
+            _buildStatsRow(isNarrow),
+            const SizedBox(height: 24),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildHeader(isNarrow),
-                const SizedBox(height: 18),
-                _buildStatsRow(isNarrow),
+                _buildRosterPanel(),
+                const SizedBox(height: 20),
+                _buildCoveragePanel(),
+                const SizedBox(height: 20),
+                _buildChecklistPanel(),
+                const SizedBox(height: 20),
+                _buildHandoffPanel(),
                 const SizedBox(height: 24),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildRosterPanel(),
-                    const SizedBox(height: 20),
-                    _buildCoveragePanel(),
-                    const SizedBox(height: 20),
-                    _buildChecklistPanel(),
-                    const SizedBox(height: 20),
-                    _buildHandoffPanel(),
-                    const SizedBox(height: 24),
-                    LaunchPhaseNavigation(
-                      backLabel: 'Back: Technical Debt Management',
-                      nextLabel: 'Next: Salvage & Disposal Plan',
-                      onBack: () => TechnicalDebtManagementScreen.open(context),
-                      onNext: () => SalvageDisposalTeamScreen.open(context),
-                    ),
-                  ],
+                LaunchPhaseNavigation(
+                  backLabel: 'Back: Technical Debt Management',
+                  nextLabel: 'Next: Salvage & Disposal Plan',
+                  onBack: () => TechnicalDebtManagementScreen.open(context),
+                  onNext: () => SalvageDisposalTeamScreen.open(context),
                 ),
               ],
             ),
-          ),
-          const KazAiChatBubble(),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -506,6 +502,11 @@ class _IdentifyStaffOpsTeamScreenState
           return SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
+              headingRowHeight: 32,
+              dataRowMinHeight: 28,
+              dataRowMaxHeight: 36,
+              columnSpacing: 14,
+              horizontalMargin: 12,
               headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
               columns: const [
                 DataColumn(
@@ -542,19 +543,26 @@ class _IdentifyStaffOpsTeamScreenState
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit,
-                              size: 18, color: Color(0xFF64748B)),
-                          onPressed: () =>
+                        InkWell(
+                          onTap: () =>
                               _showEditMemberDialog(context, member),
-                          tooltip: 'Edit',
+                          borderRadius: BorderRadius.circular(4),
+                          child: const Padding(
+                            padding: EdgeInsets.all(4),
+                            child: Icon(Icons.edit,
+                                size: 16, color: Color(0xFF64748B)),
+                          ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.delete,
-                              size: 18, color: Color(0xFFEF4444)),
-                          onPressed: () =>
+                        const SizedBox(width: 4),
+                        InkWell(
+                          onTap: () =>
                               _showDeleteMemberDialog(context, member),
-                          tooltip: 'Delete',
+                          borderRadius: BorderRadius.circular(4),
+                          child: const Padding(
+                            padding: EdgeInsets.all(4),
+                            child: Icon(Icons.delete,
+                                size: 16, color: Color(0xFFEF4444)),
+                          ),
                         ),
                       ],
                     ),

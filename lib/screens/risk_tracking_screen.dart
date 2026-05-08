@@ -135,43 +135,39 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'Risk Tracking',
       backgroundColor: const Color(0xFFF5F7FB),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: EdgeInsets.all(padding),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      floatingActionButton: const KazAiChatBubble(positioned: false),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(padding),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(isNarrow),
+            const SizedBox(height: 16),
+            _buildFilterChips(),
+            const SizedBox(height: 20),
+            _buildStatsRow(isNarrow),
+            const SizedBox(height: 24),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildHeader(isNarrow),
-                const SizedBox(height: 16),
-                _buildFilterChips(),
+                _buildRiskRegister(),
                 const SizedBox(height: 20),
-                _buildStatsRow(isNarrow),
-                const SizedBox(height: 24),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildRiskRegister(),
-                    const SizedBox(height: 20),
-                    _buildMitigationPanel(),
-                    const SizedBox(height: 20),
-                    _buildSignalsPanel(),
-                    const SizedBox(height: 20),
-                    _buildEscalationPanel(),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                LaunchPhaseNavigation(
-                  backLabel: 'Back: Start-up / Launch Checklist',
-                  nextLabel: 'Next: Scope Completion',
-                  onBack: () => LaunchChecklistScreen.open(context),
-                  onNext: () => ScopeCompletionScreen.open(context),
-                ),
+                _buildMitigationPanel(),
+                const SizedBox(height: 20),
+                _buildSignalsPanel(),
+                const SizedBox(height: 20),
+                _buildEscalationPanel(),
               ],
             ),
-          ),
-          const KazAiChatBubble(),
-        ],
+            const SizedBox(height: 24),
+            LaunchPhaseNavigation(
+              backLabel: 'Back: Start-up / Launch Checklist',
+              nextLabel: 'Next: Scope Completion',
+              onBack: () => LaunchChecklistScreen.open(context),
+              onNext: () => ScopeCompletionScreen.open(context),
+            ),
+          ],
+        ),
       ),
     );
   }

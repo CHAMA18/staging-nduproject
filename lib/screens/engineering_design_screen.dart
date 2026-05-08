@@ -794,46 +794,42 @@ class _EngineeringDesignScreenState extends State<EngineeringDesignScreen> {
 
     return ResponsiveScaffold(
       activeItemLabel: 'Engineering',
-      body: Stack(
+      floatingActionButton: const KazAiChatBubble(positioned: false),
+      body: Column(
         children: [
-          Column(
-            children: [
-              const PlanningPhaseHeader(
-                title: 'Engineering',
-                showImportButton: false,
-                showContentButton: false,
-                showNavigationButtons: false,
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.all(padding),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (_isLoading)
-                        const LinearProgressIndicator(minHeight: 2),
-                      const SizedBox(height: 24),
-                      _buildBlueprintHero(
-                        isMobile: isMobile,
-                        snapshot: snapshot,
-                      ),
-                      const SizedBox(height: 24),
-                      _buildBlueprintsTopSection(snapshot, isMobile),
-                      const SizedBox(height: 20),
-                      _buildSpecificationsGrid(snapshot),
-                      const SizedBox(height: 20),
-                      _buildGovernanceSection(snapshot, isMobile),
-                      const SizedBox(height: 20),
-                      _buildDetailedRegistersPanel(),
-                      const SizedBox(height: 32),
-                      _buildBottomNavigation(isMobile),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+          const PlanningPhaseHeader(
+            title: 'Engineering',
+            showImportButton: false,
+            showContentButton: false,
+            showNavigationButtons: false,
           ),
-          const KazAiChatBubble(),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(padding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_isLoading)
+                    const LinearProgressIndicator(minHeight: 2),
+                  const SizedBox(height: 24),
+                  _buildBlueprintHero(
+                    isMobile: isMobile,
+                    snapshot: snapshot,
+                  ),
+                  const SizedBox(height: 24),
+                  _buildBlueprintsTopSection(snapshot, isMobile),
+                  const SizedBox(height: 20),
+                  _buildSpecificationsGrid(snapshot),
+                  const SizedBox(height: 20),
+                  _buildGovernanceSection(snapshot, isMobile),
+                  const SizedBox(height: 20),
+                  _buildDetailedRegistersPanel(),
+                  const SizedBox(height: 32),
+                  _buildBottomNavigation(isMobile),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

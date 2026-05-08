@@ -9,6 +9,7 @@ import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/services/salvage_service.dart';
 import 'package:ndu_project/utils/execution_phase_ai_seed.dart';
 import 'package:ndu_project/widgets/launch_editable_section.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 
 class SalvageDisposalTeamScreen extends StatefulWidget {
   const SalvageDisposalTeamScreen({super.key});
@@ -871,6 +872,7 @@ class _SalvageDisposalTeamScreenState extends State<SalvageDisposalTeamScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'Salvage and/or Disposal Plan',
       backgroundColor: const Color(0xFFF8FAFC),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(padding),
         child: Column(

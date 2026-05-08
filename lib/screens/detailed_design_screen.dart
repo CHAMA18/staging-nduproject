@@ -140,63 +140,59 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'Detailed Design',
       backgroundColor: const Color(0xFFF5F7FB),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: EdgeInsets.all(padding),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(isNarrow),
-                const SizedBox(height: 16),
-                _buildFilterChips(),
-                const SizedBox(height: 20),
-                _buildStatsRow(isNarrow),
-                const SizedBox(height: 24),
-                if (isNarrow)
-                  Column(
-                    children: [
-                      _buildPackageRegister(),
-                      const SizedBox(height: 20),
-                      _buildReviewPanel(),
-                      const SizedBox(height: 20),
-                      _buildDecisionPanel(),
-                      const SizedBox(height: 20),
-                      _buildArtifactsPanel(),
-                    ],
-                  )
-                else
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 3, child: _buildPackageRegister()),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          children: [
-                            _buildReviewPanel(),
-                            const SizedBox(height: 20),
-                            _buildDecisionPanel(),
-                            const SizedBox(height: 20),
-                            _buildArtifactsPanel(),
-                          ],
-                        ),
-                      ),
-                    ],
+      floatingActionButton: const KazAiChatBubble(positioned: false),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(padding),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(isNarrow),
+            const SizedBox(height: 16),
+            _buildFilterChips(),
+            const SizedBox(height: 20),
+            _buildStatsRow(isNarrow),
+            const SizedBox(height: 24),
+            if (isNarrow)
+              Column(
+                children: [
+                  _buildPackageRegister(),
+                  const SizedBox(height: 20),
+                  _buildReviewPanel(),
+                  const SizedBox(height: 20),
+                  _buildDecisionPanel(),
+                  const SizedBox(height: 20),
+                  _buildArtifactsPanel(),
+                ],
+              )
+            else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 3, child: _buildPackageRegister()),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      children: [
+                        _buildReviewPanel(),
+                        const SizedBox(height: 20),
+                        _buildDecisionPanel(),
+                        const SizedBox(height: 20),
+                        _buildArtifactsPanel(),
+                      ],
+                    ),
                   ),
-                const SizedBox(height: 24),
-                LaunchPhaseNavigation(
-                  backLabel: 'Back: Vendor Tracking',
-                  nextLabel: 'Next: Agile Development Iterations',
-                  onBack: () => VendorTrackingScreen.open(context),
-                  onNext: () => AgileDevelopmentIterationsScreen.open(context),
-                ),
-              ],
+                ],
+              ),
+            const SizedBox(height: 24),
+            LaunchPhaseNavigation(
+              backLabel: 'Back: Vendor Tracking',
+              nextLabel: 'Next: Agile Development Iterations',
+              onBack: () => VendorTrackingScreen.open(context),
+              onNext: () => AgileDevelopmentIterationsScreen.open(context),
             ),
-          ),
-          const KazAiChatBubble(),
-        ],
+          ],
+        ),
       ),
     );
   }

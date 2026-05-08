@@ -153,7 +153,7 @@ class InterfaceManagementScreen extends StatelessWidget {
                     ),
                   ),
                   const Positioned(
-                      right: 24, bottom: 24, child: KazAiChatBubble()),
+                      right: 24, bottom: 24, child: KazAiChatBubble(positioned: false)),
                 ],
               ),
             ),

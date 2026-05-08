@@ -442,11 +442,7 @@ class _DesignDeliverablesScreenState extends State<DesignDeliverablesScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'Design Deliverables',
       backgroundColor: _kPageBackground,
-      floatingActionButton: const Positioned(
-        right: 24,
-        bottom: 24,
-        child: KazAiChatBubble(positioned: false),
-      ),
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: SingleChildScrollView(
         padding:
             EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 24),

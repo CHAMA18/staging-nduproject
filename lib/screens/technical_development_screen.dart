@@ -339,53 +339,49 @@ class _TechnicalDevelopmentScreenState
 
     return ResponsiveScaffold(
       activeItemLabel: 'Technical Development',
-      body: Stack(
+      floatingActionButton: const KazAiChatBubble(positioned: false),
+      body: Column(
         children: [
-          Column(
-            children: [
-              const PlanningPhaseHeader(
-                title: 'Technical Development',
-                showImportButton: false,
-                showContentButton: false,
-                showNavigationButtons: false,
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.all(padding),
-                  child: Column(
+          const PlanningPhaseHeader(
+            title: 'Technical Development',
+            showImportButton: false,
+            showContentButton: false,
+            showNavigationButtons: false,
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(padding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_isLoading)
+                    const LinearProgressIndicator(minHeight: 2),
+                  if (_isLoading) const SizedBox(height: 16),
+                  _buildProductionHubHeader(
+                    isMobile: isMobile,
+                    snapshot: snapshot,
+                  ),
+                  SizedBox(height: sectionGap),
+                  _buildWorkflowCard(snapshot),
+                  SizedBox(height: sectionGap),
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (_isLoading)
-                        const LinearProgressIndicator(minHeight: 2),
-                      if (_isLoading) const SizedBox(height: 16),
-                      _buildProductionHubHeader(
-                        isMobile: isMobile,
-                        snapshot: snapshot,
-                      ),
+                      _buildComponentBuildRegister(snapshot),
                       SizedBox(height: sectionGap),
-                      _buildWorkflowCard(snapshot),
-                      SizedBox(height: sectionGap),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildComponentBuildRegister(snapshot),
-                          SizedBox(height: sectionGap),
-                          _buildValidationPanel(snapshot),
-                        ],
-                      ),
-                      SizedBox(height: sectionGap),
-                      _buildGovernanceGrid(snapshot),
-                      SizedBox(height: sectionGap),
-                      _buildDetailedRegistersSection(),
-                      SizedBox(height: sectionGap),
-                      _buildBottomNavigation(isMobile),
+                      _buildValidationPanel(snapshot),
                     ],
                   ),
-                ),
+                  SizedBox(height: sectionGap),
+                  _buildGovernanceGrid(snapshot),
+                  SizedBox(height: sectionGap),
+                  _buildDetailedRegistersSection(),
+                  SizedBox(height: sectionGap),
+                  _buildBottomNavigation(isMobile),
+                ],
               ),
-            ],
+            ),
           ),
-          const KazAiChatBubble(),
         ],
       ),
     );

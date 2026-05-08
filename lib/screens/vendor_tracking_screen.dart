@@ -147,45 +147,41 @@ class _VendorTrackingScreenState extends State<VendorTrackingScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'Vendor Tracking',
       backgroundColor: const Color(0xFFF5F7FB),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: EdgeInsets.all(padding),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      floatingActionButton: const KazAiChatBubble(positioned: false),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(padding),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(isNarrow, policy),
+            const SizedBox(height: 16),
+            _buildFilterChips(),
+            const SizedBox(height: 14),
+            _buildGovernanceStrip(policy),
+            const SizedBox(height: 20),
+            _buildStatsRow(isNarrow),
+            const SizedBox(height: 24),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildHeader(isNarrow, policy),
-                const SizedBox(height: 16),
-                _buildFilterChips(),
-                const SizedBox(height: 14),
-                _buildGovernanceStrip(policy),
+                _buildVendorRegister(),
                 const SizedBox(height: 20),
-                _buildStatsRow(isNarrow),
-                const SizedBox(height: 24),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildVendorRegister(),
-                    const SizedBox(height: 20),
-                    _buildPerformancePanel(),
-                    const SizedBox(height: 20),
-                    _buildSignalsPanel(),
-                    const SizedBox(height: 20),
-                    _buildActionPanel(),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                LaunchPhaseNavigation(
-                  backLabel: 'Back: Contracts Tracking',
-                  nextLabel: 'Next: Detailed Design',
-                  onBack: () => ContractsTrackingScreen.open(context),
-                  onNext: () => DetailedDesignScreen.open(context),
-                ),
+                _buildPerformancePanel(),
+                const SizedBox(height: 20),
+                _buildSignalsPanel(),
+                const SizedBox(height: 20),
+                _buildActionPanel(),
               ],
             ),
-          ),
-          const KazAiChatBubble(),
-        ],
+            const SizedBox(height: 24),
+            LaunchPhaseNavigation(
+              backLabel: 'Back: Contracts Tracking',
+              nextLabel: 'Next: Detailed Design',
+              onBack: () => ContractsTrackingScreen.open(context),
+              onNext: () => DetailedDesignScreen.open(context),
+            ),
+          ],
+        ),
       ),
     );
   }

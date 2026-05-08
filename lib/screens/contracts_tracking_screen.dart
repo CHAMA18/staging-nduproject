@@ -371,46 +371,42 @@ class _ContractsTrackingScreenState extends State<ContractsTrackingScreen> {
     return ResponsiveScaffold(
       activeItemLabel: 'Contracts Tracking',
       backgroundColor: const Color(0xFFF5F7FB),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: EdgeInsets.all(padding),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      floatingActionButton: const KazAiChatBubble(positioned: false),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(padding),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (_isLoading) const LinearProgressIndicator(minHeight: 2),
+            if (_isLoading) const SizedBox(height: 16),
+            _buildHeader(isNarrow),
+            const SizedBox(height: 16),
+            _buildFilterChips(),
+            const SizedBox(height: 20),
+            _buildStatsRow(isNarrow),
+            const SizedBox(height: 20),
+            _buildContractManagementGuide(),
+            const SizedBox(height: 24),
+            Column(
               children: [
-                if (_isLoading) const LinearProgressIndicator(minHeight: 2),
-                if (_isLoading) const SizedBox(height: 16),
-                _buildHeader(isNarrow),
-                const SizedBox(height: 16),
-                _buildFilterChips(),
+                _buildContractRegister(),
                 const SizedBox(height: 20),
-                _buildStatsRow(isNarrow),
+                _buildRenewalPanel(),
                 const SizedBox(height: 20),
-                _buildContractManagementGuide(),
-                const SizedBox(height: 24),
-                Column(
-                  children: [
-                    _buildContractRegister(),
-                    const SizedBox(height: 20),
-                    _buildRenewalPanel(),
-                    const SizedBox(height: 20),
-                    _buildSignalsPanel(),
-                    const SizedBox(height: 20),
-                    _buildApprovalsPanel(),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                LaunchPhaseNavigation(
-                  backLabel: 'Back: Status Reports',
-                  nextLabel: 'Next: Vendor Tracking',
-                  onBack: () => StatusReportsScreen.open(context),
-                  onNext: () => VendorTrackingScreen.open(context),
-                ),
+                _buildSignalsPanel(),
+                const SizedBox(height: 20),
+                _buildApprovalsPanel(),
               ],
             ),
-          ),
-          const KazAiChatBubble(),
-        ],
+            const SizedBox(height: 24),
+            LaunchPhaseNavigation(
+              backLabel: 'Back: Status Reports',
+              nextLabel: 'Next: Vendor Tracking',
+              onBack: () => StatusReportsScreen.open(context),
+              onNext: () => VendorTrackingScreen.open(context),
+            ),
+          ],
+        ),
       ),
     );
   }

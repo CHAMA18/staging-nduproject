@@ -22,8 +22,6 @@ class RiskTrackingScreen extends StatefulWidget {
 }
 
 class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
-  final Set<String> _selectedFilters = {'All risks'};
-
   final List<_RiskItem> _risks = [];
 
   List<_RiskSignal> _signals = [
@@ -301,8 +299,6 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(isNarrow),
-            const SizedBox(height: 16),
-            _buildFilterChips(),
             const SizedBox(height: 20),
             _buildStatsRow(isNarrow),
             const SizedBox(height: 24),
@@ -429,15 +425,10 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
   Widget _primaryButton(String label) {
     return ElevatedButton.icon(
       onPressed: () {
-        setState(() {
-          _selectedFilters
-            ..clear()
-            ..add('Escalated');
-        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text(
-                  'Weekly review started. Filter set to escalated risks.')),
+                  'Weekly review started.')),
         );
       },
       icon: const Icon(Icons.play_arrow, size: 18),
@@ -449,53 +440,6 @@ class _RiskTrackingScreenState extends State<RiskTrackingScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
-    );
-  }
-
-  // ─── Filter Chips ─────────────────────────────────────────────────────────
-
-  Widget _buildFilterChips() {
-    const filters = [
-      'All risks',
-      'Critical',
-      'High',
-      'Mitigating',
-      'Escalated',
-      'Watchlist'
-    ];
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: filters.map((filter) {
-        final selected = _selectedFilters.contains(filter);
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              if (selected) {
-                _selectedFilters.remove(filter);
-              } else {
-                _selectedFilters.add(filter);
-              }
-            });
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: selected ? const Color(0xFF111827) : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
-            ),
-            child: Text(
-              filter,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: selected ? Colors.white : const Color(0xFF475569),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
     );
   }
 

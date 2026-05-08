@@ -24,20 +24,26 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.27.1'
-          channel: 'stable'
+          channel: stable
           cache: true
 
       - name: Install dependencies
         run: flutter pub get
-        working-directory: .
 
-      - name: Build Flutter web
-        run: flutter build web --release --base-href "/"
-        working-directory: .
+      - name: Build Flutter web app
+        run: flutter build web --target=lib/main.dart --release --base-href="/" --pwa-strategy=none
 
       - name: Copy CNAME to build output
         run: cp web/CNAME build/web/CNAME
+
+      - name: Copy staticwebapp.config.json for SPA routing
+        run: |
+          if [ -f staticwebapp.config.json ]; then
+            cp staticwebapp.config.json build/web/staticwebapp.config.json
+          fi
+
+      - name: Create 404.html for GitHub Pages SPA routing
+        run: cp build/web/index.html build/web/404.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

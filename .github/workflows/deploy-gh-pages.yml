@@ -1,4 +1,4 @@
-name: Deploy Flutter Web to GitHub Pages
+name: Build & Deploy to GitHub Pages
 
 on:
   push:
@@ -6,16 +6,10 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: true
+  contents: write
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -31,32 +25,26 @@ jobs:
         run: flutter pub get
 
       - name: Build Flutter web app
-        run: flutter build web --target=lib/main.dart --release --base-href="/" --pwa-strategy=none
-
-      - name: Copy CNAME to build output
-        run: cp web/CNAME build/web/CNAME
-
-      - name: Copy staticwebapp.config.json for SPA routing
         run: |
+          flutter build web \
+            --target=lib/main.dart \
+            --release \
+            --base-href="/" \
+            --no-tree-shake-icons \
+            --pwa-strategy=none
+
+      - name: Add CNAME and SPA routing
+        run: |
+          cp web/CNAME build/web/CNAME
           if [ -f staticwebapp.config.json ]; then
             cp staticwebapp.config.json build/web/staticwebapp.config.json
           fi
+          cp build/web/index.html build/web/404.html
 
-      - name: Create 404.html for GitHub Pages SPA routing
-        run: cp build/web/index.html build/web/404.html
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: build/web
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build/web
+          publish_branch: gh-pages
+          commit_message: "Deploy: ${{ github.event.head_commit.message || 'manual deploy' }}"

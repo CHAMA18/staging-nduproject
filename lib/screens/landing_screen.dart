@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -76,6 +75,14 @@ class _LandingScreenState extends State<LandingScreen>
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
+  }
+
+
+  // Safe gradient text that avoids ShaderMask web bugs
+  Widget _gradientText(String text, {required TextStyle style, List<Color>? colors, TextAlign? textAlign}) {
+    // Use plain styled text to avoid ShaderMask+BlendMode.srcIn crash on Flutter web
+    final effectiveStyle = style.copyWith(color: colors?.first ?? style.color);
+    return Text(text, style: effectiveStyle, textAlign: textAlign);
   }
 
   void _onScroll() {
@@ -409,9 +416,7 @@ class _LandingScreenState extends State<LandingScreen>
             horizontal: isDesktop ? 64 : isMobile ? 16 : 32),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Container(
+          child: Container(
               padding: EdgeInsets.symmetric(
                 horizontal: isDesktop ? 28 : 16,
                 vertical: isDesktop ? 14 : 10,
@@ -435,7 +440,6 @@ class _LandingScreenState extends State<LandingScreen>
               child: isMobile
                   ? _buildMobileHeader(context)
                   : _buildDesktopHeader(context, isDesktop),
-            ),
           ),
         ),
       ),
@@ -706,20 +710,8 @@ class _LandingScreenState extends State<LandingScreen>
         ),
         const SizedBox(height: 28),
         // Headline with gradient
-        ShaderMask(
-          shaderCallback: (bounds) => const LinearGradient(
-            colors: [
-              Color(0xFFFFF3C0),
-              Colors.white,
-              Color(0xFFE0E7FF),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ).createShader(Rect.fromLTWH(0, 0, bounds.width, bounds.height)),
-          blendMode: BlendMode.srcIn,
-          child: Text(
+        _gradientText(
             '42% of Projects Fail to meet original scope.\nFix Project Failure Before It Starts',
-            textAlign: isDesktop ? TextAlign.left : TextAlign.center,
             style: TextStyle(
               fontSize: isDesktop ? 48.0 : 32.0,
               fontWeight: FontWeight.w800,
@@ -727,8 +719,9 @@ class _LandingScreenState extends State<LandingScreen>
               letterSpacing: -0.5,
               color: Colors.white,
             ),
+            colors: const [Color(0xFFFFF3C0), Colors.white, Color(0xFFE0E7FF)],
+            textAlign: isDesktop ? TextAlign.left : TextAlign.center,
           ),
-        ),
         const SizedBox(height: 20),
         // Subheadline
         Text(
@@ -927,12 +920,7 @@ class _LandingScreenState extends State<LandingScreen>
           ),
           const SizedBox(height: 24),
           // Headline
-          ShaderMask(
-            shaderCallback: (bounds) => const LinearGradient(
-              colors: [Colors.redAccent, Color(0xFFFFC107)],
-            ).createShader(Rect.fromLTWH(0, 0, bounds.width, bounds.height)),
-            blendMode: BlendMode.srcIn,
-            child: Text(
+Text(
               'Projects Don\'t Fail in Execution.\nThey Fail Before Execution Begins',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -940,10 +928,9 @@ class _LandingScreenState extends State<LandingScreen>
                 fontWeight: FontWeight.w800,
                 height: 1.15,
                 letterSpacing: -0.3,
-                color: Colors.white,
+                color: Colors.redAccent,
               ),
-            ),
-          ),
+            )
           const SizedBox(height: 24),
           Text(
             'Most project tools focus on tracking work after it starts. But by then, the most critical decisions have already been made… and often made poorly.',
@@ -1042,12 +1029,7 @@ class _LandingScreenState extends State<LandingScreen>
           ),
           const SizedBox(height: 24),
           // Headline
-          ShaderMask(
-            shaderCallback: (bounds) => const LinearGradient(
-              colors: [_LpColors.blue, _LpColors.purple],
-            ).createShader(Rect.fromLTWH(0, 0, bounds.width, bounds.height)),
-            blendMode: BlendMode.srcIn,
-            child: Text(
+Text(
               'A New Category:\nProject Delivery Operating System (PDOS)',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -1055,10 +1037,9 @@ class _LandingScreenState extends State<LandingScreen>
                 fontWeight: FontWeight.w800,
                 height: 1.15,
                 letterSpacing: -0.3,
-                color: Colors.white,
+                color: _LpColors.blue,
               ),
-            ),
-          ),
+            )
           const SizedBox(height: 20),
           Text(
             'Ndu Project replaces disconnected tools with a unified system that governs how projects are defined, planned, and delivered.',
@@ -1170,12 +1151,7 @@ class _LandingScreenState extends State<LandingScreen>
             ),
           ),
           const SizedBox(height: 24),
-          ShaderMask(
-            shaderCallback: (bounds) => const LinearGradient(
-              colors: [_LpColors.green, Color(0xFFE0E7FF)],
-            ).createShader(Rect.fromLTWH(0, 0, bounds.width, bounds.height)),
-            blendMode: BlendMode.srcIn,
-            child: Text(
+Text(
               'How Ndu Project Delivers Results',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -1183,10 +1159,9 @@ class _LandingScreenState extends State<LandingScreen>
                 fontWeight: FontWeight.w800,
                 height: 1.15,
                 letterSpacing: -0.3,
-                color: Colors.white,
+                color: _LpColors.green,
               ),
-            ),
-          ),
+            )
           const SizedBox(height: 56),
           // Steps
           isDesktop
@@ -1271,12 +1246,7 @@ class _LandingScreenState extends State<LandingScreen>
             ),
           ),
           const SizedBox(height: 24),
-          ShaderMask(
-            shaderCallback: (bounds) => const LinearGradient(
-              colors: [_LpColors.gold, Colors.white],
-            ).createShader(Rect.fromLTWH(0, 0, bounds.width, bounds.height)),
-            blendMode: BlendMode.srcIn,
-            child: Text(
+Text(
               'Built Differently From Traditional Project Tools',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -1284,10 +1254,9 @@ class _LandingScreenState extends State<LandingScreen>
                 fontWeight: FontWeight.w800,
                 height: 1.15,
                 letterSpacing: -0.3,
-                color: Colors.white,
+                color: _LpColors.gold,
               ),
-            ),
-          ),
+            )
           const SizedBox(height: 48),
           // Comparison cards
           ...comparisons
@@ -1353,12 +1322,7 @@ class _LandingScreenState extends State<LandingScreen>
             ),
           ),
           const SizedBox(height: 24),
-          ShaderMask(
-            shaderCallback: (bounds) => const LinearGradient(
-              colors: [_LpColors.green, Color(0xFFE0E7FF)],
-            ).createShader(Rect.fromLTWH(0, 0, bounds.width, bounds.height)),
-            blendMode: BlendMode.srcIn,
-            child: Text(
+Text(
               'What You Achieve with PDOS',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -1366,10 +1330,9 @@ class _LandingScreenState extends State<LandingScreen>
                 fontWeight: FontWeight.w800,
                 height: 1.15,
                 letterSpacing: -0.3,
-                color: Colors.white,
+                color: _LpColors.green,
               ),
-            ),
-          ),
+            )
           const SizedBox(height: 48),
           // Outcome cards
           Wrap(
@@ -1405,21 +1368,14 @@ class _LandingScreenState extends State<LandingScreen>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                ShaderMask(
-                  shaderCallback: (bounds) => const LinearGradient(
-                    colors: [_LpColors.green, Color(0xFF86EFAC)],
-                  ).createShader(
-                      Rect.fromLTWH(0, 0, bounds.width, bounds.height)),
-                  blendMode: BlendMode.srcIn,
-                  child: const Text(
+                const Text(
                     'Up to 30%',
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                      color: _LpColors.green,
                     ),
                   ),
-                ),
                 const SizedBox(width: 12),
                 Text(
                   'reduction in rework',
@@ -1487,12 +1443,7 @@ class _LandingScreenState extends State<LandingScreen>
             ),
           ),
           const SizedBox(height: 24),
-          ShaderMask(
-            shaderCallback: (bounds) => const LinearGradient(
-              colors: [_LpColors.purple, Colors.white],
-            ).createShader(Rect.fromLTWH(0, 0, bounds.width, bounds.height)),
-            blendMode: BlendMode.srcIn,
-            child: Text(
+Text(
               'Built for Organizations Delivering\nSimple to Complex Work',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -1500,10 +1451,9 @@ class _LandingScreenState extends State<LandingScreen>
                 fontWeight: FontWeight.w800,
                 height: 1.15,
                 letterSpacing: -0.3,
-                color: Colors.white,
+                color: _LpColors.purple,
               ),
-            ),
-          ),
+            )
           const SizedBox(height: 48),
           Wrap(
             spacing: 16,
@@ -1563,13 +1513,7 @@ class _LandingScreenState extends State<LandingScreen>
                 ),
               ),
               const SizedBox(height: 24),
-              ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(
-                  colors: [_LpColors.blue, Colors.white],
-                ).createShader(
-                    Rect.fromLTWH(0, 0, bounds.width, bounds.height)),
-                blendMode: BlendMode.srcIn,
-                child: Text(
+Text(
                   'Built From Experience.\nValidated by Research.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
@@ -1577,10 +1521,9 @@ class _LandingScreenState extends State<LandingScreen>
                     fontWeight: FontWeight.w800,
                     height: 1.15,
                     letterSpacing: -0.3,
-                    color: Colors.white,
+                    color: _LpColors.blue,
                   ),
-                ),
-              ),
+                )
               const SizedBox(height: 20),
               Text(
                 'Ndu Project is informed by nearly two decades of hands-on project delivery experience across global enterprises and emerging organizations.',
@@ -1636,12 +1579,7 @@ class _LandingScreenState extends State<LandingScreen>
       child: Column(
         children: [
           // Large statement
-          ShaderMask(
-            shaderCallback: (bounds) => const LinearGradient(
-              colors: [Colors.redAccent, _LpColors.gold, Colors.white],
-            ).createShader(Rect.fromLTWH(0, 0, bounds.width, bounds.height)),
-            blendMode: BlendMode.srcIn,
-            child: Text(
+Text(
               '"Execution Doesn\'t Fix Bad Starts"',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -1649,10 +1587,9 @@ class _LandingScreenState extends State<LandingScreen>
                 fontWeight: FontWeight.w800,
                 height: 1.15,
                 letterSpacing: -0.3,
-                color: Colors.white,
+                color: Colors.redAccent,
               ),
-            ),
-          ),
+            )
           const SizedBox(height: 24),
           Text(
             'Projects fail upstream in initiation and planning. Execution only exposes those failures later.',
@@ -1715,13 +1652,7 @@ class _LandingScreenState extends State<LandingScreen>
           padding: EdgeInsets.all(isDesktop ? 56 : 32),
           child: Column(
             children: [
-              ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(
-                  colors: [_LpColors.gold, Colors.white],
-                ).createShader(
-                    Rect.fromLTWH(0, 0, bounds.width, bounds.height)),
-                blendMode: BlendMode.srcIn,
-                child: Text(
+Text(
                   'Ready to Transform How You Deliver Projects?',
                   textAlign: TextAlign.center,
                   style: TextStyle(
@@ -1729,10 +1660,9 @@ class _LandingScreenState extends State<LandingScreen>
                     fontWeight: FontWeight.w800,
                     height: 1.15,
                     letterSpacing: -0.3,
-                    color: Colors.white,
+                    color: _LpColors.gold,
                   ),
-                ),
-              ),
+                )
               const SizedBox(height: 16),
               Text(
                 'Move beyond tracking tools. Implement a system designed for real project success.',
@@ -2009,10 +1939,7 @@ class _GlassCard extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
-          child: child,
-        ),
+        child: child,
       ),
     );
   }

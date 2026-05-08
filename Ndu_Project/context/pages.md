@@ -1,0 +1,38 @@
+## Pages (13)
+- LandingPage [`Scaffold_mol4zrfa`] [initial]
+  - Navigates to: PricingPage, SignInPage
+  - State: showSignIn (Boolean)
+- SignInPage [`Scaffold_l4p48wm9`] → sign-in
+  - Navigates to: CreateAccountPage, DashboardPage
+  - State: email (String), password (String), isLoading (Boolean)
+- CreateAccountPage [`Scaffold_y2bmrt2g`] → create-account
+  - Navigates to: DashboardPage, SignInPage
+  - State: firstName (String), lastName (String), company (String), email (String), password (String)
+- PricingPage [`Scaffold_iszk48dh`] → pricing
+  - State: isAnnual (Boolean)
+- DashboardPage [`Scaffold_3y1frgud`] → dashboard
+  - Navigates to: ProjectPlanPage, PunchlistActionsPage, RiskAssessmentPage, TeamManagementPage
+  - Components: InsightCard, StatCard
+  - State: selectedNav (String)
+- PunchlistActionsPage [`Scaffold_nznjqrni`] → punchlist-actions
+  - Navigates to: GapAnalysisPage, TechDebtPage
+  - Components: ComplianceCard, ContextChip
+  - State: selectedTab (String)
+- ProjectPlanPage [`Scaffold_w3v04qkb`] → project-plan
+  - Components: ContextChip
+- RiskAssessmentPage [`Scaffold_s1w4brlc`] → risk-assessment
+  - Components: StatCard
+  - State: filter (String)
+- TeamManagementPage [`Scaffold_8ampk5l0`] → team-management
+  - Components: StatCard
+- GapAnalysisPage [`Scaffold_cg5uo0up`] → gap-analysis
+- TechDebtPage [`Scaffold_dsiojhct`] → tech-debt
+  - Components: InsightCard, StatCard
+- SSHERPage [`Scaffold_8ugk7c7c`] → ssher
+  - (no incoming navigation)
+  - Components: StatCard
+- SettingsPage [`Scaffold_8l2bqxsv`] → settings
+  - (no incoming navigation)
+  - Navigates to: SignInPage
+  - State: darkMode (Boolean), notifications (Boolean)
+

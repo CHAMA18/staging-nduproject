@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "flutterflow_official": {
+      "command": "dart",
+      "args": [
+        "run",
+        "/home/z/my-project/Ndu_Project/Ndu_Project/.flutterflow/sdk/flutterflow_ai/mcp/server.dart",
+        "--dir",
+        "/home/z/my-project/Ndu_Project/Ndu_Project"
+      ],
+      "env": {
+        "PATH": "/home/z/dart-sdk/bin:/home/z/.pub-cache/bin:/home/z/.npm-global/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "FLUTTERFLOW_API_TOKEN": "b3ec9197-e35d-450e-b520-c653d25ab5c2"
+      }
+    },
+    "flutterflow_community": {
+      "command": "npx",
+      "args": ["-y", "community-ff-mcp"],
+      "env": {
+        "FLUTTERFLOW_API_TOKEN": "b3ec9197-e35d-450e-b520-c653d25ab5c2"
+      }
+    }
+  }
+}

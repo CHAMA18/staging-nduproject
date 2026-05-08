@@ -1140,6 +1140,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       workPackages: data.workPackages,
     );
 
+    // Phase 5: Detect resource conflicts (same owner on overlapping packages)
+    final resourceConflicts =
+        IntegratedWorkPackageService.detectResourceConflicts(data.workPackages);
+
     return _ScheduleValidationReport(
       taskCount: _activityRows.length,
       unassignedTaskCount: _activityRows
@@ -1157,6 +1161,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       baselineVarianceWarnings: baselineVarianceWarnings,
       milestoneWarnings: milestoneWarnings,
       specCoverageWarnings: specCoverageWarnings,
+      resourceConflicts: resourceConflicts,
     );
   }
 
@@ -1802,6 +1807,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     // Phase 2.3: Roll up child costs/dates into parent packages
     generated = IntegratedWorkPackageService
         .rollUpChildCostsAndDates(generated);
+
+    // Phase 6: Enforce estimate basis (auto-populate missing fields)
+    generated = IntegratedWorkPackageService
+        .enforceEstimateBasis(generated, methodology: _selectedMethodology);
 
     if (generated.isEmpty) {
       _showInfo('No WBS leaf node package candidates found.');
@@ -4162,6 +4171,7 @@ class _ScheduleValidationReport {
     required this.baselineVarianceWarnings,
     required this.milestoneWarnings,
     required this.specCoverageWarnings,
+    required this.resourceConflicts,
   });
 
   final int taskCount;
@@ -4176,6 +4186,7 @@ class _ScheduleValidationReport {
   final List<_BaselineVarianceWarning> baselineVarianceWarnings;
   final List<_MilestoneWarning> milestoneWarnings;
   final List<_SpecCoverageWarning> specCoverageWarnings;
+  final List<ResourceConflict> resourceConflicts;
 }
 
 class _PackageWarning {
@@ -4309,6 +4320,11 @@ class _ScheduleValidationDialog extends StatelessWidget {
                     value: report.specCoverageWarnings.length.toString(),
                     color: const Color(0xFF0891B2),
                   ),
+                  _ValidationStat(
+                    label: 'Resource Conflicts',
+                    value: report.resourceConflicts.length.toString(),
+                    color: const Color(0xFFEF4444),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -4408,6 +4424,19 @@ class _ScheduleValidationDialog extends StatelessWidget {
                     .map((warning) => _ValidationLine(
                           title: warning.title,
                           detail: warning.detail,
+                        ))
+                    .toList(),
+              ),
+              _ValidationSection(
+                title: 'Resource Conflicts',
+                emptyText: 'No resource over-allocation conflicts detected.',
+                children: report.resourceConflicts
+                    .map((conflict) => _ValidationLine(
+                          title: conflict.owner,
+                          detail: '"${conflict.packageA}" and '
+                              '"${conflict.packageB}" overlap by '
+                              '${conflict.overlapDays} day(s) '
+                              '(${conflict.overlapStart} to ${conflict.overlapEnd}).',
                         ))
                     .toList(),
               ),

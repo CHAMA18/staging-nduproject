@@ -3943,6 +3943,35 @@ class PackageEstimateBasis {
       risksAndContingency: json['risksAndContingency']?.toString() ?? '',
     );
   }
+
+  PackageEstimateBasis copyWith({
+    String? method,
+    String? sourceData,
+    List<String>? assumptions,
+    String? productivityBasis,
+    String? resourceBasis,
+    String? workingCalendar,
+    String? procurementLeadTimeBasis,
+    String? reviewAllowance,
+    String? confidenceLevel,
+    List<String>? exclusions,
+    String? risksAndContingency,
+  }) {
+    return PackageEstimateBasis(
+      method: method ?? this.method,
+      sourceData: sourceData ?? this.sourceData,
+      assumptions: assumptions ?? this.assumptions,
+      productivityBasis: productivityBasis ?? this.productivityBasis,
+      resourceBasis: resourceBasis ?? this.resourceBasis,
+      workingCalendar: workingCalendar ?? this.workingCalendar,
+      procurementLeadTimeBasis:
+          procurementLeadTimeBasis ?? this.procurementLeadTimeBasis,
+      reviewAllowance: reviewAllowance ?? this.reviewAllowance,
+      confidenceLevel: confidenceLevel ?? this.confidenceLevel,
+      exclusions: exclusions ?? this.exclusions,
+      risksAndContingency: risksAndContingency ?? this.risksAndContingency,
+    );
+  }
 }
 
 class PackageProcurementBreakdown {

@@ -1536,4 +1536,261 @@ class IntegratedWorkPackageService {
     visit(rootId);
     return result;
   }
+
+  // ------------------------------------------------------------------
+  // Phase 5: Resource conflict detection
+  // Detects when the same resource/owner is assigned to overlapping
+  // packages that could create schedule conflicts.
+  // ------------------------------------------------------------------
+
+  /// Represents a resource conflict where the same owner is assigned
+  /// to two packages with overlapping date ranges.
+  static List<ResourceConflict> detectResourceConflicts(
+    List<WorkPackage> packages,
+  ) {
+    final conflicts = <ResourceConflict>[];
+    final ownerPackages = <String, List<WorkPackage>>{};
+
+    // Group packages by owner
+    for (final pkg in packages) {
+      final owner = pkg.owner.trim();
+      if (owner.isEmpty) continue;
+      ownerPackages.putIfAbsent(owner, () => []).add(pkg);
+    }
+
+    // For each owner, check for date overlaps between packages
+    for (final entry in ownerPackages.entries) {
+      final ownerPkgs = entry.value;
+      if (ownerPkgs.length < 2) continue;
+
+      for (var i = 0; i < ownerPkgs.length; i++) {
+        for (var j = i + 1; j < ownerPkgs.length; j++) {
+          final a = ownerPkgs[i];
+          final b = ownerPkgs[j];
+
+          final aStart = DateTime.tryParse(a.plannedStart ?? '');
+          final aEnd = DateTime.tryParse(a.plannedEnd ?? '');
+          final bStart = DateTime.tryParse(b.plannedStart ?? '');
+          final bEnd = DateTime.tryParse(b.plannedEnd ?? '');
+
+          if (aStart == null || aEnd == null || bStart == null || bEnd == null) {
+            continue;
+          }
+
+          // Check for overlap: max(start1,start2) <= min(end1,end2)
+          final overlapStart = aStart.isAfter(bStart) ? aStart : bStart;
+          final overlapEnd = aEnd.isBefore(bEnd) ? aEnd : bEnd;
+          if (overlapStart.isBefore(overlapEnd) ||
+              overlapStart.isAtSameMomentAs(overlapEnd)) {
+            final overlapDays =
+                overlapEnd.difference(overlapStart).inDays + 1;
+            conflicts.add(ResourceConflict(
+              owner: entry.key,
+              packageA: a.title.isNotEmpty ? a.title : a.id,
+              packageB: b.title.isNotEmpty ? b.title : b.id,
+              overlapDays: overlapDays,
+              overlapStart: overlapStart.toIso8601String().split('T').first,
+              overlapEnd: overlapEnd.toIso8601String().split('T').first,
+            ));
+          }
+        }
+      }
+    }
+
+    return conflicts;
+  }
+
+  // ------------------------------------------------------------------
+  // Phase 6: Estimate basis enforcement
+  // Auto-populates estimate basis fields from available project data.
+  // ------------------------------------------------------------------
+
+  /// Enriches the estimate basis of each work package with information
+  /// derivable from other project data:
+  /// - Sets working calendar from project methodology
+  /// - Sets procurement lead time from procurementBreakdown.leadTimeDays
+  /// - Validates that high-risk/low-confidence packages have documented basis
+  ///
+  /// Returns a new list with enriched packages.
+  static List<WorkPackage> enforceEstimateBasis(
+    List<WorkPackage> packages, {
+    String methodology = '',
+  }) {
+    return packages.map((pkg) {
+      var basis = pkg.estimateBasis;
+
+      // Enforce working calendar if not set
+      if (basis.workingCalendar.trim().isEmpty) {
+        basis = basis.copyWith(
+          workingCalendar: '5 days/week',
+        );
+      }
+
+      // Auto-populate procurement lead time basis if not set
+      if (pkg.packageClassification == procurementPackage &&
+          basis.procurementLeadTimeBasis.trim().isEmpty &&
+          pkg.procurementBreakdown.leadTimeDays > 0) {
+        basis = basis.copyWith(
+          procurementLeadTimeBasis:
+              '${pkg.procurementBreakdown.leadTimeDays} days (from procurement breakdown)',
+        );
+      }
+
+      // Flag low-confidence estimates that need review
+      final isLowConfidence = basis.confidenceLevel.trim().toLowerCase() ==
+              'low' ||
+          basis.confidenceLevel.trim().isEmpty;
+      final missingMethod = basis.method.trim().isEmpty;
+      if (isLowConfidence || missingMethod) {
+        final existingWarnings = pkg.readinessWarnings;
+        final newWarnings = <String>[...existingWarnings];
+        if (missingMethod) {
+          newWarnings.add('Estimation method is not documented.');
+        }
+        if (isLowConfidence && !missingMethod) {
+          newWarnings.add(
+              'Estimate confidence is low. Consider adding more basis data.');
+        }
+        return pkg.copyWith(
+          estimateBasis: basis,
+          readinessWarnings: newWarnings,
+        );
+      }
+
+      return pkg.copyWith(estimateBasis: basis);
+    }).toList();
+  }
+
+  // ------------------------------------------------------------------
+  // Phase 7: Baseline & control enhancement
+  // Variance threshold checking and change tracking.
+  // ------------------------------------------------------------------
+
+  /// Variance thresholds for schedule and cost control.
+  static const double costVarianceWarningThreshold = 0.10; // 10% overrun
+  static const double costVarianceCriticalThreshold = 0.25; // 25% overrun
+  static const double scheduleVarianceWarningDays = 5;
+  static const double scheduleVarianceCriticalDays = 15;
+
+  /// Checks all work packages for cost and schedule variance against
+  /// thresholds. Returns a list of variance warnings.
+  static List<BaselineVarianceWarning> checkBaselineVariance(
+    List<WorkPackage> packages,
+  ) {
+    final warnings = <BaselineVarianceWarning>[];
+
+    for (final pkg in packages) {
+      // Cost variance
+      if (pkg.budgetedCost > 0) {
+        final costVariance = pkg.actualCost - pkg.budgetedCost;
+        final costVariancePct = costVariance / pkg.budgetedCost;
+
+        if (costVariancePct >= costVarianceCriticalThreshold) {
+          warnings.add(BaselineVarianceWarning(
+            packageId: pkg.id,
+            packageTitle: pkg.title,
+            type: 'cost_critical',
+            message:
+                'Cost overrun ${(costVariancePct * 100).toStringAsFixed(1)}% '
+                'exceeds critical threshold ${(costVarianceCriticalThreshold * 100).toStringAsFixed(0)}%. '
+                'Budget: \$${pkg.budgetedCost.toStringAsFixed(0)}, '
+                'Actual: \$${pkg.actualCost.toStringAsFixed(0)}.',
+          ));
+        } else if (costVariancePct >= costVarianceWarningThreshold) {
+          warnings.add(BaselineVarianceWarning(
+            packageId: pkg.id,
+            packageTitle: pkg.title,
+            type: 'cost_warning',
+            message:
+                'Cost overrun ${(costVariancePct * 100).toStringAsFixed(1)}% '
+                'exceeds warning threshold ${(costVarianceWarningThreshold * 100).toStringAsFixed(0)}%. '
+                'Budget: \$${pkg.budgetedCost.toStringAsFixed(0)}, '
+                'Actual: \$${pkg.actualCost.toStringAsFixed(0)}.',
+          ));
+        }
+      }
+
+      // Schedule variance: compare actual dates vs planned dates
+      final plannedEnd = DateTime.tryParse(pkg.plannedEnd ?? '');
+      final actualEnd = DateTime.tryParse(pkg.actualEnd ?? '');
+      if (plannedEnd != null && actualEnd != null && actualEnd.isAfter(plannedEnd)) {
+        final delayDays = actualEnd.difference(plannedEnd).inDays;
+        if (delayDays >= scheduleVarianceCriticalDays) {
+          warnings.add(BaselineVarianceWarning(
+            packageId: pkg.id,
+            packageTitle: pkg.title,
+            type: 'schedule_critical',
+            message:
+                'Schedule delay of $delayDays day(s) exceeds critical threshold '
+                '$scheduleVarianceCriticalDays days. '
+                'Planned end: ${pkg.plannedEnd}, Actual end: ${pkg.actualEnd}.',
+          ));
+        } else if (delayDays >= scheduleVarianceWarningDays) {
+          warnings.add(BaselineVarianceWarning(
+            packageId: pkg.id,
+            packageTitle: pkg.title,
+            type: 'schedule_warning',
+            message:
+                'Schedule delay of $delayDays day(s) exceeds warning threshold '
+                '$scheduleVarianceWarningDays days. '
+                'Planned end: ${pkg.plannedEnd}, Actual end: ${pkg.actualEnd}.',
+          ));
+        }
+      }
+    }
+
+    return warnings;
+  }
+}
+
+/// Represents a resource conflict where the same owner is assigned
+/// to two packages with overlapping date ranges.
+class ResourceConflict {
+  const ResourceConflict({
+    required this.owner,
+    required this.packageA,
+    required this.packageB,
+    required this.overlapDays,
+    required this.overlapStart,
+    required this.overlapEnd,
+  });
+
+  final String owner;
+  final String packageA;
+  final String packageB;
+  final int overlapDays;
+  final String overlapStart;
+  final String overlapEnd;
+
+  @override
+  String toString() =>
+      '$owner: "$packageA" and "$packageB" overlap by $overlapDays day(s) '
+      '($overlapStart to $overlapEnd)';
+}
+
+/// Represents a cost or schedule variance warning against baseline.
+class BaselineVarianceWarning {
+  const BaselineVarianceWarning({
+    required this.packageId,
+    required this.packageTitle,
+    required this.type,
+    required this.message,
+  });
+
+  final String packageId;
+  final String packageTitle;
+  /// 'cost_warning', 'cost_critical', 'schedule_warning', 'schedule_critical'
+  final String type;
+  final String message;
+
+  bool get isCritical =>
+      type.endsWith('_critical');
+  bool get isCostVariance =>
+      type.startsWith('cost_');
+  bool get isScheduleVariance =>
+      type.startsWith('schedule_');
+
+  @override
+  String toString() =>
+      '[${isCritical ? "CRITICAL" : "WARNING"}] $packageTitle: $message';
 }

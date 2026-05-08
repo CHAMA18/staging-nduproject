@@ -1133,6 +1133,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       milestones: data.keyMilestones,
       activities: activities,
     );
+    final specCoverageWarnings = _buildSpecCoverageWarnings(
+      data: data,
+      workPackages: data.workPackages,
+    );
 
     return _ScheduleValidationReport(
       taskCount: _activityRows.length,
@@ -1150,7 +1154,47 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       contractAlignmentWarnings: contractAlignmentWarnings,
       baselineVarianceWarnings: baselineVarianceWarnings,
       milestoneWarnings: milestoneWarnings,
+      specCoverageWarnings: specCoverageWarnings,
     );
+  }
+
+  List<_SpecCoverageWarning> _buildSpecCoverageWarnings({
+    required ProjectDataModel data,
+    required List<WorkPackage> workPackages,
+  }) {
+    final warnings = <_SpecCoverageWarning>[];
+    try {
+      final doc = DesignPlanningDocument.fromProjectData(data);
+      if (doc.specifications.isEmpty) return warnings;
+
+      final wpIds = workPackages.map((wp) => wp.id.trim()).toSet();
+      final wpTitles = workPackages
+          .map((wp) => wp.title.trim().toLowerCase())
+          .toSet();
+
+      for (final spec in doc.specifications) {
+        final specTitle = spec.title.trim();
+        if (specTitle.isEmpty) continue;
+
+        final hasLinkedWp = spec.wbsWorkPackageId.trim().isNotEmpty &&
+            wpIds.contains(spec.wbsWorkPackageId.trim());
+        final hasMatchingTitle =
+            wpTitles.contains(specTitle.toLowerCase());
+
+        if (!hasLinkedWp && !hasMatchingTitle) {
+          warnings.add(_SpecCoverageWarning(
+            title: specTitle,
+            detail:
+                'Design specification has no linked work package. '
+                '${spec.discipline.isNotEmpty ? "Discipline: ${spec.discipline}." : ""} '
+                'Consider importing design specs via the Work Packages tab.',
+          ));
+        }
+      }
+    } catch (_) {
+      // Design planning document may not exist yet — not a warning condition.
+    }
+    return warnings;
   }
 
   List<_ResourceWarning> _buildResourceWarnings(
@@ -1562,6 +1606,34 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           wbsLevel2Title: item.name,
         ));
       }
+      // Import design specification rows as work packages
+      final existingTitles = newPackages.map((wp) => wp.title.trim()).toSet();
+      for (final spec in doc.specifications) {
+        if (spec.title.trim().isEmpty) continue;
+        // Avoid duplicating a spec that was already imported as a module/journey
+        if (existingTitles.contains(spec.title.trim())) continue;
+        existingTitles.add(spec.title.trim());
+        newPackages.add(WorkPackage(
+          title: spec.title,
+          description: spec.details,
+          type: 'design',
+          phase: 'design',
+          status: spec.status.toLowerCase() == 'approved' ? 'complete' : 'planned',
+          owner: spec.owner,
+          discipline: spec.discipline,
+          areaOrSystem: spec.area,
+          wbsItemId: spec.wbsWorkPackageId,
+          wbsLevel2Title: spec.wbsWorkPackageTitle,
+          requirementIds: spec.attachedRequirementIds,
+          notes: [
+            if (spec.specificationType.isNotEmpty)
+              'Spec type: ${spec.specificationType}',
+            if (spec.ruleType.isNotEmpty) 'Rule: ${spec.ruleType}',
+            if (spec.sourceType.isNotEmpty) 'Source: ${spec.sourceType}',
+            if (spec.referenceLink.isNotEmpty) 'Ref: ${spec.referenceLink}',
+          ].join(' | '),
+        ));
+      }
     } catch (e) {
       debugPrint('Failed to load design planning document: $e');
     }
@@ -1602,7 +1674,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Import Work Packages'),
         content: Text(
-          'Found ${newPackages.length} work items from Design and Execution plans. '
+          'Found ${newPackages.length} work items from Design specs and Execution plans. '
           'Import them as Work Packages?',
         ),
         actions: [
@@ -3991,6 +4063,7 @@ class _ScheduleValidationReport {
     required this.contractAlignmentWarnings,
     required this.baselineVarianceWarnings,
     required this.milestoneWarnings,
+    required this.specCoverageWarnings,
   });
 
   final int taskCount;
@@ -4004,6 +4077,7 @@ class _ScheduleValidationReport {
   final List<_ContractAlignmentWarning> contractAlignmentWarnings;
   final List<_BaselineVarianceWarning> baselineVarianceWarnings;
   final List<_MilestoneWarning> milestoneWarnings;
+  final List<_SpecCoverageWarning> specCoverageWarnings;
 }
 
 class _PackageWarning {
@@ -4042,6 +4116,16 @@ class _BaselineVarianceWarning {
 
 class _MilestoneWarning {
   const _MilestoneWarning({
+    required this.title,
+    required this.detail,
+  });
+
+  final String title;
+  final String detail;
+}
+
+class _SpecCoverageWarning {
+  const _SpecCoverageWarning({
     required this.title,
     required this.detail,
   });
@@ -4121,6 +4205,11 @@ class _ScheduleValidationDialog extends StatelessWidget {
                     label: 'Critical Path',
                     value: report.cpm.criticalPathIds.length.toString(),
                     color: const Color(0xFF7C3AED),
+                  ),
+                  _ValidationStat(
+                    label: 'Spec Coverage',
+                    value: report.specCoverageWarnings.length.toString(),
+                    color: const Color(0xFF0891B2),
                   ),
                 ],
               ),
@@ -4207,6 +4296,17 @@ class _ScheduleValidationDialog extends StatelessWidget {
                 title: 'Milestone Coverage',
                 emptyText: 'No milestone coverage warnings.',
                 children: report.milestoneWarnings
+                    .map((warning) => _ValidationLine(
+                          title: warning.title,
+                          detail: warning.detail,
+                        ))
+                    .toList(),
+              ),
+              _ValidationSection(
+                title: 'Design Specification Coverage',
+                emptyText:
+                    'All design specifications are linked to work packages.',
+                children: report.specCoverageWarnings
                     .map((warning) => _ValidationLine(
                           title: warning.title,
                           detail: warning.detail,

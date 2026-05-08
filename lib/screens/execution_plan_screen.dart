@@ -96,8 +96,8 @@ class _ExecutionPlanScreenState extends State<ExecutionPlanScreen> {
                     _ExecutionPlanHeader(
                       onBack: () => PlanningPhaseNavigation.goToPrevious(
                           context, 'execution_plan_construction_plan'),
-                      onNext: () =>
-                          ExecutionPlanSolutionsScreen.open(context),
+                      onNext: () => PlanningPhaseNavigation.goToNext(
+                          context, 'execution_plan_construction_plan'),
                     ),
                     const SizedBox(height: 32),
                     const _SectionIntro(),
@@ -121,7 +121,7 @@ class _ExecutionPlanScreenState extends State<ExecutionPlanScreen> {
                           _YellowActionButton(
                             label: 'Next',
                             onPressed: () =>
-                                ExecutionPlanSolutionsScreen.open(context),
+                                PlanningPhaseNavigation.goToNext(context, 'execution_plan_construction_plan'),
                           ),
                         ],
                       ),

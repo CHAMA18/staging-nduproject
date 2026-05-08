@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -459,9 +457,7 @@ class _LandingScreenState extends State<LandingScreen>
                       : 32),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(18),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-              child: Container(
+            child: Container(
                 padding: EdgeInsets.symmetric(
                     horizontal: isDesktop
                         ? 32
@@ -471,7 +467,7 @@ class _LandingScreenState extends State<LandingScreen>
                     vertical: 12),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(18),
-                  color: Colors.black.withValues(alpha: 0.82),
+                  color: Colors.black.withValues(alpha: 0.92),
                   border:
                       Border.all(color: Colors.white.withValues(alpha: 0.08)),
                   boxShadow: [
@@ -486,7 +482,6 @@ class _LandingScreenState extends State<LandingScreen>
                     ? buildMobileContent()
                     : buildTabletOrDesktopContent(),
               ),
-            ),
           ),
         ),
       ),
@@ -671,23 +666,16 @@ class _LandingScreenState extends State<LandingScreen>
           ),
         ),
         const SizedBox(height: 26),
-        ShaderMask(
-          shaderCallback: (bounds) => const LinearGradient(
-            colors: [Color(0xFFFFF3C0), Colors.white],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ).createShader(Rect.fromLTWH(0, 0, bounds.width, bounds.height)),
-          blendMode: BlendMode.srcIn,
-          child: Text(
-            'Deliver projects to propel your business\' competitive advantage.',
-            key: const Key('hero_tagline_text'),
-            textAlign: isDesktop ? TextAlign.left : TextAlign.center,
-            style: TextStyle(
-              fontSize: isDesktop ? 50.0 : 36.0,
-              fontWeight: FontWeight.w800,
-              height: 1.1,
-              letterSpacing: -0.6,
-            ),
+        Text(
+          'Deliver projects to propel your business\' competitive advantage.',
+          key: const Key('hero_tagline_text'),
+          textAlign: isDesktop ? TextAlign.left : TextAlign.center,
+          style: TextStyle(
+            fontSize: isDesktop ? 50.0 : 36.0,
+            fontWeight: FontWeight.w800,
+            height: 1.1,
+            letterSpacing: -0.6,
+            color: const Color(0xFFFFF3C0),
           ),
         ),
         const SizedBox(height: 20),

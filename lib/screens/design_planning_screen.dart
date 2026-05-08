@@ -13,6 +13,7 @@ import 'package:ndu_project/services/api_key_manager.dart';
 import 'package:ndu_project/services/openai_service_secure.dart';
 import 'package:ndu_project/utils/download_helper.dart' as download_helper;
 import 'package:ndu_project/utils/design_planning_document.dart';
+import 'package:ndu_project/screens/design_phase_screen.dart';
 import 'package:ndu_project/utils/planning_phase_navigation.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
@@ -191,7 +192,6 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
   late Map<String, _SectionProgressState> _sectionProgress;
   late Map<String, bool> _sectionExpanded;
   late Map<String, int> _sectionTileVersion;
-  bool _showDesignSpecsPlanningConfig = false;
   String _activeSectionId = _sectionOrder.first.id;
 
   late DesignPlanningDocument _document;
@@ -322,7 +322,6 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
   Future<void> _openSpecificationsAndScrollToRow(String rowId) async {
     if (!mounted) return;
     setState(() {
-      _showDesignSpecsPlanningConfig = true;
       _sectionExpanded['design_specifications_workspace'] = true;
       _sectionTileVersion['design_specifications_workspace'] =
           (_sectionTileVersion['design_specifications_workspace'] ?? 0) + 1;
@@ -2505,30 +2504,29 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
             runSpacing: 10,
             children: [
               _ActionButton(
-                label: _showDesignSpecsPlanningConfig
-                    ? 'Hide Planning Config'
-                    : 'Continue Planning Here',
-                icon: Icons.list_alt_outlined,
+                label: 'Open Design Phase Workspace',
+                icon: Icons.open_in_new,
                 onPressed: () {
-                  setState(() => _showDesignSpecsPlanningConfig =
-                      !_showDesignSpecsPlanningConfig);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const DesignPhaseScreen(),
+                    ),
+                  );
                 },
               ),
             ],
           ),
-          AnimatedCrossFade(
-            firstChild: const SizedBox.shrink(),
-            secondChild: Padding(
-              padding: const EdgeInsets.only(top: 14),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: _kBorder),
-                ),
-                child: Column(
+          Padding(
+            padding: const EdgeInsets.only(top: 14),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _kBorder),
+              ),
+              child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (unlinkedRequirements.isNotEmpty) ...[
@@ -2668,11 +2666,6 @@ class _DesignPlanningScreenState extends State<DesignPlanningScreen> {
                   ],
                 ),
               ),
-            ),
-            crossFadeState: _showDesignSpecsPlanningConfig
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 180),
           ),
         ],
       ),

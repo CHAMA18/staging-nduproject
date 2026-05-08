@@ -111,7 +111,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   Future<void> _persistSchedule() async {
     final success = await ProjectDataHelper.updateAndSave(
       context: context,
-      checkpoint: 'planning_schedule',
+      checkpoint: 'schedule',
       dataUpdater: (data) => data.copyWith(
         planningNotes: {
           ...data.planningNotes,
@@ -141,7 +141,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final now = DateTime.now().toIso8601String();
     await ProjectDataHelper.updateAndSave(
       context: context,
-      checkpoint: 'planning_schedule',
+      checkpoint: 'schedule',
       dataUpdater: (data) => data.copyWith(
         scheduleBaselineActivities: _buildScheduleActivities(),
         scheduleBaselineDate: now,
@@ -1530,7 +1530,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   Future<void> _saveWorkPackages(List<WorkPackage> workPackages) async {
     await ProjectDataHelper.updateAndSave(
       context: context,
-      checkpoint: 'planning_schedule',
+      checkpoint: 'schedule',
       dataUpdater: (data) => data.copyWith(
         workPackages: workPackages,
       ),
@@ -1623,7 +1623,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final updatedPackages = [...data.workPackages, ...newPackages];
     await ProjectDataHelper.updateAndSave(
       context: context,
-      checkpoint: 'planning_schedule',
+      checkpoint: 'schedule',
       dataUpdater: (data) => data.copyWith(workPackages: updatedPackages),
       showSnackbar: false,
     );
@@ -1681,7 +1681,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     await ProjectDataHelper.updateAndSave(
       context: context,
-      checkpoint: 'planning_schedule',
+      checkpoint: 'schedule',
       dataUpdater: (data) =>
           data.copyWith(workPackages: [...data.workPackages, ...newPackages]),
       showSnackbar: false,
@@ -1768,7 +1768,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     provider.updateField((data) => data.copyWith(keyMilestones: merged));
 
     final success =
-        await provider.saveToFirebase(checkpoint: 'planning_schedule');
+        await provider.saveToFirebase(checkpoint: 'schedule');
     if (!mounted) return;
     if (success) {
       _showInfo('Synced ${generated.length} schedule milestones.');
@@ -2060,7 +2060,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     await ProjectDataHelper.updateAndSave(
       context: context,
-      checkpoint: 'planning_schedule',
+      checkpoint: 'schedule',
       dataUpdater: (data) => data.copyWith(
         scheduleActivities: updatedActivities,
         workPackages:

@@ -109,6 +109,44 @@ class _WorkPackageDialogState extends State<WorkPackageDialog> {
       _plannedStart = wp.plannedStart;
       _plannedEnd = wp.plannedEnd;
     }
+
+    // Validate dropdown values against their allowed items to prevent
+    // DropdownButton assertion failures ("There should be exactly one item
+    // with [DropdownButton]'s value"). Stale data from deleted WBS items
+    // or changed enum values can cause this.
+    const _allowedTypes = {
+      'design', 'construction', 'execution', 'agile', 'procurement', 'delivery'
+    };
+    const _allowedPhases = {'design', 'execution', 'launch'};
+    const _allowedStatuses = {
+      'planned', 'in_progress', 'complete', 'blocked', 'on_hold'
+    };
+    const _allowedClassifications = {
+      'engineeringEwp', 'procurementPackage', 'constructionCwp',
+      'implementationWorkPackage', 'agileIterationPackage', ''
+    };
+    const _allowedReleaseStatuses = {
+      'draft', 'ready_for_review', 'released', 'blocked'
+    };
+    if (!_allowedTypes.contains(_type)) _type = 'design';
+    if (!_allowedPhases.contains(_phase)) _phase = 'design';
+    if (!_allowedStatuses.contains(_status)) _status = 'planned';
+    if (!_allowedClassifications.contains(_packageClassification)) {
+      _packageClassification = '';
+    }
+    if (!_allowedReleaseStatuses.contains(_releaseStatus)) {
+      _releaseStatus = 'draft';
+    }
+    // Validate WBS Level 2 ID against available options
+    if (_wbsLevel2Id != null && _wbsLevel2Id!.isNotEmpty) {
+      final wbsIds = widget.wbsLevel2Options
+          .map((opt) => opt['id'] ?? '')
+          .where((id) => id.isNotEmpty)
+          .toSet();
+      if (!wbsIds.contains(_wbsLevel2Id)) {
+        _wbsLevel2Id = null;
+      }
+    }
   }
 
   @override

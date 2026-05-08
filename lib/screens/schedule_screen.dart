@@ -71,6 +71,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               true
           ? data.planningNotes['planning_schedule_methodology']!
           : _selectedMethodology;
+      // Validate methodology against allowed options to prevent
+      // DropdownButton assertion failures.
+      const _allowedMethodologies = {'Waterfall', 'Agile', 'Hybrid'};
+      if (!_allowedMethodologies.contains(_selectedMethodology)) {
+        _selectedMethodology = 'Waterfall';
+      }
       final storedStart =
           data.planningNotes['planning_schedule_start_date']?.trim() ?? '';
       _scheduleStartDate = DateTime.tryParse(storedStart) ?? DateTime.now();
@@ -228,20 +234,51 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   void _loadScheduleActivities(ProjectDataModel data) {
     final usedIds = <String>{};
+    final idMapping = <String, String>{}; // old ID → new ID (when remapped)
+    final rows = data.scheduleActivities.map((activity) {
+      var id = activity.wbsId.isNotEmpty ? activity.wbsId : activity.id;
+      if (id.trim().isEmpty || usedIds.contains(id)) {
+        id = DateTime.now().microsecondsSinceEpoch.toString();
+      }
+      usedIds.add(id);
+      // Track the ID change if the activity's original ID was remapped
+      // (e.g. wbsId was used instead of activity.id, or a duplicate was
+      // regenerated). This prevents stale predecessor references.
+      if (activity.id != id) {
+        idMapping[activity.id] = id;
+      }
+      // Also track wbsId → id mapping, since predecessorIds may reference
+      // either the original activity.id or the wbsId.
+      if (activity.wbsId.isNotEmpty && activity.wbsId != id) {
+        idMapping[activity.wbsId] = id;
+      }
+      return _ScheduleRow.fromActivity(
+        activity,
+        idOverride: id,
+        onChanged: _handleActivityChanged,
+      );
+    }).toList();
+
+    // Remap predecessor/dependency IDs to match the new row IDs
+    for (final row in rows) {
+      if (row.predecessorId != null) {
+        if (idMapping.containsKey(row.predecessorId)) {
+          row.predecessorId = idMapping[row.predecessorId];
+        } else if (!usedIds.contains(row.predecessorId)) {
+          // Predecessor references a task that no longer exists — clear it
+          row.predecessorId = null;
+        }
+      }
+      row.dependencyIds = row.dependencyIds.map((depId) {
+        if (idMapping.containsKey(depId)) return idMapping[depId]!;
+        if (!usedIds.contains(depId)) return null; // will be filtered below
+        return depId;
+      }).whereType<String>().where((id) => id != row.id).toList();
+    }
+
     _activityRows
       ..clear()
-      ..addAll(data.scheduleActivities.map((activity) {
-        var id = activity.wbsId.isNotEmpty ? activity.wbsId : activity.id;
-        if (id.trim().isEmpty || usedIds.contains(id)) {
-          id = DateTime.now().microsecondsSinceEpoch.toString();
-        }
-        usedIds.add(id);
-        return _ScheduleRow.fromActivity(
-          activity,
-          idOverride: id,
-          onChanged: _handleActivityChanged,
-        );
-      }));
+      ..addAll(rows);
 
     if (_activityRows.isEmpty && data.wbsTree.isNotEmpty) {
       _checkAndAutoImportSchedule();
@@ -668,9 +705,16 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       selectedWbsRawId = null;
     }
     String? predecessorId = row?.predecessorId;
+    // Validate that predecessorId still exists in the available options.
+    // Stale predecessor IDs (from deleted tasks or ID remapping during load)
+    // cause DropdownButton assertion failures.
+    final predecessorIds = predecessorOptions.map((c) => c.id).toSet();
+    if (predecessorId != null && !predecessorIds.contains(predecessorId)) {
+      predecessorId = null;
+    }
     bool isMilestone = row?.isMilestone ?? false;
-    String status = row?.status ?? 'pending';
-    String priority = row?.priority ?? 'medium';
+    String status = _normalizeScheduleStatus(row?.status ?? 'pending');
+    String priority = _normalizeSchedulePriority(row?.priority ?? 'medium');
 
     final titleController = TextEditingController(
       text: row?.titleController.text.trim() ?? '',

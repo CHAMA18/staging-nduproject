@@ -429,7 +429,7 @@ class _DetailedDesignScreenState extends State<DetailedDesignScreen> {
       subtitle: 'Readiness by workstream',
       collapsible: true,
       initiallyExpanded: true,
-      headerIcon: Icons.pulse_outlined,
+      headerIcon: Icons.monitor_heart_outlined,
       headerIconColor: const Color(0xFF10B981),
       child: const Center(
         child: Padding(

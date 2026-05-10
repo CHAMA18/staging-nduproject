@@ -39,6 +39,8 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
   List<_KpiRow> _customKpiRows = [];
   List<_RiskSignalRow> _riskSignals = [];
   List<_ActionRow> _actionRows = [];
+  List<_ApprovalGateData> _approvalGates = [];
+  List<_DataFlowRow> _dataFlows = [];
 
   String? get _projectId {
     try {
@@ -70,6 +72,8 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
     _integrations = _defaultIntegrations();
     _riskSignals = _defaultRiskSignals();
     _actionRows = _defaultActionRows();
+    _approvalGates = _defaultApprovalGates();
+    _dataFlows = _defaultDataFlows();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadFromFirestore();
       _refreshIntegrationStatuses();
@@ -117,10 +121,14 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
         final kpis = _KpiRow.fromList(data['customKpiRows']);
         final signals = _RiskSignalRow.fromList(data['riskSignals']);
         final actions = _ActionRow.fromList(data['actionRows']);
+        final gates = _ApprovalGateData.fromList(data['approvalGates']);
+        final flows = _DataFlowRow.fromList(data['dataFlows']);
         _integrations = integrations.isEmpty ? _defaultIntegrations() : integrations;
         _customKpiRows = kpis;
         _riskSignals = signals.isEmpty ? _defaultRiskSignals() : signals;
         _actionRows = actions.isEmpty ? _defaultActionRows() : actions;
+        _approvalGates = gates.isEmpty ? _defaultApprovalGates() : gates;
+        _dataFlows = flows.isEmpty ? _defaultDataFlows() : flows;
       });
     } catch (error) {
       debugPrint('Tools integration load error: $error');
@@ -143,6 +151,8 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
         'customKpiRows': _customKpiRows.map((e) => e.toMap()).toList(),
         'riskSignals': _riskSignals.map((e) => e.toMap()).toList(),
         'actionRows': _actionRows.map((e) => e.toMap()).toList(),
+        'approvalGates': _approvalGates.map((e) => e.toMap()).toList(),
+        'dataFlows': _dataFlows.map((e) => e.toMap()).toList(),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
       await ActivityLogService.instance.logActivity(
@@ -306,6 +316,66 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
     ];
   }
 
+  List<_ApprovalGateData> _defaultApprovalGates() {
+    return [
+      _ApprovalGateData(
+        id: 'gate_1', gate: 'Security & Access Review',
+        description: 'Validate OAuth scopes, API key rotation policies, and access control lists per ISO 27001 A.9',
+        approver: 'Security Lead', department: 'Security', priority: 'Critical', status: 'In Review', targetDate: 'Nov 1',
+      ),
+      _ApprovalGateData(
+        id: 'gate_2', gate: 'Data Flow Validation',
+        description: 'Confirm data mapping integrity, field-level encryption, and PII handling compliance per GDPR/CCPA',
+        approver: 'Data Governance Lead', department: 'Data', priority: 'Critical', status: 'Pending', targetDate: 'Nov 5',
+      ),
+      _ApprovalGateData(
+        id: 'gate_3', gate: 'Operational Readiness',
+        description: 'Verify uptime SLA targets, failover mechanisms, and incident response procedures per ITIL Service Level Management',
+        approver: 'Operations Manager', department: 'Operations', priority: 'High', status: 'Pending', targetDate: 'Nov 10',
+      ),
+      _ApprovalGateData(
+        id: 'gate_4', gate: 'Integration Testing Sign-off',
+        description: 'Confirm end-to-end integration testing, error handling validation, and performance benchmarks met',
+        approver: 'QA Lead', department: 'Quality', priority: 'High', status: 'Not Started', targetDate: 'Nov 15',
+      ),
+      _ApprovalGateData(
+        id: 'gate_5', gate: 'Vendor & License Compliance',
+        description: 'Verify vendor contract terms, license scope alignment, and usage limits per procurement governance',
+        approver: 'Procurement Lead', department: 'Procurement', priority: 'Medium', status: 'Not Started', targetDate: 'Nov 20',
+      ),
+      _ApprovalGateData(
+        id: 'gate_6', gate: 'Executive Authorization',
+        description: 'Final approval from executive sponsor for production integration activation and data exchange authorization',
+        approver: 'Executive Sponsor', department: 'Executive', priority: 'High', status: 'Not Started', targetDate: 'Nov 25',
+      ),
+    ];
+  }
+
+  List<_DataFlowRow> _defaultDataFlows() {
+    return [
+      _DataFlowRow(
+        id: 'flow_1', source: 'Figma', target: 'Jira', dataType: 'Design specs',
+        apiMethod: 'REST POST', frequency: 'On change', transformation: 'Component-to-epic mapping', status: 'Active',
+      ),
+      _DataFlowRow(
+        id: 'flow_2', source: 'Jira', target: 'GitHub', dataType: 'Sprint tasks',
+        apiMethod: 'REST POST/PUT', frequency: 'Real-time', transformation: 'Issue-to-PR linking', status: 'Active',
+      ),
+      _DataFlowRow(
+        id: 'flow_3', source: 'Miro', target: 'Requirements', dataType: 'Workshop outputs',
+        apiMethod: 'REST GET', frequency: 'Scheduled', transformation: 'Cluster-to-requirement mapping', status: 'Active',
+      ),
+      _DataFlowRow(
+        id: 'flow_4', source: 'Draw.io', target: 'Tech specs', dataType: 'Architecture diagrams',
+        apiMethod: 'REST GET', frequency: 'On change', transformation: 'SVG-to-document embedding', status: 'Degraded',
+      ),
+      _DataFlowRow(
+        id: 'flow_5', source: 'Whiteboard', target: 'Decisions log', dataType: 'Session artifacts',
+        apiMethod: 'WebSocket', frequency: 'Real-time', transformation: 'Auto-extract action items', status: 'Active',
+      ),
+    ];
+  }
+
   // ---------------------------------------------------------------------------
   // CRUD helpers
   // ---------------------------------------------------------------------------
@@ -348,6 +418,18 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
     setState(() => _customKpiRows.removeWhere((r) => r.id == id));
     _scheduleSave();
     _logActivity('Deleted custom KPI metric', details: {'itemId': id});
+  }
+
+  void _deleteApprovalGate(String id) {
+    setState(() => _approvalGates.removeWhere((e) => e.id == id));
+    _scheduleSave();
+    _logActivity('Deleted approval gate row', details: {'itemId': id});
+  }
+
+  void _deleteDataFlow(String id) {
+    setState(() => _dataFlows.removeWhere((e) => e.id == id));
+    _scheduleSave();
+    _logActivity('Deleted data flow row', details: {'itemId': id});
   }
 
   // ---------------------------------------------------------------------------
@@ -393,6 +475,10 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
                 _buildRiskSignalsPanel(),
                 const SizedBox(height: 20),
                 _buildActionItemsPanel(),
+                const SizedBox(height: 20),
+                _buildApprovalGatesPanel(),
+                const SizedBox(height: 20),
+                _buildDataFlowPanel(),
               ],
             ),
             const SizedBox(height: 24),
@@ -1038,6 +1124,8 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
     Color textColor;
     switch (status) {
       case 'Connected':
+      case 'Active':
+      case 'Approved':
         bgColor = const Color(0xFFECFDF5);
         textColor = const Color(0xFF059669);
         break;
@@ -1046,12 +1134,24 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
         textColor = const Color(0xFFD97706);
         break;
       case 'Not connected':
+      case 'Disabled':
         bgColor = const Color(0xFFF3F4F6);
         textColor = const Color(0xFF6B7280);
         break;
       case 'Expired':
+      case 'Rejected':
         bgColor = const Color(0xFFFEF2F2);
         textColor = const Color(0xFFDC2626);
+        break;
+      case 'In Review':
+      case 'In Progress':
+      case 'Pending':
+        bgColor = const Color(0xFFEFF6FF);
+        textColor = const Color(0xFF2563EB);
+        break;
+      case 'Not Started':
+        bgColor = const Color(0xFFF9FAFB);
+        textColor = const Color(0xFF9CA3AF);
         break;
       default:
         bgColor = const Color(0xFFF3F4F6);
@@ -1917,6 +2017,524 @@ class _ToolsIntegrationScreenState extends State<ToolsIntegrationScreen> {
   }
 
   // ---------------------------------------------------------------------------
+  // Panel: Integration Compliance & Gate Approval
+  // ---------------------------------------------------------------------------
+
+  Widget _buildApprovalGatesPanel() {
+    final policy = _crudPolicy;
+
+    return _PanelShell(
+      title: 'Integration compliance & gate approval',
+      subtitle: 'Integration approval gates aligned with ITIL Service Integration, ISO 27001 A.14 Security Development, and PMI PMBOK 4.3 Direct & Manage Project Work. Verify that each integration meets security, data governance, and operational readiness criteria before activation.',
+      trailing: policy.canCreate
+          ? TextButton.icon(
+              onPressed: () => _showApprovalGateDialog(),
+              icon: const Icon(Icons.add_rounded, size: 16),
+              label: const Text('Add gate'),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF4154F1),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            )
+          : null,
+      child: _approvalGates.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.verified_outlined, size: 36, color: const Color(0xFF10B981).withOpacity(0.6)),
+                    const SizedBox(height: 8),
+                    const Text('All gates cleared', style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            )
+          : Column(
+              children: [
+                // Table header
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF1F2937),
+                    borderRadius: BorderRadius.all(Radius.circular(8)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Expanded(flex: 3, child: Text('GATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5))),
+                      Expanded(flex: 4, child: Text('DESCRIPTION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5))),
+                      Expanded(flex: 2, child: Text('APPROVER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5))),
+                      SizedBox(width: 80, child: Text('DEPT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
+                      SizedBox(width: 72, child: Text('PRIORITY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
+                      SizedBox(width: 80, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
+                      SizedBox(width: 72, child: Text('TARGET', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
+                      SizedBox(width: 52, child: Text('', style: TextStyle(fontSize: 10))),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                ..._approvalGates.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final gate = entry.value;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: idx.isEven ? Colors.white : const Color(0xFFFAFBFD),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFF3F4F6)),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: Text(gate.gate, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF111827))),
+                        ),
+                        Expanded(
+                          flex: 4,
+                          child: Text(gate.description, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)), maxLines: 2, overflow: TextOverflow.ellipsis),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(gate.approver, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                        ),
+                        SizedBox(
+                          width: 80,
+                          child: Text(gate.department, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF374151)), textAlign: TextAlign.center),
+                        ),
+                        SizedBox(
+                          width: 72,
+                          child: _buildSeverityBadge(gate.priority),
+                        ),
+                        SizedBox(
+                          width: 80,
+                          child: _buildStatusBadge(gate.status),
+                        ),
+                        SizedBox(
+                          width: 72,
+                          child: Text(gate.targetDate, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)), textAlign: TextAlign.center),
+                        ),
+                        SizedBox(
+                          width: 52,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (policy.canUpdate)
+                                InkWell(
+                                  onTap: () => _showApprovalGateDialog(existing: gate),
+                                  child: const Icon(Icons.edit_outlined, size: 14, color: Color(0xFF6B7280)),
+                                ),
+                              if (policy.canDelete) const SizedBox(width: 4),
+                              if (policy.canDelete)
+                                InkWell(
+                                  onTap: () => _confirmDeleteApprovalGate(gate),
+                                  child: const Icon(Icons.delete_outline, size: 14, color: Color(0xFFEF4444)),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Panel: Data Flow & API Mapping
+  // ---------------------------------------------------------------------------
+
+  Widget _buildDataFlowPanel() {
+    final policy = _crudPolicy;
+
+    return _PanelShell(
+      title: 'Data flow & API mapping',
+      subtitle: 'Track data exchange pathways, API endpoints, and transformation rules between integrated tools per ITIL SIAM data flow management and ISO 20022 messaging standards.',
+      trailing: policy.canCreate
+          ? TextButton.icon(
+              onPressed: () => _showDataFlowDialog(),
+              icon: const Icon(Icons.add_rounded, size: 16),
+              label: const Text('Add flow'),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF4154F1),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            )
+          : null,
+      child: _dataFlows.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.swap_horiz, size: 36, color: const Color(0xFF9CA3AF).withOpacity(0.6)),
+                    const SizedBox(height: 8),
+                    const Text('No data flows configured', style: TextStyle(color: Color(0xFF6B7280), fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            )
+          : Column(
+              children: [
+                // Table header
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF1F2937),
+                    borderRadius: BorderRadius.all(Radius.circular(8)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Expanded(flex: 2, child: Text('SOURCE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5))),
+                      Expanded(flex: 2, child: Text('TARGET', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5))),
+                      Expanded(flex: 2, child: Text('DATA TYPE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5))),
+                      Expanded(flex: 2, child: Text('API METHOD', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5))),
+                      SizedBox(width: 80, child: Text('FREQUENCY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
+                      Expanded(flex: 3, child: Text('TRANSFORMATION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5))),
+                      SizedBox(width: 80, child: Text('STATUS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD1D5DB), letterSpacing: 0.5), textAlign: TextAlign.center)),
+                      SizedBox(width: 52, child: Text('', style: TextStyle(fontSize: 10))),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                ..._dataFlows.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final flow = entry.value;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: idx.isEven ? Colors.white : const Color(0xFFFAFBFD),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFF3F4F6)),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: Text(flow.source, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF111827))),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(flow.target, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF111827))),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(flow.dataType, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(flow.apiMethod, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF374151))),
+                        ),
+                        SizedBox(
+                          width: 80,
+                          child: Text(flow.frequency, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)), textAlign: TextAlign.center),
+                        ),
+                        Expanded(
+                          flex: 3,
+                          child: Text(flow.transformation, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280)), maxLines: 2, overflow: TextOverflow.ellipsis),
+                        ),
+                        SizedBox(
+                          width: 80,
+                          child: _buildStatusBadge(flow.status),
+                        ),
+                        SizedBox(
+                          width: 52,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (policy.canUpdate)
+                                InkWell(
+                                  onTap: () => _showDataFlowDialog(existing: flow),
+                                  child: const Icon(Icons.edit_outlined, size: 14, color: Color(0xFF6B7280)),
+                                ),
+                              if (policy.canDelete) const SizedBox(width: 4),
+                              if (policy.canDelete)
+                                InkWell(
+                                  onTap: () => _confirmDeleteDataFlow(flow),
+                                  child: const Icon(Icons.delete_outline, size: 14, color: Color(0xFFEF4444)),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Dialog: Add/Edit Approval Gate
+  // ---------------------------------------------------------------------------
+
+  void _showApprovalGateDialog({_ApprovalGateData? existing}) {
+    final isEdit = existing != null;
+    final gateCtl = TextEditingController(text: existing?.gate ?? '');
+    final descCtl = TextEditingController(text: existing?.description ?? '');
+    final approverCtl = TextEditingController(text: existing?.approver ?? '');
+    final targetDateCtl = TextEditingController(text: existing?.targetDate ?? 'TBD');
+    String department = existing?.department ?? 'Security';
+    String priority = existing?.priority ?? 'High';
+    String status = existing?.status ?? 'Not Started';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(isEdit ? Icons.edit_outlined : Icons.add_circle_outline, size: 20, color: const Color(0xFF4154F1)),
+              const SizedBox(width: 8),
+              Text(isEdit ? 'Edit Approval Gate' : 'Add Approval Gate', style: const TextStyle(fontSize: 16)),
+            ],
+          ),
+          content: SizedBox(
+            width: 520,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: gateCtl, decoration: const InputDecoration(labelText: 'Gate name', border: OutlineInputBorder())),
+                  const SizedBox(height: 12),
+                  TextField(controller: descCtl, maxLines: 2, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder())),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    Expanded(child: TextField(controller: approverCtl, decoration: const InputDecoration(labelText: 'Approver', border: OutlineInputBorder()))),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: department,
+                        items: ['Security', 'Data', 'Operations', 'Quality', 'Procurement', 'Executive', 'Other']
+                            .map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+                        onChanged: (v) { if (v != null) setDialogState(() => department = v); },
+                        decoration: const InputDecoration(labelText: 'Department', border: OutlineInputBorder()),
+                      ),
+                    ),
+                  ]),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: priority,
+                        items: ['Critical', 'High', 'Medium', 'Low'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                        onChanged: (v) { if (v != null) setDialogState(() => priority = v); },
+                        decoration: const InputDecoration(labelText: 'Priority', border: OutlineInputBorder()),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: status,
+                        items: ['Not Started', 'In Review', 'Pending', 'Approved', 'Rejected'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                        onChanged: (v) { if (v != null) setDialogState(() => status = v); },
+                        decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
+                      ),
+                    ),
+                  ]),
+                  const SizedBox(height: 12),
+                  TextField(controller: targetDateCtl, decoration: const InputDecoration(labelText: 'Target date', border: OutlineInputBorder())),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                final row = _ApprovalGateData(
+                  id: existing?.id ?? _newId(),
+                  gate: gateCtl.text.trim(),
+                  description: descCtl.text.trim(),
+                  approver: approverCtl.text.trim(),
+                  department: department,
+                  priority: priority,
+                  status: status,
+                  targetDate: targetDateCtl.text.trim(),
+                );
+                setState(() {
+                  if (isEdit) {
+                    final idx = _approvalGates.indexWhere((r) => r.id == row.id);
+                    if (idx != -1) _approvalGates[idx] = row;
+                  } else {
+                    _approvalGates.add(row);
+                  }
+                });
+                _scheduleSave();
+                _logActivity(isEdit ? 'Edited approval gate' : 'Added approval gate', details: {'itemId': row.id});
+                Navigator.of(ctx).pop();
+              },
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF4154F1), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+              child: Text(isEdit ? 'Save' : 'Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteApprovalGate(_ApprovalGateData item) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Approval Gate'),
+        content: Text('Are you sure you want to remove "${item.gate}" from the approval gates? This action cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () {
+              _deleteApprovalGate(item.id);
+              Navigator.of(ctx).pop();
+            },
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Dialog: Add/Edit Data Flow
+  // ---------------------------------------------------------------------------
+
+  void _showDataFlowDialog({_DataFlowRow? existing}) {
+    final isEdit = existing != null;
+    final sourceCtl = TextEditingController(text: existing?.source ?? '');
+    final targetCtl = TextEditingController(text: existing?.target ?? '');
+    final dataTypeCtl = TextEditingController(text: existing?.dataType ?? '');
+    final apiMethodCtl = TextEditingController(text: existing?.apiMethod ?? 'REST GET');
+    final frequencyCtl = TextEditingController(text: existing?.frequency ?? '');
+    final transformCtl = TextEditingController(text: existing?.transformation ?? '');
+    String status = existing?.status ?? 'Active';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(isEdit ? Icons.edit_outlined : Icons.add_circle_outline, size: 20, color: const Color(0xFF4154F1)),
+              const SizedBox(width: 8),
+              Text(isEdit ? 'Edit Data Flow' : 'Add Data Flow', style: const TextStyle(fontSize: 16)),
+            ],
+          ),
+          content: SizedBox(
+            width: 520,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(children: [
+                    Expanded(child: TextField(controller: sourceCtl, decoration: const InputDecoration(labelText: 'Source', border: OutlineInputBorder()))),
+                    const SizedBox(width: 12),
+                    Expanded(child: TextField(controller: targetCtl, decoration: const InputDecoration(labelText: 'Target', border: OutlineInputBorder()))),
+                  ]),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    Expanded(child: TextField(controller: dataTypeCtl, decoration: const InputDecoration(labelText: 'Data type', border: OutlineInputBorder()))),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: apiMethodCtl.text,
+                        items: ['REST GET', 'REST POST', 'REST POST/PUT', 'REST PUT', 'WebSocket', 'GraphQL', 'Webhook']
+                            .map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+                        onChanged: (v) { if (v != null) apiMethodCtl.text = v; },
+                        decoration: const InputDecoration(labelText: 'API method', border: OutlineInputBorder()),
+                      ),
+                    ),
+                  ]),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: frequencyCtl.text.isEmpty ? 'On change' : frequencyCtl.text,
+                        items: ['Real-time', 'On change', 'Scheduled', 'Manual'].map((f) => DropdownMenuItem(value: f, child: Text(f))).toList(),
+                        onChanged: (v) { if (v != null) frequencyCtl.text = v; },
+                        decoration: const InputDecoration(labelText: 'Frequency', border: OutlineInputBorder()),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: status,
+                        items: ['Active', 'Degraded', 'Disabled', 'Pending'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                        onChanged: (v) { if (v != null) setDialogState(() => status = v); },
+                        decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
+                      ),
+                    ),
+                  ]),
+                  const SizedBox(height: 12),
+                  TextField(controller: transformCtl, maxLines: 2, decoration: const InputDecoration(labelText: 'Transformation rule', border: OutlineInputBorder())),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                final row = _DataFlowRow(
+                  id: existing?.id ?? _newId(),
+                  source: sourceCtl.text.trim(),
+                  target: targetCtl.text.trim(),
+                  dataType: dataTypeCtl.text.trim(),
+                  apiMethod: apiMethodCtl.text.trim(),
+                  frequency: frequencyCtl.text.trim(),
+                  transformation: transformCtl.text.trim(),
+                  status: status,
+                );
+                setState(() {
+                  if (isEdit) {
+                    final idx = _dataFlows.indexWhere((r) => r.id == row.id);
+                    if (idx != -1) _dataFlows[idx] = row;
+                  } else {
+                    _dataFlows.add(row);
+                  }
+                });
+                _scheduleSave();
+                _logActivity(isEdit ? 'Edited data flow' : 'Added data flow', details: {'itemId': row.id});
+                Navigator.of(ctx).pop();
+              },
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF4154F1), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+              child: Text(isEdit ? 'Save' : 'Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteDataFlow(_DataFlowRow item) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Data Flow'),
+        content: Text('Are you sure you want to remove the "${item.source} → ${item.target}" data flow? This action cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () {
+              _deleteDataFlow(item.id);
+              Navigator.of(ctx).pop();
+            },
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFEF4444)),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
   // Provider helpers
   // ---------------------------------------------------------------------------
 
@@ -2248,6 +2866,106 @@ class _ActionRow {
         status: e['status'] ?? 'Not Started',
       );
     }).whereType<_ActionRow>().toList();
+  }
+}
+
+class _ApprovalGateData {
+  final String id;
+  final String gate;
+  final String description;
+  final String approver;
+  final String department;
+  final String priority;
+  final String status;
+  final String targetDate;
+
+  const _ApprovalGateData({
+    required this.id,
+    required this.gate,
+    required this.description,
+    required this.approver,
+    required this.department,
+    required this.priority,
+    required this.status,
+    required this.targetDate,
+  });
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'gate': gate,
+    'description': description,
+    'approver': approver,
+    'department': department,
+    'priority': priority,
+    'status': status,
+    'targetDate': targetDate,
+  };
+
+  static List<_ApprovalGateData> fromList(dynamic data) {
+    if (data is! List) return [];
+    return data.map((e) {
+      if (e is! Map<String, dynamic>) return null;
+      return _ApprovalGateData(
+        id: e['id'] ?? '',
+        gate: e['gate'] ?? '',
+        description: e['description'] ?? '',
+        approver: e['approver'] ?? '',
+        department: e['department'] ?? 'Security',
+        priority: e['priority'] ?? 'High',
+        status: e['status'] ?? 'Not Started',
+        targetDate: e['targetDate'] ?? 'TBD',
+      );
+    }).whereType<_ApprovalGateData>().toList();
+  }
+}
+
+class _DataFlowRow {
+  final String id;
+  final String source;
+  final String target;
+  final String dataType;
+  final String apiMethod;
+  final String frequency;
+  final String transformation;
+  final String status;
+
+  const _DataFlowRow({
+    required this.id,
+    required this.source,
+    required this.target,
+    required this.dataType,
+    required this.apiMethod,
+    required this.frequency,
+    required this.transformation,
+    required this.status,
+  });
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'source': source,
+    'target': target,
+    'dataType': dataType,
+    'apiMethod': apiMethod,
+    'frequency': frequency,
+    'transformation': transformation,
+    'status': status,
+  };
+
+  static List<_DataFlowRow> fromList(dynamic data) {
+    if (data is! List) return [];
+    return data.map((e) {
+      if (e is! Map<String, dynamic>) return null;
+      return _DataFlowRow(
+        id: e['id'] ?? '',
+        source: e['source'] ?? '',
+        target: e['target'] ?? '',
+        dataType: e['dataType'] ?? '',
+        apiMethod: e['apiMethod'] ?? 'REST GET',
+        frequency: e['frequency'] ?? 'On change',
+        transformation: e['transformation'] ?? '',
+        status: e['status'] ?? 'Active',
+      );
+    }).whereType<_DataFlowRow>().toList();
   }
 }
 

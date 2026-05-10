@@ -14,6 +14,7 @@ import 'package:ndu_project/providers/project_data_provider.dart';
 import 'package:ndu_project/screens/design_phase_screen.dart';
 import 'package:ndu_project/screens/development_set_up_screen.dart';
 import 'package:ndu_project/screens/technical_alignment_screen.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/screens/ui_ux_design_screen.dart';
 import 'package:ndu_project/services/project_navigation_service.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
@@ -705,6 +706,7 @@ class _RequirementsImplementationScreenState
 
     return ResponsiveScaffold(
       activeItemLabel: 'Design Specifications',
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: Column(
         children: [
           const PlanningPhaseHeader(

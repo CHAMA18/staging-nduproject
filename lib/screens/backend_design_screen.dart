@@ -11,6 +11,7 @@ import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/screens/ui_ux_design_screen.dart';
 import 'package:ndu_project/screens/engineering_design_screen.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
@@ -309,6 +310,7 @@ class _BackendDesignScreenState extends State<BackendDesignScreen> {
 
     return ResponsiveScaffold(
       activeItemLabel: 'Backend Design',
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: Column(
         children: [
           const PlanningPhaseHeader(

@@ -14,6 +14,7 @@ import 'package:ndu_project/theme.dart';
 import 'package:ndu_project/utils/project_data_helper.dart';
 import 'package:ndu_project/widgets/launch_phase_navigation.dart';
 import 'package:ndu_project/widgets/planning_phase_header.dart';
+import 'package:ndu_project/widgets/kaz_ai_chat_bubble.dart';
 import 'package:ndu_project/widgets/responsive.dart';
 import 'package:ndu_project/widgets/responsive_scaffold.dart';
 
@@ -579,6 +580,7 @@ class _DevelopmentSetUpScreenState extends State<DevelopmentSetUpScreen> {
 
     return ResponsiveScaffold(
       activeItemLabel: 'Development Set Up',
+      floatingActionButton: const KazAiChatBubble(positioned: false),
       body: Column(
         children: [
           const PlanningPhaseHeader(

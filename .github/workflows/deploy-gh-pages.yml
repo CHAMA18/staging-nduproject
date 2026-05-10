@@ -1,4 +1,4 @@
-name: Build & Deploy to GitHub Pages
+name: Build & Deploy to Staging
 
 on:
   push:
@@ -42,10 +42,10 @@ jobs:
           fi
           cp build/web/index.html build/web/404.html
 
-      - name: Deploy to gh-pages branch
+      - name: Deploy to staging branch
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build/web
-          publish_branch: gh-pages
+          publish_branch: staging
           commit_message: "Deploy: ${{ github.event.head_commit.message || 'manual deploy' }}"

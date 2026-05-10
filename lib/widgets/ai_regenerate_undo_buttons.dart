@@ -32,7 +32,7 @@ class AiRegenerateUndoButtons extends StatelessWidget {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Icon(Icons.refresh, size: 18, color: Color(0xFF2563EB)),
+              : const Icon(Icons.refresh, size: 18, color: Color(0xFFD97706)),
         ),
         IconButton(
           tooltip: 'Undo last AI regenerate',

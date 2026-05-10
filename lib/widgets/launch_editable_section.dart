@@ -521,7 +521,7 @@ Future<LaunchEntry?> showLaunchEntryDialog(
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(16),
-      borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
+      borderSide: const BorderSide(color: Color(0xFFFFD700), width: 1.5),
     ),
     errorBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(16),

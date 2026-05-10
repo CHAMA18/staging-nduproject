@@ -155,26 +155,26 @@ ThemeData get lightTheme => ThemeData(
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFFF1F5F9),
+        fillColor: Colors.white,
         hintStyle: const TextStyle(
-            fontFamily: _appFontFamily, color: Color(0xFF6B7280), fontSize: 14),
+            fontFamily: _appFontFamily, color: Color(0xFF9CA3AF), fontSize: 14),
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: AppSemanticColors.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(
-              color: LightModeColors.lightSecondary, width: 1.5),
+              color: Color(0xFFFFD700), width: 1.6),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: LightModeColors.lightError),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide:
               const BorderSide(color: LightModeColors.lightError, width: 1.5),
         ),
@@ -382,22 +382,22 @@ ThemeData get darkTheme => ThemeData(
             color: Colors.white.withOpacity(0.6),
             fontSize: 14),
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide:
-              const BorderSide(color: DarkModeColors.darkSecondary, width: 1.5),
+              const BorderSide(color: Color(0xFFFFD700), width: 1.6),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: DarkModeColors.darkError),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide:
               const BorderSide(color: DarkModeColors.darkError, width: 1.5),
         ),

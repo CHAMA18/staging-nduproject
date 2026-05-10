@@ -2409,7 +2409,7 @@ InputDecoration _inlineInputDecoration(String hint) {
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(color: Color(0xFF2563EB)),
+      borderSide: const BorderSide(color: Color(0xFFFFD700)),
     ),
   );
 }

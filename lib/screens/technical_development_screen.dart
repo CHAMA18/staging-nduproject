@@ -2138,7 +2138,7 @@ class _TechnicalDevelopmentScreenState
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFF2563EB)),
+                borderSide: const BorderSide(color: Color(0xFFFFD700)),
               ),
             ),
             style: const TextStyle(fontSize: 13, color: Color(0xFF334155)),
@@ -2191,7 +2191,7 @@ class _TechnicalDevelopmentScreenState
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFF2563EB)),
+                borderSide: const BorderSide(color: Color(0xFFFFD700)),
               ),
             ),
             style: const TextStyle(fontSize: 13, color: Color(0xFF334155)),

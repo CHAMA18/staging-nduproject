@@ -1565,7 +1565,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
 
   Widget _buildMenuItem(IconData icon, String title,
       {VoidCallback? onTap, bool isActive = false, bool isDisabled = false}) {
-    const activeColor = Color(0xFF4154F1);
+    const activeColor = Color(0xFFD97706);
     final isInteractive = !isDisabled && onTap != null;
     final isHighlighted = isActive && !isDisabled;
     final textColor = isDisabled
@@ -1617,7 +1617,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
 
   Widget _buildSubMenuItem(String title,
       {VoidCallback? onTap, bool isActive = false, bool isDisabled = false}) {
-    const activeColor = Color(0xFF4154F1);
+    const activeColor = Color(0xFFD97706);
     final isInteractive = !isDisabled && onTap != null;
     final isHighlighted = isActive && !isDisabled;
     final textColor = isDisabled
@@ -1675,7 +1675,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
       required VoidCallback onTap,
       bool isActive = false,
       bool isDisabled = false}) {
-    const activeColor = Color(0xFF4154F1);
+    const activeColor = Color(0xFFD97706);
     final isInteractive = !isDisabled;
     final isHighlighted = isActive && !isDisabled;
     final textColor = isDisabled
@@ -1732,7 +1732,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
 
   Widget _buildSubSubMenuItem(String title,
       {VoidCallback? onTap, bool isActive = false, bool isDisabled = false}) {
-    const activeColor = Color(0xFF4154F1);
+    const activeColor = Color(0xFFD97706);
     final isInteractive = !isDisabled && onTap != null;
     final isHighlighted = isActive && !isDisabled;
     final textColor = isDisabled
@@ -1795,7 +1795,7 @@ class _InitiationLikeSidebarState extends State<InitiationLikeSidebar> {
       {required bool expanded,
       required VoidCallback onTap,
       bool isActive = false}) {
-    const activeColor = Color(0xFF4154F1);
+    const activeColor = Color(0xFFD97706);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 2),
       child: InkWell(
